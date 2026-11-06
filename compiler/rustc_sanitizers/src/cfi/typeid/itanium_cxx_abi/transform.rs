@@ -253,6 +253,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
         ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
     });
     let mut assoc_predicates: Vec<_> = traits::supertraits(tcx, poly_trait_ref)
+        .map(Unnormalized::skip_norm_wip)
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()

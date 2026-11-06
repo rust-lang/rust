@@ -970,7 +970,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.match_normalize_trait_ref(
                                 obligation,
                                 placeholder_trait_predicate.trait_ref,
-                                upcast_trait_ref,
+                                upcast_trait_ref.skip_norm_wip(),
                             )
                             .is_ok()
                         })
@@ -1062,7 +1062,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             if upcast_trait_ref.def_id() == target_trait_did
                                 && let Ok(nested) = self.match_upcast_principal(
                                     obligation,
-                                    ty::Unnormalized::new_wip(upcast_trait_ref),
+                                    upcast_trait_ref,
                                     a_data,
                                     b_data,
                                     a_region,

@@ -370,12 +370,12 @@ pub struct FilterToTraits<I: Interner, It: Iterator<Item = I::Clause>> {
 }
 
 impl<I: Interner, It: Iterator<Item = I::Clause>> Iterator for FilterToTraits<I, It> {
-    type Item = ty::Binder<I, ty::TraitRef<I>>;
+    type Item = Unnormalized<I, ty::Binder<I, ty::TraitRef<I>>>;
 
-    fn next(&mut self) -> Option<ty::Binder<I, ty::TraitRef<I>>> {
+    fn next(&mut self) -> Option<Self::Item> {
         while let Some(pred) = self.base_iterator.next() {
             if let Some(data) = pred.as_trait_clause() {
-                return Some(data.map_bound(|t| t.trait_ref));
+                return Some(Unnormalized::new_wip(data.map_bound(|t| t.trait_ref)));
             }
         }
         None

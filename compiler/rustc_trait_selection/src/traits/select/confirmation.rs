@@ -455,20 +455,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = PredicateObligations::new();
 
         let mut supertraits = util::supertraits(tcx, ty::Binder::dummy(object_trait_ref));
-        let unnormalized_upcast_trait_ref =
-            supertraits.nth(index).expect("supertraits iterator no longer has as many elements");
-
-        let upcast_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
-            obligation.cause.span,
-            BoundRegionConversionTime::HigherRankedType,
-            unnormalized_upcast_trait_ref,
-        );
+        let unnormalized_upcast_trait_ref = supertraits
+            .nth(index)
+            .expect("supertraits iterator no longer has as many elements")
+            .map(|trait_ref| {
+                self.infcx.instantiate_binder_with_fresh_vars(
+                    obligation.cause.span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    trait_ref,
+                )
+            });
         let upcast_trait_ref = normalize_with_depth_to(
             self,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            ty::Unnormalized::new_wip(upcast_trait_ref),
+            unnormalized_upcast_trait_ref,
             &mut nested,
         );
 
@@ -963,7 +965,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let source_principal = a_data.principal().unwrap().with_self_ty(tcx, a_ty);
         let unnormalized_upcast_principal =
-            ty::Unnormalized::new_wip(util::supertraits(tcx, source_principal).nth(idx).unwrap());
+            util::supertraits(tcx, source_principal).nth(idx).unwrap();
 
         let nested = self
             .match_upcast_principal(

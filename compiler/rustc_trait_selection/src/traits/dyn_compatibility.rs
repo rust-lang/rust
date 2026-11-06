@@ -909,6 +909,7 @@ impl<'tcx> IllegalSelfTypeVisitor<'tcx> {
                 self.tcx,
                 ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id)),
             )
+            .map(Unnormalized::skip_normalization)
             .map(|trait_ref| {
                 self.tcx.erase_and_anonymize_regions(
                     self.tcx.instantiate_bound_regions_with_erased(trait_ref),
