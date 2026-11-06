@@ -2045,7 +2045,6 @@ symbols! {
         sin,
         since,
         size,
-        size_of,
         size_of_type_id,
         size_of_val,
         sized,

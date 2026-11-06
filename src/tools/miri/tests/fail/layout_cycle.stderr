@@ -13,7 +13,7 @@ LL |     type I: Tr;
 note: cycle used when const-evaluating + checking `core::mem::SizedTypeProperties::SIZE`
   --> RUSTLIB/core/src/mem/mod.rs:LL:CC
    |
-LL |     const SIZE: usize = intrinsics::size_of::<Self>();
+LL |     const SIZE: usize = intrinsics::size_of_via_type_id::<Self>();
    |     ^^^^^^^^^^^^^^^^^
    = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
