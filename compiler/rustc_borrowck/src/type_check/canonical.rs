@@ -149,7 +149,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (clause, span) in instantiated_clauses {
             debug!(?span, ?clause);
             let category = ConstraintCategory::Predicate(span, def_id);
-            let clause = self.normalize_with_category(clause, locations, category);
+            let Ok(clause) = self.normalize_with_category(clause, locations, category) else {
+                continue;
+            };
             self.prove_clause(clause, locations, category);
         }
     }
@@ -191,6 +193,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
         self.normalize_with_category(value, location, ConstraintCategory::Boring)
+            .unwrap_or(value.skip_norm_wip())
     }
 
     pub(super) fn deeply_normalize<T>(
@@ -201,11 +204,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        self.fully_perform_op(
-            location.to_locations(),
-            ConstraintCategory::Boring,
-            self.infcx.param_env.and(type_op::normalize::Normalize { value }),
-        )
+        self.normalize_with_category(value, location, ConstraintCategory::Boring)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -214,17 +213,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         value: Unnormalized<'tcx, T>,
         location: impl NormalizeLocation,
         category: ConstraintCategory<'tcx>,
-    ) -> T
+    ) -> Result<T, ErrorGuaranteed>
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        let param_env = self.infcx.param_env;
-        let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
+        self.fully_perform_op(
             location.to_locations(),
             category,
-            param_env.and(type_op::normalize::Normalize { value }),
-        );
-        result.unwrap_or(value.skip_norm_wip())
+            self.infcx.param_env.and(type_op::normalize::Normalize { value }),
+        )
+        .inspect_err(|&guar| self.infcx.set_tainted_by_errors(guar))
     }
 
     #[instrument(skip(self), level = "debug")]
