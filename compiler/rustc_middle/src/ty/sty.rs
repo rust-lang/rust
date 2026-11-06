@@ -637,41 +637,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgs<'tcx>) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def.did(), args);
-        if cfg!(debug_assertions) {
-            match tcx.def_kind(def.did()) {
-                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
-                DefKind::Mod
-                | DefKind::Variant
-                | DefKind::Trait
-                | DefKind::TyAlias
-                | DefKind::ForeignTy
-                | DefKind::TraitAlias
-                | DefKind::AssocTy
-                | DefKind::TyParam
-                | DefKind::Fn
-                | DefKind::Const
-                | DefKind::ConstParam
-                | DefKind::Static { .. }
-                | DefKind::Ctor(..)
-                | DefKind::AssocFn
-                | DefKind::AssocConst
-                | DefKind::Macro(..)
-                | DefKind::ExternCrate
-                | DefKind::Use
-                | DefKind::ForeignMod
-                | DefKind::AnonConst
-                | DefKind::OpaqueTy
-                | DefKind::Field
-                | DefKind::LifetimeParam
-                | DefKind::GlobalAsm
-                | DefKind::Impl { .. }
-                | DefKind::Closure
-                | DefKind::SyntheticCoroutineBody
-                | DefKind::TestBinderConstraints => {
-                    bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
-                }
-            }
-        }
+        tcx.debug_assert_adt_def_kind_compatible(def);
         Ty::new(tcx, Adt(def, args))
     }
 
