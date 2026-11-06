@@ -19,12 +19,6 @@ fn dropped_after_the_borrow() {
     let _ = call(&x);
 }
 
-fn borrowed_in_an_inner_scope() {
-    let call = wrap(lit);
-    let x = 10u32;
-    let _ = call(&x);
-}
-
 fn wrapped_in_tuple() {
     let call = (wrap(lit),);
     let x = 10u32;

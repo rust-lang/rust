@@ -1,6 +1,6 @@
 use std::debug_assert_matches;
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -167,11 +167,12 @@ fn param_projection_can_outlive_non_static_region<'tcx>(
         ty::ClauseKind::TypeOutlives(_)
         | ty::ClauseKind::Trait(_)
         // Something like `<T as Trait>::Assoc<'a> = &'a u8`
-        | ty::ClauseKind::Projection(_) => has_param_and_non_static_region(ty, clause),
+        | ty::ClauseKind::Projection(_)
+        // Needed to support const params
+        | ty::ClauseKind::ConstArgHasType(..) => has_param_and_non_static_region(ty, clause),
 
         // In practice, I don't think these really come up, but we can be conservative.
-        ty::ClauseKind::ConstArgHasType(..)
-        | ty::ClauseKind::WellFormed(..)
+        ty::ClauseKind::WellFormed(..)
         | ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::HostEffect(..)
         | ty::ClauseKind::UnstableFeature(..) => true,
@@ -482,6 +483,22 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     let outlives_env =
         OutlivesEnvironment::new(&infcx, def_id, parent_param_env, wf_tys.iter().copied());
 
+    // Compute once since these don't depend on the outlives regions
+    let parent_type_params: Vec<_> = self_identity_args.as_slice()[..generics.parent_count]
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, arg)| {
+            let ty = arg.as_type()?;
+            let projection_can_outlive = param_projection_can_outlive_non_static_region(
+                tcx,
+                parent_param_env,
+                &outlives_env,
+                ty,
+            );
+            Some((idx, ty, projection_can_outlive))
+        })
+        .collect();
+
     // For every captured region, we want to consider outlived args from two sources:
     // 1) *Types*: These come from *parent* generics (and are not duplicated to the opaque)
     // 2) *Captured Regions*
@@ -489,30 +506,16 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     // In both cases, we need to check known outlives for the *parent* region, because that's where the param_env and wf_tys are.
     for (parent_outlived_region, opaque_outlived_arg_idx) in parent_outlives_regions.iter() {
         let mut opaque_outlives_args = DenseBitSet::new_empty(self_identity_args.len());
-        for (parent_outlived_arg_idx, parent_outlives_arg) in
-            self_identity_args.as_slice()[..generics.parent_count].iter().enumerate()
-        {
-            let type_outlives = match parent_outlives_arg.kind() {
-                // Consts don't have any non-static regions
-                ty::GenericArgKind::Const(_) => continue,
-                // Lifetimes should be captured
-                ty::GenericArgKind::Lifetime(_) => continue,
-                ty::GenericArgKind::Type(t) => {
-                    param_known_to_outlive(
-                        tcx,
-                        def_id,
-                        parent_param_env,
-                        &wf_tys,
-                        t,
-                        *parent_outlived_region,
-                    ) || param_projection_can_outlive_non_static_region(
-                        tcx,
-                        parent_param_env,
-                        &outlives_env,
-                        t,
-                    )
-                }
-            };
+        for &(parent_outlived_arg_idx, ty, projection_can_outlive) in &parent_type_params {
+            let type_outlives = projection_can_outlive
+                || param_known_to_outlive(
+                    tcx,
+                    def_id,
+                    parent_param_env,
+                    &wf_tys,
+                    ty,
+                    *parent_outlived_region,
+                );
             if !type_outlives {
                 continue;
             }
@@ -568,6 +571,16 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
     extend_wf_tys(&mut wf_tys);
     let outlives_env = OutlivesEnvironment::new(&infcx, def_id, param_env, wf_tys.iter().copied());
 
+    // Compute this once per type parameter, rather than once per region.
+    let mut projection_outlives_args = DenseBitSet::new_empty(self_identity_args.len());
+    for (idx, arg) in self_identity_args.iter().enumerate() {
+        if let Some(ty) = arg.as_type()
+            && param_projection_can_outlive_non_static_region(tcx, param_env, &outlives_env, ty)
+        {
+            projection_outlives_args.insert(idx as u32);
+        }
+    }
+
     let mut result = Vec::new();
     for (outlived_arg_idx, outlived_arg) in self_identity_args.iter().enumerate() {
         let Some(outlived_region) = outlived_arg.as_region() else {
@@ -580,12 +593,14 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
                     region_known_to_outlive(tcx, def_id, param_env, &wf_tys, r, outlived_region)
                 }
                 ty::GenericArgKind::Type(t) => {
-                    param_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
-                        || param_projection_can_outlive_non_static_region(
+                    projection_outlives_args.contains(arg_idx as u32)
+                        || param_known_to_outlive(
                             tcx,
+                            def_id,
                             param_env,
-                            &outlives_env,
+                            &wf_tys,
                             t,
+                            outlived_region,
                         )
                 }
                 ty::GenericArgKind::Const(_) => false,
@@ -770,7 +785,10 @@ fn live_args_for_outlives_clause<'tcx>(
 pub struct FreeRegionsVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
     pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    pub seen: SmallVec<[DefId; 4]>,
+    /// The current set of aliases being visited (to avoid cycles)
+    pub stack: SmallVec<[DefId; 4]>,
+    /// The full set of aliases that have been visited (to avoid repeated work)
+    pub visited: FxHashSet<Ty<'tcx>>,
     pub op: OP,
 }
 
@@ -817,13 +835,18 @@ where
                 // If we've already seen this alias, then we just pessimistically mark all free regions as
                 // live. We could actually be more precise here: for example, we could only mark the args
                 // that are *different* as live, but this is the conservative approach.
-                for &outer_def_id in self.seen.iter() {
+                for &outer_def_id in self.stack.iter() {
                     if outer_def_id == def_id {
-                        tcx.for_each_free_region(&args, |outer_r| (self.op)(outer_r));
+                        tcx.for_each_free_region(&args, |outer_r| self.visit_region(outer_r));
                         return;
                     }
                 }
-                self.seen.push(def_id);
+                // If we've seen this exact ty already (even if not in a cycle),
+                // then we don't need to visit it again.
+                if self.visited.contains(&ty) {
+                    return;
+                }
+                self.stack.push(def_id);
 
                 // For aliases other than opaques, we have to consider two
                 // sources of information to identity potentially-live args:
@@ -868,7 +891,8 @@ where
                     }
                 }
 
-                self.seen.pop();
+                self.stack.pop();
+                self.visited.insert(ty);
             }
 
             _ => ty.super_visit_with(self),
