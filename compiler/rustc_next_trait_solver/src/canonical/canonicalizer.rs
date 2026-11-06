@@ -112,6 +112,12 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         delegate: &'a D,
         input: QueryInput<I, P>,
     ) -> (Vec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
+        if !input.has_type_flags(NEEDS_CANONICAL) {
+            let max_universe = ty::UniverseIndex::ROOT;
+            let var_kinds = delegate.cx().mk_canonical_var_kinds(&[]);
+            return (vec![], Canonical { max_universe, var_kinds, value: input });
+        }
+
         let param_env = input.goal.param_env;
 
         // Do the `env` canonicalization, and then convert the canonicalizer to `rest` form for
