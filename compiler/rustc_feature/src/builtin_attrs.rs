@@ -149,7 +149,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
 
     // Runtime
     sym::windows_subsystem,
-    sym::panic_handler, // RFC 2070
 
     // Code generation:
     sym::inline,

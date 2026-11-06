@@ -235,6 +235,9 @@ fn split_attrs(
                     Some(sym::track_caller) => {
                         foreign_item_attributes.push(attr);
                     }
+                    Some(sym::rustc_diagnostic_item) => {
+                        macro_attributes.push(attr.clone());
+                    }
                     Some(sym::eii) => unreachable!("should already be filtered out"),
                     _ => {
                         ecx.dcx().emit_err(EiiAttributeNotSupported { span, attr_span: attr.span });
