@@ -1530,7 +1530,7 @@ impl outer::$0 for Bar { }
 #[test]
 fn complete_traits_in_type_pos_edition_2018() {
     check_with_config(
-        CompletionConfig { enable_auto_dyn: true, ..TEST_CONFIG },
+        TEST_CONFIG,
         r#"
 //- /a.rs crate:a edition:2018
 type X = $0;
@@ -1572,7 +1572,7 @@ type X = $0;
 #[test]
 fn complete_traits_in_type_pos_edition_2021() {
     check_with_config(
-        CompletionConfig { enable_auto_dyn: true, ..TEST_CONFIG },
+        TEST_CONFIG,
         r#"
 //- /a.rs crate:a edition:2021
 type X = $0;
@@ -1609,7 +1609,7 @@ type X = $0;
         "#]],
     );
     check_with_config(
-        CompletionConfig { enable_auto_dyn: true, ..TEST_CONFIG },
+        TEST_CONFIG,
         r#"
 //- /a.rs crate:a edition:2021
 fn f(_: $0)
@@ -1627,7 +1627,7 @@ fn f(_: $0)
         "#]],
     );
     check_with_config(
-        CompletionConfig { enable_auto_dyn: true, ..TEST_CONFIG },
+        TEST_CONFIG,
         r#"
 //- /a.rs crate:a edition:2021
 fn f(_: &$0)
@@ -1649,7 +1649,7 @@ fn f(_: &$0)
 #[test]
 fn complete_traits_in_type_pos_edition_2021_with_dyn() {
     check_with_config(
-        CompletionConfig { enable_auto_dyn: true, ..TEST_CONFIG },
+        TEST_CONFIG,
         r#"
 //- /a.rs crate:a edition:2021
 type X = dyn $0;
