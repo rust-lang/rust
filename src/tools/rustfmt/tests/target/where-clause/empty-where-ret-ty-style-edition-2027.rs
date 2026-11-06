@@ -5,7 +5,7 @@ fn implicit_ret_ty_2() /* comment */ where {}
 fn implicit_ret_ty_3() where /* comment */ {}
 fn implicit_ret_ty_4() /* comment */ where /* comment */ {}
 
-fn foo() -> () where {}
+fn foo() -> () {}
 fn bar() -> () /* comment */ where {}
 fn baz() -> () where /* comment */ {}
 fn qux() -> () /* comment */ where /* comment */ {}
@@ -55,7 +55,7 @@ i4!(
 );
 
 i1!(
-    fn explicit_ret_ty_1() -> i32 where {}
+    fn explicit_ret_ty_1() -> i32 {}
 );
 i2!(
     fn explicit_ret_ty_2() -> i32 /* comment */ where {}
@@ -73,7 +73,7 @@ extern "C" {
     fn implicit_ret_ty_3() where /* comment */;
     fn implicit_ret_ty_4() /* comment */ where /* comment */;
 
-    fn explicit_ret_ty_1() -> i32 where;
+    fn explicit_ret_ty_1() -> i32;
     fn explicit_ret_ty_2() -> i32 /* comment */ where;
     fn explicit_ret_ty_3() -> i32 where /* comment */;
     fn explicit_ret_ty_4() -> i32 /* comment */ where /* comment */;
@@ -85,7 +85,7 @@ trait MyTrait {
     fn implicit_ret_ty_3() where /* comment */;
     fn implicit_ret_ty_4() /* comment */ where /* comment */;
 
-    fn explicit_ret_ty_1() -> i32 where;
+    fn explicit_ret_ty_1() -> i32;
     fn explicit_ret_ty_2() -> i32 /* comment */ where;
     fn explicit_ret_ty_3() -> i32 where /* comment */;
     fn explicit_ret_ty_4() -> i32 /* comment */ where /* comment */;
@@ -98,7 +98,7 @@ macro_rules! m1 {
         fn implicit_ret_ty_3() where /* comment */;
         fn implicit_ret_ty_4() /* comment */ where /* comment */;
 
-        fn explicit_ret_ty_1() -> i32 where;
+        fn explicit_ret_ty_1() -> i32;
         fn explicit_ret_ty_2() -> i32 /* comment */ where;
         fn explicit_ret_ty_3() -> i32 where /* comment */;
         fn explicit_ret_ty_4() -> i32 /* comment */ where /* comment */;
