@@ -1,0 +1,43 @@
+error: field `value` is never read
+  --> $DIR/two-usage-sites.rs:9:5
+   |
+LL | struct Struct {
+   |        ------ field in this struct
+LL |     value: u32,
+   |     ^^^^^
+   |
+note: `value` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/two-usage-sites.rs:17:1
+   |
+LL | fn a(data: &Struct) {
+   | ^^^^^^^^^^^^^^^^^^^
+note: `value` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/two-usage-sites.rs:24:1
+   |
+LL | fn b(data: &Struct) {
+   | ^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/two-usage-sites.rs:6:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: function `read` is never used
+  --> $DIR/two-usage-sites.rs:12:4
+   |
+LL | fn read(data: &Struct) {
+   |    ^^^^
+   |
+note: `read` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/two-usage-sites.rs:17:1
+   |
+LL | fn a(data: &Struct) {
+   | ^^^^^^^^^^^^^^^^^^^
+note: `read` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/two-usage-sites.rs:24:1
+   |
+LL | fn b(data: &Struct) {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
