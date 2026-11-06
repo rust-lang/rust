@@ -64,6 +64,7 @@ impl Command {
     fn get_shell_argv(&self, is_exec: bool) -> Option<Vec<*const libc::c_char>> {
         if cfg!(any(
             target_vendor = "apple",
+            target_os = "aix",
             target_os = "android",
             target_os = "openbsd",
             target_os = "freebsd",
@@ -74,7 +75,12 @@ impl Command {
         {
             let args = self.get_argv();
             let mut shell_argv = Vec::with_capacity(2 + args.len());
+            #[cfg(not(target_os = "aix"))]
             shell_argv.push(libc::_PATH_BSHELL);
+            // AIX does not use `_PATH_BSHELL` on `ENOEXEC`, its argv[0] refers to "sh"
+            // and the path it uses for the execve retry is "/usr/bin/sh"
+            #[cfg(target_os = "aix")]
+            shell_argv.push(c"sh".as_ptr());
             // This value is updated in Command::do_exec with the actual file to exec on.
             shell_argv.push(crate::ptr::null());
             // argv[0] contains the program name, but we are only interested in the
@@ -363,7 +369,10 @@ impl Command {
             && let Some(shell_argv) = shell_argv
         {
             shell_argv[1] = file;
+            #[cfg(not(target_os = "aix"))]
             libc::execve(shell_argv[0], shell_argv.as_ptr(), envp_ptr);
+            #[cfg(target_os = "aix")]
+            libc::execve(c"/usr/bin/sh".as_ptr(), shell_argv.as_ptr(), envp_ptr);
         }
 
         match err {

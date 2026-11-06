@@ -88,7 +88,6 @@ cfg_select! {
 fn get_default_path() -> CString {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use crate::sys::conf::confstr;
-
     cfg_select! {
         all(target_os = "linux", target_env = "gnu") => {
             confstr(libc::_CS_PATH, None).unwrap_or(CString::default())
@@ -103,6 +102,9 @@ fn get_default_path() -> CString {
         ) => {
             // SAFETY: libc::_PATH_DEFPATH is a nul-terminated char pointer
             unsafe { CString::from(CStr::from_ptr(libc::_PATH_DEFPATH)) }
+        }
+        target_os = "aix" => {
+            CString::new(":/bin:/usr/bin").expect("the provided string should not have a nul byte")
         }
         _ => CString::default(),
     }
