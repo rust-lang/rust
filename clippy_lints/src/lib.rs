@@ -12,7 +12,7 @@
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]
-#![expect(clippy::literal_string_with_formatting_args, clippy::must_use_candidate)]
+#![expect(clippy::literal_string_with_formatting_args)]
 #![warn(
     rust_2018_idioms,
     trivial_casts,
@@ -418,6 +418,8 @@ mod zero_sized_map_values;
 mod zombie_processes;
 // end lints modules, do not remove this comment, it's used in `update_lints`
 
+use std::process::ExitCode;
+
 use clippy_config::{Conf, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
@@ -425,7 +427,7 @@ use rustc_lint::is_lint_pass_required;
 use rustc_middle::ty::TyCtxt;
 use utils::attr_collector::AttrStorage;
 
-pub fn explain(name: &str) -> i32 {
+pub fn explain(name: &str) -> ExitCode {
     let target = format!("clippy::{}", name.to_ascii_uppercase());
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
         println!("{}", sanitize_explanation(info.explanation));
@@ -439,10 +441,10 @@ pub fn explain(name: &str) -> i32 {
                 println!("{conf}");
             }
         }
-        0
+        ExitCode::SUCCESS
     } else {
         println!("unknown lint: {name}");
-        1
+        ExitCode::FAILURE
     }
 }
 
