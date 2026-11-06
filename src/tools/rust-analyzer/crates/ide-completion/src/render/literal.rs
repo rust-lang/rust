@@ -28,27 +28,31 @@ pub(crate) fn render_variant_lit(
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_variant_lit").entered();
 
-    render(ctx, path_ctx, Variant::EnumVariant(variant), local_name, path)
+    let path = match (path, local_name) {
+        (Some(path), _) => path,
+        (None, Some(name)) => name.into(),
+        _ => return None,
+    };
+
+    render(ctx, path_ctx, Variant::EnumVariant(variant), path)
 }
 
 pub(crate) fn render_struct_literal(
     ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     strukt: hir::Struct,
-    path: Option<hir::ModPath>,
-    local_name: Option<hir::Name>,
+    path: hir::ModPath,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_struct_literal").entered();
 
-    render(ctx, path_ctx, Variant::Struct(strukt), local_name, path)
+    render(ctx, path_ctx, Variant::Struct(strukt), path)
 }
 
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     thing: Variant,
-    name: Option<hir::Name>,
-    path: Option<hir::ModPath>,
+    path: hir::ModPath,
 ) -> Option<Builder> {
     let db = completion.db;
     let mut kind = thing.kind(db);
@@ -59,20 +63,14 @@ fn render(
     );
 
     let fields = thing.fields(completion)?;
-    let (qualified_name, short_qualified_name, qualified) = match path {
-        Some(path) => {
-            let short = hir::ModPath::from_segments(
-                hir::PathKind::Plain,
-                path.segments().iter().skip(path.segments().len().saturating_sub(2)).cloned(),
-            );
-            let qualified = path.len() > 1;
-            (path, short, qualified)
-        }
-        None => (name.clone()?.into(), name?.into(), false),
-    };
+    let short_qualified_name = hir::ModPath::from_segments(
+        hir::PathKind::Plain,
+        path.segments().iter().skip(path.segments().len().saturating_sub(2)).cloned(),
+    );
+    let qualified = path.len() > 1;
     let (qualified_name, escaped_qualified_name) = (
-        qualified_name.display_verbatim(ctx.db()).to_string(),
-        qualified_name.display(ctx.db(), completion.edition).to_string(),
+        path.display_verbatim(ctx.db()).to_string(),
+        path.display(ctx.db(), completion.edition).to_string(),
     );
     let snippet_cap = ctx.snippet_cap();
 

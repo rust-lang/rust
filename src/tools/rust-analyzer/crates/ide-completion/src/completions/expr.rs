@@ -258,15 +258,16 @@ pub(crate) fn complete_expr_path<'db>(
                             ctx.config.find_path_config(ctx.is_nightly),
                         );
 
-                        acc.add_struct_literal(ctx, path_ctx, strukt, path, None);
+                        if let Some(path) = path {
+                            acc.add_struct_literal(ctx, path_ctx, strukt, path);
+                        }
 
                         if complete_self {
                             acc.add_struct_literal(
                                 ctx,
                                 path_ctx,
                                 strukt,
-                                None,
-                                Some(Name::new_symbol_root(sym::Self_)),
+                                Name::new_symbol_root(sym::Self_).into(),
                             );
                         }
                     }

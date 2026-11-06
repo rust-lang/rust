@@ -494,8 +494,7 @@ impl Completions {
         ctx: &CompletionContext<'_, '_>,
         path_ctx: &PathCompletionCtx<'_>,
         strukt: hir::Struct,
-        path: Option<hir::ModPath>,
-        local_name: Option<hir::Name>,
+        path: hir::ModPath,
     ) {
         let is_private_editable = match ctx.is_visible(&strukt) {
             Visible::Yes => false,
@@ -507,7 +506,6 @@ impl Completions {
             path_ctx,
             strukt,
             path,
-            local_name,
         ) {
             self.add(builder.build(ctx.db));
         }
