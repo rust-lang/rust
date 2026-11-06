@@ -111,6 +111,11 @@ enum EnvironmentCmd {
         /// Path to custom stage0 root
         #[arg(long)]
         stage0_root: Option<Utf8PathBuf>,
+
+        /// Do we want to optimize rustdoc in this run? Locally it's unlikely, so the default is not
+        /// to do it.
+        #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
+        optimize_rustdoc: bool,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -149,6 +154,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             build_llvm,
             build_dir,
             stage0_root,
+            optimize_rustdoc,
         } => {
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -166,6 +172,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(build_llvm)
                 .stage0_root(stage0_root)
+                .optimize_rustdoc(optimize_rustdoc)
                 .build()?;
 
             (env, shared.build_args)
@@ -239,6 +246,7 @@ fn execute_pipeline(
 
     let optimize_clippy = !is_fast_try_build();
     let optimize_cranelift = !is_fast_try_build();
+    let optimize_rustdoc = env.optimize_rustdoc;
 
     // Stage 1: Build PGO instrumented rustc
     // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
@@ -252,11 +260,12 @@ fn execute_pipeline(
                 // they are executed together within a single rustc-perf invocation.
                 // Their profiles are then merged together into a single PGO profile.
                 let mut builder = Bootstrap::build(env)
-                    .with_rustdoc()
                     .with_cargo()
                     .rustc_pgo_instrument(&rustc_profile_dir_root)
-                    .cargo_pgo_instrument(&rustc_profile_dir_root)
-                    .rustdoc_pgo_instrument(&rustc_profile_dir_root);
+                    .cargo_pgo_instrument(&rustc_profile_dir_root);
+                if optimize_rustdoc {
+                    builder = builder.with_rustdoc().rustdoc_pgo_instrument(&rustc_profile_dir_root)
+                }
                 if optimize_clippy {
                     builder = builder.with_clippy().clippy_pgo_instrument(&rustc_profile_dir_root);
                 }
@@ -279,9 +288,14 @@ fn execute_pipeline(
             let rustc_profile = stage.section("Gather rustc profiles", |_| {
                 gather_rustc_profiles(env, &rustc_profile_dir_root)
             })?;
-            let rustdoc_profile = stage.section("Gather rustdoc profiles", |_| {
-                gather_rustdoc_profiles(env, &rustc_profile_dir_root)
-            })?;
+            let rustdoc_profile = if optimize_rustdoc {
+                stage.section("Gather rustdoc profiles", |_| {
+                    Ok(Some(gather_rustdoc_profiles(env, &rustc_profile_dir_root)?))
+                })?
+            } else {
+                None
+            };
+
             let clippy_profile = if optimize_clippy {
                 stage.section("Gather clippy profiles", |_| {
                     Ok(Some(gather_clippy_profiles(env, &rustc_profile_dir_root)?))
@@ -300,11 +314,12 @@ fn execute_pipeline(
 
             stage.section("Build PGO optimized rustc", |section| {
                 let mut cmd = Bootstrap::build(env)
-                    .with_rustdoc()
                     .with_cargo()
                     .rustc_pgo_optimize(&rustc_profile)
-                    .cargo_pgo_optimize(&rustc_profile)
-                    .rustdoc_pgo_optimize(&rustdoc_profile);
+                    .cargo_pgo_optimize(&rustc_profile);
+                if let Some(rustdoc_profile) = rustdoc_profile.as_ref() {
+                    cmd = cmd.with_rustdoc().rustdoc_pgo_optimize(rustdoc_profile);
+                }
                 if let Some(clippy_profile) = clippy_profile.as_ref() {
                     cmd = cmd.with_clippy().clippy_pgo_optimize(clippy_profile);
                 }
@@ -452,8 +467,10 @@ fn execute_pipeline(
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
         .rustc_pgo_optimize(&rustc_pgo_profile)
-        .cargo_pgo_optimize(&rustc_pgo_profile)
-        .rustdoc_pgo_optimize(&rustdoc_pgo_profile);
+        .cargo_pgo_optimize(&rustc_pgo_profile);
+    if let Some(rustdoc_pgo_profile) = rustdoc_pgo_profile {
+        dist = dist.rustdoc_pgo_optimize(&rustdoc_pgo_profile);
+    }
     if let Some(clippy_pgo_profile) = clippy_pgo_profile {
         dist = dist.clippy_pgo_optimize(&clippy_pgo_profile);
     }
