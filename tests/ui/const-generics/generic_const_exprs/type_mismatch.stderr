@@ -8,10 +8,10 @@ LL | impl<const N: u64> Q for [u8; N] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `ASSOC` in implementation
 
 error: the constant `N` is not of type `usize`
-  --> $DIR/type_mismatch.rs:8:26
+  --> $DIR/type_mismatch.rs:8:31
    |
 LL | impl<const N: u64> Q for [u8; N] {}
-   |                          ^^^^^^^ expected `usize`, found `u64`
+   |                               ^ array length expected `usize`, found `u64`
    |
    = note: the length of array `[u8; N]` must be type `usize`
 

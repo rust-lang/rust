@@ -1,8 +1,8 @@
 error: the constant `S` is not of type `usize`
-  --> $DIR/tuple_ctor_in_array_len.rs:9:19
+  --> $DIR/tuple_ctor_in_array_len.rs:9:24
    |
 LL |     pub fn f() -> [u8; S] {
-   |                   ^^^^^^^ expected `usize`, found struct constructor
+   |                        ^ array length expected `usize`, found `fn() -> S {S}`
    |
    = note: the length of array `[u8; S]` must be type `usize`
 
