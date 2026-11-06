@@ -13,9 +13,10 @@ use crate::utils::{
 sub_command_decl! {
     BuildArg => "build",
     build_sysroot: bool = "--sysroot" => "When used on its own, build backend in dev mode with \
-optimized dependencies and sysroot in dev mode (unoptimized) When used together with --release, \
-build backend in release mode with optimized dependencies When used together with \
-`--release-sysroot`",
+optimized dependencies and sysroot in dev mode (unoptimized). When used together with \
+`--release`, build backend in release mode with optimized dependencies. When used together with \
+`--release-sysroot`, build the sysroot in release mode with optimized dependencies instead of \
+in dev mode",
     + config_info: ConfigInfo
 }
 

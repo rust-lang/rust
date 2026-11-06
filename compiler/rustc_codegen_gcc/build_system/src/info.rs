@@ -5,7 +5,7 @@ use crate::utils::{run_command_with_env, setup_rustc_folder};
 
 sub_command_decl! {
     Info => "info",
-    gcc_path: bool = "--gcc-path" => "Display the path where gcc will be located",
+    show_gcc_path: bool = "--show-gcc-path" => "Display the path where gcc will be located",
     llvm_commit: bool = "--llvm-commit" => "Display the LLVM submodule commit rustc is using",
     + config: ConfigInfo
 }
@@ -29,8 +29,9 @@ fn show_llvm_commit() -> Result<(), String> {
 
 pub fn run() -> Result<(), String> {
     let Some(mut info) = Info::new()? else { return Ok(()) };
+    info.config.no_download = true;
 
-    if info.gcc_path {
+    if info.show_gcc_path {
         info.config.setup_gcc_path()?;
         if let Some(gcc_path) = info.config.gcc_path {
             println!("GCC path: {gcc_path}");
