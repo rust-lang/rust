@@ -8,8 +8,8 @@
 #![allow(dead_code)]
 
 trait Trait {
-    // FIXME(fmease): Emit `deprecated_where_clause_location` here, too:
-    type Assoc0<T> where T: Copy where T: Eq;
+    type Assoc0<T> where T: Eq, T: Copy;
+    //~^ WARNING where clause not allowed here
 
     type Assoc1 = () where u32: Copy;
     //~^ WARNING where clause not allowed here

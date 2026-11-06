@@ -192,11 +192,13 @@ impl<'a> AstValidator<'a> {
         self.disallow_tilde_const = old;
     }
 
-    fn check_type_alias_where_clause_location(
+    fn check_type_alias_where_clause_not_leading(
         &mut self,
         ty_alias: &TyAlias,
     ) -> Result<(), diagnostics::WhereClauseBeforeTypeAlias> {
-        if ty_alias.ty.is_none() || !ty_alias.generics.where_clause.has_where_token {
+        if !ty_alias.generics.where_clause.has_where_token
+            || ty_alias.ty.is_none() && !ty_alias.after_where_clause.has_where_token
+        {
             return Ok(());
         }
 
@@ -1722,7 +1724,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 self.check_type_no_bounds(bounds, "this context");
 
                 if self.features.checked_type_aliases() {
-                    if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
+                    if let Err(err) = self.check_type_alias_where_clause_not_leading(ty_alias) {
                         self.dcx().emit_err(err);
                     }
                 } else if after_where_clause.has_where_token {
@@ -2106,7 +2108,7 @@ impl Visitor<'_> for AstValidator<'_> {
         }
 
         if let AssocItemKind::Type(ty_alias) = &item.kind
-            && let Err(err) = self.check_type_alias_where_clause_location(ty_alias)
+            && let Err(err) = self.check_type_alias_where_clause_not_leading(ty_alias)
         {
             let sugg = match err.sugg {
                 diagnostics::WhereClauseBeforeTypeAliasSugg::Remove { .. } => None,
