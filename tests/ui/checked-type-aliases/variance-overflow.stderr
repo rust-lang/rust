@@ -16,18 +16,18 @@ LL | struct First<T>(Second);
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
 error[E0275]: overflow normalizing the type alias `Second`
-  --> $DIR/variance-overflow.rs:19:1
+  --> $DIR/variance-overflow.rs:19:15
    |
 LL | type Second = Second; // diverging free alias type
-   | ^^^^^^^^^^^
+   |               ^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
 error[E0275]: overflow normalizing the type alias `Diverging<(((((((_,),),),),),),)>`
-  --> $DIR/variance-overflow.rs:26:1
+  --> $DIR/variance-overflow.rs:26:21
    |
 LL | type Diverging<T> = Diverging<(T,)>;
-   | ^^^^^^^^^^^^^^^^^
+   |                     ^^^^^^^^^^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
