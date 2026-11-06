@@ -139,6 +139,18 @@
 //! conservatively, supporting roughly 10 minor versions of `rustc`. MSRV bump
 //! is not considered semver breaking, but will require at least minor version
 //! bump.
+
+// FIXME: fix the lints
+#![expect(mismatched_lifetime_syntaxes)]
+#![expect(elided_lifetimes_in_paths)]
+#![expect(
+    clippy::disallowed_types,
+    clippy::print_stdout,
+    clippy::test_attr_in_doctest,
+    clippy::skip_while_next,
+    clippy::str_to_string
+)]
+
 use std::{
     collections::HashMap,
     convert::TryInto,
@@ -584,7 +596,7 @@ impl Patchwork {
             **pos += insert;
         }
 
-        self.text.replace_range(range, &patch);
+        self.text.replace_range(range, patch);
     }
 }
 
