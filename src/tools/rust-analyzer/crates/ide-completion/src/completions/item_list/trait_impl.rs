@@ -793,10 +793,10 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self  T
-                st T     T
-                tt Test
-                bt u32 u32
+                sp Self   T
+                st T      T
+                tt dyn Test
+                bt u32  u32
             "#]],
         );
 
