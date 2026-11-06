@@ -402,6 +402,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // repr(C) enum. Those indeed behave like integers in the ABI.)
             assert!(!layout.ty.ty_adt_def().is_some_and(|adt| !adt.is_enum() && adt.repr().c()));
             return Ok(match s.primitive() {
+                Primitive::Bool => FfiType::u8(),
                 Primitive::Int(Integer::I8, /* signed */ true) => FfiType::i8(),
                 Primitive::Int(Integer::I16, /* signed */ true) => FfiType::i16(),
                 Primitive::Int(Integer::I32, /* signed */ true) => FfiType::i32(),
