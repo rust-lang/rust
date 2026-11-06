@@ -16,3 +16,9 @@ struct S2;
 ///# println!("2");
 /// ```
 struct S3;
+
+/// ```
+/// println!("1"); // comment
+///     # println!("2");
+/// ```
+struct S4;
