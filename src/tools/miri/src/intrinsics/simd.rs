@@ -16,27 +16,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         match intrinsic_name {
             // Operations we can do with soft-floats.
             "fsqrt" => {
                 let [op] = check_intrinsic_arg_count(args)?;
-                let (op, op_len) = this.project_to_simd(op)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (op, op_len) = ecx.project_to_simd(op)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 
                 for i in 0..dest_len {
-                    let op = this.project_index(&op, i)?;
-                    let dest = this.project_index(&dest, i)?;
+                    let op = ecx.project_index(&op, i)?;
+                    let dest = ecx.project_index(&dest, i)?;
                     let ty::Float(float_ty) = op.layout.ty.kind() else {
-                        span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
+                        span_bug!(ecx.cur_span(), "{} operand is not a float", intrinsic_name)
                     };
                     match float_ty {
-                        FloatTy::F16 => math::sqrt_op::<IeeeFloat<HalfS>>(this, &op, &dest)?,
-                        FloatTy::F32 => math::sqrt_op::<IeeeFloat<SingleS>>(this, &op, &dest)?,
-                        FloatTy::F64 => math::sqrt_op::<IeeeFloat<DoubleS>>(this, &op, &dest)?,
-                        FloatTy::F128 => math::sqrt_op::<IeeeFloat<QuadS>>(this, &op, &dest)?,
+                        FloatTy::F16 => math::sqrt_op::<IeeeFloat<HalfS>>(ecx, &op, &dest)?,
+                        FloatTy::F32 => math::sqrt_op::<IeeeFloat<SingleS>>(ecx, &op, &dest)?,
+                        FloatTy::F64 => math::sqrt_op::<IeeeFloat<DoubleS>>(ecx, &op, &dest)?,
+                        FloatTy::F128 => math::sqrt_op::<IeeeFloat<QuadS>>(ecx, &op, &dest)?,
                     };
                 }
             }
@@ -44,8 +44,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Operations that need host floats.
             "fsin" | "fcos" | "fexp" | "fexp2" | "flog" | "flog2" | "flog10" => {
                 let [op] = check_intrinsic_arg_count(args)?;
-                let (op, op_len) = this.project_to_simd(op)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (op, op_len) = ecx.project_to_simd(op)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 
@@ -61,36 +61,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 for i in 0..dest_len {
-                    let op = this.project_index(&op, i)?;
-                    let dest = this.project_index(&dest, i)?;
+                    let op = ecx.project_index(&op, i)?;
+                    let dest = ecx.project_index(&dest, i)?;
                     let ty::Float(float_ty) = op.layout.ty.kind() else {
-                        span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
+                        span_bug!(ecx.cur_span(), "{} operand is not a float", intrinsic_name)
                     };
                     // Using host floats except for sqrt (but it's fine, these operations do not
                     // have guaranteed precision).
                     match float_ty {
-                        FloatTy::F16 => host_unary_float_op::<HalfS>(this, &op, host_op, &dest)?,
-                        FloatTy::F32 => host_unary_float_op::<SingleS>(this, &op, host_op, &dest)?,
-                        FloatTy::F64 => host_unary_float_op::<DoubleS>(this, &op, host_op, &dest)?,
+                        FloatTy::F16 => host_unary_float_op::<HalfS>(ecx, &op, host_op, &dest)?,
+                        FloatTy::F32 => host_unary_float_op::<SingleS>(ecx, &op, host_op, &dest)?,
+                        FloatTy::F64 => host_unary_float_op::<DoubleS>(ecx, &op, host_op, &dest)?,
                         FloatTy::F128 => unimplemented!("f128"), // FIXME(f128)
                     }
                 }
             }
             "expose_provenance" => {
                 let [op] = check_intrinsic_arg_count(args)?;
-                let (op, op_len) = this.project_to_simd(op)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (op, op_len) = ecx.project_to_simd(op)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 
                 for i in 0..dest_len {
-                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
+                    let op = ecx.read_immediate(&ecx.project_index(&op, i)?)?;
+                    let dest = ecx.project_index(&dest, i)?;
 
                     let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
                         // Ptr/Int casts
                         (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) =>
-                            this.pointer_expose_provenance_cast(&op, dest.layout)?,
+                            ecx.pointer_expose_provenance_cast(&op, dest.layout)?,
                         // Error otherwise
                         _ =>
                             throw_unsup_format!(
@@ -99,7 +99,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 to_ty = dest.layout.ty,
                             ),
                     };
-                    this.write_immediate(*val, &dest)?;
+                    ecx.write_immediate(*val, &dest)?;
                 }
             }
 
