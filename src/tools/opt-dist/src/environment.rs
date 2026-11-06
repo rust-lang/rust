@@ -31,6 +31,11 @@ pub struct Environment {
     #[builder(default)]
     stage0_root: Option<Utf8PathBuf>,
 
+    /// Whether we want to optimize cargo. We do on CI, so it's on by default, but it is an option
+    /// so local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_cargo: bool,
+
     /// Whether we want to optimize clippy. We do on CI, so it's on by default, but it is an option
     /// so local runs can avoid it.
     #[builder(default = "true")]
