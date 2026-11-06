@@ -9,7 +9,7 @@ mod utils;
 
 use std::io::ErrorKind;
 use std::time::{Duration, Instant};
-use std::{ptr, thread};
+use std::{mem, ptr, thread};
 
 use libc_utils::*;
 
@@ -40,6 +40,8 @@ fn main() {
     test_connect_listening();
     test_send_peek_recv();
     test_write_read();
+    test_recvfrom();
+    test_sendto();
     test_readv();
     test_writev();
 
@@ -387,6 +389,167 @@ fn test_write_read() {
 
         // Write some bytes into the stream.
         libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
+    assert_eq!(&buffer, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}
+
+/// Test receiving data from a TCP socket using `recvfrom`.
+/// Since TCP is a connection-mode protocol the `address` and `address_len`
+/// pointers should be left unchanged.
+fn test_recvfrom() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // Write some bytes into the stream.
+
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    let mut buffer = [0; TEST_BYTES.len()];
+
+    // It is legal to make both the addr and addr_len pointers null.
+    unsafe {
+        errno_result(libc::recvfrom(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            /* flags */ 0,
+            ptr::null_mut::<libc::sockaddr>(),
+            ptr::null_mut::<libc::socklen_t>(),
+        ))
+        .unwrap();
+    }
+
+    assert_eq!(&buffer, TEST_BYTES);
+
+    let mut buffer: [u8; 26] = [0; TEST_BYTES.len()];
+
+    // If address pointer is non-null, `address_len` should be zeroed (but address itself is not accessed).
+    let mut addr = unsafe { mem::zeroed::<libc::sockaddr>() };
+    let mut addr_len = mem::size_of_val(&addr) as libc::socklen_t;
+    unsafe {
+        errno_result(libc::recvfrom(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            /* flags */ 0,
+            &mut addr,
+            &mut addr_len,
+        ))
+        .unwrap();
+    }
+    // Ensure the `address_len` pointer gets zeroed.
+    assert_eq!(addr_len, 0);
+
+    assert_eq!(&buffer, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}
+
+/// Test sending data into a TCP socket using `sendto`.
+/// We provide a nullptr as destination address, which should not be
+/// a problem since TCP is a connection-mode protocol and thus the
+/// destination address should be ignored.
+fn test_sendto() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // Write some bytes into the stream using `sendto`.
+
+        if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+            // Native FreeBSD and macOS return EINVAL when the address pointer is invalid even when
+            // the address length is zero. However, POSIX says the address pointer should be entirely
+            // ignored for streaming sockets. We thus skip those native tests.
+
+            // When the length is zero, the invalid address pointer is ignored. We thus provide
+            // a garbage pointer to ensure this behavior.
+            unsafe {
+                libc_utils::write_all_generic(
+                    TEST_BYTES.as_ptr().cast(),
+                    TEST_BYTES.len(),
+                    libc_utils::NoRetry,
+                    |buf, count| {
+                        libc::sendto(
+                            peerfd,
+                            buf,
+                            count,
+                            /* flags */ 0,
+                            ptr::without_provenance_mut::<libc::sockaddr>(16),
+                            /* address_len */ 0,
+                        )
+                    },
+                )
+                .unwrap();
+            }
+        }
+
+        // When the address pointer and the length are valid, the destination
+        // address should be ignored since we're using TCP.
+        let valid_addr = net::sock_addr_ipv4([127, 0, 0, 1], 5555);
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        (&valid_addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+                        size_of::<libc::sockaddr_in>() as libc::socklen_t,
+                    )
+                },
+            )
+            .unwrap();
+        }
+
+        if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+            // On macOS and FreeBSD hosts we get EINVAL when the address pointer is a nullptr.
+            // This is not specified in their man pages and differs from the behavior of most
+            // other Unixes. We thus skip this `sendto` on those hosts.
+
+            // When the address pointer is a nullptr it should be ignored.
+            unsafe {
+                libc_utils::write_all_generic(
+                    TEST_BYTES.as_ptr().cast(),
+                    TEST_BYTES.len(),
+                    libc_utils::NoRetry,
+                    |buf, count| {
+                        libc::sendto(
+                            peerfd,
+                            buf,
+                            count,
+                            /* flags */ 0,
+                            ptr::null_mut::<libc::sockaddr>(),
+                            /* address_len */ 16,
+                        )
+                    },
+                )
+                .unwrap();
+            }
+        }
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();

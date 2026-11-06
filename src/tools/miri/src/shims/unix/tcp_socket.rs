@@ -170,7 +170,13 @@ impl FileDescription for TcpSocket {
             /* is_peek */ false,
             /* is_non_block */ false,
             ecx,
-            finish,
+            callback!(
+                @capture<'tcx> {
+                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                } |this, result: Result<(usize, Option<SocketAddr>), IoError>| {
+                    finish.call(this, result.map(|(bytes, _)| bytes))
+                }
+            ),
         )
     }
 
@@ -182,7 +188,15 @@ impl FileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        self.send(communicate_allowed, ptr, len, /* is_non_block */ false, ecx, finish)
+        self.send(
+            communicate_allowed,
+            ptr,
+            len,
+            /* is_non_block */ false,
+            /* dest_addr */ None,
+            ecx,
+            finish,
+        )
     }
 
     fn short_fd_operations(&self) -> bool {
@@ -585,6 +599,9 @@ impl UnixSocketFileDescription for TcpSocket {
         ptr: Pointer,
         len: usize,
         is_non_block: bool,
+        // For stream-based sockets `send` and `sendto` are equivalent and
+        // we can thus ignore the destination address.
+        _dest_addr: Option<SocketAddr>,
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
@@ -634,13 +651,21 @@ impl UnixSocketFileDescription for TcpSocket {
         is_peek: bool,
         is_non_block: bool,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
         let is_non_block = is_non_block || self.is_non_block.get();
         let deadline = ecx.action_deadline(is_non_block, self.read_timeout.get());
 
+        let finish = callback!(
+            @capture<'tcx> {
+                finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
+            } |this, result: Result<usize, IoError>| {
+                // The source address of the data isn't available for stream-based sockets.
+                finish.call(this, result.map(|bytes| (bytes, None)))
+            }
+        );
         let socket = self;
         ecx.ensure_connected(
             socket.clone(),

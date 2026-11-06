@@ -116,10 +116,12 @@ fn test_bind_ipv4_invalid_addr_len() {
         // A too big size is also invalid. Some native hosts (e.g. Linux)
         // allow too big sizes, so we skip this test on native hosts:
         // <https://github.com/rust-lang/miri/pull/5059#discussion_r3305439221>
+        // Make sure the bigger size is still fully in-bounds.
+        let addrs = [addr; 2];
         let err = unsafe {
             errno_result(libc::bind(
                 sockfd,
-                (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+                addrs.as_ptr().cast::<libc::sockaddr>(),
                 (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
             ))
             .unwrap_err()

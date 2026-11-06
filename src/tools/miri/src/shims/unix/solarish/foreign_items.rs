@@ -132,6 +132,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 this.connect(socket, address, address_len, dest)?;
             }
+            "__xnet_sendto" => {
+                let [socket, buffer, length, flags, dest_addr, dest_addr_len] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, libc::size_t, i32, *libc::sockaddr, libc::socklen_t) -> libc::ssize_t),
+                    (link_name, abi, args),
+                )?;
+                this.send(socket, buffer, length, flags, Some((dest_addr, dest_addr_len)), dest)?;
+            }
             "__xnet_getaddrinfo" => {
                 let [node, service, hints, res] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_, *_, **_) -> i32),
