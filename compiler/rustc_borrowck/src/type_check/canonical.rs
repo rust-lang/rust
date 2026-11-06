@@ -188,12 +188,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         value: Unnormalized<'tcx, T>,
         location: impl NormalizeLocation,
-    ) -> T
+    ) -> Result<T, ErrorGuaranteed>
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
         self.normalize_with_category(value, location, ConstraintCategory::Boring)
-            .unwrap_or(value.skip_norm_wip())
     }
 
     pub(super) fn deeply_normalize<T>(
@@ -239,7 +238,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             body.source.def_id().expect_local(),
         );
 
-        let mut normalize = |ty| self.normalize(ty, location);
+        let mut normalize =
+            |ty| self.normalize(ty, location).unwrap_or_else(|guar| Ty::new_error(tcx, guar));
         tcx.struct_tail_raw(ty, &cause, &mut normalize, || {})
     }
 
@@ -285,7 +285,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // hack in `equate_inputs_and_outputs` which does have associated test cases.
         let mir_ty = match self.infcx.next_trait_solver() {
             true => mir_ty,
-            false => self.normalize(Unnormalized::new_wip(mir_ty), Locations::All(span)),
+            false => match self.normalize(Unnormalized::new_wip(mir_ty), Locations::All(span)) {
+                Ok(mir_ty) => mir_ty,
+                Err(_) => return,
+            },
         };
 
         let cause = ObligationCause::dummy_with_span(span);
