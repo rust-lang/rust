@@ -273,8 +273,17 @@ fn execute_pipeline(
     // Stage 1: Build PGO-instrumented rustc
     // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
     // same time can cause issues, because the host and in-tree LLVM versions can diverge.
+    let stage1_label = format!(
+        "Stage 1 ({} PGO)",
+        optimized_component_label(
+            optimize_rustdoc,
+            optimize_cargo,
+            optimize_clippy,
+            optimize_cranelift,
+        )
+    );
     let (rustc_pgo_profile, rustdoc_pgo_profile, clippy_pgo_profile, cranelift_pgo_profile) = timer
-        .section("Stage 1 (Rustc + rustdoc + cargo + clippy PGO)", |stage| {
+        .section(&stage1_label, |stage| {
             let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
             stage.section("Build PGO-instrumented rustc, and vanilla LLVM", |section| {
@@ -338,7 +347,16 @@ fn execute_pipeline(
             };
             print_free_disk_space()?;
 
-            stage.section("Build PGO-optimized rustc", |section| {
+            let section_label = format!(
+                "Build PGO-optimized {}",
+                optimized_component_label(
+                    rustdoc_profile.is_some(),
+                    optimize_cargo,
+                    clippy_profile.is_some(),
+                    cranelift_profile.is_some(),
+                )
+            );
+            stage.section(&section_label, |section| {
                 let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&rustc_profile);
                 if optimize_cargo {
                     cmd = cmd.with_cargo().cargo_pgo_optimize(&rustc_profile);
@@ -529,6 +547,24 @@ fn execute_pipeline(
     }
 
     Ok(())
+}
+
+/// Compute a label of the components that will be optimized, in addition to rustc.
+fn optimized_component_label(rustdoc: bool, cargo: bool, clippy: bool, cranelift: bool) -> String {
+    let mut label = String::from("rustc");
+    if rustdoc {
+        label.push_str(" + rustdoc");
+    }
+    if cargo {
+        label.push_str(" + cargo");
+    }
+    if clippy {
+        label.push_str(" + clippy");
+    }
+    if cranelift {
+        label.push_str(" + cranelift");
+    }
+    label
 }
 
 fn main() -> anyhow::Result<()> {
