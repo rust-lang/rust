@@ -406,7 +406,7 @@ completing on a future.
 
 Default: `true`
 
-Show traits completions with `dyn` prefixed to them when completing on a type location.
+Complete traits with `dyn` prefixed to them when completing in a type position.
 
 
 ## rust-analyzer.completion.autoIter.enable {#completion.autoIter.enable}

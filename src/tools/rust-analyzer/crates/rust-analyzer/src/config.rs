@@ -640,7 +640,7 @@ config_data! {
         /// completing on a future.
         completion_autoAwait_enable: bool = true,
 
-        /// Show traits completions with `dyn` prefixed to them when completing on a type location.
+        /// Complete traits with `dyn` prefixed to them when completing in a type position.
         completion_autoDyn_enable: bool = true,
 
         /// Show method call completions with `iter()` or `into_iter()` prefixed to them when

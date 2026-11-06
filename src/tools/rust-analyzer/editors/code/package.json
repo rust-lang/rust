@@ -1337,7 +1337,7 @@
                 "title": "Completion",
                 "properties": {
                     "rust-analyzer.completion.autoDyn.enable": {
-                        "markdownDescription": "Show traits completions with `dyn` prefixed to them when completing on a type location.",
+                        "markdownDescription": "Complete traits with `dyn` prefixed to them when completing in a type position.",
                         "default": true,
                         "type": "boolean"
                     }
