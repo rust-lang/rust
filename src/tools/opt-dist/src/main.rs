@@ -278,9 +278,12 @@ fn execute_pipeline(
             let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
             stage.section("Build PGO-instrumented rustc, and vanilla LLVM", |section| {
-                // Rustc and rustdoc profiles are gathered together into the same directory, because
-                // they are executed together within a single rustc-perf invocation.
-                // Their profiles are then merged together into a single PGO profile.
+                // Note that we gather the profiles into the same directory:
+                // - we want the profiles of all the binaries using librustc_driver to optimize the
+                //   driver according to the global use of rustc code
+                // - the profiles for the tool binaries themselves will be about different symbols
+                //   and thus will not collide when merged
+                // The profiles are then merged together into a single PGO profile.
                 let mut builder =
                     Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
                 if optimize_cargo {
