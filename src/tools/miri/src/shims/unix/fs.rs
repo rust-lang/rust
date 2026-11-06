@@ -2299,10 +2299,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let _ = output.seek(SeekFrom::Start(pos_out));
             })
         };
-        match copy() {
-            Ok(copied) => ecx.write_int(copied, dest),
-            Err(err) => ecx.set_errno_and_return_neg1(err, dest),
-        }
+        ecx.return_io_result_via_errno(copy(), dest)
     }
 }
 
