@@ -86,17 +86,17 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         max_input_universe: ty::UniverseIndex,
         value: T,
     ) -> ty::Canonical<I, T> {
+        if !value.has_type_flags(NEEDS_CANONICAL) {
+            let var_kinds = delegate.cx().mk_canonical_var_kinds(&[]);
+            return Canonical { max_universe: ty::UniverseIndex::ROOT, var_kinds, value };
+        }
+
         let mut canonicalizer =
             Canonicalizer::new(delegate, CanonicalizeMode::Response { max_input_universe });
-        let value = if value.has_type_flags(NEEDS_CANONICAL) {
-            value.fold_with(&mut canonicalizer)
-        } else {
-            value
-        };
+        let value = value.fold_with(&mut canonicalizer);
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, var_kinds) = canonicalizer.finalize();
-
         Canonical { max_universe, var_kinds, value }
     }
 
