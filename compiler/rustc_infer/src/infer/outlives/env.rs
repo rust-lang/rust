@@ -19,7 +19,7 @@ use crate::traits::query::OutlivesBound;
 ///
 /// Other code at present does not typically take a
 /// `&OutlivesEnvironment`, but rather takes some of its fields (e.g.,
-/// `process_registered_region_obligations` wants the
+/// `process_registered_outlives_constraints` wants the
 /// region-bound-pairs). There is no mistaking it: the current setup
 /// of tracking region information is quite scattered! The
 /// `OutlivesEnvironment`, for example, needs to sometimes be combined

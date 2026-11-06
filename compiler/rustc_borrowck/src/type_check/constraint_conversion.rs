@@ -29,7 +29,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     /// Each region here is guaranteed to be a key in the `indices`
     /// map. We use the "original" regions (i.e., the keys from the
     /// map, and not the values) because the code in
-    /// `process_registered_region_obligations` has some special-cased
+    /// `process_registered_outlives_constraints` has some special-cased
     /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
     /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,

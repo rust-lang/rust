@@ -95,7 +95,7 @@ pub(crate) enum Cause {
 ///
 /// These sorts of constraints are handled differently than ordinary
 /// constraints, at least at present. During type checking, the
-/// `InferCtxt::process_registered_region_obligations` method will
+/// `InferCtxt::process_registered_outlives_constraints` method will
 /// attempt to convert a type test like `T: 'x` into an ordinary
 /// outlives constraint when possible (for example, `&'a T: 'b` will
 /// be converted into `'a: 'b` and registered as a `Constraint`).
@@ -118,7 +118,7 @@ pub(crate) enum Cause {
 /// than one way.
 ///
 /// For more information about this translation, see
-/// `InferCtxt::process_registered_region_obligations` and
+/// `InferCtxt::process_registered_outlives_constraints` and
 /// `InferCtxt::type_must_outlive` in `rustc_infer::infer::InferCtxt`.
 #[derive(Clone)]
 pub(crate) struct TypeTest<'tcx> {

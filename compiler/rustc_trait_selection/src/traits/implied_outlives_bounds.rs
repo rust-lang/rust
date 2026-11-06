@@ -131,14 +131,14 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
 pub fn consider_implied_bounds_hack_for_ty<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
-    region_constraints: impl FnOnce() -> Vec<TypeOutlivesConstraint<'tcx>>,
+    type_outlives_constraints: impl FnOnce() -> Vec<TypeOutlivesConstraint<'tcx>>,
 ) -> Vec<OutlivesBound<'tcx>> {
     let tcx = ocx.infcx.tcx;
     if !ocx.infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat
         && ty.visit_with(&mut ContainsBevyParamSet { tcx }).is_break()
     {
         let mut outlives_bounds = vec![];
-        for TypeOutlivesConstraint { sup_type, sub_region, .. } in region_constraints() {
+        for TypeOutlivesConstraint { sup_type, sub_region, .. } in type_outlives_constraints() {
             let mut components = smallvec![];
             push_outlives_components(tcx, sup_type, &mut components);
             outlives_bounds.extend(implied_bounds_from_components(tcx, sub_region, components));
@@ -194,7 +194,7 @@ pub fn query_compute_implied_outlives_bounds<'tcx>(
 
     if !disable_implied_bounds_hack {
         outlives_bounds.extend(consider_implied_bounds_hack_for_ty(ocx, ty, || {
-            ocx.infcx.clone_registered_region_obligations()
+            ocx.infcx.clone_registered_type_outlives_constraints()
         }));
     }
 

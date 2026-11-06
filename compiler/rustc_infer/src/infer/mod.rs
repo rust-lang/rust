@@ -142,11 +142,11 @@ pub struct InferCtxtInner<'tcx> {
     /// ```
     /// In some expression `let x = Foo { ... }`, it will
     /// instantiate the type parameter `T` with a fresh type `$0`. At
-    /// the same time, it will record a region obligation of
+    /// the same time, it will record a type outlives constraints of
     /// `$0: 'static`. This will get checked later by regionck. (We
     /// can't generally check these things right away because we have
     /// to wait until types are resolved.)
-    region_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
+    type_outlives_constraints: Vec<TypeOutlivesConstraint<'tcx>>,
 
     /// The outlives bounds that we assume must hold about placeholders that
     /// come from instantiating the binder of coroutine-witnesses. These bounds
@@ -178,7 +178,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: Default::default(),
             float_origin_origin_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
-            region_obligations: Default::default(),
+            type_outlives_constraints: Default::default(),
             region_assumptions: Default::default(),
             hir_typeck_potentially_region_dependent_goals: Default::default(),
             opaque_type_storage: Default::default(),
@@ -186,8 +186,8 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    pub fn region_obligations(&self) -> &[TypeOutlivesConstraint<'tcx>] {
-        &self.region_obligations
+    pub fn type_outlives_constraints(&self) -> &[TypeOutlivesConstraint<'tcx>] {
+        &self.type_outlives_constraints
     }
 
     #[inline]
@@ -573,7 +573,7 @@ impl fmt::Display for FixupError {
     }
 }
 
-/// See the `region_obligations` field for more information.
+/// See the `type_outlives_constraints` field for more information.
 #[derive(Clone, Debug)]
 pub struct TypeOutlivesConstraint<'tcx> {
     pub sub_region: ty::Region<'tcx>,
