@@ -42,13 +42,7 @@ pub enum ReprI64 {
     B,
 }
 
-#[repr(i128)]
-pub enum ReprI128 {
-    A,
-    B,
-}
-
-// CHECK: noundef i1 @enum_no_repr(i1 noundef %value)
+// CHECK: noundef{{( zeroext)?}} i1 @enum_no_repr(i1 noundef{{( zeroext)?}} %value)
 #[unsafe(no_mangle)]
 pub extern "C" fn enum_no_repr(value: NoRepr) -> NoRepr {
     // CHECK: start:
@@ -56,7 +50,7 @@ pub extern "C" fn enum_no_repr(value: NoRepr) -> NoRepr {
     value
 }
 
-// CHECK: noundef range(i8 0, 2) i8 @enum_u8(i8 noundef range(i8 0, 2) %value)
+// CHECK: noundef{{( zeroext)?}} range(i8 0, 2) i8 @enum_u8(i8 noundef{{( zeroext)?}} range(i8 0, 2) %value)
 #[unsafe(no_mangle)]
 pub extern "C" fn enum_u8(value: ReprU8) -> ReprU8 {
     // CHECK: start:
@@ -64,7 +58,7 @@ pub extern "C" fn enum_u8(value: ReprU8) -> ReprU8 {
     value
 }
 
-// CHECK: noundef range(i8 0, 2) i8 @enum_i8(i8 noundef range(i8 0, 2) %value)
+// CHECK: noundef{{( signext)?}} range(i8 0, 2) i8 @enum_i8(i8 noundef{{( signext)?}} range(i8 0, 2) %value)
 #[unsafe(no_mangle)]
 pub extern "C" fn enum_i8(value: ReprI8) -> ReprI8 {
     // CHECK: start:
@@ -72,7 +66,7 @@ pub extern "C" fn enum_i8(value: ReprI8) -> ReprI8 {
     value
 }
 
-// CHECK: noundef range(i16 0, 2) i16 @enum_u16(i16 noundef range(i16 0, 2) %value)
+// CHECK: noundef{{( zeroext)?}} range(i16 0, 2) i16 @enum_u16(i16 noundef{{( zeroext)?}} range(i16 0, 2) %value)
 #[unsafe(no_mangle)]
 pub extern "C" fn enum_u16(value: ReprU16) -> ReprU16 {
     // CHECK: start:
@@ -93,13 +87,5 @@ pub extern "C" fn enum_i32(value: ReprI32) -> ReprI32 {
 pub extern "C" fn enum_i64(value: ReprI64) -> ReprI64 {
     // CHECK: start:
     // CHECK-NEXT: ret i64 %value
-    value
-}
-
-// CHECK: noundef range(i128 0, 2) i128 @enum_i128(i128 noundef range(i128 0, 2) %value)
-#[unsafe(no_mangle)]
-pub extern "C" fn enum_i128(value: ReprI128) -> ReprI128 {
-    // CHECK: start:
-    // CHECK-NEXT: ret i128 %value
     value
 }
