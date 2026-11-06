@@ -809,6 +809,9 @@ where
                 "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
                 goal.predicate.self_ty()
             ),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
@@ -1029,6 +1032,9 @@ where
                 "unexpected self ty `{:?}` when normalizing `<T as DiscriminantKind>::Discriminant`",
                 goal.predicate.self_ty()
             ),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {

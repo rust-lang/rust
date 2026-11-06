@@ -868,6 +868,9 @@ fn layout_of_uncached<'tcx>(
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     })
 }
 

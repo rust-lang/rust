@@ -173,6 +173,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             | ty::Placeholder(_) => {
                                 bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
                             }
+
+                            // FIXME(scrabsha)
+                            ty::View(..) => unimplemented!(),
                         },
                         MoveSubPath::Field(_) => match place_ty.kind() {
                             ty::Adt(adt, _) => {
@@ -213,6 +216,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             | ty::Placeholder(_) => bug!(
                                 "When Place contains ProjectionElem::Field its type shouldn't be {place_ty:#?}"
                             ),
+
+                            // FIXME(scrabsha)
+                            ty::View(..) => unimplemented!(),
                         },
                         MoveSubPath::ConstantIndex(_) => match place_ty.kind() {
                             ty::Slice(_) => {

@@ -802,6 +802,9 @@ where
                 ) => {
                     panic!("unexpected type `{ty:?}`")
                 }
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
 
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -1491,6 +1494,9 @@ where
             ty::Infer(_) | ty::Alias(ty::IsRigid::No, _) | ty::Bound(_, _) => {
                 panic!("unexpected type `{self_ty:?}`")
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

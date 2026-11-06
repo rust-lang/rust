@@ -156,5 +156,8 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::FnDef(did, _)
         | ty::Foreign(did) => Some(tcx.def_span(did)),
         ty::Param(_) => None,
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }

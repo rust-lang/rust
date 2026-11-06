@@ -1122,6 +1122,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     ))),
                 ));
             }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
         }
 
         t.super_visit_with(self)

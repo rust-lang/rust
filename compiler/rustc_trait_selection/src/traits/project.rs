@@ -1141,6 +1141,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Placeholder(..)
                         | ty::Infer(..)
                         | ty::Error(_) => false,
+
+                        // FIXME(scrabsha)
+                        ty::View(..) => unimplemented!(),
                     },
                     Some(LangItem::PointeeTrait) => {
                         let tail = selcx.tcx().struct_tail_raw(
@@ -1228,6 +1231,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 }
                                 false
                             }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
                         }
                     }
                     _ if tcx.trait_is_auto(trait_ref.def_id) => {

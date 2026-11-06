@@ -347,6 +347,9 @@ fn characteristic_def_id_of_type_cached<'a>(
         | ty::Error(_)
         | ty::Never
         | ty::Float(_) => None,
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {

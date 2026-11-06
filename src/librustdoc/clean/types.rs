@@ -1739,6 +1739,9 @@ impl PrimitiveType {
             | ty::Param(..)
             | ty::Placeholder(..)
             | ty::UnsafeBinder(..) => None,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

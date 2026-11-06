@@ -314,6 +314,9 @@ where
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
 
         if V::SHALLOW { V::Result::output() } else { ty.super_visit_with(self) }

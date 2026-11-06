@@ -260,6 +260,9 @@ impl SelfTyHead {
             | ty::Infer(..) => panic!("unexpected impl self ty {bound_ty}"),
 
             ty::Error(_) => FatalError.raise(),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }
