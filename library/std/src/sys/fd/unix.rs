@@ -3,19 +3,9 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(any(
-    target_os = "linux",
-    target_os = "l4re",
-    target_os = "android",
-    target_os = "hurd",
-)))]
+#[cfg(not(any(target_os = "linux", target_os = "android", target_os = "hurd")))]
 use libc::off_t as off64_t;
-#[cfg(any(
-    target_os = "android",
-    target_os = "linux",
-    target_os = "l4re",
-    target_os = "hurd",
-))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "hurd"))]
 use libc::off64_t;
 
 cfg_select! {
@@ -246,6 +236,7 @@ impl FileDesc {
         target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd", // OpenBSD 2.7
+        target_os = "l4re",
         all(target_os = "macos", target_arch = "aarch64"),
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
@@ -273,6 +264,7 @@ impl FileDesc {
         target_os = "netbsd",
         target_os = "openbsd",
         target_vendor = "apple",
+        target_os = "l4re",
     )))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         io::default_read_vectored(|b| self.read_at(b, offset), bufs)
