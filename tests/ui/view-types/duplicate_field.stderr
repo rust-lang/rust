@@ -22,32 +22,13 @@ LL |     fn f(self: &mut view_type!(Self.{ bar, bar })) {}
    |                                       |
    |                                       field `bar` is declared as viewed here
 
-error[E0307]: invalid `self` parameter type: `&mut view_type!(Foo.{ (field_of!(Foo, bar),) }`
-  --> $DIR/duplicate_field.rs:21:16
-   |
-LL |     fn f(self: &mut view_type!(Self.{ bar, bar })) {}
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: type of `self` must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
-
 error: field `0` is already part of the view
-  --> $DIR/duplicate_field.rs:27:42
+  --> $DIR/duplicate_field.rs:26:42
    |
 LL |     fn f(self: &mut view_type!(Self.{ 0, 0 })) {}
    |                                       -  ^
    |                                       |
    |                                       field `0` is declared as viewed here
 
-error[E0307]: invalid `self` parameter type: `&mut view_type!(Pair.{ (field_of!(Pair, 0),) }`
-  --> $DIR/duplicate_field.rs:27:16
-   |
-LL |     fn f(self: &mut view_type!(Self.{ 0, 0 })) {}
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: type of `self` must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+error: aborting due to 4 previous errors
 
-error: aborting due to 6 previous errors
-
-For more information about this error, try `rustc --explain E0307`.
