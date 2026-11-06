@@ -8,7 +8,7 @@ fn show_usage() {
         r#"
 `info` command help:
 
-    --libcgccjit   : Display the path where the libgccjit will be located
+    --gcc-path     : Display the path where gcc will be located
     --llvm-commit  : Display the LLVM submodule commit rustc is using"#
     );
     ConfigInfo::show_usage();
@@ -39,10 +39,9 @@ impl Info {
                 "--llvm-commit" => info.llvm_commit = true,
                 arg => {
                     if !info.config.parse_argument(arg, &mut args)? {
-                        eprintln!(
+                        return Err(format!(
                             "Unknown argument {arg:?}. Use `--help` to see the available options"
-                        );
-                        return Ok(None);
+                        ));
                     }
                 }
             }
@@ -52,24 +51,18 @@ impl Info {
 }
 
 fn show_llvm_commit() -> Result<(), String> {
-    let mut env: HashMap<String, String> = std::env::vars().collect();
-    let rust_dir_path = setup_rustc_folder(&mut env)?;
+    let env: HashMap<String, String> = std::env::vars().collect();
+    let rust_dir_path = setup_rustc_folder(&env)?;
 
-    let output = String::from_utf8(
-        run_command_with_env(&[&"git", &"submodule"], Some(&rust_dir_path), None)?.stdout,
+    let commit = String::from_utf8(
+        run_command_with_env(
+            &[&"git", &"rev-parse", &"HEAD:src/llvm-project"],
+            Some(&rust_dir_path),
+            None,
+        )?
+        .stdout,
     )
-    .map_err(|error| format!("Invalid `git submodule` output: {error:?}"))?;
-    let Some(mut commit) = output
-        .lines()
-        .find(|line| line.contains("src/llvm-project"))
-        .and_then(|line| line.rsplit(' ').next_back())
-    else {
-        return Err(format!("Didn't find llvm submodule in output:\n=======\n{output}\n======="));
-    };
-    commit = commit.trim();
-    if commit.starts_with('-') {
-        commit = &commit[1..];
-    }
+    .map_err(|error| format!("Invalid `git rev-parse HEAD:src/llvm-project` output: {error:?}"))?;
     println!("LLVM commit: {commit}");
     Ok(())
 }

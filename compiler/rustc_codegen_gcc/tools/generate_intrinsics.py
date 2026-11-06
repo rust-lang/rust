@@ -164,7 +164,7 @@ def main():
     clone_repository_and_checkout_right_commit(
         "llvm-project",
         llvm_path,
-        "https://github.com/llvm/llvm-project",
+        "https://github.com/rust-lang/llvm-project",
         ["llvm/include/llvm/IR", "llvm/include/llvm/CodeGen/"],
     )
     update_intrinsics(llvm_path)

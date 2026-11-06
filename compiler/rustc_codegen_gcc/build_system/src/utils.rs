@@ -481,7 +481,7 @@ pub fn run_tool_and_install_it_if_not_present(cmd: &[&dyn AsRef<OsStr>]) -> Resu
     run_command_with_output(cmd, Some(Path::new(".")))
 }
 
-pub fn setup_rustc_folder(env: &mut HashMap<String, String>) -> Result<PathBuf, String> {
+pub fn setup_rustc_folder(env: &HashMap<String, String>) -> Result<PathBuf, String> {
     let rust_dir_path = Path::new(crate::BUILD_DIR).join("rust");
     // If the repository was already cloned, command will fail, so doesn't matter.
     let _ = git_clone("https://github.com/rust-lang/rust.git", Some(&rust_dir_path), false);
