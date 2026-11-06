@@ -31,6 +31,16 @@ pub struct Environment {
     #[builder(default)]
     stage0_root: Option<Utf8PathBuf>,
 
+    /// Whether we want to optimize clippy. We do on CI, so it's on by default, but it is an option
+    /// so local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_clippy: bool,
+
+    /// Whether we want to optimize the cranelift backend. We do on CI, so it's on by default, but
+    /// it is an option so local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_cranelift: bool,
+
     /// Whether we want to optimize rustdoc. We do on CI, so it's on by default, but it is an option
     /// so local runs can avoid it.
     #[builder(default = "true")]

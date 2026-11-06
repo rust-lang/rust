@@ -112,6 +112,16 @@ enum EnvironmentCmd {
         #[arg(long)]
         stage0_root: Option<Utf8PathBuf>,
 
+        /// Do we want to optimize clippy in this run? Locally it's unlikely, so the default is not
+        /// to do it.
+        #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
+        optimize_clippy: bool,
+
+        /// Do we want to optimize the cranelift backend in this run? Locally it's unlikely, so the
+        /// default is not to do it.
+        #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
+        optimize_cranelift: bool,
+
         /// Do we want to optimize rustdoc in this run? Locally it's unlikely, so the default is not
         /// to do it.
         #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
@@ -154,6 +164,8 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             build_llvm,
             build_dir,
             stage0_root,
+            optimize_clippy,
+            optimize_cranelift,
             optimize_rustdoc,
         } => {
             let env = EnvironmentBuilder::default()
@@ -172,6 +184,8 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(build_llvm)
                 .stage0_root(stage0_root)
+                .optimize_clippy(optimize_clippy)
+                .optimize_cranelift(optimize_cranelift)
                 .optimize_rustdoc(optimize_rustdoc)
                 .build()?;
 
@@ -244,8 +258,8 @@ fn execute_pipeline(
         }
     })?;
 
-    let optimize_clippy = !is_fast_try_build();
-    let optimize_cranelift = !is_fast_try_build();
+    let optimize_clippy = !is_fast_try_build() && env.optimize_clippy;
+    let optimize_cranelift = !is_fast_try_build() && env.optimize_cranelift;
     let optimize_rustdoc = env.optimize_rustdoc;
 
     // Stage 1: Build PGO instrumented rustc
