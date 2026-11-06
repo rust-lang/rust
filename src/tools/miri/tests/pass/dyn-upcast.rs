@@ -499,9 +499,14 @@ fn modulo_binder() {
     }
     impl<T, U> Trait<T, U> for () {}
 
-    (&() as &'static dyn for<'a> Trait<&'static (), &'a ()>
-        as &'static dyn Trait<&'static (), &'static ()>)
-        .say_hello(&0);
+    // We can't have `dyn Trait<&'static (), &'static ()>` directly here
+    // as that results in an ambiguity error in MIR borrowck.
+    fn generic<T: 'static>() {
+        (&() as &'static dyn for<'a> Trait<T, &'a ()> as &'static dyn Trait<T, &'static ()>)
+            .say_hello(&0);
+    }
+
+    generic::<&'static ()>();
 }
 
 // Test for <https://github.com/rust-lang/rust/issues/135315>.
