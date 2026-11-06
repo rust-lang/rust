@@ -14,7 +14,23 @@ pub(crate) fn line_directive<'a>(
 ) -> Option<DirectiveLine<'a>> {
     let comment = line.trim_start().strip_prefix("//")?;
     let trimmed_comment = comment.trim_start();
+
+    let (leading_revision, trimmed_comment) = trimmed_comment
+        .strip_prefix('[')
+        .and_then(|after_open_bracket| after_open_bracket.split_once(']'))
+        .map(|(revision, after_close_bracket)| (Some(revision), after_close_bracket.trim_start()))
+        .unwrap_or((None, trimmed_comment));
+
     let mut raw_directive = trimmed_comment.strip_prefix("@")?.trim_start();
+
+    if let Some(leading_revision) = leading_revision {
+        error!(
+            "malformed directive: found revision condition before `@` instead of after at {file_path}:{line_number}"
+        );
+        let from = &line[..line.substr_range(raw_directive).unwrap().start];
+        help!("rewrite the start of the line to `//@[{leading_revision}] ` (from `{from}`)");
+        panic!("fatal error"); // FIXME: Poison the context and keep going.
+    }
 
     if trimmed_comment.len() != comment.len() {
         error!(

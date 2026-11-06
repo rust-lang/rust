@@ -676,6 +676,27 @@ fn test_whitespace_before_at_sign_in_directive() {
 }
 
 #[test]
+#[should_panic]
+fn test_leading_revision_condition_in_directive_0() {
+    let line = "//[leading]@ compile-flags: -Aunused";
+    let _ = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+}
+
+#[test]
+#[should_panic]
+fn test_leading_revision_condition_in_directive_1() {
+    let line = "//  [leading]  @ compile-flags: -Aunused";
+    let _ = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+}
+
+#[test]
+fn test_not_a_leading_revision_condition_in_directive() {
+    let line = "//  [leading  @ compile-flags: -Aunused";
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert!(result.is_none());
+}
+
+#[test]
 fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
     let modes = [
