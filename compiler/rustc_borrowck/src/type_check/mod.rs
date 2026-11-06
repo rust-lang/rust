@@ -494,7 +494,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 tcx,
                 proj,
                 |ty, variant_index, field_index, ()| {
-                    self.deeply_normalize(
+                    self.normalize(
                         PlaceTy::field_ty(tcx, ty, variant_index, field_index),
                         locations,
                     )
@@ -519,8 +519,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let mut a = a;
         let mut ty = curr_projected_ty.ty;
         if !self.infcx.next_trait_solver() {
-            a = self.deeply_normalize(ty::Unnormalized::new_wip(a), locations)?;
-            ty = self.deeply_normalize(ty::Unnormalized::new_wip(ty), locations)?;
+            a = self.normalize(ty::Unnormalized::new_wip(a), locations)?;
+            ty = self.normalize(ty::Unnormalized::new_wip(ty), locations)?;
         }
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
@@ -670,13 +670,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let place_ty = place.ty(self.body, tcx).ty;
                 debug!(?place_ty);
                 let place_ty = self
-                    .deeply_normalize(ty::Unnormalized::new_wip(place_ty), location)
+                    .normalize(ty::Unnormalized::new_wip(place_ty), location)
                     .unwrap_or_else(|guar| Ty::new_error(tcx, guar));
                 debug!("place_ty normalized: {:?}", place_ty);
                 let rv_ty = rv.ty(self.body, tcx);
                 debug!(?rv_ty);
                 let rv_ty = self
-                    .deeply_normalize(ty::Unnormalized::new_wip(rv_ty), location)
+                    .normalize(ty::Unnormalized::new_wip(rv_ty), location)
                     .unwrap_or_else(|guar| Ty::new_error(tcx, guar));
                 debug!("normalized rv_ty: {:?}", rv_ty);
                 if let Err(terr) =
@@ -855,7 +855,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
 
                 let sig = match self
-                    .deeply_normalize(ty::Unnormalized::new_wip(unnormalized_sig), term_location)
+                    .normalize(ty::Unnormalized::new_wip(unnormalized_sig), term_location)
                 {
                     Ok(sig) => sig,
                     Err(guar) => {
@@ -1123,7 +1123,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
 
                             if let Ok(src_ty) =
-                                self.deeply_normalize(ty::Unnormalized::new_wip(src_ty), location)
+                                self.normalize(ty::Unnormalized::new_wip(src_ty), location)
                                 && let Err(terr) = self.sub_types(
                                     src_ty,
                                     *ty,
@@ -1167,7 +1167,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
                         let Ok(src_ty) =
-                            self.deeply_normalize(ty::Unnormalized::new_wip(src_ty), location)
+                            self.normalize(ty::Unnormalized::new_wip(src_ty), location)
                         else {
                             return;
                         };
@@ -1237,7 +1237,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
                         let Ok(fn_sig) =
-                            self.deeply_normalize(ty::Unnormalized::new_wip(fn_sig), location)
+                            self.normalize(ty::Unnormalized::new_wip(fn_sig), location)
                         else {
                             return;
                         };
@@ -1849,7 +1849,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
                 let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
 
-                if let Ok(normalized_ty) = self.deeply_normalize(unnormalized_ty, locations)
+                if let Ok(normalized_ty) = self.normalize(unnormalized_ty, locations)
                     && let Err(terr) = self.eq_types(
                         literal_ty,
                         normalized_ty,
@@ -1941,12 +1941,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(..) => {}
             ProjectionElem::Field(field, fty) => {
-                let Ok(fty) = self.deeply_normalize(ty::Unnormalized::new_wip(fty), location)
-                else {
+                let Ok(fty) = self.normalize(ty::Unnormalized::new_wip(fty), location) else {
                     return;
                 };
                 let ty = PlaceTy::field_ty(tcx, base_ty.ty, base_ty.variant_index, field);
-                let Ok(ty) = self.deeply_normalize(ty, location) else {
+                let Ok(ty) = self.normalize(ty, location) else {
                     return;
                 };
                 debug!(?fty, ?ty);
@@ -1962,7 +1961,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::OpaqueCast(ty) => {
-                let Ok(ty) = self.deeply_normalize(ty::Unnormalized::new_wip(ty), location) else {
+                let Ok(ty) = self.normalize(ty::Unnormalized::new_wip(ty), location) else {
                     return;
                 };
                 self.relate_types(
@@ -2017,8 +2016,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         } else {
             let dest_ty = destination.ty(self.body, tcx).ty;
-            let Ok(dest_ty) =
-                self.deeply_normalize(ty::Unnormalized::new_wip(dest_ty), term_location)
+            let Ok(dest_ty) = self.normalize(ty::Unnormalized::new_wip(dest_ty), term_location)
             else {
                 return;
             };
@@ -2106,8 +2104,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.node.ty(self.body, self.tcx());
 
-            let Ok(op_arg_ty) =
-                self.deeply_normalize(ty::Unnormalized::new_wip(op_arg_ty), term_location)
+            let Ok(op_arg_ty) = self.normalize(ty::Unnormalized::new_wip(op_arg_ty), term_location)
             else {
                 continue;
             };
@@ -2278,7 +2275,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let variant = &def.variant(variant_index);
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
-                    self.deeply_normalize(field.ty(tcx, args), location)
+                    self.normalize(field.ty(tcx, args), location)
                         .map_err(FieldAccessError::NormalizationFailed)
                 } else {
                     Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
@@ -2385,8 +2382,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 Err(FieldAccessError::NormalizationFailed(_)) => continue,
             };
             let operand_ty = operand.ty(self.body, tcx);
-            let Ok(operand_ty) =
-                self.deeply_normalize(ty::Unnormalized::new_wip(operand_ty), location)
+            let Ok(operand_ty) = self.normalize(ty::Unnormalized::new_wip(operand_ty), location)
             else {
                 continue;
             };
@@ -2659,8 +2655,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // These field types can still contain projections from the source or target type
                 // and normalize them before handing them to `NllTypeRelating`
                 let (Ok(dst_ty), Ok(src_ty)) = (
-                    self.deeply_normalize(dst_field.ty(tcx, *dst_args), location.to_locations()),
-                    self.deeply_normalize(src_field.ty(tcx, *src_args), location.to_locations()),
+                    self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations()),
+                    self.normalize(src_field.ty(tcx, *src_args), location.to_locations()),
                 ) else {
                     continue;
                 };

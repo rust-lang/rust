@@ -195,17 +195,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.normalize_with_category(value, location, ConstraintCategory::Boring)
     }
 
-    pub(super) fn deeply_normalize<T>(
-        &mut self,
-        value: Unnormalized<'tcx, T>,
-        location: impl NormalizeLocation,
-    ) -> Result<T, ErrorGuaranteed>
-    where
-        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
-    {
-        self.normalize_with_category(value, location, ConstraintCategory::Boring)
-    }
-
     #[instrument(skip(self), level = "debug")]
     pub(super) fn normalize_with_category<T>(
         &mut self,
