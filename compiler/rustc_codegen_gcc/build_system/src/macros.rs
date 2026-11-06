@@ -91,12 +91,28 @@ macro_rules! sub_command_decl {
 }
 
 macro_rules! commands_decl {
-    ($($variant:ident: $doc_name:literal => $doc:literal ,)+) => {
-        enum Command {
+    (__inner, $command_name:literal) => {
+        println!(concat!("`", $command_name, "` command help:"));
+    };
+    (__inner, ) => {
+        println!("rustc_codegen_gcc build system
+
+Usage: build_system [command] [options]
+
+Options:
+    --help     : Displays this help message.
+
+Commands:");
+    };
+    (
+        $name:ident $(=> $command_name:literal)?,
+        $($variant:ident: $doc_name:literal => $doc:literal ,)+
+    ) => {
+        enum $name {
             $($variant),+
         }
 
-        impl<'a> From<Option<&'a str>> for Command {
+        impl<'a> From<Option<&'a str>> for $name {
             fn from(arg: Option<&'a str>) -> Self {
                 match arg {
                     $(Some($doc_name) => Self::$variant,)+
@@ -115,16 +131,7 @@ macro_rules! commands_decl {
         }
 
         fn usage() {
-            println!("\
-rustc_codegen_gcc build system
-
-Usage: build_system [command] [options]
-
-Options:
-    --help     : Displays this help message.
-
-Commands:",
-            );
+            commands_decl!(__inner, $($command_name)?);
             let mut commands = vec![$(($doc_name, $doc),)+];
             let longest = commands.iter().map(|(name, _)| name.len()).max().unwrap();
 

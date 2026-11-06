@@ -20,6 +20,7 @@ mod utils;
 const BUILD_DIR: &str = "build";
 
 commands_decl! {
+    Command,
     Cargo: "cargo" => "Executes a cargo command",
     Clean: "clean" => "Cleans the build directory, removing all compiled files and artifacts",
     Clippy: "clippy" => "Runs clippy",
