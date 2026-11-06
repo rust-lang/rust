@@ -1421,3 +1421,41 @@ pub macro CoerceShared($item:item) {
 pub unsafe auto trait Forget {
     // Empty.
 }
+/// Marks a type as freely movable to another address in memory.
+///
+/// By default, all types are assumed to be `Move`. Similar to [`Sized`], the
+/// syntax `T: ?Move` can be used to relax this bound for some type `T`. However,
+/// `Move` bounds are implicitly added in *all* cases unless explicitly opted out
+/// of - notably, in trait definitions and associated types. If the `move_trait`
+/// feature is enabled, these can similarly be opted out of:
+/// ```
+/// #![feature(move_trait)]
+/// use std::marker::Move;
+///
+/// trait Foo: ?Move {
+///     type Bar: ?Move;
+/// }
+/// ```
+#[lang = "move_trait"]
+#[rustc_specialization_trait]
+#[rustc_coinductive]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may not be movable",
+    label = "may not be movable"
+)]
+#[unstable(feature = "move_trait", issue = "149607")]
+pub unsafe auto trait Move {
+    // Empty.
+}
+
+marker_impls! {
+    #[unstable(feature = "move_trait", issue = "149607")]
+    unsafe Move for
+        {T: PointeeSized + ?Move} *const T,
+        {T: PointeeSized + ?Move} *mut T,
+        {T: PointeeSized + ?Move} &T,
+        {T: PointeeSized + ?Move} &mut T,
+        {T: PointeeSized + ?Move} PhantomData<T>,
+        {T: PointeeSized + ?Move} pattern_type!(*const T is !null),
+        {T: PointeeSized + ?Move} pattern_type!(*mut T is !null),
+}
