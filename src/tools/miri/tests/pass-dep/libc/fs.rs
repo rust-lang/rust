@@ -1169,6 +1169,17 @@ fn test_copy_file_range() {
             libc::copy_file_range(fd_in, ptr::null_mut(), fd_out, ptr::null_mut(), len, 0)
         })
     };
+    let copy_syscall = |fd_in: i32, fd_out: i32, len: usize| unsafe {
+        errno_result(libc::syscall(
+            libc::SYS_copy_file_range,
+            fd_in,
+            ptr::null_mut::<libc::off_t>(),
+            fd_out,
+            ptr::null_mut::<libc::off_t>(),
+            len,
+            0,
+        ))
+    };
 
     let src_path =
         utils::prepare_with_content("miri_test_libc_copy_file_range_src.txt", b"Hello, World!\n");
@@ -1188,13 +1199,14 @@ fn test_copy_file_range() {
     assert_eq!(fs::read(&dst_path).unwrap(), b"Hi World!\n");
 
     // Same file, overlapping ranges.
+    // Using the syscall here, for a change.
     dst.rewind().unwrap();
     let dst2 = File::open(&dst_path).unwrap();
-    let err = copy(dst2.as_raw_fd(), dst.as_raw_fd(), 5).unwrap_err();
+    let err = copy_syscall(dst2.as_raw_fd(), dst.as_raw_fd(), 5).unwrap_err();
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
     // Same file, non-overlapping ranges.
     dst.seek(SeekFrom::Current(5)).unwrap();
-    let res = copy(dst2.as_raw_fd(), dst.as_raw_fd(), 3).unwrap();
+    let res = copy_syscall(dst2.as_raw_fd(), dst.as_raw_fd(), 3).unwrap();
     assert_eq!(res, 3);
     assert_eq!(fs::read(&dst_path).unwrap(), b"Hi WoHi !\n");
     drop(dst2);

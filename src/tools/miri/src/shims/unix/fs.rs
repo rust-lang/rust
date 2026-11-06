@@ -1090,8 +1090,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         statxbuf_op: &OpTy<'tcx>, // Should be a `struct statx *`
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-
-        this.assert_target_os(Os::Linux, "statx");
+        this.assert_target_os_is_linux_like("statx");
 
         let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
         let pathname_ptr = this.read_pointer(pathname_op)?;
@@ -1714,6 +1713,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         // This is mostly a copy of `posix_fallocate` except that errors are returned via errno.
         let this = self.eval_context_mut();
+        this.assert_target_os_is_linux_like("fallocate");
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1922,7 +1922,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0i32))?))
     }
 
-    fn sync_file_range(
+    fn linux_sync_file_range(
         &mut self,
         fd_op: &OpTy<'tcx>,
         offset_op: &OpTy<'tcx>,
@@ -1930,6 +1930,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         flags_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
+        this.assert_target_os_is_linux_like("sync_file_range");
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let offset = this.read_scalar(offset_op)?.to_i64()?;
@@ -2240,6 +2241,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
+        ecx.assert_target_os_is_linux_like("copy_file_range");
 
         let fd_in = ecx.read_scalar(fd_in_op)?.to_i32()?;
         let off_in = ecx.read_pointer(off_in_op)?;

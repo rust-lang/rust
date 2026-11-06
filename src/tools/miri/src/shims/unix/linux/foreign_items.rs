@@ -148,7 +148,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t, u32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.sync_file_range(fd, offset, nbytes, flags)?;
+                let result = ecx.linux_sync_file_range(fd, offset, nbytes, flags)?;
                 ecx.write_scalar(result, dest)?;
             }
             "copy_file_range" => {
