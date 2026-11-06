@@ -176,6 +176,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
     let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
     let self_type = header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_type = tcx.expand_free_alias_tys(self_type);
     assert!(!self_type.has_escaping_bound_vars());
 
     let param_env = tcx.param_env(impl_did);
