@@ -19,7 +19,7 @@ use crate::*;
 const TASK_COMM_LEN: u64 = 16;
 
 pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
-    matches!(name, "gettid" | "statx")
+    matches!(name, "copy_file_range" | "gettid" | "statx")
         || (target.env == rustc_target::spec::Env::Gnu
             && matches!(name, "__cxa_thread_atexit_impl"))
 }
@@ -148,8 +148,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t, u32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.sync_file_range(fd, offset, nbytes, flags)?;
+                let result = ecx.linux_sync_file_range(fd, offset, nbytes, flags)?;
                 ecx.write_scalar(result, dest)?;
+            }
+            "copy_file_range" => {
+                let [fd_in, off_in, fd_out, off_out, len, flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::off_t, i32, *libc::off_t, libc::size_t, u32) -> libc::ssize_t),
+                    (link_name, abi, args),
+                )?;
+                ecx.linux_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags, dest)?;
             }
             "statx" => {
                 let [dirfd, pathname, flags, mask, statxbuf] = &ecx.check_shim_sig(

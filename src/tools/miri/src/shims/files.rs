@@ -464,6 +464,7 @@ pub struct FileHandle {
     pub(crate) file: File,
     pub(crate) readable: bool,
     pub(crate) writable: bool,
+    pub(crate) append: bool,
 }
 
 impl FileDescription for FileHandle {

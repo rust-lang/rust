@@ -1,6 +1,6 @@
 use std::num::NonZero;
 use std::sync::Mutex;
-use std::{cmp, iter};
+use std::{assert_matches, cmp, iter};
 
 use rand::Rng;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
@@ -658,6 +658,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             self.eval_context_ref().tcx.sess.target.os,
             target_os,
             "`{name}` is only available on the `{target_os}` target OS",
+        )
+    }
+
+    fn assert_target_os_is_linux_like(&self, name: &str) {
+        assert_matches!(
+            self.eval_context_ref().tcx.sess.target.os,
+            Os::Linux | Os::Android,
+            "`{name}` is only available on Linux-like targets",
         )
     }
 

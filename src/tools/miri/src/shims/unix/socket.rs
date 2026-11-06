@@ -476,12 +476,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>
-                 } |ecx, result: Result<(), IoError>| {
-                     match result {
-                         Ok(()) => ecx.write_int(0,&dest),
-                         Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
-                     }
-                 }
+                } |ecx, result: Result<(), IoError>| {
+                    ecx.return_io_result_via_errno(result.map(|()| 0), &dest)
+                }
             ),
         )
     }

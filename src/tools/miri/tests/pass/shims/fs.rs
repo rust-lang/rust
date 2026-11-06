@@ -4,6 +4,7 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 #![feature(dirfd)]
+#![feature(seek_stream_len)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 #![allow(unused_features)] // feature use depends on target
 
@@ -260,6 +261,10 @@ fn test_seek() {
     let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();
     assert_eq!(file.stream_position().unwrap(), 0);
+    if cfg!(not(windows)) {
+        // FIXME: stream_len not supported on Windows
+        assert_eq!(file.stream_len().unwrap(), bytes.len() as u64);
+    }
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
     assert_eq!(file.stream_position().unwrap(), bytes.len() as u64);

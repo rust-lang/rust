@@ -226,6 +226,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut options = fs::OpenOptions::new();
             options.read(desired_read);
             options.write(desired_write);
+            let mut append = false;
             match creation_disposition {
                 CreateAlways | OpenAlways => {
                     // These two create the file if it is missing, but also succeed if it
@@ -248,6 +249,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
                     if !desired_write {
                         options.append(true);
+                        append = true;
                     }
                 }
                 OpenExisting => {
@@ -319,6 +321,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         file,
                         writable: desired_write,
                         readable: desired_read,
+                        append,
                     }) else {
                         throw_unsup_format!("we ran out of FD numbers")
                     };

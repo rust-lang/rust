@@ -72,6 +72,8 @@ fn main() {
     test_fsync(libc::fsync);
     #[cfg(not(target_os = "macos"))]
     test_fsync(libc::fdatasync);
+    #[cfg(target_os = "linux")]
+    test_copy_file_range();
     test_opendir_closedir();
     test_readdir();
     test_dirfd();
@@ -1156,6 +1158,100 @@ fn test_fsync(fsync: unsafe extern "C" fn(fd: libc::c_int) -> libc::c_int) {
     // invalid fd
     let err = errno_result(unsafe { fsync(-1) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+}
+
+#[cfg(target_os = "linux")]
+fn test_copy_file_range() {
+    use std::io::{Seek, SeekFrom};
+
+    let copy = |fd_in: i32, fd_out: i32, len: usize| {
+        errno_result(unsafe {
+            libc::copy_file_range(fd_in, ptr::null_mut(), fd_out, ptr::null_mut(), len, 0)
+        })
+    };
+    let copy_syscall = |fd_in: i32, fd_out: i32, len: usize| unsafe {
+        errno_result(libc::syscall(
+            libc::SYS_copy_file_range,
+            fd_in,
+            ptr::null_mut::<libc::off_t>(),
+            fd_out,
+            ptr::null_mut::<libc::off_t>(),
+            len,
+            0,
+        ))
+    };
+
+    let src_path =
+        utils::prepare_with_content("miri_test_libc_copy_file_range_src.txt", b"Hello, World!\n");
+    let dst_path = utils::prepare("miri_test_libc_copy_file_range_dst.txt");
+    let mut src = File::open(&src_path).unwrap();
+    let mut dst = File::create(&dst_path).unwrap();
+
+    // Copying starts at the current file positions and advances both of them.
+    src.seek(SeekFrom::Start(7)).unwrap();
+    dst.write_all(b"Hi ").unwrap();
+    // Asking for more bytes than are left copies up to the end of the input.
+    assert_eq!(copy(src.as_raw_fd(), dst.as_raw_fd(), 100).unwrap(), 7);
+    assert_eq!(src.stream_position().unwrap(), 14);
+    assert_eq!(dst.stream_position().unwrap(), 10);
+    // At the end of the input, nothing is copied.
+    assert_eq!(copy(src.as_raw_fd(), dst.as_raw_fd(), 100).unwrap(), 0);
+    assert_eq!(fs::read(&dst_path).unwrap(), b"Hi World!\n");
+
+    // Same file, overlapping ranges.
+    // Using the syscall here, for a change.
+    dst.rewind().unwrap();
+    let dst2 = File::open(&dst_path).unwrap();
+    let err = copy_syscall(dst2.as_raw_fd(), dst.as_raw_fd(), 5).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    // Same file, non-overlapping ranges.
+    dst.seek(SeekFrom::Current(5)).unwrap();
+    let res = copy_syscall(dst2.as_raw_fd(), dst.as_raw_fd(), 3).unwrap();
+    assert_eq!(res, 3);
+    assert_eq!(fs::read(&dst_path).unwrap(), b"Hi WoHi !\n");
+    drop(dst2);
+
+    // Invalid file descriptors.
+    let err = copy(-1, -1, 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+
+    // Directories.
+    let dir = errno_result(unsafe {
+        libc::open(utils::into_c_string(utils::tmp()).as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY)
+    })
+    .unwrap();
+    let err = copy(dir, dst.as_raw_fd(), 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EISDIR));
+    let err = copy(src.as_raw_fd(), dir, 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EISDIR));
+    errno_check(unsafe { libc::close(dir) });
+
+    // Other non-regular files.
+    let mut pipe = [0; 2];
+    errno_check(unsafe { libc::pipe(pipe.as_mut_ptr()) });
+    let err = copy(src.as_raw_fd(), pipe[1], 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    // The file type is checked before the access mode: the read end is not writable either.
+    let err = copy(src.as_raw_fd(), pipe[0], 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    errno_check(unsafe { libc::close(pipe[0]) });
+    errno_check(unsafe { libc::close(pipe[1]) });
+
+    // Wrong access modes.
+    let write_only = fs::OpenOptions::new().write(true).open(&src_path).unwrap();
+    let err = copy(write_only.as_raw_fd(), dst.as_raw_fd(), 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+    let read_only = File::open(&dst_path).unwrap();
+    let err = copy(src.as_raw_fd(), read_only.as_raw_fd(), 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+    let append = fs::OpenOptions::new().append(true).open(&dst_path).unwrap();
+    let err = copy(src.as_raw_fd(), append.as_raw_fd(), 1).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+    drop((write_only, read_only, append));
+
+    drop((src, dst));
+    fs::remove_file(&src_path).unwrap();
+    fs::remove_file(&dst_path).unwrap();
 }
 
 fn test_fstat() {
