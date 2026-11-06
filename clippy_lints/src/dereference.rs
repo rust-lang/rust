@@ -991,6 +991,9 @@ impl TyCoercionStability {
                     },
                 )
                 | ty::UnsafeBinder(_) => Self::Deref,
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             };
         }
     }
