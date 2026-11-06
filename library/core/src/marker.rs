@@ -1429,6 +1429,7 @@ pub unsafe auto trait Forget {
 /// of - notably, in trait definitions and associated types. If the `move_trait`
 /// feature is enabled, these can similarly be opted out of:
 /// ```
+/// #![allow(incomplete_features)]
 /// #![feature(move_trait)]
 /// use std::marker::Move;
 ///
