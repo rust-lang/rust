@@ -393,6 +393,36 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     }
 }
 
+/// Checks if the given `Ty` is either an `impl Future` or async coroutine.
+pub fn ty_is_future<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    let Some(future_trait) = cx.tcx.lang_items().future_trait() else {
+        return false;
+    };
+
+    match *ty.kind() {
+        rustc_ty::Alias(_, alias) => {
+            if let rustc_ty::AliasTy {
+                kind: rustc_ty::Opaque { def_id },
+                args,
+                ..
+            } = alias
+                && let preds = cx.tcx.explicit_item_self_bounds(def_id)
+                && preds
+                    .iter_instantiated_copied(cx.tcx, args)
+                    .map(rustc_ty::Unnormalized::skip_normalization)
+                    .filter_map(|(p, _)| p.as_trait_clause())
+                    .any(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
+            {
+                true
+            } else {
+                false
+            }
+        },
+        rustc_ty::Coroutine(def_id, _) | rustc_ty::CoroutineWitness(def_id, _) => cx.tcx.coroutine_is_async(def_id),
+        _ => false,
+    }
+}
+
 /// Checks if the `def_id` belongs to a function that is part of a trait impl.
 pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     if let Node::Item(item) = cx.tcx.parent_hir_node(cx.tcx.local_def_id_to_hir_id(def_id))

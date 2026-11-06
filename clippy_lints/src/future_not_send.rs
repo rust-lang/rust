@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::return_ty;
+use clippy_utils::ty_is_future;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_infer::infer::TyCtxtInferExt as _;
@@ -9,7 +9,7 @@ use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, AliasTy, Binder, ClauseKind, PredicateKind, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _,
-    TypeVisitor, Unnormalized,
+    TypeVisitor,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
@@ -71,18 +71,29 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         _: Span,
         fn_def_id: LocalDefId,
     ) {
+        // FIXME: We could potentially replace "clippy_utils::return_ty" with this,
+        // but doing so causes regressions in some lints that rely on structural
+        // equality of types that haven't been fully normalized. Keep this separate for
+        // now and revisit the possibility later.
+        fn normalized_return_ty<'tcx>(cx: &LateContext<'tcx>, fn_def_id: rustc_hir::OwnerId) -> Option<Ty<'tcx>> {
+            debug_assert!(cx.tcx.hir_owner_node(fn_def_id).fn_sig().is_some());
+
+            let ret_ty = cx
+                .tcx
+                .fn_sig(fn_def_id)
+                .instantiate_identity()
+                .map(Binder::<'_, ty::FnSig<'_>>::output);
+            let ret_ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ret_ty).ok()?;
+            Some(cx.tcx.instantiate_bound_regions_with_erased(ret_ty))
+        }
+
         if let FnKind::Closure = kind {
             return;
         }
-        let ret_ty = return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner());
-        if let ty::Alias(_, AliasTy { kind: ty::Opaque{def_id}, args, .. }) = *ret_ty.kind()
-            && let Some(future_trait) = cx.tcx.lang_items().future_trait()
+
+        if let Some(ret_ty) = normalized_return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner())
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
-            && let preds = cx.tcx.explicit_item_self_bounds(def_id)
-            // If is a Future
-            && preds.iter_instantiated_copied(cx.tcx, args).map(Unnormalized::skip_norm_wip)
-                .filter_map(|(p, _)| p.as_trait_clause())
-                .any(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
+            && ty_is_future(cx, ret_ty)
         {
             let span = decl.output.span();
             let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
