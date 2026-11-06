@@ -3,7 +3,7 @@
 // Ensure that relaxed bounds are not permitted in the `Self` bounds of trait aliases because trait
 // aliases (like traits) aren't implicitly bounded by `Sized` so there's nothing to relax.
 
-trait Alias0 = ?Sized; //~ ERROR relaxed bounds are not permitted in trait alias bounds
+trait Alias0 = ?Sized; //~ ERROR relaxed `Sized` bounds are not permitted in trait alias bounds
 trait Alias1 = where Self: ?Sized; //~ ERROR this relaxed bound is not permitted here
 
 trait Alias2<T: ?Sized> =; // OK
