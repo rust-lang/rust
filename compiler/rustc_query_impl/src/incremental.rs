@@ -108,7 +108,6 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     dep_node: DepNode,
     prev_index: SerializedDepNodeIndex,
-    dep_node_index: DepNodeIndex,
 ) {
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
@@ -133,6 +132,9 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
     // Load the disk-cached value into memory.
     let dep_graph_data =
         tcx.dep_graph.data().expect("should always be present in incremental mode");
+
+    // A green node keeps its previous index.
+    let dep_node_index = DepNodeIndex::from(prev_index);
 
     let prof_timer = tcx.prof.incr_cache_loading();
     let value = (query.try_load_from_disk_fn)(tcx, prev_index);
