@@ -140,6 +140,7 @@ fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuara
     debug!("visit_implementation_of_unpin: impl_did={:?}", impl_did);
 
     let self_type = impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_type = tcx.expand_free_alias_tys(self_type);
     debug!("visit_implementation_of_unpin: self_type={:?}", self_type);
 
     let span = tcx.def_span(impl_did);

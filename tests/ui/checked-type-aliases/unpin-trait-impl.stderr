@@ -1,0 +1,14 @@
+error: explicit impls for the `Unpin` trait are not permitted for structurally pinned types
+  --> $DIR/unpin-trait-impl.rs:12:1
+   |
+LL | impl <T> Unpin for UnpinLocalAlias<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `Unpin` not allowed
+   |
+help: `UnpinLocal` is structurally pinned because it is marked as `#[pin_v2]`
+  --> $DIR/unpin-trait-impl.rs:7:1
+   |
+LL | pub struct UnpinLocal<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
