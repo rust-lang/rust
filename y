@@ -3,6 +3,6 @@
 while true
 do
   df
-  free -m
+  top -l 1 -s 0 | grep PhysMem
   sleep 5
 done
