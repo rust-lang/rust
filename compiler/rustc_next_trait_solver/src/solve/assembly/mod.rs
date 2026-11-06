@@ -1032,7 +1032,7 @@ where
                     self,
                     CandidateSource::BuiltinImpl(BuiltinImplSource::Object(idx)),
                     goal,
-                    assumption.upcast(cx),
+                    assumption.skip_norm_wip().upcast(cx),
                 ));
             }
         }

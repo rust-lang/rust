@@ -1026,7 +1026,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // a `&self` method will wind up with an argument type like `&dyn Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.assemble_candidates_for_bounds(
-            traits::supertraits(self.tcx, trait_ref),
+            traits::supertraits(self.tcx, trait_ref).map(Unnormalized::skip_norm_wip),
             |this, new_trait_ref, item| {
                 this.push_candidate(
                     Candidate { item, kind: ObjectCandidate(new_trait_ref), import_ids: &[] },

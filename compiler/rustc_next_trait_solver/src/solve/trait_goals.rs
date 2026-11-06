@@ -1086,7 +1086,7 @@ where
                     a_region,
                     b_data,
                     b_region,
-                    Some(new_a_principal.map_bound(|trait_ref| {
+                    Some(new_a_principal.skip_norm_wip().map_bound(|trait_ref| {
                         ty::ExistentialTraitRef::erase_self_ty(cx, trait_ref)
                     })),
                 ));
