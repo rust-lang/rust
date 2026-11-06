@@ -1,19 +1,20 @@
 //! Test for <https://github.com/rust-lang/rust/issues/157755>.
-//! for built-in traits
 
 //@ check-pass
 //@ edition: 2024
 
-#![feature(async_drop, checked_type_aliases)]
+#![feature(async_drop, checked_type_aliases, coerce_unsized, unsize)]
 #![allow(incomplete_features)]
 
 use std::pin::Pin;
 use std::future::AsyncDrop;
+use std::ops::CoerceUnsized;
+use std::marker::Unsize;
 
 #[derive(Clone)]
-pub struct CopyLocal;
+struct CopyLocal;
 
-pub type CopyAlias = CopyLocal;
+type CopyAlias = CopyLocal;
 impl Copy for CopyAlias {}
 
 pub struct DropLocal;
@@ -24,10 +25,15 @@ impl Drop for DropAlias {
 }
 
 pub struct AsyncDropLocal;
-
 pub type AsyncDropAlias = AsyncDropLocal;
 impl AsyncDrop for AsyncDropAlias {
     async fn drop(self: Pin<&mut Self>) {}
 }
+
+struct CoerceUnsizedLocal<T> {
+    foo: T,
+}
+type CoerceUnsizedAlias<T> = CoerceUnsizedLocal<T>;
+impl<T: CoerceUnsized<U>, U> CoerceUnsized<CoerceUnsizedAlias<U>> for CoerceUnsizedAlias<T> {}
 
 fn main() {}

@@ -669,10 +669,12 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
+    let source = tcx.expand_free_alias_tys(source);
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.args.type_at(1);
+    let target = tcx.expand_free_alias_tys(target);
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
 
     let param_env = tcx.param_env(impl_did);
