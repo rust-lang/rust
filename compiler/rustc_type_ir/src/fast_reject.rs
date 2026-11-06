@@ -37,6 +37,7 @@ pub enum SimplifiedType<DefId> {
     Coroutine(DefId),
     CoroutineWitness(DefId),
     Function(usize),
+    View(DefId),
     UnsafeBinder,
     Placeholder,
     Error,
@@ -142,11 +143,9 @@ pub fn simplify_type<I: Interner>(
             TreatParams::AsRigid | TreatParams::InstantiateWithInfer => None,
         },
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id.into())),
+        ty::View(def, _, _) => Some(SimplifiedType::View(def.def_id().into())),
         ty::Error(_) => Some(SimplifiedType::Error),
         ty::Bound(..) | ty::Infer(_) => None,
-
-        // FIXME(scrabsha)
-        ty::View(..) => unimplemented!(),
     }
 }
 

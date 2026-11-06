@@ -20,11 +20,13 @@ fn f(
 impl Foo {
     fn f(self: &mut view_type!(Self.{ bar, bar })) {}
     //~^ ERROR field `bar` is already part of the view
+    //~| ERROR invalid `self` parameter type
 }
 
 impl Pair {
     fn f(self: &mut view_type!(Self.{ 0, 0 })) {}
     //~^ ERROR field `0` is already part of the view
+    //~| ERROR invalid `self` parameter type
 }
 
 fn main() {}

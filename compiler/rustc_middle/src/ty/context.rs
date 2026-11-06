@@ -1929,13 +1929,13 @@ impl<'tcx> TyCtxt<'tcx> {
                 Closure,
                 CoroutineClosure,
                 Tuple,
+                View,
                 Bound,
                 Param,
                 Infer,
                 Alias,
                 Pat,
-                Foreign,
-                View
+                Foreign
             )?;
 
             writeln!(fmt, "GenericArgs interner: #{}", self.interners.args.len())?;

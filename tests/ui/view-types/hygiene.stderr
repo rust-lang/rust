@@ -1,0 +1,26 @@
+error[E0307]: invalid `self` parameter type: `&mut view_type!(Foo.{ (field_of!(Foo, bar), field_of!(Foo, bar)) }`
+  --> $DIR/hygiene.rs:17:20
+   |
+LL | pub macro what($name: ident) {
+...
+LL |         fn f(self: &mut view_type!(Self.{ bar, $name })) {}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | what!(bar);
+   | ---------- in this macro invocation
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0307]: invalid `self` parameter type: `&view_type!(Bar.{ (field_of!(Bar, async),) }`
+  --> $DIR/hygiene.rs:29:16
+   |
+LL |     fn f(self: &hygiene::view_bar!()) {}
+   |                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0307`.
