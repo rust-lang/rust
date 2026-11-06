@@ -1191,6 +1191,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             | ty::Adt(..)
                             // If returned by `struct_tail` this is the empty tuple.
                             | ty::Tuple(..)
+                            // FIXME(scrabsha): i guess view types behave like foreign types here?
+                            | ty::View(_, _, _)
                             // Integers and floats are always Sized, and so have unit type metadata.
                             | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..))
                             // This happens if we reach the recursion limit when finding the struct tail.
@@ -1231,9 +1233,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 }
                                 false
                             }
-
-        // FIXME(scrabsha)
-        ty::View(..) => unimplemented!(),
                         }
                     }
                     _ if tcx.trait_is_auto(trait_ref.def_id) => {

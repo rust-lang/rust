@@ -23,6 +23,7 @@ impl Foo {
     fn no_comma(self: &mut view_type!(Foo.{ bar baz }), _: &mut view_type!(Foo.{ bar baz })) {}
     //~^ ERROR expected one of
     //~| ERROR expected one of
+    //~| ERROR invalid `self` parameter type
 }
 
 fn main() {}

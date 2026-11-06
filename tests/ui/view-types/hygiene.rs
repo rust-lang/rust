@@ -1,4 +1,3 @@
-//@ run-pass
 //@ aux-build: hygiene.rs
 
 #![feature(view_types, decl_macro)]
@@ -16,6 +15,7 @@ pub macro what($name: ident) {
 
     impl Foo {
         fn f(self: &mut view_type!(Self.{ bar, $name })) {}
+        //~^ ERROR invalid `self` parameter type
     }
 }
 
@@ -27,6 +27,7 @@ struct Bar {
 
 impl Bar {
     fn f(self: &hygiene::view_bar!()) {}
+    //~^ ERROR invalid `self` parameter type
 }
 
 fn main() {}

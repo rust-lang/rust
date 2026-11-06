@@ -1,5 +1,3 @@
-//@ run-pass
-
 #![feature(view_types)]
 #![allow(unused)]
 
@@ -9,6 +7,7 @@ struct Pair(usize, u32);
 
 impl Pair {
     fn foo(self: &mut view_type!(Pair.{ 0, 1 })) {}
+    //~^ ERROR invalid `self` parameter type
     fn bar(_pair: &mut view_type!(Pair.{ 0, 1 })) {}
 }
 

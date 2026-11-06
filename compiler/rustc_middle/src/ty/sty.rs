@@ -1989,16 +1989,15 @@ impl<'tcx> Ty<'tcx> {
                 ty.instantiate(tcx, args).skip_norm_wip().has_trivial_sizedness(tcx, sizedness)
             }),
 
-            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
+            ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) | ty::View(..) => {
+                false
+            }
 
             ty::Infer(ty::TyVar(_)) => false,
 
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`has_trivial_sizedness` applied to unexpected type: {:?}", self)
             }
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2106,10 +2105,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Alias(..)
+            | ty::View(..)
             | ty::Error(_) => false,
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
         }
     }
 

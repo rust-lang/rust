@@ -373,8 +373,10 @@ impl<I: Interner> FlagComputation<I> {
                 })
             }
 
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
+            ty::View(_, args, fields) => {
+                self.add_args(args.as_slice());
+                self.add_ty(fields);
+            }
         }
     }
 

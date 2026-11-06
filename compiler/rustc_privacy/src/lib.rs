@@ -183,6 +183,7 @@ where
         let ty_kind = *ty.kind();
         match ty_kind {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
+            | ty::View(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
@@ -314,9 +315,6 @@ where
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
         }
 
         if V::SHALLOW { V::Result::output() } else { ty.super_visit_with(self) }

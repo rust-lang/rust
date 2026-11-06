@@ -175,7 +175,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::Coroutine(_, _)
             | ty::Never
             | ty::Tuple(_)
-            | ty::UnsafeBinder(_) => {
+            | ty::UnsafeBinder(_)
+            | ty::View(_, _, _) => {
                 let simp = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
@@ -268,9 +269,6 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("unexpected self type: {self_ty:?}");
             }
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
         }
 
         #[allow(rustc::usage_of_type_ir_traits)]

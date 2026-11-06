@@ -1312,7 +1312,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             },
 
             // Not `MetaSized` or `Sized`.
-            ty::Foreign(..) => {}
+            ty::Foreign(..) | ty::View(..) => {}
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => {}
 
@@ -1326,9 +1326,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
-
-        // FIXME(scrabsha)
-        ty::View(..) => unimplemented!(),
         }
     }
 

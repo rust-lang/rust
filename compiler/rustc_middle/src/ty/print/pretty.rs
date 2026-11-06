@@ -1035,9 +1035,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty.print(self)?;
                 write!(self, "]")?;
             }
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
+            ty::View(def, args, fields) => {
+                write!(self, "view_type!(")?;
+                self.print_def_path(def.did(), args)?;
+                write!(self, ".{{ ")?;
+                self.print_type(fields)?;
+                write!(self, " }})")?;
+            }
         }
 
         Ok(())
