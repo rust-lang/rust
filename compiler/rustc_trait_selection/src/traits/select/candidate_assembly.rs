@@ -238,7 +238,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         match selcx.match_normalize_trait_ref(
                             obligation,
                             placeholder_trait_predicate.trait_ref,
-                            bound.map_bound(|pred| pred.trait_ref),
+                            ty::Unnormalized::new_wip(bound.map_bound(|pred| pred.trait_ref)),
                         ) {
                             Ok(None) => {
                                 candidates
@@ -970,7 +970,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.match_normalize_trait_ref(
                                 obligation,
                                 placeholder_trait_predicate.trait_ref,
-                                upcast_trait_ref.skip_norm_wip(),
+                                upcast_trait_ref,
                             )
                             .is_ok()
                         })
