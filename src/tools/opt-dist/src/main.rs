@@ -99,7 +99,7 @@ enum EnvironmentCmd {
         #[arg(long)]
         run_tests: bool,
 
-        /// Will be LLVM built during the run?
+        /// Will LLVM be built during the run?
         #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
         build_llvm: bool,
 
@@ -270,14 +270,14 @@ fn execute_pipeline(
     let optimize_cranelift = !is_fast_try_build() && env.optimize_cranelift;
     let optimize_rustdoc = env.optimize_rustdoc;
 
-    // Stage 1: Build PGO instrumented rustc
+    // Stage 1: Build PGO-instrumented rustc
     // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
     // same time can cause issues, because the host and in-tree LLVM versions can diverge.
     let (rustc_pgo_profile, rustdoc_pgo_profile, clippy_pgo_profile, cranelift_pgo_profile) = timer
         .section("Stage 1 (Rustc + rustdoc + cargo + clippy PGO)", |stage| {
             let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
-            stage.section("Build PGO instrumented rustc and LLVM", |section| {
+            stage.section("Build PGO-instrumented rustc, and vanilla LLVM", |section| {
                 // Rustc and rustdoc profiles are gathered together into the same directory, because
                 // they are executed together within a single rustc-perf invocation.
                 // Their profiles are then merged together into a single PGO profile.
@@ -335,7 +335,7 @@ fn execute_pipeline(
             };
             print_free_disk_space()?;
 
-            stage.section("Build PGO optimized rustc", |section| {
+            stage.section("Build PGO-optimized rustc", |section| {
                 let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&rustc_profile);
                 if optimize_cargo {
                     cmd = cmd.with_cargo().cargo_pgo_optimize(&rustc_profile);
@@ -360,7 +360,7 @@ fn execute_pipeline(
         })?;
 
     // Stage 2: Gather LLVM PGO profiles
-    // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
+    // Here we build a PGO-instrumented LLVM, reusing the previously PGO-optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = if env.build_llvm() {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
@@ -369,7 +369,7 @@ fn execute_pipeline(
 
             let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
-            stage.section("Build PGO instrumented LLVM", |section| {
+            stage.section("Build PGO-instrumented LLVM", |section| {
                 Bootstrap::build(env)
                     .llvm_pgo_instrument(&llvm_profile_dir_root)
                     .avoid_rustc_rebuild()
@@ -394,14 +394,14 @@ fn execute_pipeline(
 
     let bolt_profiles = if env.use_bolt() {
         // Stage 3: Build BOLT instrumented LLVM
-        // We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
+        // We build a PGO-optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
         // Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
         // BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
         // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
         let libdir = env.build_artifacts().join("stage2").join("lib");
         timer.section("Stage 3 (BOLT)", |stage| {
             let llvm_data = if env.build_llvm() {
-                stage.section("Build PGO optimized LLVM", |stage| {
+                stage.section("Build PGO-optimized LLVM", |stage| {
                     Bootstrap::build(env)
                         .with_llvm_bolt_ldflags()
                         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
@@ -503,7 +503,7 @@ fn execute_pipeline(
         dist = dist.cranelift_pgo_optimize(&cranelift_pgo_profile);
     }
 
-    // if LLVM is not built we'll have PGO optimized rustc
+    // if LLVM is not built we'll have PGO-optimized rustc
     dist = if env.supports_shared_llvm() || !env.build_llvm() {
         dist.avoid_rustc_rebuild()
     } else {
@@ -515,7 +515,7 @@ fn execute_pipeline(
     }
 
     // Final stage: Assemble the dist artifacts
-    // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
+    // The previous PGO-optimized rustc build and PGO-optimized LLVM builds should be reused.
     timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
