@@ -1100,7 +1100,11 @@ fn build_fn_addr_as_ptr_shim<'tcx>(
     def_id: DefId,
     self_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
+    assert_matches!(
+        self_ty.kind(),
+        ty::FnPtr(..) | ty::FnDef(..),
+        "expected fn ptr or function def, found {self_ty}"
+    );
 
     let span = tcx.def_span(def_id);
     let nonnull_did = tcx.require_lang_item(LangItem::NonNull, span);
@@ -1126,8 +1130,36 @@ fn build_fn_addr_as_ptr_shim<'tcx>(
     // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful
     // provenance.
     let raw_unit_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
-    let cast_to_raw_rvalue =
-        Rvalue::Cast(CastKind::FnPtrToPtr, Operand::Move(Place::from(Local::arg(0))), raw_unit_ptr);
+
+    let fn_ptr_operand = match self_ty.kind() {
+        ty::FnDef(..) => {
+            let fn_sig = self_ty.fn_sig(tcx);
+            let fn_ptr_ty = Ty::new_fn_ptr(tcx, fn_sig);
+            let fn_ptr =
+                Place::from(locals.push(LocalDecl::with_source_info(fn_ptr_ty, source_info)));
+
+            statements.push(Statement::new(
+                source_info,
+                StatementKind::Assign(Box::new((
+                    fn_ptr,
+                    Rvalue::Cast(
+                        CastKind::PointerCoercion(
+                            ty::adjustment::PointerCoercion::ReifyFnPointer(fn_sig.safety()),
+                            CoercionSource::Implicit,
+                        ),
+                        Operand::Move(Place::from(Local::arg(0))),
+                        fn_ptr_ty,
+                    ),
+                ))),
+            ));
+
+            Operand::Move(fn_ptr)
+        }
+        _ => Operand::Move(Place::from(Local::arg(0))),
+    };
+
+    let cast_to_raw_rvalue = Rvalue::Cast(CastKind::FnPtrToPtr, fn_ptr_operand, raw_unit_ptr);
+
     let raw_ptr = locals.push(LocalDecl::with_source_info(raw_unit_ptr, source_info)).into();
     statements.push(Statement::new(
         source_info,
