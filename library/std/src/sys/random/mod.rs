@@ -21,6 +21,7 @@ cfg_select! {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "rtems",
+        target_os = "serenity",
         target_os = "solaris",
         target_os = "vita",
         target_os = "nuttx",

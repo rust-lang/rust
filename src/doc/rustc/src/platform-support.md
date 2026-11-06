@@ -287,6 +287,7 @@ target | std | host | notes
 [`aarch64-unknown-nuttx`](platform-support/nuttx.md) | ✓ |  | ARM64 with NuttX
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 [`aarch64-unknown-redox`](platform-support/redox.md) | ✓ |  | ARM64 Redox OS
+[`aarch64-unknown-serenity`](platform-support/serenity.md) | ? | | | ARM64 SerenityOS |
 [`aarch64-unknown-teeos`](platform-support/aarch64-unknown-teeos.md) | ? |  | ARM64 TEEOS |
 [`aarch64-unknown-qtee`](platform-support/aarch64-unknown-qtee.md) | ? |  | ARM64 QTEE |
 [`aarch64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
@@ -471,6 +472,7 @@ target | std | host | notes
 [`x86_64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |  | x86_64 Managarm
 [`x86_64-unknown-motor`](platform-support/motor.md) | ✓ |  | x86_64 Motor OS
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
+[`x86_64-unknown-serenity`](platform-support/serenity.md) | ? | | | x86_64 SerenityOS |
 [`x86_64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
 `x86_64-uwp-windows-gnu` | ✓ |  |
 [`x86_64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  |

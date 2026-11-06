@@ -692,6 +692,7 @@ fn human_readable_target_os(os: Symbol) -> Option<&'static str> {
         Qurt => "QuRT",
         Redox => "Redox OS",
         Rtems => "RTEMS OS",
+        Serenity => "SerenityOS",
         Solaris => "Solaris",
         SolidAsp3 => "SOLID ASP3",
         TeeOs => "TEEOS",
