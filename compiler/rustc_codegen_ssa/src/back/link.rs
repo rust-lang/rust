@@ -32,8 +32,8 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs, OutFileName,
-    OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    self, CFGuard, DebugInfo, InstrumentMcount, JobsMode, LinkerFeaturesCli, LinkerJobs,
+    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -3207,32 +3207,37 @@ fn linker_with_args(
 
     // Only LLD supports controlling parallelism at the moment.
     let mut tokens = Vec::new();
-    if let LinkerJobs::Explicit(limit) = sess.opts.jobs.linker
+    if let LinkerJobs::Explicit(mode) = sess.opts.jobs.linker
         && flavor.uses_lld()
     {
-        // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
-        // linking. One token is available implicitly since we are running on the main thread.
-        let client = jobserver::client();
+        let threads = if let JobsMode::Parallel(limit) = mode {
+            // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
+            // linking. One token is available implicitly since we are running on the main thread.
+            let client = jobserver::client();
 
-        let mut unsupported = false;
-        for _ in 0..limit.get() - 1 {
-            match client.try_acquire() {
-                Ok(Some(token)) => tokens.push(token),
-                Ok(None) => {}
-                Err(e) if e.kind() == io::ErrorKind::Unsupported => {
-                    assert!(tokens.is_empty());
-                    unsupported = true;
-                    break;
+            let mut unsupported = false;
+            for _ in 0..limit.get() - 1 {
+                match client.try_acquire() {
+                    Ok(Some(token)) => tokens.push(token),
+                    Ok(None) => {}
+                    Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                        assert!(tokens.is_empty());
+                        unsupported = true;
+                        break;
+                    }
+                    Err(e) => bug!("IO error when acquiring jobserver token: {e}"),
                 }
-                Err(e) => bug!("IO error when acquiring jobserver token: {e}"),
             }
-        }
+
+            // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
+            // Linking is typically the last step in a multi-crate project build,
+            // so the resources should usually be free.
+            if unsupported { limit.get() } else { 1 + tokens.len() }
+        } else {
+            1
+        };
 
         let prefix = if sess.target.is_like_windows { "/threads:" } else { "--threads=" };
-        // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
-        // Linking is typically the last step in a multi-crate project build,
-        // so the resources should usually be free.
-        let threads = if unsupported { limit.get() } else { 1 + tokens.len() };
         cmd.link_arg(format!("{prefix}{threads}"));
     }
 

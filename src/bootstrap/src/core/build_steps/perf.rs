@@ -149,20 +149,33 @@ impl Display for Scenario {
 
 /// Performs profiling using `rustc-perf` on a built version of the compiler.
 pub fn perf(builder: &Builder<'_>, args: &PerfArgs, trailing_args: &[String]) {
-    let collector = builder.ensure(RustcPerf {
-        compiler: builder.compiler(0, builder.config.host_target),
-        target: builder.config.host_target,
-    });
+    let mut cmd = if let Some(ref custom_rustc_perf_path) = builder.rustc_perf_path {
+        builder.info(&format!("using custom rustc_perf at `{}`", custom_rustc_perf_path.display()));
+        let mut cmd = command("cargo");
+        cmd.arg("run");
+        cmd.arg("--release");
+        cmd.args(["--bin", "collector"]);
+        cmd.arg("--");
+        cmd.current_dir(custom_rustc_perf_path);
+        cmd
+    } else {
+        let collector = builder.ensure(RustcPerf {
+            compiler: builder.compiler(0, builder.config.host_target),
+            target: builder.config.host_target,
+        });
+
+        let mut cmd = command(collector.tool_path);
+
+        // We need to set the working directory to `src/tools/rustc-perf`, so that it can find the directory
+        // with compile-time benchmarks.
+        cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
+
+        cmd
+    };
 
     let rustc_perf_dir = builder.sess.tempdir().join("rustc-perf");
     let results_dir = rustc_perf_dir.join("results");
     builder.create_dir(&results_dir);
-
-    let mut cmd = command(collector.tool_path);
-
-    // We need to set the working directory to `src/tools/rustc-perf`, so that it can find the directory
-    // with compile-time benchmarks.
-    cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
 
     let db_path = args
         .cmd
