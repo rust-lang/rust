@@ -656,7 +656,6 @@ pub const unsafe fn unreachable() -> !;
 /// own, or if it does not enable any significant optimizations.
 ///
 /// The stabilized version of this intrinsic is [`core::hint::assert_unchecked`].
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn assume(b: bool) {
@@ -2112,7 +2111,6 @@ pub const unsafe fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 /// The stabilized versions of this intrinsic are available on the integer
 /// primitives via the `rotate_left` method. For example,
 /// [`u32::rotate_left`]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_allow_const_fn_unstable(const_trait_impl)]
@@ -2135,7 +2133,6 @@ pub const fn rotate_left<T: fallback::FunnelShift>(x: T, shift: u32) -> T {
 /// The stabilized versions of this intrinsic are available on the integer
 /// primitives via the `rotate_right` method. For example,
 /// [`u32::rotate_right`]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_allow_const_fn_unstable(const_trait_impl)]
@@ -2648,7 +2645,6 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[rustc_nounwind]
 #[inline]
 #[rustc_intrinsic]
-#[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
     // SAFETY: The caller provided single non-overlapping items behind
     // pointers, so swapping them with `count: 1` is fine.
@@ -2674,7 +2670,6 @@ pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
 /// In consteval, this function currently returns `true`. This is because the value of the `ub_checks`
 /// configuration can differ across crates, but we need this function to always return the same
 /// value in consteval in order to avoid unsoundness.
-#[rustc_intrinsic_const_stable_indirect] // just for UB checks
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn ub_checks() -> bool {
@@ -3088,7 +3083,6 @@ pub const fn minimum_number_nsz_f16(x: f16, y: f16) -> f16 {
 ///
 /// The stabilized version of this intrinsic is [`f32::min`].
 #[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn minimum_number_nsz_f32(x: f32, y: f32) -> f32 {
     if x.is_nan() || y <= x {
@@ -3114,7 +3108,6 @@ pub const fn minimum_number_nsz_f32(x: f32, y: f32) -> f32 {
 ///
 /// The stabilized version of this intrinsic is [`f64::min`].
 #[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn minimum_number_nsz_f64(x: f64, y: f64) -> f64 {
     if x.is_nan() || y <= x {
@@ -3290,7 +3283,6 @@ pub const fn maximum_number_nsz_f16(x: f16, y: f16) -> f16 {
 ///
 /// The stabilized version of this intrinsic is [`f32::max`].
 #[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn maximum_number_nsz_f32(x: f32, y: f32) -> f32 {
     if x.is_nan() || y >= x {
@@ -3316,7 +3308,6 @@ pub const fn maximum_number_nsz_f32(x: f32, y: f32) -> f32 {
 ///
 /// The stabilized version of this intrinsic is [`f64::max`].
 #[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn maximum_number_nsz_f64(x: f64, y: f64) -> f64 {
     if x.is_nan() || y >= x {
@@ -3478,7 +3469,6 @@ pub const fn copysignf16(x: f16, y: f16) -> f16 {
 /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
 #[inline]
 #[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn copysignf32(x: f32, y: f32) -> f32 {
     f32::from_bits((x.to_bits() & !f32::SIGN_MASK) | (y.to_bits() & f32::SIGN_MASK))
@@ -3489,7 +3479,6 @@ pub const fn copysignf32(x: f32, y: f32) -> f32 {
 /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
 #[inline]
 #[rustc_nounwind]
-#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn copysignf64(x: f64, y: f64) -> f64 {
     f64::from_bits((x.to_bits() & !f64::SIGN_MASK) | (y.to_bits() & f64::SIGN_MASK))
