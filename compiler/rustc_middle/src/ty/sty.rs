@@ -1761,6 +1761,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1793,6 +1796,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_) => Ok(tcx.types.unit),
             // Extern types have metadata = ().
             ty::Foreign(..) => Ok(tcx.types.unit),
+            // FIXME(scrabsha): i expect views to behave like foreign types here?
+            ty::View(..) => Ok(tcx.types.unit),
             // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             ty::Adt(..) => Ok(tcx.types.unit),
@@ -2006,6 +2011,9 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`has_trivial_sizedness` applied to unexpected type: {:?}", self)
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2065,6 +2073,9 @@ impl<'tcx> Ty<'tcx> {
             ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
                 false
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2111,6 +2122,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Alias(..)
             | ty::Error(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

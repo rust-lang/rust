@@ -501,6 +501,9 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         | ty::Error(_) => {
             bug!("debuginfo: unexpected type in type_di_node(): {:?}", t)
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     };
 
     {

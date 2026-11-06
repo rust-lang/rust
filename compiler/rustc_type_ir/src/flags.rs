@@ -372,6 +372,9 @@ impl<I: Interner> FlagComputation<I> {
                     computation.add_ty(ty);
                 })
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

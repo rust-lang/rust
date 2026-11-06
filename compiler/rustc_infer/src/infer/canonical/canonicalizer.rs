@@ -428,6 +428,9 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     t
                 }
             }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
         }
     }
 

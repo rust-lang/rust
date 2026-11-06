@@ -268,6 +268,9 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("unexpected self type: {self_ty:?}");
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
 
         #[allow(rustc::usage_of_type_ir_traits)]

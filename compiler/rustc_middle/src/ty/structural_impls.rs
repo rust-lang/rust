@@ -370,6 +370,9 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Never
             | ty::Foreign(..) => return Ok(self),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         Ok(if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) })
@@ -409,6 +412,9 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Never
             | ty::Foreign(..) => return self,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) }
@@ -462,6 +468,9 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Param(..)
             | ty::Never
             | ty::Foreign(..) => V::Result::output(),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

@@ -3665,6 +3665,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx,
                 dcx.span_err(ty_span, format!("type `{ty}` is not yet supported in `field_of!`")),
             ),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

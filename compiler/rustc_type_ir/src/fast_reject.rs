@@ -144,6 +144,9 @@ pub fn simplify_type<I: Interner>(
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id.into())),
         ty::Error(_) => Some(SimplifiedType::Error),
         ty::Bound(..) | ty::Infer(_) => None,
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -302,6 +305,9 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::Foreign(_)
             | ty::Placeholder(_)
             | ty::UnsafeBinder(_) => {}
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         // The type system needs to support exponentially large types
@@ -481,6 +487,9 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             },
 
             ty::Error(..) => true,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

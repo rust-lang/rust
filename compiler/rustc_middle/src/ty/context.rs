@@ -1943,7 +1943,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 Infer,
                 Alias,
                 Pat,
-                Foreign
+                Foreign,
+                View
             )?;
 
             writeln!(fmt, "GenericArgs interner: #{}", self.interners.args.len())?;
