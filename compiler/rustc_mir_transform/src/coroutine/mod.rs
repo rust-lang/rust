@@ -719,25 +719,27 @@ fn insert_switch<'tcx>(
         }
     }
 
+    let body_span = body.span;
     // Add the switch as entry block, and put the former entry block at the end.
-    let former_entry = std::mem::replace(
-        &mut body.basic_blocks_mut()[START_BLOCK],
-        BasicBlockData::maybe_unterminated_stmts(vec![assign], None, false),
-    );
-    let former_entry = body.basic_blocks_mut().push(former_entry);
+    body.basic_blocks_mut().push_with(|former_entry, blocks| {
+        // We may point to `START_BLOCK` in our `cases`, replace it with `former_entry`.
+        let mut switch_targets =
+            SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
 
-    // We may point to `START_BLOCK` in our `cases`, replace it with `former_entry`.
-    let mut switch_targets =
-        SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
-    for bb in switch_targets.all_targets_mut() {
-        if *bb == START_BLOCK {
-            *bb = former_entry;
+        for bb in switch_targets.all_targets_mut() {
+            if *bb == START_BLOCK {
+                *bb = former_entry;
+            }
         }
-    }
+        let switch =
+            TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
+        let terminator = Terminator { source_info: SourceInfo::outermost(body_span), kind: switch };
 
-    let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
-    body.basic_blocks_mut()[START_BLOCK].terminator =
-        Some(Terminator { source_info: SourceInfo::outermost(body.span), kind: switch });
+        std::mem::replace(
+            &mut blocks[START_BLOCK],
+            BasicBlockData::new_stmts(vec![assign], terminator, false),
+        )
+    });
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
