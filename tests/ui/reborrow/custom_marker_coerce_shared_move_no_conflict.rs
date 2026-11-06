@@ -22,5 +22,5 @@ fn main() {
     let b = method(a);
     let c = method(a);
     move_into(a);
-    //~^ ERROR: cannot move out of `a` because it is borrowed
+    //~^ ERROR: cannot borrow `a` as mutable because it is also borrowed as immutable [E0502]
 }
