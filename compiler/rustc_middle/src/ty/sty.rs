@@ -835,6 +835,25 @@ impl<'tcx> Ty<'tcx> {
         Ty::new_coroutine_witness(tcx, def_id, args)
     }
 
+    pub fn new_view(
+        tcx: TyCtxt<'tcx>,
+        def: AdtDef<'tcx>,
+        args: GenericArgs<'tcx>,
+        fields: &[FieldIdx],
+    ) -> Ty<'tcx> {
+        tcx.debug_assert_args_compatible(def.did(), args);
+        tcx.debug_assert_adt_def_kind_compatible(def);
+
+        let base = Ty::new_adt(tcx, def, args);
+
+        let fields = fields
+            .iter()
+            .map(|field| Ty::new_field_representing_type(tcx, base, FIRST_VARIANT, *field));
+        let fields = Ty::new_tup_from_iter(tcx, fields);
+
+        Ty::new(tcx, TyKind::View(def, args, fields))
+    }
+
     // misc
 
     #[inline]
