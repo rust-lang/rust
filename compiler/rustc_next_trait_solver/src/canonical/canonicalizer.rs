@@ -69,7 +69,6 @@ enum CanonicalizeMode<I: Interner> {
 pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
     delegate: &'a D,
 
-    // Immutable field.
     canonicalize_mode: CanonicalizeMode<I>,
 
     // Mutable fields.
@@ -121,9 +120,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let param_env = input.goal.param_env;
 
         // Do the `env` canonicalization, and then convert the canonicalizer to `rest` form for
-        // subsequent use, also returning the optionally interned (i.e., uniquely identified)
-        // canonicalized variable kind list in case cache is used, so it can also be cached.
-        let do_env_and_make_rest = |intern_var_kinds: bool| {
+        // subsequent use.
+        let do_env_and_make_rest = || {
             let mut env_canonicalizer = Canonicalizer::new(
                 delegate,
                 CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
@@ -143,17 +141,15 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             //
             // We clear the cache rather than deleting it or replacing it with an empty cache. This
             // lets the allocated capacity be reused later.
-            let param_env_var_kinds = intern_var_kinds
-                .then(|| delegate.cx().mk_canonical_var_kinds(&env_canonicalizer.state.var_kinds));
             let mut rest_canonicalizer = Canonicalizer {
                 canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
-                    param_env_var_kinds,
+                    param_env_var_kinds: None,
                 }),
                 ..env_canonicalizer
             };
             rest_canonicalizer.state.cache.clear();
 
-            (param_env, rest_canonicalizer, param_env_var_kinds)
+            (param_env, rest_canonicalizer)
         };
 
         // First canonicalize the `param_env` while keeping `'static`. This produces a
@@ -179,13 +175,20 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         } else if !param_env.has_non_region_infer() {
             delegate.cx().with_canonical_param_env_cache(|cache| match cache.0.entry(param_env) {
                 Entry::Vacant(e) => {
-                    // Cache miss. Do `env` canonicalization and get `rest_canonicalizer`, and
-                    // fill in the cache entry.
-                    let (param_env, rest_canonicalizer, var_kinds) = do_env_and_make_rest(true);
+                    // Cache miss. Do `env` canonicalization and get `rest_canonicalizer`, make the
+                    // interned (i.e., uniquely identified) canonicalized variable kind list so it
+                    // can also be cached, and fill in the cache entry.
+                    let (param_env, mut rest_canonicalizer) = do_env_and_make_rest();
+                    let var_kinds =
+                        delegate.cx().mk_canonical_var_kinds(&rest_canonicalizer.state.var_kinds);
+                    rest_canonicalizer.canonicalize_mode =
+                        CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
+                            param_env_var_kinds: Some(var_kinds),
+                        });
                     e.insert(CanonicalParamEnvCacheEntry {
                         param_env,
                         variables: rest_canonicalizer.state.variables.clone(),
-                        var_kinds: var_kinds.unwrap(),
+                        var_kinds,
                         // SAFETY: The iterated elements go straight back into a hashmap.
                         #[allow(rustc::potential_query_instability)]
                         variable_lookup_table: rest_canonicalizer
@@ -217,7 +220,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             })
         } else {
             // Do `env` canonicalization and get `rest_canonicalizer`.
-            let (param_env, rest_canonicalizer, _) = do_env_and_make_rest(false);
+            let (param_env, rest_canonicalizer) = do_env_and_make_rest();
             (param_env, rest_canonicalizer)
         };
 
