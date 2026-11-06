@@ -1,0 +1,1119 @@
+DefId(N:M ~ thir_tree_field_pat_names::K):
+params: [
+]
+body:
+    Expr {
+        ty: u32
+        temp_scope_id: 3
+        span: $DIR/thir-tree-field-pat-names.rs:13:16: 13:18 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(3)
+                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::K).3)
+                value:
+                    Expr {
+                        ty: u32
+                        temp_scope_id: 3
+                        span: $DIR/thir-tree-field-pat-names.rs:13:16: 13:18 (#0)
+                        kind: 
+                            Literal( lit: Spanned { node: Int(Pu128(12), Unsuffixed), span: $DIR/thir-tree-field-pat-names.rs:13:16: 13:18 (#0) }, neg: false)
+
+                    }
+            }
+    }
+
+
+DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf):
+params: [
+    Param {
+        ty: (u32, u32, u32)
+        ty_span: Some($DIR/thir-tree-field-pat-names.rs:21:19: 21:34 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).1))
+        param: Some( 
+            Pat {
+                ty: (u32, u32, u32)
+                span: $DIR/thir-tree-field-pat-names.rs:21:16: 21:17 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "t"
+                        mode: BindingMode(No, Not)
+                        var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).2))
+                        ty: (u32, u32, u32)
+                        is_primary: true
+                        is_shorthand: false
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 34
+        span: $DIR/thir-tree-field-pat-names.rs:21:36: 28:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(34)
+                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).34)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 34
+                        span: $DIR/thir-tree-field-pat-names.rs:21:36: 28:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-field-pat-names.rs:21:36: 28:2 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 0}
+                                            init_scope: Node(4)
+                                            pattern: 
+                                                Pat {
+                                                    ty: (i32, (u32, u32, u32), i32)
+                                                    span: $DIR/thir-tree-field-pat-names.rs:22:7: 22:9 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "t2"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).11))
+                                                            ty: (i32, (u32, u32, u32), i32)
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: (i32, (u32, u32, u32), i32)
+                                                    temp_scope_id: 5
+                                                    span: $DIR/thir-tree-field-pat-names.rs:22:12: 22:21 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(5)
+                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).5)
+                                                            value:
+                                                                Expr {
+                                                                    ty: (i32, (u32, u32, u32), i32)
+                                                                    temp_scope_id: 5
+                                                                    span: $DIR/thir-tree-field-pat-names.rs:22:12: 22:21 (#0)
+                                                                    kind: 
+                                                                        Tuple {
+                                                                            fields: [
+                                                                                Expr {
+                                                                                    ty: i32
+                                                                                    temp_scope_id: 6
+                                                                                    span: $DIR/thir-tree-field-pat-names.rs:22:13: 22:14 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(6)
+                                                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).6)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: i32
+                                                                                                    temp_scope_id: 6
+                                                                                                    span: $DIR/thir-tree-field-pat-names.rs:22:13: 22:14 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/thir-tree-field-pat-names.rs:22:13: 22:14 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                                Expr {
+                                                                                    ty: (u32, u32, u32)
+                                                                                    temp_scope_id: 7
+                                                                                    span: $DIR/thir-tree-field-pat-names.rs:22:16: 22:17 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(7)
+                                                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).7)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: (u32, u32, u32)
+                                                                                                    temp_scope_id: 7
+                                                                                                    span: $DIR/thir-tree-field-pat-names.rs:22:16: 22:17 (#0)
+                                                                                                    kind: 
+                                                                                                        VarRef {
+                                                                                                            id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).2))
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                                Expr {
+                                                                                    ty: i32
+                                                                                    temp_scope_id: 9
+                                                                                    span: $DIR/thir-tree-field-pat-names.rs:22:19: 22:20 (#0)
+                                                                                    kind: 
+                                                                                        Scope {
+                                                                                            region_scope: Node(9)
+                                                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).9)
+                                                                                            value:
+                                                                                                Expr {
+                                                                                                    ty: i32
+                                                                                                    temp_scope_id: 9
+                                                                                                    span: $DIR/thir-tree-field-pat-names.rs:22:19: 22:20 (#0)
+                                                                                                    kind: 
+                                                                                                        Literal( lit: Spanned { node: Int(Pu128(2), Unsuffixed), span: $DIR/thir-tree-field-pat-names.rs:22:19: 22:20 (#0) }, neg: false)
+
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).10)
+                                            span: $DIR/thir-tree-field-pat-names.rs:22:3: 22:21 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 1}
+                                            init_scope: Node(12)
+                                            pattern: 
+                                                Pat {
+                                                    ty: (i32, (u32, u32, u32), i32)
+                                                    span: $DIR/thir-tree-field-pat-names.rs:24:7: 24:22 (#0)
+                                                    kind: PatKind {
+                                                        Leaf { 
+                                                            subpatterns: [
+                                                                FieldPat {
+                                                                    field: 0
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: i32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:24:8: 24:9 (#0)
+                                                                        kind: PatKind {
+                                                                            Binding {
+                                                                                name: "a"
+                                                                                mode: BindingMode(No, Not)
+                                                                                var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).17))
+                                                                                ty: i32
+                                                                                is_primary: true
+                                                                                is_shorthand: false
+                                                                                subpattern: None
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                FieldPat {
+                                                                    field: 1
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: (u32, u32, u32)
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:24:11: 24:18 (#0)
+                                                                        kind: PatKind {
+                                                                            Leaf { 
+                                                                                subpatterns: [
+                                                                                    FieldPat {
+                                                                                        field: 2
+                                                                                        pattern:
+                                                                                        Pat {
+                                                                                            ty: u32
+                                                                                            span: $DIR/thir-tree-field-pat-names.rs:24:16: 24:17 (#0)
+                                                                                            kind: PatKind {
+                                                                                                Binding {
+                                                                                                    name: "c"
+                                                                                                    mode: BindingMode(No, Not)
+                                                                                                    var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).19))
+                                                                                                    ty: u32
+                                                                                                    is_primary: true
+                                                                                                    is_shorthand: false
+                                                                                                    subpattern: None
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                FieldPat {
+                                                                    field: 2
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: i32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:24:20: 24:21 (#0)
+                                                                        kind: PatKind {
+                                                                            Wild
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: (i32, (u32, u32, u32), i32)
+                                                    temp_scope_id: 13
+                                                    span: $DIR/thir-tree-field-pat-names.rs:24:25: 24:27 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(13)
+                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).13)
+                                                            value:
+                                                                Expr {
+                                                                    ty: (i32, (u32, u32, u32), i32)
+                                                                    temp_scope_id: 13
+                                                                    span: $DIR/thir-tree-field-pat-names.rs:24:25: 24:27 (#0)
+                                                                    kind: 
+                                                                        VarRef {
+                                                                            id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).11))
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).15)
+                                            span: $DIR/thir-tree-field-pat-names.rs:24:3: 24:27 (#0)
+                                        }
+                                    }
+                                ]
+                                expr:
+                                    Expr {
+                                        ty: ()
+                                        temp_scope_id: 21
+                                        span: $DIR/thir-tree-field-pat-names.rs:27:3: 27:34 (#0)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(21)
+                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).21)
+                                                value:
+                                                    Expr {
+                                                        ty: ()
+                                                        temp_scope_id: 21
+                                                        span: $DIR/thir-tree-field-pat-names.rs:27:3: 27:34 (#0)
+                                                        kind: 
+                                                            If {
+                                                                if_then_scope: IfThen(33)
+                                                                cond:
+                                                                    Expr {
+                                                                        ty: bool
+                                                                        temp_scope_id: 22
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:27:6: 27:30 (#0)
+                                                                        kind: 
+                                                                            Scope {
+                                                                                region_scope: Node(22)
+                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).22)
+                                                                                value:
+                                                                                    Expr {
+                                                                                        ty: bool
+                                                                                        temp_scope_id: 22
+                                                                                        span: $DIR/thir-tree-field-pat-names.rs:27:6: 27:30 (#0)
+                                                                                        kind: 
+                                                                                            Let {
+                                                                                                expr:
+                                                                                                    Expr {
+                                                                                                        ty: (i32, (u32, u32, u32), i32)
+                                                                                                        temp_scope_id: 30
+                                                                                                        span: $DIR/thir-tree-field-pat-names.rs:27:28: 27:30 (#0)
+                                                                                                        kind: 
+                                                                                                            Scope {
+                                                                                                                region_scope: Node(30)
+                                                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).30)
+                                                                                                                value:
+                                                                                                                    Expr {
+                                                                                                                        ty: (i32, (u32, u32, u32), i32)
+                                                                                                                        temp_scope_id: 30
+                                                                                                                        span: $DIR/thir-tree-field-pat-names.rs:27:28: 27:30 (#0)
+                                                                                                                        kind: 
+                                                                                                                            VarRef {
+                                                                                                                                id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).11))
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                                pat: Pat { ty: (i32, (u32, u32, u32), i32), span: $DIR/thir-tree-field-pat-names.rs:27:10: 27:25 (#0), extra: None, kind: Leaf { subpatterns: [FieldPat { field: 0, pattern: Pat { ty: i32, span: $DIR/thir-tree-field-pat-names.rs:27:11: 27:12 (#0), extra: None, kind: Binding { name: "a", mode: BindingMode(No, Not), var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).24)), ty: i32, subpattern: None, is_primary: true, is_shorthand: false } } }, FieldPat { field: 1, pattern: Pat { ty: (u32, u32, u32), span: $DIR/thir-tree-field-pat-names.rs:27:14: 27:21 (#0), extra: None, kind: Leaf { subpatterns: [FieldPat { field: 0, pattern: Pat { ty: u32, span: $DIR/thir-tree-field-pat-names.rs:27:15: 27:16 (#0), extra: Some(PatExtra { expanded_const: Some(Free { def_id: DefId(N:M ~ thir_tree_field_pat_names::K) }), ascriptions: [] }), kind: Constant { value: Value { ty: u32, valtree: Leaf(0x0000000c) } } } }] } } }, FieldPat { field: 2, pattern: Pat { ty: i32, span: $DIR/thir-tree-field-pat-names.rs:27:23: 27:24 (#0), extra: None, kind: Wild } }] } }
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                                then:
+                                                                    Expr {
+                                                                        ty: ()
+                                                                        temp_scope_id: 33
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:27:31: 27:34 (#0)
+                                                                        kind: 
+                                                                            Scope {
+                                                                                region_scope: Node(33)
+                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::tuple_leaf).33)
+                                                                                value:
+                                                                                    Expr {
+                                                                                        ty: ()
+                                                                                        temp_scope_id: 33
+                                                                                        span: $DIR/thir-tree-field-pat-names.rs:27:31: 27:34 (#0)
+                                                                                        kind: 
+                                                                                            Block {
+                                                                                                targeted_by_break: false
+                                                                                                span: $DIR/thir-tree-field-pat-names.rs:27:31: 27:34 (#0)
+                                                                                                region_scope: Node(32)
+                                                                                                safety_mode: Safe
+                                                                                                stmts: []
+                                                                                                expr: []
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(N:M ~ thir_tree_field_pat_names::struct_leaf):
+params: [
+    Param {
+        ty: Tri
+        ty_span: Some($DIR/thir-tree-field-pat-names.rs:30:20: 30:23 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).1))
+        param: Some( 
+            Pat {
+                ty: Tri
+                span: $DIR/thir-tree-field-pat-names.rs:30:17: 30:18 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "s"
+                        mode: BindingMode(No, Not)
+                        var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).2))
+                        ty: Tri
+                        is_primary: true
+                        is_shorthand: false
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 45
+        span: $DIR/thir-tree-field-pat-names.rs:30:25: 38:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(45)
+                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).45)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 45
+                        span: $DIR/thir-tree-field-pat-names.rs:30:25: 38:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-field-pat-names.rs:30:25: 38:2 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 0}
+                                            init_scope: Node(4)
+                                            pattern: 
+                                                Pat {
+                                                    ty: Tri
+                                                    span: $DIR/thir-tree-field-pat-names.rs:31:7: 31:9 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "s2"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).8))
+                                                            ty: Tri
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: Tri
+                                                    temp_scope_id: 5
+                                                    span: $DIR/thir-tree-field-pat-names.rs:31:12: 31:13 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(5)
+                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).5)
+                                                            value:
+                                                                Expr {
+                                                                    ty: Tri
+                                                                    temp_scope_id: 5
+                                                                    span: $DIR/thir-tree-field-pat-names.rs:31:12: 31:13 (#0)
+                                                                    kind: 
+                                                                        VarRef {
+                                                                            id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).2))
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).7)
+                                            span: $DIR/thir-tree-field-pat-names.rs:31:3: 31:13 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 1}
+                                            init_scope: Node(9)
+                                            pattern: 
+                                                Pat {
+                                                    ty: Tri
+                                                    span: $DIR/thir-tree-field-pat-names.rs:33:7: 33:31 (#0)
+                                                    kind: PatKind {
+                                                        Leaf { 
+                                                            subpatterns: [
+                                                                FieldPat {
+                                                                    field: 0
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: u32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:33:16: 33:17 (#0)
+                                                                        kind: PatKind {
+                                                                            Binding {
+                                                                                name: "a"
+                                                                                mode: BindingMode(No, Not)
+                                                                                var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).16))
+                                                                                ty: u32
+                                                                                is_primary: true
+                                                                                is_shorthand: false
+                                                                                subpattern: None
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                FieldPat {
+                                                                    field: 1
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: u32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:33:22: 33:23 (#0)
+                                                                        kind: PatKind {
+                                                                            Binding {
+                                                                                name: "b"
+                                                                                mode: BindingMode(No, Not)
+                                                                                var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).18))
+                                                                                ty: u32
+                                                                                is_primary: true
+                                                                                is_shorthand: false
+                                                                                subpattern: None
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                FieldPat {
+                                                                    field: 2
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: u32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:33:28: 33:29 (#0)
+                                                                        kind: PatKind {
+                                                                            Binding {
+                                                                                name: "c"
+                                                                                mode: BindingMode(No, Not)
+                                                                                var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).20))
+                                                                                ty: u32
+                                                                                is_primary: true
+                                                                                is_shorthand: false
+                                                                                subpattern: None
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: Tri
+                                                    temp_scope_id: 10
+                                                    span: $DIR/thir-tree-field-pat-names.rs:33:34: 33:36 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(10)
+                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).10)
+                                                            value:
+                                                                Expr {
+                                                                    ty: Tri
+                                                                    temp_scope_id: 10
+                                                                    span: $DIR/thir-tree-field-pat-names.rs:33:34: 33:36 (#0)
+                                                                    kind: 
+                                                                        VarRef {
+                                                                            id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).8))
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).12)
+                                            span: $DIR/thir-tree-field-pat-names.rs:33:3: 33:36 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 2}
+                                            init_scope: Node(21)
+                                            pattern: 
+                                                Pat {
+                                                    ty: Tri
+                                                    span: $DIR/thir-tree-field-pat-names.rs:34:7: 34:29 (#0)
+                                                    kind: PatKind {
+                                                        Leaf { 
+                                                            subpatterns: [
+                                                                FieldPat {
+                                                                    field: 2
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: u32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:34:16: 34:17 (#0)
+                                                                        kind: PatKind {
+                                                                            Binding {
+                                                                                name: "d"
+                                                                                mode: BindingMode(No, Not)
+                                                                                var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).28))
+                                                                                ty: u32
+                                                                                is_primary: true
+                                                                                is_shorthand: false
+                                                                                subpattern: None
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                                FieldPat {
+                                                                    field: 1
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: u32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:34:22: 34:23 (#0)
+                                                                        kind: PatKind {
+                                                                            Binding {
+                                                                                name: "e"
+                                                                                mode: BindingMode(No, Not)
+                                                                                var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).30))
+                                                                                ty: u32
+                                                                                is_primary: true
+                                                                                is_shorthand: false
+                                                                                subpattern: None
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: Tri
+                                                    temp_scope_id: 22
+                                                    span: $DIR/thir-tree-field-pat-names.rs:34:32: 34:34 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(22)
+                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).22)
+                                                            value:
+                                                                Expr {
+                                                                    ty: Tri
+                                                                    temp_scope_id: 22
+                                                                    span: $DIR/thir-tree-field-pat-names.rs:34:32: 34:34 (#0)
+                                                                    kind: 
+                                                                        VarRef {
+                                                                            id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).8))
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).24)
+                                            span: $DIR/thir-tree-field-pat-names.rs:34:3: 34:34 (#0)
+                                        }
+                                    }
+                                ]
+                                expr:
+                                    Expr {
+                                        ty: ()
+                                        temp_scope_id: 31
+                                        span: $DIR/thir-tree-field-pat-names.rs:37:3: 37:37 (#0)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(31)
+                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).31)
+                                                value:
+                                                    Expr {
+                                                        ty: ()
+                                                        temp_scope_id: 31
+                                                        span: $DIR/thir-tree-field-pat-names.rs:37:3: 37:37 (#0)
+                                                        kind: 
+                                                            If {
+                                                                if_then_scope: IfThen(44)
+                                                                cond:
+                                                                    Expr {
+                                                                        ty: bool
+                                                                        temp_scope_id: 32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:37:6: 37:34 (#0)
+                                                                        kind: 
+                                                                            Scope {
+                                                                                region_scope: Node(32)
+                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).32)
+                                                                                value:
+                                                                                    Expr {
+                                                                                        ty: bool
+                                                                                        temp_scope_id: 32
+                                                                                        span: $DIR/thir-tree-field-pat-names.rs:37:6: 37:34 (#0)
+                                                                                        kind: 
+                                                                                            Let {
+                                                                                                expr:
+                                                                                                    Expr {
+                                                                                                        ty: Tri
+                                                                                                        temp_scope_id: 41
+                                                                                                        span: $DIR/thir-tree-field-pat-names.rs:37:32: 37:34 (#0)
+                                                                                                        kind: 
+                                                                                                            Scope {
+                                                                                                                region_scope: Node(41)
+                                                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).41)
+                                                                                                                value:
+                                                                                                                    Expr {
+                                                                                                                        ty: Tri
+                                                                                                                        temp_scope_id: 41
+                                                                                                                        span: $DIR/thir-tree-field-pat-names.rs:37:32: 37:34 (#0)
+                                                                                                                        kind: 
+                                                                                                                            VarRef {
+                                                                                                                                id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).8))
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                                pat: Pat { ty: Tri, span: $DIR/thir-tree-field-pat-names.rs:37:10: 37:29 (#0), extra: None, kind: Leaf { subpatterns: [FieldPat { field: 1, pattern: Pat { ty: u32, span: $DIR/thir-tree-field-pat-names.rs:37:19: 37:20 (#0), extra: Some(PatExtra { expanded_const: Some(Free { def_id: DefId(N:M ~ thir_tree_field_pat_names::K) }), ascriptions: [] }), kind: Constant { value: Value { ty: u32, valtree: Leaf(0x0000000c) } } } }, FieldPat { field: 0, pattern: Pat { ty: u32, span: $DIR/thir-tree-field-pat-names.rs:37:22: 37:23 (#0), extra: None, kind: Binding { name: "x", mode: BindingMode(No, Not), var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).40)), ty: u32, subpattern: None, is_primary: true, is_shorthand: true } } }] } }
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                                then:
+                                                                    Expr {
+                                                                        ty: ()
+                                                                        temp_scope_id: 44
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:37:35: 37:37 (#0)
+                                                                        kind: 
+                                                                            Scope {
+                                                                                region_scope: Node(44)
+                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::struct_leaf).44)
+                                                                                value:
+                                                                                    Expr {
+                                                                                        ty: ()
+                                                                                        temp_scope_id: 44
+                                                                                        span: $DIR/thir-tree-field-pat-names.rs:37:35: 37:37 (#0)
+                                                                                        kind: 
+                                                                                            Block {
+                                                                                                targeted_by_break: false
+                                                                                                span: $DIR/thir-tree-field-pat-names.rs:37:35: 37:37 (#0)
+                                                                                                region_scope: Node(43)
+                                                                                                safety_mode: Safe
+                                                                                                stmts: []
+                                                                                                expr: []
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(N:M ~ thir_tree_field_pat_names::variant):
+params: [
+    Param {
+        ty: Var
+        ty_span: Some($DIR/thir-tree-field-pat-names.rs:40:16: 40:19 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).1))
+        param: Some( 
+            Pat {
+                ty: Var
+                span: $DIR/thir-tree-field-pat-names.rs:40:13: 40:14 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "e"
+                        mode: BindingMode(No, Not)
+                        var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).2))
+                        ty: Var
+                        is_primary: true
+                        is_shorthand: false
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 35
+        span: $DIR/thir-tree-field-pat-names.rs:40:21: 46:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(35)
+                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).35)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 35
+                        span: $DIR/thir-tree-field-pat-names.rs:40:21: 46:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-field-pat-names.rs:40:21: 46:2 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 3, first_statement_index: 0}
+                                            init_scope: Node(4)
+                                            pattern: 
+                                                Pat {
+                                                    ty: Var
+                                                    span: $DIR/thir-tree-field-pat-names.rs:42:7: 42:30 (#0)
+                                                    kind: PatKind {
+                                                        Variant {
+                                                            adt_def: 
+                                                                AdtDef {
+                                                                    did: DefId(N:M ~ thir_tree_field_pat_names::Var)
+                                                                    variants: [VariantDef { def_id: DefId(N:M ~ thir_tree_field_pat_names::Var::SLike), ctor: None, name: "SLike", discr: Relative(0), fields: [FieldDef { did: DefId(N:M ~ thir_tree_field_pat_names::Var::SLike::l), name: "l", vis: Restricted(ModId(DefId(N:M ~ thir_tree_field_pat_names))), mut_restriction: Unrestricted, safety: Safe, value: None }, FieldDef { did: DefId(N:M ~ thir_tree_field_pat_names::Var::SLike::r), name: "r", vis: Restricted(ModId(DefId(N:M ~ thir_tree_field_pat_names))), mut_restriction: Unrestricted, safety: Safe, value: None }], tainted: None, flags:  }, VariantDef { def_id: DefId(N:M ~ thir_tree_field_pat_names::Var::Other), ctor: Some((Fn, DefId(N:M ~ thir_tree_field_pat_names::Var::Other::{constructor#0}))), name: "Other", discr: Relative(1), fields: [], tainted: None, flags:  }]
+                                                                    flags: IS_ENUM
+                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 3671053010496509130 }
+                                                                }
+                                                            args: []
+                                                            variant_index: 0
+                                                            subpatterns: [
+                                                                FieldPat {
+                                                                    field: 1
+                                                                    pattern:
+                                                                    Pat {
+                                                                        ty: u32
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:42:23: 42:24 (#0)
+                                                                        kind: PatKind {
+                                                                            Binding {
+                                                                                name: "y"
+                                                                                mode: BindingMode(No, Not)
+                                                                                var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).12))
+                                                                                ty: u32
+                                                                                is_primary: true
+                                                                                is_shorthand: false
+                                                                                subpattern: None
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: Var
+                                                    temp_scope_id: 5
+                                                    span: $DIR/thir-tree-field-pat-names.rs:42:33: 42:34 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(5)
+                                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).5)
+                                                            value:
+                                                                Expr {
+                                                                    ty: Var
+                                                                    temp_scope_id: 5
+                                                                    span: $DIR/thir-tree-field-pat-names.rs:42:33: 42:34 (#0)
+                                                                    kind: 
+                                                                        VarRef {
+                                                                            id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).2))
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: Some(
+                                                Block {
+                                                    targeted_by_break: false
+                                                    span: $DIR/thir-tree-field-pat-names.rs:42:40: 42:62 (#0)
+                                                    region_scope: Node(13)
+                                                    safety_mode: Safe
+                                                    stmts: []
+                                                    expr:
+                                                        Expr {
+                                                            ty: !
+                                                            temp_scope_id: 14
+                                                            span: $DIR/thir-tree-field-pat-names.rs:42:42: 42:61 (#0)
+                                                            kind: 
+                                                                Scope {
+                                                                    region_scope: Node(14)
+                                                                    hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).14)
+                                                                    value:
+                                                                        Expr {
+                                                                            ty: !
+                                                                            temp_scope_id: 14
+                                                                            span: $DIR/thir-tree-field-pat-names.rs:42:42: 42:61 (#0)
+                                                                            kind: 
+                                                                                Block {
+                                                                                    targeted_by_break: false
+                                                                                    span: $DIR/thir-tree-field-pat-names.rs:42:42: 42:61 (#0)
+                                                                                    region_scope: Node(15)
+                                                                                    safety_mode: ExplicitUnsafe(HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).15))
+                                                                                    stmts: []
+                                                                                    expr:
+                                                                                        Expr {
+                                                                                            ty: !
+                                                                                            temp_scope_id: 16
+                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                            kind: 
+                                                                                                Scope {
+                                                                                                    region_scope: Node(16)
+                                                                                                    hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).16)
+                                                                                                    value:
+                                                                                                        Expr {
+                                                                                                            ty: !
+                                                                                                            temp_scope_id: 16
+                                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                            kind: 
+                                                                                                                Block {
+                                                                                                                    targeted_by_break: false
+                                                                                                                    span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                    region_scope: Node(17)
+                                                                                                                    safety_mode: Safe
+                                                                                                                    stmts: []
+                                                                                                                    expr:
+                                                                                                                        Expr {
+                                                                                                                            ty: !
+                                                                                                                            temp_scope_id: 18
+                                                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                            kind: 
+                                                                                                                                Scope {
+                                                                                                                                    region_scope: Node(18)
+                                                                                                                                    hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).18)
+                                                                                                                                    value:
+                                                                                                                                        Expr {
+                                                                                                                                            ty: !
+                                                                                                                                            temp_scope_id: 18
+                                                                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                                            kind: 
+                                                                                                                                                Call {
+                                                                                                                                                    ty: FnDef(DefId(N:M ~ std::panicking::begin_panic), Binder { value: [&'{erased} str], bound_vars: [] })
+                                                                                                                                                    from_hir_call: true
+                                                                                                                                                    fn_span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                                                    fun:
+                                                                                                                                                        Expr {
+                                                                                                                                                            ty: FnDef(DefId(N:M ~ std::panicking::begin_panic), Binder { value: [&'{erased} str], bound_vars: [] })
+                                                                                                                                                            temp_scope_id: 19
+                                                                                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                                                            kind: 
+                                                                                                                                                                Scope {
+                                                                                                                                                                    region_scope: Node(19)
+                                                                                                                                                                    hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).19)
+                                                                                                                                                                    value:
+                                                                                                                                                                        Expr {
+                                                                                                                                                                            ty: FnDef(DefId(N:M ~ std::panicking::begin_panic), Binder { value: [&'{erased} str], bound_vars: [] })
+                                                                                                                                                                            temp_scope_id: 19
+                                                                                                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                                                                            kind: 
+                                                                                                                                                                                ZstLiteral(user_ty: None)
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                    args: [
+                                                                                                                                                        Expr {
+                                                                                                                                                            ty: &'{erased} str
+                                                                                                                                                            temp_scope_id: 23
+                                                                                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                                                            kind: 
+                                                                                                                                                                Scope {
+                                                                                                                                                                    region_scope: Node(23)
+                                                                                                                                                                    hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).23)
+                                                                                                                                                                    value:
+                                                                                                                                                                        Expr {
+                                                                                                                                                                            ty: &'{erased} str
+                                                                                                                                                                            temp_scope_id: 23
+                                                                                                                                                                            span: $SRC_DIR/std/src/panic.rs:LL:COL (#7)
+                                                                                                                                                                            kind: 
+                                                                                                                                                                                Literal( lit: Spanned { node: Str("explicit panic", Cooked), span: $SRC_DIR/std/src/panic.rs:LL:COL (#7) }, neg: false)
+
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                    ]
+                                                                                                                                                }
+                                                                                                                                        }
+                                                                                                                                }
+                                                                                                                        }
+                                                                                                                }
+                                                                                                        }
+                                                                                                }
+                                                                                        }
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).7)
+                                            span: $DIR/thir-tree-field-pat-names.rs:42:3: 42:34 (#0)
+                                        }
+                                    }
+                                ]
+                                expr:
+                                    Expr {
+                                        ty: ()
+                                        temp_scope_id: 24
+                                        span: $DIR/thir-tree-field-pat-names.rs:45:3: 45:40 (#0)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(24)
+                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).24)
+                                                value:
+                                                    Expr {
+                                                        ty: ()
+                                                        temp_scope_id: 24
+                                                        span: $DIR/thir-tree-field-pat-names.rs:45:3: 45:40 (#0)
+                                                        kind: 
+                                                            If {
+                                                                if_then_scope: IfThen(34)
+                                                                cond:
+                                                                    Expr {
+                                                                        ty: bool
+                                                                        temp_scope_id: 25
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:45:6: 45:37 (#0)
+                                                                        kind: 
+                                                                            Scope {
+                                                                                region_scope: Node(25)
+                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).25)
+                                                                                value:
+                                                                                    Expr {
+                                                                                        ty: bool
+                                                                                        temp_scope_id: 25
+                                                                                        span: $DIR/thir-tree-field-pat-names.rs:45:6: 45:37 (#0)
+                                                                                        kind: 
+                                                                                            Let {
+                                                                                                expr:
+                                                                                                    Expr {
+                                                                                                        ty: Var
+                                                                                                        temp_scope_id: 31
+                                                                                                        span: $DIR/thir-tree-field-pat-names.rs:45:36: 45:37 (#0)
+                                                                                                        kind: 
+                                                                                                            Scope {
+                                                                                                                region_scope: Node(31)
+                                                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).31)
+                                                                                                                value:
+                                                                                                                    Expr {
+                                                                                                                        ty: Var
+                                                                                                                        temp_scope_id: 31
+                                                                                                                        span: $DIR/thir-tree-field-pat-names.rs:45:36: 45:37 (#0)
+                                                                                                                        kind: 
+                                                                                                                            VarRef {
+                                                                                                                                id: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).2))
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                                pat: Pat { ty: Var, span: $DIR/thir-tree-field-pat-names.rs:45:10: 45:33 (#0), extra: None, kind: Variant { adt_def: Var, args: [], variant_index: 0, subpatterns: [FieldPat { field: 1, pattern: Pat { ty: u32, span: $DIR/thir-tree-field-pat-names.rs:45:26: 45:27 (#0), extra: None, kind: Binding { name: "y", mode: BindingMode(No, Not), var: LocalVarId(HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).30)), ty: u32, subpattern: None, is_primary: true, is_shorthand: false } } }] } }
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                                then:
+                                                                    Expr {
+                                                                        ty: ()
+                                                                        temp_scope_id: 34
+                                                                        span: $DIR/thir-tree-field-pat-names.rs:45:38: 45:40 (#0)
+                                                                        kind: 
+                                                                            Scope {
+                                                                                region_scope: Node(34)
+                                                                                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::variant).34)
+                                                                                value:
+                                                                                    Expr {
+                                                                                        ty: ()
+                                                                                        temp_scope_id: 34
+                                                                                        span: $DIR/thir-tree-field-pat-names.rs:45:38: 45:40 (#0)
+                                                                                        kind: 
+                                                                                            Block {
+                                                                                                targeted_by_break: false
+                                                                                                span: $DIR/thir-tree-field-pat-names.rs:45:38: 45:40 (#0)
+                                                                                                region_scope: Node(33)
+                                                                                                safety_mode: Safe
+                                                                                                stmts: []
+                                                                                                expr: []
+                                                                                            }
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(N:M ~ thir_tree_field_pat_names::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 2
+        span: $DIR/thir-tree-field-pat-names.rs:48:11: 48:13 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(2)
+                hir_id: HirId(DefId(N:M ~ thir_tree_field_pat_names::main).2)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 2
+                        span: $DIR/thir-tree-field-pat-names.rs:48:11: 48:13 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-field-pat-names.rs:48:11: 48:13 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+
