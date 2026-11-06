@@ -1187,6 +1187,18 @@ fn test_copy_file_range() {
     assert_eq!(copy(src.as_raw_fd(), dst.as_raw_fd(), 100).unwrap(), 0);
     assert_eq!(fs::read(&dst_path).unwrap(), b"Hi World!\n");
 
+    // Same file, overlapping ranges.
+    dst.rewind().unwrap();
+    let dst2 = File::open(&dst_path).unwrap();
+    let err = copy(dst2.as_raw_fd(), dst.as_raw_fd(), 5).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    // Same file, non-overlapping ranges.
+    dst.seek(SeekFrom::Current(5)).unwrap();
+    let res = copy(dst2.as_raw_fd(), dst.as_raw_fd(), 3).unwrap();
+    assert_eq!(res, 3);
+    assert_eq!(fs::read(&dst_path).unwrap(), b"Hi WoHi !\n");
+    drop(dst2);
+
     // Invalid file descriptors.
     let err = copy(-1, -1, 1).unwrap_err();
     assert_eq!(err.raw_os_error(), Some(libc::EBADF));

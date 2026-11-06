@@ -262,6 +262,20 @@ fn host_file_times_from_updates(access: TimeUpdate, modified: TimeUpdate) -> Fil
     filetimes
 }
 
+fn same_host_file(file1: &fs::Metadata, file2: &fs::Metadata) -> bool {
+    cfg_select! {
+        unix => {
+            use std::os::unix::fs::MetadataExt;
+            file1.dev() == file2.dev() && file1.ino() == file2.ino()
+        }
+        windows => {
+            use std::os::windows::fs::MetadataExt;
+            file1.volume_serial_number().unwrap() == file2.volume_serial_number().unwrap()
+                && file1.file_index().unwrap() == file2.file_index().unwrap()
+        }
+    }
+}
+
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Decode one `futimens` `timespec`, handling the `UTIME_NOW`/`UTIME_OMIT` `tv_nsec` values.
@@ -2263,13 +2277,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // The docs explicitly say that O_APPEND on the output file is forbidden.
             return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         }
-        // FIXME: Linux returns EINVAL if both FDs refer to the same file and the ranges overlap.
-
         assert!(ecx.machine.communicate(), "isolation should have prevented even opening a file");
 
         let copy = || -> io::Result<u64> {
             let (mut input, mut output) = (&file_in.file, &file_out.file);
             let (pos_in, pos_out) = (input.stream_position()?, output.stream_position()?);
+
+            // Error if both FDs refer to the same file and the ranges overlap.
+            let (meta_in, meta_out) = (input.metadata()?, output.metadata()?);
+            if same_host_file(&meta_in, &meta_out)
+                && (pos_in.checked_add(len).is_none_or(|end_in| end_in > pos_out)
+                    && pos_out.checked_add(len).is_none_or(|end_out| end_out > pos_in))
+            {
+                return Err(io::ErrorKind::InvalidInput.into());
+            }
+
             io::copy(&mut input.take(len), &mut output).inspect_err(|_| {
                 // Like Linux, leave the file positions unchanged on error. See
                 // <https://github.com/torvalds/linux/blob/81dfa035891f0502674332ee97db348a16486de0/fs/read_write.c#L1686-L1703>.
