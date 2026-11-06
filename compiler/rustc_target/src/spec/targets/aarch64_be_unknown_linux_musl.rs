@@ -19,7 +19,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64_be-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("ARM64 Linux (big-endian) with musl-libc 1.2.5".into()),
+            description: Some("ARM64 Linux (big-endian) with musl-libc 1.2.6".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
