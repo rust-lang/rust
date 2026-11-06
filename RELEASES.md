@@ -138,14 +138,6 @@ Compatibility Notes
 
 <a id="1.100.0-Internal-Changes"></a>
 
-Internal Changes
-----------------
-
-These changes do not affect any public interfaces of Rust, but they represent
-significant improvements to the performance or internals of rustc and related
-tools.
-
-
 Other
 -----
 
