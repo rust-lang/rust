@@ -9,7 +9,7 @@ mod utils;
 
 use std::io::ErrorKind;
 use std::time::{Duration, Instant};
-use std::{ptr, thread};
+use std::{mem, ptr, thread};
 
 use libc_utils::*;
 
@@ -420,49 +420,43 @@ fn test_recvfrom() {
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
-    if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
-        // Native FreeBSD and macOS return EFAULT when the `address_len` pointer is invalid.
-        // This is not documented in their man pages and we thus skip those native tests.
+    let mut buffer = [0; TEST_BYTES.len()];
 
-        let mut buffer = [0; TEST_BYTES.len()];
-
-        // When the address pointer is a nullptr, the `address_len` should be left unchanged.
-        unsafe {
-            errno_result(libc::recvfrom(
-                client_sockfd,
-                buffer.as_mut_ptr().cast(),
-                buffer.len(),
-                /* flags */ 0,
-                ptr::null_mut::<libc::sockaddr>(),
-                ptr::without_provenance_mut::<libc::socklen_t>(0x200),
-            ))
-            .unwrap();
-        }
-
-        assert_eq!(&buffer, TEST_BYTES);
-    }
-
-    let mut buffer: [u8; 26] = [0; TEST_BYTES.len()];
-    let mut address_ptr_len = 1337 as libc::socklen_t;
-
-    // If address pointer is non-null, `address_len` should be zeroed (but address itself is not accessed).
-    // We thus use a garbage value for the address pointer to ensure it's ignored.
+    // It is legal to make both the addr and addr_len pointers null.
     unsafe {
         errno_result(libc::recvfrom(
             client_sockfd,
             buffer.as_mut_ptr().cast(),
             buffer.len(),
             /* flags */ 0,
-            ptr::without_provenance_mut::<libc::sockaddr>(16),
-            &mut address_ptr_len,
+            ptr::null_mut::<libc::sockaddr>(),
+            ptr::null_mut::<libc::socklen_t>(),
         ))
         .unwrap();
     }
 
     assert_eq!(&buffer, TEST_BYTES);
 
+    let mut buffer: [u8; 26] = [0; TEST_BYTES.len()];
+
+    // If address pointer is non-null, `address_len` should be zeroed (but address itself is not accessed).
+    let mut addr = unsafe { mem::zeroed::<libc::sockaddr>() };
+    let mut addr_len = mem::size_of_val(&addr) as libc::socklen_t;
+    unsafe {
+        errno_result(libc::recvfrom(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            /* flags */ 0,
+            &mut addr,
+            &mut addr_len,
+        ))
+        .unwrap();
+    }
     // Ensure the `address_len` pointer gets zeroed.
-    assert_eq!(address_ptr_len, 0);
+    assert_eq!(addr_len, 0);
+
+    assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
 }

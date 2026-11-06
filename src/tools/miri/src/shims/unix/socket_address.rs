@@ -137,9 +137,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // size of a layout is also stored in a u64.
         let address_len: u64 =
             this.read_scalar(address_len)?.to_int(address_len.layout.size)?.try_into().unwrap();
+        let address = this.deref_pointer(address)?;
+
+        // Ensure the pointer is actually dereferenceable for that length.
+        this.check_ptr_access(
+            address.ptr(),
+            Size::from_bytes(address_len),
+            CheckInAllocMsg::MemoryAccess,
+        )?;
 
         // Initially, treat address as generic sockaddr just to extract the family field.
-        let address = this.deref_pointer(address)?;
         if address_len < address.layout.size.bytes() {
             // Address length should be at least as big as the generic sockaddr
             return interp_ok(Err(LibcError("EINVAL")));
@@ -246,6 +253,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// If `address` is [`None`] we write an "empty" address (i.e., the `address_len_ptr`
     /// is set to zero and the `address_ptr` is left untouched).
+    /// If `address` is `Some`, both output pointers must be valid!
     ///
     /// If the address buffer doesn't fit the whole address, the address is truncated to not
     /// overflow the buffer.
@@ -257,12 +265,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let Some(address) = address else {
-            // We want to write an "empty" socket address. In this case we just set
-            // the address length to zero.
+        if address.is_none() && this.ptr_is_null(address_len_place.ptr())? {
+            // It is okay for the len ptr to be null *if* we have nothing to write.
+            return interp_ok(());
+        }
 
-            return this.write_int(0, address_len_place);
-        };
+        // If the len ptr is not null or if we have an address to write, the length must be valid.
+        // This is intended to implement what POSIX says about the length pointer in `recvfrom``:
+        // > Either a null pointer, if address is a null pointer, or a pointer to a socklen_t object
+        // > which on input specifies the length of the supplied sockaddr structure, and on output
+        // > specifies the length of the sending address.
 
         // We only support buffer lengths which can be stored in a u64 since the
         // size of a layout in bytes is also stored in a u64.
@@ -271,6 +283,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .to_int(address_len_place.layout.size)?
             .try_into()
             .unwrap();
+
+        // Check that the buffer indeed has (at least) the given size.
+        this.check_ptr_access(
+            address_ptr,
+            Size::from_bytes(address_buffer_len),
+            CheckInAllocMsg::MemoryAccess,
+        )?;
+
+        let Some(address) = address else {
+            // We want to write an "empty" socket address. In this case we just set
+            // the address length to zero.
+            return this.write_int(0, address_len_place);
+        };
 
         let address_buffer = match address {
             SocketAddr::V4(address) => {

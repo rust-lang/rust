@@ -519,10 +519,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.read_scalar(dest_addr_len)?.to_uint(socklen_layout.size)?;
 
                 if dest_addr_ptr == Pointer::null() || dest_addr_len_int == 0 {
-                    // If the address pointer is a nullptr or the address length is zero
-                    // we ignore the destination address.
+                    // If the address pointer is a nullptr or the address length is zero we ignore
+                    // the destination address. BSDs return EINVAL when the address length is zero
+                    // and the address pointer is an invalid pointer; that is so far away from what
+                    // POSIX documents for TCP sockets that we do not try to emulate it.
                     None
                 } else {
+                    // If they are both non-null/zero, we read the address even if the socket does
+                    // not care about it. This is stricter than what POSIX says (POSIX says the
+                    // destination is ignored for TCP sockets), but most OSes seem to do something
+                    // similar.
                     match this.read_socket_address(dest_addr, dest_addr_len, "sendto")? {
                         Ok(dest_addr) => Some(dest_addr),
                         Err(e) => return this.set_errno_and_return_neg1(e, dest),
@@ -684,15 +690,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dest_addr: Option<(Pointer, MPlaceTy<'tcx>)>,
                     dest: MPlaceTy<'tcx>,
                 } |ecx, result: Result<(usize, Option<SocketAddr>), IoError>| {
-                    let (bytes_received, origin_addr_opt) = match result {
+                    let (bytes_received, mut origin_addr_opt) = match result {
                         Ok(data) => data,
                         Err(e) => return ecx.set_errno_and_return_neg1(e, &dest)
                     };
 
-                    if let Some((addr_ptr, addr_len_mplace)) = dest_addr && addr_ptr != Pointer::null() {
-                        // When the `addr_ptr` is a null pointer the caller is not interested in the
-                        // socket address and we thus don't write anything in that case.
-
+                    if let Some((addr_ptr, addr_len_mplace)) = dest_addr  {
+                        if addr_ptr == Pointer::null() {
+                            // When the `addr_ptr` is a null pointer the caller is not interested in
+                            // the socket address.
+                            origin_addr_opt = None;
+                        }
                         // The recvfrom(3) man page specifies that "[...] the value stored in the object pointed to
                         // `address` is unspecified [...]" should the protocol not provide the source address of the message.
                         // In this case we do the same thing as the Linux implementation and simply don't write anything to the
