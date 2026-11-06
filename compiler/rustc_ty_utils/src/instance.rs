@@ -313,7 +313,7 @@ fn resolve_associated_item<'tcx>(
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnAddrTrait) {
                 let self_ty = trait_ref.self_ty();
-                if !matches!(self_ty.kind(), ty::FnPtr(..)) {
+                if !matches!(self_ty.kind(), ty::FnPtr(..) | ty::FnDef(..)) {
                     return Ok(None);
                 }
                 match tcx.as_lang_item(trait_item_id) {

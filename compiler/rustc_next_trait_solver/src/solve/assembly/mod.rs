@@ -678,7 +678,9 @@ where
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::FnAddrTrait) => {
-                    G::consider_builtin_fn_ptr_trait_candidate(self, goal)
+                    G::consider_builtin_fn_ptr_trait_candidate(self, goal).or_else(|_| {
+                        G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
+                    })
                 }
                 Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)

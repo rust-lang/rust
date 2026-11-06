@@ -128,6 +128,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 Some(LangItem::FnAddrTrait) => {
                     self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
+                    self.assemble_candidates_for_fn_static_trait(obligation, &mut candidates);
                 }
                 Some(LangItem::BikeshedGuaranteedNoDrop) => {
                     self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
@@ -1415,6 +1416,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidates_for_fn_static_trait(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = self.infcx.deeply_resolve_ignoring_regions(obligation.self_ty());
+
+        match *self_ty.skip_binder().kind() {
+            ty::FnDef(def_id, _) => {
+                let tcx = self.tcx();
+                if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                {
+                    candidates.vec.push(BuiltinCandidate);
+                }
+            }
+            ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
+                candidates.ambiguous = true;
+            }
+            _ => {}
         }
     }
 

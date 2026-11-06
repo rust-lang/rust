@@ -11,5 +11,6 @@ fn main() {
     type F = fn(u64) -> u64;
     let b: F = bar;
     assert_eq!(b.addr(), bar as *const () as usize);
+    assert_eq!(b.addr(), bar.addr());
     assert_eq!(b(42), unsafe { F::from_ptr(b.as_ptr())(42) });
 }
