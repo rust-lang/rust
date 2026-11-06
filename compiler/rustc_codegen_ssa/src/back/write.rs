@@ -23,7 +23,8 @@ use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
-    self, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
+    self, JobsMode, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes,
+    SwitchWithOptPath,
 };
 use rustc_session::{BorrowedIncrCompSession, IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
@@ -1234,7 +1235,7 @@ fn start_executing_work<B: WriteBackendMethods>(
     // tokens before releasing them, so we can never accidentally release the last token
     // permanently held by rustc process.
     let parallel = match sess.opts.jobs.backend {
-        Some(n) if backend.supports_parallel() => Some(n),
+        JobsMode::Parallel(n) if backend.supports_parallel() => Some(n),
         _ => None,
     };
     let jobserver_helper = parallel.map(|_| {
