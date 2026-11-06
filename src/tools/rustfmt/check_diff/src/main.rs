@@ -39,9 +39,16 @@ const REPOS: &[&str] = &[
     "https://github.com/SergioBenitez/Rocket.git",
     "https://github.com/Stebalien/tempfile.git",
     // Unicode / international text coverage (see rustfmt#5884)
-    "https://github.com/unicode-rs/unicode-width.git",
-    "https://github.com/unicode-rs/unicode-segmentation.git",
+    "https://github.com/unicode-org/icu4x.git",
+    "https://github.com/unicode-rs/rust-caseless.git",
+    "https://github.com/unicode-rs/unicode-charname",
     "https://github.com/unicode-rs/unicode-normalization.git",
+    "https://github.com/unicode-rs/unicode-properties",
+    "https://github.com/unicode-rs/unicode-security.git",
+    "https://github.com/unicode-rs/unicode-segmentation.git",
+    "https://github.com/unicode-rs/unicode-script.git",
+    "https://github.com/unicode-rs/unicode-width.git",
+    "https://github.com/unicode-rs/unicode-xid.git",
 ];
 
 /// Inputs for the check_diff script
