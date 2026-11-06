@@ -2524,6 +2524,7 @@ unsafe extern "C" {
         syms: *const *const c_char,
         len: size_t,
     );
+    pub(crate) fn LLVMRustRunFatLtoCleanup<'ll>(M: Module<'ll>);
 
     pub(crate) fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
