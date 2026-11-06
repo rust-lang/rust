@@ -3979,13 +3979,6 @@
                 }
             ]
         },
-        "viewsWelcome": [
-            {
-                "view": "explorer",
-                "contents": "Create a new Rust project.\n[Create Rust Project](command:rust-analyzer.newProject)",
-                "when": "workspaceFolderCount == 0"
-            }
-        ],
         "viewsContainers": {
             "activitybar": [
                 {
