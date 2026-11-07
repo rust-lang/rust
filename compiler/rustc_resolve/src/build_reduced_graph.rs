@@ -1235,13 +1235,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     /// Returns `true` if this attribute list contains `macro_use`.
     pub(crate) fn contains_macro_use(&self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
-            if attr.has_name(sym::macro_escape) {
-                let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
-                self.r.dcx().emit_warn(diagnostics::MacroExternDeprecated {
-                    span: attr.span,
-                    inner_attribute,
-                });
-            } else if !attr.has_name(sym::macro_use) {
+            if !attr.has_name(sym::macro_use) {
                 continue;
             }
 

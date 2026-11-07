@@ -227,7 +227,10 @@ pub(crate) struct DocAutoCfgExpectsHideOrShow;
 
 #[derive(Diagnostic)]
 #[diag("there exists a built-in attribute with the same name")]
-pub(crate) struct AmbiguousDeriveHelpers;
+pub(crate) struct AmbiguousDeriveHelpers {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("`#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or `values(...)`")]
@@ -988,7 +991,10 @@ pub(crate) struct InlineForceInlineConflict {
 #[help(
     "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
 )]
-pub(crate) struct InlineIgnoredForExported;
+pub(crate) struct InlineIgnoredForExported {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
@@ -1944,7 +1950,10 @@ pub(crate) struct EmptyLinkName {
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
-pub(crate) struct Link;
+pub(crate) struct Link {
+    #[primary_span]
+    pub span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("link kind `framework` is only supported on Apple targets", code = E0455)]

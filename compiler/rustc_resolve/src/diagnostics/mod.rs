@@ -986,15 +986,6 @@ pub(crate) struct ImportedMacroNotFound {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[macro_escape]` is a deprecated synonym for `#[macro_use]`")]
-pub(crate) struct MacroExternDeprecated {
-    #[primary_span]
-    pub(crate) span: Span,
-    #[help("try an outer attribute: `#[macro_use]`")]
-    pub inner_attribute: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag("arguments to `macro_use` are not allowed here")]
 pub(crate) struct ArgumentsMacroUseNotAllowed {
     #[primary_span]
