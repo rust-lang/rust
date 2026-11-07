@@ -1,5 +1,5 @@
 #![warn(clippy::literal_string_with_formatting_args)]
-#![expect(clippy::unnecessary_literal_unwrap)]
+#![expect(clippy::unnecessary_literal_unwrap, mixed_script_confusables)]
 
 // Regression test for <https://github.com/rust-lang/rust-clippy/issues/13885>.
 // It's not supposed to emit the lint in this case (in `assert!` expansion).
