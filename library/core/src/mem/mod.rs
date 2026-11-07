@@ -1291,20 +1291,19 @@ pub struct DiscriminantOrd<T>(<T as DiscriminantKind>::Discriminant);
 
 impl<T> Discriminant<T> {
     /// Returns an ordering key for this [`Discriminant`] that has an unstable
-    /// implementation with regards to *semantic versioning*. This is not the be confused
-    /// with an [*"unstable sort"*].
+    /// implementation with regards to *semantic versioning*. This is not to be
+    /// confused with an [*"unstable sort"*].
     ///
     /// Because all types have a publicly accessible [`Discriminant`], regardless
     /// of whether the order of said type is a part of its stability guarantees,
     /// the exact ordering of the returned [`DiscriminantOrd`] cannot be relied on
-    /// for stability across crates. This is similar to the stability of the size
-    /// of a type as returned by [`size_of`].
+    /// for stability across crate boundaries. This is similar to the stability
+    /// of the size of a type as returned by [`size_of`].
     ///
-    /// Enum values will be ordered based on the source declaration and `repr` values
-    /// of their variants, consistent with derived implementations of [`PartialOrd`]
-    /// and [`Ord`]. Noting that only the discriminant and no field values are considered.
-    /// All other kinds of values have an *unspecified* ordering, but will _typically_
-    /// be trivially ordered as equivalent.
+    /// Discriminants from enums will be ordered based on the source declaration
+    /// and assigned values of their variants, consistent with derived implementations
+    /// of [`PartialOrd`] and [`Ord`]. All other kinds of discriminants have an
+    /// *unspecified*  ordering, but will _typically_ be trivially ordered as equivalent.
     ///
     /// Users of this function should instead rely on the [`Ord`] implementation
     /// of `T` wherever possible.
@@ -1320,13 +1319,13 @@ impl<T> Discriminant<T> {
     ///
     /// enum Foo { A(i32), B(i32) }
     ///
-    /// // Equivalent arms will compare equal regardless of contained data
+    /// // Equivalent variants will compare equal regardless of contained data
     /// assert_matches!(
     ///     discriminant(&Foo::A(1)).ord().cmp(&discriminant(&Foo::A(2)).ord()),
     ///     Ordering::Equal,
     /// );
     ///
-    /// // Inequivalent arms will compare not-equal
+    /// // Non-equivalent variants will compare not-equal
     /// assert_matches!(
     ///     discriminant(&Foo::A(1)).ord().cmp(&discriminant(&Foo::B(1)).ord()),
     ///     Ordering::Less | Ordering::Greater,
@@ -1334,7 +1333,8 @@ impl<T> Discriminant<T> {
     /// ```
     ///
     /// Upstream libraries and the compiler are free to change the exact ordering
-    /// of discriminants. The below _may_ break at any time:
+    /// of discriminants unless they are explicitly documented as stable.
+    /// The below _may_ break at any time:
     ///
     /// ```should_panic
     /// # #![feature(discriminant_ord)]
