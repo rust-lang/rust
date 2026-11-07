@@ -1,0 +1,15 @@
+warning: function `foo` is never used
+  --> $DIR/ordering-source.rs:7:4
+   |
+LL | fn foo() {}
+   |    ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/ordering-source.rs:5:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
+
+warning: 1 warning emitted
+

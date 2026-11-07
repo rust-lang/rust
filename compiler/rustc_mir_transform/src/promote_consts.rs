@@ -752,10 +752,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn new_block(&mut self) -> BasicBlock {
         let span = self.promoted.span;
         self.promoted.basic_blocks_mut().push(BasicBlockData::new(
-            Some(Terminator {
-                source_info: SourceInfo::outermost(span),
-                kind: TerminatorKind::Return,
-            }),
+            Terminator { source_info: SourceInfo::outermost(span), kind: TerminatorKind::Return },
             false,
         ))
     }

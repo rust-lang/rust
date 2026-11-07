@@ -10,9 +10,9 @@
 // - `catchpad ... [ptr null]` on Wasm (otherwise LLVM gets confused)
 // - `catchpad ... [ptr null, i32 64, ptr null]` on Windows (otherwise we catch SEH exceptions)
 //
-// Unlike on windows, on Wasm, we specifically do want to catch foreign
-// exceptions. To catch only C++ exceptions we'd need to call
-// @llvm.wasm.get.exception and @llvm.wasm.get.ehselector in the catchpad.
+// Unlike on windows, on Wasm, we specifically do want to catch foreign exceptions. To catch only
+// C++ exceptions we'd need to call @llvm.wasm.get.exception and @llvm.wasm.get.ehselector in the
+// catchpad.
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "lib"]
