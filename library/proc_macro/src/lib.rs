@@ -47,7 +47,7 @@ mod to_tokens;
 use core::convert::From;
 use core::ops::BitOr;
 use std::borrow::Cow;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -1697,7 +1697,7 @@ impl Literal {
     /// Returns the unescaped string value if the current literal is a c-string or a c-string
     /// literal.
     #[unstable(feature = "proc_macro_value", issue = "136652")]
-    pub fn cstr_value(&self) -> Result<Vec<u8>, ConversionErrorKind> {
+    pub fn cstr_value(&self) -> Result<CString, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
             bridge::LitKind::CStr => {
                 let mut error = None;
@@ -1718,16 +1718,16 @@ impl Literal {
                     Err(error)
                 } else {
                     buf.push(0);
-                    Ok(buf)
+                    // Safety: The `buf` content was already checked by the compiler when generating
+                    // the literal.
+                    unsafe { Ok(CString::from_vec_with_nul_unchecked(buf)) }
                 }
             }
             bridge::LitKind::CStrRaw(_) => {
                 // Raw strings have no escapes so we can convert the symbol
                 // directly to a `Lrc<u8>` after appending the terminating NUL
                 // char.
-                let mut buf = symbol.to_owned().into_bytes();
-                buf.push(0);
-                Ok(buf)
+                Ok(CString::new(symbol.to_owned()).expect("invalid cstr literal"))
             }
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
