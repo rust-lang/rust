@@ -386,9 +386,7 @@ pub(crate) struct EmbedSourceInsufficientDwarfVersion {
 pub(crate) struct EmbedSourceRequiresDebugInfo;
 
 #[derive(Diagnostic)]
-#[diag(
-    "`-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored"
-)]
+#[diag("`-C stack-protector={$stack_protector}` is not supported for target {$target_triple}")]
 pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
     pub(crate) stack_protector: StackProtector,
     pub(crate) target_triple: &'a TargetTuple,
