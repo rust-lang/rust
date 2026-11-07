@@ -110,7 +110,6 @@ impl PidFd {
         .map(drop)
     }
 
-    #[cfg(any(test, target_env = "gnu", target_env = "musl"))]
     pub fn getfd(&self, targetfd: RawFd) -> io::Result<OwnedFd> {
         let fd =
             cvt(unsafe { libc::syscall(libc::SYS_pidfd_getfd, self.0.as_raw_fd(), targetfd, 0) })?;
