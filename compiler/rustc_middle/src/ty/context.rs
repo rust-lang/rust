@@ -48,7 +48,7 @@ use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
-    CollectAndApply, IncludeSizedImplicitBounds, PlaceholderType, WithCachedTypeInfo, elaborate,
+    CollectAndApply, ExcludeImplicitBounds, PlaceholderType, WithCachedTypeInfo, elaborate,
     search_graph,
 };
 use tracing::{debug, instrument};
@@ -962,15 +962,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns true if a trait is an "implicit trait", which is a trait which is added
     /// to bounds on generic types automatically by the compiler.
-    pub fn is_implicit_trait(
-        self,
-        def_id: DefId,
-        including_sized: IncludeSizedImplicitBounds,
-    ) -> bool {
+    pub fn is_implicit_trait(self, def_id: DefId, excluding: ExcludeImplicitBounds) -> bool {
         self.is_default_trait(def_id)
             // NOTE: add forget here later
-            || self.is_move_trait(def_id)
-            || (matches!(including_sized, IncludeSizedImplicitBounds::Yes) && self.is_sizedness_trait(def_id))
+            || (!excluding.r#move && self.is_move_trait(def_id))
+            || (!excluding.sized && self.is_sizedness_trait(def_id))
     }
 
     pub fn is_move_trait(self, def_id: DefId) -> bool {

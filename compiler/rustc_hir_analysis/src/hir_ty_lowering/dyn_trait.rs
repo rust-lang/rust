@@ -9,8 +9,8 @@ use rustc_hir::{self as hir, HirId};
 use rustc_lint_defs::builtin::{BARE_TRAIT_OBJECTS, UNUSED_ASSOCIATED_TYPE_BOUNDS};
 use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, BottomUpFolder, ExistentialPredicateStableCmpExt as _, IncludeSizedImplicitBounds, Ty,
-    TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
+    self, BottomUpFolder, ExcludeImplicitBounds, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -84,7 +84,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>(),
             ImpliedBoundsContext::AssociatedTypeOrImplTrait,
             span,
-            IncludeSizedImplicitBounds::No,
+            ExcludeImplicitBounds::sized(),
         );
 
         let (mut elaborated_trait_bounds, elaborated_projection_bounds) =
@@ -109,7 +109,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // We don't support empty trait objects.
         if regular_traits.iter().chain(auto_traits.iter()).all(|t| {
-            tcx.is_implicit_trait(t.0.skip_binder().def_id(), ty::IncludeSizedImplicitBounds::No)
+            tcx.is_implicit_trait(t.0.skip_binder().def_id(), ExcludeImplicitBounds::sized())
         }) {
             let guar =
                 self.report_trait_object_with_no_traits(span, user_written_bounds.iter().copied());
