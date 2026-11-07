@@ -677,6 +677,9 @@ impl Span {
     /// The one-indexed line of the source file where the span starts.
     ///
     /// To obtain the line of the span's end, use `span.end().line()`.
+    ///
+    /// This is generally expected to be consistent with the [`line!()`] macro,
+    /// although the logic is more complicated due to its granularity.
     #[stable(feature = "proc_macro_span_location", since = "1.88.0")]
     pub fn line(&self) -> usize {
         BridgeMethods::span_line(self.0)
@@ -685,6 +688,9 @@ impl Span {
     /// The one-indexed column of the source file where the span starts.
     ///
     /// To obtain the column of the span's end, use `span.end().column()`.
+    ///
+    /// This is generally expected to be consistent with the [`column!()`] macro,
+    /// although the logic is more complicated due to its granularity.
     #[stable(feature = "proc_macro_span_location", since = "1.88.0")]
     pub fn column(&self) -> usize {
         BridgeMethods::span_column(self.0)
