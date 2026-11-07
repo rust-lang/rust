@@ -1,0 +1,223 @@
+error: fn_abi_of(u128_ret) = FnAbi {
+           args: [],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: u128,
+                   layout: Layout {
+                       size: Size(16 bytes),
+                       align: AbiAlign {
+                           abi: Align(16 bytes),
+                       },
+                       backend_repr: Scalar(
+                           u128 is ..,
+                       ),
+                       fields: Primitive,
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(16 bytes),
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Indirect {
+                   attrs: ArgAttributes {
+                       regular: CapturesAddress | NoAlias | NonNull | NoUndef | NoFree,
+                       arg_ext: None,
+                       pointee_size: Size(16 bytes),
+                       pointee_align: Some(
+                           Align(16 bytes),
+                       ),
+                   },
+                   meta_attrs: None,
+                   on_stack: false,
+               },
+           },
+           c_variadic: false,
+           fixed_count: 0,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/rust-return.rs:28:1
+   |
+LL | fn u128_ret() -> u128 {
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(scalar_pair_ret) = FnAbi {
+           args: [],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (usize, usize),
+                   layout: Layout {
+                       size: Size(16 bytes),
+                       align: AbiAlign {
+                           abi: $SOME_ALIGN,
+                       },
+                       backend_repr: ScalarPair {
+                           a: u64 is ..,
+                           b: u64 is ..,
+                           b_offset: Size(8 bytes),
+                       },
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                               Size(8 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                               1,
+                           ],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Indirect {
+                   attrs: ArgAttributes {
+                       regular: CapturesNone | NoAlias | NonNull | NoUndef | NoFree,
+                       arg_ext: None,
+                       pointee_size: Size(16 bytes),
+                       pointee_align: Some(
+                           Align(8 bytes),
+                       ),
+                   },
+                   meta_attrs: None,
+                   on_stack: false,
+               },
+           },
+           c_variadic: false,
+           fixed_count: 0,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/rust-return.rs:34:1
+   |
+LL | fn scalar_pair_ret() -> (usize, usize) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(scalar_pair_ret2) = FnAbi {
+           args: [],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (u32, u32),
+                   layout: Layout {
+                       size: $SOME_SIZE,
+                       align: AbiAlign {
+                           abi: $SOME_ALIGN,
+                       },
+                       backend_repr: ScalarPair {
+                           a: u32 is ..,
+                           b: u32 is ..,
+                           b_offset: Size(4 bytes),
+                       },
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                               Size(4 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                               1,
+                           ],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: $SOME_ALIGN,
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Indirect {
+                   attrs: ArgAttributes {
+                       regular: CapturesNone | NoAlias | NonNull | NoUndef | NoFree,
+                       arg_ext: None,
+                       pointee_size: $SOME_SIZE,
+                       pointee_align: Some(
+                           Align(4 bytes),
+                       ),
+                   },
+                   meta_attrs: None,
+                   on_stack: false,
+               },
+           },
+           c_variadic: false,
+           fixed_count: 0,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/rust-return.rs:40:1
+   |
+LL | fn scalar_pair_ret2() -> (u32, u32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(scalar_pair_ret3) = FnAbi {
+           args: [],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: (u128, u128),
+                   layout: Layout {
+                       size: Size(32 bytes),
+                       align: AbiAlign {
+                           abi: Align(16 bytes),
+                       },
+                       backend_repr: ScalarPair {
+                           a: u128 is ..,
+                           b: u128 is ..,
+                           b_offset: Size(16 bytes),
+                       },
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                               Size(16 bytes),
+                           ],
+                           in_memory_order: [
+                               0,
+                               1,
+                           ],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(16 bytes),
+                       randomization_seed: $SEED,
+                   },
+               },
+               mode: Indirect {
+                   attrs: ArgAttributes {
+                       regular: CapturesNone | NoAlias | NonNull | NoUndef | NoFree,
+                       arg_ext: None,
+                       pointee_size: Size(32 bytes),
+                       pointee_align: Some(
+                           Align(16 bytes),
+                       ),
+                   },
+                   meta_attrs: None,
+                   on_stack: false,
+               },
+           },
+           c_variadic: false,
+           fixed_count: 0,
+           conv: Rust,
+           can_unwind: $SOME_BOOL,
+       }
+  --> $DIR/rust-return.rs:46:1
+   |
+LL | fn scalar_pair_ret3() -> (u128, u128) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
