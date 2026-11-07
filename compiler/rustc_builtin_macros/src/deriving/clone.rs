@@ -7,7 +7,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_clone(
+pub(crate) fn expand_derive_clone(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -28,7 +28,7 @@ pub(crate) fn expand_deriving_clone(
     //   enough. Whether Clone is implemented for fields is irrelevant so we
     //   don't assert it.)
     let bounds;
-    let substructure;
+    let body: MethodBodyFunc<'_>;
     let is_simple;
     match &item.kind {
         ItemKind::Struct(_, Generics { params, .. }, _)
@@ -42,18 +42,16 @@ pub(crate) fn expand_deriving_clone(
                     .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
             {
                 is_simple = true;
-                substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, false));
+                body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, false));
             } else {
                 is_simple = false;
-                substructure = combine_substructure(|c, s, sub| {
-                    cs_clone(c, s, sub, item.kind.ident().unwrap())
-                });
+                body = Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap()));
             }
         }
         ItemKind::Union(..) => {
             bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
-            substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
+            body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, true));
         }
         _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
@@ -94,7 +92,7 @@ pub(crate) fn expand_deriving_clone(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: substructure,
+            body,
         }],
         is_const,
         ..
@@ -103,7 +101,7 @@ pub(crate) fn expand_deriving_clone(
     trait_def.expand_ext(cx, item, push, is_simple)
 }
 
-fn cs_clone_simple(
+fn clone_simple_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: Substructure<'_>,
@@ -162,7 +160,7 @@ fn cs_clone_simple(
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(
+fn clone_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: Substructure<'_>,

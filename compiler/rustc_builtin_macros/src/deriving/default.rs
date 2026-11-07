@@ -10,7 +10,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::diagnostics;
 
-pub(crate) fn expand_deriving_default(
+pub(crate) fn expand_derive_default(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -35,18 +35,16 @@ pub(crate) fn expand_deriving_default(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(|cx, trait_span, substr| {
+            body: Box::new(|cx, trait_span, substr| {
                 match substr {
-                    StaticStruct(variant_data) => default_struct_substructure(
+                    StaticStruct(variant_data) => default_struct_body(
                         cx,
                         trait_span,
                         variant_data,
                         // We cannot use `Self` here, see https://github.com/rust-lang/rust/issues/163800
                         item.kind.ident().unwrap(),
                     ),
-                    StaticEnum(enum_def) => {
-                        default_enum_substructure(cx, trait_span, enum_def, item.span)
-                    }
+                    StaticEnum(enum_def) => default_enum_body(cx, trait_span, enum_def, item.span),
                     _ => cx
                         .dcx()
                         .span_bug(trait_span, "unexpected substructure in `derive(Default)`"),
@@ -65,7 +63,7 @@ fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     cx.expr_call_global(span, default_ident, ThinVec::new())
 }
 
-fn default_struct_substructure(
+fn default_struct_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     variant_data: &VariantData,
@@ -112,7 +110,7 @@ fn default_struct_substructure(
     BlockOrExpr::new_expr(expr)
 }
 
-fn default_enum_substructure(
+fn default_enum_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     enum_def: &EnumDef,

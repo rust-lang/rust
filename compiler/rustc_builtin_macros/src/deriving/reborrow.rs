@@ -10,7 +10,7 @@ use thin_vec::ThinVec;
 
 use crate::deriving::generic::*;
 
-pub(crate) fn expand_deriving_reborrow(
+pub(crate) fn expand_derive_reborrow(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -27,7 +27,7 @@ pub(crate) fn expand_deriving_reborrow(
     push_marker_impl(cx, span, ident, generics, sym::Reborrow, vec![], self_args, push);
 }
 
-pub(crate) fn expand_deriving_coerce_shared(
+pub(crate) fn expand_derive_coerce_shared(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
