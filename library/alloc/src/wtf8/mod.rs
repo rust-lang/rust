@@ -143,26 +143,13 @@ impl Wtf8Buf {
     /// will always return the original code units.
     pub fn from_wide(v: &[u16]) -> Wtf8Buf {
         let mut string = Wtf8Buf::with_capacity(v.len());
-        for item in char::decode_utf16(v.iter().cloned()) {
-            match item {
-                Ok(ch) => string.push_char(ch),
-                Err(surrogate) => {
-                    let surrogate = surrogate.unpaired_surrogate();
-                    // SAFETY: Surrogates are known to be in the code point range.
-                    let code_point = unsafe { CodePoint::from_u32_unchecked(surrogate as u32) };
-                    // The string will now contain an unpaired surrogate.
-                    string.is_known_utf8 = false;
-                    // SAFETY: `decode_utf16` reports only unpaired surrogates here,
-                    // so this code point cannot form a surrogate pair with the
-                    // preceding and succeeding contents. The existing buffer is
-                    // well-formed WTF-8, and appending this encoded surrogate
-                    // preserves that invariant.
-                    unsafe {
-                        string.push_code_point_unchecked(code_point);
-                    }
-                }
-            }
-        }
+        let mut is_known_utf8 = true;
+        let _ = crate::utf16_decode::decode_utf16_into(v, &mut string.bytes, |surrogate| {
+            // The string will now contain an unpaired surrogate.
+            is_known_utf8 = false;
+            Ok(surrogate)
+        });
+        string.is_known_utf8 = is_known_utf8;
         string
     }
 
