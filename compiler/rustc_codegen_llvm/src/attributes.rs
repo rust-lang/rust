@@ -478,6 +478,8 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     sess: &Session,
 ) -> SmallVec<[&'ll Attribute; 2]> {
     let mut attrs = SmallVec::new();
+    // Either attribute satisfies LLVM's combined size predicate, but the software pipeliner reads
+    // `optsize` alone, so a `z` build needs both.
     match sess.opts.optimize {
         OptLevel::Size => {
             attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));

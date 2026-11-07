@@ -6,9 +6,8 @@
 //
 //    let _ = infcx.take_opaque_types();
 //
-// @lcnr: Because of this I decided to not bother and cause this to fail instead.
-// In the future we can definitely modify the compiler to accept this
-// again.
+// NOTE(@lcnr): Because of this I decided to not bother and cause this to fail instead.
+// In the future we can definitely modify the compiler to accept this again.
 
 #![feature(type_alias_impl_trait)]
 

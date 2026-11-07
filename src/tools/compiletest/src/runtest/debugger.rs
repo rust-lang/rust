@@ -40,9 +40,8 @@ impl DebuggerCommands {
                 continue;
             }
 
-            let Some(directive) = line_directive(file, line_number, &line) else {
-                continue;
-            };
+            let Some(directive) = line_directive(file, line_number, &line) else { continue };
+            let Ok(directive) = directive.map_err(|e| e.raise_fatal());
 
             if !directive.applies_to_test_revision(test_revision) {
                 continue;
