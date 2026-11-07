@@ -7,6 +7,16 @@ Apple tvOS targets.
 - `aarch64-apple-tvos`: Apple tvOS on ARM64.
 - `aarch64-apple-tvos-sim`: Apple tvOS Simulator on ARM64.
 
+<!--
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+***WARNING***
+This target has already been migrated to the new target docs system: #120745
+When editing this file, make sure that you keep the equivalent docs in ../../target_infos in sync!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
 **Tier: 3**
 
 - `x86_64-apple-tvos`: Apple tvOS Simulator on x86_64.
