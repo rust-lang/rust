@@ -155,13 +155,15 @@ fn test_blocking_read() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let thread1 = thread::spawn(move || {
         // Let this thread block on read.
-        let buf = read_exact_array::<3>(fds[1]).unwrap();
+        let buf = read_to_end(fds[1]).unwrap();
         assert_eq!(&buf, b"abc");
     });
     let thread2 = thread::spawn(move || {
         yield_now(); // thread1 should go first
         // Unblock thread1 by doing writing something.
         write_all(fds[0], b"abc").unwrap();
+        // Signal EOF.
+        errno_check(unsafe { libc::close(fds[0]) });
     });
     thread1.join().unwrap();
     thread2.join().unwrap();

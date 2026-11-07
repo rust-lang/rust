@@ -91,6 +91,24 @@ pub fn read_partial(fd: libc::c_int, buf: &mut [u8]) -> io::Result<(&mut [u8], &
     Ok(buf.split_at_mut(res as usize))
 }
 
+/// Read `fd` until EOF, return the data.
+pub fn read_to_end(fd: libc::c_int) -> io::Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    loop {
+        // Make sure we have at least 32 bytes of spare capacity (`Vec` is smart about avoid too
+        // frequent reallocations).
+        buf.reserve(32);
+        // Read into spare capacity.
+        let spare = buf.spare_capacity_mut();
+        let res = errno_result(unsafe { libc::read(fd, spare.as_mut_ptr().cast(), spare.len()) })?;
+        if res == 0 {
+            // EOF has been reached.
+            return Ok(buf);
+        }
+        unsafe { buf.set_len(buf.len() + res as usize) };
+    }
+}
+
 /// Invoke the `write` function until `buf` is full. `retry` controls the behavior on EAGAIN.
 pub unsafe fn write_all_generic(
     buf: *const libc::c_void,

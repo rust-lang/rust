@@ -389,13 +389,14 @@ fn test_write_read() {
 
         // Write some bytes into the stream.
         libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+        // Make sure the other side sees an EOF.
+        errno_check(unsafe { libc::close(peerfd) });
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
-    let mut buffer = [0; TEST_BYTES.len()];
-    libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
-    assert_eq!(&buffer, TEST_BYTES);
+    let data = libc_utils::read_to_end(client_sockfd).unwrap();
+    assert_eq!(&data, TEST_BYTES);
 
     server_thread.join().unwrap();
 }
@@ -570,15 +571,18 @@ fn test_sendto() {
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
-    let mut n = 3;
-    if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
-        // All four sends in the server should succeed.
-        n += 1;
-    }
-    for _ in 0..n {
+    // We sent the test data at least 3 times.
+    for _ in 0..3 {
         let mut buffer = [0; TEST_BYTES.len()];
         libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
         assert_eq!(&buffer, TEST_BYTES);
+    }
+    let rest = libc_utils::read_to_end(client_sockfd).unwrap();
+    if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+        // it was sent a 4th time.
+        assert_eq!(*rest, *TEST_BYTES);
+    } else {
+        assert_eq!(*rest, []);
     }
 
     server_thread.join().unwrap();
