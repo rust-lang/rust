@@ -13,6 +13,7 @@ use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
+type nonnull = NonNull<u8>;
 
 extern "C" {
     fn extern_func();
@@ -29,8 +30,11 @@ pub unsafe fn sym_fn() {
 
 macro_rules! check_general_reg {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
+        check_general_reg!($func $ty:$ty $class $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
             y
@@ -62,10 +66,19 @@ check_general_reg!(reg_i32 i32 reg "mov");
 // CHECK: #NO_APP
 check_general_reg!(reg_ptr ptr reg "mov");
 
+// CHECK-LABEL: reg_nonnull:
+// CHECK: #APP
+// CHECK: or a{{[0-9]+}}, a{{[0-9]+}}, a{{[0-9]+}}
+// CHECK: #NO_APP
+check_general_reg!(reg_nonnull nonnull:ptr reg "mov");
+
 macro_rules! check_explicit_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        check_explicit_reg!($func $ty:$ty $reg $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y
@@ -102,6 +115,12 @@ check_explicit_reg!(a5_i32 i32 "a5" "mov");
 // CHECK: or a5, a5, a5
 // CHECK: #NO_APP
 check_explicit_reg!(a5_ptr ptr "a5" "mov");
+
+// CHECK-LABEL: a5_nonnull:
+// CHECK: #APP
+// CHECK: or a5, a5, a5
+// CHECK: #NO_APP
+check_explicit_reg!(a5_nonnull nonnull:ptr "a5" "mov");
 
 // CHECK-LABEL: a14_i32:
 // CHECK: #APP

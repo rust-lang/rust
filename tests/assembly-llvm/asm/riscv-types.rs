@@ -39,6 +39,7 @@ extern crate minicore;
 use minicore::*;
 
 type ptr = *mut u8;
+type nonnull = NonNull<u8>;
 
 extern "C" {
     fn extern_func();
@@ -66,8 +67,11 @@ pub unsafe fn sym_static() {
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
+        check!($func $ty:$ty $class $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
             y
@@ -77,8 +81,11 @@ macro_rules! check {
 
 macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        check_reg!($func $ty:$ty $reg $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y
@@ -135,6 +142,12 @@ check!(reg_f64 f64 reg "mv");
 // CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr ptr reg "mv");
+
+// CHECK-LABEL: reg_nonnull:
+// CHECK: #APP
+// CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_nonnull nonnull:ptr reg "mv");
 
 // CHECK-LABEL: freg_f16:
 // zfhmin-NOT: or
@@ -205,6 +218,12 @@ check_reg!(a0_f64 f64 "a0" "mv");
 // CHECK: mv a0, a0
 // CHECK: #NO_APP
 check_reg!(a0_ptr ptr "a0" "mv");
+
+// CHECK-LABEL: a0_nonnull:
+// CHECK: #APP
+// CHECK: mv a0, a0
+// CHECK: #NO_APP
+check_reg!(a0_nonnull nonnull:ptr "a0" "mv");
 
 // CHECK-LABEL: fa0_f16:
 // zfhmin-NOT: or

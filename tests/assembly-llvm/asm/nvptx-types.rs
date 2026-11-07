@@ -11,6 +11,7 @@ extern crate minicore;
 use minicore::*;
 
 type ptr = *mut u8;
+type nonnull = NonNull<u8>;
 
 // NVPTX does not support static variables
 #[no_mangle]
@@ -27,8 +28,11 @@ pub unsafe fn sym_fn() {
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
+        check!($func $ty:$ty $class $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " {}, {};"), out($class) y, in($class) x);
             y
@@ -131,3 +135,9 @@ check!(reg64_f64 f64 reg64 "mov.b64");
 // CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
 // CHECK: // end inline asm
 check!(reg64_ptr ptr reg64 "mov.b64");
+
+// CHECK-LABEL: .visible .func (.param .b64 func_retval0) reg64_nonnull
+// CHECK: // begin inline asm
+// CHECK: mov.b64 %{{[a-z0-9]+}}, %{{[a-z0-9]+}};
+// CHECK: // end inline asm
+check!(reg64_nonnull nonnull:ptr reg64 "mov.b64");

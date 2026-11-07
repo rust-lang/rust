@@ -31,8 +31,8 @@ fn main() {
 
         // Register operands must be Copy
 
-        // Register operands must be integers, floats, SIMD vectors, pointers or
-        // function pointers.
+        // Register operands must be integers, floats, SIMD vectors, pointers,
+        // function pointers, or `NonNull` pointers.
 
         asm!("{}", in(reg) 0i64);
         asm!("{}", in(reg) 0f64);
@@ -40,14 +40,18 @@ fn main() {
         asm!("{}", in(reg) 0 as *const u8);
         asm!("{}", in(reg) 0 as *mut u8);
         asm!("{}", in(reg) main as fn());
+        asm!("{}", in(reg) std::ptr::NonNull::<u8>::dangling());
 
-        // Register inputs (but not outputs) allow references and function types
+        // Register inputs (but not outputs) allow references, function types,
+        // and `NonNull` pointers.
 
         let mut f = main;
         let mut r = &mut 0;
+        let mut p = std::ptr::NonNull::<u8>::dangling();
         asm!("{}", in(reg) f);
         asm!("{}", in(reg) r);
-        let _ = (f, r);
+        asm!("{}", in(reg) p);
+        let _ = (f, r, p);
 
         // Type checks ignore never type
 
