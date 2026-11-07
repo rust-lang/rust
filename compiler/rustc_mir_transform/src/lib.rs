@@ -168,6 +168,7 @@ declare_passes! {
     mod move_elimination : MoveElimination;
     mod multiple_return_terminators : MultipleReturnTerminators;
     mod post_drop_elaboration : CheckLiveDrops;
+    mod prepare_cold_blocks : PrepareColdBlocks;
     mod prettify : ReorderBasicBlocks, ReorderLocals;
     mod promote_consts : PromoteTemps;
     mod ref_prop : ReferencePropagation;
@@ -774,6 +775,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dest_prop::DestinationPropagation,
             &tail_copy_to_move::TailCopyToMove,
             &move_elimination::MoveElimination,
+            &prepare_cold_blocks::PrepareColdBlocks,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
