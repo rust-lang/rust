@@ -728,6 +728,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let option_len: u64 =
             this.read_scalar(option_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
 
+        // Check that the buffer has (at least) the given size.
+        this.check_ptr_access(
+            option_value_ptr,
+            Size::from_bytes(option_len),
+            CheckInAllocMsg::MemoryAccess,
+        )?;
+
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
@@ -787,6 +794,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .to_int(socklen_layout.size)?
             .try_into()
             .unwrap();
+
+        // Check that the buffer has (at least) the given size.
+        this.check_ptr_access(
+            option_value_ptr,
+            Size::from_bytes(option_len),
+            CheckInAllocMsg::MemoryAccess,
+        )?;
 
         // `socket.getsockopt` returns a temporary buffer as `option_value_ptr` might not point
         // to a large enough buffer, in which case we have to truncate.
