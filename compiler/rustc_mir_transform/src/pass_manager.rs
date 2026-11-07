@@ -143,9 +143,13 @@ impl<'sess> PassCtx<'sess> {
         } else {
             match tcx.codegen_fn_attrs(def_id).optimize {
                 OptimizeAttr::Default => tcx.sess.mir_opt_level(),
-                OptimizeAttr::DoNotOptimize => OptLevel::No.mir_opt_level(),
                 OptimizeAttr::Speed => OptLevel::Aggressive.mir_opt_level(),
-                OptimizeAttr::Size => OptLevel::Size.mir_opt_level(),
+                // `optimize(none)`/`optimize(size)` should not increase the MIR opt level.
+                // (This can be relevant when `-Zmir-opt-level=0` was manually set.)
+                OptimizeAttr::DoNotOptimize => {
+                    OptLevel::No.mir_opt_level().min(tcx.sess.mir_opt_level())
+                }
+                OptimizeAttr::Size => OptLevel::Size.mir_opt_level().min(tcx.sess.mir_opt_level()),
             }
         };
         Self { session: tcx.sess, body_mir_opt_level }

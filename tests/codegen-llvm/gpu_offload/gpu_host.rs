@@ -38,7 +38,6 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 
 // CHECK: %struct.ident_t = type { i32, i32, i32, i32, ptr }
 // CHECK: %struct.__tgt_offload_entry = type { i64, i16, i16, i32, ptr, ptr, i64, i64, ptr }
-// CHECK: %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
 
 // CHECK: @anon.[[ID:.*]].0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 // CHECK: @anon.{{.*}}.1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @anon.[[ID]].0 }, align 8
@@ -61,9 +60,9 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK-NEXT:   {{%[^ ]+}} = alloca [8 x i8], align 8
 // CHECK-NEXT:   %y = alloca [1024 x i8], align 16
 // CHECK-NEXT:   %x = alloca [1024 x i8], align 16
-// CHECK-NEXT:   %.offload_baseptrs = alloca [2 x ptr], align 8
-// CHECK-NEXT:   %.offload_ptrs = alloca [2 x ptr], align 8
-// CHECK-NEXT:   %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
+// CHECK-NEXT:   %.offload_baseptrs = alloca [16 x i8], align 8
+// CHECK-NEXT:   %.offload_ptrs = alloca [16 x i8], align 8
+// CHECK-NEXT:   %kernel_args = alloca [104 x i8], align 8
 // CHECK:   store ptr %x, ptr %.offload_baseptrs, align 8
 // CHECK-NEXT:   store ptr %x, ptr %.offload_ptrs, align 8
 // CHECK-NEXT:   [[BPTRS_1:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %.offload_baseptrs, i64 8
