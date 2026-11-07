@@ -1,6 +1,6 @@
 use rustc_abi::Align;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use tracing::debug;
 
 /// If the place may be less aligned than its type requires
@@ -15,13 +15,25 @@ pub fn place_unalignment<'tcx, L>(
 where
     L: HasLocalDecls<'tcx>,
 {
+    let decls = local_decls.local_decls();
+    place_unalignment_2(tcx, typing_env, place, |place| place.ty(decls, tcx).ty)
+}
+
+/// Like `place_unalignment`, but if you can't supply a `local_decls`.
+/// Instead, use `place_ty_fn` to specify a custom method to get the type of a place.
+pub fn place_unalignment_2<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    place: Place<'tcx>,
+    place_ty_fn: impl Fn(PlaceRef<'tcx>) -> Ty<'tcx>,
+) -> Option<(AdtDef<'tcx>, Align)> {
     debug!("unalignment({:?})", place);
-    let Some((descr, pack)) = most_packed_projection(tcx, local_decls, place) else {
+    let Some((descr, pack)) = most_packed_projection_2(place, &place_ty_fn) else {
         debug!("unalignment({:?}) - not within packed", place);
         return None;
     };
 
-    let ty = place.ty(local_decls, tcx).ty;
+    let ty = place_ty_fn(place.as_ref());
     let unsized_tail = || tcx.struct_tail_for_codegen(ty, typing_env);
     match tcx.layout_of(typing_env.as_query_input(ty)) {
         Ok(layout)
@@ -61,6 +73,16 @@ pub fn most_packed_projection<'tcx, L>(
 where
     L: HasLocalDecls<'tcx>,
 {
+    let decls = local_decls.local_decls();
+    most_packed_projection_2(place, |place| place.ty(decls, tcx).ty)
+}
+
+/// Like `most_packed_projection`, but if you can't supply a `local_decls`.
+/// Instead, use `place_ty_fn` to specify a custom method to get the type of a place.
+pub fn most_packed_projection_2<'tcx>(
+    place: Place<'tcx>,
+    place_ty_fn: impl Fn(PlaceRef<'tcx>) -> Ty<'tcx>,
+) -> Option<(AdtDef<'tcx>, Align)> {
     place
         .iter_projections()
         .rev()
@@ -68,7 +90,7 @@ where
         .take_while(|(_base, elem)| !matches!(elem, ProjectionElem::Deref))
         // Consider the packed alignments at play here...
         .filter_map(|(base, _elem)| {
-            let adt = base.ty(local_decls, tcx).ty.ty_adt_def()?;
+            let adt = place_ty_fn(base).ty_adt_def()?;
             let pack = adt.repr().pack?;
             Some((adt, pack))
         })

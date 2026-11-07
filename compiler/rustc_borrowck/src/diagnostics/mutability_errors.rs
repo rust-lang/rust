@@ -200,7 +200,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         | ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::Downcast(..)
-                        | ProjectionElem::UnwrapUnsafeBinder(_),
+                        | ProjectionElem::Transmute(_),
                     ],
             } => bug!("Unexpected immutable place."),
         }
