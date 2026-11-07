@@ -1,5 +1,6 @@
 //@ignore-target: windows # No libc
 //@compile-flags: -Zmiri-disable-isolation
+//@run-native
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -106,6 +107,11 @@ fn test_getcwd() {
     let result = unsafe { libc::getcwd(buf.as_mut_ptr().cast(), len) };
     assert!(result.is_null());
     assert_eq!(errno(), libc::ERANGE);
+
+    // EINVAL: The `size` is zero and `buf` is not NULL
+    let result = unsafe { libc::getcwd(buf.as_mut_ptr().cast(), 0) };
+    assert!(result.is_null());
+    assert_eq!(errno(), libc::EINVAL);
 }
 
 fn test_chdir() {
