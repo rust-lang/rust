@@ -648,6 +648,7 @@ symbols! {
         clone_closures,
         clone_fn,
         clone_from,
+        clone_from_fn,
         close_fn,
         closure,
         closure_lifetime_binder,
