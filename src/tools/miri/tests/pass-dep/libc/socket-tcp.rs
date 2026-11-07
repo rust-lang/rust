@@ -476,33 +476,6 @@ fn test_sendto() {
 
         // Write some bytes into the stream using `sendto`.
 
-        if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
-            // Native FreeBSD and macOS return EINVAL when the address pointer is invalid even when
-            // the address length is zero. However, POSIX says the address pointer should be entirely
-            // ignored for streaming sockets. We thus skip those native tests.
-
-            // When the length is zero, the invalid address pointer is ignored. We thus provide
-            // a garbage pointer to ensure this behavior.
-            unsafe {
-                libc_utils::write_all_generic(
-                    TEST_BYTES.as_ptr().cast(),
-                    TEST_BYTES.len(),
-                    libc_utils::NoRetry,
-                    |buf, count| {
-                        libc::sendto(
-                            peerfd,
-                            buf,
-                            count,
-                            /* flags */ 0,
-                            ptr::without_provenance_mut::<libc::sockaddr>(16),
-                            /* address_len */ 0,
-                        )
-                    },
-                )
-                .unwrap();
-            }
-        }
-
         // When the address pointer and the length are valid, the destination
         // address should be ignored since we're using TCP.
         let valid_addr = net::sock_addr_ipv4([127, 0, 0, 1], 5555);
@@ -525,40 +498,91 @@ fn test_sendto() {
             .unwrap();
         }
 
-        if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
-            // On macOS and FreeBSD hosts we get EINVAL when the address pointer is a nullptr.
-            // This is not specified in their man pages and differs from the behavior of most
-            // other Unixes. We thus skip this `sendto` on those hosts.
-
-            // When the address pointer is a nullptr it should be ignored.
-            unsafe {
-                libc_utils::write_all_generic(
-                    TEST_BYTES.as_ptr().cast(),
-                    TEST_BYTES.len(),
-                    libc_utils::NoRetry,
-                    |buf, count| {
-                        libc::sendto(
-                            peerfd,
-                            buf,
-                            count,
-                            /* flags */ 0,
-                            ptr::null_mut::<libc::sockaddr>(),
-                            /* address_len */ 16,
-                        )
-                    },
-                )
-                .unwrap();
-            }
+        // Setting both to null/zero should also work.
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        ptr::null_mut::<libc::sockaddr>(),
+                        /* address_len */ 0,
+                    )
+                },
+            )
+            .unwrap();
         }
+
+        // In fact when the address is null, the length is entirely ignored.
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        ptr::null_mut::<libc::sockaddr>(),
+                        /* address_len */ 16,
+                    )
+                },
+            )
+            .unwrap();
+        };
+
+        // But when the pointer is non-null and the length null, behavior differs between OSes.
+        let res = unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        ptr::without_provenance_mut::<libc::sockaddr>(16),
+                        /* address_len */ 0,
+                    )
+                },
+            )
+        };
+
+        if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+            res.unwrap();
+        } else {
+            // Native FreeBSD and macOS return EINVAL when the address pointer is invalid even when
+            // the address length is zero.
+            assert_eq!(res.unwrap_err().raw_os_error().unwrap(), libc::EINVAL);
+        }
+
+        errno_check(unsafe { libc::close(peerfd) });
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
-    let mut buffer = [0; TEST_BYTES.len()];
-    libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
-    assert_eq!(&buffer, TEST_BYTES);
+    let mut n = 3;
+    if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+        // All four sends in the server should succeed.
+        n += 1;
+    }
+    for _ in 0..n {
+        let mut buffer = [0; TEST_BYTES.len()];
+        libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
+        assert_eq!(&buffer, TEST_BYTES);
+    }
 
     server_thread.join().unwrap();
+    errno_check(unsafe { libc::close(client_sockfd) });
 }
 
 /// Test vectored reads with multiple buffers on a connected socket.
