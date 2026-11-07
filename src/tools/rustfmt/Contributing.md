@@ -14,6 +14,7 @@ Conduct](CODE_OF_CONDUCT.md).
 * [LLM policy](#llm-policy)
   * [Experimental rules](#experimental-rules)
 * [Test and file issues](#test-and-file-issues)
+* [Pull Request lifecycle](#pull-request-lifecycle)
 * [Fuzzing guidelines](#fuzzing-guidelines)
 * [Create test cases](#create-test-cases)
   * [Updating snapshots](#updating-snapshots)
@@ -86,6 +87,106 @@ Please consult the full [LLM usage policy] for nuances.
 
 It would be really useful to have people use rustfmt on their projects and file
 issues where it does something you don't expect.
+
+## Pull Request lifecycle
+
+### Before review
+
+#### Opening a PR
+
+All Pull Requests (PRs) should be filed against the `main` branch.
+
+You should build and run tests locally before submitting the PR.
+
+```console
+cargo test
+```
+
+#### PR description
+
+Write a PR description that makes it easy for the reviewer to understand what is
+being changed and why. Tips:
+
+* Strive to be concise.
+  * For trivial bugs, just a simple "Fixes #123456" is often sufficient.
+  * Don't repeat what's obvious from the diff itself or already checked by CI,
+    such as which files changed or that `cargo test` passes.
+* Link to relevant issues and discussions.
+  * You can use GitHub's feature of [closing issues using
+    keywords](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue)
+    in the PR description.
+* Describe what behavior is being changed or fixed.
+* (If applicable) describe the impact on formatting. Does your change affect:
+  * Only unstable options? If so, which ones?
+  * Stable options? If so, which ones? For which values of the stable options?
+  * Stable default formatting? If so, which style edition(s)?
+* (If applicable) for non-trivial fixes, discuss your solution.
+  * How does your solution address the problem?
+  * What are the tradeoffs and shortcomings of your approach?
+* (If applicable) note unresolved questions.
+
+#### CI
+
+* PRs automatically receive CI testing:
+  * The main test suites.
+  * A subset of clippy lints enabled for the rustfmt repository.
+* Reviewers may additionally run Diff Check on your PR against a selection of
+  ecosystem repositories.
+
+### PR review
+
+#### Explicitly assigning a reviewer
+
+You don't need to explicitly request a reviewer.
+
+If a reviewer signalled that they want to specifically be assigned to a PR, you
+can assign them via `r? @<username>`.
+
+#### Waiting for reviews
+
+Reviewers are often working at capacity, and many of them are contributing on a
+volunteer basis. There is limited review bandwidth, so please bear with us and
+be patient.
+
+> [!NOTE]
+>
+> In order to minimize review delays, pull request authors and assigned
+> reviewers should ensure that the PR status label stays updated, invoking these
+> commands when appropriate:
+>
+> * `@rustbot author`: the review is finished, and the PR author should check
+>   the comments and take action accordingly.
+> * `@rustbot ready`: the author is ready for a review, and this PR will be
+>   queued again in the reviewer’s queue.
+
+### After merge
+
+#### Reverting a PR
+
+If a PR is found to have caused a meaningful unanticipated regression, the best
+policy is to revert it quickly and re-land it later once a fix and regression
+test are added.
+
+A "meaningful regression" in this case is up to the judgment of the person
+approving the revert.
+
+We prefer a reliability posture and revert in case of uncertainty. This has
+three main benefits:
+
+* It allows bleeding-edge users (especially nightly or beta) to continue to use
+  and report bugs on HEAD with a higher degree of certainty about where new bugs
+  are introduced.
+* It takes pressure off the original PR author and the team, so that no one
+  feels they must fix it *immediately*.
+* It might prevent the significant bug or regression from reaching another
+  nightly/beta/stable build.
+
+> [!NOTE]
+>
+> Fear not! Regressions *will* happen. Please rest assured that this does not
+> represent a negative judgment of your contribution or ability to contribute
+> positively to rustfmt in the future. We simply want to prioritize keeping
+> existing use cases working and keeping rustfmt stable for everyone.
 
 ## Fuzzing guidelines
 
