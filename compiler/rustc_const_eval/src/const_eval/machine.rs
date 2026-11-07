@@ -10,6 +10,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
+use rustc_middle::comptime::ReadFileError;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
@@ -611,8 +612,42 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     .def_id()
                     .krate;
 
-                let content = ecx.tcx.experimental_comptime_fetch_file((krate, path_sym));
-                let variant_index = if let Some(value) = content {
+                let content_maybe = match ecx
+                    .tcx
+                    .experimental_comptime_fetch_file((krate, path_sym))
+                {
+                    Ok(content) => content,
+                    Err(ReadFileError::IO(err)) => {
+                        let guard = ecx
+                            .tcx
+                            .dcx()
+                            .struct_err("error while reading file in constant evaluation")
+                            .with_span(ecx.cur_span())
+                            .with_span_help(ecx.tcx.span, "while evaluating this constant")
+                            .with_note(format!("filename: {path_sym}"))
+                            .with_note(format!("error: {err}"))
+                            .emit_err();
+                        throw_inval!(AlreadyReported(ReportedErrorInfo::allowed_in_infallible(
+                            guard
+                        )));
+                    }
+                    Err(ReadFileError::NotWhitelisted) => {
+                        let guard = ecx
+                            .tcx
+                            .dcx()
+                            .struct_err("this file cannot be accessed during const-evaluation")
+                            .with_span(ecx.cur_span())
+                            .with_span_help(ecx.tcx.span, "while evaluating this constant")
+                            .with_note(format!("filename: {path_sym}"))
+                            .with_help("pass -Zexperimental-comptime-files=<path> to the compiler to allow reading this file")
+                            .emit_err();
+                        throw_inval!(AlreadyReported(ReportedErrorInfo::allowed_in_infallible(
+                            guard
+                        )));
+                    }
+                };
+
+                let variant_index = if let Some(value) = content_maybe {
                     let ptr = ecx.allocate_bytes_dedup(value)?;
 
                     let (variant_idx, variant_place) =
@@ -643,8 +678,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     .def_id()
                     .krate;
 
-                let filelist =
-                    ecx.tcx().experimental_comptime_list_files(krate).unwrap_or_default();
+                let filelist = ecx.tcx().experimental_comptime_list_files(krate);
 
                 let element_type =
                     dest.layout().ty.builtin_deref(false).unwrap().sequence_element_type(ecx.tcx());

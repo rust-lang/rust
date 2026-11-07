@@ -633,18 +633,19 @@ fn provide_extern_comptime(extern_queries: &mut ExternProviders) {
         let cstore = CStore::from_tcx(tcx);
         let crate_data = cstore.get_crate_data(cnum);
         let filelist = crate_data.root.comptime_files.keys().copied().collect::<Vec<_>>();
-        Some(tcx.arena.alloc_slice(&filelist))
+        tcx.arena.alloc_slice(&filelist)
     };
 
     extern_queries.experimental_comptime_fetch_file = |tcx, (cnum, path)| {
         let cstore = CStore::from_tcx(tcx);
         let crate_data = cstore.get_crate_data(cnum);
-        crate_data
+        let data = crate_data
             .root
             .comptime_files
             .get(&path)
             .map(|lv| lv.decode(crate_data.blob()))
-            .map(|v| &*tcx.arena.alloc_slice(&v))
+            .and_then(|v| v.map(|d| &*tcx.arena.alloc_slice(&d)));
+        Ok(data)
     };
 }
 

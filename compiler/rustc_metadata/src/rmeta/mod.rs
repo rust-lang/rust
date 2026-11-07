@@ -333,7 +333,7 @@ pub(crate) struct CrateRoot {
 
     specialization_enabled_in: bool,
 
-    comptime_files: IndexMap<Symbol, LazyValue<Vec<u8>>>,
+    comptime_files: IndexMap<Symbol, LazyValue<Option<Vec<u8>>>>,
 }
 
 /// A separate struct for extra metadata that must be encoded *after*

@@ -69,6 +69,7 @@ mod macros;
 #[macro_use]
 pub mod arena;
 
+pub mod comptime;
 pub mod dep_graph;
 pub mod diagnostics;
 pub mod hir;

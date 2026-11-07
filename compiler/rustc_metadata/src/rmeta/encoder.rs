@@ -2469,12 +2469,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         LazyArray::default()
     }
 
-    fn encode_comptime_files(&mut self, tcx: TyCtxt<'_>) -> IndexMap<Symbol, LazyValue<Vec<u8>>> {
+    fn encode_comptime_files(
+        &mut self,
+        tcx: TyCtxt<'_>,
+    ) -> IndexMap<Symbol, LazyValue<Option<Vec<u8>>>> {
         let mut comptime_files = IndexMap::default();
         for raw_path in &tcx.sess.opts.unstable_opts.experimental_comptime_files {
             let path = Symbol::intern(raw_path);
-            if let Some(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, path)) {
-                comptime_files.insert_full(path, self.lazy(file_data.to_vec()));
+            /// Must encode None too, as we depend on the keys of the IndexMap to store the list
+            /// of files that we export from this crate.
+            if let Ok(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, path)) {
+                comptime_files.insert_full(path, self.lazy(file_data.map(|d| d.to_vec())));
+            } else {
+                bug!("a comptile time file read error should fail crate compilation")
             }
         }
 

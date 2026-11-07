@@ -15,8 +15,9 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_index::{Idx, IndexSlice};
 use rustc_span::def_id::ModId;
-use rustc_span::{ErrorGuaranteed, Spanned, Symbol};
+use rustc_span::{ErrorGuaranteed, Spanned};
 
+use crate::comptime::ReadFileError;
 use crate::mono::{MonoItem, NormalizationErrorInMono};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, thir, traits};
@@ -180,9 +181,7 @@ impl_erasable_for_types_with_no_type_params! {
     (),
     (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>, ty::RequiredDepth),
     Option<&'_ OsStr>,
-    Option<&'_ [Symbol]>,
     Option<&'_ [rustc_hir::PreciseCapturingArgKind<rustc_span::Symbol, rustc_span::Symbol>]>,
-    Option<&'_ [u8]>,
     Option<(mir::ConstValue, Ty<'_>)>,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_abi::Align>,
@@ -213,6 +212,7 @@ impl_erasable_for_types_with_no_type_params! {
     Result<(&'_ Steal<thir::Thir<'_>>, thir::ExprId), ErrorGuaranteed>,
     Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>,
     Result<(), ErrorGuaranteed>,
+    Result<Option<&'_ [u8]>, ReadFileError<'_>>,
     Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed>,
     Result<Option<ty::Instance<'_>>, ErrorGuaranteed>,
     Result<bool, &ty::layout::LayoutError<'_>>,
