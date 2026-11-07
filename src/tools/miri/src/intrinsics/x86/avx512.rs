@@ -1,8 +1,8 @@
 use rustc_span::Symbol;
 
 use super::{
-    packssdw, packsswb, packusdw, packuswb, pavg, permute, permute2, pmaddbw, pmaddwd, psadbw,
-    pshufb,
+    ShiftOp, packssdw, packsswb, packusdw, packuswb, pavg, permute, permute2, pmaddbw, pmaddwd,
+    psadbw, pshufb, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -19,6 +19,17 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx512.").unwrap();
 
         match unprefixed_name {
+            // Used by _mm512_{sllv,srlv}_epi64.
+            "psllv.q.512" | "psrlv.q.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let which = match unprefixed_name {
+                    "psllv.q.512" => ShiftOp::Left,
+                    "psrlv.q.512" => ShiftOp::RightLogic,
+                    _ => unreachable!(),
+                };
+                shift_simd_by_simd(this, left, right, which, dest)?;
+            }
             // Used by the ternarylogic functions.
             "pternlog.d.128" | "pternlog.d.256" | "pternlog.d.512" | "pternlog.q.128"
             | "pternlog.q.256" | "pternlog.q.512" => {
@@ -122,15 +133,19 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 permute(this, left, right, dest)?;
             }
-            // Used to implement the _mm512_permutex2var_epi64 intrinsic.
-            "vpermi2var.q.512" => {
+            // Used to implement the _mm512_permutex2var_epi{32,64} intrinsics.
+            "vpermi2var.d.512" | "vpermi2var.q.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
                 let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 permute2(this, left, indices, right, dest)?;
             }
-            // Used to implement the _mm512_permutex2var_epi8 intrinsic.
-            "vpermi2var.qi.512" => {
+            // Used to implement the _mm{256,512}_permutex2var_epi8 intrinsics.
+            "vpermi2var.qi.256" | "vpermi2var.qi.512" => {
                 this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+                if unprefixed_name.ends_with(".256") {
+                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                }
 
                 let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 

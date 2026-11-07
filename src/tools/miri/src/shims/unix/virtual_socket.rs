@@ -5,6 +5,7 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io::{self, ErrorKind, Read};
+use std::net::SocketAddr;
 use std::rc::Rc;
 
 use rustc_target::spec::Os;
@@ -273,6 +274,9 @@ impl UnixSocketFileDescription for VirtualSocket {
         ptr: Pointer,
         len: usize,
         is_non_block: bool,
+        // For stream-based sockets `send` and `sendto` are equivalent and
+        // we can thus ignore the destination address.
+        _dest_addr: Option<SocketAddr>,
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
@@ -287,12 +291,20 @@ impl UnixSocketFileDescription for VirtualSocket {
         is_peek: bool,
         is_non_block: bool,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         if is_peek {
             throw_unsup_format!("socketpair: virtual sockets don't support peeking")
         }
 
+        let finish = callback!(
+            @capture<'tcx> {
+                finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
+            } |this, result: Result<usize, IoError>| {
+                // The source address of the data isn't available for stream-based sockets.
+                finish.call(this, result.map(|bytes| (bytes, None)))
+            }
+        );
         ecx.virtual_socket_read(self, ptr, len, is_non_block, finish)
     }
 }
@@ -352,9 +364,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             is_non_block: bool,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                         }
-                        |this, unblock: UnblockKind| {
+                        |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            this.virtual_socket_write(socket, ptr, len, is_non_block, finish)
+                            ecx.virtual_socket_write(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );
@@ -443,9 +455,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             is_non_block: bool,
                             finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                         }
-                        |this, unblock: UnblockKind| {
+                        |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            this.virtual_socket_read(socket, ptr, len, is_non_block, finish)
+                            ecx.virtual_socket_read(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );

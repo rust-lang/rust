@@ -251,9 +251,9 @@ fn eventfd_write<'tcx>(
                         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                         eventfd: FileDescriptionRef<EventFd>,
                     }
-                    |this, unblock: UnblockKind| {
+                    |ecx, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
-                        eventfd_write(buf_place, eventfd, this, finish)
+                        eventfd_write(buf_place, eventfd, ecx, finish)
                     }
                 ),
             );
@@ -290,9 +290,9 @@ fn eventfd_read<'tcx>(
                     finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                     eventfd: FileDescriptionRef<EventFd>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    eventfd_read(buf_place, eventfd, this, finish)
+                    eventfd_read(buf_place, eventfd, ecx, finish)
                 }
             ),
         );
