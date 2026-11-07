@@ -1,6 +1,5 @@
 use crate::fmt;
 use crate::hash::Hash;
-use crate::marker::Destruct;
 /// An unbounded range (`..`).
 ///
 /// `RangeFull` is primarily used as a [slicing index], its shorthand is `..`.
@@ -987,76 +986,6 @@ pub const trait IntoBounds<T>: [const] RangeBounds<T> {
     /// assert_eq!((..=7).into_bounds(), (Unbounded, Included(7)));
     /// ```
     fn into_bounds(self) -> (Bound<T>, Bound<T>);
-
-    /// Compute the intersection of  `self` and `other`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(range_into_bounds)]
-    /// use std::ops::Bound::*;
-    /// use std::ops::IntoBounds;
-    ///
-    /// assert_eq!((3..).intersect(..5), (Included(3), Excluded(5)));
-    /// assert_eq!((-12..387).intersect(0..256), (Included(0), Excluded(256)));
-    /// assert_eq!((1..5).intersect(..), (Included(1), Excluded(5)));
-    /// assert_eq!((1..=9).intersect(0..10), (Included(1), Included(9)));
-    /// assert_eq!((7..=13).intersect(8..13), (Included(8), Excluded(13)));
-    /// ```
-    ///
-    /// Combine with `is_empty` to determine if two ranges overlap.
-    ///
-    /// ```
-    /// #![feature(range_into_bounds)]
-    /// #![feature(range_bounds_is_empty)]
-    /// use std::ops::{RangeBounds, IntoBounds};
-    ///
-    /// assert!(!(3..).intersect(..5).is_empty());
-    /// assert!(!(-12..387).intersect(0..256).is_empty());
-    /// assert!((1..5).intersect(6..).is_empty());
-    /// ```
-    fn intersect<R>(self, other: R) -> (Bound<T>, Bound<T>)
-    where
-        Self: Sized,
-        T: [const] Ord + [const] Destruct,
-        R: Sized + [const] IntoBounds<T>,
-    {
-        let (self_start, self_end) = IntoBounds::into_bounds(self);
-        let (other_start, other_end) = IntoBounds::into_bounds(other);
-
-        let start = match (self_start, other_start) {
-            (Included(a), Included(b)) => Included(Ord::max(a, b)),
-            (Excluded(a), Excluded(b)) => Excluded(Ord::max(a, b)),
-            (Unbounded, Unbounded) => Unbounded,
-
-            (x, Unbounded) | (Unbounded, x) => x,
-
-            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
-                if i > e {
-                    Included(i)
-                } else {
-                    Excluded(e)
-                }
-            }
-        };
-        let end = match (self_end, other_end) {
-            (Included(a), Included(b)) => Included(Ord::min(a, b)),
-            (Excluded(a), Excluded(b)) => Excluded(Ord::min(a, b)),
-            (Unbounded, Unbounded) => Unbounded,
-
-            (x, Unbounded) | (Unbounded, x) => x,
-
-            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
-                if i < e {
-                    Included(i)
-                } else {
-                    Excluded(e)
-                }
-            }
-        };
-
-        (start, end)
-    }
 }
 
 use self::Bound::{Excluded, Included, Unbounded};

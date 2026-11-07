@@ -318,3 +318,86 @@ fn test_fmt() {
     assert_eq!(format!("{:?}", ..=1), "..=1");
     assert_eq!(format!("{:?}", ..), "..");
 }
+
+#[test]
+fn test_range_intersect() {
+    use core::ops::Bound::{Excluded, Included, Unbounded};
+    use core::ops::IntoBounds;
+    use core::range::{
+        Range as NewRange, RangeFrom as NewRangeFrom, RangeInclusive as NewRangeInclusive,
+        RangeIntersect, RangeToInclusive as NewRangeToInclusive,
+    };
+
+    assert_eq!(NewRange::from(-12..387).intersect(NewRange::from(0..256)), NewRange::from(0..256));
+    assert_eq!(NewRange::from(1..5).intersect(NewRangeFrom::from(3..)), NewRange::from(3..5));
+    assert_eq!(NewRange::from(1..5).intersect(..3), NewRange::from(1..3));
+    assert_eq!(NewRange::from(1..5).intersect(..), NewRange::from(1..5));
+
+    assert_eq!(NewRangeFrom::from(3..).intersect(NewRange::from(1..5)), NewRange::from(3..5));
+    assert_eq!(NewRangeFrom::from(3..).intersect(NewRangeFrom::from(5..)), NewRangeFrom::from(5..));
+    assert_eq!(NewRangeFrom::from(3..).intersect(..5), NewRange::from(3..5));
+    assert_eq!(NewRangeFrom::from(3..).intersect(..), NewRangeFrom::from(3..));
+    assert_eq!(
+        NewRangeFrom::from(3..).intersect(NewRangeInclusive::from(1..=5)),
+        NewRangeInclusive::from(3..=5),
+    );
+    assert_eq!(
+        NewRangeFrom::from(3..).intersect(NewRangeToInclusive::from(..=5)),
+        NewRangeInclusive::from(3..=5),
+    );
+
+    assert_eq!((..5).intersect(NewRange::from(1..8)), NewRange::from(1..5));
+    assert_eq!((..5).intersect(NewRangeFrom::from(3..)), NewRange::from(3..5));
+    assert_eq!((..5).intersect(..3), ..3);
+    assert_eq!((..5).intersect(..), ..5);
+
+    assert_eq!((..).intersect(NewRange::from(1..5)), NewRange::from(1..5));
+    assert_eq!((..).intersect(NewRangeFrom::from(3..)), NewRangeFrom::from(3..));
+    assert_eq!((..).intersect(..5), ..5);
+    assert_eq!((..).intersect(..), ..);
+    assert_eq!((..).intersect(NewRangeInclusive::from(1..=5)), NewRangeInclusive::from(1..=5));
+    assert_eq!((..).intersect(NewRangeToInclusive::from(..=5)), NewRangeToInclusive::from(..=5));
+
+    assert_eq!(
+        NewRangeInclusive::from(1..=9).intersect(NewRangeFrom::from(3..)),
+        NewRangeInclusive::from(3..=9),
+    );
+    assert_eq!(NewRangeInclusive::from(1..=9).intersect(..), NewRangeInclusive::from(1..=9));
+    assert_eq!(
+        NewRangeInclusive::from(1..=9).intersect(NewRangeInclusive::from(3..=5)),
+        NewRangeInclusive::from(3..=5),
+    );
+    assert_eq!(
+        NewRangeInclusive::from(1..=9).intersect(NewRangeToInclusive::from(..=5)),
+        NewRangeInclusive::from(1..=5),
+    );
+
+    assert_eq!(
+        NewRangeToInclusive::from(..=9).intersect(NewRangeFrom::from(3..)),
+        NewRangeInclusive::from(3..=9),
+    );
+    assert_eq!(NewRangeToInclusive::from(..=9).intersect(..), NewRangeToInclusive::from(..=9));
+    assert_eq!(
+        NewRangeToInclusive::from(..=9).intersect(NewRangeInclusive::from(3..=12)),
+        NewRangeInclusive::from(3..=9),
+    );
+    assert_eq!(
+        NewRangeToInclusive::from(..=9).intersect(NewRangeToInclusive::from(..=5)),
+        NewRangeToInclusive::from(..=5),
+    );
+
+    // Fallback via into_bounds() for combinations without a concrete range type
+    assert_eq!((1..=9).into_bounds().intersect((0..10).into_bounds()), (Included(1), Included(9)));
+    assert_eq!(
+        (7..=13).into_bounds().intersect((8..13).into_bounds()),
+        (Included(8), Excluded(13)),
+    );
+    assert_eq!(
+        (Excluded(1), Included(9)).intersect((Included(2), Excluded(9))),
+        (Included(2), Excluded(9)),
+    );
+    assert_eq!(
+        (Unbounded::<i32>, Unbounded).intersect((Included(1), Excluded(5))),
+        (Included(1), Excluded(5)),
+    );
+}
