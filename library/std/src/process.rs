@@ -2640,7 +2640,7 @@ pub fn abort() -> ! {
 }
 
 #[doc(inline)]
-#[unstable(feature = "abort_immediate", issue = "154601")]
+#[stable(feature = "abort_immediate", since = "CURRENT_RUSTC_VERSION")]
 pub use core::process::crash;
 #[doc(inline)]
 #[unstable(feature = "breakpoint", issue = "133724")]
