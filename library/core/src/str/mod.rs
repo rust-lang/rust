@@ -399,7 +399,12 @@ impl str {
         }
     }
 
-    /// Finds the closest `x` not exceeding `index` where [`is_char_boundary(x)`] is `true`.
+    /// Find a character boundary less than or equal to `index`.
+    ///
+    /// If `index` is less than the string length, the result will be a byte offset `x`,
+    /// that is the highest value not exceeding `index` where [`is_char_boundary(x)`] is `true`.
+    ///
+    /// If `index` is greater than or equal to the string length, the result will be the string length.
     ///
     /// This method can help you truncate a string so that it's still valid UTF-8, but doesn't
     /// exceed a given number of bytes. Note that this is done purely at the character level
@@ -419,6 +424,8 @@ impl str {
     /// let closest = s.floor_char_boundary(13);
     /// assert_eq!(closest, 10);
     /// assert_eq!(&s[..closest], "❤️🧡");
+    ///
+    /// assert_eq!("abc".floor_char_boundary(99), 3);
     /// ```
     #[stable(feature = "round_char_boundary", since = "1.91.0")]
     #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
@@ -456,9 +463,12 @@ impl str {
         index - 3
     }
 
-    /// Finds the closest `x` not below `index` where [`is_char_boundary(x)`] is `true`.
+    /// Find a character boundary greater than or equal to `index`, while remaining within the string bounds.
     ///
-    /// If `index` is greater than the length of the string, this returns the length of the string.
+    /// If `index` is less than the string length, the result will be a byte offset `x`,
+    /// that is the smallest `x` not below `index` where [`is_char_boundary(x)`] is `true`.
+    ///
+    /// If `index` is greater than or equal to the string length, the result will be the string length.
     ///
     /// This method is the natural complement to [`floor_char_boundary`]. See that method
     /// for more details.
@@ -476,6 +486,8 @@ impl str {
     /// let closest = s.ceil_char_boundary(13);
     /// assert_eq!(closest, 14);
     /// assert_eq!(&s[..closest], "❤️🧡💛");
+    ///
+    /// assert_eq!("abc".ceil_char_boundary(99), 3);
     /// ```
     #[stable(feature = "round_char_boundary", since = "1.91.0")]
     #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
