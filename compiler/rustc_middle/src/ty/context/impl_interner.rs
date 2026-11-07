@@ -841,6 +841,7 @@ bidirectional_lang_item_map! {
     Drop,
     Field,
     Fn,
+    FnAddrTrait,
     FnMut,
     FnOnce,
     FnPtrTrait,
