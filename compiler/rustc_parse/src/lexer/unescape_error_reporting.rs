@@ -6,6 +6,7 @@ use std::ops::Range;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_literal_escaper::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
+use rustc_unicode::{unicode_normalization, unicode_width};
 use tracing::debug;
 
 use crate::diagnostics::{

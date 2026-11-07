@@ -29,8 +29,8 @@ rustc_structures = { path = "../rustc_structures" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_unicode = { path = "../rustc_unicode" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.19"
 tracing = "0.1"
-unicode-security = "0.1.0"
 # tidy-alphabetical-end
