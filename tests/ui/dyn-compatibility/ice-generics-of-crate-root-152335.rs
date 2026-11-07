@@ -24,10 +24,6 @@ where
     //~^ ERROR cannot find trait `B` in this scope
     //~| ERROR type mismatch resolving
     //~| ERROR the size for values of type `Self` cannot be known
-    //~| ERROR type mismatch resolving
-    //~| ERROR the size for values of type `Self` cannot be known
-    //~| ERROR type mismatch resolving
-    //~| ERROR the size for values of type `RustaceansAreAwesome` cannot be known
 }
 
 trait Mirror {
