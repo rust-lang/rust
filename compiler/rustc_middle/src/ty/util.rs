@@ -6,6 +6,7 @@ use rustc_abi::{Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_attr_ir::{NotableTraitColor, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
@@ -31,6 +32,31 @@ use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgs, Ty, TyCtxt, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
 };
+
+/// Returns a trait in `traits` that is a subtrait of every other trait in the
+/// slice.
+///
+/// Returns `None` if no such trait exists.
+pub fn unique_subtrait(tcx: TyCtxt<'_>, traits: &[DefId]) -> Option<DefId> {
+    debug_assert!(!traits.is_empty());
+    let mut selected = traits[0];
+    let mut supertraits: SsoHashSet<_> = ty::elaborate::supertrait_def_ids(tcx, selected).collect();
+
+    for &trait_id in &traits[1..] {
+        if !supertraits.contains(&trait_id) {
+            // We are looking for a trait where every other trait is part of the
+            // first trait's transitive supertrait set. If this is not the case,
+            // then we have the wrong selection. Switch to the next trait on the
+            // list as the next possible candidate.
+            selected = trait_id;
+            supertraits = ty::elaborate::supertrait_def_ids(tcx, selected).collect();
+        }
+    }
+
+    // Now confirm the selection by ensuring that all other traits are in its
+    // supertrait set.
+    traits.iter().all(|trait_id| supertraits.contains(trait_id)).then_some(selected)
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
