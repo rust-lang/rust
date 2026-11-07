@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, GenericClauses, ImplTraitInTraitData, IncludeSizedImplicitBounds, Ty, TyCtxt,
+    self, ClausePolarity, ExcludeImplicitBounds, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt,
     TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
@@ -73,12 +73,26 @@ pub(super) fn clauses_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericClauses<'
         );
     }
 
+    // Optimization:
+    // If `#[feature(move_trait)]` is disabled, remove all `T: Move` clauses as they are trivial
+    if !tcx.features().move_trait()
+        && let Some(move_trait) = tcx.lang_items().move_trait()
+        && !result.clauses.is_empty()
+    {
+        result.clauses = tcx.arena.alloc_from_iter(result.clauses.iter().copied().filter(|p| {
+            !p.0.as_trait_clause().is_some_and(|p| {
+                p.polarity() == ClausePolarity::Positive && p.def_id() == move_trait
+            })
+        }));
+    }
+
     debug!("clauses_of({:?}) = {:?}", def_id, result);
     result
 }
 
 /// Returns a list of user-specified type clauses for the definition with ID `def_id`.
-/// N.B., this does not include any implied/inferred constraints.
+/// N.B., this does not include any implied/inferred constraints,
+///       including instead default bounds like `Move`
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericClauses<'_> {
     use rustc_hir::*;
@@ -202,7 +216,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-            IncludeSizedImplicitBounds::Yes,
+            ExcludeImplicitBounds::none(),
         );
         clauses.extend(bounds);
     }
@@ -235,7 +249,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                    IncludeSizedImplicitBounds::Yes,
+                    ExcludeImplicitBounds::none(),
                 );
                 trace!(?bounds);
                 clauses.extend(bounds);
@@ -664,6 +678,13 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
+    let exclude_implicit_bounds = ExcludeImplicitBounds {
+        // Remove the `T: Move` bound when the feature gate is missing
+        // `move_trait` is missing, so the `T: Move` is completely trivial
+        r#move: !tcx.features().move_trait(),
+        ..ExcludeImplicitBounds::none()
+    };
+
     let self_param_ty = tcx.types.self_param;
     let mut bounds = Vec::new();
     icx.lowerer().lower_bounds(
@@ -685,7 +706,7 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-                IncludeSizedImplicitBounds::Yes,
+                exclude_implicit_bounds,
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -981,7 +1002,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                            IncludeSizedImplicitBounds::Yes,
+                            ExcludeImplicitBounds::none(),
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }

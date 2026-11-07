@@ -17,8 +17,8 @@ use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
 use crate::{
-    self as ty, Canonical, CantBeErased, Const, ConstVid, FloatVid, GenericArgKind, InferConst,
-    IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
+    self as ty, Canonical, CantBeErased, Const, ConstVid, ExcludeImplicitBounds, FloatVid,
+    GenericArgKind, InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
 pub type CanonicalInputData<I> =
@@ -462,7 +462,7 @@ impl CandidatePreferenceMode {
     /// Given `trait_def_id`, which candidate preference mode should be used?
     pub fn compute<I: Interner>(cx: I, trait_id: I::TraitId) -> CandidatePreferenceMode {
         let is_sizedness_or_auto_or_default_goal = cx.trait_is_auto(trait_id)
-            || cx.is_implicit_trait(trait_id, ty::IncludeSizedImplicitBounds::Yes);
+            || cx.is_implicit_trait(trait_id, ExcludeImplicitBounds::none());
         if is_sizedness_or_auto_or_default_goal {
             CandidatePreferenceMode::Marker
         } else {

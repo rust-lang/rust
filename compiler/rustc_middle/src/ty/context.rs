@@ -48,7 +48,7 @@ use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
-    CollectAndApply, IncludeSizedImplicitBounds, PlaceholderType, WithCachedTypeInfo, elaborate,
+    CollectAndApply, ExcludeImplicitBounds, PlaceholderType, WithCachedTypeInfo, elaborate,
     search_graph,
 };
 use tracing::{debug, instrument};
@@ -120,6 +120,10 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
 
     fn coroutine_clone(self) -> bool {
         self.coroutine_clone()
+    }
+
+    fn move_trait(self) -> bool {
+        self.move_trait()
     }
 
     fn feature_bound_holds_in_crate(self, symbol: Symbol) -> bool {
@@ -958,14 +962,15 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns true if a trait is an "implicit trait", which is a trait which is added
     /// to bounds on generic types automatically by the compiler.
-    pub fn is_implicit_trait(
-        self,
-        def_id: DefId,
-        including_sized: IncludeSizedImplicitBounds,
-    ) -> bool {
+    pub fn is_implicit_trait(self, def_id: DefId, excluding: ExcludeImplicitBounds) -> bool {
         self.is_default_trait(def_id)
-            // NOTE: add move and forget here later
-            || (matches!(including_sized, IncludeSizedImplicitBounds::Yes) && self.is_sizedness_trait(def_id))
+            // NOTE: add forget here later
+            || (!excluding.r#move && self.is_move_trait(def_id))
+            || (!excluding.sized && self.is_sizedness_trait(def_id))
+    }
+
+    pub fn is_move_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Move))
     }
 
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {

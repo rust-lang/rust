@@ -10,9 +10,9 @@ use rustc_type_ir::solve::{
     QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, ClausePolarity, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds,
-    Interner, MayBeErased, Movability, Region, TraitClause, TraitRef, TypeVisitableExt as _,
-    TypingMode, Unnormalized, Upcast as _, elaborate,
+    self as ty, ClausePolarity, ExcludeImplicitBounds, ExistentialPredicate, FieldInfo, Interner,
+    MayBeErased, Movability, Region, TraitClause, TraitRef, TypeVisitableExt as _, TypingMode,
+    Unnormalized, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace, warn};
 
@@ -210,6 +210,19 @@ where
         let cx = ecx.cx();
         if goal.predicate.polarity != ty::ClausePolarity::Positive {
             return Err(NoSolution.into());
+        }
+
+        // Fast path: when the feature is disabled,
+        // assume all types implement `Move`.
+        //
+        // This will trivially make the addition of
+        // `Move` backward compatible with trait bounds
+        if !cx.features().move_trait()
+            && cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
+        {
+            return ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Trivial)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes));
         }
 
         if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
@@ -1416,7 +1429,7 @@ where
             ty::Foreign(..)
                 if self
                     .cx()
-                    .is_implicit_trait(goal.predicate.def_id(), IncludeSizedImplicitBounds::No) =>
+                    .is_implicit_trait(goal.predicate.def_id(), ExcludeImplicitBounds::sized()) =>
             {
                 check_impls()
             }
