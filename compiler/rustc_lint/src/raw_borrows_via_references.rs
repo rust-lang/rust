@@ -1,6 +1,7 @@
 use rustc_ast::BorrowKind;
 use rustc_hir::{Expr, ExprKind, TyKind};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
+use rustc_middle::ty::{self, Ty};
 
 use crate::diagnostics::{RawBorrowViaReference, RawBorrowViaReferenceSuggestion};
 use crate::{LateContext, LateLintPass, LintContext};
@@ -65,9 +66,19 @@ impl<'tcx> LateLintPass<'tcx> for RawBorrowsViaReferences {
                 && addr_of_span.can_be_used_for_suggestions()
                 && ty_span.can_be_used_for_suggestions()
             {
+                let drop_cast = cx.typeck_results().expr_ty_opt(exp).is_some_and(|borrow_ty| {
+                    cx.typeck_results().expr_ty_opt(expr).is_some_and(|cast_ty| {
+                        matches!(
+                            borrow_ty.kind(),
+                            ty::Ref(_, referent, ref_mutbl)
+                                if cast_ty == Ty::new_ptr(cx.tcx, *referent, *ref_mutbl)
+                        )
+                    })
+                });
                 RawBorrowViaReferenceSuggestion::Spanful {
                     left: borrow_span.until(addr_of_span),
-                    right: addr_of_span.shrink_to_hi().until(ty_span.shrink_to_hi()),
+                    right: drop_cast
+                        .then(|| addr_of_span.shrink_to_hi().until(ty_span.shrink_to_hi())),
                     mutbl: mutbl.ptr_str(),
                 }
             } else {
