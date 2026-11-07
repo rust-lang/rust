@@ -1,5 +1,6 @@
 use std::io::ErrorKind;
 
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::comptime::ReadFileError;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
@@ -40,12 +41,9 @@ pub fn experimental_comptime_fetch_file_provider<'tcx>(
     // Very simple implementation where we whitelist paths directly. We don't even attempt
     // to canonicalize for now.
     if tcx
-        .sess
-        .opts
-        .unstable_opts
-        .experimental_comptime_files
+        .experimental_comptime_list_files(LOCAL_CRATE)
         .iter()
-        .find(|s| requested_path == *s)
+        .find(|s| requested_path == s.as_str())
         .is_some()
     {
         match std::fs::read(resolved_path) {

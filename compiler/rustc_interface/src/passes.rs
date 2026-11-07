@@ -658,12 +658,9 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         files.extend(extra_tracked_files);
 
         let comptime_tracked_files = hash_iter_files(
-            tcx.sess
-                .opts
-                .unstable_opts
-                .experimental_comptime_files
+            tcx.experimental_comptime_list_files(LOCAL_CRATE)
                 .iter()
-                .map(PathBuf::from)
+                .map(|s| PathBuf::from(s.as_str()))
                 .map(normalize_path),
             checksum_hash_algo,
         );
