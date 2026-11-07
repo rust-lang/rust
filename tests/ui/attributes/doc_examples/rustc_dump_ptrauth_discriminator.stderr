@@ -1,0 +1,14 @@
+error: ptrauth discriminator encoding: "FviE"
+ --> $DIR/rustc_dump_ptrauth_discriminator.rs:7:1
+  |
+7 | extern "C" fn foo(_: i32) {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ptrauth discriminator hash: 2712 (0xa98)
+ --> $DIR/rustc_dump_ptrauth_discriminator.rs:7:1
+  |
+7 | extern "C" fn foo(_: i32) {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
