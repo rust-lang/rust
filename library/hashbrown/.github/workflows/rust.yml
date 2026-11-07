@@ -1,0 +1,113 @@
+name: Rust
+
+on:
+  pull_request:
+  merge_group:
+
+jobs:
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - env:
+        TARGET: x86_64-unknown-linux-gnu
+      run: ci/miri.sh
+
+  rustfmt_clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install taplo
+      run: curl -fsSL https://github.com/tamasfe/taplo/releases/latest/download/taplo-linux-x86_64.gz | gzip -d - | install -m 755 /dev/stdin /usr/local/bin/taplo
+    - env:
+        TARGET: i586-unknown-linux-gnu
+        CHANNEL: nightly
+      run: ci/tools.sh
+
+  basics:
+    runs-on: ubuntu-latest
+    needs:
+      - miri
+      - rustfmt_clippy
+    steps:
+      - run: exit 0
+
+  test:
+    runs-on: ${{ matrix.os }}
+    needs: basics
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.channel }}
+    - env:
+        TARGET: ${{ matrix.target }}
+        CHANNEL: ${{ matrix.channel }}
+      run: ci/run.sh
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        target: [
+          x86_64-unknown-linux-gnu,
+          i686-unknown-linux-gnu,
+          i586-unknown-linux-gnu,
+          armv7-unknown-linux-gnueabihf,
+          aarch64-unknown-linux-gnu,
+          thumbv6m-none-eabi,
+          # Disabled due to issues with cross-rs
+          #x86_64-pc-windows-gnu,
+        ]
+        channel: [1.85.0, nightly]
+        include:
+        - os: macos-latest
+          target: aarch64-apple-darwin
+          channel: nightly
+        - os: windows-latest
+          target: x86_64-pc-windows-msvc
+          channel: nightly
+        - os: macos-latest
+          target: aarch64-apple-darwin
+          channel: 1.85.0
+        - os: windows-latest
+          target: x86_64-pc-windows-msvc
+          channel: 1.85.0
+        - os: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+          channel: beta
+        - os: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+          channel: stable
+        - os: ubuntu-latest
+          target: loongarch64-unknown-linux-gnu
+          channel: nightly
+
+  msrv:
+    runs-on: ubuntu-latest
+    needs: basics
+    steps:
+    - uses: actions/checkout@v3
+    - run: cargo install cargo-msrv
+    - run: cargo msrv --workspace verify
+
+  dep_of_std:
+    runs-on: ubuntu-latest
+    needs: basics
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@nightly
+    - run: |
+        RUSTFLAGS="-Zforce-unstable-if-unmarked" cargo +nightly build --features rustc-dep-of-std
+
+
+  conclusion:
+    needs: [test, msrv, dep_of_std]
+    # !cancelled() executes the job regardless of whether the previous jobs passed, failed or get skipped.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conclusion
+        run: |
+          # Print the dependent jobs to see them in the CI log
+          jq -C <<< '${{ toJson(needs) }}'
+          # Check if all jobs that we depend on (in the needs array) were successful.
+          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
