@@ -151,7 +151,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (clause, span) in instantiated_clauses {
             debug!(?span, ?clause);
             let category = ConstraintCategory::Predicate(span, def_id);
-            let clause = self.normalize_with_category(clause, locations, category);
+            let Ok(clause) = self.normalize_with_category(clause, locations, category) else {
+                continue;
+            };
             self.prove_clause(clause, locations, category);
         }
     }
@@ -222,26 +224,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         &mut self,
         value: Unnormalized<'tcx, T>,
         location: impl NormalizeLocation,
-    ) -> T
-    where
-        T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
-    {
-        self.normalize_with_category(value, location, ConstraintCategory::Boring)
-    }
-
-    pub(super) fn deeply_normalize<T>(
-        &mut self,
-        value: Unnormalized<'tcx, T>,
-        location: impl NormalizeLocation,
     ) -> Result<T, ErrorGuaranteed>
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        self.fully_perform_op(
-            location.to_locations(),
-            ConstraintCategory::Boring,
-            self.infcx.param_env.and(type_op::normalize::Normalize { value }),
-        )
+        self.normalize_with_category(value, location, ConstraintCategory::Boring)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -250,17 +237,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         value: Unnormalized<'tcx, T>,
         location: impl NormalizeLocation,
         category: ConstraintCategory<'tcx>,
-    ) -> T
+    ) -> Result<T, ErrorGuaranteed>
     where
         T: type_op::normalize::Normalizable<'tcx> + fmt::Display + Copy + 'tcx,
     {
-        let param_env = self.infcx.param_env;
-        let result: Result<_, ErrorGuaranteed> = self.fully_perform_op(
+        self.fully_perform_op(
             location.to_locations(),
             category,
-            param_env.and(type_op::normalize::Normalize { value }),
-        );
-        result.unwrap_or(value.skip_norm_wip())
+            self.infcx.param_env.and(type_op::normalize::Normalize { value }),
+        )
+        .inspect_err(|&guar| self.infcx.set_tainted_by_errors(guar))
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -277,7 +263,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             body.source.def_id().expect_local(),
         );
 
-        let mut normalize = |ty| self.normalize(ty, location);
+        let mut normalize =
+            |ty| self.normalize(ty, location).unwrap_or_else(|guar| Ty::new_error(tcx, guar));
         tcx.struct_tail_raw(ty, &cause, &mut normalize, || {})
     }
 
@@ -323,7 +310,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // hack in `equate_inputs_and_outputs` which does have associated test cases.
         let mir_ty = match self.infcx.next_trait_solver() {
             true => mir_ty,
-            false => self.normalize(Unnormalized::new_wip(mir_ty), Locations::All(span)),
+            false => match self.normalize(Unnormalized::new_wip(mir_ty), Locations::All(span)) {
+                Ok(mir_ty) => mir_ty,
+                Err(_) => return,
+            },
         };
 
         let cause = ObligationCause::dummy_with_span(span);

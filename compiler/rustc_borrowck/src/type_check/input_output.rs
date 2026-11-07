@@ -235,7 +235,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
         {
-            let b = self.normalize(ty::Unnormalized::new(b), Locations::All(span));
+            let Ok(b) = self.normalize(ty::Unnormalized::new(b), Locations::All(span)) else {
+                return;
+            };
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
                 .unwrap_or_else(|terr| {
                     span_mirbug!(
