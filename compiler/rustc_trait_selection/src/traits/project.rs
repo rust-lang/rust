@@ -794,12 +794,12 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
     obligation: &ProjectionTermObligation<'tcx>,
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
-    assemble_candidates_from_clauses(
+    assemble_candidates_from_projection_clauses(
         selcx,
         obligation,
         candidate_set,
         ProjectionCandidate::ParamEnv,
-        obligation.param_env.caller_bounds().all_clauses(selcx.tcx()).iter(),
+        obligation.param_env.caller_bounds().non_trait_clauses().iter().filter_map(|i| i.as_projection_clause()),
         false,
     );
 }
@@ -914,10 +914,6 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     );
 }
 
-#[instrument(
-    level = "debug",
-    skip(selcx, candidate_set, ctor, env_clauses, potentially_unnormalized_candidates)
-)]
 fn assemble_candidates_from_clauses<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTermObligation<'tcx>,
@@ -926,48 +922,59 @@ fn assemble_candidates_from_clauses<'cx, 'tcx>(
     env_clauses: impl Iterator<Item = ty::Clause<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
+    assemble_candidates_from_projection_clauses(selcx, obligation, candidate_set, ctor, env_clauses.filter_map(|i| i.as_projection_clause()), potentially_unnormalized_candidates);
+}
+
+#[instrument(
+    level = "debug",
+    skip(selcx, candidate_set, ctor, env_clauses, potentially_unnormalized_candidates)
+)]
+fn assemble_candidates_from_projection_clauses<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    obligation: &ProjectionTermObligation<'tcx>,
+    candidate_set: &mut ProjectionCandidateSet<'tcx>,
+    ctor: fn(ty::PolyProjectionClause<'tcx>) -> ProjectionCandidate<'tcx>,
+    env_clauses: impl Iterator<Item = ty::PolyProjectionClause<'tcx>>,
+    potentially_unnormalized_candidates: bool,
+) {
     let infcx = selcx.infcx;
     let drcx = DeepRejectCtxt::relate_rigid_rigid(selcx.tcx());
     for clause in env_clauses {
-        let bound_clause = clause.kind();
-        if let ty::ClauseKind::Projection(data) = clause.kind().skip_binder() {
-            let data = bound_clause.rebind(data);
-            if data.item_def_id() != obligation.predicate.expect_projection_def_id() {
-                continue;
-            }
+        if clause.item_def_id() != obligation.predicate.expect_projection_def_id() {
+            continue;
+        }
 
-            if !drcx
-                .args_may_unify(obligation.predicate.args, data.skip_binder().projection_term.args)
-            {
-                continue;
-            }
+        if !drcx
+            .args_may_unify(obligation.predicate.args, clause.skip_binder().projection_term.args)
+        {
+            continue;
+        }
 
-            let is_match = infcx.probe(|_| {
-                selcx.match_projection_projections(
-                    obligation,
-                    data,
-                    potentially_unnormalized_candidates,
-                )
-            });
+        let is_match = infcx.probe(|_| {
+            selcx.match_projection_projections(
+                obligation,
+                clause,
+                potentially_unnormalized_candidates,
+            )
+        });
 
-            match is_match {
-                ProjectionMatchesProjection::Yes => {
-                    candidate_set.push_candidate(ctor(data));
+        match is_match {
+            ProjectionMatchesProjection::Yes => {
+                candidate_set.push_candidate(ctor(clause));
 
-                    if potentially_unnormalized_candidates
-                        && !obligation.predicate.has_non_region_infer()
-                    {
-                        // HACK: Pick the first trait def candidate for a fully
-                        // inferred predicate. This is to allow duplicates that
-                        // differ only in normalization.
-                        return;
-                    }
+                if potentially_unnormalized_candidates
+                    && !obligation.predicate.has_non_region_infer()
+                {
+                    // HACK: Pick the first trait def candidate for a fully
+                    // inferred predicate. This is to allow duplicates that
+                    // differ only in normalization.
+                    return;
                 }
-                ProjectionMatchesProjection::Ambiguous => {
-                    candidate_set.mark_ambiguous();
-                }
-                ProjectionMatchesProjection::No => {}
             }
+            ProjectionMatchesProjection::Ambiguous => {
+                candidate_set.mark_ambiguous();
+            }
+            ProjectionMatchesProjection::No => {}
         }
     }
 }

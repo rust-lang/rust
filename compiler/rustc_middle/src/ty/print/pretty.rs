@@ -3267,6 +3267,7 @@ define_print! {
             ty::ClauseKind::UnstableFeature(symbol) => {
                 write!(p, "feature({symbol}) is enabled")?;
             }
+            ty::ClauseKind::CompressedTrait(_) => unreachable!(),
         }
     }
 
