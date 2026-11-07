@@ -353,6 +353,14 @@ impl<'a> StripUnconfigured<'a> {
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if self.features.is_some_and(|features| !features.stmt_expr_attributes())
             && !attr.span.allows_unstable(sym::stmt_expr_attributes)
+            && !self
+                .sess
+                .psess
+                .gated_spans
+                .spans
+                .borrow()
+                .get(&sym::stmt_expr_attributes)
+                .is_some_and(|spans| spans.contains(&attr.span))
         {
             let mut err = feature_err(
                 self.sess,
