@@ -275,14 +275,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         let _trace = enter_trace_span!(borrow_tracker::retag_ptr_value, ?ty);
-        let this = self.eval_context_mut();
-        let state = this.machine.borrow_tracker.as_mut().unwrap().get_mut();
+        let ecx = self.eval_context_mut();
+        let state = ecx.machine.borrow_tracker.as_mut().unwrap().get_mut();
         let method = state.borrow_tracker_method;
         let retag_mode = state.retag_mode;
         info!("retag_ptr_value: type={ty}, mode={retag_mode:?}, val={:?}", **val);
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_ptr_value(val, ty, retag_mode),
-            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_retag_ptr_value(val, ty, retag_mode),
+            BorrowTrackerMethod::StackedBorrows => ecx.sb_retag_ptr_value(val, ty, retag_mode),
+            BorrowTrackerMethod::TreeBorrows { .. } => ecx.tb_retag_ptr_value(val, ty, retag_mode),
         }
     }
 
@@ -306,22 +306,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let _trace = enter_trace_span!(borrow_tracker::protect_place, ?place);
-        let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_mut().unwrap().get_mut().borrow_tracker_method;
+        let ecx = self.eval_context_mut();
+        let method = ecx.machine.borrow_tracker.as_mut().unwrap().get_mut().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_protect_place(place),
-            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_protect_place(place),
+            BorrowTrackerMethod::StackedBorrows => ecx.sb_protect_place(place),
+            BorrowTrackerMethod::TreeBorrows { .. } => ecx.tb_protect_place(place),
         }
     }
 
     fn expose_tag(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
         let _trace =
             enter_trace_span!(borrow_tracker::expose_tag, alloc_id = alloc_id.0, tag = tag.0);
-        let this = self.eval_context_ref();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        let ecx = self.eval_context_ref();
+        let method = ecx.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_expose_tag(alloc_id, tag),
-            BorrowTrackerMethod::TreeBorrows { .. } => this.tb_expose_tag(alloc_id, tag),
+            BorrowTrackerMethod::StackedBorrows => ecx.sb_expose_tag(alloc_id, tag),
+            BorrowTrackerMethod::TreeBorrows { .. } => ecx.tb_expose_tag(alloc_id, tag),
         }
     }
 
@@ -331,28 +331,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         nth_parent: u8,
         name: &str,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_mut().unwrap().get_mut().borrow_tracker_method;
+        let ecx = self.eval_context_mut();
+        let method = ecx.machine.borrow_tracker.as_mut().unwrap().get_mut().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => {
-                this.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
+                ecx.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
                 interp_ok(())
             }
             BorrowTrackerMethod::TreeBorrows { .. } =>
-                this.tb_give_pointer_debug_name(ptr, nth_parent, name),
+                ecx.tb_give_pointer_debug_name(ptr, nth_parent, name),
         }
     }
 
     fn print_borrow_state(&mut self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let Some(borrow_tracker) = &mut this.machine.borrow_tracker else {
+        let ecx = self.eval_context_mut();
+        let Some(borrow_tracker) = &mut ecx.machine.borrow_tracker else {
             eprintln!("attempted to print borrow state, but no borrow state is being tracked");
             return interp_ok(());
         };
         let method = borrow_tracker.get_mut().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.print_stacks(alloc_id),
-            BorrowTrackerMethod::TreeBorrows { .. } => this.print_tree(alloc_id, show_unnamed),
+            BorrowTrackerMethod::StackedBorrows => ecx.print_stacks(alloc_id),
+            BorrowTrackerMethod::TreeBorrows { .. } => ecx.print_tree(alloc_id, show_unnamed),
         }
     }
 
@@ -361,8 +361,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
     ) -> InterpResult<'tcx> {
         let _trace = enter_trace_span!(borrow_tracker::on_stack_pop);
-        let this = self.eval_context_ref();
-        let borrow_tracker = this.machine.borrow_tracker.as_ref().unwrap();
+        let ecx = self.eval_context_ref();
+        let borrow_tracker = ecx.machine.borrow_tracker.as_ref().unwrap();
         // The body of this loop needs `borrow_tracker` immutably
         // so we can't move this code inside the following `end_call`.
 
@@ -379,12 +379,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If it does exist, then we have the guarantee that the
             // pointer is readable, and the implicit read access inserted
             // will never cause UB on the pointer itself.
-            let kind = this.get_alloc_info(*alloc_id).kind;
+            let kind = ecx.get_alloc_info(*alloc_id).kind;
             if matches!(kind, AllocKind::LiveData) {
-                let alloc_extra = this.get_alloc_extra(*alloc_id)?; // can still fail for `extern static`
+                let alloc_extra = ecx.get_alloc_extra(*alloc_id)?; // can still fail for `extern static`
                 let alloc_borrow_tracker = &alloc_extra.borrow_tracker.as_ref().unwrap();
                 alloc_borrow_tracker.release_protector(
-                    &this.machine,
+                    &ecx.machine,
                     borrow_tracker,
                     *tag,
                     *alloc_id,

@@ -991,9 +991,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         dest: MPlaceTy<'tcx>,
                         success_retval: Scalar,
                     }
-                    |this, unblock: UnblockKind| {
+                    |ecx, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
-                        after_join(this, joined_thread_id, success_retval, &dest)
+                        after_join(ecx, joined_thread_id, success_retval, &dest)
                     }
                 ),
             );

@@ -132,7 +132,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             mask,
                             cpuset.as_slice()[..byte_count].iter().copied(),
                         )?;
-                        this.write_null(dest)?;
+                        this.write_int(0, dest)?;
                     }
                 } else {
                     // `id` is always that of the active thread, so this is currently unreachable.
@@ -175,7 +175,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                this.write_null(dest)?;
+                this.write_int(0, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

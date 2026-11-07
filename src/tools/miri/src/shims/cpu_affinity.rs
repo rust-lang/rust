@@ -140,7 +140,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // we only copy whole chunks of size_of::<c_ulong>()
             let byte_count = Ord::min(cpuset.as_slice().len(), cpusetsize.try_into().unwrap());
             this.write_bytes_ptr(mask, cpuset.as_slice()[..byte_count].iter().copied())?;
-            this.write_null(dest)?;
+            this.write_int(0, dest)?;
         } else {
             unreachable!("we validated the thread ID above");
         }
@@ -194,7 +194,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             match CpuAffinityMask::from_array(this, this.machine.num_cpus, bits_array) {
                 Some(cpuset) => {
                     this.machine.thread_cpu_affinity.as_mut().unwrap().insert(thread_id, cpuset);
-                    this.write_null(dest)?;
+                    this.write_int(0, dest)?;
                 }
                 None => {
                     // The intersection between the mask and the available CPUs was empty.

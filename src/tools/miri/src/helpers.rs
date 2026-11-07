@@ -1,6 +1,6 @@
 use std::num::NonZero;
 use std::sync::Mutex;
-use std::{cmp, iter};
+use std::{assert_matches, cmp, iter};
 
 use rand::Rng;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
@@ -367,11 +367,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Write a 0 of the appropriate size to `dest`.
-    fn write_null(&mut self, dest: &impl Writeable<'tcx, Provenance>) -> InterpResult<'tcx> {
-        self.write_int(0, dest)
-    }
-
     /// Test if this pointer equals 0.
     fn ptr_is_null(&self, ptr: Pointer) -> InterpResult<'tcx, bool> {
         interp_ok(ptr.addr().bytes() == 0)
@@ -476,11 +471,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         size: Size,
         mut action: impl FnMut(AllocRange, bool) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
         debug_assert_eq!(
             size,
-            this.size_and_align_of_val(place)?
+            ecx.size_and_align_of_val(place)?
                 .map(|(size, _)| size)
                 .unwrap_or_else(|| place.layout.size)
         );
@@ -516,11 +511,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Run a visitor
         {
             let mut visitor = UnsafeCellVisitor {
-                ecx: this,
+                ecx,
                 unsafe_cell_action: |place| {
                     trace!("unsafe_cell_action on {:?}", place.ptr());
                     // We need a size to go on.
-                    let unsafe_cell_size = this
+                    let unsafe_cell_size = ecx
                         .size_and_align_of_val(place)?
                         .map(|(size, _)| size)
                         // for extern types, just cover what we can
@@ -537,7 +532,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(&place.ptr().wrapping_offset(size, this), Size::ZERO)?;
+        unsafe_cell_action(&place.ptr().wrapping_offset(size, ecx), Size::ZERO)?;
         // Done!
         return interp_ok(());
 
@@ -663,6 +658,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             self.eval_context_ref().tcx.sess.target.os,
             target_os,
             "`{name}` is only available on the `{target_os}` target OS",
+        )
+    }
+
+    fn assert_target_os_is_linux_like(&self, name: &str) {
+        assert_matches!(
+            self.eval_context_ref().tcx.sess.target.os,
+            Os::Linux | Os::Android,
+            "`{name}` is only available on Linux-like targets",
         )
     }
 

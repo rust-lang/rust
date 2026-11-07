@@ -413,14 +413,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     count: usize,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, result: Result<usize, IoError>| {
+                |ecx, result: Result<usize, IoError>| {
                     match result {
                         Ok(read_size) => {
                             assert!(read_size <= count);
                             // This must fit since `count` fits.
-                            this.write_int(u64::try_from(read_size).unwrap(), &dest)
+                            ecx.write_int(u64::try_from(read_size).unwrap(), &dest)
                         }
-                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                 }}
             ),
         )
@@ -464,14 +464,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     count: usize,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, result: Result<usize, IoError>| {
+                |ecx, result: Result<usize, IoError>| {
                     match result {
                         Ok(write_size) => {
                             assert!(write_size <= count);
                             // This must fit since `count` fits.
-                            this.write_int(u64::try_from(write_size).unwrap(), &dest)
+                            ecx.write_int(u64::try_from(write_size).unwrap(), &dest)
                         }
-                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
 
                 }}
             ),
@@ -542,15 +542,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     tmp_ptr: Pointer,
                     buffers: Vec<(Pointer, u64)>,
                     dest: MPlaceTy<'tcx>
-                } |this, result: Result<usize, IoError>| {
+                } |ecx, result: Result<usize, IoError>| {
                     let bytes_read = match result {
                         Ok(size) => {
-                            this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest)?;
+                            ecx.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), ecx), &dest)?;
                             u64::try_from(size).unwrap()
                         },
                         Err(e) => {
-                            this.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
-                            return this.set_errno_and_return_neg1(e, &dest)
+                            ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
+                            return ecx.set_errno_and_return_neg1(e, &dest)
                         }
                     };
                     let mut remaining_bytes = bytes_read;
@@ -561,12 +561,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     for (buffer_ptr, buffer_len) in buffers {
                         // Offset temporary buffer by the amount of bytes we already copied into previous buffers.
                         let tmp_ptr_with_offset =
-                            this.ptr_offset_inbounds(tmp_ptr, i64::try_from(bytes_read.strict_sub(remaining_bytes)).unwrap())?;
+                            ecx.ptr_offset_inbounds(tmp_ptr, i64::try_from(bytes_read.strict_sub(remaining_bytes)).unwrap())?;
 
                         // Copy at most as many bytes as the buffer fits but without reading
                         // any uninitialized bytes from the temporary buffer.
                         let copy_amount = buffer_len.min(remaining_bytes);
-                        this.mem_copy(
+                        ecx.mem_copy(
                             tmp_ptr_with_offset,
                             buffer_ptr,
                             Size::from_bytes(copy_amount),
@@ -583,7 +583,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                     }
 
-                    this.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)
+                    ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)
                 }),
         )
     }
@@ -672,11 +672,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     tmp_ptr: Pointer,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, result: Result<usize, IoError>| {
-                    this.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
+                |ecx, result: Result<usize, IoError>| {
+                    ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
                     match result {
-                        Ok(size) => this.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), this), &dest),
-                        Err(e) => this.set_errno_and_return_neg1(e, &dest)
+                        Ok(size) => ecx.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), ecx), &dest),
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                     }
             }),
         )

@@ -61,7 +61,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None,
             callback!(
                 @capture<'tcx> {}
-                |_this, unblock: UnblockKind| {
+                |_ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
                     unreachable!("GenMC should never unblock a thread blocked by an `assume`.");
                 }
@@ -97,10 +97,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         @capture<'tcx> {
                             mutex: MPlaceTy<'tcx>,
                         }
-                        |this, unblock: crate::UnblockKind| {
+                        |ecx, unblock: crate::UnblockKind| {
                             debug!("GenMC: Mutex::lock: unblocking callback called, attempting to lock the Mutex again.");
                             assert_eq!(unblock, crate::UnblockKind::Ready);
-                            this.intercept_mutex_lock(mutex)?;
+                            ecx.intercept_mutex_lock(mutex)?;
                             interp_ok(())
                         }
                     ),
@@ -121,7 +121,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         @capture<'tcx> {
                             mutex: MPlaceTy<'tcx>,
                         }
-                        |_this, _unblock: crate::UnblockKind| {
+                        |_ecx, _unblock: crate::UnblockKind| {
                             unreachable!("A thread blocked on `Mutex::lock` should not be unblocked again.");
                         }
                     ),
