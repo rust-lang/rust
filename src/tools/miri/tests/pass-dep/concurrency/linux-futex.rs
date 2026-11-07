@@ -11,6 +11,16 @@ use std::sync::atomic::*;
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
+cfg_select! {
+    target_arch = "riscv32" => {
+        // riscv32 only has the 64-bit time variant of the futex syscall.
+        use libc::SYS_futex_time64 as SYS_futex;
+    }
+    _ => {
+        use libc::SYS_futex;
+    }
+}
+
 fn yield_now() {
     if cfg!(miri) {
         // We control the scheduler so we know this is enough.
@@ -26,14 +36,14 @@ fn wake_nobody() {
 
     // Wake 1 waiter. Expect zero waiters woken up, as nobody is waiting.
     unsafe {
-        assert_eq!(libc::syscall(libc::SYS_futex, addr_of!(futex), libc::FUTEX_WAKE, 1), 0);
+        assert_eq!(libc::syscall(SYS_futex, addr_of!(futex), libc::FUTEX_WAKE, 1), 0);
     }
 
     // Same, but without omitting the unused arguments.
     unsafe {
         assert_eq!(
             libc::syscall(
-                libc::SYS_futex,
+                SYS_futex,
                 addr_of!(futex),
                 libc::FUTEX_WAKE,
                 1,
@@ -47,7 +57,7 @@ fn wake_nobody() {
 
     // Wake u32::MAX waiters.
     unsafe {
-        assert_eq!(libc::syscall(libc::SYS_futex, addr_of!(futex), libc::FUTEX_WAKE, u32::MAX), 0);
+        assert_eq!(libc::syscall(SYS_futex, addr_of!(futex), libc::FUTEX_WAKE, u32::MAX), 0);
     }
 }
 
@@ -64,7 +74,7 @@ fn wake_dangling() {
     // parking_lot relies on this:
     // <https://github.com/Amanieu/parking_lot/blob/ca920b31312839013b4455aba1d53a4aede21b2f/core/src/thread_parker/linux.rs#L138-L145>
     unsafe {
-        assert_eq!(libc::syscall(libc::SYS_futex, ptr, libc::FUTEX_WAKE, 1), -1);
+        assert_eq!(libc::syscall(SYS_futex, ptr, libc::FUTEX_WAKE, 1), -1);
         assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::EFAULT);
     }
 }
@@ -76,7 +86,7 @@ fn wait_wrong_val() {
     unsafe {
         assert_eq!(
             libc::syscall(
-                libc::SYS_futex,
+                SYS_futex,
                 addr_of!(futex),
                 libc::FUTEX_WAIT,
                 456,
@@ -97,7 +107,7 @@ fn wait_timeout() {
     unsafe {
         assert_eq!(
             libc::syscall(
-                libc::SYS_futex,
+                SYS_futex,
                 addr_of!(futex),
                 libc::FUTEX_WAIT,
                 123,
@@ -134,7 +144,7 @@ fn wait_absolute_timeout() {
     unsafe {
         assert_eq!(
             libc::syscall(
-                libc::SYS_futex,
+                SYS_futex,
                 addr_of!(FUTEX),         // uaddr
                 libc::FUTEX_WAIT_BITSET, // op
                 123,                     // val
@@ -161,7 +171,7 @@ fn wait_wake() {
         unsafe {
             assert_eq!(
                 libc::syscall(
-                    libc::SYS_futex,
+                    SYS_futex,
                     addr_of!(FUTEX),
                     libc::FUTEX_WAKE,
                     10, // Wake up at most 10 threads.
@@ -174,7 +184,7 @@ fn wait_wake() {
     unsafe {
         assert_eq!(
             libc::syscall(
-                libc::SYS_futex,
+                SYS_futex,
                 addr_of!(FUTEX),
                 libc::FUTEX_WAIT,
                 0,
@@ -199,7 +209,7 @@ fn wait_wake_bitset() {
         unsafe {
             assert_eq!(
                 libc::syscall(
-                    libc::SYS_futex,
+                    SYS_futex,
                     addr_of!(FUTEX),         // uaddr
                     libc::FUTEX_WAKE_BITSET, // op
                     10,                      // val (max wake up count)
@@ -214,7 +224,7 @@ fn wait_wake_bitset() {
         unsafe {
             assert_eq!(
                 libc::syscall(
-                    libc::SYS_futex,
+                    SYS_futex,
                     addr_of!(FUTEX),         // uaddr
                     libc::FUTEX_WAKE_BITSET, // op
                     10,                      // val (max wake up count)
@@ -230,7 +240,7 @@ fn wait_wake_bitset() {
     unsafe {
         assert_eq!(
             libc::syscall(
-                libc::SYS_futex,
+                SYS_futex,
                 addr_of!(FUTEX),         // uaddr
                 libc::FUTEX_WAIT_BITSET, // op
                 0,                       // val
@@ -275,7 +285,7 @@ fn concurrent_wait_wake() {
             // or we'll deadlock.
             unsafe {
                 let ret = libc::syscall(
-                    libc::SYS_futex,
+                    SYS_futex,
                     addr_of!(*futex).cast::<u32>(),
                     libc::FUTEX_WAIT,
                     HELD,
@@ -298,7 +308,7 @@ fn concurrent_wait_wake() {
         futex.store(FREE, Ordering::Relaxed);
         unsafe {
             DATA = 1;
-            libc::syscall(libc::SYS_futex, addr_of!(*futex).cast::<u32>(), libc::FUTEX_WAKE, 1);
+            libc::syscall(SYS_futex, addr_of!(*futex).cast::<u32>(), libc::FUTEX_WAKE, 1);
         }
 
         t.join().unwrap();
