@@ -92,4 +92,7 @@ pub mod rust_future {
     #[stable(feature = "prelude_2024", since = "1.85.0")]
     #[doc(no_inline)]
     pub use crate::future::{Future, IntoFuture};
+
+    #[unstable(feature = "prelude_future", issue = "none")]
+    pub use crate::{assert_matches, debug_assert_matches};
 }
