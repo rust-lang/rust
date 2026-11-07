@@ -3,6 +3,7 @@ use rustc_session::config::Lto;
 use rustc_span::bug;
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::callconv::FnAbi;
+use rustc_trait_selection::traits::vtable;
 use tracing::{debug, instrument};
 
 use crate::traits::*;
@@ -143,22 +144,32 @@ fn dyn_trait_in_self<'tcx>(
 #[instrument(level = "debug", skip(cx))]
 pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
-    ty: Ty<'tcx>,
+    self_ty: Ty<'tcx>,
     trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
 
     // Check the cache.
-    if let Some(&val) = cx.vtables().borrow().get(&(ty, trait_ref)) {
+    if let Some(&val) = cx.vtables().borrow().get(&(self_ty, trait_ref)) {
         return val;
     }
 
-    let vtable_alloc_id = tcx.vtable_allocation((ty, trait_ref));
+    let vtable_alloc_id = tcx.vtable_allocation((self_ty, trait_ref));
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
     let vtable = cx.static_addr_of(vtable_allocation, Some("vtable"));
 
-    cx.apply_vcall_visibility_metadata(ty, trait_ref, vtable);
-    cx.create_vtable_debuginfo(ty, trait_ref, vtable);
-    cx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
+    if let Some(trait_ref) = trait_ref
+        && cx.sess().opts.unstable_opts.virtual_function_elimination
+        && cx.sess().lto() == Lto::Fat
+    {
+        let key = trait_ref.with_self_ty(tcx, self_ty);
+        let trait_hierarchy = vtable::vtable_prefix_traits(tcx, key);
+
+        cx.apply_vcall_visibility_metadata(&trait_hierarchy, vtable);
+    }
+
+    cx.create_vtable_debuginfo(self_ty, trait_ref, vtable);
+    cx.vtables().borrow_mut().insert((self_ty, trait_ref), vtable);
+
     vtable
 }
