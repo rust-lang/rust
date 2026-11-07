@@ -13,6 +13,5 @@ fn main() {
     rustc().emit("obj").input("app.rs").run();
     let out = llvm_readobj().input("app.o").arg("--symbols").run();
     out.assert_stdout_contains("rust_begin_unwind");
-    out.assert_stdout_contains("rust_eh_personality");
     out.assert_stdout_contains("__rust_alloc_error_handler");
 }

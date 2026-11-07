@@ -3,7 +3,6 @@
 mod configure_builtins;
 mod helpers;
 mod pal;
-mod personality;
 
 pub mod alloc;
 pub mod args;

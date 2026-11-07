@@ -1,6 +1,3 @@
-#[lang = "eh_personality"]
-fn eh_personality() {}
-
 mod internal {
     extern "C" {
         #[link_name = "llvm.wasm.throw"]

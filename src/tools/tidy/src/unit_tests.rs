@@ -52,7 +52,10 @@ pub fn check(root_path: &Path, stdlib: bool, tidy_ctx: TidyCtx) {
 
         if is_dir {
             // FIXME remove those exceptions once no longer necessary
-            file_name == "std_detect" || file_name == "std" || file_name == "test"
+            file_name == "std_detect"
+                || file_name == "std"
+                || file_name == "test"
+                || file_name == "unwind"
         } else {
             // Tests which use non-public internals and, as such, need to
             // have the types in the same crate as the tests themselves. See
