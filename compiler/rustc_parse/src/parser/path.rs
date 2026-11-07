@@ -208,13 +208,20 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
+        // As paths can be nested, save the outer path's frame.
+        let parent = self.cur_span_frame.take();
+
         let mut segments = ThinVec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
         if self.eat_path_sep() {
+            self.chain_span(self.prev_token.span);
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
-        Ok(Path { segments, span: lo.to(self.prev_token.span) })
+
+        // Restore the outer frame.
+        let span = mem::replace(&mut self.cur_span_frame, parent);
+        Ok(Path { segments, span: span.unwrap_or_else(|| lo.to(self.prev_token.span)) })
     }
 
     pub(super) fn parse_path_segments(
@@ -224,6 +231,7 @@ impl<'a> Parser<'a> {
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, ()> {
         loop {
+            let segment_lo = self.token.span;
             let segment = self.parse_path_segment(style, ty_generics)?;
             if style.has_generic_ambiguity() {
                 // In order to check for trailing angle brackets, we must have finished
@@ -244,6 +252,7 @@ impl<'a> Parser<'a> {
                 // this invariant.
                 self.check_trailing_angle_brackets(&segment, &[exp!(PathSep)]);
             }
+            self.chain_span(segment_lo.to(self.prev_token.span));
             segments.push(segment);
 
             if self.is_import_coupler() || !self.eat_path_sep() {
@@ -263,6 +272,7 @@ impl<'a> Parser<'a> {
                         && self.look_ahead(1, |token| self.token.span.hi() == token.span.lo())
                     {
                         self.bump(); // bump past the colon
+                        self.chain_span(self.prev_token.span);
                         self.dcx().emit_err(PathSingleColon {
                             span: self.prev_token.span,
                             suggestion: self.prev_token.span.shrink_to_hi(),
@@ -273,6 +283,7 @@ impl<'a> Parser<'a> {
 
                 return Ok(());
             }
+            self.chain_span(self.prev_token.span);
         }
     }
 
