@@ -1707,6 +1707,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     local_id,
                     tcx.args_known_to_outlive_alias_params(def_id),
                 );
+                self.table_writer()
+                    .captured_args_for_opaque(local_id, tcx.captured_args_for_opaque(def_id));
             }
             if let DefKind::AssocTy = def_kind {
                 let assoc_item = tcx.associated_item(def_id);
