@@ -1,0 +1,11 @@
+error[E0733]: recursion in a coroutine requires boxing
+  --> $DIR/recursive-coroutine-indirect.rs:8:18
+   |
+LL |     #[coroutine] move || {
+   |                  ^^^^^^^
+LL |         let x = coroutine_hold();
+   |             - recursive call here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0733`.

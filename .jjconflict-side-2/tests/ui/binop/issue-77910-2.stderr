@@ -1,0 +1,30 @@
+error[E0369]: binary operation `==` cannot be applied to type `for<'a> fn(&'a i32) -> &'a i32 {foo}`
+  --> $DIR/issue-77910-2.rs:7:12
+   |
+LL |     if foo == y {}
+   |        --- ^^ - _
+   |        |
+   |        for<'a> fn(&'a i32) -> &'a i32 {foo}
+   |
+help: use parentheses to call this function
+   |
+LL |     if foo(/* &i32 */) == y {}
+   |           ++++++++++++
+
+error[E0381]: used binding `xs` isn't initialized
+  --> $DIR/issue-77910-2.rs:3:5
+   |
+LL |     let xs;
+   |         -- binding declared here but left uninitialized
+LL |     xs
+   |     ^^ `xs` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let xs = &42;
+   |            +++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0369, E0381.
+For more information about an error, try `rustc --explain E0369`.

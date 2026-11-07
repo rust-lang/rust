@@ -1,0 +1,24 @@
+error: the constant `N` is not of type `usize`
+  --> $DIR/bad-subst-const-kind.rs:8:26
+   |
+LL | impl<const N: u64> Q for [u8; N] {
+   |                          ^^^^^^^ expected `usize`, found `u64`
+   |
+   = note: the length of array `[u8; N]` must be type `usize`
+
+error: the constant `13` is not of type `u64`
+  --> $DIR/bad-subst-const-kind.rs:13:24
+   |
+LL | pub fn test() -> [u8; <[u8; 13] as Q>::ASSOC] {
+   |                        ^^^^^^^^ expected `u64`, found `usize`
+   |
+note: required for `[u8; 13]` to implement `Q`
+  --> $DIR/bad-subst-const-kind.rs:8:20
+   |
+LL | impl<const N: u64> Q for [u8; N] {
+   |      ------------  ^     ^^^^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+
+error: aborting due to 2 previous errors
+

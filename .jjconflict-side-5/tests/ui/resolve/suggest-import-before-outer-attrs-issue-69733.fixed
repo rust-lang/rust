@@ -1,0 +1,13 @@
+//@ edition:2015
+//@ run-rustfix
+//@ compile-flags: -Adead_code
+
+use std::path::Path;
+
+#[derive(Debug)]
+struct Symbol;
+
+type Ident = Path;
+//~^ ERROR cannot find type `Path` in this scope
+
+fn main() {}

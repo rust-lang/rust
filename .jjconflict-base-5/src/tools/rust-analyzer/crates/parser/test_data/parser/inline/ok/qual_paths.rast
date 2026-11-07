@@ -1,0 +1,81 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "X"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH
+          PATH_SEGMENT
+            TYPE_ANCHOR
+              L_ANGLE "<"
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "A"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "B"
+              R_ANGLE ">"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Output"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH
+                  PATH_SEGMENT
+                    TYPE_ANCHOR
+                      L_ANGLE "<"
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "usize"
+                      WHITESPACE " "
+                      AS_KW "as"
+                      WHITESPACE " "
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Default"
+                      R_ANGLE ">"
+                COLON2 "::"
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "default"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

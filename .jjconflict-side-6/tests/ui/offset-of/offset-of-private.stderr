@@ -1,0 +1,52 @@
+error[E0603]: struct `Bar` is private
+  --> $DIR/offset-of-private.rs:32:19
+   |
+LL |     offset_of!(m::Bar, public);
+   |                   ^^^ private struct
+   |
+note: the struct `Bar` is defined here
+  --> $DIR/offset-of-private.rs:16:5
+   |
+LL |     struct Bar {
+   |     ^^^^^^^^^^
+
+error[E0603]: struct `Bar` is private
+  --> $DIR/offset-of-private.rs:33:19
+   |
+LL |     offset_of!(m::Bar, private);
+   |                   ^^^ private struct
+   |
+note: the struct `Bar` is defined here
+  --> $DIR/offset-of-private.rs:16:5
+   |
+LL |     struct Bar {
+   |     ^^^^^^^^^^
+
+error[E0616]: field `private` of struct `Foo` is private
+  --> $DIR/offset-of-private.rs:29:24
+   |
+LL |     offset_of!(m::Foo, private);
+   |                        ^^^^^^^ private field
+
+error[E0616]: field `1` of struct `FooTuple` is private
+  --> $DIR/offset-of-private.rs:31:29
+   |
+LL |     offset_of!(m::FooTuple, 1);
+   |                             ^ private field
+
+error[E0616]: field `private` of struct `Bar` is private
+  --> $DIR/offset-of-private.rs:33:24
+   |
+LL |     offset_of!(m::Bar, private);
+   |                        ^^^^^^^ private field
+
+error[E0616]: field `private` of struct `Foo` is private
+  --> $DIR/offset-of-private.rs:37:31
+   |
+LL |     offset_of!(m::Baz, Var1.0.private);
+   |                               ^^^^^^^ private field
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0603, E0616.
+For more information about an error, try `rustc --explain E0603`.

@@ -1,0 +1,76 @@
+error[E0658]: const trait impls are experimental
+  --> $DIR/pointee-validation.rs:12:32
+   |
+LL | const fn test<T, U>() where T: const PointeeSized, U: [const] PointeeSized {}
+   |                                ^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/pointee-validation.rs:12:55
+   |
+LL | const fn test<T, U>() where T: const PointeeSized, U: [const] PointeeSized {}
+   |                                                       ^^^^^^^
+   |
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/pointee-validation.rs:8:20
+   |
+LL | struct T where (): PointeeSized<(), Undefined = ()>;
+   |                    ^^^^^^^^^^^^-------------------- help: remove the unnecessary generics
+   |                    |
+   |                    expected 0 generic arguments
+
+error[E0220]: associated type `Undefined` not found for `PointeeSized`
+  --> $DIR/pointee-validation.rs:8:37
+   |
+LL | struct T where (): PointeeSized<(), Undefined = ()>;
+   |                                     ^^^^^^^^^ associated type `Undefined` not found
+
+error: `const` can only be applied to `const` traits
+  --> $DIR/pointee-validation.rs:12:32
+   |
+LL | const fn test<T, U>() where T: const PointeeSized, U: [const] PointeeSized {}
+   |                                ^^^^^ can't be applied to `PointeeSized`
+   |
+note: `PointeeSized` can't be used with `const` because it isn't `const`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/pointee-validation.rs:12:55
+   |
+LL | const fn test<T, U>() where T: const PointeeSized, U: [const] PointeeSized {}
+   |                                                       ^^^^^^^ can't be applied to `PointeeSized`
+   |
+note: `PointeeSized` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+
+error: `const` can only be applied to `const` traits
+  --> $DIR/pointee-validation.rs:12:32
+   |
+LL | const fn test<T, U>() where T: const PointeeSized, U: [const] PointeeSized {}
+   |                                ^^^^^ can't be applied to `PointeeSized`
+   |
+note: `PointeeSized` can't be used with `const` because it isn't `const`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/pointee-validation.rs:12:55
+   |
+LL | const fn test<T, U>() where T: const PointeeSized, U: [const] PointeeSized {}
+   |                                                       ^^^^^^^ can't be applied to `PointeeSized`
+   |
+note: `PointeeSized` can't be used with `[const]` because it isn't `const`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0107, E0220, E0658.
+For more information about an error, try `rustc --explain E0107`.

@@ -1,0 +1,194 @@
+error: First Pass analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:24:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing a[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:27:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Capturing a[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:30:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Capturing b[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:34:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Capturing b[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:37:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:24:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.0);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture a[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:27:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:30:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Min Capture b[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:34:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:37:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:48:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.1);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing a[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:51:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Capturing a[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:54:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Capturing b[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:58:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+note: Capturing b[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:61:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:48:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", a.1);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture a[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:54:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:51:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Min Capture b[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:61:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:58:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:72:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", b.1);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing b[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:75:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+note: Capturing a[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:78:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+note: Capturing a[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:81:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Capturing b[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:85:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/preserve_field_drop_order.rs:72:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", b.1);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture b[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:85:26
+   |
+LL |         println!("{:?}", b.0);
+   |                          ^^^
+note: Min Capture b[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:75:26
+   |
+LL |         println!("{:?}", b.1);
+   |                          ^^^
+note: Min Capture a[(0, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:81:26
+   |
+LL |         println!("{:?}", a.0);
+   |                          ^^^
+note: Min Capture a[(1, 0)] -> Immutable
+  --> $DIR/preserve_field_drop_order.rs:78:26
+   |
+LL |         println!("{:?}", a.1);
+   |                          ^^^
+
+error: aborting due to 6 previous errors
+

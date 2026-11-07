@@ -766,6 +766,7 @@ macro_rules! declare_lint_pass {
     };
 }
 
+/// Helper macro to create [`FutureIncompatibilityReason`].
 #[macro_export]
 macro_rules! fcw {
     (FutureReleaseError # $issue_number: literal) => {

@@ -1,0 +1,16 @@
+error: this bound is already specified as the supertrait of `PartialOrd`
+  --> tests/ui/crashes/ice-11422.rs:6:33
+   |
+LL | fn r#gen() -> impl PartialOrd + PartialEq + Debug {}
+   |                                 ^^^^^^^^^
+   |
+   = note: `-D clippy::implied-bounds-in-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implied_bounds_in_impls)]`
+help: try removing this bound
+   |
+LL - fn r#gen() -> impl PartialOrd + PartialEq + Debug {}
+LL + fn r#gen() -> impl PartialOrd + Debug {}
+   |
+
+error: aborting due to 1 previous error
+

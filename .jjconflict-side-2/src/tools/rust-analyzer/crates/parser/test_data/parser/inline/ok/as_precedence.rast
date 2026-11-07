@@ -1,0 +1,43 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          CAST_EXPR
+            REF_EXPR
+              AMP "&"
+              LITERAL
+                INT_NUMBER "1"
+            WHITESPACE " "
+            AS_KW "as"
+            WHITESPACE " "
+            PTR_TYPE
+              STAR "*"
+              CONST_KW "const"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i32"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

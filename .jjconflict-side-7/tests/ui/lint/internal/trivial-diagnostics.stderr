@@ -1,0 +1,15 @@
+error[E0425]: cannot find value `msg` in this scope
+  --> $DIR/trivial-diagnostics.rs:4:21
+   |
+LL |     struct_span_err(msg).emit();
+   |                     ^^^ not found in this scope
+
+error[E0425]: cannot find function `struct_span_err` in this scope
+  --> $DIR/trivial-diagnostics.rs:4:5
+   |
+LL |     struct_span_err(msg).emit();
+   |     ^^^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

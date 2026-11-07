@@ -1,0 +1,5 @@
+4 4 1
+fn blah() {}
+10 5 2
+#[cfg(a, b)]
+fn main() {}

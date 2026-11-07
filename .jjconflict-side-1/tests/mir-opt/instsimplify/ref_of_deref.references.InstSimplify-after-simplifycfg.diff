@@ -1,0 +1,58 @@
+- // MIR for `references` before InstSimplify-after-simplifycfg
++ // MIR for `references` after InstSimplify-after-simplifycfg
+  
+  fn references(_1: &i32, _2: &mut [i32]) -> () {
+      debug const_ref => _1;
+      debug mut_ref => _2;
+      let mut _0: ();
+      let _3: &i32;
+      scope 1 {
+          debug _a => _3;
+          let _4: &[i32];
+          scope 2 {
+              debug _b => _4;
+              let _5: &mut [i32];
+              scope 3 {
+                  debug _c => _5;
+                  let _6: *const i32;
+                  scope 4 {
+                      debug _d => _6;
+                      let _7: *const [i32];
+                      scope 5 {
+                          debug _e => _7;
+                          let _8: *mut [i32];
+                          scope 6 {
+                              debug _f => _8;
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+-         _3 = &(*_1);
++         _3 = copy _1;
+          StorageLive(_4);
+          _4 = &(*_2);
+          StorageLive(_5);
+-         _5 = &mut (*_2);
++         _5 = copy _2;
+          StorageLive(_6);
+          _6 = &raw const (*_1);
+          StorageLive(_7);
+          _7 = &raw const (*_2);
+          StorageLive(_8);
+          _8 = &raw mut (*_2);
+          _0 = const ();
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

@@ -1,0 +1,25 @@
+error[E0063]: missing field `defaulted` in initializer of `Outer`
+  --> $DIR/multi-line-fru-suggestion.rs:14:5
+   |
+LL |     Outer {
+   |     ^^^^^ missing `defaulted`
+   |
+note: this expression may have been misinterpreted as a `..` range expression
+  --> $DIR/multi-line-fru-suggestion.rs:16:16
+   |
+LL |           inner: Inner {
+   |  ________________^
+LL | |             a: 1,
+LL | |             b: 2,
+LL | |         }
+   | |_________^ this expression does not end in a comma...
+LL |           ..Default::default()
+   |           ^^^^^^^^^^^^^^^^^^^^ ... so this is interpreted as a `..` range expression, instead of functional record update syntax
+help: to set the remaining fields from `Default::default()`, separate the last named field with a comma
+   |
+LL |         }, 
+   |          +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0063`.

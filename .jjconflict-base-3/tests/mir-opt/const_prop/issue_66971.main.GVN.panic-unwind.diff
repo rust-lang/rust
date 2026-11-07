@@ -1,0 +1,34 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: ();
+      let mut _2: ((), u8, u8);
+      let mut _3: ();
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          StorageLive(_3);
+-         _3 = ();
+-         _2 = (move _3, const 0_u8, const 0_u8);
++         _3 = const ();
++         _2 = const ((), 0_u8, 0_u8);
+          StorageDead(_3);
+-         _1 = encode(move _2) -> [return: bb1, unwind continue];
++         _1 = encode(const ((), 0_u8, 0_u8)) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
++ }
++ 
++ ALLOC0 (size: 2, align: 1) {
++     00 00                                           │ ..
+  }
+  

@@ -1,0 +1,26 @@
+error: delegation's target expression is specified for function with no params
+  --> $DIR/target-expr-removal-free-to-free.rs:8:28
+   |
+LL | reuse to_reuse::{foo, bar} { self + 1 }
+   |                            ^^^^^^^^^^^^
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/target-expr-removal-free-to-free.rs:8:23
+   |
+LL | reuse to_reuse::{foo, bar} { self + 1 }
+   |                       ^^^  ------------ unexpected argument
+   |
+note: function defined here
+  --> $DIR/target-expr-removal-free-to-free.rs:5:12
+   |
+LL |     pub fn bar() -> () { () }
+   |            ^^^
+help: remove the extra argument
+   |
+LL - reuse to_reuse::{foo, bar} { self + 1 }
+LL + reuse to_reuse::{foo, ba{ self + 1 }
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

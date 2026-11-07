@@ -1,0 +1,23 @@
+// MIR for `min_splatted_u8` after runtime-optimized
+
+fn min_splatted_u8(_1: u8, _2: u8) -> u8 {
+    debug x => _1;
+    debug y => _2;
+    let mut _0: u8;
+    scope 1 (inlined smallest::<u8, (u8,)>) {
+        scope 2 (inlined <(u8,) as std::cmp::SmallestArgs<u8>>::smallest) {
+            scope 3 {
+                scope 4 (inlined std::cmp::impls::<impl Ord for u8>::min) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _0 = integer_min::<u8>(move _1, move _2) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}

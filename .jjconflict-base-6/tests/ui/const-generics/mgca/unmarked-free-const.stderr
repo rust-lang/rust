@@ -1,0 +1,13 @@
+error: use of `const` in the type system not marked as direct
+  --> $DIR/unmarked-free-const.rs:11:23
+   |
+LL |     let x = [(); gca!(N)];
+   |                       ^
+   |
+help: add gca!() to the right-hand side of the constant
+   |
+LL | const N: usize = core::gca!(4);
+   |                  +++++++++++ +
+
+error: aborting due to 1 previous error
+

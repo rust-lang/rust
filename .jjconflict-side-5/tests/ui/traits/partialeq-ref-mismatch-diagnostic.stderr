@@ -1,0 +1,35 @@
+error[E0277]: can't compare `&T` with `T`
+  --> $DIR/partialeq-ref-mismatch-diagnostic.rs:4:7
+   |
+LL |     a == b;
+   |       ^^ no implementation for `&T == T`
+   |
+   = help: the trait `PartialEq<T>` is not implemented for `&T`
+help: consider dereferencing here
+   |
+LL |     *a == b;
+   |     +
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn foo<T: PartialEq>(a: &T, b: T) where &T: PartialEq<T> {
+   |                                   ++++++++++++++++++++++
+
+error[E0277]: can't compare `&T` with `T`
+  --> $DIR/partialeq-ref-mismatch-diagnostic.rs:8:7
+   |
+LL |     a == b;
+   |       ^^ no implementation for `&T == T`
+   |
+   = help: the trait `PartialEq<T>` is not implemented for `&T`
+help: consider dereferencing here
+   |
+LL |     *a == b;
+   |     +
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn foo2<T: PartialEq>(a: &T, b: T) where &T: PartialEq<T> {
+   |                                    ++++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

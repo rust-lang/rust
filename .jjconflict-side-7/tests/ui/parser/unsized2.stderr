@@ -1,0 +1,8 @@
+error: expected expression, found keyword `type`
+  --> $DIR/unsized2.rs:6:7
+   |
+LL |     f<type>();
+   |       ^^^^ expected expression
+
+error: aborting due to 1 previous error
+

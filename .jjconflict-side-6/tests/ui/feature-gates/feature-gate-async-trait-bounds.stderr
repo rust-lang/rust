@@ -1,0 +1,14 @@
+error[E0658]: `async` trait bounds are unstable
+  --> $DIR/feature-gate-async-trait-bounds.rs:3:17
+   |
+LL | fn test(_: impl async Fn()) {}
+   |                 ^^^^^
+   |
+   = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
+   = help: add `#![feature(async_trait_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: use the desugared name of the async trait, such as `AsyncFn`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

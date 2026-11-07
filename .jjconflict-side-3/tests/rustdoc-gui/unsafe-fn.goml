@@ -1,0 +1,35 @@
+// Check position and color of the `<sup>` for unsafe elements.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// If the text isn't displayed, the browser doesn't compute color style correctly...
+show-text: true
+
+compare-elements-property: (
+    "//a[@title='fn test_docs::safe_fn']/..",
+    "//a[@title='fn test_docs::unsafe_fn']/..",
+    ["clientHeight"]
+)
+
+define-function: (
+    "sup-check",
+    // `theme` is the theme being tested.
+    // `color` is the expected color of the `<sup>` element.
+    [theme, color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: ("dt sup", {"color": |color|})
+    },
+)
+
+call-function: ("sup-check", {
+    "theme": "ayu",
+    "color": "#c5c5c5",
+})
+call-function: ("sup-check", {
+    "theme": "dark",
+    "color": "#ddd",
+})
+call-function: ("sup-check", {
+    "theme": "light",
+    "color": "black",
+})

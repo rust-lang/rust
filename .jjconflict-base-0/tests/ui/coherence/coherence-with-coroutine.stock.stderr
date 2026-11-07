@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `Wrapper<OpaqueCoroutine>`
+  --> $DIR/coherence-with-coroutine.rs:23:1
+   |
+LL | impl Trait for Wrapper<OpaqueCoroutine> {}
+   | --------------------------------------- first implementation here
+LL | impl<T: Sync> Trait for Wrapper<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Wrapper<OpaqueCoroutine>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

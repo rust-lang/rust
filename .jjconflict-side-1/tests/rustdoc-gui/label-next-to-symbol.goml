@@ -1,0 +1,80 @@
+// These tests verify that labels like "UNIX" and "Deprecated" stay on the same line as their symbol.
+// It also verifies the staggered layout on mobile.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+
+call-function: ("switch-theme", {"theme": "light"})
+
+// Desktop view
+set-window-size: (1080, 600)
+assert: (".stab.deprecated")
+assert: (".stab.portability")
+
+// make sure that deprecated and portability have the right colors
+assert-css: (
+    ".item-table dt .stab.deprecated",
+    { "background-color": "#fff5d6" },
+)
+assert-css: (
+    ".item-table dt .stab.portability",
+    { "background-color": "#fff5d6" },
+)
+
+// table like view
+assert-css: ("dd", { "padding-left": "0px" })
+compare-elements-position-near: (
+    "//dt//a[normalize-space()='replaced_function']",
+    "dt .stab.deprecated",
+    {"y": 2},
+)
+// "Unix" part is on second line
+compare-elements-position-false: (
+    "dt .stab.deprecated",
+    "dt .stab.portability",
+    ["y"],
+)
+
+// Ensure no wrap
+compare-elements-position: (
+    "//dt//a[normalize-space()='replaced_function']/..",
+    "//dd[normalize-space()='a thing with a label']",
+    ["y"],
+)
+
+// Mobile view
+set-window-size: (600, 600)
+// staggered layout with 2em spacing
+assert-css: ("dd", { "padding-left": "32px" })
+compare-elements-position-near: (
+    "//dt//a[normalize-space()='replaced_function']",
+    "dt .stab.deprecated",
+    {"y": 2},
+)
+compare-elements-position: (
+    "dt .stab.deprecated",
+    "dt .stab.portability",
+    ["y"],
+)
+
+// Ensure wrap
+compare-elements-position-false: (
+    "//dt//a[normalize-space()='replaced_function']/..",
+    "//dd[normalize-space()='a thing with a label']",
+    ["y"],
+)
+compare-elements-position-false: (
+    "dt .stab.deprecated",
+    "//dd[normalize-space()='a thing with a label']",
+    ["y"],
+)
+
+// Ensure it doesn't expand.
+set-window-size: (800, 800)
+go-to: "file://" + |DOC_PATH| + "/test_docs/cfgs/index.html"
+// This part of the tags should not be on the same line as the beginning since the width
+// is too small for that.
+compare-elements-position-false: (
+    "//*[@class='stab portability']/code[normalize-space()='appservice-api-c']",
+    "//*[@class='stab portability']/code[normalize-space()='server']",
+    ["y"],
+)

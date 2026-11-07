@@ -1,0 +1,10 @@
+if let StmtKind::Let(local) = stmt.kind
+    && let Some(init) = local.init
+    && let ExprKind::Cast(expr, cast_ty) = init.kind
+    && let ExprKind::Lit(ref lit) = expr.kind
+    && let LitKind::Int(69, LitIntType::Unsuffixed) = lit.node
+    && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
+    && name.as_str() == "x"
+{
+    // report your lint here
+}

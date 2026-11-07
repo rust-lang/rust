@@ -1,0 +1,13 @@
+error: expected one of `:`, `@`, or `|`, found `<`
+  --> $DIR/pat-lt-bracket-2.rs:1:7
+   |
+LL | fn a(B<) {}
+   |       ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn a(_: B<) {}
+   |      ++
+
+error: aborting due to 1 previous error
+

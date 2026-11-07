@@ -1,0 +1,10 @@
+// MIR for `simple_ref` after built
+
+fn simple_ref(_1: &mut i32) -> &mut i32 {
+    let mut _0: &mut i32;
+
+    bb0: {
+        _0 = move _1;
+        return;
+    }
+}

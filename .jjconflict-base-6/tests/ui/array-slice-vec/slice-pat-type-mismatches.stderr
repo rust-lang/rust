@@ -1,0 +1,34 @@
+error[E0425]: cannot find value `does_not_exist` in this scope
+  --> $DIR/slice-pat-type-mismatches.rs:26:11
+   |
+LL |     match does_not_exist {
+   |           ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0529]: expected an array or slice, found `String`
+  --> $DIR/slice-pat-type-mismatches.rs:3:9
+   |
+LL |         ['f', 'o', ..] => {}
+   |         ^^^^^^^^^^^^^^ pattern cannot match with input type `String`
+
+error[E0527]: pattern requires 1 element but array has 3
+  --> $DIR/slice-pat-type-mismatches.rs:18:9
+   |
+LL |         [0] => {}
+   |         ^^^ expected 3 elements
+
+error[E0528]: pattern requires at least 4 elements but array has 3
+  --> $DIR/slice-pat-type-mismatches.rs:23:9
+   |
+LL |         [0, 1, 2, 3, x @ ..] => {}
+   |         ^^^^^^^^^^^^^^^^^^^^ pattern cannot match array of 3 elements
+
+error[E0282]: type annotations needed
+  --> $DIR/slice-pat-type-mismatches.rs:34:9
+   |
+LL |         [] => {}
+   |         ^^ cannot infer type
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0282, E0425, E0527, E0528, E0529.
+For more information about an error, try `rustc --explain E0282`.

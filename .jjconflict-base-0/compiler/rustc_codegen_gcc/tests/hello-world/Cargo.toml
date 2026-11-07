@@ -1,0 +1,12 @@
+[package]
+name = "hello_world"
+edition = "2024"
+
+[dependencies]
+mylib = { path = "mylib" }
+
+[profile.dev]
+lto = "thin"
+
+[profile.release]
+lto = "fat"

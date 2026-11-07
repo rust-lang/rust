@@ -1,0 +1,17 @@
+error[E0119]: conflicting implementations of trait `From<()>` for type `S`
+  --> $DIR/inter-crate-ambiguity-causes-notes.rs:9:1
+   |
+LL |   impl From<()> for S {
+   |   ------------------- first implementation here
+...
+LL | / impl<I> From<I> for S
+LL | |
+LL | | where
+LL | |     I: Iterator<Item = ()>,
+   | |___________________________^ conflicting implementation for `S`
+   |
+   = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `()` in future versions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

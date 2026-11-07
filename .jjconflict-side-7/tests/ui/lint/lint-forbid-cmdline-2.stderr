@@ -1,0 +1,11 @@
+error[E0453]: allow(unused) incompatible with previous forbid
+  --> $DIR/lint-forbid-cmdline-2.rs:3:9
+   |
+LL | #[allow(unused)]
+   |         ^^^^^^ overruled by previous forbid
+   |
+   = note: `forbid` lint level was set on command line (`-F dead_code`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0453`.

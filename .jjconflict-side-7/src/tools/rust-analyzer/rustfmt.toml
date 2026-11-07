@@ -1,0 +1,3 @@
+edition = "2024"
+reorder_modules = true
+use_small_heuristics = "Max"

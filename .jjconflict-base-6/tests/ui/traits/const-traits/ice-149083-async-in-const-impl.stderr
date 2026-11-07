@@ -1,0 +1,10 @@
+error: async functions are not allowed in `const` impls
+  --> $DIR/ice-149083-async-in-const-impl.rs:6:5
+   |
+LL | const impl Foo {
+   | ----- associated functions of `const` cannot be declared `async`
+LL |     async fn e() {}
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+

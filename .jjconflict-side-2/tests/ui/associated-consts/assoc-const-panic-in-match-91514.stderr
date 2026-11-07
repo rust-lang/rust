@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/assoc-const-panic-in-match-91514.rs:15:23
+   |
+LL |     const CONST: u8 = panic!();
+   |                       ^^^^^^^^ evaluation of `S::CONST` failed here
+
+note: erroneous constant encountered
+  --> $DIR/assoc-const-panic-in-match-91514.rs:26:13
+   |
+LL |             S::CONST;
+   |             ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+# git grep shouldn't match entries in this benchmark data
+bench_data/** binary
+
+# Older git versions try to fix line endings on images, this prevents it.
+*.png binary
+*.jpg binary
+*.ico binary

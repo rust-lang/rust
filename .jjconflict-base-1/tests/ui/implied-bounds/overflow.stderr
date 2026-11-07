@@ -1,0 +1,8 @@
+error: overflow computing implied lifetime bounds for `List`
+  --> $DIR/overflow.rs:5:1
+   |
+LL | struct List<'a, T: Tailed<'a>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

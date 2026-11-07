@@ -1,0 +1,27 @@
+warning: impl trait in impl method signature does not match trait method signature
+  --> $DIR/unconstrained-lt.rs:8:18
+   |
+LL |     fn test() -> impl Sized;
+   |                  ---------- return type from trait method defined here
+...
+LL |     fn test() -> &'a () {
+   |                  ^^^^^^
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+   = note: `#[warn(refining_impl_trait_internal)]` (part of `#[warn(refining_impl_trait)]`) on by default
+help: replace the return type so that it matches the trait
+   |
+LL -     fn test() -> &'a () {
+LL +     fn test() -> impl Sized {
+   |
+
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-lt.rs:5:6
+   |
+LL | impl<'a, T> Foo for T {
+   |      ^^ unconstrained lifetime parameter
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0207`.

@@ -1,0 +1,13 @@
+//@ run-rustfix
+fn main() {
+    let msg;
+    let binding = Some("Hello".to_string());
+    match binding {
+        //~^ ERROR temporary value dropped while borrowed
+        Some(ref m) => {
+            msg = m;
+        },
+        None => { panic!() }
+    }
+    println!("{}", *msg);
+}

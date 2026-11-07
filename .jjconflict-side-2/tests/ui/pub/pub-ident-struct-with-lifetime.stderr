@@ -1,0 +1,8 @@
+error: missing `enum` or `struct` for enum or struct definition
+  --> $DIR/pub-ident-struct-with-lifetime.rs:1:1
+   |
+LL | pub S<'a> {
+   | ^^^^^
+
+error: aborting due to 1 previous error
+

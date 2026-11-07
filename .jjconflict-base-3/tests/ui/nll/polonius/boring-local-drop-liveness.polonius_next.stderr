@@ -1,0 +1,32 @@
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/boring-local-drop-liveness.rs:28:5
+   |
+LL | fn assigning_under_a_live_destructor<'a>(
+   |                                      -- lifetime `'a` defined here
+...
+LL |     *slot = Some(d.0);
+   |     ----------------- assignment requires that `*x` is borrowed for `'a`
+LL |     d = D(&*x);
+   |           --- `*x` is borrowed here
+LL |     *x = String::new();
+   |     ^^ `*x` is assigned to here but it was already borrowed
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/boring-local-drop-liveness.rs:35:11
+   |
+LL | fn dropping_under_a_live_destructor<'a>(x: &'a String, slot: &mut Option<&'a String>) {
+   |                                     -- lifetime `'a` defined here
+LL |     let mut d = D(x);
+LL |     *slot = Some(d.0);
+   |     ----------------- assignment requires that `local` is borrowed for `'a`
+LL |     let local = String::from("gone");
+   |         ----- binding `local` declared here
+LL |     d = D(&local);
+   |           ^^^^^^ borrowed value does not live long enough
+LL | }
+   | - `local` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0506, E0597.
+For more information about an error, try `rustc --explain E0506`.

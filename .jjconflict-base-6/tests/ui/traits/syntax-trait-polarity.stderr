@@ -1,0 +1,41 @@
+error: inherent impls cannot be negative
+  --> $DIR/syntax-trait-polarity.rs:7:7
+   |
+LL | impl !TestType {}
+   |      -^^^^^^^^ inherent impl for this type
+   |      |
+   |      negative because of this
+   |
+   = note: only trait implementations may be annotated with `!`
+
+error: inherent impls cannot be negative
+  --> $DIR/syntax-trait-polarity.rs:18:10
+   |
+LL | impl<T> !TestType2<T> {}
+   |         -^^^^^^^^^^^^ inherent impl for this type
+   |         |
+   |         negative because of this
+   |
+   = note: only trait implementations may be annotated with `!`
+
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/syntax-trait-polarity.rs:12:13
+   |
+LL | unsafe impl !Send for TestType {}
+   | ------      -^^^^
+   | |           |
+   | |           negative because of this
+   | unsafe because of this
+
+error[E0198]: negative impls cannot be unsafe
+  --> $DIR/syntax-trait-polarity.rs:21:16
+   |
+LL | unsafe impl<T> !Send for TestType2<T> {}
+   | ------         -^^^^
+   | |              |
+   | |              negative because of this
+   | unsafe because of this
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0198`.

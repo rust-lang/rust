@@ -1,0 +1,49 @@
+//@ revisions: HOST AMDGPU NVPTX
+//@ add-minicore
+//@ compile-flags: --crate-type=rlib
+//@[AMDGPU] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx1100
+//@[AMDGPU] needs-llvm-components: amdgpu
+//@[NVPTX]  compile-flags: --target nvptx64-nvidia-cuda
+//@[NVPTX] needs-llvm-components: nvptx
+//@ ignore-backends: gcc
+
+#![feature(no_core, lang_items)]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
+
+// Functions
+extern "gpu-kernel" fn f1(_: ()) {} //~ ERROR "gpu-kernel" ABI is experimental and subject to change
+//[HOST]~^ ERROR is not a supported ABI
+
+// Methods in trait definition
+trait Tr {
+    extern "gpu-kernel" fn m1(_: ()); //~ ERROR "gpu-kernel" ABI is experimental and subject to change
+    //[HOST]~^ ERROR is not a supported ABI
+
+    extern "gpu-kernel" fn dm1(_: ()) {} //~ ERROR "gpu-kernel" ABI is experimental and subject to change
+    //[HOST]~^ ERROR is not a supported ABI
+}
+
+struct S;
+
+// Methods in trait impl
+impl Tr for S {
+    extern "gpu-kernel" fn m1(_: ()) {} //~ ERROR "gpu-kernel" ABI is experimental and subject to change
+    //[HOST]~^ ERROR is not a supported ABI
+}
+
+// Methods in inherent impl
+impl S {
+    extern "gpu-kernel" fn im1(_: ()) {} //~ ERROR "gpu-kernel" ABI is experimental and subject to change
+    //[HOST]~^ ERROR is not a supported ABI
+}
+
+// Function pointer types
+type A1 = extern "gpu-kernel" fn(_: ()); //~ ERROR "gpu-kernel" ABI is experimental and subject to change
+//[HOST]~^ ERROR is not a supported ABI
+
+// Foreign modules
+extern "gpu-kernel" {} //~ ERROR "gpu-kernel" ABI is experimental and subject to change
+//[HOST]~^ ERROR is not a supported ABI

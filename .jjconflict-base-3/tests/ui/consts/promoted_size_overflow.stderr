@@ -1,0 +1,9 @@
+error[E0080]: values of the type `[u8; 4611686018427387903]` are too big for the target architecture
+  --> $DIR/promoted_size_overflow.rs:3:29
+   |
+LL | const _: &'static [Data] = &[];
+   |                             ^^ evaluation of `_` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

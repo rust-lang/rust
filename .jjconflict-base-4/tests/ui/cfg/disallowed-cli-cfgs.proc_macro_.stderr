@@ -1,0 +1,8 @@
+error: unexpected `--cfg proc_macro` flag
+   |
+   = note: config `proc_macro` is only supposed to be controlled by `--crate-type proc-macro`
+   = note: manually setting a built-in cfg can and does create incoherent behaviors
+   = note: `#[deny(explicit_builtin_cfgs_in_flags)]` on by default
+
+error: aborting due to 1 previous error
+

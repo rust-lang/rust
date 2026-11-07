@@ -1,0 +1,23 @@
+error: `cfg_attr` is deprecated for rustfmt and got replaced by tool attributes
+  --> tests/ui/cfg_attr_rustfmt.rs:18:5
+   |
+LL |     #[cfg_attr(rustfmt, rustfmt::skip)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`
+   |
+   = note: `-D clippy::deprecated-cfg-attr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deprecated_cfg_attr)]`
+
+error: `cfg_attr` is deprecated for rustfmt and got replaced by tool attributes
+  --> tests/ui/cfg_attr_rustfmt.rs:23:1
+   |
+LL | #[cfg_attr(rustfmt, rustfmt_skip)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`
+
+error: `cfg_attr` is deprecated for rustfmt and got replaced by tool attributes
+  --> tests/ui/cfg_attr_rustfmt.rs:43:5
+   |
+LL |     #[cfg_attr(rustfmt, rustfmt::skip)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `#[rustfmt::skip]`
+
+error: aborting due to 3 previous errors
+

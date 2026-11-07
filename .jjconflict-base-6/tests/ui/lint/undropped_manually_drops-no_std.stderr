@@ -1,0 +1,16 @@
+error: calls to `core::mem::drop` with `core::mem::ManuallyDrop` instead of the inner value does nothing
+  --> $DIR/undropped_manually_drops-no_std.rs:11:5
+   |
+LL |     core::mem::drop(core::mem::ManuallyDrop::new(S));
+   |     ^^^^^^^^^^^^^^^^-------------------------------^
+   |                     |
+   |                     argument has type `ManuallyDrop<S>`
+   |
+   = note: `#[deny(undropped_manually_drops)]` on by default
+help: use `core::mem::ManuallyDrop::into_inner` to get the inner value
+   |
+LL |     core::mem::drop(core::mem::ManuallyDrop::into_inner(core::mem::ManuallyDrop::new(S)));
+   |                     ++++++++++++++++++++++++++++++++++++                               +
+
+error: aborting due to 1 previous error
+

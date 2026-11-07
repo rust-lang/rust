@@ -1,0 +1,18 @@
+error: invalid match on `#[loop_match]` state
+  --> $DIR/upvar-scrutinee.rs:32:23
+   |
+LL |                 match state {
+   |                       ^^^^^
+   |
+   = note: a local variable must be the scrutinee within a `#[loop_match]`
+
+error: invalid match on `#[loop_match]` state
+  --> $DIR/upvar-scrutinee.rs:68:23
+   |
+LL |                 match state {
+   |                       ^^^^^
+   |
+   = note: a local variable must be the scrutinee within a `#[loop_match]`
+
+error: aborting due to 2 previous errors
+

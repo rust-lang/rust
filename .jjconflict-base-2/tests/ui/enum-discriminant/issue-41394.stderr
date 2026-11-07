@@ -1,0 +1,11 @@
+error[E0369]: cannot add `{integer}` to `&str`
+  --> $DIR/issue-41394.rs:2:12
+   |
+LL |     A = "" + 1
+   |         -- ^ - {integer}
+   |         |
+   |         &str
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

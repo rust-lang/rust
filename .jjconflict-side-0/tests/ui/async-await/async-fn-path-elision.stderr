@@ -1,0 +1,14 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/async-fn-path-elision.rs:5:20
+   |
+LL | async fn error(lt: HasLifetime) {
+   |                    ^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | async fn error(lt: HasLifetime<'_>) {
+   |                               ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0726`.

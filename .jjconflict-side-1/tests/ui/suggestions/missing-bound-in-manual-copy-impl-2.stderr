@@ -1,0 +1,22 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/missing-bound-in-manual-copy-impl-2.rs:17:18
+   |
+LL | struct Wrapper<T>(T);
+   |                   - this field does not implement `Copy`
+...
+LL | impl<S> Copy for Wrapper<OnlyCopyIfDisplay<S>> {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the `Copy` impl for `OnlyCopyIfDisplay<S>` requires that `S: std::fmt::Display`
+  --> $DIR/missing-bound-in-manual-copy-impl-2.rs:5:19
+   |
+LL | struct Wrapper<T>(T);
+   |                   ^
+help: consider restricting type parameter `S` with trait `Display`
+   |
+LL | impl<S: std::fmt::Display> Copy for Wrapper<OnlyCopyIfDisplay<S>> {}
+   |       +++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.

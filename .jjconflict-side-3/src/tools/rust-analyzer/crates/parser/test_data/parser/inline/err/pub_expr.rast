@@ -1,0 +1,26 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        ERROR
+          VISIBILITY
+            PUB_KW "pub"
+        WHITESPACE " "
+        EXPR_STMT
+          LITERAL
+            INT_NUMBER "92"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 14: expected an item

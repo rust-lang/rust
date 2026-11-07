@@ -1,0 +1,38 @@
+SOURCE_FILE@0..28
+  FN@0..28
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..25
+      L_PAREN@4..5 "("
+      PARAM@5..24
+        WILDCARD_PAT@5..6
+          UNDERSCORE@5..6 "_"
+        COLON@6..7 ":"
+        WHITESPACE@7..8 " "
+        REF_TYPE@8..24
+          AMP@8..9 "&"
+          IMPL_TRAIT_TYPE@9..24
+            IMPL_KW@9..13 "impl"
+            WHITESPACE@13..14 " "
+            TYPE_BOUND_LIST@14..24
+              TYPE_BOUND@14..16
+                LIFETIME@14..16
+                  LIFETIME_IDENT@14..16 "'a"
+              WHITESPACE@16..17 " "
+              PLUS@17..18 "+"
+              WHITESPACE@18..19 " "
+              TYPE_BOUND@19..24
+                PATH_TYPE@19..24
+                  PATH@19..24
+                    PATH_SEGMENT@19..24
+                      NAME_REF@19..24
+                        IDENT@19..24 "Sized"
+      R_PAREN@24..25 ")"
+    WHITESPACE@25..26 " "
+    BLOCK_EXPR@26..28
+      STMT_LIST@26..28
+        L_CURLY@26..27 "{"
+        R_CURLY@27..28 "}"
+error 9..24: ambiguous `+` in a type

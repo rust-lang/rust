@@ -1,0 +1,57 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/105520.
+//! Suggested expressions belong in named arguments, outside the format string.
+
+//@ edition: 2021
+//@ run-rustfix
+#![allow(dead_code)]
+
+macro_rules! identity {
+    ($value:expr) => { $value };
+}
+
+#[derive(Debug)]
+struct CaptureEmpty {}
+
+struct Foo {
+    r#type: i32,
+}
+
+impl Foo {
+    const WIDTH: usize = 8;
+
+    fn format(&self) {
+        // No explicit arguments: insert after the raw string, before its trailing comma.
+        // Repeated captures share an argument; the width needs a separate named argument.
+        let _ = format!(r#"{type:WIDTH$} {type}"#,);
+        //~^ ERROR cannot find value `r#type` in this scope
+        //~| ERROR cannot find value `WIDTH` in this scope
+
+        // Insert after the last argument's entire invocation, not its expanded expression.
+        let _ = format!("{} {} {type}", 0, identity!(1));
+        //~^ ERROR cannot find value `r#type` in this scope
+        let _ = format!("{arg} {type}", arg = identity!(1));
+        //~^ ERROR cannot find value `r#type` in this scope
+
+        // Each invocation needs its own insertion point.
+        let _ = format!("{} {type}", format!("{WIDTH}"));
+        //~^ ERROR cannot find value `WIDTH` in this scope
+        //~| ERROR cannot find value `r#type` in this scope
+    }
+}
+
+trait HasLimit {
+    const LIMIT: usize = 3;
+
+    fn show() {
+        let _ = format!("{LIMIT}");
+        //~^ ERROR cannot find value `LIMIT` in this scope
+    }
+}
+
+fn main() {
+    // Replacements and struct constructors are complete expressions, not qualifiers.
+    let _ = format!("{True}");
+    //~^ ERROR cannot find value `True` in this scope
+    let _ = format!("{CaptureEmpty:?}");
+    //~^ ERROR cannot find value `CaptureEmpty` in this scope
+}

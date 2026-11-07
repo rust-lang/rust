@@ -1,0 +1,41 @@
+error: using a rest pattern to bind an entire slice to a local
+  --> tests/ui/redundant_at_rest_pattern.rs:9:12
+   |
+LL |     if let [a @ ..] = [()] {}
+   |            ^^^^^^^^ help: this is better represented with just the binding: `a`
+   |
+   = note: `-D clippy::redundant-at-rest-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_at_rest_pattern)]`
+
+error: using a rest pattern to bind an entire slice to a local
+  --> tests/ui/redundant_at_rest_pattern.rs:11:12
+   |
+LL |     if let [ref a @ ..] = [()] {}
+   |            ^^^^^^^^^^^^ help: this is better represented with just the binding: `ref a`
+
+error: using a rest pattern to bind an entire slice to a local
+  --> tests/ui/redundant_at_rest_pattern.rs:13:12
+   |
+LL |     if let [mut a @ ..] = [()] {}
+   |            ^^^^^^^^^^^^ help: this is better represented with just the binding: `mut a`
+
+error: using a rest pattern to bind an entire slice to a local
+  --> tests/ui/redundant_at_rest_pattern.rs:15:12
+   |
+LL |     if let [ref mut a @ ..] = [()] {}
+   |            ^^^^^^^^^^^^^^^^ help: this is better represented with just the binding: `ref mut a`
+
+error: using a rest pattern to bind an entire slice to a local
+  --> tests/ui/redundant_at_rest_pattern.rs:18:12
+   |
+LL |     if let [a @ ..] = &*v {}
+   |            ^^^^^^^^ help: this is better represented with just the binding: `a`
+
+error: using a rest pattern to bind an entire slice to a local
+  --> tests/ui/redundant_at_rest_pattern.rs:21:12
+   |
+LL |     if let [a @ ..] = s {}
+   |            ^^^^^^^^ help: this is better represented with just the binding: `a`
+
+error: aborting due to 6 previous errors
+

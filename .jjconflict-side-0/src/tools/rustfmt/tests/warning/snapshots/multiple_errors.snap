@@ -1,0 +1,38 @@
+---
+source: src/test/mod.rs
+---
+warning: `rustfmt_skip` is deprecated; use `rustfmt::skip`
+ --> tests/warning/source/multiple_errors.rs:1
+  |
+1 | #[rustfmt_skip]
+  |
+
+error: invalid attribute
+ --> tests/warning/source/multiple_errors.rs:4
+  |
+4 | #[rustfmt::invalid]
+  |
+
+error[internal]: not formatted because a comment would be lost
+ --> tests/warning/source/multiple_errors.rs:9
+  |
+9 | fn lost_comment() { let _ = 1 /* This comment cannot be retained by the expression formatter. */ + 2; }
+  |
+  = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+error[internal]: line formatted, but exceeded maximum width (maximum: 100 (see `max_width` option), found: 109)
+ --> tests/warning/source/multiple_errors.rs:7:7:101
+  |
+7 | fn this_function_name_is_intentionally_long_enough_to_exceed_the_default_one_hundred_character_maximum_width(
+  |                                                                                                     ^^^^^^^^^
+  |
+
+error[internal]: left behind trailing whitespace
+  --> tests/warning/source/multiple_errors.rs:15:15:46
+   |
+15 | /// This doc comment has trailing whitespace.   
+   |                                              ^^^
+   |
+   = note: set `error_on_unformatted = false` to suppress the warning against comments or string literals
+
+warning: rustfmt has failed to format. See previous 5 errors.

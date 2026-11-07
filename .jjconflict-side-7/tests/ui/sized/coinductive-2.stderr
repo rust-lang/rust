@@ -1,0 +1,10 @@
+warning: trait `Collection` is never used
+  --> $DIR/coinductive-2.rs:14:7
+   |
+LL | trait Collection<T>: Sized {
+   |       ^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

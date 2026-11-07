@@ -1,0 +1,51 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    REF_TYPE
+      AMP "&"
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    REF_TYPE
+      AMP "&"
+      LIFETIME
+        LIFETIME_IDENT "'static"
+      WHITESPACE " "
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    REF_TYPE
+      AMP "&"
+      MUT_KW "mut"
+      WHITESPACE " "
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

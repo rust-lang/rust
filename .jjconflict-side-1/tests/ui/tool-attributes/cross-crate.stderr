@@ -1,0 +1,36 @@
+error[E0710]: unknown tool name `foo` found in scoped lint: `foo::baz`
+  --> $DIR/cross-crate.rs:7:9
+   |
+LL | #[allow(foo::baz)]
+   |         ^^^
+   |
+   = help: add `#![register_tool(foo)]` to the crate root
+
+error[E0433]: cannot find module or crate `foo` in this scope
+  --> $DIR/cross-crate.rs:6:3
+   |
+LL | #[foo::bar]
+   |   ^^^ use of unresolved module or unlinked crate `foo`
+
+error[E0710]: unknown tool name `foo` found in scoped lint: `foo::baz`
+  --> $DIR/cross-crate.rs:7:9
+   |
+LL | #[allow(foo::baz)]
+   |         ^^^
+   |
+   = help: add `#![register_tool(foo)]` to the crate root
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0710]: unknown tool name `foo` found in scoped lint: `foo::baz`
+  --> $DIR/cross-crate.rs:7:9
+   |
+LL | #[allow(foo::baz)]
+   |         ^^^
+   |
+   = help: add `#![register_tool(foo)]` to the crate root
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0433, E0710.
+For more information about an error, try `rustc --explain E0433`.

@@ -1,0 +1,13 @@
+error: Undefined Behavior: extern static `mut_mismatch3::main::S` is declared as an mutable `static`, but the backing static is immutable
+  --> tests/fail/extern_static/mut_mismatch3.rs:LL:CC
+   |
+LL |     let _val = &raw const S;
+   |                           ^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

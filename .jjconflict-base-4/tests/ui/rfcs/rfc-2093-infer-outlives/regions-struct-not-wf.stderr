@@ -1,0 +1,52 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-struct-not-wf.rs:13:5
+   |
+LL | impl<'a, T> Trait<'a, T> for usize {
+   |      -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     type Out = &'a T;
+   |     ^^^^^^^^ ...so that the reference type `&'a T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a, T> for usize {
+   |           ++++
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/regions-struct-not-wf.rs:21:5
+   |
+LL | impl<'a, T> Trait<'a, T> for u32 {
+   |      -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+LL |     type Out = RefOk<'a, T>;
+   |     ^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/regions-struct-not-wf.rs:16:20
+   |
+LL | struct RefOk<'a, T:'a> {
+   |                    ^^
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<'a, T: 'a> Trait<'a, T> for u32 {
+   |           ++++
+
+error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data it references
+  --> $DIR/regions-struct-not-wf.rs:25:5
+   |
+LL |     type Out = &'a &'b T;
+   |     ^^^^^^^^
+   |
+note: the pointer is valid for the lifetime `'a` as defined here
+  --> $DIR/regions-struct-not-wf.rs:24:6
+   |
+LL | impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {
+   |      ^^
+note: but the referenced data is only valid for the lifetime `'b` as defined here
+  --> $DIR/regions-struct-not-wf.rs:24:10
+   |
+LL | impl<'a, 'b, T> Trait1<'a, 'b, T> for u32 {
+   |          ^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0309, E0491.
+For more information about an error, try `rustc --explain E0309`.

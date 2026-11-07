@@ -1,0 +1,26 @@
+error: found both `ｓ` and `s` as identifiers, which look alike
+  --> $DIR/lint-confusable-idents.rs:8:9
+   |
+LL | const ｓ: usize = 42;
+   |       -- other identifier used here
+...
+LL |     let s = "rust";
+   |         ^ this identifier can be confused with `ｓ`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-confusable-idents.rs:1:9
+   |
+LL | #![deny(confusable_idents)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: found both `s_s` and `ｓ_ｓ` as identifiers, which look alike
+  --> $DIR/lint-confusable-idents.rs:9:9
+   |
+LL | const s_s: usize = 42;
+   |       --- other identifier used here
+...
+LL |     let ｓ_ｓ = "rust2";
+   |         ^^^^^ this identifier can be confused with `s_s`
+
+error: aborting due to 2 previous errors
+

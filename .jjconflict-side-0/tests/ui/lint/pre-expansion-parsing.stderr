@@ -1,0 +1,17 @@
+error[E0452]: malformed lint attribute input
+  --> $DIR/pre-expansion-parsing.rs:6:10
+   |
+LL | #[expect(expect(expect))]
+   |          ^^^^^^^^^^^^^^ bad attribute argument
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/pre-expansion-parsing.rs:6:10
+   |
+LL | #[expect(expect(expect))]
+   |          ^^^^^^^^^^^^^^ bad attribute argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0452`.

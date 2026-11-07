@@ -1,0 +1,10 @@
+error: the `repr(packed)` attribute cannot be used on enums
+  --> $DIR/derive-enum-repr-packed.rs:4:3
+   |
+LL | #[repr(packed)]
+   |   ^^^^^^^^^^^^
+   |
+   = help: the `repr(packed)` attribute can be applied to structs and unions
+
+error: aborting due to 1 previous error
+

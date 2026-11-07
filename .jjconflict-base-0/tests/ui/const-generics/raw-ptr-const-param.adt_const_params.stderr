@@ -1,0 +1,21 @@
+error[E0741]: using raw pointers as const generic parameters is forbidden
+  --> $DIR/raw-ptr-const-param.rs:8:23
+   |
+LL | struct Const<const P: *const u32>;
+   |                       ^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/raw-ptr-const-param.rs:11:40
+   |
+LL |     let _: Const<{ 15 as *const _ }> = Const::<{ 10 as *const _ }>;
+   |            -------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{0xf as *const u32}`, found `{0xa as *const u32}`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Const<{0xf as *const u32}>`
+              found struct `Const<{0xa as *const u32}>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0741.
+For more information about an error, try `rustc --explain E0308`.

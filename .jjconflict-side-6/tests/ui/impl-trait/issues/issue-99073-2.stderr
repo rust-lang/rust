@@ -1,0 +1,12 @@
+error[E0792]: expected generic type parameter, found `i32`
+  --> $DIR/issue-99073-2.rs:9:22
+   |
+LL | fn test<T: Display>(t: T, recurse: bool) -> impl Display {
+   |         - this generic parameter must be used with a generic type parameter
+LL |     let f = || {
+LL |         let i: u32 = test::<i32>(-1, false);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

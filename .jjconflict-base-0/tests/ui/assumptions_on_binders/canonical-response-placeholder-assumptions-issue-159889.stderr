@@ -1,0 +1,15 @@
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/canonical-response-placeholder-assumptions-issue-159889.rs:21:4
+   |
+LL | fn foo() -> Foo {}
+   |    ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/canonical-response-placeholder-assumptions-issue-159889.rs:13:12
+   |
+LL | type Foo = impl for<'a> Trait<Assoc<'a> = FooAssoc<'a>>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

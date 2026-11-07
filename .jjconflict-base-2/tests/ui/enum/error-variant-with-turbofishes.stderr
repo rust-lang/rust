@@ -1,0 +1,14 @@
+error[E0533]: expected value, found struct variant `Struct<0>::Variant`
+  --> $DIR/error-variant-with-turbofishes.rs:4:13
+   |
+LL |     let x = Struct::<0>::Variant;
+   |             ^^^^^^^^^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let x = Struct::<0>::Variant { x: /* value */ };
+   |                                  ++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0533`.

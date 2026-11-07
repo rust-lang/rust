@@ -1,0 +1,27 @@
+error[E0283]: type annotations needed: cannot satisfy `&str: A`
+  --> $DIR/unsound-overlap.rs:10:12
+   |
+LL | impl A for &str {}
+   |            ^^^^
+   |
+note: multiple `impl`s satisfying `&str: A` found
+  --> $DIR/unsound-overlap.rs:9:1
+   |
+LL | impl<T: B> A for T {}
+   | ^^^^^^^^^^^^^^^^^^
+LL | impl A for &str {}
+   | ^^^^^^^^^^^^^^^
+
+error[E0119]: conflicting implementations of trait `TraitWithAssoc` for type `((&str,),)`
+  --> $DIR/unsound-overlap.rs:21:1
+   |
+LL | impl<T: A> TraitWithAssoc for T {
+   | ------------------------------- first implementation here
+...
+LL | impl TraitWithAssoc for ((&str,),) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `((&str,),)`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0283.
+For more information about an error, try `rustc --explain E0119`.

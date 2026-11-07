@@ -1,0 +1,8 @@
+error: the constant `N` is not of type `u64`
+  --> $DIR/concrete-const-param-type.rs:7:26
+   |
+LL | struct Foo<const N: u32, const M: u64 = N>;
+   |                          ^^^^^^^^^^^^^^^^ expected `u64`, found `u32`
+
+error: aborting due to 1 previous error
+

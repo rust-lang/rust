@@ -1,0 +1,22 @@
+error[E0642]: patterns aren't allowed in functions without bodies
+  --> $DIR/no-patterns-in-args-macro.rs:20:8
+   |
+LL |     m!((bad, pat));
+   |        ^^^^^^^^^^ pattern not allowed in function without body
+
+error[E0561]: patterns aren't allowed in function pointer types
+  --> $DIR/no-patterns-in-args-macro.rs:20:8
+   |
+LL |     m!((bad, pat));
+   |        ^^^^^^^^^^
+
+error[E0130]: patterns aren't allowed in foreign function declarations
+  --> $DIR/no-patterns-in-args-macro.rs:20:8
+   |
+LL |     m!((bad, pat));
+   |        ^^^^^^^^^^ pattern not allowed in foreign function
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0130, E0561, E0642.
+For more information about an error, try `rustc --explain E0130`.

@@ -1,0 +1,35 @@
+error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:49:22
+   |
+LL |     let rs = &mut s;
+   |              ------ mutable borrow occurs here
+LL |     println!("{}", f[&s]);
+   |                      ^^ immutable borrow occurs here
+...
+LL |     drop(rs);
+   |          -- mutable borrow later used here
+
+error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:51:7
+   |
+LL |     let rs = &mut s;
+   |              ------ mutable borrow occurs here
+...
+LL |     f[&s] = 10;
+   |       ^^ immutable borrow occurs here
+...
+LL |     drop(rs);
+   |          -- mutable borrow later used here
+
+error[E0594]: cannot assign to data in an index of `Bar`
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:56:5
+   |
+LL |     s[2] = 20;
+   |     ^^^^^^^^^ cannot assign
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `Bar`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0502, E0594.
+For more information about an error, try `rustc --explain E0502`.

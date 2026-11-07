@@ -1,0 +1,8 @@
+error: higher-ranked lifetime bound could not be satisfied
+  --> $DIR/higher-ranked-outlives-issue-157732.rs:10:5
+   |
+LL |     foo(&10);
+   |     ^^^^^^^^
+
+error: aborting due to 1 previous error
+

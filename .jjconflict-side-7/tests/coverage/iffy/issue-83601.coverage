@@ -1,0 +1,15 @@
+   LL|       |// Shows that rust-lang/rust/83601 is resolved
+   LL|       |
+   LL|       |#[derive(Debug, PartialEq, Eq)]
+   LL|       |struct Foo(u32);
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    let bar = Foo(1);
+   LL|      1|    assert_eq!(bar, Foo(1));
+   LL|      1|    let baz = Foo(0);
+   LL|      1|    assert_ne!(baz, Foo(1));
+   LL|      1|    println!("{:?}", Foo(1));
+   LL|      1|    println!("{:?}", bar);
+   LL|      1|    println!("{:?}", baz);
+   LL|      1|}
+

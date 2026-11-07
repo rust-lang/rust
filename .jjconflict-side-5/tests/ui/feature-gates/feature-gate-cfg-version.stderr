@@ -1,0 +1,23 @@
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:5:7
+   |
+LL | #[cfg(version("1.42"))]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:10:18
+   |
+LL |     assert!(cfg!(version("1.42")));
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

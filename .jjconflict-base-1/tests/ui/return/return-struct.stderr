@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/return-struct.rs:9:5
+   |
+LL |     Age::Years({age += 1; age}, 55)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Age`
+   |
+help: consider using a semicolon here
+   |
+LL |     Age::Years({age += 1; age}, 55);
+   |                                    +
+help: try adding a return type
+   |
+LL | fn foo() -> Age {
+   |          ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/return-struct.rs:15:5
+   |
+LL | fn bar() {
+   |         - help: try adding a return type: `-> Age`
+LL |     let mut age = 29;
+LL |     Age::Years(age, 55)
+   |     ^^^^^^^^^^^^^^^^^^^ expected `()`, found `Age`
+
+error[E0308]: mismatched types
+  --> $DIR/return-struct.rs:20:5
+   |
+LL | fn baz() {
+   |         - help: try adding a return type: `-> S`
+LL |     S
+   |     ^ expected `()`, found `S`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

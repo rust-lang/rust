@@ -1,0 +1,9 @@
+[package]
+name = "rustc_hashes"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc-stable-hash = { version = "0.1.0" }
+# tidy-alphabetical-end

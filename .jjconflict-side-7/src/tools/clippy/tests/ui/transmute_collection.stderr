@@ -1,0 +1,113 @@
+error: transmute from `std::vec::Vec<u8>` to `std::vec::Vec<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:10:17
+   |
+LL |         let _ = transmute::<_, Vec<u32>>(vec![0u8]);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unsound-collection-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unsound_collection_transmute)]`
+
+error: transmute from `std::vec::Vec<u32>` to `std::vec::Vec<[u8; 4]>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:14:17
+   |
+LL |         let _ = transmute::<_, Vec<[u8; 4]>>(vec![1234u32]);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::VecDeque<u8>` to `std::collections::VecDeque<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:18:17
+   |
+LL |         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<u8>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::VecDeque<[u8; 4]>` to `std::collections::VecDeque<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:22:17
+   |
+LL |         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<[u8; 4]>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BinaryHeap<u8>` to `std::collections::BinaryHeap<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:26:17
+   |
+LL |         let _ = transmute::<_, BinaryHeap<u32>>(BinaryHeap::<u8>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BinaryHeap<[u8; 4]>` to `std::collections::BinaryHeap<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:30:17
+   |
+LL |         let _ = transmute::<_, BinaryHeap<u32>>(BinaryHeap::<[u8; 4]>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BTreeSet<u8>` to `std::collections::BTreeSet<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:34:17
+   |
+LL |         let _ = transmute::<_, BTreeSet<u32>>(BTreeSet::<u8>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BTreeSet<[u8; 4]>` to `std::collections::BTreeSet<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:38:17
+   |
+LL |         let _ = transmute::<_, BTreeSet<u32>>(BTreeSet::<[u8; 4]>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::HashSet<u8>` to `std::collections::HashSet<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:42:17
+   |
+LL |         let _ = transmute::<_, HashSet<u32>>(HashSet::<u8>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::HashSet<[u8; 4]>` to `std::collections::HashSet<u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:46:17
+   |
+LL |         let _ = transmute::<_, HashSet<u32>>(HashSet::<[u8; 4]>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BTreeMap<u8, u8>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:50:17
+   |
+LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, u8>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BTreeMap<u32, u32>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:53:17
+   |
+LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u32, u32>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BTreeMap<u8, [u8; 4]>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:57:17
+   |
+LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, [u8; 4]>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::BTreeMap<[u8; 4], u32>` to `std::collections::BTreeMap<u32, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:60:17
+   |
+LL |         let _ = transmute::<_, BTreeMap<u32, u32>>(BTreeMap::<[u8; 4], u32>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::HashMap<u8, u8>` to `std::collections::HashMap<u8, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:64:17
+   |
+LL |         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u8, u8>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::HashMap<u32, u32>` to `std::collections::HashMap<u8, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:67:17
+   |
+LL |         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u32, u32>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::HashMap<u8, [u8; 4]>` to `std::collections::HashMap<u8, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:71:17
+   |
+LL |         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u8, [u8; 4]>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `std::collections::HashMap<[u8; 4], u32>` to `std::collections::HashMap<u32, u32>` with mismatched layout is unsound
+  --> tests/ui/transmute_collection.rs:74:17
+   |
+LL |         let _ = transmute::<_, HashMap<u32, u32>>(HashMap::<[u8; 4], u32>::new());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+

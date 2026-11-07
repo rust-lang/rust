@@ -1,0 +1,6 @@
+error: invalid `--check-cfg` argument: `cfg(foo,values(bar))`
+   |
+   = note: `bar` is invalid
+   = note: `values()` arguments must be string literals, `none()` or `any()`
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

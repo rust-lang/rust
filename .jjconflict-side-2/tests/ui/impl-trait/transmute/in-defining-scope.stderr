@@ -1,0 +1,14 @@
+warning: function cannot return without recursing
+  --> $DIR/in-defining-scope.rs:8:1
+   |
+LL | fn foo() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |         transmute::<_, u8>(foo());
+   |                            ----- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+warning: 1 warning emitted
+

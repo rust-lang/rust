@@ -1,0 +1,26 @@
+error: expected `{`, found identifier `foo`
+  --> $DIR/macro-adjacent-ident-on-token.rs:6:21
+   |
+LL | macro_rules! get_opt {
+LL |     ($tgt:expr, $field:ident) => {
+LL |         if $tgt.has_$field() {}
+   |                     ^^^^^^ expected `{`
+...
+LL |     get_opt!(bar, foo);
+   |     ------------------ in this macro invocation
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/macro-adjacent-ident-on-token.rs:6:12
+   |
+LL |         if $tgt.has_$field() {}
+   |            ^^^^^^^^^
+...
+LL |     get_opt!(bar, foo);
+   |     ------------------ in this macro invocation
+help: you might have meant to write a method call
+   |
+LL |         if $tgt.has_.$field() {}
+   |                     +
+
+error: aborting due to 1 previous error
+

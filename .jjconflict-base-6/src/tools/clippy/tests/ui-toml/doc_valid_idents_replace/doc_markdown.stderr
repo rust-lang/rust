@@ -1,0 +1,40 @@
+error: item in documentation is missing backticks
+  --> tests/ui-toml/doc_valid_idents_replace/doc_markdown.rs:6:5
+   |
+LL | /// OAuth and LaTeX are inside Clippy's default list.
+   |     ^^^^^
+   |
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+help: try
+   |
+LL - /// OAuth and LaTeX are inside Clippy's default list.
+LL + /// `OAuth` and LaTeX are inside Clippy's default list.
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui-toml/doc_valid_idents_replace/doc_markdown.rs:6:15
+   |
+LL | /// OAuth and LaTeX are inside Clippy's default list.
+   |               ^^^^^
+   |
+help: try
+   |
+LL - /// OAuth and LaTeX are inside Clippy's default list.
+LL + /// OAuth and `LaTeX` are inside Clippy's default list.
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui-toml/doc_valid_idents_replace/doc_markdown.rs:11:5
+   |
+LL | /// TestItemThingyOfCoolness might sound cool but is not on the list and should be linted.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL - /// TestItemThingyOfCoolness might sound cool but is not on the list and should be linted.
+LL + /// `TestItemThingyOfCoolness` might sound cool but is not on the list and should be linted.
+   |
+
+error: aborting due to 3 previous errors
+

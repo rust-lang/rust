@@ -1,0 +1,20 @@
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/issue-67945-1.rs:3:16
+   |
+LL |         let x: S = 0;
+   |                ^ cannot perform const operation using `S`
+   |
+   = note: type parameters may not be used in enum discriminant values
+
+error[E0392]: type parameter `S` is never used
+  --> $DIR/issue-67945-1.rs:1:10
+   |
+LL | enum Bug<S> {
+   |          ^ unused type parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `S` to be a const parameter, use `const S: /* Type */` instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

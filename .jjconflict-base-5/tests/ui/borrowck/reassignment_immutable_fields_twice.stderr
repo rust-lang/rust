@@ -1,0 +1,25 @@
+error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
+  --> $DIR/reassignment_immutable_fields_twice.rs:7:5
+   |
+LL |     x.0 = 1;
+   |     ^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x: (u32, u32);
+   |         +++
+
+error[E0381]: partially assigned binding `x` isn't fully initialized
+  --> $DIR/reassignment_immutable_fields_twice.rs:12:5
+   |
+LL |     let x: (u32, u32);
+   |         - binding declared here but left uninitialized
+LL |     x.0 = 1;
+   |     ^^^^^^^ `x` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0381, E0594.
+For more information about an error, try `rustc --explain E0381`.

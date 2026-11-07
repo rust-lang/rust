@@ -1,0 +1,17 @@
+error: unnecessary semicolon
+  --> tests/ui/unnecessary_semicolon.rs:24:6
+   |
+LL |     };
+   |      ^ help: remove
+   |
+   = note: `-D clippy::unnecessary-semicolon` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_semicolon)]`
+
+error: unnecessary semicolon
+  --> tests/ui/unnecessary_semicolon.rs:30:6
+   |
+LL |     };
+   |      ^ help: remove
+
+error: aborting due to 2 previous errors
+

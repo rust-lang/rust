@@ -1,0 +1,15 @@
+Thread 1 starting, will block on mutex
+Thread 1 reported it has started
+
+thread '<unnamed>' ($TID) panicked at tests/pass/panic/concurrent-panic.rs:LL:CC:
+panic in thread 2
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+Thread 2 blocking on thread 1
+Thread 2 reported it has started
+Unlocking mutex
+
+thread '<unnamed>' ($TID) panicked at tests/pass/panic/concurrent-panic.rs:LL:CC:
+panic in thread 1
+Thread 1 has exited
+Thread 2 has exited

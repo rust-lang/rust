@@ -1,0 +1,12 @@
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/async-borrowck-escaping-closure-error.rs:5:5
+   |
+LL |     Box::new((async || x)())
+   |     ^^^^^^^^^------------^^^
+   |     |        |
+   |     |        `x` is borrowed here
+   |     returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

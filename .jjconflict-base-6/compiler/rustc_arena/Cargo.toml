@@ -1,0 +1,9 @@
+[package]
+name = "rustc_arena"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+# tidy-alphabetical-end

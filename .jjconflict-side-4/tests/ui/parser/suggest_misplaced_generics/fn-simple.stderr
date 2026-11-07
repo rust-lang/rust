@@ -1,0 +1,14 @@
+error: expected identifier, found `<`
+  --> $DIR/fn-simple.rs:5:3
+   |
+LL | fn<T> id(x: T) -> T { x }
+   |   ^ expected identifier
+   |
+help: place the generic parameter name after the fn name
+   |
+LL - fn<T> id(x: T) -> T { x }
+LL + fn id<T>(x: T) -> T { x }
+   |
+
+error: aborting due to 1 previous error
+

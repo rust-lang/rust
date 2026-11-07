@@ -1,0 +1,18 @@
+error: Undefined Behavior: reading memory at ALLOC[0x5..0x6], but memory is uninitialized at [0x5..0x6], and this operation requires initialized memory
+  --> tests/fail/uninit/uninit_byte_read.rs:LL:CC
+   |
+LL |     let undef = unsafe { *v.as_ptr().add(5) };
+   |                          ^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+Uninitialized memory occurred at ALLOC[0x5..0x6], in this allocation:
+ALLOC (Rust heap, size: 10, align: 1) {
+    __ __ __ __ __ __ __ __ __ __                   │ ░░░░░░░░░░
+}
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

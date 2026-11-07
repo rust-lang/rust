@@ -1,0 +1,69 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:11:9
+   |
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:26:9
+   |
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:39:9
+   |
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:54:9
+   |
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:71:9
+   |
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     } {
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/let_underscore_temporary.rs:92:9
+   |
+LL |         let a = 0;
+   |             - binding `a` declared here
+LL |         &a
+   |         ^^ borrowed value does not live long enough
+LL |
+LL |     } {
+   |     - `a` dropped here while still borrowed
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

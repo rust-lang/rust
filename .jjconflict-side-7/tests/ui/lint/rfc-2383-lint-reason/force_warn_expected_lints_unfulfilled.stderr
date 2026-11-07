@@ -1,0 +1,38 @@
+warning: unused variable: `this_should_not_fulfill_the_expectation`
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:38:9
+   |
+LL |     let this_should_not_fulfill_the_expectation = "maybe";
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_this_should_not_fulfill_the_expectation`
+   |
+   = note: requested on the command line with `--force-warn unused-variables`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:7:14
+   |
+LL |     #[expect(while_true)]
+   |              ^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:15:10
+   |
+LL | #[expect(unused_variables, reason="<this should fail and display this reason>")]
+   |          ^^^^^^^^^^^^^^^^
+   |
+   = note: <this should fail and display this reason>
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:22:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/force_warn_expected_lints_unfulfilled.rs:34:10
+   |
+LL | #[expect(unused)]
+   |          ^^^^^^
+
+warning: 5 warnings emitted
+

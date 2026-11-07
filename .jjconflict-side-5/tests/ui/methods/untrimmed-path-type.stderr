@@ -1,0 +1,9 @@
+error[E0599]: no method named `unknown` found for enum `Result<T, E>` in the current scope
+  --> $DIR/untrimmed-path-type.rs:5:11
+   |
+LL |    meow().unknown();
+   |           ^^^^^^^ method not found in `Result<(), std::io::Error>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

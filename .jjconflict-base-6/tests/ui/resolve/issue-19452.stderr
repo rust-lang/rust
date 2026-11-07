@@ -1,0 +1,25 @@
+error[E0533]: expected value, found struct variant `Homura::Madoka`
+  --> $DIR/issue-19452.rs:10:18
+   |
+LL |     let homura = Homura::Madoka;
+   |                  ^^^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let homura = Homura::Madoka { age: /* value */ };
+   |                                 ++++++++++++++++++++
+
+error[E0533]: expected value, found struct variant `issue_19452_aux::Homura::Madoka`
+  --> $DIR/issue-19452.rs:13:18
+   |
+LL |     let homura = issue_19452_aux::Homura::Madoka;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let homura = issue_19452_aux::Homura::Madoka { age: /* value */ };
+   |                                                  ++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0533`.

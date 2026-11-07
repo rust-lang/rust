@@ -1,0 +1,34 @@
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/attributes-on-modules-fail.rs:17:1
+   |
+LL | #[derive(Copy)]
+   | ^^^^^^^^^^^^^^^ not applicable here
+LL | mod n {}
+   | -------- not a `struct`, `enum` or `union`
+
+error[E0425]: cannot find type `Y` in this scope
+  --> $DIR/attributes-on-modules-fail.rs:11:14
+   |
+LL |     type A = Y;
+   |              ^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL +     use Y;
+   |
+
+error[E0425]: cannot find type `X` in this scope
+  --> $DIR/attributes-on-modules-fail.rs:15:10
+   |
+LL | type A = X;
+   |          ^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use m::X;
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0774.
+For more information about an error, try `rustc --explain E0425`.

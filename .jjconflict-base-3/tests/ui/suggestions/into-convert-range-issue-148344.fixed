@@ -1,0 +1,15 @@
+//@ run-rustfix
+use std::ops::Range;
+
+struct Strange;
+impl From<Range<usize>> for Strange {
+    fn from(_: Range<usize>) -> Self {
+        Self
+    }
+}
+
+fn main() {
+    let _: Strange = (0..10).into();
+    //~^ ERROR mismatched types
+    //~| HELP call `Into::into` on this expression
+}

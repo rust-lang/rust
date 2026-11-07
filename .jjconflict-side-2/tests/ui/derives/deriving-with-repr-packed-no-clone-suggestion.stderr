@@ -1,0 +1,24 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/deriving-with-repr-packed-no-clone-suggestion.rs:5:18
+   |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+LL | struct Thing(u8, String);
+   |                  ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
+   |
+   = note: `#[derive(PartialEq)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/deriving-with-repr-packed-no-clone-suggestion.rs:5:18
+   |
+LL | #[derive(PartialEq)]
+   |          --------- in this derive macro expansion
+LL | struct Thing(u8, String);
+   |                  ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
+   |
+   = note: `#[derive(PartialEq)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

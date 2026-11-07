@@ -1,0 +1,17 @@
+error: this could be a `const fn`
+  --> tests/ui/crashes/missing_const_for_fn_14774.rs:6:5
+   |
+LL | /     fn foo(a: usize) -> usize {
+LL | |         a + 10
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+help: make the function `const`
+   |
+LL |     const fn foo(a: usize) -> usize {
+   |     +++++
+
+error: aborting due to 1 previous error
+

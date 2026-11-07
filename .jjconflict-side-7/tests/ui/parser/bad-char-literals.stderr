@@ -1,0 +1,60 @@
+error: character constant must be escaped: `'`
+  --> $DIR/bad-char-literals.rs:6:6
+   |
+LL |     ''';
+   |      ^
+   |
+help: escape the character
+   |
+LL |     '\'';
+   |      +
+
+error: character constant must be escaped: `\n`
+  --> $DIR/bad-char-literals.rs:10:6
+   |
+LL |       '
+   |  ______^
+LL | | ';
+   | |_^
+   |
+help: escape the character
+   |
+LL |     '\n';
+   |      ++
+
+error: character constant must be escaped: `\r`
+  --> $DIR/bad-char-literals.rs:15:6
+   |
+LL |     '␍';
+   |      ^
+   |
+help: escape the character
+   |
+LL |     '\r';
+   |      ++
+
+error: character literal may only contain one codepoint
+  --> $DIR/bad-char-literals.rs:18:5
+   |
+LL |     '-␀-';
+   |     ^^^^^
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     '-␀-';
+LL +     "-␀-";
+   |
+
+error: character constant must be escaped: `\t`
+  --> $DIR/bad-char-literals.rs:21:6
+   |
+LL |     '    ';
+   |      ^^^^
+   |
+help: escape the character
+   |
+LL |     '\t';
+   |      ++
+
+error: aborting due to 5 previous errors
+

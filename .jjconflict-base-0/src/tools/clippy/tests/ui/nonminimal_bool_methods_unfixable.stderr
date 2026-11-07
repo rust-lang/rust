@@ -1,0 +1,17 @@
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool_methods_unfixable.rs:6:9
+   |
+LL |     _ = !opt_opt.is_some_and(|x| !x.is_some_and(|y| y != 1000));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `opt_opt.is_none_or(|x| x.is_some_and(|y| y != 1000))`
+   |
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::nonminimal_bool)]`
+
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool_methods_unfixable.rs:6:34
+   |
+LL |     _ = !opt_opt.is_some_and(|x| !x.is_some_and(|y| y != 1000));
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.is_none_or(|y| y == 1000)`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,66 @@
+error[E0277]: the type `[bool]` cannot be indexed by `&usize`
+  --> $DIR/suggest-remove-reference-index.rs:7:24
+   |
+LL |     println!("{}", arr[&i]);
+   |                        ^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `SliceIndex<[bool]>` is not implemented for `&usize`
+help: `usize` implements trait `SliceIndex<T>`
+  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
+   |
+   = note: `SliceIndex<[T]>`
+  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+   |
+   = note: `SliceIndex<ByteStr>`
+   = note: required for `[bool]` to implement `Index<&usize>`
+help: remove this reference
+   |
+LL -     println!("{}", arr[&i]);
+LL +     println!("{}", arr[i]);
+   |
+
+error[E0277]: the type `[bool]` cannot be indexed by `&usize`
+  --> $DIR/suggest-remove-reference-index.rs:8:24
+   |
+LL |     println!("{}", arr[&(i + 0)]);
+   |                        ^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `SliceIndex<[bool]>` is not implemented for `&usize`
+help: `usize` implements trait `SliceIndex<T>`
+  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
+   |
+   = note: `SliceIndex<[T]>`
+  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+   |
+   = note: `SliceIndex<ByteStr>`
+   = note: required for `[bool]` to implement `Index<&usize>`
+help: remove this reference
+   |
+LL -     println!("{}", arr[&(i + 0)]);
+LL +     println!("{}", arr[(i + 0)]);
+   |
+
+error[E0277]: the type `[bool]` cannot be indexed by `&usize`
+  --> $DIR/suggest-remove-reference-index.rs:9:24
+   |
+LL |     println!("{}", arr[& i]);
+   |                        ^^^ slice indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `SliceIndex<[bool]>` is not implemented for `&usize`
+help: `usize` implements trait `SliceIndex<T>`
+  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
+   |
+   = note: `SliceIndex<[T]>`
+  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+   |
+   = note: `SliceIndex<ByteStr>`
+   = note: required for `[bool]` to implement `Index<&usize>`
+help: remove this reference
+   |
+LL -     println!("{}", arr[& i]);
+LL +     println!("{}", arr[i]);
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

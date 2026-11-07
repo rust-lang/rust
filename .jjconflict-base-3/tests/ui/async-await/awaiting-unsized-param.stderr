@@ -1,0 +1,12 @@
+error[E0277]: the size for values of type `dyn Future<Output = T> + Unpin` cannot be known at compilation time
+  --> $DIR/awaiting-unsized-param.rs:7:17
+   |
+LL | async fn bug<T>(mut f: dyn Future<Output = T> + Unpin) -> T {
+   |                 ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Future<Output = T> + Unpin`
+   = note: all local variables must have a statically known size
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

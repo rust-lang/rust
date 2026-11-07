@@ -1,0 +1,1 @@
+static TEST: &str = "Hello World!";

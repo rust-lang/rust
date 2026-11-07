@@ -1,0 +1,17 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-binding.rs:2:9
+   |
+LL |     let x = *"";
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let x = *"";
+LL +     let x = "";
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

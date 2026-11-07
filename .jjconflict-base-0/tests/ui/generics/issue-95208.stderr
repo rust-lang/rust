@@ -1,0 +1,14 @@
+error: expected `:` followed by trait or lifetime
+  --> $DIR/issue-95208.rs:6:46
+   |
+LL | impl<T> Struct<T> where T:: std::fmt::Display {
+   |                                              ^
+   |
+help: use single colon
+   |
+LL - impl<T> Struct<T> where T:: std::fmt::Display {
+LL + impl<T> Struct<T> where T: std::fmt::Display {
+   |
+
+error: aborting due to 1 previous error
+

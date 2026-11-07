@@ -1,0 +1,16 @@
+error: variable does not need to be mutable
+  --> $DIR/unused-mut-issue-50343.rs:7:33
+   |
+LL |     vec![(42, 22)].iter().map(|(mut x, _y)| ()).count();
+   |                                 ----^
+   |                                 |
+   |                                 help: remove this `mut`
+   |
+note: the lint level is defined here
+  --> $DIR/unused-mut-issue-50343.rs:3:9
+   |
+LL | #![deny(unused_mut)]
+   |         ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

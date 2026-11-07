@@ -1,0 +1,14 @@
+warning: the feature `test_incomplete_feature` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/incomplete-features.rs:11:12
+   |
+LL | #![feature(test_incomplete_feature)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/incomplete-features.rs:8:24
+   |
+LL | #![cfg_attr(warn, warn(incomplete_features))]
+   |                        ^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

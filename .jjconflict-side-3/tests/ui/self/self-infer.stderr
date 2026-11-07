@@ -1,0 +1,15 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
+  --> $DIR/self-infer.rs:4:16
+   |
+LL |     fn f(self: _) {}
+   |                ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
+  --> $DIR/self-infer.rs:5:17
+   |
+LL |     fn g(self: &_) {}
+   |                 ^ not allowed in type signatures
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

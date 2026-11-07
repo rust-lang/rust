@@ -1,0 +1,13 @@
+error[E0382]: use of partially moved value: `x`
+  --> $DIR/move-subpaths-moves-root.rs:4:10
+   |
+LL |     drop(x.0);
+   |          --- value partially moved here
+LL |     drop(x);
+   |          ^ value used here after partial move
+   |
+   = note: partial move occurs because `x.0` has type `Vec<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

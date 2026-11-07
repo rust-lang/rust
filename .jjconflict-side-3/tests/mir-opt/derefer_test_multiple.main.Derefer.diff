@@ -1,0 +1,80 @@
+- // MIR for `main` before Derefer
++ // MIR for `main` after Derefer
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: (i32, i32);
+      let mut _3: &mut (i32, i32);
+      let mut _5: &mut (i32, &mut (i32, i32));
+      let mut _7: &mut (i32, &mut (i32, &mut (i32, i32)));
++     let mut _10: &mut (i32, &mut (i32, &mut (i32, i32)));
++     let mut _11: &mut (i32, &mut (i32, i32));
++     let mut _12: &mut (i32, i32);
++     let mut _13: &mut (i32, &mut (i32, &mut (i32, i32)));
++     let mut _14: &mut (i32, &mut (i32, i32));
++     let mut _15: &mut (i32, i32);
+      scope 1 {
+          debug a => _1;
+          let mut _2: (i32, &mut (i32, i32));
+          scope 2 {
+              debug b => _2;
+              let mut _4: (i32, &mut (i32, &mut (i32, i32)));
+              scope 3 {
+                  debug c => _4;
+                  let mut _6: (i32, &mut (i32, &mut (i32, &mut (i32, i32))));
+                  scope 4 {
+                      debug d => _6;
+                      let _8: &mut i32;
+                      scope 5 {
+                          debug x => _8;
+                          let _9: &mut i32;
+                          scope 6 {
+                              debug y => _9;
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = (const 42_i32, const 43_i32);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &mut _1;
+          _2 = (const 99_i32, move _3);
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = &mut _2;
+          _4 = (const 11_i32, move _5);
+          StorageDead(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &mut _4;
+          _6 = (const 13_i32, move _7);
+          StorageDead(_7);
+          StorageLive(_8);
+-         _8 = &mut ((*((*((*(_6.1: &mut (i32, &mut (i32, &mut (i32, i32))))).1: &mut (i32, &mut (i32, i32)))).1: &mut (i32, i32))).1: i32);
++         _10 = deref_copy (_6.1: &mut (i32, &mut (i32, &mut (i32, i32))));
++         _11 = deref_copy ((*_10).1: &mut (i32, &mut (i32, i32)));
++         _12 = deref_copy ((*_11).1: &mut (i32, i32));
++         _8 = &mut ((*_12).1: i32);
+          StorageLive(_9);
+-         _9 = &mut ((*((*((*(_6.1: &mut (i32, &mut (i32, &mut (i32, i32))))).1: &mut (i32, &mut (i32, i32)))).1: &mut (i32, i32))).1: i32);
++         _13 = deref_copy (_6.1: &mut (i32, &mut (i32, &mut (i32, i32))));
++         _14 = deref_copy ((*_13).1: &mut (i32, &mut (i32, i32)));
++         _15 = deref_copy ((*_14).1: &mut (i32, i32));
++         _9 = &mut ((*_15).1: i32);
+          _0 = const ();
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

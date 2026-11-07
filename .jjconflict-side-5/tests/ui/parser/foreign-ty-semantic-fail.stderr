@@ -1,0 +1,76 @@
+error: bounds on `type`s in `extern` blocks have no effect
+  --> $DIR/foreign-ty-semantic-fail.rs:6:13
+   |
+LL |     type A: Ord;
+   |             ^^^
+
+error: `type`s inside `extern` blocks cannot have generic parameters
+  --> $DIR/foreign-ty-semantic-fail.rs:8:11
+   |
+LL | extern "C" {
+   | ---------- `extern` block begins here
+...
+LL |     type B<'a> where 'a: 'static;
+   |           ^^^^ help: remove the generic parameters
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `type`s inside `extern` blocks cannot have `where` clauses
+  --> $DIR/foreign-ty-semantic-fail.rs:8:16
+   |
+LL | extern "C" {
+   | ---------- `extern` block begins here
+...
+LL |     type B<'a> where 'a: 'static;
+   |                ^^^^^^^^^^^^^^^^^ help: remove the `where` clause
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `type`s inside `extern` blocks cannot have generic parameters
+  --> $DIR/foreign-ty-semantic-fail.rs:11:11
+   |
+LL | extern "C" {
+   | ---------- `extern` block begins here
+...
+LL |     type C<T: Ord> where T: 'static;
+   |           ^^^^^^^^ help: remove the generic parameters
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `type`s inside `extern` blocks cannot have `where` clauses
+  --> $DIR/foreign-ty-semantic-fail.rs:11:20
+   |
+LL | extern "C" {
+   | ---------- `extern` block begins here
+...
+LL |     type C<T: Ord> where T: 'static;
+   |                    ^^^^^^^^^^^^^^^^ help: remove the `where` clause
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: incorrect `type` inside `extern` block
+  --> $DIR/foreign-ty-semantic-fail.rs:14:10
+   |
+LL | extern "C" {
+   | ---------- `extern` blocks define existing foreign types and types inside of them cannot have a body
+...
+LL |     type D = u8;
+   |          ^   -- the invalid body
+   |          |
+   |          cannot have a body
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `type`s inside `extern` blocks cannot have `where` clauses
+  --> $DIR/foreign-ty-semantic-fail.rs:17:13
+   |
+LL | extern "C" {
+   | ---------- `extern` block begins here
+...
+LL |     type E: where;
+   |             ^^^^^ help: remove the `where` clause
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: aborting due to 7 previous errors
+

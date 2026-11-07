@@ -1,0 +1,16 @@
+- // MIR for `remove_casts_must_change_both_sides` before GVN
++ // MIR for `remove_casts_must_change_both_sides` after GVN
+  
+  fn remove_casts_must_change_both_sides(_1: &*mut u8, _2: *mut u8) -> bool {
+      let mut _0: bool;
+      let mut _3: *const u8;
+      let mut _4: *const u8;
+  
+      bb0: {
+          _3 = copy (*_1) as *const u8 (PtrToPtr);
+          _4 = copy _2 as *const u8 (PtrToPtr);
+          _0 = Eq(copy _3, copy _4);
+          return;
+      }
+  }
+  

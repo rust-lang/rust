@@ -1,0 +1,4 @@
+[address]
+fun:*
+fun:test_re_enabled=sanitize
+fun:*test_mangled_re_enabled*=sanitize

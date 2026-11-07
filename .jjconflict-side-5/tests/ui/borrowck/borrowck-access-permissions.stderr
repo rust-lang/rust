@@ -1,0 +1,68 @@
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/borrowck-access-permissions.rs:10:19
+   |
+LL |         let _y1 = &mut x;
+   |                   ^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x = 1;
+   |         +++
+
+error[E0596]: cannot borrow immutable static item `static_x` as mutable
+  --> $DIR/borrowck-access-permissions.rs:16:19
+   |
+LL | static static_x: i32 = 1;
+   | -------------------- this `static` cannot be borrowed as mutable
+...
+LL |         let _y1 = &mut static_x;
+   |                   ^^^^^^^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `*box_x` as mutable, as `box_x` is not declared as mutable
+  --> $DIR/borrowck-access-permissions.rs:27:19
+   |
+LL |         let _y1 = &mut *box_x;
+   |                   ^^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |         let mut box_x = Box::new(1);
+   |             +++
+
+error[E0596]: cannot borrow `*ref_x` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-access-permissions.rs:36:19
+   |
+LL |         let _y1 = &mut *ref_x;
+   |                   ^^^^^^^^^^^ `ref_x` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |         let ref_x = &mut x;
+   |                      +++
+
+error[E0596]: cannot borrow `*ptr_x` as mutable, as it is behind a `*const` pointer
+  --> $DIR/borrowck-access-permissions.rs:46:23
+   |
+LL |             let _y1 = &mut *ptr_x;
+   |                       ^^^^^^^^^^^ `ptr_x` is a `*const` pointer, so it cannot be borrowed as mutable
+   |
+help: consider changing this binding's type
+   |
+LL -         let ptr_x: *const _ = &x;
+LL +         let ptr_x: *mut i32 = &x;
+   |
+
+error[E0596]: cannot borrow `*foo_ref.f` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-access-permissions.rs:59:18
+   |
+LL |         let _y = &mut *foo_ref.f;
+   |                  ^^^^^^^^^^^^^^^ `foo_ref` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |         let foo_ref = &mut foo;
+   |                        +++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

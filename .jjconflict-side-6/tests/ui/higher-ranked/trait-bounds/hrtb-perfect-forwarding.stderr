@@ -1,0 +1,79 @@
+warning: function cannot return without recursing
+  --> $DIR/hrtb-perfect-forwarding.rs:16:1
+   |
+LL | / fn no_hrtb<'b, T>(mut t: T)
+LL | | where
+LL | |     T: Bar<&'b isize>,
+   | |______________________^ cannot return without recursing
+...
+LL |       no_hrtb(&mut t);
+   |       --------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+warning: function cannot return without recursing
+  --> $DIR/hrtb-perfect-forwarding.rs:25:1
+   |
+LL | / fn bar_hrtb<T>(mut t: T)
+LL | | where
+LL | |     T: for<'b> Bar<&'b isize>,
+   | |______________________________^ cannot return without recursing
+...
+LL |       bar_hrtb(&mut t);
+   |       ---------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+warning: function cannot return without recursing
+  --> $DIR/hrtb-perfect-forwarding.rs:35:1
+   |
+LL | / fn foo_hrtb_bar_not<'b, T>(mut t: T)
+LL | | where
+LL | |     T: for<'a> Foo<&'a isize> + Bar<&'b isize>,
+   | |_______________________________________________^ cannot return without recursing
+...
+LL |       foo_hrtb_bar_not(&mut t);
+   |       ------------------------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: lifetime may not live long enough
+  --> $DIR/hrtb-perfect-forwarding.rs:43:5
+   |
+LL | fn foo_hrtb_bar_not<'b, T>(mut t: T)
+   |                     -- lifetime `'b` defined here
+...
+LL |     foo_hrtb_bar_not(&mut t);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/hrtb-perfect-forwarding.rs:37:8
+   |
+LL |     T: for<'a> Foo<&'a isize> + Bar<&'b isize>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementation of `Bar` is not general enough
+  --> $DIR/hrtb-perfect-forwarding.rs:43:5
+   |
+LL |     foo_hrtb_bar_not(&mut t);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Bar` is not general enough
+   |
+   = note: `T` must implement `Bar<&'0 isize>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Bar<&'1 isize>`, for some specific lifetime `'1`
+
+warning: function cannot return without recursing
+  --> $DIR/hrtb-perfect-forwarding.rs:48:1
+   |
+LL | / fn foo_hrtb_bar_hrtb<T>(mut t: T)
+LL | | where
+LL | |     T: for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>,
+   | |_______________________________________________________^ cannot return without recursing
+...
+LL |       foo_hrtb_bar_hrtb(&mut t);
+   |       ------------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: aborting due to 2 previous errors; 4 warnings emitted
+

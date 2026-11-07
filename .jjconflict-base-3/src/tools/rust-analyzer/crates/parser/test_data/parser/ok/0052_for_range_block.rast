@@ -1,0 +1,81 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n   "
+        FOR_EXPR
+          FOR_KW "for"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_x"
+          WHITESPACE " "
+          IN_KW "in"
+          WHITESPACE " "
+          RANGE_EXPR
+            LITERAL
+              INT_NUMBER "0"
+            WHITESPACE " "
+            DOT2 ".."
+            WHITESPACE " "
+            METHOD_CALL_EXPR
+              PAREN_EXPR
+                L_PAREN "("
+                RANGE_EXPR
+                  LITERAL
+                    INT_NUMBER "0"
+                  WHITESPACE " "
+                  DOT2 ".."
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      BIN_EXPR
+                        LITERAL
+                          INT_NUMBER "1"
+                        WHITESPACE " "
+                        PLUS "+"
+                        WHITESPACE " "
+                        LITERAL
+                          INT_NUMBER "2"
+                      R_CURLY "}"
+                R_PAREN ")"
+              DOT "."
+              NAME_REF
+                IDENT "sum"
+              GENERIC_ARG_LIST
+                COLON2 "::"
+                L_ANGLE "<"
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "u32"
+                R_ANGLE ">"
+              ARG_LIST
+                L_PAREN "("
+                R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n       "
+              EXPR_STMT
+                BREAK_EXPR
+                  BREAK_KW "break"
+                SEMICOLON ";"
+              WHITESPACE "\n   "
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

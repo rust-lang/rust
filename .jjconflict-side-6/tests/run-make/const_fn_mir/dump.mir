@@ -1,0 +1,46 @@
+// WARNING: This output format is intended for human consumers only
+// and is subject to change without notice. Knock yourself out.
+// HINT: See also -Z dump-mir for MIR at specific points during compilation.
+fn foo() -> i32 {
+    let mut _0: i32;
+    let mut _1: (i32, bool);
+
+    bb0: {
+        _1 = AddWithOverflow(const 5_i32, const 6_i32);
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = move (_1.0: i32);
+        return;
+    }
+}
+
+// MIR FOR CTFE
+fn foo() -> i32 {
+    let mut _0: i32;
+    let mut _1: (i32, bool);
+
+    bb0: {
+        _1 = AddWithOverflow(const 5_i32, const 6_i32);
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 5_i32, const 6_i32) -> [success: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = move (_1.0: i32);
+        return;
+    }
+}
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: i32;
+
+    bb0: {
+        _1 = foo() -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}

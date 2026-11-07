@@ -1,0 +1,10 @@
+
+running 5 tests
+test $DIR/test-type.rs - f (line 12) ... ignored
+test $DIR/test-type.rs - f (line 15) - compile ... ok
+test $DIR/test-type.rs - f (line 21) - compile fail ... ok
+test $DIR/test-type.rs - f (line 6) ... ok
+test $DIR/test-type.rs - f (line 9) ... ok
+
+test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in $TIME
+

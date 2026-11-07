@@ -1,0 +1,28 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-80179.rs:10:24
+   |
+LL | fn returns_fn_ptr() -> _ {
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn returns_fn_ptr() -> _ {
+LL + fn returns_fn_ptr() -> fn() -> i32 {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-80179.rs:18:25
+   |
+LL | fn returns_closure() -> _ {
+   |                         ^ not allowed in type signatures
+   |
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+help: replace with an appropriate return type
+   |
+LL - fn returns_closure() -> _ {
+LL + fn returns_closure() -> impl Fn() -> i32 {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

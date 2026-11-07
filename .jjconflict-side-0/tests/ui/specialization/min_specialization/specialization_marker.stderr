@@ -1,0 +1,15 @@
+error[E0714]: marker traits cannot have associated items
+  --> $DIR/specialization_marker.rs:7:5
+   |
+LL |     fn f();
+   |     ^^^^^^^
+
+error[E0714]: marker traits cannot have associated items
+  --> $DIR/specialization_marker.rs:13:5
+   |
+LL |     type X;
+   |     ^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0714`.

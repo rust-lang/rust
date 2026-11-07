@@ -1,0 +1,17 @@
+- // MIR for `strs` before InstSimplify-after-simplifycfg
++ // MIR for `strs` after InstSimplify-after-simplifycfg
+  
+  fn strs() -> [&str; 5] {
+      let mut _0: [&str; 5];
+  
+      bb0: {
+-         _0 = [const "a", const "a", const "a", const "a", const "a"];
++         _0 = [const "a"; 5];
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 1, align: 1) {
+      61                                              │ a
+  }
+  

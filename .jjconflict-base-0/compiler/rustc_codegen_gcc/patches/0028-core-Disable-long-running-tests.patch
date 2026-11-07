@@ -1,0 +1,32 @@
+From ec2d0dc77fb484d926b45bb626b0db6a4bb0ab5c Mon Sep 17 00:00:00 2001
+From: None <none@example.com>
+Date: Thu, 27 Mar 2025 09:20:41 -0400
+Subject: [PATCH] Disable long running tests
+
+---
+ library/coretests/tests/slice.rs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/library/coretests/tests/slice.rs b/library/coretests/tests/slice.rs
+index d17e681..fba5cd6 100644
+--- a/library/coretests/tests/slice.rs
++++ b/library/coretests/tests/slice.rs
+@@ -2486,6 +2486,7 @@ split_off_tests! {
+ #[cfg(not(miri))] // unused in Miri
+ const EMPTY_MAX: &'static [()] = &[(); usize::MAX];
+ 
++/*
+ // can't be a constant due to const mutability rules
+ #[cfg(not(miri))] // unused in Miri
+ macro_rules! empty_max_mut {
+@@ -2509,6 +2510,7 @@ split_off_tests! {
+     (split_off_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
+     (split_off_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+ }
++*/
+ 
+ #[test]
+ fn test_slice_from_ptr_range() {
+-- 
+2.49.0
+

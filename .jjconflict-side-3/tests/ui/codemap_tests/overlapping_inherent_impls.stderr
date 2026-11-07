@@ -1,0 +1,32 @@
+error[E0592]: duplicate definitions with name `id`
+  --> $DIR/overlapping_inherent_impls.rs:9:5
+   |
+LL |     fn id() {}
+   |     ^^^^^^^ duplicate definitions for `id`
+...
+LL |     fn id() {}
+   |     ------- other definition for `id`
+
+error[E0592]: duplicate definitions with name `bar`
+  --> $DIR/overlapping_inherent_impls.rs:19:5
+   |
+LL |     fn bar(&self) {}
+   |     ^^^^^^^^^^^^^ duplicate definitions for `bar`
+...
+LL |     fn bar(&self) {}
+   |     ------------- other definition for `bar`
+
+error[E0592]: duplicate definitions with name `baz`
+  --> $DIR/overlapping_inherent_impls.rs:29:5
+   |
+LL |     fn baz(&self) {}
+   |     ^^^^^^^^^^^^^ duplicate definitions for `baz`
+...
+LL |     fn baz(&self) {}
+   |     ------------- other definition for `baz`
+   |
+   = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::vec::Vec<_>` in future versions
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0592`.

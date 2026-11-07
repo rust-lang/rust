@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `T: Default` is not satisfied
+  --> $DIR/issue-52843.rs:8:5
+   |
+LL |     t
+   |     ^ the trait `Default` is not implemented for `T`
+   |
+note: required by a bound in an opaque type
+  --> $DIR/issue-52843.rs:3:20
+   |
+LL | type Foo<T> = impl Default;
+   |                    ^^^^^^^
+note: this definition site has more where clauses than the opaque type
+  --> $DIR/issue-52843.rs:7:1
+   |
+LL | fn foo<T: Default>(t: T) -> Foo<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider restricting type parameter `T` with trait `Default`
+   |
+LL | type Foo<T: std::default::Default> = impl Default;
+   |           +++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

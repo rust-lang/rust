@@ -1,0 +1,46 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ revisions: no yes
+   LL|       |//@[yes] ignore-coverage-map
+   LL|       |
+   LL|       |// A variety of simple `if` expressions, in which the then/else blocks end with
+   LL|       |// an expression. Contrast with `if-tail-stmt.rs`.
+   LL|       |
+   LL|      1|fn if_true(cond: bool, other: bool) {
+   LL|      1|    say("hello");
+   LL|       |
+   LL|      1|    if cond {
+   LL|      1|        say("true")
+   LL|      0|    }
+   LL|       |
+   LL|      1|    if cond {
+   LL|      1|        say("true")
+   LL|       |    } else {
+   LL|      0|        say("false")
+   LL|       |    }
+   LL|       |
+   LL|      1|    if cond {
+   LL|      1|        say("cond")
+   LL|      0|    } else if other {
+   LL|      0|        say("other")
+   LL|       |    } else {
+   LL|      0|        say("neither")
+   LL|       |    }
+   LL|       |
+   LL|      1|    say("goodbye");
+   LL|      1|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    let cond = cfg_select!(
+   LL|       |        no => false,
+   LL|       |        yes => true,
+   LL|       |    );
+   LL|       |    if_true(cond, !cond);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(msg: &str) {
+   LL|       |    println!("{msg}");
+   LL|       |}
+

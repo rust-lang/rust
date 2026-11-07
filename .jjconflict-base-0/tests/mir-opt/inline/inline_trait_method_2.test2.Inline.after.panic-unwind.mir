@@ -1,0 +1,25 @@
+// MIR for `test2` after Inline
+
+fn test2(_1: &dyn X) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    let mut _2: &dyn X;
+    let mut _3: &dyn X;
+    scope 1 (inlined test) {
+        debug x => _2;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = copy _1;
+        _2 = move _3;
+        StorageDead(_3);
+        _0 = <dyn X as X>::y(move _2) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageDead(_2);
+        return;
+    }
+}

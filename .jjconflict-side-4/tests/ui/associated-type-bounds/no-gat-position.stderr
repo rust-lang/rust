@@ -1,0 +1,15 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/no-gat-position.rs:6:56
+   |
+LL |     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
+   |                                                        ^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item constraint
+   |
+LL -     fn next<'a>(&'a mut self) -> Option<Self::Item<'a, As1: Copy>>;
+LL +     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0229`.

@@ -1,0 +1,18 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/issue-68550.rs:12:20
+   |
+LL | fn run<'a, A>(x: A)
+   |        --     - binding `x` declared here
+   |        |
+   |        lifetime `'a` defined here
+...
+LL |     let _: &'a A = &x;
+   |            -----   ^^ borrowed value does not live long enough
+   |            |
+   |            type annotation requires that `x` is borrowed for `'a`
+LL | }
+   | - `x` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

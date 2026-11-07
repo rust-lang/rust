@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `eq`
+  --> $DIR/missing-derivable-attr.rs:13:1
+   |
+LL |     fn eq(&self, other: &Self) -> bool;
+   |     ----------------------------------- `eq` from trait
+...
+LL | impl MyEq for A {}
+   | ^^^^^^^^^^^^^^^ missing `eq` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

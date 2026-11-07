@@ -1,0 +1,8 @@
+[package]
+name = "rustc_error_codes"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+# tidy-alphabetical-end

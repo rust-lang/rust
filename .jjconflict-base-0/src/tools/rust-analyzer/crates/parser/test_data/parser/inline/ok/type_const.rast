@@ -1,0 +1,22 @@
+SOURCE_FILE
+  CONST
+    TYPE_KW "type"
+    WHITESPACE " "
+    CONST_KW "const"
+    WHITESPACE " "
+    NAME
+      IDENT "FOO"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "i32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "2"
+    SEMICOLON ";"
+  WHITESPACE "\n"

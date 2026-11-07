@@ -1,0 +1,28 @@
+STRING "\"\\💩\"" error: unknown character escape
+WHITESPACE "\n"
+STRING "\"\\●\"" error: unknown character escape
+WHITESPACE "\n"
+STRING "\"\\u{_0000}\"" error: invalid start of unicode escape
+WHITESPACE "\n"
+STRING "\"\\u{0000000}\"" error: overlong unicode escape
+WHITESPACE "\n"
+STRING "\"\\u{FFFFFF}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{ffffff}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{ffffff}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{DC00}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{DDDD}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{DFFF}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{D800}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{DAAA}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\u{DBFF}\"" error: invalid unicode character escape
+WHITESPACE "\n"
+STRING "\"\\xы\"" error: invalid character in numeric character escape
+WHITESPACE "\n"

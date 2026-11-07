@@ -1,0 +1,149 @@
+PRINT-ATTR INPUT (DISPLAY): { #[cfg(not(FALSE))] { 11 } }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: #0 bytes(491..492),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: #0 bytes(493..496),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "not",
+                                span: #0 bytes(497..500),
+                            },
+                            Group {
+                                delimiter: Parenthesis,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "FALSE",
+                                        span: #0 bytes(501..506),
+                                    },
+                                ],
+                                span: #0 bytes(500..507),
+                            },
+                        ],
+                        span: #0 bytes(496..508),
+                    },
+                ],
+                span: #0 bytes(492..509),
+            },
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [
+                    Literal {
+                        kind: Integer,
+                        symbol: "11",
+                        suffix: None,
+                        span: #0 bytes(513..515),
+                    },
+                ],
+                span: #0 bytes(511..517),
+            },
+        ],
+        span: #0 bytes(452..523),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): { #[cfg(false)] { 10 } #[cfg(not(FALSE))] { 11 } }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: #0 bytes(462..463),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: #0 bytes(464..467),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "false",
+                                span: #0 bytes(468..473),
+                            },
+                        ],
+                        span: #0 bytes(467..474),
+                    },
+                ],
+                span: #0 bytes(463..475),
+            },
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [
+                    Literal {
+                        kind: Integer,
+                        symbol: "10",
+                        suffix: None,
+                        span: #0 bytes(478..480),
+                    },
+                ],
+                span: #0 bytes(476..482),
+            },
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: #0 bytes(491..492),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: #0 bytes(493..496),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "not",
+                                span: #0 bytes(497..500),
+                            },
+                            Group {
+                                delimiter: Parenthesis,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "FALSE",
+                                        span: #0 bytes(501..506),
+                                    },
+                                ],
+                                span: #0 bytes(500..507),
+                            },
+                        ],
+                        span: #0 bytes(496..508),
+                    },
+                ],
+                span: #0 bytes(492..509),
+            },
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [
+                    Literal {
+                        kind: Integer,
+                        symbol: "11",
+                        suffix: None,
+                        span: #0 bytes(513..515),
+                    },
+                ],
+                span: #0 bytes(511..517),
+            },
+        ],
+        span: #0 bytes(452..523),
+    },
+]

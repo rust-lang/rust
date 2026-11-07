@@ -1,0 +1,12 @@
+error[E0277]: the size for values of type `dyn ToBar` cannot be known at compilation time
+  --> $DIR/dst-bad-assign-2.rs:35:5
+   |
+LL |     f5.ptr = *z;
+   |     ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn ToBar`
+   = note: the left-hand-side of an assignment must have a statically known size
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

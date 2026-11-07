@@ -1,0 +1,42 @@
+error[E0221]: ambiguous associated type `A` in bounds of `Self`
+  --> $DIR/E0221.rs:11:16
+   |
+LL |     type A: T1;
+   |     ---------- ambiguous `A` from `Foo`
+...
+LL |     type A: T2;
+   |     ---------- ambiguous `A` from `Bar`
+LL |     fn do_something() {
+LL |         let _: Self::A;
+   |                ^^^^^^^ ambiguous associated type `A`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -         let _: Self::A;
+LL +         let _: <Self as Foo>::A;
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL -         let _: Self::A;
+LL +         let _: <Self as Bar>::A;
+   |
+
+error[E0221]: ambiguous associated type `Err` in bounds of `Self`
+  --> $DIR/E0221.rs:21:16
+   |
+LL |     type Err: T3;
+   |     ------------ ambiguous `Err` from `My`
+LL |     fn test() {
+LL |         let _: Self::Err;
+   |                ^^^^^^^^^ ambiguous associated type `Err`
+   |
+   = note: associated type `Err` could derive from `FromStr`
+help: use fully-qualified syntax to disambiguate
+   |
+LL -         let _: Self::Err;
+LL +         let _: <Self as My>::Err;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0221`.

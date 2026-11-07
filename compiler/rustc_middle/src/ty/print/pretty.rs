@@ -3184,7 +3184,7 @@ define_print! {
     }
 
     ty::TraitRef<'tcx> {
-        write!(p, "<{} as {}>", self.self_ty(), self.print_only_trait_path())?;
+        write!(p, "<{:?} as {:?}>", self.self_ty(), self.print_only_trait_path())?;
     }
 
     ty::AliasTy<'tcx> {

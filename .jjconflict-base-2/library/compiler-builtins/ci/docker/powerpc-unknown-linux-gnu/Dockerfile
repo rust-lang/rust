@@ -1,0 +1,18 @@
+ARG IMAGE=ubuntu:26.04
+FROM $IMAGE
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    gcc \
+    gcc-powerpc-linux-gnu \
+    libc6-dev \
+    libc6-dev-powerpc-cross \
+    qemu-system-ppc \
+    qemu-user
+
+ENV TOOLCHAIN_PREFIX=powerpc-linux-gnu-
+ENV CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_LINKER="$TOOLCHAIN_PREFIX"gcc \
+    CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER=qemu-ppc \
+    AR_powerpc_unknown_linux_gnu="$TOOLCHAIN_PREFIX"ar \
+    CC_powerpc_unknown_linux_gnu="$TOOLCHAIN_PREFIX"gcc \
+    QEMU_LD_PREFIX=/usr/powerpc-linux-gnu

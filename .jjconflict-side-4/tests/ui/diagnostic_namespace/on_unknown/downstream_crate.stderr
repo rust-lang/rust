@@ -1,0 +1,13 @@
+error[E0432]: you silly, this module is empty
+  --> $DIR/downstream_crate.rs:6:9
+   |
+LL | pub use ::other::empty::something;
+   |         ^^^^^^^^^^^^^^^^---------
+   |                         |
+   |                         no `something` in `empty`
+   |
+   = note: unresolved import `other::empty::something`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

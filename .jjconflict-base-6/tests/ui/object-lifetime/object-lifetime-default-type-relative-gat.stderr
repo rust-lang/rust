@@ -1,0 +1,38 @@
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-type-relative-gat.rs:11:37
+   |
+LL |     fn g<'r, T: Outer>(x: T::Ty<'r, dyn Inner>) {}
+   |                                     ^^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL |     fn g<'r, T: Outer>(x: T::Ty<'r, dyn Inner + /* 'a */>) {}
+   |                                               ++++++++++
+
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-type-relative-gat.rs:23:37
+   |
+LL |     fn g<'r, T: Outer<'r>>(_: T::Ty<dyn Inner>) {}
+   |                                     ^^^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL |     fn g<'r, T: Outer<'r>>(_: T::Ty<dyn Inner + /* 'a */>) {}
+   |                                               ++++++++++
+
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
+  --> $DIR/object-lifetime-default-type-relative-gat.rs:28:42
+   |
+LL |     fn escaping<T: for<'r> Outer<'r>>(_: T::Ty<dyn Inner>) {}
+   |                                          ^^^^^^^^^^^^^^^^
+   |
+help: use a fully qualified path with inferred lifetimes
+   |
+LL -     fn escaping<T: for<'r> Outer<'r>>(_: T::Ty<dyn Inner>) {}
+LL +     fn escaping<T: for<'r> Outer<'r>>(_: <T as parent::Outer<'_>>::Ty<dyn Inner>) {}
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0212, E0228.
+For more information about an error, try `rustc --explain E0212`.

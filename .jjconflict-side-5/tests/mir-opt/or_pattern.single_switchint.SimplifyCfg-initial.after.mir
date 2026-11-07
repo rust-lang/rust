@@ -1,0 +1,83 @@
+// MIR for `single_switchint` after SimplifyCfg-initial
+
+fn single_switchint() -> () {
+    let mut _0: ();
+    let _1: i32;
+    let mut _2: (i32, bool);
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = (const 1_i32, const true);
+        PlaceMention(_2);
+        switchInt(copy (_2.0: i32)) -> [1: bb2, 2: bb4, otherwise: bb1];
+    }
+
+    bb1: {
+        switchInt(copy (_2.0: i32)) -> [3: bb9, 4: bb9, otherwise: bb8];
+    }
+
+    bb2: {
+        switchInt(copy (_2.1: bool)) -> [0: bb6, otherwise: bb3];
+    }
+
+    bb3: {
+        falseEdge -> [real: bb14, imaginary: bb4];
+    }
+
+    bb4: {
+        switchInt(copy (_2.1: bool)) -> [0: bb5, otherwise: bb6];
+    }
+
+    bb5: {
+        falseEdge -> [real: bb13, imaginary: bb6];
+    }
+
+    bb6: {
+        switchInt(copy (_2.1: bool)) -> [0: bb7, otherwise: bb7];
+    }
+
+    bb7: {
+        falseEdge -> [real: bb12, imaginary: bb1];
+    }
+
+    bb8: {
+        _1 = const 5_i32;
+        goto -> bb15;
+    }
+
+    bb9: {
+        switchInt(copy (_2.1: bool)) -> [0: bb10, otherwise: bb10];
+    }
+
+    bb10: {
+        falseEdge -> [real: bb11, imaginary: bb8];
+    }
+
+    bb11: {
+        _1 = const 4_i32;
+        goto -> bb15;
+    }
+
+    bb12: {
+        _1 = const 3_i32;
+        goto -> bb15;
+    }
+
+    bb13: {
+        _1 = const 2_i32;
+        goto -> bb15;
+    }
+
+    bb14: {
+        _1 = const 1_i32;
+        goto -> bb15;
+    }
+
+    bb15: {
+        StorageDead(_2);
+        StorageDead(_1);
+        _0 = const ();
+        return;
+    }
+}

@@ -1,0 +1,115 @@
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:44:5: 44:12}`
+  --> $DIR/clone-impl.rs:48:5
+   |
+LL |     move || {
+   |     ------- within this `{coroutine@$DIR/clone-impl.rs:44:5: 44:12}`
+...
+LL |     check_copy(&gen_clone_0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:44:5: 44:12}`, the trait `Copy` is not implemented for `Vec<u32>`
+   |
+note: captured value does not implement `Copy`
+  --> $DIR/clone-impl.rs:46:14
+   |
+LL |         drop(clonable_0);
+   |              ^^^^^^^^^^ has type `Vec<u32>` which does not implement `Copy`
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:92:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+
+error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:55:5: 55:12}`
+  --> $DIR/clone-impl.rs:60:5
+   |
+LL |     move || {
+   |     ------- within this `{coroutine@$DIR/clone-impl.rs:55:5: 55:12}`
+...
+LL |     check_copy(&gen_clone_1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:55:5: 55:12}`, the trait `Copy` is not implemented for `Vec<char>`
+   |
+note: coroutine does not implement `Copy` as this value is used across a yield
+  --> $DIR/clone-impl.rs:57:9
+   |
+LL |         let v = vec!['a'];
+   |             - has type `Vec<char>` which does not implement `Copy`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `v` maybe used later
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:92:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:68:5: 68:12}`
+  --> $DIR/clone-impl.rs:74:5
+   |
+LL |     move || {
+   |     ------- within this `{coroutine@$DIR/clone-impl.rs:68:5: 68:12}`
+...
+LL |     check_copy(&gen_clone_1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:68:5: 68:12}`, the trait `Copy` is not implemented for `Vec<u32>`
+   |
+note: captured value does not implement `Copy`
+  --> $DIR/clone-impl.rs:72:14
+   |
+LL |         drop(clonable_1);
+   |              ^^^^^^^^^^ has type `Vec<u32>` which does not implement `Copy`
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:92:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+
+error[E0277]: the trait bound `NonClone: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:82:5: 82:12}`
+  --> $DIR/clone-impl.rs:86:5
+   |
+LL |     move || {
+   |     ------- within this `{coroutine@$DIR/clone-impl.rs:82:5: 82:12}`
+...
+LL |     check_copy(&gen_non_clone);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:82:5: 82:12}`, the trait `Copy` is not implemented for `NonClone`
+   |
+note: captured value does not implement `Copy`
+  --> $DIR/clone-impl.rs:84:14
+   |
+LL |         drop(non_clonable);
+   |              ^^^^^^^^^^^^ has type `NonClone` which does not implement `Copy`
+note: required by a bound in `check_copy`
+  --> $DIR/clone-impl.rs:92:18
+   |
+LL | fn check_copy<T: Copy>(_x: &T) {}
+   |                  ^^^^ required by this bound in `check_copy`
+help: consider annotating `NonClone` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct NonClone;
+   |
+
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `{coroutine@$DIR/clone-impl.rs:82:5: 82:12}`
+  --> $DIR/clone-impl.rs:88:5
+   |
+LL |     move || {
+   |     ------- within this `{coroutine@$DIR/clone-impl.rs:82:5: 82:12}`
+...
+LL |     check_clone(&gen_non_clone);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:82:5: 82:12}`, the trait `Clone` is not implemented for `NonClone`
+   |
+note: captured value does not implement `Clone`
+  --> $DIR/clone-impl.rs:84:14
+   |
+LL |         drop(non_clonable);
+   |              ^^^^^^^^^^^^ has type `NonClone` which does not implement `Clone`
+note: required by a bound in `check_clone`
+  --> $DIR/clone-impl.rs:93:19
+   |
+LL | fn check_clone<T: Clone>(_x: &T) {}
+   |                   ^^^^^ required by this bound in `check_clone`
+help: consider annotating `NonClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NonClone;
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

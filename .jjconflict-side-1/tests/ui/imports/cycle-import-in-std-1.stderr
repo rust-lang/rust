@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `ops`
+  --> $DIR/cycle-import-in-std-1.rs:5:5
+   |
+LL | use ops::{self as std};
+   |     ^^^
+   |
+help: a similar path exists
+   |
+LL | use core::ops::{self as std};
+   |     ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

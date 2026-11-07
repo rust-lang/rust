@@ -1,0 +1,29 @@
+error[E0061]: this function takes 5 arguments but 0 arguments were supplied
+  --> $DIR/verbose-suggestion-for-missing-fn-args.rs:5:5
+   |
+LL |     my_very_long_function_name_with_lots_of_args();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- multiple arguments are missing
+   |
+note: function defined here
+  --> $DIR/verbose-suggestion-for-missing-fn-args.rs:8:4
+   |
+LL | fn my_very_long_function_name_with_lots_of_args(
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     _first_long_param: bool,
+   |     -----------------------
+LL |     _second_long_param: HashMap<Arc<String>, Vec<BTreeSet<usize>>>,
+   |     --------------------------------------------------------------
+LL |     _third_long_param: usize,
+   |     ------------------------
+LL |     _fourth_long_param: String,
+   |     --------------------------
+LL |     _fifth_long_param: Mutex<Option<VecDeque<Arc<String>>>>,
+   |     -------------------------------------------------------
+help: provide the arguments
+   |
+LL |     my_very_long_function_name_with_lots_of_args(/* bool */, /* HashMap<Arc<String>, Vec<BTreeSet<usize>>> */, /* usize */, /* String */, /* Mutex<Option<VecDeque<Arc<String>>>> */);
+   |                                                  +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.
