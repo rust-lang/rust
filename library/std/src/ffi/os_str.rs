@@ -1098,6 +1098,11 @@ impl OsStr {
     /// a valid `OsStr` boundary for the platform.
     #[unstable(feature = "str_split_at_unchecked", issue = "165545")]
     pub unsafe fn split_at_unchecked(&self, mid: usize) -> (&OsStr, &OsStr) {
+        debug_assert!(
+            self.inner.try_check_public_boundary(mid).is_some(),
+            "OsStr::split_at_unchecked requires the index to be on a valid `OsStr` boundary",
+        );
+
         // SAFETY: it's up to the caller to ensure this is safe.
         unsafe {
             let (first, second) = self.as_encoded_bytes().split_at_unchecked(mid);

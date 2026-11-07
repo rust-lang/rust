@@ -1002,6 +1002,13 @@ impl str {
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&str, &str) {
         let len = self.len();
         let ptr = self.as_ptr();
+
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "str::split_at_unchecked requires the index to be on a UTF-8 boundary",
+            (it: &str = self, mid: usize = mid) => it.is_char_boundary(mid),
+        );
+
         // SAFETY: caller guarantees `mid` is on a char boundary.
         unsafe {
             (
@@ -1023,6 +1030,13 @@ impl str {
     pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut str, &mut str) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
+
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "str::split_at_mut_unchecked requires the index to be on a UTF-8 boundary",
+            (it: &str = self, mid: usize = mid) => it.is_char_boundary(mid),
+        );
+
         // SAFETY: caller guarantees `mid` is on a char boundary.
         unsafe {
             (
