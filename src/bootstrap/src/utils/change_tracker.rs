@@ -686,4 +686,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "A new option `llvm.tpde` has been added to control whether the TPDE pass plugin should be built as an experimental alternative LLVM backend.",
     },
+    ChangeInfo {
+        change_id: 124439,
+        severity: ChangeSeverity::Info,
+        summary: "Default for `rust.deny-warnings` on `compiler`, `library` and `tools` profiles changed to `false`",
+    },
 ];
