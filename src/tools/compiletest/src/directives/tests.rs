@@ -1,9 +1,11 @@
+use std::assert_matches;
 use std::collections::BTreeSet;
 
 use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
+use crate::directives::line::{DirectiveLine, Error, ErrorKind};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
     FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
@@ -654,46 +656,116 @@ fn test_miropt_mode_forbidden_revisions() {
 }
 
 #[test]
-#[should_panic(expected = "malformed condition directive: multiple revisions aren't supported yet")]
-fn test_multiple_revisions_in_directive() {
-    let directive = "//@ [foo,bar] compile-flags: -Z hello";
+fn test_ok_directive() {
+    let line = "//@ aux-build: file.rs";
 
-    // The problem: this is seen as a single revision.
-    let line_directive = line_directive(Utf8Path::new("foo.txt"), LineNumber::ZERO, directive);
-    assert!(line_directive.is_some());
-    assert_eq!(Some("foo,bar"), line_directive.unwrap().revision);
-
-    // The solution for now: forbid directives from having multiple revisions.
-    let config: Config = cfg().build();
-    parse_early_props(&config, directive);
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "aux-build",
+            raw_directive: "aux-build: file.rs",
+            ..
+        }))
+    );
 }
 
 #[test]
-#[should_panic]
+fn indented_directive() {
+    let line = "  //@ key: value";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Ok(DirectiveLine { revision: None, name: "key", raw_directive: "key: value", .. }))
+    );
+}
+
+#[test]
+fn test_doc_comment_at_sign_not_a_directive() {
+    let line = "///@ aux-build: file.rs";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(result, None);
+}
+
+#[test]
+fn test_multiple_revisions_in_directive() {
+    // The problem: If we don't reject this early, this will be seen as a single revision.
+    let line = "//@ [foo,bar] compile-flags: -Z hello";
+
+    let result = line_directive(Utf8Path::new("foo.txt"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Err(Error {
+            kind: ErrorKind::CommaInRevisionCondition {
+                revision: "foo,bar",
+                directive: "compile-flags: -Z hello"
+            },
+            ..
+        }))
+    );
+}
+
+#[test]
 fn test_whitespace_before_at_sign_in_directive() {
     let line = "// @ check-pass";
-    let _ = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(result, Some(Err(Error { kind: ErrorKind::WhitespaceBeforeAtSign, .. })));
 }
 
 #[test]
-#[should_panic]
 fn test_leading_revision_condition_in_directive_0() {
     let line = "//[leading]@ compile-flags: -Aunused";
-    let _ = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Err(Error {
+            kind: ErrorKind::LeadingRevisionCondition {
+                revision: "leading",
+                context: "//[leading]@ "
+            },
+            ..
+        }))
+    );
 }
 
 #[test]
-#[should_panic]
 fn test_leading_revision_condition_in_directive_1() {
     let line = "//  [leading]  @ compile-flags: -Aunused";
-    let _ = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Err(Error {
+            kind: ErrorKind::LeadingRevisionCondition {
+                revision: "leading",
+                context: "//  [leading]  @ "
+            },
+            ..
+        }))
+    );
 }
 
 #[test]
-fn test_not_a_leading_revision_condition_in_directive() {
+fn test_not_a_leading_revision_condition_in_directive_0() {
     let line = "//  [leading  @ compile-flags: -Aunused";
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert!(result.is_none());
+    assert_matches!(result, None);
+}
+
+#[test]
+fn test_not_a_leading_revision_condition_in_directive_1() {
+    let line = "// [closure@file.rs]";
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(result, None);
+}
+
+#[test]
+fn test_unclosed_revision_condition_in_directive() {
+    let line = "//@[revision edition: 2021";
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(result, Some(Err(Error { kind: ErrorKind::UnclosedRevisionCondition, .. })));
 }
 
 #[test]
@@ -1181,8 +1253,9 @@ fn parse_edition_range(line: &str) -> Option<EditionRange> {
     let config = cfg().build();
 
     let line_with_comment = format!("//@ {line}");
-    let line =
-        line_directive(Utf8Path::new("tmp.rs"), LineNumber::ZERO, &line_with_comment).unwrap();
+    let line = line_directive(Utf8Path::new("tmp.rs"), LineNumber::ZERO, &line_with_comment)
+        .unwrap()
+        .unwrap();
 
     super::parse_edition_range(&config, &line)
 }
