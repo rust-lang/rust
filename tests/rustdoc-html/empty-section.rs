@@ -10,13 +10,15 @@
 #![feature(unsafe_unpin)]
 // tidy-alphabetical-end
 
-#![allow(incomplete_features)]
+// FIXME(move-trait): remove this when it's complete
+#![expect(incomplete_features)]
 
 pub struct Foo;
 
 //@ has foo/struct.Foo.html
 //@ !hasraw - 'Auto Trait Implementations'
 // Manually un-implement all auto traits for Foo:
+impl !std::marker::Move for Foo {}
 impl !Send for Foo {}
 impl !Sync for Foo {}
 impl !std::marker::Freeze for Foo {}
