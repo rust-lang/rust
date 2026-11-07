@@ -1,12 +1,12 @@
 error: unnecessary lifetime parameter `'a`
-  --> $DIR/derive-expect-issue-150553.rs:16:23
+  --> $DIR/derive-expect-issue-150553-5.rs:15:6
    |
-LL | pub struct RefWrapper<'a, T>
-   |                       ^^
+LL | impl<'a> W<'a>
+   |      ^^
    |
    = note: you can use the `'static` lifetime directly, in place of `'a`
 note: the lint level is defined here
-  --> $DIR/derive-expect-issue-150553.rs:10:9
+  --> $DIR/derive-expect-issue-150553-5.rs:4:9
    |
 LL | #![deny(redundant_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^

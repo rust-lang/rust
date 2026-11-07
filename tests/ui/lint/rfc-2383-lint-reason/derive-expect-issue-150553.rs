@@ -1,11 +1,9 @@
-// FIXME: Bring back duplication of the `#[expect]` attribute when deriving.
-//
-// Make sure we properly copy the `#[expect]` attr to the derived code and that no
-// unfulfilled expectations are trigerred.
+// Make sure the `#[expect]` attr on an item is shared with the code derived from it:
+// the lint is suppressed there and fulfills the expectation.
 //
 // See <https://github.com/rust-lang/rust/issues/150553> for rational.
 
-//@ check-fail
+//@ check-pass
 
 #![deny(redundant_lifetimes)]
 
@@ -14,7 +12,6 @@ use std::fmt::Debug;
 #[derive(Debug)]
 #[expect(redundant_lifetimes)]
 pub struct RefWrapper<'a, T>
-//~^ ERROR redundant_lifetimes
 where
     'a: 'static,
     T: Debug,
