@@ -139,4 +139,35 @@ mod macro_generated {
     define_use!();
 }
 
+mod x {
+    pub mod m {
+        pub struct Item;
+    }
+}
+
+mod c {
+    use crate::x::m;
+    pub struct Other;
+}
+
+mod glob_in_group_single {
+    use crate::c::{m::*};
+    //~^ ERROR module import `m` is private [E0603]
+}
+
+mod glob_in_group_multi {
+    use crate::c::{m::*, Other};
+    //~^ ERROR module import `m` is private [E0603]
+}
+
+mod non_glob_control_single {
+    use crate::c::{m::Item};
+    //~^ ERROR module import `m` is private [E0603]
+}
+
+mod non_glob_control_multi {
+    use crate::c::{m::Item, Other};
+    //~^ ERROR module import `m` is private [E0603]
+}
+
 fn main() {}
