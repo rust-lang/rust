@@ -201,6 +201,14 @@ macro_rules! define_queries {
                         } else {
                             crate::query_vtables::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
+
+                        #[cfg($feedable)]
+                        feed_query_fn: |tcx, key, value| {
+                            let query = &tcx.query_system.query_vtables.$name;
+                            crate::execution::feed_query(query, tcx, key, value);
+                        },
+                        #[cfg(not($feedable))]
+                        feed_query_fn: |_, _, _| panic!("calling feed_query_fn on non-feedable query"),
                     }
                 }
 

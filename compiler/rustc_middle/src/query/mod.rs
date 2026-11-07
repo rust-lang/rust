@@ -14,7 +14,7 @@ mod caches;
 pub(crate) mod calls;
 pub mod erase;
 mod into_query_key;
-mod job;
+pub mod job;
 mod keys;
 pub(crate) mod modifiers;
 pub mod on_disk_cache;

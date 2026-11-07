@@ -4,11 +4,10 @@
 use std::ops::Deref;
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::dep_graph;
-use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
+use crate::query::job::try_get_cached;
 use crate::query::{IntoQueryKey, QueryCache, QueryMode, QueryVTable};
 use crate::ty::{self, TyCtxt};
 
@@ -118,25 +117,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// Checks whether there is already a value for this key in the in-memory
-/// query cache, returning that value if present.
-///
-/// (Also performs some associated bookkeeping, if a value was found.)
-#[inline(always)]
-fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: C::Key) -> Option<C::Value>
-where
-    C: QueryCache,
-{
-    match cache.lookup(&key) {
-        Some((value, index)) => {
-            tcx.prof.query_cache_hit(index.into());
-            tcx.dep_graph.read_index(index);
-            Some(value)
-        }
-        None => None,
-    }
-}
-
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
 /// for all queries.
 #[inline(always)]
@@ -206,68 +186,6 @@ where
                 // loading it from there.
                 None => Ok(()),
             }
-        }
-    }
-}
-
-/// "Feeds" a feedable query by adding a given key/value pair to its in-memory cache.
-/// Called by macro-generated methods of [`rustc_middle::ty::TyCtxtFeed`].
-pub(crate) fn query_feed<'tcx, C>(
-    tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
-    key: C::Key,
-    value: C::Value,
-) where
-    C: QueryCache,
-    C::Key: DepNodeKey<'tcx>,
-{
-    let format_value = query.format_value;
-
-    // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, &query.cache, key) {
-        Some(old) => {
-            // The query already has a cached value for this key.
-            // That's OK if both values are the same, i.e. they have the same hash,
-            // so now we check their hashes.
-            if let Some(hash_value_fn) = query.hash_value_fn {
-                let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
-                });
-                if old_hash != value_hash {
-                    // We have an inconsistency. This can happen if one of the two
-                    // results is tainted by errors. In this case, delay a bug to
-                    // ensure compilation is doomed, and keep the `old` value.
-                    tcx.dcx().delayed_bug(format!(
-                        "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                        old value: {old}\nnew value: {value}",
-                        old = format_value(&old),
-                        value = format_value(&value),
-                    ));
-                }
-            } else {
-                // The query is `no_hash`, so we have no way to perform a sanity check.
-                // If feeding the same value multiple times needs to be supported,
-                // the query should not be marked `no_hash`.
-                bug!(
-                    "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                    old value: {old}\nnew value: {value}",
-                    old = format_value(&old),
-                    value = format_value(&value),
-                )
-            }
-        }
-        None => {
-            // There is no cached value for this key, so feed the query by
-            // adding the provided value to the cache.
-            let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
-            let dep_node_index = tcx.dep_graph.with_feed_task(
-                dep_node,
-                tcx,
-                &value,
-                query.hash_value_fn,
-                query.format_value,
-            );
-            query.cache.complete(key, value, dep_node_index);
         }
     }
 }
