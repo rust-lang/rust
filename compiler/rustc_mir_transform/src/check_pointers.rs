@@ -103,7 +103,7 @@ pub(crate) fn check_pointers<'tcx, F>(
                     &mut block_data.statements,
                     source_info,
                 );
-                block_data.terminator = Some(Terminator {
+                block_data.terminator = Terminator {
                     source_info,
                     kind: TerminatorKind::Assert {
                         cond: pointer_check.cond,
@@ -116,7 +116,7 @@ pub(crate) fn check_pointers<'tcx, F>(
                         // worse UB when we start unwinding.
                         unwind: UnwindAction::Unreachable,
                     },
-                });
+                };
             }
         }
     }
@@ -237,7 +237,7 @@ fn split_block(
     // Drain every statement after this one and move the current terminator to a new basic block.
     let new_block = BasicBlockData::new_stmts(
         block_data.statements.split_off(location.statement_index),
-        block_data.terminator.take(),
+        block_data.terminator.take().unwrap(), // fixme I don't know whether this unwrap is correct
         block_data.is_cleanup,
     );
 

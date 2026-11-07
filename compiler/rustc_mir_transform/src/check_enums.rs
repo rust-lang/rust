@@ -60,10 +60,8 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                                 source_info.span,
                                 "cannot build enum discriminant from zero-sized type",
                             );
-                            basic_blocks[block].terminator = Some(Terminator {
-                                source_info,
-                                kind: TerminatorKind::goto(new_block),
-                            });
+                            basic_blocks[block].terminator =
+                                Terminator { source_info, kind: TerminatorKind::goto(new_block) };
                         }
                         EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
                             insert_direct_enum_check(
@@ -246,7 +244,7 @@ fn split_block(
     // Drain every statement after this one and move the current terminator to a new basic block.
     let new_block = BasicBlockData::new_stmts(
         block_data.statements.split_off(location.statement_index),
-        block_data.terminator.take(),
+        block_data.terminator.take().unwrap(),
         block_data.is_cleanup,
     );
 
@@ -348,7 +346,7 @@ fn insert_direct_enum_check<'tcx>(
     new_block: BasicBlock,
 ) {
     // Insert a new target block that is branched to in case of an invalid discriminant.
-    let invalid_discr_block_data = BasicBlockData::new(None, false);
+    let invalid_discr_block_data = BasicBlockData::new(Terminator::none(), false);
     let invalid_discr_block = basic_blocks.push(invalid_discr_block_data);
     let block_data = &mut basic_blocks[current_block];
     let discr_place = insert_discr_cast_to_u128(
@@ -382,7 +380,7 @@ fn insert_direct_enum_check<'tcx>(
         .push(Statement::new(source_info, StatementKind::Assign(Box::new((discr_masked, rvalue)))));
 
     // Branch based on the discriminant value.
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::SwitchInt {
             discr: Operand::Copy(discr_masked),
@@ -393,10 +391,10 @@ fn insert_direct_enum_check<'tcx>(
                 invalid_discr_block,
             ),
         },
-    });
+    };
 
     // Abort in case of an invalid enum discriminant.
-    basic_blocks[invalid_discr_block].terminator = Some(Terminator {
+    basic_blocks[invalid_discr_block].terminator = Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Constant(Box::new(ConstOperand {
@@ -412,7 +410,7 @@ fn insert_direct_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-    });
+    };
 }
 
 fn insert_uninhabited_enum_check<'tcx>(
@@ -439,7 +437,7 @@ fn insert_uninhabited_enum_check<'tcx>(
         ))),
     ));
 
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
@@ -457,7 +455,7 @@ fn insert_uninhabited_enum_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-    });
+    };
 }
 
 fn insert_niche_check<'tcx>(
@@ -522,7 +520,7 @@ fn insert_niche_check<'tcx>(
         ))),
     ));
 
-    block_data.terminator = Some(Terminator {
+    block_data.terminator = Terminator {
         source_info,
         kind: TerminatorKind::Assert {
             cond: Operand::Copy(is_ok),
@@ -534,5 +532,5 @@ fn insert_niche_check<'tcx>(
             // make a failing UB check turn into much worse UB when we start unwinding.
             unwind: UnwindAction::Unreachable,
         },
-    });
+    };
 }

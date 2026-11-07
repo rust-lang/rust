@@ -252,7 +252,7 @@ impl<'tcx> TransformVisitor<'tcx> {
 
         body.basic_blocks_mut().push(BasicBlockData::new_stmts(
             statements,
-            Some(Terminator { source_info, kind: TerminatorKind::Return }),
+            Terminator { source_info, kind: TerminatorKind::Return },
             false,
         ));
 
@@ -722,7 +722,7 @@ fn insert_switch<'tcx>(
     // Add the switch as entry block, and put the former entry block at the end.
     let former_entry = std::mem::replace(
         &mut body.basic_blocks_mut()[START_BLOCK],
-        BasicBlockData::new_stmts(vec![assign], None, false),
+        BasicBlockData::new_stmts(vec![assign], Terminator::none(), false),
     );
     let former_entry = body.basic_blocks_mut().push(former_entry);
 
@@ -737,12 +737,12 @@ fn insert_switch<'tcx>(
 
     let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
     body.basic_blocks_mut()[START_BLOCK].terminator =
-        Some(Terminator { source_info: SourceInfo::outermost(body.span), kind: switch });
+        Terminator { source_info: SourceInfo::outermost(body.span), kind: switch };
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
+    body.basic_blocks_mut().push(BasicBlockData::new(Terminator { source_info, kind }, false))
 }
 
 fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> Statement<'tcx> {
@@ -761,7 +761,7 @@ fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ba
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [return_poll_ready_assign(tcx, source_info)].to_vec(),
-        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        Terminator { source_info, kind: TerminatorKind::Return },
         false,
     ))
 }
@@ -813,7 +813,7 @@ fn insert_poll_pending_block<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [return_poll_pending(tcx, source_info, return_type)].to_vec(),
-        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        Terminator { source_info, kind: TerminatorKind::Return },
         false,
     ))
 }
@@ -847,7 +847,7 @@ fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     let poison_block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         vec![transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info)],
-        Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
+        Terminator { source_info, kind: TerminatorKind::UnwindResume },
         true,
     ));
 
@@ -1049,7 +1049,7 @@ fn create_cases<'tcx>(
                 // Then jump to the real target
                 let block = body.basic_blocks_mut().push(BasicBlockData::new_stmts(
                     statements,
-                    Some(Terminator { source_info, kind: TerminatorKind::goto(target) }),
+                    Terminator { source_info, kind: TerminatorKind::goto(target) },
                     false,
                 ));
 
