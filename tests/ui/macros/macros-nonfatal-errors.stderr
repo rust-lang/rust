@@ -3,22 +3,19 @@ error: the `#[default]` attribute may only be used on unit enum variants
    |
 LL |     #[default]
    |     ^^^^^^^^^^
-   |
-   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:18:36
    |
 LL | struct DefaultInnerAttrTupleStruct(#[default] ());
    |                                    ^^^^^^^^^^
-   |
-   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:22:1
    |
 LL | #[default]
    | ^^^^^^^^^^
+LL | struct DefaultOuterAttrStruct {}
    |
    = help: consider a manual implementation of `Default`
 
@@ -27,6 +24,7 @@ error: the `#[default]` attribute may only be used on unit enum variants
    |
 LL | #[default]
    | ^^^^^^^^^^
+LL | enum DefaultOuterAttrEnum {
    |
    = help: consider a manual implementation of `Default`
 
@@ -35,16 +33,12 @@ error: the `#[default]` attribute may only be used on unit enum variants
    |
 LL |     Foo = #[default] 0,
    |           ^^^^^^^^^^
-   |
-   = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
   --> $DIR/macros-nonfatal-errors.rs:37:14
    |
 LL |     Bar([u8; #[default] 1]),
    |              ^^^^^^^^^^
-   |
-   = help: consider a manual implementation of `Default`
 
 error[E0665]: `#[derive(Default)]` on enum with no `#[default]`
   --> $DIR/macros-nonfatal-errors.rs:42:10
@@ -142,20 +136,22 @@ LL |     #[default]
    |     ^^^^^^^^^^
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:91:5
+  --> $DIR/macros-nonfatal-errors.rs:90:5
    |
+LL |     #[default]
+   |     ^^^^^^^^^^
 LL |     Foo {},
-   |     ^^^
    |
    = help: consider a manual implementation of `Default`
 
 error: default variant must be exhaustive
-  --> $DIR/macros-nonfatal-errors.rs:99:5
+  --> $DIR/macros-nonfatal-errors.rs:97:5
    |
+LL |     #[default]
+   |     ^^^^^^^^^^
 LL |     #[non_exhaustive]
    |     ----------------- declared `#[non_exhaustive]` here
 LL |     Foo,
-   |     ^^^
    |
    = help: consider a manual implementation of `Default`
 
@@ -239,12 +235,13 @@ LL |     trace_macros!(invalid);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: default variant must be exhaustive
-  --> $DIR/macros-nonfatal-errors.rs:131:9
+  --> $DIR/macros-nonfatal-errors.rs:129:9
    |
+LL |         #[default]
+   |         ^^^^^^^^^^
 LL |         #[non_exhaustive]
    |         ----------------- declared `#[non_exhaustive]` here
 LL |         Foo,
-   |         ^^^
    |
    = help: consider a manual implementation of `Default`
 
