@@ -1,0 +1,425 @@
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:12:20
+   |
+LL |     use crate::b::{A, Z};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:17:23
+   |
+LL |     use crate::b::{Z, A};
+   |                       ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:22:23
+   |
+LL |     use crate::b::{Z, A, Z as Z2};
+   |                       ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:27:20
+   |
+LL |     use crate::b::{A};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:32:20
+   |
+LL |     use crate::b::{A, B};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `B` is private
+  --> $DIR/private-import-grouped-suggestion.rs:32:23
+   |
+LL |     use crate::b::{A, B};
+   |                       ^ private struct import
+   |
+note: the struct import `B` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:23
+   |
+LL |     use crate::a::{A, B};
+   |                       ^
+note: ...and refers to the struct `B` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:3:5
+   |
+LL |     pub struct B;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:38:20
+   |
+LL |     use crate::b::{A, Z, B};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `B` is private
+  --> $DIR/private-import-grouped-suggestion.rs:38:26
+   |
+LL |     use crate::b::{A, Z, B};
+   |                          ^ private struct import
+   |
+note: the struct import `B` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:23
+   |
+LL |     use crate::a::{A, B};
+   |                       ^
+note: ...and refers to the struct `B` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:3:5
+   |
+LL |     pub struct B;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:44:23
+   |
+LL |     use crate::b::{Z, A,};
+   |                       ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:51:9
+   |
+LL |         A,
+   |         ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:57:20
+   |
+LL |     use crate::b::{A as Renamed, Z};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:62:20
+   |
+LL |     use crate::b::{A as Renamed};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:67:21
+   |
+LL |     use crate::{b::{A, Z}, a::B};
+   |                     ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:72:21
+   |
+LL |     use crate::{b::{A}, a::B};
+   |                     ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:77:24
+   |
+LL |     pub use crate::b::{A, Z};
+   |                        ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:82:31
+   |
+LL |     pub(crate) use crate::b::{A, Z};
+   |                               ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:87:26
+   |
+LL |     use crate::b::{self, A};
+   |                          ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:92:35
+   |
+LL |     use crate::b::{Z, /* 🦀 日本語 */ A};
+   |                                       ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:97:29
+   |
+LL |     use crate::b::{Z as 变量, A};
+   |                               ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:105:9
+   |
+LL |         A,
+   |         ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:111:20
+   |
+LL |     use crate::b::{A /* c */, Z};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:117:20
+   |
+LL |     use crate::b::{A, Z};
+   |                    ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:122:29
+   |
+LL |     fn f() { use crate::b::{A, Z}; }
+   |                             ^ private struct import
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error[E0603]: struct `Path` is private
+  --> $DIR/private-import-grouped-suggestion.rs:127:19
+   |
+LL |     use std::{fs::Path};
+   |                   ^^^^ private struct
+   |
+note: the struct `Path` is defined here
+  --> $SRC_DIR/std/src/fs.rs:LL:COL
+
+error[E0603]: struct import `A` is private
+  --> $DIR/private-import-grouped-suggestion.rs:133:24
+   |
+LL | macro_rules! define_use {
+LL |     () => {
+LL |         use crate::b::{A, Z};
+   |                        ^ private struct import
+...
+LL |     define_use!();
+   |     ------------- in this macro invocation
+   |
+note: the struct import `A` is defined here...
+  --> $DIR/private-import-grouped-suggestion.rs:7:20
+   |
+LL |     use crate::a::{A, B};
+   |                    ^
+note: ...and refers to the struct `A` which is defined here
+  --> $DIR/private-import-grouped-suggestion.rs:2:5
+   |
+LL |     pub struct A;
+   |     ^^^^^^^^^^^^^ you could import this directly
+
+error: aborting due to 25 previous errors
+
+For more information about this error, try `rustc --explain E0603`.
