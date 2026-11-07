@@ -2989,7 +2989,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let argument_kind = match expected.self_ty().kind() {
-            ty::Closure(..) => "closure",
+            ty::Closure(..) | ty::CoroutineClosure(..) => "closure",
             ty::Coroutine(..) => "coroutine",
             _ => "function",
         };
