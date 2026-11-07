@@ -923,6 +923,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = fn_call_diag_ctxt.initial_final_diagnostic();
         fn_call_diag_ctxt.suggest_confusable(&mut err);
         fn_call_diag_ctxt.detect_missing_turbofish(&mut err);
+        fn_call_diag_ctxt.suggest_missing_comma_before_closure(&mut err);
 
         // As we encounter issues, keep track of what we want to provide for the suggestion.
 
@@ -3308,6 +3309,38 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
                     }
                     _ => {}
                 }
+                break;
+            }
+        }
+    }
+
+    fn suggest_missing_comma_before_closure(&self, err: &mut Diag<'_>) {
+        if self.formal_and_expected_inputs.len() <= self.provided_args.len() {
+            return;
+        }
+
+        for &arg in &self.provided_args {
+            let mut curr = arg;
+            let mut bitor_count = 0;
+            while let hir::ExprKind::Binary(op, lhs, _) = curr.kind
+                && op.node == hir::BinOpKind::BitOr
+            {
+                bitor_count += 1;
+                curr = lhs;
+            }
+
+            // `t(() |c| c)` is greedily parsed as `((() | c) | c)`. Unit cannot BitOr,
+            // and closure params need two `|` delimiters.
+            if bitor_count >= 2
+                && matches!(curr.kind, hir::ExprKind::Tup([]))
+                && curr.span.can_be_used_for_suggestions()
+            {
+                err.span_suggestion_verbose(
+                    curr.span.shrink_to_hi(),
+                    "add a comma",
+                    ",",
+                    Applicability::MaybeIncorrect,
+                );
                 break;
             }
         }
