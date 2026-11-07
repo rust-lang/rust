@@ -239,6 +239,10 @@ pub const unsafe trait Allocator {
     /// guarantees of `layout`. The returned block may have a larger size than specified
     /// by `layout.size()`, and may or may not have its contents initialized.
     ///
+    /// The returned block may be uninitialized, so it is unsound to read it
+    /// before it is written. Use [`allocate_zeroed`](Self::allocate_zeroed) if
+    /// zero-initialized memory is needed.
+    ///
     /// It is recommended that overallocating as per the above is only performed if doing so
     /// is cheap; there is no guarantee that the caller is able to take advantage of the
     /// returned excess. Implementors are free to e.g. provide an alternate method to query
@@ -265,6 +269,29 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::alloc::{Allocator, Layout, System};
+    ///
+    /// let s = "Hello, world!";
+    /// let layout = Layout::from_size_align(s.len(), 1).unwrap();
+    /// let ptr = System.allocate(layout).expect("allocation failed");
+    ///
+    /// // SAFETY: the block is at least `s.len()` bytes long and was just allocated,
+    /// // so it cannot overlap `s`.
+    /// unsafe {
+    ///     ptr.cast::<u8>().as_ptr().copy_from_nonoverlapping(s.as_ptr(), s.len())
+    /// }
+    ///
+    /// // SAFETY: the first `s.len()` bytes were initialized by the copy above.
+    /// let bytes = unsafe { std::slice::from_raw_parts(ptr.cast::<u8>().as_ptr(), s.len()) };
+    /// assert_eq!(bytes, s.as_bytes());
+    ///
+    /// // SAFETY: `ptr` was allocated by `System` with `layout`.
+    /// unsafe { System.deallocate(ptr.cast(), layout) };
+    /// ```
     #[stable(feature = "allocator_api", since = "1.100.0")]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
 
@@ -283,6 +310,24 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::alloc::{Allocator, Layout, System};
+    ///
+    /// let layout = Layout::new::<u64>();
+    /// let ptr = System.allocate_zeroed(layout).expect("allocation failed");
+    ///
+    /// // SAFETY: `allocate_zeroed` returns a valid, initialized block.
+    /// // This would not be sound with the result of `allocate`, which returns
+    /// // a pointer to uninitialized data.
+    /// let bytes = unsafe { ptr.as_ref() };
+    /// assert!(bytes.iter().all(|&b| b == 0));
+    ///
+    /// // SAFETY: `ptr` was allocated by `System` with `layout`.
+    /// unsafe { System.deallocate(ptr.cast(), layout) };
+    /// ```
     #[stable(feature = "allocator_api", since = "1.100.0")]
     fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let ptr = self.allocate(layout)?;
@@ -319,7 +364,9 @@ pub const unsafe trait Allocator {
     /// If this returns `Ok`, then the memory block referenced by `ptr` has been [*invalidated*].
     /// The old `ptr` must not be used to access the memory, even if the allocation was grown in-place.
     /// The newly returned pointer is the only valid pointer for accessing this memory now.
-    /// All bytes past `old_layout.size()` should be assumed to be uninitialised.
+    /// All bytes past `old_layout.size()` should be assumed to be uninitialised, so it is
+    /// unsound to read them before they are written. Use [`grow_zeroed`](Self::grow_zeroed)
+    /// if the new bytes should be zero-initialized.
     ///
     /// If this method returns `Err`, then the memory block has not been *invalidated*,
     /// and the contents of the memory block are unaltered.
@@ -349,6 +396,45 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::alloc::{Allocator, Layout, System};
+    ///
+    /// let s1 = "Hello";
+    /// let s2 = ", world!";
+    ///
+    /// let old_layout = Layout::from_size_align(s1.len(), 1).unwrap();
+    /// let ptr = System.allocate(old_layout).expect("allocation failed");
+    ///
+    /// // SAFETY: the block is at least `s1.len()` bytes long and was just allocated,
+    /// // so it cannot overlap `s1`.
+    /// unsafe { ptr.cast::<u8>().as_ptr().copy_from_nonoverlapping(s1.as_ptr(), s1.len()) };
+    ///
+    /// let new_layout = Layout::from_size_align(s1.len() + s2.len(), 1).unwrap();
+    ///
+    /// // SAFETY: `ptr` is currently allocated by `System` with `old_layout`,
+    /// // and `new_layout` is at least as large as `old_layout`.
+    /// // The original `ptr` is invalidated by `grow`, so shadow it with the new one.
+    /// let ptr = unsafe { System.grow(ptr.cast(), old_layout, new_layout) }
+    ///     .expect("grow failed");
+    ///
+    /// // SAFETY: the block is at least `s1.len() + s2.len()` bytes long, so writing
+    /// // `s2.len()` bytes at offset `s1.len()` stays in bounds; it cannot overlap `s2`.
+    /// unsafe {
+    ///     ptr.cast::<u8>().as_ptr().add(s1.len()).copy_from_nonoverlapping(s2.as_ptr(), s2.len());
+    /// }
+    ///
+    /// // SAFETY: all `new_layout.size()` bytes are initialized: the first `s1.len()` were
+    /// // written before `grow` and preserved by it, and the rest were written after.
+    /// let bytes =
+    ///     unsafe { std::slice::from_raw_parts(ptr.cast::<u8>().as_ptr(), new_layout.size()) };
+    /// assert_eq!(bytes, b"Hello, world!");
+    ///
+    /// // SAFETY: `ptr` is currently allocated by `System` with `new_layout`.
+    /// unsafe { System.deallocate(ptr.cast(), new_layout) };
+    /// ```
     #[stable(feature = "allocator_api", since = "1.100.0")]
     unsafe fn grow(
         &self,
@@ -477,6 +563,33 @@ pub const unsafe trait Allocator {
     /// call the [`handle_alloc_error`] function, rather than directly invoking `panic!` or similar.
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::alloc::{Allocator, Layout, System};
+    ///
+    /// let old_layout = Layout::array::<u32>(4).unwrap();
+    /// let ptr = System.allocate(old_layout).expect("allocation failed");
+    ///
+    /// // SAFETY: the block holds at least 4 `u32`s and is aligned for `u32`.
+    /// unsafe { ptr.cast::<[u32; 4]>().write([7, 8, 9, 10]) };
+    ///
+    /// let new_layout = Layout::array::<u32>(2).unwrap();
+    ///
+    /// // SAFETY: `ptr` is currently allocated by `System` with `old_layout`,
+    /// // and `new_layout` is no larger than `old_layout`.
+    /// let shrunk_ptr = unsafe { System.shrink(ptr.cast(), old_layout, new_layout) }
+    ///     .expect("shrink failed");
+    ///
+    /// // The contents that fit in the new layout are preserved.
+    /// // SAFETY: the first two `u32`s were written above and `shrink` kept them.
+    /// assert_eq!(unsafe { shrunk_ptr.cast::<[u32; 2]>().read() }, [7, 8]);
+    ///
+    /// // `ptr` is invalid now; free `shrunk_ptr` with its new layout.
+    /// // SAFETY: `shrunk_ptr` is currently allocated by `System` with `new_layout`.
+    /// unsafe { System.deallocate(shrunk_ptr.cast(), new_layout) };
+    /// ```
     #[stable(feature = "allocator_api", since = "1.100.0")]
     unsafe fn shrink(
         &self,
