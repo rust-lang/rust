@@ -1,0 +1,193 @@
+error: internal compiler error: compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:435:37: what the ferris are you doing
+
+thread 'rustc' panicked at compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:435:37:
+Box<dyn Any>
+stack backtrace:
+   0: std::panicking::begin_panic::<rustc_errors::ExplicitBug>
+             at ./library/std/src/panicking.rs:733:5
+   1: std::panic::panic_any::<rustc_errors::ExplicitBug>
+             at ./library/std/src/panic.rs:264:5
+   2: <rustc_errors::diagnostic::BugAbort as rustc_errors::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+             at ./compiler/rustc_errors/src/diagnostic.rs:86:9
+   3: <rustc_errors::diagnostic::Diag<rustc_errors::diagnostic::BugAbort>>::emit
+             at ./compiler/rustc_errors/src/diagnostic.rs:1317:9
+   4: <rustc_errors::DiagCtxtHandle>::bug::<alloc::string::String>
+             at ./compiler/rustc_errors/src/lib.rs:1140:9
+   5: {closure#0}<rustc_span::span_encoding::Span>
+             at ./compiler/rustc_middle/src/util/bug.rs:37:38
+   6: {closure#0}<rustc_middle::util::bug::opt_span_bug_fmt::{closure_env#0}<rustc_span::span_encoding::Span>, !>
+             at ./compiler/rustc_middle/src/ty/context/tls.rs:158:23
+   7: with_context_opt<rustc_middle::ty::context::tls::with_opt::{closure_env#0}<rustc_middle::util::bug::opt_span_bug_fmt::{closure_env#0}<rustc_span::span_encoding::Span>, !>, !>
+             at ./compiler/rustc_middle/src/ty/context/tls.rs:101:18
+   8: rustc_middle::ty::context::tls::with_opt::<rustc_middle::util::bug::opt_span_bug_fmt<rustc_span::span_encoding::Span>::{closure#0}, !>
+             at ./compiler/rustc_middle/src/ty/context/tls.rs:156:5
+   9: rustc_middle::util::bug::opt_span_bug_fmt::<rustc_span::span_encoding::Span>
+             at ./compiler/rustc_middle/src/util/bug.rs:31:5
+  10: rustc_middle::util::bug::bug_fmt
+             at ./compiler/rustc_middle/src/util/bug.rs:15:5
+  11: check_argument_types
+  12: confirm_builtin_call
+             at ./compiler/rustc_hir_typeck/src/callee.rs:516:9
+  13: check_call
+  14: check_expr_kind
+             at ./compiler/rustc_hir_typeck/src/expr.rs:322:45
+  15: {closure#0}
+             at ./compiler/rustc_hir_typeck/src/expr.rs:227:18
+  16: maybe_grow<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+             at /home/jubilee/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  17: ensure_sufficient_stack<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+             at ./compiler/rustc_data_structures/src/stack.rs:17:5
+  18: check_expr_with_expectation_and_args
+             at ./compiler/rustc_hir_typeck/src/expr.rs:223:18
+  19: check_expr_with_expectation
+             at ./compiler/rustc_hir_typeck/src/expr.rs:169:9
+  20: {closure#0}
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1736:44
+  21: map<&rustc_hir::hir::Expr, (&rustc_hir::hir::Expr, rustc_middle::ty::Ty), rustc_hir_typeck::fn_ctxt::checks::{impl#0}::check_block_with_expected::{closure#0}::{closure_env#0}>
+             at ./library/core/src/option.rs:1103:29
+  22: {closure#0}
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1736:17
+  23: with_breakable_ctxt<rustc_hir_typeck::fn_ctxt::checks::{impl#0}::check_block_with_expected::{closure_env#0}, ()>
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:1544:22
+  24: check_block_with_expected
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1728:26
+  25: check_expr_kind
+             at ./compiler/rustc_hir_typeck/src/expr.rs:321:41
+  26: {closure#0}
+             at ./compiler/rustc_hir_typeck/src/expr.rs:227:18
+  27: maybe_grow<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+             at /home/jubilee/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  28: ensure_sufficient_stack<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+             at ./compiler/rustc_data_structures/src/stack.rs:17:5
+  29: check_expr_with_expectation_and_args
+             at ./compiler/rustc_hir_typeck/src/expr.rs:223:18
+  30: check_expr_with_expectation
+             at ./compiler/rustc_hir_typeck/src/expr.rs:169:9
+  31: check_expr
+             at ./compiler/rustc_hir_typeck/src/expr.rs:142:9
+  32: check_stmt
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1678:17
+  33: {closure#0}
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1730:17
+  34: with_breakable_ctxt<rustc_hir_typeck::fn_ctxt::checks::{impl#0}::check_block_with_expected::{closure_env#0}, ()>
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/_impl.rs:1544:22
+  35: check_block_with_expected
+             at ./compiler/rustc_hir_typeck/src/fn_ctxt/checks.rs:1728:26
+  36: check_expr_kind
+             at ./compiler/rustc_hir_typeck/src/expr.rs:321:41
+  37: {closure#0}
+             at ./compiler/rustc_hir_typeck/src/expr.rs:227:18
+  38: maybe_grow<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+             at /home/jubilee/.cargo/registry/src/index.crates.io-6f17d22bba15001f/stacker-0.1.15/src/lib.rs:55:9
+  39: ensure_sufficient_stack<rustc_middle::ty::Ty, rustc_hir_typeck::expr::{impl#0}::check_expr_with_expectation_and_args::{closure_env#0}>
+             at ./compiler/rustc_data_structures/src/stack.rs:17:5
+  40: check_expr_with_expectation_and_args
+             at ./compiler/rustc_hir_typeck/src/expr.rs:223:18
+  41: check_expr_with_expectation
+             at ./compiler/rustc_hir_typeck/src/expr.rs:169:9
+  42: check_expr_with_hint
+             at ./compiler/rustc_hir_typeck/src/expr.rs:121:9
+  43: check_return_expr
+             at ./compiler/rustc_hir_typeck/src/expr.rs:843:30
+  44: check_fn
+             at ./compiler/rustc_hir_typeck/src/check.rs:138:5
+  45: {closure#0}<rustc_hir_typeck::typeck::{closure_env#0}>
+             at ./compiler/rustc_hir_typeck/src/lib.rs:162:9
+  46: typeck_with_fallback<rustc_hir_typeck::typeck::{closure_env#0}>
+             at ./compiler/rustc_hir_typeck/src/lib.rs:117:1
+  47: {closure#0}
+             at ./compiler/rustc_query_impl/src/plumbing.rs:281:9
+      [... omitted 22 frames ...]
+  48: query_ensure<rustc_query_system::query::caches::VecCache<rustc_span::def_id::LocalDefId, rustc_middle::query::erase::Erased<[u8; 8]>>>
+             at ./compiler/rustc_middle/src/query/plumbing.rs:161:9
+  49: typeck<rustc_span::def_id::LocalDefId>
+             at ./compiler/rustc_middle/src/query/plumbing.rs:196:9
+  50: {closure#4}
+             at ./compiler/rustc_hir_analysis/src/lib.rs:201:13
+  51: {closure#0}<rustc_hir_analysis::check_crate::{closure_env#4}>
+             at ./compiler/rustc_middle/src/hir/map/mod.rs:334:82
+  52: {closure#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:182:34
+  53: call_once<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>>
+             at ./library/core/src/panic/unwind_safe.rs:272:9
+  54: do_call<core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>>, ()>
+             at ./library/std/src/panicking.rs:553:40
+  55: try<(), core::panic::unwind_safe::AssertUnwindSafe<rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#0}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>>>
+             at ./library/std/src/panicking.rs:517:19
+  56: run<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure#1}::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:28:9
+  57: {closure#1}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:186:21
+  58: for_each<rustc_span::def_id::LocalDefId, rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure#0}::{closure_env#1}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>>
+             at ./library/core/src/slice/iter/macros.rs:254:21
+  59: {closure#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:185:17
+  60: parallel_guard<(), rustc_data_structures::sync::parallel::enabled::par_for_each_in::{closure_env#0}<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:44:15
+  61: par_for_each_in<&rustc_span::def_id::LocalDefId, &[rustc_span::def_id::LocalDefId], rustc_middle::hir::map::{impl#3}::par_body_owners::{closure_env#0}<rustc_hir_analysis::check_crate::{closure_env#4}>>
+             at ./compiler/rustc_data_structures/src/sync/parallel.rs:178:9
+  62: par_body_owners<rustc_hir_analysis::check_crate::{closure_env#4}>
+             at ./compiler/rustc_middle/src/hir/map/mod.rs:334:9
+  63: check_crate
+             at ./compiler/rustc_hir_analysis/src/lib.rs:198:5
+  64: run_required_analyses
+             at ./compiler/rustc_interface/src/passes.rs:784:5
+  65: analysis
+             at ./compiler/rustc_interface/src/passes.rs:823:5
+  66: {closure#0}
+             at ./compiler/rustc_query_impl/src/plumbing.rs:281:9
+      [... omitted 22 frames ...]
+  67: query_get_at<rustc_query_system::query::caches::SingleCache<rustc_middle::query::erase::Erased<[u8; 1]>>>
+             at ./compiler/rustc_middle/src/query/plumbing.rs:145:17
+  68: analysis
+             at ./compiler/rustc_middle/src/query/plumbing.rs:423:31
+  69: analysis
+             at ./compiler/rustc_middle/src/query/plumbing.rs:414:17
+  70: {closure#5}
+             at ./compiler/rustc_driver_impl/src/lib.rs:445:48
+  71: {closure#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_middle/src/ty/context.rs:1296:37
+  72: {closure#0}<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_middle/src/ty/context/tls.rs:82:9
+  73: try_with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./library/std/src/thread/local.rs:283:12
+  74: with<core::cell::Cell<*const ()>, rustc_middle::ty::context::tls::enter_context::{closure_env#0}<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./library/std/src/thread/local.rs:260:9
+  75: enter_context<rustc_middle::ty::context::{impl#19}::enter::{closure_env#1}<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_middle/src/ty/context/tls.rs:79:5
+  76: enter<rustc_driver_impl::run_compiler::{closure#0}::{closure#1}::{closure_env#5}, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_middle/src/ty/context.rs:1296:9
+  77: {closure#1}
+             at ./compiler/rustc_driver_impl/src/lib.rs:445:13
+  78: enter<rustc_driver_impl::run_compiler::{closure#0}::{closure_env#1}, core::result::Result<core::option::Option<rustc_interface::queries::Linker>, rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_interface/src/queries.rs:202:19
+  79: {closure#0}
+             at ./compiler/rustc_driver_impl/src/lib.rs:389:22
+  80: {closure#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>
+             at ./compiler/rustc_interface/src/interface.rs:502:27
+  81: {closure#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_interface/src/util.rs:154:13
+  82: {closure#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_interface/src/util.rs:106:21
+  83: set<rustc_span::SessionGlobals, rustc_interface::util::run_in_thread_with_globals::{closure#0}::{closure#0}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at /home/jubilee/.cargo/registry/src/index.crates.io-6f17d22bba15001f/scoped-tls-1.0.1/src/lib.rs:137:9
+  84: create_session_globals_then<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_interface::util::run_in_thread_with_globals::{closure#0}::{closure#0}::{closure_env#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>>
+             at ./compiler/rustc_span/src/lib.rs:134:5
+  85: {closure#0}<rustc_interface::util::run_in_thread_pool_with_globals::{closure_env#0}<rustc_interface::interface::run_compiler::{closure_env#1}<core::result::Result<(), rustc_span::ErrorGuaranteed>, rustc_driver_impl::run_compiler::{closure_env#0}>, core::result::Result<(), rustc_span::ErrorGuaranteed>>, core::result::Result<(), rustc_span::ErrorGuaranteed>>
+             at ./compiler/rustc_interface/src/util.rs:105:17
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: please make sure that you have updated to the latest nightly
+
+note: rustc 1.81.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z threads=1 -Z simulate-remapped-rust-src-base=/rustc/FAKE_PREFIX -Z translate-remapped-path-to-local-path=no -Z ignore-directory-in-diagnostics-source-blocks=/home/jubilee/.cargo -Z ignore-directory-in-diagnostics-source-blocks=/home/jubilee/rust/rustc/vendor -C codegen-units=1 -Z ui-testing -Z deduplicate-diagnostics=no -Z write-long-types-to-disk=no -C strip=debuginfo -C prefer-dynamic -C rpath -C debuginfo=0
+
+query stack during panic:
+#0 [typeck] type-checking `generic_printf`
+#1 [analysis] running analysis passes on this crate
+end of query stack
+error: aborting due to 1 previous error
+
