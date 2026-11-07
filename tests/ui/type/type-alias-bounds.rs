@@ -1,4 +1,4 @@
-// Test `ignored_generic_bounds` lint warning about bounds in type aliases.
+// Test lint `type_alias_bounds` that's about bounds in type aliases.
 
 //@ check-pass
 #![allow(dead_code)]

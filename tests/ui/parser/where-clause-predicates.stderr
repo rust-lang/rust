@@ -1,0 +1,14 @@
+error: expected one of `!`, `(`, `+`, `::`, `:`, `<`, `==`, or `=`, found `,`
+  --> $DIR/where-clause-predicates.rs:15:30
+   |
+LL | fn barrier() { type A where T, = u8; }
+   |                              ^ expected one of 8 possible tokens
+
+error: expected one of `#`, `;`, `=`, `where`, lifetime, or type, found `,`
+  --> $DIR/where-clause-predicates.rs:25:29
+   |
+LL | fn barrier() { type A where , = u8; }
+   |                             ^ expected one of `#`, `;`, `=`, `where`, lifetime, or type
+
+error: aborting due to 2 previous errors
+

@@ -12,6 +12,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use super::diagnostics::dummy_arg;
+use super::generics::RecoverDupeWhereClause;
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     ExpKeywordPair, FollowedByType, ForceCollect, Parser, Recovered, Trailing, UsePreAttrPos,
@@ -123,8 +124,9 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         sig_lo: Span,
         vis: &Visibility,
+        defaultness: Defaultness,
         case: Case,
-    ) -> PResult<'a, (Ident, FnSig, Generics, Option<Box<FnContract>>, Option<Box<Block>>)> {
+    ) -> PResult<'a, ItemKind> {
         let fn_span = self.token.span;
         let header = self.parse_fn_front_matter(vis, case, FrontMatterParsingMode::Function)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
@@ -151,7 +153,7 @@ impl<'a> Parser<'a> {
 
         let contract = self.parse_contract()?;
 
-        generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?; // `where T: Ord`
 
         // `fn_params_end` is needed only when it's followed by a where clause.
         let fn_params_end =
@@ -161,8 +163,17 @@ impl<'a> Parser<'a> {
         // Either `;` or `{ ... }`.
         let body =
             self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
-        let fn_sig_span = sig_lo.to(sig_hi);
-        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, contract, body))
+
+        Ok(ItemKind::Fn(Box::new(Fn {
+            defaultness,
+            ident,
+            sig: FnSig { header, decl, span: sig_lo.to(sig_hi) },
+            generics,
+            contract,
+            body,
+            define_opaque: None,
+            eii_impl: None,
+        })))
     }
 
     /// Provide diagnostics when function body is not found
