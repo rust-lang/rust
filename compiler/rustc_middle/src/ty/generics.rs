@@ -548,6 +548,7 @@ impl<'tcx> GenericClauses<'tcx> {
                 | ClauseKind::ConstEvaluatable(_)
                 | ClauseKind::HostEffect(_)
                 | ClauseKind::UnstableFeature(_) => {}
+                ClauseKind::CompressedTrait(_) => unreachable!(),
             }
             clause.visit_with(&mut ParamChecker).is_continue()
         })

@@ -8,8 +8,8 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
-    self as ty, Const, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized,
-    Upcast as _,
+    self as ty, CallerBoundsIterator, Const, FieldInfo, Interner, NormalizesTo, PredicateKind,
+    Region, Unnormalized, Upcast as _,
 };
 use tracing::instrument;
 
@@ -180,10 +180,21 @@ where
         self.trait_def_id(cx)
     }
 
+    fn non_fast_rejected_caller_bounds(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> impl Iterator<Item = I::Clause> {
+        goal.param_env.caller_bounds().non_trait_clauses().iter().filter(move |&assumption| {
+            match Self::fast_reject_assumption(ecx, goal, assumption) {
+                Ok(()) => true,
+                Err(NoSolution) => false,
+            }
+        })
+    }
+
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        _goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         let alias_def_id = match goal.predicate.alias.kind {

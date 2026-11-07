@@ -14,9 +14,9 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, CallerBoundsIterator, Const, Interner, MayBeErased, Region, TypeFlags,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
+    self as ty, AliasTy, Const, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode, Unnormalized, Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -92,8 +92,7 @@ where
         // and `assumption`'s trait refs directly inside this function in
         // order to prevent unsoundness (see below).
 
-        let goal_lang_item = ecx.cx().as_trait_lang_item(goal.predicate.trait_def_id(ecx.cx()));
-        Self::fast_reject_assumption(ecx, goal, goal_lang_item, assumption)?;
+        Self::fast_reject_assumption(ecx, goal, assumption)?;
 
         ecx.probe_trait_candidate(source).enter(|ecx| {
             let cx = ecx.cx();
@@ -111,7 +110,8 @@ where
                 | ty::ClauseKind::WellFormed(..)
                 | ty::ClauseKind::ConstEvaluatable(..)
                 | ty::ClauseKind::HostEffect(..)
-                | ty::ClauseKind::UnstableFeature(..) => {
+                | ty::ClauseKind::UnstableFeature(..)
+                | ty::ClauseKind::CompressedTrait(_) => {
                     unreachable!("expected trait or projection predicate as an assumption")
                 }
             });
@@ -223,8 +223,7 @@ where
         assumption: I::Clause,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        let goal_lang_item = ecx.cx().as_trait_lang_item(goal.predicate.trait_def_id(ecx.cx()));
-        Self::fast_reject_assumption(ecx, goal, goal_lang_item, assumption)?;
+        Self::fast_reject_assumption(ecx, goal, assumption)?;
 
         ecx.probe_trait_candidate(source)
             .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
@@ -235,9 +234,13 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution>;
+
+    fn non_fast_rejected_caller_bounds(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> impl Iterator<Item = I::Clause>;
 
     /// Relate the goal and assumption.
     fn match_assumption(
@@ -737,19 +740,12 @@ where
         candidates: &mut Vec<Candidate<I>>,
         failed_candidate_info: &mut FailedCandidateInfo,
     ) -> Result<(), RerunNonErased> {
-        let goal_lang_item = self.cx().as_trait_lang_item(goal.predicate.trait_def_id(self.cx()));
-
-        for assumption in goal.param_env.caller_bounds().all_clauses(self.cx()).iter() {
-            match G::fast_reject_assumption(self, goal, goal_lang_item, assumption) {
-                Ok(()) => {
-                    match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
-                        Ok(candidate) => candidates.push(candidate),
-                        Err(head_usages) => {
-                            failed_candidate_info.param_env_head_usages.merge_usages(head_usages)
-                        }
-                    }
+        for assumption in G::non_fast_rejected_caller_bounds(self, goal).collect::<Vec<_>>() {
+            match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
+                Ok(candidate) => candidates.push(candidate),
+                Err(head_usages) => {
+                    failed_candidate_info.param_env_head_usages.merge_usages(head_usages)
                 }
-                Err(NoSolution) => {}
             }
         }
 

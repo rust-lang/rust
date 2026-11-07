@@ -9,9 +9,10 @@ use rustc_type_ir_macros::{
 };
 
 use crate::inherent::*;
+use crate::lang_items::SolverTraitLangItem;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Alias, Interner, Region};
+use crate::{self as ty, Alias, Binder, ClauseKind, Interner, Region};
 
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
@@ -769,6 +770,201 @@ impl fmt::Display for BoundConstness {
         match self {
             Self::Const => f.write_str("const"),
             Self::Maybe => f.write_str("[const]"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Debug)]
+#[derive(GenericTypeVisitable)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub struct CompressedTraitRefs(u32);
+bitflags::bitflags! {
+    impl CompressedTraitRefs: u32 {
+        const SIZED = 1;
+        const META_SIZED = 1 << 1;
+        const POINTEE_SIZED = 1 << 2;
+        const CLONE = 1 << 3;
+        const COPY = 1 << 4;
+        const DEBUG = 1 << 5;
+        const DROP = 1 << 6;
+        const UNPIN = 1 << 7;
+        const EQ = 1 << 8;
+        const SEND = 1 << 9;
+        const SYNC = 1 << 10;
+    }
+}
+
+impl CompressedTraitRefs {
+    pub fn get_and_mask_least_significant_bit(&mut self) -> Option<Self> {
+        let bs = self.bits();
+        if bs == 0 {
+            return None;
+        }
+
+        // `bs & -bs` (but for unsigned numbers), to get only the LSB set
+        // This blog helped me: https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/.
+        // This is the result we're looking for, but we want to still mask it out of self.
+        let only_lsb_set = bs & (!bs + 1);
+
+        // To mask it, we xor it out of bs, and put it into self.
+        // NOTE: this can never fail by the arithmetic we did above.
+        *self = CompressedTraitRefs::from_bits(bs ^ only_lsb_set).unwrap();
+
+        // Construct the one with only a single bit set.
+        Some(CompressedTraitRefs::from_bits(only_lsb_set).unwrap())
+    }
+
+    #[inline]
+    pub fn from_lang_item(lang_item: SolverTraitLangItem) -> Option<Self> {
+        Some(match lang_item {
+            SolverTraitLangItem::Sized => CompressedTraitRefs::SIZED,
+            SolverTraitLangItem::MetaSized => CompressedTraitRefs::META_SIZED,
+            SolverTraitLangItem::PointeeSized => CompressedTraitRefs::POINTEE_SIZED,
+            SolverTraitLangItem::Clone => CompressedTraitRefs::CLONE,
+            SolverTraitLangItem::Copy => CompressedTraitRefs::COPY,
+            SolverTraitLangItem::Debug => CompressedTraitRefs::DEBUG,
+            SolverTraitLangItem::Drop => CompressedTraitRefs::DROP,
+            SolverTraitLangItem::Unpin => CompressedTraitRefs::UNPIN,
+            SolverTraitLangItem::Eq => CompressedTraitRefs::EQ,
+            SolverTraitLangItem::Send => CompressedTraitRefs::SEND,
+            SolverTraitLangItem::Sync => CompressedTraitRefs::SYNC,
+            _ => return None,
+        })
+    }
+
+    #[inline]
+    pub fn lang_item_from_single_bit(self) -> SolverTraitLangItem {
+        match self {
+            Self::SIZED => SolverTraitLangItem::Sized,
+            Self::META_SIZED => SolverTraitLangItem::MetaSized,
+            Self::POINTEE_SIZED => SolverTraitLangItem::PointeeSized,
+            Self::CLONE => SolverTraitLangItem::Clone,
+            Self::COPY => SolverTraitLangItem::Copy,
+            Self::DEBUG => SolverTraitLangItem::Debug,
+            Self::DROP => SolverTraitLangItem::Drop,
+            Self::UNPIN => SolverTraitLangItem::Unpin,
+            Self::EQ => SolverTraitLangItem::Eq,
+            Self::SEND => SolverTraitLangItem::Send,
+            Self::SYNC => SolverTraitLangItem::Sync,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    pub fn trait_clause_from_def_id<I: Interner>(
+        cx: I,
+        self_ty: I::GenericArgs,
+        def_id: I::TraitId,
+    ) -> Binder<I, TraitClause<I>> {
+        // Note that `self_ty` is a GenericArgs, but only contains a single
+        // argument which is the trait's self_ty. This is done for perf.
+        Binder::dummy(TraitClause {
+            trait_ref: TraitRef::new_from_args(cx, def_id, self_ty),
+            polarity: ClausePolarity::Positive,
+        })
+    }
+
+    #[inline]
+    pub fn trait_clause_from_single_bit<I: Interner>(
+        self,
+        cx: I,
+        self_ty: I::GenericArgs,
+    ) -> Binder<I, TraitClause<I>> {
+        Self::trait_clause_from_def_id(
+            cx,
+            self_ty,
+            cx.require_trait_lang_item(self.lang_item_from_single_bit()),
+        )
+    }
+}
+
+/// A clause kind that represents a small set of frequently occurring clauses as a bitset for a given self type.
+/// When multiple common clauses exist in a paramenv, they're merged together so the paramenv can be
+/// stored more efficiently.
+///
+/// # WARNING/FIXME:
+///
+/// Computing type flags for common clauses works correctly.
+/// However, folding and visiting with [`TypeFoldable`](crate::TypeFoldable) and
+/// [`TypeVisitable`](crate::TypeVisitable) does *not* work as expected.
+/// If we were to decompress `ParamEnv`s everytime we folded/visited it would be super expensive.
+/// So we don't, and assume that it's enough to fold/visit into the `self_ty`. This works because
+/// the traits represented by [`ClauseKind::CompressedTrait`] don't have generic args or anything
+/// complicated. A normal fold/visit of them will effectively only care about `self_ty`.
+#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
+)]
+pub struct CompressedTraitClause<I: Interner> {
+    // Note: always only contains a single self ty.
+    // Storing it as `GenericArgs` makes decompression faster.
+    // Note that some of the folds and visits we do over compressed traits
+    // ignore the trait ref and only recurses into self_ty. This is *incorrect*
+    // if `self_ty` ever contained more than one generic arg.
+    pub self_ty: I::GenericArgs,
+
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub compressed_trait_refs: CompressedTraitRefs,
+}
+
+impl<I: Interner> fmt::Debug for CompressedTraitClause<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} as {}",
+            self.self_ty,
+            self.compressed_trait_refs.iter_names().map(|i| i.0).collect::<Vec<_>>().join(",")
+        )
+    }
+}
+
+impl<I: Interner> CompressedTraitClause<I> {
+    /// Returns `Some` if the passed clause is eligible to be represented as a `CommonClause`.
+    /// Only a few clauses are, but those clauses are exceedingly common.
+    pub fn from_clause(cx: I, clause: I::Clause) -> Option<Self> {
+        let kind = clause.kind();
+        let kind = kind.no_bound_vars()?;
+        match kind {
+            ClauseKind::Trait(TraitClause { trait_ref, polarity }) => {
+                if matches!(polarity, ClausePolarity::Negative) {
+                    return None;
+                }
+
+                let compressed_trait_refs =
+                    CompressedTraitRefs::from_lang_item(cx.as_trait_lang_item(trait_ref.def_id)?)?;
+
+                // The args of the trait ref should *only* contain a self ty
+                // when used in a compressed clause.
+                debug_assert_eq!(trait_ref.args.len(), 1);
+                Some(Self { self_ty: trait_ref.args, compressed_trait_refs })
+            }
+            ClauseKind::RegionOutlives(_) => None,
+            ClauseKind::TypeOutlives(_) => None,
+            ClauseKind::Projection(_) => None,
+            ClauseKind::ConstArgHasType(_, _) => None,
+            ClauseKind::WellFormed(_) => None,
+            ClauseKind::ConstEvaluatable(_) => None,
+            ClauseKind::HostEffect(_) => None,
+            ClauseKind::UnstableFeature(_) => None,
+            ClauseKind::CompressedTrait(_) => unimplemented!(),
+        }
+    }
+
+    /// Try to merge an `other` clause into `self`.
+    /// If possible, `true` is returned, and `self` will now represent both clauses in a compressed form.
+    /// Upon calling `iter_clauses`, both original clauses are returned.
+    pub fn try_merge(&mut self, other: Self) -> bool {
+        if self.self_ty == other.self_ty {
+            self.compressed_trait_refs |= other.compressed_trait_refs;
+            true
+        } else {
+            false
         }
     }
 }
