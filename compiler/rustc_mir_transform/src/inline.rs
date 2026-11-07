@@ -8,8 +8,8 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_index::Idx;
 use rustc_index::bit_set::DenseBitSet;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -499,6 +499,7 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
     caller_body: &mut Body<'tcx>,
     blocks: Range<BasicBlock>,
 ) {
+    let mut caller_cold: Option<IndexVec<BasicBlock, bool>> = None;
     for bb in blocks {
         let bb_data = &caller_body[bb];
         if bb_data.is_cleanup {
@@ -512,13 +513,14 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
         let span = trace_span!("process_blocks", %callsite.callee, ?bb);
         let _guard = span.enter();
 
-        match try_inlining(inliner, caller_body, &callsite) {
+        match try_inlining(inliner, caller_body, &callsite, &mut caller_cold) {
             Err(reason) => {
                 debug!("not-inlined {} [{}]", callsite.callee, reason);
                 inliner.on_inline_failure(&callsite, reason);
             }
             Ok(new_blocks) => {
                 debug!("inlined {}", callsite.callee);
+                caller_cold = None;
                 inliner.on_inline_success(&callsite, caller_body, new_blocks);
             }
         }
@@ -601,6 +603,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     inliner: &I,
     caller_body: &mut Body<'tcx>,
     callsite: &CallSite<'tcx>,
+    caller_cold: &mut Option<IndexVec<BasicBlock, bool>>,
 ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
     let tcx = inliner.tcx();
     check_mir_is_available(inliner, caller_body, callsite.callee)?;
@@ -609,6 +612,18 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     let callee_attrs = callee_attrs.as_ref();
     check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
     check_codegen_attributes(inliner, callsite, callee_attrs)?;
+
+    if crate::cold_block_outliner::is_enabled(tcx)
+        && !matches!(callee_attrs.inline, InlineAttr::Always | InlineAttr::Force { .. })
+        && (matches!(callsite.callee.def, InstanceKind::Shim(ty::ShimKind::DropGlue(..)))
+            || crate::cold_block_outliner::is_try_from_residual(tcx, callsite.callee.def_id()))
+    {
+        let cold_blocks = caller_cold
+            .get_or_insert_with(|| crate::cold_block_outliner::find_cold_blocks(tcx, caller_body));
+        if cold_blocks[callsite.block] {
+            return Err("callsite is in a cold block");
+        }
+    }
 
     let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
     let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
