@@ -951,6 +951,7 @@ unsafe extern "C" {
     // Operations on non-IEEE real types
     pub(crate) fn LLVMBFloatTypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
     pub(crate) fn LLVMPPCFP128TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMX86FP80TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
 
     // Operations on function types
     pub(crate) fn LLVMFunctionType<'a>(
@@ -1633,6 +1634,11 @@ unsafe extern "C" {
         AggVal: &'a Value,
         EltVal: &'a Value,
         Index: c_uint,
+        Name: *const c_char,
+    ) -> &'a Value;
+    pub(crate) fn LLVMBuildFreeze<'a>(
+        B: &Builder<'a>,
+        Val: &'a Value,
         Name: *const c_char,
     ) -> &'a Value;
 
