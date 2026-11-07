@@ -30,6 +30,7 @@ project, please read this guide before reporting fuzzer-generated bugs!
 - Don't report lots of bugs that use internal features, including but not
   limited to `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
 - Don't seed your fuzzer with inputs that are known to crash rustc (details below).
+- You do not need to report minor bugs you already traced beyond rustc. It can go upstream.
 
 ### Discussion
 
@@ -79,6 +80,26 @@ To build a corpus, you may want to use:
   avoid the unfixed ones in `ices/`!
 
 [glacier]: https://github.com/rust-lang/glacier
+
+## Handling rustc-external issues
+
+Historically, Rust has received many bugs for external software like LLVM which we took on as
+our responsibility. For instance, we would patch our fork or send the bug to their tracker,
+and keep a Rust-side bug open to track backports or mitigations in rustc.
+This was when bug reports for miscompilations were rare, mostly "organic" instead of fuzzed,
+and it was not always clear we were using LLVM correctly instead of generating malformed LLVMIR.
+
+We have been tracking LLVM more closely since 2022. Updates to our LLVM fork are more frequent and
+almost always backports or new LLVM releases, since we work more closely with LLVM.
+If you trace a miscompilation to LLVM, it is most important the bug is fixed upstream,
+so please try to make sure the bug reaches [llvm-project/issues] first.
+
+Obscure or config-specific miscompilations can usually wait for the next LLVM patch release,
+so we may close fuzzed bugs traced to LLVM if they do not have major impact on Rust code.
+If you aren't certain if the issue is in LLVM, whether it warrants an expedited backport,
+or even just how to file the bug against LLVM, then go ahead and submit the issue anyways.
+
+[llvm-project/issues]: https://github.com/llvm/llvm-project/issues
 
 ## Extra credit
 
