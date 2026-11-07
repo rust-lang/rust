@@ -200,6 +200,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let buf = this.read_pointer(buf_op)?;
         let size = this.read_target_usize(size_op)?;
 
+        if this.ptr_is_null(buf)? {
+            // glibc has special behavior here so avoid confusing UB reports.
+            throw_unsup_format!("getcwd with a null pointer for `buf` is not supported");
+        }
+
+        if size == 0 {
+            this.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(Pointer::null());
+        }
+
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`getcwd`", reject_with)?;
             this.set_last_error(ErrorKind::PermissionDenied)?;
