@@ -66,32 +66,10 @@ Please consult the full [LLM usage policy] for nuances.
 
 [LLM usage policy]: https://forge.rust-lang.org/policies/llm-usage.html
 
-## Linting
-
-This project supports linting via
-[`clippy`](https://doc.rust-lang.org/stable/clippy/index.html). You can either
-run it directly, or use an integration through your editor.
-
-```
-# lint rustfmt-nightly (the package at the root of this repo)
-cargo clippy
-```
-
-To Lint a package outside of the root one you will need to do one of:
-
-```
-# pass the manifest path
-cargo clippy --manifest-path ./config_proc_macro/Config.toml
-# or run the command from within the package
-cd ./config_proc_macro
-cargo clippy
-```
-
 ## Test and file issues
 
 It would be really useful to have people use rustfmt on their projects and file
 issues where it does something you don't expect.
-
 
 ## Create test cases
 
@@ -398,6 +376,27 @@ the config struct and parse a config file, etc. Checking an option is done by
 accessing the correct field on the config struct, e.g., `config.max_width()`. Most
 functions have a `Config`, or one can be accessed via a visitor or context of
 some kind.
+
+## Linting
+
+This project supports linting via
+[`clippy`](https://doc.rust-lang.org/stable/clippy/index.html). You can either
+run it directly, or use an integration through your editor.
+
+```
+# lint rustfmt-nightly (the package at the root of this repo)
+cargo clippy
+```
+
+To Lint a package outside of the root one you will need to do one of:
+
+```
+# pass the manifest path
+cargo clippy --manifest-path ./config_proc_macro/Config.toml
+# or run the command from within the package
+cd ./config_proc_macro
+cargo clippy
+```
 
 ## Subtree syncs
 
