@@ -142,11 +142,12 @@ impl FileDesc {
         target_os = "nuttx"
     )))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
                 bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                bufs.len() as libc::c_int,
             )
         })?;
         Ok(ret as usize)
@@ -240,11 +241,12 @@ impl FileDesc {
         all(target_os = "macos", target_arch = "aarch64"),
     ))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::preadv(
                 self.as_raw_fd(),
                 bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                bufs.len() as libc::c_int,
                 offset as _,
             )
         })?;
@@ -287,11 +289,12 @@ impl FileDesc {
             ) -> isize;
         );
 
+        io::limit_slices_mut!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             preadv(
                 self.as_raw_fd(),
                 bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                bufs.len() as libc::c_int,
                 offset as _,
             )
         })?;
@@ -311,11 +314,12 @@ impl FileDesc {
 
         match preadv64.get() {
             Some(preadv) => {
+                io::limit_slices_mut!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
                         bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        bufs.len() as libc::c_int,
                         offset as _,
                     )
                 })?;
@@ -348,11 +352,12 @@ impl FileDesc {
 
         match preadv.get() {
             Some(preadv) => {
+                io::limit_slices_mut!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     preadv(
                         self.as_raw_fd(),
                         bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        bufs.len() as libc::c_int,
                         offset as _,
                     )
                 })?;
@@ -380,11 +385,12 @@ impl FileDesc {
         target_os = "nuttx"
     )))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::writev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                bufs.len() as libc::c_int,
             )
         })?;
         Ok(ret as usize)
@@ -437,11 +443,12 @@ impl FileDesc {
         all(target_os = "macos", target_arch = "aarch64"),
     ))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             libc::pwritev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                bufs.len() as libc::c_int,
                 offset as _,
             )
         })?;
@@ -483,11 +490,12 @@ impl FileDesc {
             ) -> isize;
         );
 
+        io::limit_slices!(&mut bufs, max_iov());
         let ret = cvt(unsafe {
             pwritev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                bufs.len() as libc::c_int,
                 offset as _,
             )
         })?;
@@ -507,11 +515,12 @@ impl FileDesc {
 
         match pwritev64.get() {
             Some(pwritev) => {
+                io::limit_slices!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),
                         bufs.as_ptr() as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        bufs.len() as libc::c_int,
                         offset as _,
                     )
                 })?;
@@ -544,11 +553,12 @@ impl FileDesc {
 
         match pwritev.get() {
             Some(pwritev) => {
+                io::limit_slices!(&mut bufs, max_iov());
                 let ret = cvt(unsafe {
                     pwritev(
                         self.as_raw_fd(),
                         bufs.as_ptr() as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        bufs.len() as libc::c_int,
                         offset as _,
                     )
                 })?;
