@@ -23,7 +23,7 @@ project, please read this guide before reporting fuzzer-generated bugs!
 - Include all of the information requested in the bug report template
 - Search for existing reports with the same message and query stack
 - Format the test case with `rustfmt`
-- Indicate that the bug was found by fuzzing
+- Indicate that the bug was found by fuzzing using `@rustbot label: +S-found-by-fuzzing`
 
 *Please don't:*
 
@@ -96,7 +96,8 @@ Here are a few things you can do to help the Rust project after filing an ICE:
   While you're at it, consider including other "untracked" crashes in your PR.
   Please don't forget to mark all relevant issues with `S-bug-has-test` once your PR is merged.
 
-See also [applying and removing labels][labeling].
+See also [applying and removing labels][labeling]. Make sure to include `S-found-by-fuzzing` using
+`@rustbot label: +S-found-by-fuzzing` when you create an issue, even if other labels don't apply.
 
 [bisect]: https://rust-lang.github.io/cargo-bisect-rustc/
 [crash test]: tests/compiletest.md#crash-tests
