@@ -1,16 +1,18 @@
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/feature-gate-default-field-values.rs:15:5
+  --> $DIR/feature-gate-default-field-values.rs:14:5
    |
+LL |     #[default]
+   |     ^^^^^^^^^^
 LL |     Foo {
-   |     ^^^
    |
    = help: consider a manual implementation of `Default`
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/feature-gate-default-field-values.rs:55:5
+  --> $DIR/feature-gate-default-field-values.rs:54:5
    |
+LL |     #[default]
+   |     ^^^^^^^^^^
 LL |     Variant {
-   |     ^^^^^^^
    |
    = help: consider a manual implementation of `Default`
 

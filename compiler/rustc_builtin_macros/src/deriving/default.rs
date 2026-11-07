@@ -1,6 +1,6 @@
 use core::ops::ControlFlow;
 
-use rustc_ast::visit::{Visitor, visit_opt};
+use rustc_ast::visit::{Visitor, WalkItemKind, visit_opt};
 use rustc_ast::{self as ast, EnumDef, VariantData, attr};
 use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
@@ -241,14 +241,23 @@ fn extract_default_variant<'a>(
         } else {
             ""
         };
-        let guar =
-            cx.dcx().emit_err(diagnostics::NonUnitDefault { span: variant.ident.span, post });
+        let default = attr::find_by_name(&variant.attrs, kw::Default)
+            .expect("`#[default]` was present but it isn't now?");
+        let guar = cx.dcx().emit_err(diagnostics::NonUnitDefault {
+            span: variant.ident.span,
+            default_span: default.span,
+            post,
+            is_item: Some(()),
+        });
         return Err(guar);
     }
 
     if let Some(non_exhaustive_attr) = attr::find_by_name(&variant.attrs, sym::non_exhaustive) {
+        let default = attr::find_by_name(&variant.attrs, kw::Default)
+            .expect("`#[default]` was present but it isn't now?");
         let guar = cx.dcx().emit_err(diagnostics::NonExhaustiveDefault {
             span: variant.ident.span,
+            default_span: default.span,
             non_exhaustive: non_exhaustive_attr.span,
         });
 
@@ -298,17 +307,27 @@ struct DetectNonVariantDefaultAttr<'a, 'b> {
     cx: &'a ExtCtxt<'b>,
 }
 
-impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
-    fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
+impl<'a, 'b> DetectNonVariantDefaultAttr<'a, 'b> {
+    fn deny_default(&mut self, span: Span, attr: &'a rustc_ast::Attribute, is_item: bool) {
         if attr.has_name(kw::Default) {
-            let post = if self.cx.ecfg.features.default_field_values() {
+            let post = if self.cx.ecfg.features.default_field_values() && is_item {
                 " or variants where every field has a default value"
             } else {
                 ""
             };
-            self.cx.dcx().emit_err(diagnostics::NonUnitDefault { span: attr.span, post });
+            self.cx.dcx().emit_err(diagnostics::NonUnitDefault {
+                span,
+                default_span: attr.span,
+                post,
+                is_item: if is_item { Some(()) } else { None },
+            });
         }
+    }
+}
 
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
+    fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
+        self.deny_default(attr.span, attr, false);
         rustc_ast::visit::walk_attribute(self, attr);
     }
     fn visit_variant(&mut self, v: &'a rustc_ast::Variant) {
@@ -319,6 +338,15 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
         for attr in &v.attrs {
             rustc_ast::visit::walk_attribute(self, attr);
         }
+    }
+    fn visit_item(&mut self, item: &'a rustc_ast::Item) {
+        let rustc_ast::Item { attrs, id, kind, vis, span, tokens: _ } = item;
+        self.visit_vis(vis);
+        for attr in attrs {
+            self.deny_default(span.shrink_to_lo(), attr, true);
+            rustc_ast::visit::walk_attribute(self, attr);
+        }
+        rustc_ast::visit::try_visit!(kind.walk(attrs, *span, *id, vis, (), self));
     }
 }
 

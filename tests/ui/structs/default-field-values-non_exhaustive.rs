@@ -9,8 +9,8 @@ struct Foo {
 #[derive(Default)]
 enum Bar {
     #[non_exhaustive]
-    #[default]
-    Baz { //~ ERROR default variant must be exhaustive
+    #[default] //~ ERROR default variant must be exhaustive
+    Baz {
         x: i32 = 42 + 3,
     }
 }

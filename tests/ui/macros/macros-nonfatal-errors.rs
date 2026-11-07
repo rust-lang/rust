@@ -71,7 +71,7 @@ enum ExtraDeriveTokens {
 enum TwoDefaultAttrs {
     #[default]
     #[default]
-    Foo, //~ERROR multiple `#[default]` attributes
+    Foo, //~ ERROR multiple `#[default]` attributes
     Bar,
 }
 
@@ -81,22 +81,22 @@ enum ManyDefaultAttrs {
     #[default]
     #[default]
     #[default]
-    Foo, //~ERROR multiple `#[default]` attributes
+    Foo, //~ ERROR multiple `#[default]` attributes
     Bar,
 }
 
 #[derive(Default)]
 enum DefaultHasFields {
-    #[default]
-    Foo {}, //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    #[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+    Foo {},
     Bar,
 }
 
 #[derive(Default)]
 enum NonExhaustiveDefault {
-    #[default]
+    #[default] //~ ERROR default variant must be exhaustive
     #[non_exhaustive]
-    Foo, //~ ERROR default variant must be exhaustive
+    Foo,
     Bar,
 }
 
@@ -126,9 +126,9 @@ fn main() {
 const _: () = {
     #[derive(Default)]
     enum NonExhaustiveDefaultGeneric<T> {
-        #[default]
+        #[default] //~ ERROR default variant must be exhaustive
         #[non_exhaustive]
-        Foo, //~ ERROR default variant must be exhaustive
+        Foo,
         Bar(T),
     }
 
