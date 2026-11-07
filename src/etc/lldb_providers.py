@@ -3,10 +3,12 @@ from __future__ import annotations
 import sys
 from enum import Flag, auto
 from typing import TYPE_CHECKING, ClassVar, Dict, Generator, List, Optional
+from weakref import WeakValueDictionary
 
 from lldb import (
     SBData,
     SBError,
+    SBValue,
     eBasicTypeChar32,
     eBasicTypeDouble,
     eBasicTypeFloat,
@@ -24,7 +26,7 @@ from lldb import (
 from rust_types import is_tuple_fields
 
 if TYPE_CHECKING:
-    from lldb import SBProcess, SBTarget, SBType, SBTypeStaticField, SBValue
+    from lldb import SBProcess, SBTarget, SBType, SBTypeStaticField
 
 # from lldb.formatters import Logger
 
@@ -1742,3 +1744,167 @@ def StdNonZeroNumberSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
         return str(inner_inner.GetValueAsSigned())
     else:
         return inner_inner.GetValue()
+
+
+class WidePtrSyntheticProvider:
+    """
+    Visualizer for pointers to dynamically sized types. This DOES NOT cover slices (`&[T]`) or
+    `&str`. Those have fast-path providers. This is specifically meant to handle references/pointers
+    to structs with unsized tails, such as:
+
+    ```
+    struct T {
+        a: u8,
+        b: f64,
+        c: [i32],
+    }
+    ```
+    """
+
+    WIDE_PTR_BY_UNSIZED_CHILD_ID: ClassVar[WeakValueDictionary[int, SBValue]] = (
+        WeakValueDictionary()
+    )
+
+    __slots__ = ("data_ptr", "unsized_child_depth", "valobj")
+
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+        self.data_ptr = valobj.GetChildMemberWithName("data_ptr")
+        self.unsized_child_depth = self._find_unsized_child()
+
+    def _find_unsized_child(self) -> Optional[int]:
+        """Returns the depth of the unsized child. This is the number of times one must execute:
+
+        ```
+        valobj = valobj.GetChildAtIndex(valobj.GetNumChildren() - 1).GetNonSyntheticValue()
+        ```
+
+        to retrieve the unsized child
+
+        """
+        ty = self.data_ptr.Dereference().GetType()
+        depth = 0
+
+        while ty.IsValid() and depth < 1000:
+            depth += 1
+            ty = ty.GetFieldAtIndex(max(0, ty.GetNumberOfFields() - 1)).GetType()
+
+            if ty.IsArrayType():
+                # ensure that we actually have a 0-length array as the final field
+                expected = ty.GetArrayElementType().GetArrayType(0)
+                if expected.GetName() == ty.GetName():
+                    return depth
+
+        return None
+
+    def _get_unsized_child(self) -> SBValue:
+        if self.unsized_child_depth is None:
+            return SBValue()
+
+        valobj = self.data_ptr.GetNonSyntheticValue()
+
+        for _ in range(self.unsized_child_depth):
+            valobj = valobj.GetChildAtIndex(
+                max(0, valobj.GetNumChildren() - 1)
+            ).GetNonSyntheticValue()
+
+        return valobj
+
+    def update(self):
+        # If the `UnsizedSyntheticProvider` can't find this by itself, we need to cache this class
+        # manually so that `UnsizedSyntheticProvider` can still look it up.
+        if LLDBFeature.GetParent not in FEATURE_FLAGS:
+            unsized_child = self._get_unsized_child()
+            if unsized_child.IsValid():
+                print(f"found child (id#{unsized_child.GetID()}): {unsized_child}")
+                WidePtrSyntheticProvider.WIDE_PTR_BY_UNSIZED_CHILD_ID[
+                    unsized_child.GetID()
+                ] = self.valobj
+
+    def has_children(self) -> bool:
+        return True
+
+    def num_children(self) -> int:
+        return self.data_ptr.GetNumChildren()
+
+    def get_child_idx(self, name: str) -> int:
+        return self.data_ptr.GetIndexOfChildWithName(name)
+
+    def get_child_at_index(self, idx: int) -> Optional[SBValue]:
+        return self.data_ptr.GetChildAtIndex(idx)
+
+
+class UnsizedSyntheticProvider:
+    valobj: SBValue
+    parent: SBValue
+    as_array: SBValue
+    len: int
+    __slots__ = ("as_array", "len", "parent", "type_name", "valobj")
+
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+        self.as_array = valobj
+        self.parent = SBValue()
+        self.len = 0
+
+        self.type_name = f"[{valobj.GetType().GetArrayElementType().GetName()}]"
+
+        # `GetParent` allows us to traverse up the valobj tree until we find the pointer, which we
+        # can grab the length from. Without the ability to do that, we need to look up the parent
+        # from the cache
+        if LLDBFeature.GetParent in FEATURE_FLAGS:
+            self._find_parent_wideptr()
+        else:
+            self.parent = WidePtrSyntheticProvider.WIDE_PTR_BY_UNSIZED_CHILD_ID.get(
+                self.valobj.GetID(), self.parent
+            )
+
+    def _find_parent_wideptr(self):
+        valobj = self.valobj
+        # just in case
+        no_inf_loop = 0
+
+        while valobj.IsValid() and no_inf_loop < 1000:
+            no_inf_loop += 1
+            valobj = valobj.GetParent().GetNonSyntheticValue()
+
+            if (
+                valobj.GetNumChildren() == 2
+                and valobj.GetChildMemberWithName("data_ptr").IsValid()
+                and (len := valobj.GetChildMemberWithName("length")).IsValid()
+            ):
+                self.parent = valobj
+                self.len = len.GetValueAsUnsigned()
+
+    def update(self):
+        if self.parent.IsValid():
+            self.len = self.parent.GetChildMemberWithName("length").GetValueAsUnsigned(
+                0
+            )
+
+            self.as_array = self.valobj.Cast(
+                self.valobj.GetType().GetArrayElementType().GetArrayType(self.len)
+            )
+        else:
+            self.as_array = self.valobj
+            self.len = 0
+
+    def has_children(self) -> bool:
+        return self.len != 0
+
+    def num_children(self):
+        return self.len
+
+    def get_child_index(self, name: str) -> int:
+        index = name.lstrip("[").rstrip("]")
+        if index.isdigit():
+            return int(index)
+        else:
+            return -1
+
+    def get_child_at_index(self, index: int) -> Optional[SBValue]:
+        if index < self.len:
+            return self.as_array.GetChildAtIndex(index)
+
+    def get_type_name(self) -> str:
+        return self.type_name
