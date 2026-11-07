@@ -37,6 +37,22 @@ impl From<ParseIntError> for ParseVersionError {
     }
 }
 
+impl std::fmt::Display for ParseVersionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let msg = match self {
+            ParseVersionError::ParseIntError(parse_int_error) => {
+                &format!("Invalid semver. Part is not an integer: {}", parse_int_error)
+            }
+            ParseVersionError::WrongNumberOfParts => {
+                "Invalid semver. Must contain exactly three parts."
+            }
+        };
+        f.pad(msg)
+    }
+}
+
+impl std::error::Error for ParseVersionError {}
+
 impl FromStr for Version {
     type Err = ParseVersionError;
 
