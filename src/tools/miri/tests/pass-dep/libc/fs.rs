@@ -36,6 +36,8 @@ fn main() {
     test_rename();
     test_mkdir();
     test_rmdir();
+    test_unlink();
+    test_symlink();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
@@ -773,6 +775,76 @@ fn test_rmdir() {
     let err = errno_result(unsafe { libc::rmdir(c_file_path.as_ptr()) }).unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
     fs::remove_file(&file_path).unwrap();
+}
+
+fn test_unlink() {
+    let path = utils::prepare_with_content("miri_test_libc_unlink.txt", b"hello");
+    let cpath = utils::into_c_string(&path);
+
+    // Unlinking an existing file should succeed.
+    errno_check(unsafe { libc::unlink(cpath.as_ptr()) });
+    assert!(!path.exists());
+
+    // Unlinking it again should fail since it no longer exists.
+    let err = errno_result(unsafe { libc::unlink(cpath.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    let dir_path = utils::prepare("miri_test_libc_unlink");
+    fs::create_dir(&dir_path).unwrap();
+    let c_dir_path = utils::into_c_string(&dir_path);
+
+    // Unlinking a directory should fail since directories are removed using `rmdir`.
+    let err = errno_result(unsafe { libc::unlink(c_dir_path.as_ptr()) }).unwrap_err();
+    // Linux `unlink` call sets errno to `EISDIR`,
+    // while POSIX specifies `EPERM`, which macOS returns.
+    assert!(matches!(err.raw_os_error().unwrap(), libc::EISDIR | libc::EPERM));
+    assert!(dir_path.exists());
+    fs::remove_dir(&dir_path).unwrap();
+}
+
+fn test_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+    let file_target = utils::prepare_with_content("miri_test_libc_symlink_target.txt", b"hello");
+    let dir_target = utils::prepare("miri_test_libc_symlink_target_dir");
+    fs::create_dir(&dir_target).unwrap();
+    let link = utils::prepare("miri_test_libc_symlink_link");
+    let c_link = utils::into_c_string(&link);
+
+    // Test all four combinations: absolute/relative path, file/directory target.
+    // A relative target is resolved relative to the directory containing the link,
+    // so the file name alone works since `utils::prepare` puts all paths in the same directory.
+    let cases = [
+        // (target, is_dir)
+        (file_target.as_os_str(), false),
+        (file_target.file_name().unwrap(), false),
+        (dir_target.as_os_str(), true),
+        (dir_target.file_name().unwrap(), true),
+    ];
+
+    for (target, is_dir) in cases {
+        let c_target = utils::into_c_string(target);
+
+        // Creating a symlink should succeed and store `target` exactly as given.
+        errno_check(unsafe { libc::symlink(c_target.as_ptr(), c_link.as_ptr()) });
+        assert_eq!(fs::read_link(&link).unwrap(), target);
+
+        // Following the link should reach the target.
+        assert!(link.exists());
+        assert!(if is_dir { link.is_dir() } else { link.is_file() });
+
+        errno_check(unsafe { libc::unlink(c_link.as_ptr()) });
+    }
+
+    // Check error when link already exists.
+    let c_dir_target = utils::into_c_string(&dir_target);
+    let err = errno_result(unsafe { libc::symlink(c_dir_target.as_ptr(), c_dir_target.as_ptr()) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EEXIST);
+
+    fs::remove_file(&file_target).unwrap();
+    fs::remove_dir(&dir_target).unwrap();
 }
 
 fn test_ftruncate<T: From<i32>>(
