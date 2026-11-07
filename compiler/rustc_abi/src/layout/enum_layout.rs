@@ -35,22 +35,23 @@ where
     let tagged_layout =
         calculate_tagged_layout(calculator, repr, variants, discr_range_of_repr, discriminants)?;
 
-    let best_layout = match (tagged_layout, niche_filling_layout) {
-        (tl, Some(nl)) => {
-            // Pick the smaller layout; otherwise,
-            // pick the layout with the larger niche; otherwise,
-            // pick tagged as it has simpler codegen.
-            use cmp::Ordering::*;
-            let niche_size = |l: &LayoutData<FieldIdx, VariantIdx>| {
-                l.largest_niche.map_or(0, |n| n.available(dl))
-            };
-            match (tl.size.cmp(&nl.size), niche_size(&tl).cmp(&niche_size(&nl))) {
-                (Greater, _) => nl,
-                (Equal, Less) => nl,
-                _ => tl,
-            }
-        }
-        (tl, None) => tl,
+    let Some(nl) = niche_filling_layout else {
+        return Ok(tagged_layout);
+    };
+
+    // Pick the smaller layout; otherwise,
+    // pick the layout with the larger niche; otherwise,
+    // pick tagged as it has simpler codegen.
+    use cmp::Ordering::*;
+    let niche_size =
+        |l: &LayoutData<FieldIdx, VariantIdx>| l.largest_niche.map_or(0, |n| n.available(dl));
+    let best_layout = match (
+        tagged_layout.size.cmp(&nl.size),
+        niche_size(&tagged_layout).cmp(&niche_size(&nl)),
+    ) {
+        (Greater, _) => nl,
+        (Equal, Less) => nl,
+        _ => tagged_layout,
     };
 
     Ok(best_layout)
@@ -227,8 +228,6 @@ fn sanity_check_ity(dl: &TargetDataLayout, repr: &ReprOptions, min_ity: Integer)
         panic!(
             "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
         );
-        // However, it is fine to make discr type however large (as an optimisation)
-        // after this point – we’ll just truncate the value we load in codegen.
     }
 }
 
@@ -261,7 +260,7 @@ fn calculate_tagged_min_ity(
     discr_range_of_repr(RangeFrom { start: min_negative }, RangeToInclusive { last: max_positive })
 }
 
-fn calculate_tagged_tag<FieldIdx, VariantIdx>(
+fn finalize_tag_and_patch_variants<FieldIdx, VariantIdx>(
     dl: &TargetDataLayout,
     repr: &ReprOptions,
     min_ity: Integer,
@@ -275,6 +274,8 @@ where
     VariantIdx: Idx,
 {
     sanity_check_ity(dl, repr, min_ity);
+    // It is fine to make discr type however large (as an optimisation)
+    // after this point – we’ll just truncate the value we load in codegen.
 
     // Check to see if we should use a different type for the
     // discriminant. We can safely use a type with the same size
@@ -289,7 +290,11 @@ where
     let ity = if repr.c() || repr.int.is_some() {
         min_ity
     } else {
-        Integer::for_align(dl, start_align).unwrap_or(min_ity).max(min_ity)
+        Integer::for_align(dl, start_align)
+            .unwrap_or(min_ity)
+            // If the alignment is not larger than the chosen discriminant size,
+            // don't use the alignment as the final size.
+            .max(min_ity)
     };
 
     // If the alignment is not larger than the chosen discriminant size,
@@ -322,7 +327,7 @@ where
     Scalar::Initialized { value: Primitive::Int(ity, signed), valid_range: tag_valid_range }
 }
 
-fn constructable_variant<'a, VariantIdx, FieldIdx, F>(variant: &IndexSlice<FieldIdx, F>) -> bool
+fn variant_is_inhabited<'a, VariantIdx, FieldIdx, F>(variant: &IndexSlice<FieldIdx, F>) -> bool
 where
     FieldIdx: Idx,
     VariantIdx: Idx,
@@ -347,7 +352,7 @@ where
     let discr_size = Integer::from_attr(dl, repr.discr_type()).size();
 
     let necessary_discriminants: Vec<u128> = discriminants
-        .filter(|&(i, _)| repr.c() || constructable_variant(&variants[i]))
+        .filter(|&(i, _)| repr.c() || variant_is_inhabited(&variants[i]))
         .map(|(_, val)| val)
         .collect();
 
@@ -414,7 +419,7 @@ where
         return Err(LayoutCalculatorError::SizeOverflow);
     }
 
-    let tag = calculate_tagged_tag(
+    let tag = finalize_tag_and_patch_variants(
         dl,
         repr,
         min_ity,
@@ -423,7 +428,7 @@ where
         necessary_discriminants,
         &mut layout_variants,
     );
-    let abi = calculate_tagged_abi(calculator, &layout_variants, &variants, size, align, tag);
+    let abi = calculate_tagged_abi(calculator, &layout_variants, variants, size, align, tag);
 
     // If we pick a "clever" (by-value) ABI, we might have to adjust the ABI of the
     // variants to ensure they are consistent. This is because a downcast is
@@ -469,7 +474,10 @@ struct VariantLayoutInfo {
     align_abi: Align,
 }
 
-fn try_fixup_non_niche_variants<VariantIdx: Idx, FieldIdx: Idx>(
+/// We are trying to add the tag at `niche_offset` with `niche_size` size in variants
+/// that are not `largest_variant_index`. The layout in these variants must be changed
+/// such that the data stored does not overlap with the tag.
+fn try_fit_variants_around_niche_tag<VariantIdx: Idx, FieldIdx: Idx>(
     mut variant_layouts: IndexVec<VariantIdx, VariantLayout<FieldIdx>>,
     variants_info: &IndexSlice<VariantIdx, VariantLayoutInfo>,
     largest_variant_index: VariantIdx,
@@ -534,8 +542,6 @@ fn calculate_niche_abi<FieldIdx: Idx, VariantIdx: Idx>(
             BackendRepr::ScalarPair { a: first, b: second, b_offset } => {
                 // Only the niche is guaranteed to be initialised,
                 // so use union layouts for the other primitive.
-                //
-                // How can this be nonzero when everything else is a ZST? `others_zst` is true here
                 if niche_offset == Size::ZERO {
                     BackendRepr::ScalarPair { a: niche_scalar, b: second.to_union(), b_offset }
                 } else {
@@ -609,7 +615,7 @@ where
     let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
     let size = variant_layouts[largest_variant_index].size.align_to(align);
 
-    let variant_layouts = try_fixup_non_niche_variants(
+    let variant_layouts = try_fit_variants_around_niche_tag(
         variant_layouts,
         &variants_info,
         largest_variant_index,
