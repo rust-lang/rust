@@ -2585,6 +2585,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             let source_map = this.r.tcx.sess.source_map();
                             let path_span = path.span;
 
+                            // An expanded argument's span may point into a macro definition, not this call.
+                            // Map argument spans to ancestors inside the call with its syntax context,
+                            // so the suggestion edits the corresponding source text instead of macro internals.
                             let arg_spans: Option<Vec<_>> = args
                                 .iter()
                                 .map(|arg| arg.span.find_ancestor_inside_same_ctxt(call_span))
@@ -2600,31 +2603,59 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 let ordered_args =
                                     arg_spans.windows(2).all(|pair| pair[0].hi() <= pair[1].lo());
 
+                                // We only provide a structured suggestion when the spans are nonempty,
+                                // nonoverlapping, and in source order. Macro expansion can reuse or reorder
+                                // source spans, so the argument list alone does not guarantee valid ranges
+                                // for replacing the call's opening and closing delimiters.
                                 if !path_span.is_empty()
                                     && arg_spans.iter().all(|arg| !arg.is_empty())
                                     && path_span.hi() < first_arg.lo()
                                     && ordered_args
                                     && last_arg.hi() < call_span.hi()
                                 {
+                                    let can_use_shorthand = |field: &rustc_span::Ident,
+                                                             arg: &rustc_ast::Expr,
+                                                             span: rustc_span::Span| {
+                                        let rustc_ast::ExprKind::Path(None, path) = &arg.kind else {
+                                            return false;
+                                        };
+
+                                        let Some(ident) = path.as_single_argless_ident() else {
+                                            return false;
+                                        };
+
+                                        ident.name == field.name
+                                            && source_map
+                                                .span_to_snippet(span)
+                                                .is_ok_and(|snippet| snippet == field.to_string())
+                                    };
+
                                     let mut parts = Vec::new();
 
-                                    parts.push((
-                                        path_span.shrink_to_hi().until(first_arg),
-                                        format!("{{{}: ", fields[0]),
-                                    ));
+                                    let opening =
+                                        if can_use_shorthand(&fields[0], &args[0], first_arg) {
+                                            " { ".to_owned()
+                                        } else {
+                                            format!(" {{ {}: ", fields[0])
+                                        };
 
-                                    for (field, arg_span) in
-                                        fields.iter().zip(arg_spans.iter()).skip(1)
+                                    parts
+                                        .push((path_span.shrink_to_hi().until(first_arg), opening));
+
+                                    for ((field, arg), &arg_span) in
+                                        fields.iter().zip(args.iter()).zip(arg_spans.iter()).skip(1)
                                     {
-                                        parts.push((
-                                            arg_span.shrink_to_lo(),
-                                            format!("{}: ", field),
-                                        ));
+                                        if !can_use_shorthand(field, arg, arg_span) {
+                                            parts.push((
+                                                arg_span.shrink_to_lo(),
+                                                format!("{field}: "),
+                                            ));
+                                        }
                                     }
 
                                     parts.push((
                                         last_arg.shrink_to_hi().until(call_span.shrink_to_hi()),
-                                        "}".to_owned(),
+                                        " }".to_owned(),
                                     ));
 
                                     err.multipart_suggestion(
