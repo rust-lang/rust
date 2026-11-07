@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:14:23
+  --> $DIR/move-guard-if-let-chain.rs:14:27
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -7,7 +7,7 @@ LL |     let x: Box<_> = Box::new(1);
 LL |         (1, 2) if let y = x && c => (),
    |                       - value moved here
 LL |         (1, 2) if let z = x => (),
-   |                       ^ value used here after move
+   |                           ^ value used here after move
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -15,7 +15,7 @@ LL |         (1, 2) if let ref y = x && c => (),
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:38:23
+  --> $DIR/move-guard-if-let-chain.rs:38:27
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -23,7 +23,7 @@ LL |     let x: Box<_> = Box::new(1);
 LL |         (1, _) if let y = x && c => (),
    |                       - value moved here
 LL |         (_, 2) if let z = x => (),
-   |                       ^ value used here after move
+   |                           ^ value used here after move
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -31,13 +31,15 @@ LL |         (1, _) if let ref y = x && c => (),
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:61:32
+  --> $DIR/move-guard-if-let-chain.rs:61:36
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |         (1, _) | (_, 2) if let y = x && c => (),
-   |                                ^ value used here after move
+   |                                -   ^ value used here after move
+   |                                |
+   |                                value moved here
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -61,15 +63,13 @@ LL |         (1, 2) if let ref y = x && c => false,
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:105:41
+  --> $DIR/move-guard-if-let-chain.rs:105:45
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |         (1, 2) if let y = x && c && let z = x => false,
-   |                       -                 ^ value used here after move
-   |                       |
-   |                       value moved here
+   |                       - value moved here    ^ value used here after move
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
