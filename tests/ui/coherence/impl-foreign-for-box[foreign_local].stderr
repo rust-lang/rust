@@ -1,10 +1,8 @@
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/impl-foreign-for-box[foreign_local].rs:24:1
+  --> $DIR/impl-foreign-for-box[foreign_local].rs:24:17
    |
 LL | impl Remote for Box<str, Local> {}
-   | ^^^^^^^^^^^^^^^^---------------
-   |                 |
-   |                 `str` is not defined in the current crate
+   |                 ^^^^^^^^^^^^^^^ `str` is not defined in the current crate
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

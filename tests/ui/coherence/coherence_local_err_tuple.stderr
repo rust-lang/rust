@@ -1,10 +1,8 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence_local_err_tuple.rs:14:1
+  --> $DIR/coherence_local_err_tuple.rs:14:22
    |
 LL | impl lib::MyCopy for (MyType,) { }
-   | ^^^^^^^^^^^^^^^^^^^^^---------
-   |                      |
-   |                      this is not defined in the current crate because tuples are always foreign
+   |                      ^^^^^^^^^ this is not defined in the current crate because tuples are always foreign
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
