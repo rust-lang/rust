@@ -50,13 +50,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if this.eval_intrinsic(instance, args, dest, ret)? {
             return interp_ok(None);
         }
-        let intrinsic_name = this.tcx.item_name(instance.def_id());
-        let intrinsic_name = intrinsic_name.as_str();
+        let intrinsic = this.tcx.intrinsic(instance.def_id()).unwrap();
+        let intrinsic_name = &intrinsic.name.to_string();
 
         let res = this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)?;
         res.jump_to_next_block(this, dest, ret, Some(unwind), |this| {
             // We haven't handled the intrinsic, let's see if we can use a fallback body.
-            if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
+            if intrinsic.must_be_overridden {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
             }
             let intrinsic_fallback_is_spec = this
