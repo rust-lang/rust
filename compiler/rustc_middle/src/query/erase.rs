@@ -15,7 +15,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_index::{Idx, IndexSlice};
 use rustc_span::def_id::ModId;
-use rustc_span::{ErrorGuaranteed, Spanned};
+use rustc_span::{ErrorGuaranteed, Spanned, Symbol};
 
 use crate::mono::{MonoItem, NormalizationErrorInMono};
 use crate::ty::{self, Ty, TyCtxt};
@@ -181,7 +181,9 @@ impl_erasable_for_types_with_no_type_params! {
     (rustc_middle::ty::GenericArgs<'_>, rustc_middle::ty::GenericArgs<'_>),
     (traits::solve::QueryResult<'_>, &'_ traits::solve::inspect::Probe<TyCtxt<'_>>, ty::RequiredDepth),
     Option<&'_ OsStr>,
+    Option<&'_ [Symbol]>,
     Option<&'_ [rustc_hir::PreciseCapturingArgKind<rustc_span::Symbol, rustc_span::Symbol>]>,
+    Option<&'_ [u8]>,
     Option<(mir::ConstValue, Ty<'_>)>,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_abi::Align>,

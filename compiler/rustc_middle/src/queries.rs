@@ -2853,6 +2853,18 @@ rustc_queries! {
         desc { "calculating all fake doc items" }
     }
 
+    /// Query the content of a file during const evaluation
+    query experimental_comptime_fetch_file(key: (CrateNum, Symbol)) -> Option<&'tcx [u8]> {
+        desc { "fetch file {} from crate {}", key.1, key.0 }
+        separate_provide_extern
+    }
+
+    /// Query list of files available during const evaluation
+    query experimental_comptime_list_files(key: CrateNum) -> Option<&'tcx [Symbol]> {
+        desc { "fetch const eval file list from crate {}", key }
+        separate_provide_extern
+    }
+
     //-----------------------------------------------------------------------------
     // "Non-queries" are special dep kinds that are not queries.
     //-----------------------------------------------------------------------------

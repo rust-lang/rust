@@ -657,6 +657,18 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         );
         files.extend(extra_tracked_files);
 
+        let comptime_tracked_files = hash_iter_files(
+            tcx.sess
+                .opts
+                .unstable_opts
+                .experimental_comptime_files
+                .iter()
+                .map(PathBuf::from)
+                .map(normalize_path),
+            checksum_hash_algo,
+        );
+        files.extend(comptime_tracked_files);
+
         // We also need to track used PGO profile files
         if let Some(ref profile_instr) = sess.opts.cg.profile_use {
             files.extend(hash_iter_files(
