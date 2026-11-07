@@ -97,6 +97,7 @@ impl PidFd {
     /// So we can get file descriptors from another process
     /// without relying on that process to explicitly send them via
     /// `SCM_RIGHTS` or similar mechanisms
+    #[rustdoc_skip_body]
     pub fn getfd(&self, targetfd: RawFd) -> Result<OwnedFd> {
         self.inner.getfd(targetfd)
     }
