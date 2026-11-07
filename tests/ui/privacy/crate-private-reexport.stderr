@@ -5,10 +5,10 @@ LL |     pub use crate::f1;
    |             ^^^^^^^^^
    |
 note: consider marking `f1` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:8:13
+  --> $DIR/crate-private-reexport.rs:1:1
    |
-LL |     pub use crate::f1;
-   |             ^^^^^^^^^
+LL | fn f1() {}
+   | ^^^^^^^^^^
 
 error[E0365]: `S1` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:9:13
@@ -16,7 +16,14 @@ error[E0365]: `S1` is only public within the crate, and cannot be re-exported ou
 LL |     pub use crate::S1;
    |             ^^^^^^^^^ re-export of crate public `S1`
    |
-   = note: consider declaring type or module `S1` with `pub`
+note: consider declaring struct `S1` with `pub`
+  --> $DIR/crate-private-reexport.rs:3:1
+   |
+LL | / struct S1 {
+LL | |     #[rustfmt::skip]
+LL | |     bar: i32,
+LL | | }
+   | |_^
 
 error[E0365]: `E1` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:10:13
@@ -24,7 +31,11 @@ error[E0365]: `E1` is only public within the crate, and cannot be re-exported ou
 LL |     pub use crate::E1;
    |             ^^^^^^^^^ re-export of crate public `E1`
    |
-   = note: consider declaring type or module `E1` with `pub`
+note: consider declaring enum `E1` with `pub`
+  --> $DIR/crate-private-reexport.rs:2:1
+   |
+LL | enum E1 { V }
+   | ^^^^^^^^^^^^^
 
 error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:11:13
@@ -32,11 +43,11 @@ error[E0364]: `V` is only public within the crate, and cannot be re-exported out
 LL |     pub use crate::E1::V;
    |             ^^^^^^^^^^^^
    |
-note: consider marking `V` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:11:13
+note: consider marking `V` as `pub` in the imported variant
+  --> $DIR/crate-private-reexport.rs:2:11
    |
-LL |     pub use crate::E1::V;
-   |             ^^^^^^^^^^^^
+LL | enum E1 { V }
+   |           ^
 
 error[E0364]: `f2` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:23:13
@@ -45,10 +56,10 @@ LL |     pub use crate::f2;
    |             ^^^^^^^^^
    |
 note: consider marking `f2` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:23:13
+  --> $DIR/crate-private-reexport.rs:14:1
    |
-LL |     pub use crate::f2;
-   |             ^^^^^^^^^
+LL | pub(crate) fn f2() {}
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0365]: `S2` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:24:13
@@ -56,7 +67,14 @@ error[E0365]: `S2` is only public within the crate, and cannot be re-exported ou
 LL |     pub use crate::S2;
    |             ^^^^^^^^^ re-export of crate public `S2`
    |
-   = note: consider declaring type or module `S2` with `pub`
+note: consider declaring struct `S2` with `pub`
+  --> $DIR/crate-private-reexport.rs:18:1
+   |
+LL | / pub(crate) struct S2 {
+LL | |     #[rustfmt::skip]
+LL | |     bar: i32,
+LL | | }
+   | |_^
 
 error[E0365]: `E2` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:25:13
@@ -64,7 +82,13 @@ error[E0365]: `E2` is only public within the crate, and cannot be re-exported ou
 LL |     pub use crate::E2;
    |             ^^^^^^^^^ re-export of crate public `E2`
    |
-   = note: consider declaring type or module `E2` with `pub`
+note: consider declaring enum `E2` with `pub`
+  --> $DIR/crate-private-reexport.rs:15:1
+   |
+LL | / pub(crate) enum E2 {
+LL | |     V
+LL | | }
+   | |_^
 
 error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:26:13
@@ -72,11 +96,12 @@ error[E0364]: `V` is only public within the crate, and cannot be re-exported out
 LL |     pub use crate::E2::V;
    |             ^^^^^^^^^^^^
    |
-note: consider marking `V` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:26:13
+note: consider marking `V` as `pub` in the imported variant
+  --> $DIR/crate-private-reexport.rs:16:5
    |
-LL |     pub use crate::E2::V;
-   |             ^^^^^^^^^^^^
+LL | pub(crate) enum E2 {
+LL |     V
+   |     ^
 
 error[E0364]: `f3` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:39:9
@@ -85,10 +110,11 @@ LL | pub use m3::f3;
    |         ^^^^^^
    |
 note: consider marking `f3` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:39:9
+  --> $DIR/crate-private-reexport.rs:30:5
    |
-LL | pub use m3::f3;
-   |         ^^^^^^
+LL | mod m3 {
+LL |     pub(crate) fn f3() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0365]: `S3` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:40:9
@@ -96,7 +122,14 @@ error[E0365]: `S3` is only public within the crate, and cannot be re-exported ou
 LL | pub use m3::S3;
    |         ^^^^^^ re-export of crate public `S3`
    |
-   = note: consider declaring type or module `S3` with `pub`
+note: consider declaring struct `S3` with `pub`
+  --> $DIR/crate-private-reexport.rs:34:5
+   |
+LL | /     pub(crate) struct S3 {
+LL | |         #[rustfmt::skip]
+LL | |         bar: i32,
+LL | |     }
+   | |_____^
 
 error[E0365]: `E3` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:41:9
@@ -104,7 +137,13 @@ error[E0365]: `E3` is only public within the crate, and cannot be re-exported ou
 LL | pub use m3::E3;
    |         ^^^^^^ re-export of crate public `E3`
    |
-   = note: consider declaring type or module `E3` with `pub`
+note: consider declaring enum `E3` with `pub`
+  --> $DIR/crate-private-reexport.rs:31:5
+   |
+LL | /     pub(crate) enum E3 {
+LL | |         V
+LL | |     }
+   | |_____^
 
 error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:42:9
@@ -112,11 +151,12 @@ error[E0364]: `V` is only public within the crate, and cannot be re-exported out
 LL | pub use m3::E3::V;
    |         ^^^^^^^^^
    |
-note: consider marking `V` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:42:9
+note: consider marking `V` as `pub` in the imported variant
+  --> $DIR/crate-private-reexport.rs:32:9
    |
-LL | pub use m3::E3::V;
-   |         ^^^^^^^^^
+LL |     pub(crate) enum E3 {
+LL |         V
+   |         ^
 
 error[E0364]: `f4` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:45:9
@@ -125,10 +165,10 @@ LL | pub use crate::f4 as f5;
    |         ^^^^^^^^^^^^^^^
    |
 note: consider marking `f4` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:45:9
+  --> $DIR/crate-private-reexport.rs:44:1
    |
-LL | pub use crate::f4 as f5;
-   |         ^^^^^^^^^^^^^^^
+LL | pub(self) fn f4() {}
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0364]: `f6` is private, and cannot be re-exported
   --> $DIR/crate-private-reexport.rs:53:13
@@ -137,10 +177,11 @@ LL |     pub use self::m::f6;
    |             ^^^^^^^^^^^
    |
 note: consider marking `f6` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:53:13
+  --> $DIR/crate-private-reexport.rs:49:9
    |
-LL |     pub use self::m::f6;
-   |             ^^^^^^^^^^^
+LL |     pub mod m {
+LL |         pub(super) fn f6() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0364]: `f7` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:54:13
@@ -149,10 +190,12 @@ LL |     pub use self::m::f7;
    |             ^^^^^^^^^^^
    |
 note: consider marking `f7` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:54:13
+  --> $DIR/crate-private-reexport.rs:50:9
    |
-LL |     pub use self::m::f7;
-   |             ^^^^^^^^^^^
+LL |     pub mod m {
+LL |         pub(super) fn f6() {}
+LL |         pub(crate) fn f7() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0364]: `f8` is private, and cannot be re-exported
   --> $DIR/crate-private-reexport.rs:55:13
@@ -161,10 +204,12 @@ LL |     pub use self::m::f8;
    |             ^^^^^^^^^^^
    |
 note: consider marking `f8` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:55:13
+  --> $DIR/crate-private-reexport.rs:51:9
    |
-LL |     pub use self::m::f8;
-   |             ^^^^^^^^^^^
+LL |     pub mod m {
+...
+LL |         pub(in crate::m10) fn f8() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0364]: `f7` is only public within the crate, and cannot be re-exported outside
   --> $DIR/crate-private-reexport.rs:58:9
@@ -173,10 +218,12 @@ LL | pub use m10::m::f7;
    |         ^^^^^^^^^^
    |
 note: consider marking `f7` as `pub` in the imported module
-  --> $DIR/crate-private-reexport.rs:58:9
+  --> $DIR/crate-private-reexport.rs:50:9
    |
-LL | pub use m10::m::f7;
-   |         ^^^^^^^^^^
+LL |     pub mod m {
+LL |         pub(super) fn f6() {}
+LL |         pub(crate) fn f7() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: function `f6` is private
   --> $DIR/crate-private-reexport.rs:57:17
