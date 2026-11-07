@@ -344,11 +344,18 @@ pub enum LookupResult {
     /// This exact thing has a move path. E.g. we looked up `x` or `x.m` and it has been moved.
     Exact(MovePathIndex),
 
-    /// - If the field is `None`, neither the exact thing nor any ancestor of it has a move path.
-    ///   E.g. we looked up `x.m` and neither it nor `x` have a move path.
-    /// - If the field is `Some`, the exact thing has no move path, but an ancestor does. E.g. we
-    ///   looked up `x.m` which has no move path but `x` has one. Not possible for locals.
-    Parent(Option<MovePathIndex>),
+    /// The exact thing has no move path, but an ancestor does.
+    /// E.g. we looked up `x.m` which has no move path but `x` has one. Not possible for locals.
+    Parent {
+        mpi: MovePathIndex,
+
+        /// The projection in the place immediately projecting from the parent move path.
+        next_elem: ProjectionKind,
+    },
+
+    /// Neither the exact thing nor any ancestor of it has a move path.
+    /// E.g. we looked up `x.m` and neither it nor `x` have a move path.
+    None,
 }
 
 impl<'tcx> MovePathLookup<'tcx> {
@@ -359,7 +366,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
         // Look first in the locals (roots).
         let Some(mut result) = self.find_local(place.local) else {
-            return LookupResult::Parent(None);
+            return LookupResult::None;
         };
 
         // Look for a projection through the found local.
@@ -372,7 +379,7 @@ impl<'tcx> MovePathLookup<'tcx> {
             };
 
             let Some(&subpath) = subpath else {
-                return LookupResult::Parent(Some(result));
+                return LookupResult::Parent { mpi: result, next_elem: elem.kind() };
             };
             result = subpath;
         }
