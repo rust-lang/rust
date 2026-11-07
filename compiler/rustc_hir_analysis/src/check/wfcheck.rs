@@ -1667,10 +1667,13 @@ fn check_fn_or_method<'tcx>(
     // for each type, preventing the HIR wf check from generating
     // a nice error message.
     let arg_span = |idx| {
-        hir_decl
-            .inputs
-            .get(idx)
-            .map_or(hir_decl.output.span(), |param: &hir::Param<'_>| param.ty.span)
+        let mut inputs = hir_decl.inputs;
+        // C-variadics are filtered out of the input parameters in the THIR,
+        // so to be consistent we should also filter them out here
+        if inputs.last().is_some_and(|input| matches!(input.ty.kind, hir::TyKind::CVarArgs)) {
+            inputs = &inputs[..inputs.len() - 1];
+        }
+        inputs.get(idx).map_or(hir_decl.output.span(), |param: &hir::Param<'_>| param.ty.span)
     };
 
     sig.inputs_and_output =
