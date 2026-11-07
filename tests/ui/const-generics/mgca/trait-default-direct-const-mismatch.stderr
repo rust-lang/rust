@@ -1,0 +1,21 @@
+error: implementation of a regular const cannot have a `gca!` RHS
+  --> $DIR/trait-default-direct-const-mismatch.rs:8:5
+   |
+LL |     const DEFAULT: Option<Self> = None::<()>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: trait declaration of const is not marked as `#[rustc_always_gca]`
+  --> $DIR/trait-default-direct-const-mismatch.rs:8:5
+   |
+LL |     const DEFAULT: Option<Self> = None::<()>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/trait-default-direct-const-mismatch.rs:8:5
+   |
+LL |     const DEFAULT: Option<Self> = None::<()>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `Option<Self>` must not depend on other generic parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0770`.
