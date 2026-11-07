@@ -1,31 +1,31 @@
-error: type `for<'a> fn(&'a priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+error: method `priv_nominal::Pub::method` is private
   --> $DIR/associated-item-privacy-inherent.rs:13:21
    |
 LL |     pub macro mac() {
 LL |         let value = Pub::method;
-   |                     ^^^^^^^^^^^ private type
+   |                     ^^^^^^^^^^^ private method
 ...
 LL |     priv_nominal::mac!();
    |     -------------------- in this macro invocation
 
-error: type `for<'a> fn(&'a priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+error: method `priv_nominal::Pub::method` is private
   --> $DIR/associated-item-privacy-inherent.rs:15:9
    |
 LL |     pub macro mac() {
 ...
 LL |         value;
-   |         ^^^^^ private type
+   |         ^^^^^ private method
 ...
 LL |     priv_nominal::mac!();
    |     -------------------- in this macro invocation
 
-error: type `for<'a> fn(&'a priv_nominal::Pub) {priv_nominal::Pub::method}` is private
+error: method `priv_nominal::Pub::method` is private
   --> $DIR/associated-item-privacy-inherent.rs:17:13
    |
 LL |     pub macro mac() {
 ...
 LL |         Pub.method();
-   |             ^^^^^^ private type
+   |             ^^^^^^ private method
 ...
 LL |     priv_nominal::mac!();
    |     -------------------- in this macro invocation

@@ -6,5 +6,5 @@ extern crate intercrate;
 
 fn main() {
     assert_eq!(intercrate::foo::m!(), 1);
-    //~^ ERROR type `fn() -> u32 {foo::bar::f}` is private
+    //~^ ERROR function `foo::bar::f` is private
 }
