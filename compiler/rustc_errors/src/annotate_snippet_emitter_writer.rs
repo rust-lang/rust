@@ -590,7 +590,11 @@ impl AnnotateSnippetEmitter {
     ) -> Group<'a> {
         let filename = sm.filename_for_diagnostics(file_name).to_string_lossy().to_string();
         let mut line_tracker = vec![];
-        for (i, a) in annotations.into_iter().enumerate() {
+        for (i, a) in annotations
+            .into_iter()
+            .filter(|a| !matches!(a.kind, AnnotationKind::Visible))
+            .enumerate()
+        {
             let lo = sm.lookup_char_pos(a.span.lo());
             let hi = sm.lookup_char_pos(a.span.hi());
             if i == 0 || (a.label.is_some()) {
