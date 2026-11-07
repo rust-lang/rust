@@ -96,7 +96,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         match intrinsic_name {
             // Operations we can do with soft-floats.
@@ -105,10 +105,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     bug!("`sqrt` intrinsic called on non-float type");
                 };
                 match float_ty {
-                    FloatTy::F16 => sqrt::<rustc_apfloat::ieee::Half>(this, args, dest)?,
-                    FloatTy::F32 => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
-                    FloatTy::F64 => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
-                    FloatTy::F128 => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
+                    FloatTy::F16 => sqrt::<rustc_apfloat::ieee::Half>(ecx, args, dest)?,
+                    FloatTy::F32 => sqrt::<rustc_apfloat::ieee::Single>(ecx, args, dest)?,
+                    FloatTy::F64 => sqrt::<rustc_apfloat::ieee::Double>(ecx, args, dest)?,
+                    FloatTy::F128 => sqrt::<rustc_apfloat::ieee::Quad>(ecx, args, dest)?,
                 }
             }
 
@@ -120,8 +120,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "frem_fast"
             => {
                 let [a, b] = check_intrinsic_arg_count(args)?;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
+                let a = ecx.read_immediate(a)?;
+                let b = ecx.read_immediate(b)?;
                 let op = match intrinsic_name {
                     "fadd_fast" => mir::BinOp::Add,
                     "fsub_fast" => mir::BinOp::Sub,
@@ -153,7 +153,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ),
                     _ => {}
                 }
-                let res = this.binary_op(op, &a, &b)?;
+                let res = ecx.binary_op(op, &a, &b)?;
                 // This cannot be a NaN so we also don't have to apply any non-determinism.
                 // (Also, `binary_op` already called `generate_nan` if needed.)
                 if !float_finite(&res)? {
@@ -161,15 +161,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 // Apply a relative error of 4ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = math::apply_random_float_error_to_imm(this, res, 4)?;
-                this.write_immediate(*res, dest)?;
+                let res = math::apply_random_float_error_to_imm(ecx, res, 4)?;
+                ecx.write_immediate(*res, dest)?;
             }
 
             "float_to_int_unchecked" => {
                 let [val] = check_intrinsic_arg_count(args)?;
-                let val = this.read_immediate(val)?;
+                let val = ecx.read_immediate(val)?;
 
-                let res = this
+                let res = ecx
                     .float_to_int_checked(&val, dest.layout, Round::TowardZero)?
                     .ok_or_else(|| {
                         err_ub_format!(
@@ -178,7 +178,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         )
                     })?;
 
-                this.write_immediate(*res, dest)?;
+                ecx.write_immediate(*res, dest)?;
             }
 
             // Operations that need host floats.
@@ -187,9 +187,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             {
                 let [f] = check_intrinsic_arg_count(args)?;
                 match float_ty {
-                    FloatTy::F16 => host_unary_float_op::<HalfS>(this, f, op, dest)?,
-                    FloatTy::F32 => host_unary_float_op::<SingleS>(this, f, op, dest)?,
-                    FloatTy::F64 => host_unary_float_op::<DoubleS>(this, f, op, dest)?,
+                    FloatTy::F16 => host_unary_float_op::<HalfS>(ecx, f, op, dest)?,
+                    FloatTy::F32 => host_unary_float_op::<SingleS>(ecx, f, op, dest)?,
+                    FloatTy::F64 => host_unary_float_op::<DoubleS>(ecx, f, op, dest)?,
                     FloatTy::F128 => todo!("f128"), // FIXME(f128)
                 };
             }
@@ -199,9 +199,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     bug!("`powf` intrinsic called on non-float type");
                 };
                 match float_ty {
-                    FloatTy::F16 => pow_intrinsic::<HalfS>(this, args, dest)?,
-                    FloatTy::F32 => pow_intrinsic::<SingleS>(this, args, dest)?,
-                    FloatTy::F64 => pow_intrinsic::<DoubleS>(this, args, dest)?,
+                    FloatTy::F16 => pow_intrinsic::<HalfS>(ecx, args, dest)?,
+                    FloatTy::F32 => pow_intrinsic::<SingleS>(ecx, args, dest)?,
+                    FloatTy::F64 => pow_intrinsic::<DoubleS>(ecx, args, dest)?,
                     FloatTy::F128 => todo!("f128"), // FIXME(f128)
                 }
             }
@@ -211,9 +211,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     bug!("`powf` intrinsic called on non-float type");
                 };
                 match float_ty {
-                    FloatTy::F16 => powi_intrinsic::<HalfS>(this, args, dest)?,
-                    FloatTy::F32 => powi_intrinsic::<SingleS>(this, args, dest)?,
-                    FloatTy::F64 => powi_intrinsic::<DoubleS>(this, args, dest)?,
+                    FloatTy::F16 => powi_intrinsic::<HalfS>(ecx, args, dest)?,
+                    FloatTy::F32 => powi_intrinsic::<SingleS>(ecx, args, dest)?,
+                    FloatTy::F64 => powi_intrinsic::<DoubleS>(ecx, args, dest)?,
                     FloatTy::F128 => todo!("f128"), // FIXME(f128)
                 }
             }

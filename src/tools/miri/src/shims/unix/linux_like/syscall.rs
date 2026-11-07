@@ -2,7 +2,8 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use crate::shims::unix::env::EvalContextExt;
+use crate::shims::unix::env::EvalContextExt as _;
+use crate::shims::unix::fs::EvalContextExt as _;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::sync::futex;
 use crate::shims::unix::socket::EvalContextExt as _;
@@ -29,7 +30,10 @@ pub fn syscall<'tcx>(
     let sys_eventfd2 = ecx.eval_libc("SYS_eventfd2").to_target_usize(ecx)?;
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
+    let sys_copy_file_range = ecx.eval_libc("SYS_copy_file_range").to_target_usize(ecx)?;
+    let sys_splice = ecx.eval_libc("SYS_splice").to_target_usize(ecx)?;
 
+    // FIXME: Do these all have direct tests (#3179)?
     match ecx.read_target_usize(&op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
         // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
@@ -75,6 +79,18 @@ pub fn syscall<'tcx>(
                 "syscall(SYS_accept4, ...)",
             )?;
             ecx.accept4(&socket, &address, &address_len, Some(&flags), dest)?;
+        }
+        num if num == sys_copy_file_range => {
+            let ([fd_in, off_in, fd_out, off_out, len, flags], _) = &ecx.check_varargs(
+                shim_varargs![i32, *libc::off_t, i32, *libc::off_t, libc::size_t, u32],
+                varargs,
+                "syscall(SYS_copy_file_range, ...)",
+            )?;
+            ecx.linux_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags, dest)?;
+        }
+        num if num == sys_splice => {
+            // Force std to use a fallback path.
+            ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
         }
         num => {
             throw_unsup_format!("syscall: unsupported syscall number {num}");

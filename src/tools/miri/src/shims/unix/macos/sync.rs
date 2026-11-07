@@ -116,15 +116,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         // `os_unfair_lock_s` wraps a single `u32` field. We use the first byte to store the "init"
         // flag. Due to macOS always being little endian, that's the least significant byte.
-        let this = self.eval_context_mut();
-        assert!(this.tcx.data_layout.endian == Endian::Little);
+        let ecx = self.eval_context_mut();
+        assert!(ecx.tcx.data_layout.endian == Endian::Little);
 
-        let lock = this.deref_pointer(lock_ptr)?;
-        this.get_or_insert_meta(
+        let lock = ecx.deref_pointer(lock_ptr)?;
+        ecx.get_or_insert_meta(
             &lock,
-            |this| {
-                let field = this.project_field(&lock, FieldIdx::from_u32(0))?;
-                let val = this.read_scalar(&field)?.to_u32()?;
+            |ecx| {
+                let field = ecx.project_field(&lock, FieldIdx::from_u32(0))?;
+                let val = ecx.read_scalar(&field)?.to_u32()?;
                 if val == 0 {
                     interp_ok(MacOsUnfairLock::Active { mutex_ref: MutexRef::new() })
                 } else if val == u32::from_ne_bytes([OPAQUE_OBJ_COOKIE; 4]) {
@@ -176,25 +176,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         timeout: MacOsFutexTimeout<'_, 'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let none = this.eval_libc_u32("OS_SYNC_WAIT_ON_ADDRESS_NONE");
-        let absolute_clock = this.eval_libc_u32("OS_CLOCK_MACH_ABSOLUTE_TIME");
+        let ecx = self.eval_context_mut();
+        let none = ecx.eval_libc_u32("OS_SYNC_WAIT_ON_ADDRESS_NONE");
+        let absolute_clock = ecx.eval_libc_u32("OS_CLOCK_MACH_ABSOLUTE_TIME");
 
-        let ptr = this.read_pointer(addr_op)?;
-        let value = this.read_scalar(value_op)?.to_u64()?;
-        let size = this.read_target_usize(size_op)?;
-        let flags = this.read_scalar(flags_op)?.to_u32()?;
+        let ptr = ecx.read_pointer(addr_op)?;
+        let value = ecx.read_scalar(value_op)?.to_u64()?;
+        let size = ecx.read_target_usize(size_op)?;
+        let flags = ecx.read_scalar(flags_op)?.to_u32()?;
 
         let clock_timeout = match timeout {
             MacOsFutexTimeout::None => None,
             MacOsFutexTimeout::Relative { clock_op, timeout_op } => {
-                let clock = this.read_scalar(clock_op)?.to_u32()?;
-                let timeout = this.read_scalar(timeout_op)?.to_u64()?;
+                let clock = ecx.read_scalar(clock_op)?.to_u32()?;
+                let timeout = ecx.read_scalar(timeout_op)?.to_u64()?;
                 Some((clock, TimeoutStyle::Relative, timeout))
             }
             MacOsFutexTimeout::Absolute { clock_op, timeout_op } => {
-                let clock = this.read_scalar(clock_op)?.to_u32()?;
-                let timeout = this.read_scalar(timeout_op)?.to_u64()?;
+                let clock = ecx.read_scalar(clock_op)?.to_u32()?;
+                let timeout = ecx.read_scalar(timeout_op)?.to_u64()?;
                 Some((clock, TimeoutStyle::Absolute, timeout))
             }
         };
@@ -208,7 +208,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             || clock_timeout
                 .is_some_and(|(clock, _, timeout)| clock != absolute_clock || timeout == 0)
         {
-            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+            ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
@@ -217,19 +217,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // While the deadline argument of `os_sync_wait_on_address_with_deadline`
             // is actually not in nanoseconds but in the units of `mach_current_time`,
             // the two are equivalent in miri.
-            this.machine.timeout(TimeoutClock::Monotonic, style, Duration::from_nanos(timeout))
+            ecx.machine.timeout(TimeoutClock::Monotonic, style, Duration::from_nanos(timeout))
         });
 
         // See the Linux futex implementation for why this fence exists.
-        this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+        ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        let layout = this.machine.layouts.uint(Size::from_bytes(size)).unwrap();
-        let futex_place = this.ptr_to_mplace(ptr, layout);
-        let futex_val = this
+        let layout = ecx.machine.layouts.uint(Size::from_bytes(size)).unwrap();
+        let futex_place = ecx.ptr_to_mplace(ptr, layout);
+        let futex_val = ecx
             .read_scalar_atomic(&futex_place, AtomicReadOrd::Acquire)?
             .to_bits(Size::from_bytes(size))?;
 
-        let futex = this.get_or_insert_meta(&futex_place, |_| {
+        let futex = ecx.get_or_insert_meta(&futex_place, |_| {
             interp_ok(MacOsFutex { futex: Default::default(), size: Cell::new(size) })
         })?;
 
@@ -240,7 +240,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if futex.futex.waiters() == 0 {
             futex.size.set(size);
         } else if futex.size.get() != size {
-            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+            ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
@@ -248,7 +248,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If the values are the same, we have to block.
             let futex_ref = futex.futex.clone();
             let dest = dest.clone();
-            this.futex_wait(
+            ecx.futex_wait(
                 futex_ref.clone(),
                 u32::MAX, // bitset
                 deadline,
@@ -257,14 +257,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         dest: MPlaceTy<'tcx>,
                         futex_ref: FutexRef,
                     }
-                    |this, unblock: UnblockKind| {
+                    |ecx, unblock: UnblockKind| {
                         match unblock {
                             UnblockKind::Ready => {
                                 let remaining = futex_ref.waiters().try_into().unwrap();
-                                this.write_scalar(Scalar::from_i32(remaining), &dest)
+                                ecx.write_scalar(Scalar::from_i32(remaining), &dest)
                             }
                             UnblockKind::TimedOut => {
-                                this.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
+                                ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
                             }
                         }
                     }
@@ -273,7 +273,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             // else retrieve the current number of waiters.
             let waiters = futex.futex.waiters().try_into().unwrap();
-            this.write_scalar(Scalar::from_i32(waiters), dest)?;
+            ecx.write_scalar(Scalar::from_i32(waiters), dest)?;
         }
 
         interp_ok(())
@@ -291,40 +291,40 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         all: bool,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let none = this.eval_libc_u32("OS_SYNC_WAKE_BY_ADDRESS_NONE");
+        let ecx = self.eval_context_mut();
+        let none = ecx.eval_libc_u32("OS_SYNC_WAKE_BY_ADDRESS_NONE");
 
-        let ptr = this.read_pointer(addr_op)?;
-        let size = this.read_target_usize(size_op)?;
-        let flags = this.read_scalar(flags_op)?.to_u32()?;
+        let ptr = ecx.read_pointer(addr_op)?;
+        let size = ecx.read_target_usize(size_op)?;
+        let flags = ecx.read_scalar(flags_op)?.to_u32()?;
 
         // Perform validation of the arguments.
         let addr = ptr.addr().bytes();
         if addr == 0 || !matches!(size, 4 | 8) || (flags != none) {
-            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+            ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
         // See the Linux futex implementation for why this fence exists.
-        this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+        ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
-        let Ok(futex) = this.try_get_meta::<MacOsFutex>(ptr) else {
+        let Ok(futex) = ecx.try_get_meta::<MacOsFutex>(ptr) else {
             // Same behavior for dangling pointers and when no futex has been put here yet.
-            return this.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
         };
 
         if futex.futex.waiters() == 0 {
-            return this.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
         // If there are waiters in the queue, they have all used the parameters
         // stored in `futex` (we check this in `os_sync_wait_on_address` above).
         // Detect mismatches between "our" parameters and the parameters used by
         // the waiters and return an error in that case.
         } else if futex.size.get() != size {
-            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         }
 
-        this.futex_wake(&futex.futex.clone(), u32::MAX, if all { usize::MAX } else { 1 })?;
-        this.write_scalar(Scalar::from_i32(0), dest)?;
+        ecx.futex_wake(&futex.futex.clone(), u32::MAX, if all { usize::MAX } else { 1 })?;
+        ecx.write_scalar(Scalar::from_i32(0), dest)?;
         interp_ok(())
     }
 
@@ -384,9 +384,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn os_unfair_lock_unlock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
             // We don't know who the owner is so we cannot proceed.
             throw_unsup_format!(
                 "attempted to unlock an os_unfair_lock that was copied while being locked"
@@ -395,7 +395,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mutex_ref = mutex_ref.clone();
 
         // Now, unlock.
-        if this.mutex_unlock(&mutex_ref)?.is_none() {
+        if ecx.mutex_unlock(&mutex_ref)?.is_none() {
             // Matching the current macOS implementation: abort.
             throw_machine_stop!(TerminationInfo::Abort(
                 "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
@@ -406,17 +406,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reset to zero so that it can be moved and initialized again for the next phase.
         if mutex_ref.owner().is_none() {
             let lock_place =
-                this.project_field(&this.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
-            this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
+                ecx.project_field(&ecx.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
+            ecx.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
 
         interp_ok(())
     }
 
     fn os_unfair_lock_assert_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
             // We don't know who the owner is so we cannot proceed.
             throw_unsup_format!(
                 "attempted to assert the owner of an os_unfair_lock that was copied while being locked"
@@ -424,7 +424,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let mutex_ref = mutex_ref.clone();
 
-        if mutex_ref.owner().is_none_or(|o| o != this.active_thread()) {
+        if mutex_ref.owner().is_none_or(|o| o != ecx.active_thread()) {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
             ));
@@ -495,10 +495,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         timeout: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let sem_ptr = this.read_pointer(sem_ptr)?;
-        let timeout = this.read_scalar(timeout)?.to_u64()?;
+        let sem_ptr = ecx.read_pointer(sem_ptr)?;
+        let timeout = ecx.read_scalar(timeout)?.to_u64()?;
 
         let deadline = if timeout == DISPATCH_TIME_FOREVER {
             None
@@ -506,23 +506,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `timeout` is an absolute nanosecond value on the monotone clock.
             // (This also handles `DISPATCH_TIME_NOW` as that is 0.)
             let deadline =
-                this.machine.monotonic_clock.epoch().add_lossy(Duration::from_nanos(timeout));
+                ecx.machine.monotonic_clock.epoch().add_lossy(Duration::from_nanos(timeout));
             Some(deadline.into())
         };
 
-        let data = this.dispatch_semaphore_get_data(sem_ptr)?.clone();
+        let data = ecx.dispatch_semaphore_get_data(sem_ptr)?.clone();
         let dest = dest.clone();
-        this.semaphore_decrement(
+        ecx.semaphore_decrement(
             data.semaphore,
             deadline,
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     match unblock {
-                        UnblockKind::Ready => this.write_null(&dest),
-                        UnblockKind::TimedOut => this.write_int(/* KERN_OPERATION_TIMED_OUT */ 49, &dest),
+                        UnblockKind::Ready => ecx.write_int(0, &dest),
+                        UnblockKind::TimedOut => ecx.write_int(/* KERN_OPERATION_TIMED_OUT */ 49, &dest),
                     }
                 }
             ),

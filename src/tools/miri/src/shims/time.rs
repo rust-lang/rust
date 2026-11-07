@@ -337,7 +337,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
-                |_this, unblock: UnblockKind| {
+                |_ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::TimedOut);
                     interp_ok(())
                 }
@@ -365,7 +365,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
-                |_this, unblock: UnblockKind| {
+                |_ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::TimedOut);
                     interp_ok(())
                 }
@@ -420,7 +420,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(deadline),
             callback!(
                 @capture<'tcx> {}
-                |_this, unblock: UnblockKind| {
+                |_ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::TimedOut);
                     interp_ok(())
                 }
@@ -445,7 +445,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(deadline.into()),
             callback!(
                 @capture<'tcx> {}
-                |_this, unblock: UnblockKind| {
+                |_ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::TimedOut);
                     interp_ok(())
                 }

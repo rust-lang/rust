@@ -134,9 +134,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     pending_place: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    let ret = this.init_once_try_begin(&init_once, &pending_place, &dest)?;
+                    let ret = ecx.init_once_try_begin(&init_once, &pending_place, &dest)?;
                     assert!(ret, "we were woken up but init_once_try_begin still failed");
                     interp_ok(())
                 }
@@ -242,14 +242,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     @capture<'tcx> {
                         dest: MPlaceTy<'tcx>
                     }
-                    |this, unblock: UnblockKind| {
+                    |ecx, unblock: UnblockKind| {
                         match unblock {
                             UnblockKind::Ready => {
-                                this.write_int(1, &dest)
+                                ecx.write_int(1, &dest)
                             }
                             UnblockKind::TimedOut => {
-                                this.set_last_error(IoError::WindowsError("ERROR_TIMEOUT"))?;
-                                this.write_int(0, &dest)
+                                ecx.set_last_error(IoError::WindowsError("ERROR_TIMEOUT"))?;
+                                ecx.write_int(0, &dest)
                             }
                         }
                     }

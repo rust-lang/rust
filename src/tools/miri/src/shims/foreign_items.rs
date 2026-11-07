@@ -76,14 +76,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
         let res = ecx.emulate_foreign_item_inner(link_name, abi, args, &dest)?;
-        res.jump_to_next_block(ecx, &dest.clone().into(), ret, Some(unwind), |this| {
-            if let Some(body) = this.lookup_exported_fn(link_name)? {
+        res.jump_to_next_block(ecx, &dest.clone().into(), ret, Some(unwind), |ecx| {
+            if let Some(body) = ecx.lookup_exported_fn(link_name)? {
                 return interp_ok(Some(body));
             }
 
             throw_machine_stop!(TerminationInfo::UnsupportedForeignItem(format!(
                 "can't call foreign function `{link_name}` on OS `{os}`",
-                os = this.tcx.sess.target.os,
+                os = ecx.tcx.sess.target.os,
             )));
         })
     }
@@ -652,7 +652,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     if ecx.target_os_is_unix() {
                         ecx.set_last_error(LibcError("ENOMEM"))?;
                     }
-                    ecx.write_null(dest)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
             "calloc" => {
@@ -670,7 +670,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     if ecx.target_os_is_unix() {
                         ecx.set_last_error(LibcError("ENOMEM"))?;
                     }
-                    ecx.write_null(dest)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
             "free" => {
@@ -694,7 +694,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     if ecx.target_os_is_unix() {
                         ecx.set_last_error(LibcError("ENOMEM"))?;
                     }
-                    ecx.write_null(dest)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
             "malloc_usable_size" => {
@@ -783,7 +783,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(needle_ptr) = needle_ptr {
                     ecx.write_pointer(needle_ptr, dest)?;
                 } else {
-                    ecx.write_null(dest)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
             "memrchr" => {
@@ -809,7 +809,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(needle_ptr) = needle_ptr {
                     ecx.write_pointer(needle_ptr, dest)?;
                 } else {
-                    ecx.write_null(dest)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
             "strlen" => {

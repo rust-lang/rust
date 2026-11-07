@@ -33,7 +33,34 @@ fn main() {
         test_avx512ternarylogic();
         test_avx512vnni();
         test_avx512vbmi();
+        test_avx512_shifts();
+        test_mm512_permutex2var_epi32();
     }
+}
+
+#[target_feature(enable = "avx512f")]
+unsafe fn test_avx512_shifts() {
+    let a = transmute([1u64, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX]);
+    let counts = transmute([0u64, 1, 63, 64, 65, 256, 1 << 32, u64::MAX]);
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_sllv_epi64(a, counts)),
+        [1, u64::MAX - 1, 1 << 63, 0, 0, 0, 0, 0],
+    );
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_srlv_epi64(a, counts)),
+        [1, u64::MAX >> 1, 1, 0, 0, 0, 0, 0],
+    );
+}
+
+#[target_feature(enable = "avx512f")]
+unsafe fn test_mm512_permutex2var_epi32() {
+    let a = transmute([0i32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b = transmute([16i32, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+    let indices = transmute([0i32, 15, 16, 31, 32, 47, 48, 63, -1, i32::MIN, 17, 2, 30, 13, 29, 4]);
+    assert_eq!(
+        transmute::<_, [i32; 16]>(_mm512_permutex2var_epi32(a, indices, b)),
+        [0, 15, 16, 31, 0, 15, 16, 31, 31, 0, 17, 2, 30, 13, 29, 4],
+    );
 }
 
 #[target_feature(enable = "avx512bw")]
@@ -890,6 +917,30 @@ unsafe fn test_avx512bw() {
 
 #[target_feature(enable = "avx512vbmi,avx512vl")]
 unsafe fn test_avx512vbmi() {
+    #[target_feature(enable = "avx512vbmi,avx512vl")]
+    unsafe fn test_mm256_permutex2var_epi8() {
+        let a = transmute([
+            0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        ]);
+        let b = transmute([
+            32u8, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52,
+            53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+        ]);
+        let indices = transmute([
+            0u8, 15, 16, 31, 32, 47, 48, 63, 64, 95, 96, 127, 128, 159, 160, 191, 192, 223, 224,
+            255, 1, 17, 33, 49, 14, 30, 46, 62, 2, 18, 34, 50,
+        ]);
+        assert_eq!(
+            transmute::<_, [u8; 32]>(_mm256_permutex2var_epi8(a, indices, b)),
+            [
+                0, 15, 16, 31, 32, 47, 48, 63, 0, 31, 32, 63, 0, 31, 32, 63, 0, 31, 32, 63, 1, 17,
+                33, 49, 14, 30, 46, 62, 2, 18, 34, 50,
+            ],
+        );
+    }
+    test_mm256_permutex2var_epi8();
+
     #[target_feature(enable = "avx512vbmi")]
     unsafe fn test_mm512_permutex2var_epi8() {
         // For each index byte in `idx`: the low 6 bits (bits [5:0]) select

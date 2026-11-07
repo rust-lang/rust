@@ -519,7 +519,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !ecx.ptr_is_null(ptr)? {
                     ecx.deallocate_ptr(ptr, None, MiriMemoryKind::WinLocal.into())?;
                 }
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
 
             // errno
@@ -768,7 +768,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Unimplemented. Always return failure.
                 let not_supported = ecx.eval_windows("c", "ERROR_NOT_SUPPORTED");
                 ecx.set_last_error(not_supported)?;
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
 
             // Synchronization primitives
@@ -833,7 +833,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let ptr = ecx.fn_ptr(FnVal::Other(DynSym::from_str(name)));
                     ecx.write_pointer(ptr, dest)?;
                 } else {
-                    ecx.write_null(dest)?;
+                    ecx.write_int(0, dest)?;
                 }
             }
 
@@ -1026,7 +1026,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                 }
                 ecx.gen_random(ptr, len.into())?;
-                ecx.write_null(dest)?; // STATUS_SUCCESS
+                ecx.write_int(0, dest)?; // STATUS_SUCCESS
             }
             "GetConsoleScreenBufferInfo" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -1039,7 +1039,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ecx.read_pointer(buffer_info)?;
                 // Indicate an error.
                 ecx.set_last_error(io::ErrorKind::Unsupported)?;
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
             "GetStdHandle" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -1220,7 +1220,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 // Pretend these does not exist / nothing happened, by returning zero.
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
             "AddVectoredExceptionHandler" if ecx.frame_in_std() => {
                 let [_first, _handler] = &ecx.check_shim_sig(
@@ -1248,7 +1248,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ecx.yield_active_thread();
 
                 // FIXME: this should return a nonzero value if this call does result in switching to another thread.
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
             "GetFinalPathNameByHandleW" if ecx.frame_in_std() => {
                 // Std uses this when debug-printing `File`. We stub it out by returning an error.
@@ -1258,7 +1258,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
 
                 ecx.set_last_error(IoError::WindowsError("ERROR_NOT_SUPPORTED"))?;
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

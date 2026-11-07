@@ -89,8 +89,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         global_allocation_handler: &GlobalAllocationHandler,
         alloc_id: AllocId,
     ) -> InterpResult<'tcx, u64> {
-        let this = self.eval_context_ref();
-        let info = this.get_alloc_info(alloc_id);
+        let ecx = self.eval_context_ref();
+        let info = ecx.get_alloc_info(alloc_id);
 
         let global_state = global_allocation_handler.0.read().unwrap();
         if let Some(base_addr) = global_state.base_addr.get(&alloc_id) {

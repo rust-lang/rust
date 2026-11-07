@@ -183,7 +183,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
 
                 if written {
-                    this.write_null(dest)?;
+                    this.write_int(0, dest)?;
                 } else {
                     this.write_scalar(Scalar::from_u32(size_needed.try_into().unwrap()), &bufsize)?;
                     this.write_int(-1, dest)?;
@@ -447,7 +447,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 // We just pretend that no configuration key exists, and return EINVAL.
                 this.set_last_error(LibcError("EINVAL"))?;
-                this.write_null(dest)?;
+                this.write_int(0, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
