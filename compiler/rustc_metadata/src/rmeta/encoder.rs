@@ -1172,7 +1172,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// ```
 fn should_encode_mir(
     tcx: TyCtxt<'_>,
-    reachable_set: &LocalDefIdSet,
+    reachable_set: Option<&LocalDefIdSet>,
     def_id: LocalDefId,
 ) -> (bool, bool) {
     match tcx.def_kind(def_id) {
@@ -1186,8 +1186,7 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
-                || (tcx.sess.opts.output_types.should_codegen()
-                    && reachable_set.contains(&def_id)
+                || (reachable_set.is_some_and(|reachable_set| reachable_set.contains(&def_id))
                     && (tcx.generics_of(def_id).requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // Comptime fns do not have optimized MIR at all.
@@ -1931,7 +1930,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-        let reachable_set = tcx.reachable_set(());
+        let reachable_set =
+            tcx.sess.opts.output_types.should_codegen().then(|| tcx.reachable_set(()));
 
         let keys_and_jobs = tcx.mir_keys(()).iter().filter_map(|&def_id| {
             let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
@@ -2471,7 +2471,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         return;
     }
 
-    let reachable_set = tcx.reachable_set(());
+    let reachable_set = Some(tcx.reachable_set(()));
     par_for_each_in(tcx.mir_keys(()).as_slice(), |&def_id| {
         if tcx.is_trivial_const(def_id) {
             return;
