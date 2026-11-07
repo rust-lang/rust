@@ -32,7 +32,7 @@ use self::metadata::{
     UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
 };
 use self::namespace::mangled_name_of_instance;
-use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
+use self::utils::{DIB, create_DIArray, get_namespace_for_item, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::debuginfo::di_builder::DIBuilderBox;
@@ -123,6 +123,125 @@ impl<'ll> Builder<'_, 'll, '_> {
     pub(crate) fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
         unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder()) }
     }
+}
+
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+    fn wants_foreign_item_debuginfo(&self) -> bool {
+        self.dbg_cx.is_some() && self.sess().opts.debuginfo == DebugInfo::Full
+    }
+
+    /// Attaches `DISubprogram` to a foreign function declaration `llfn`. `def_id`
+    /// is the item that declares it: the foreign fn itself, or the foreign static
+    /// holding its address for an `extern_weak` one.
+    pub(crate) fn dbg_declare_foreign_fn(
+        &self,
+        def_id: DefId,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        llfn: &'ll Value,
+    ) {
+        if !self.wants_foreign_item_debuginfo() {
+            return;
+        }
+
+        let span = self.tcx.def_span(def_id);
+        let loc = self.lookup_debug_loc(span.lo());
+        let file_metadata = file_metadata(self, &loc.file);
+        let function_type_metadata =
+            create_subroutine_type(self, &get_function_signature(self, fn_abi, span));
+        let name = llvm::get_value_name(llfn);
+
+        let mut flags = DIFlags::FlagPrototyped;
+        if fn_abi.ret.layout.is_uninhabited() {
+            flags |= DIFlags::FlagNoReturn;
+        }
+        let mut spflags = DISPFlags::SPFlagZero;
+        if self.sess().opts.optimize != config::OptLevel::No {
+            spflags |= DISPFlags::SPFlagOptimized;
+        }
+
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateFunction(
+                DIB(self),
+                get_namespace_for_item(self, def_id),
+                name.as_ptr(),
+                name.len(),
+                "".as_ptr(),
+                0,
+                file_metadata,
+                loc.line,
+                function_type_metadata,
+                loc.line,
+                flags,
+                spflags,
+                Some(llfn),
+                create_DIArray(DIB(self), &[]),
+                None,
+            );
+        }
+    }
+
+    /// Attaches a non-defining `DIGlobalVariable` of type `ty` to `global`, the declaration of
+    /// a foreign static. `def_id` is the item that declares it, as for `dbg_declare_foreign_fn`;
+    /// for an `extern_weak` static, `ty` is the type it points to.
+    pub(crate) fn dbg_declare_foreign_static(
+        &self,
+        def_id: DefId,
+        ty: Option<Ty<'tcx>>,
+        global: &'ll Value,
+    ) {
+        if self.wants_foreign_item_debuginfo() {
+            metadata::build_extern_global_var_di_node(self, def_id, ty, global);
+        }
+    }
+}
+
+fn get_function_signature<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    span: Span,
+) -> Vec<Option<&'ll llvm::Metadata>> {
+    if cx.sess().opts.debuginfo != DebugInfo::Full {
+        return vec![];
+    }
+
+    let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
+
+    // Return type -- llvm::DIBuilder wants this at index 0
+    signature.push(if fn_abi.ret.is_ignore() {
+        None
+    } else {
+        Some(spanned_type_di_node(cx, fn_abi.ret.layout.ty, span))
+    });
+
+    // Arguments types
+    if cx.sess().target.is_like_msvc {
+        // FIXME(#42800):
+        // There is a bug in MSDIA that leads to a crash when it encounters
+        // a fixed-size array of `u8` or something zero-sized in a
+        // function-type (see #40477).
+        // As a workaround, we replace those fixed-size arrays with a
+        // pointer-type. So a function `fn foo(a: u8, b: [u8; 4])` would
+        // appear as `fn foo(a: u8, b: *const u8)` in debuginfo,
+        // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
+        // This transformed type is wrong, but these function types are
+        // already inaccurate due to ABI adjustments (see #42800).
+        signature.extend(fn_abi.args.iter().map(|arg| {
+            let t = arg.layout.ty;
+            let t = match t.kind() {
+                ty::Array(ct, _) if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() => {
+                    Ty::new_imm_ptr(cx.tcx, *ct)
+                }
+                _ => t,
+            };
+            Some(spanned_type_di_node(cx, t, span))
+        }));
+    } else {
+        signature.extend(
+            fn_abi.args.iter().map(|arg| Some(spanned_type_di_node(cx, arg.layout.ty, span))),
+        );
+    }
+
+    signature
 }
 
 impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
@@ -229,60 +348,6 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 decl,
             )
         };
-
-        fn get_function_signature<'ll, 'tcx>(
-            cx: &CodegenCx<'ll, 'tcx>,
-            fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-            span: Span,
-        ) -> Vec<Option<&'ll llvm::Metadata>> {
-            if cx.sess().opts.debuginfo != DebugInfo::Full {
-                return vec![];
-            }
-
-            let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
-
-            // Return type -- llvm::DIBuilder wants this at index 0
-            signature.push(if fn_abi.ret.is_ignore() {
-                None
-            } else {
-                Some(spanned_type_di_node(cx, fn_abi.ret.layout.ty, span))
-            });
-
-            // Arguments types
-            if cx.sess().target.is_like_msvc {
-                // FIXME(#42800):
-                // There is a bug in MSDIA that leads to a crash when it encounters
-                // a fixed-size array of `u8` or something zero-sized in a
-                // function-type (see #40477).
-                // As a workaround, we replace those fixed-size arrays with a
-                // pointer-type. So a function `fn foo(a: u8, b: [u8; 4])` would
-                // appear as `fn foo(a: u8, b: *const u8)` in debuginfo,
-                // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
-                // This transformed type is wrong, but these function types are
-                // already inaccurate due to ABI adjustments (see #42800).
-                signature.extend(fn_abi.args.iter().map(|arg| {
-                    let t = arg.layout.ty;
-                    let t = match t.kind() {
-                        ty::Array(ct, _)
-                            if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
-                        {
-                            Ty::new_imm_ptr(cx.tcx, *ct)
-                        }
-                        _ => t,
-                    };
-                    Some(spanned_type_di_node(cx, t, span))
-                }));
-            } else {
-                signature.extend(
-                    fn_abi
-                        .args
-                        .iter()
-                        .map(|arg| Some(spanned_type_di_node(cx, arg.layout.ty, span))),
-                );
-            }
-
-            signature
-        }
 
         fn get_template_parameters<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
