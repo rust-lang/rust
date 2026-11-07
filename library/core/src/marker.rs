@@ -899,11 +899,9 @@ pub trait DiscriminantKind {
 ///
 /// This trait is a core part of the language, it is just expressed as a trait in libcore for
 /// convenience. Do *not* implement it for other types.
-// FIXME: Eventually this trait should become `#[rustc_deny_explicit_impl]`.
-// That requires porting the impls below to native internal impls.
 #[lang = "freeze"]
 #[unstable(feature = "freeze", issue = "121675")]
-pub unsafe auto trait Freeze {}
+pub impl(crate) unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
 impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
@@ -915,6 +913,8 @@ marker_impls! {
         {T: PointeeSized} *mut T,
         {T: PointeeSized} &T,
         {T: PointeeSized} &mut T,
+        {T: PointeeSized} pattern_type!(*const T is !null),
+        {T: PointeeSized} pattern_type!(*mut T is !null),
 }
 
 /// Used to determine whether a type contains any `UnsafePinned` (or `PhantomPinned`) internally,
@@ -925,7 +925,7 @@ marker_impls! {
 /// tracked by [#125735](https://github.com/rust-lang/rust/issues/125735).
 #[lang = "unsafe_unpin"]
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
-pub unsafe auto trait UnsafeUnpin {}
+pub impl(crate) unsafe auto trait UnsafeUnpin {}
 
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
 impl<T: PointeeSized> !UnsafeUnpin for UnsafePinned<T> {}
