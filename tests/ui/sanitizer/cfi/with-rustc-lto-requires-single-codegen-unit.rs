@@ -2,6 +2,7 @@
 //
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Ccodegen-units=2 -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

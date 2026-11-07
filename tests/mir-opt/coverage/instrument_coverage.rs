@@ -4,6 +4,7 @@
 
 //@ test-mir-pass: InstrumentCoverage
 //@ compile-flags: -Cinstrument-coverage -Zno-profiler-runtime
+//@ ignore-backends: gcc
 
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
 // CHECK-LABEL: fn main()

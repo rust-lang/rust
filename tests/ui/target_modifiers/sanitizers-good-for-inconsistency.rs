@@ -3,6 +3,7 @@
 //@ revisions: wrong_address_san wrong_leak_san
 
 //@[wrong_address_san] needs-sanitizer-address
+//@[wrong_address_san] ignore-backends: gcc
 //@[wrong_leak_san] needs-sanitizer-leak
 
 //@ aux-build:no-sanitizers.rs
