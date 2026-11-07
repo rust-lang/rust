@@ -43,7 +43,7 @@ use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
-    self, Const, FnSigKind, GenericArgKind, GenericParamDefKind, IncludeSizedImplicitBounds,
+    self, Const, ExcludeImplicitBounds, FnSigKind, GenericArgKind, GenericParamDefKind,
     LitToConstInput, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized,
     Upcast, const_lit_matches_ty, fold_regions,
 };
@@ -3332,7 +3332,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
-                    IncludeSizedImplicitBounds::Yes,
+                    ExcludeImplicitBounds::none(),
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
                 self_ty

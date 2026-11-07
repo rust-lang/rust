@@ -10,7 +10,7 @@ use rustc_type_ir::solve::{
     QueryResultOrRerunNonErased, RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, CallerBoundsIterator, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds,
+    self as ty, CallerBoundsIterator, ExistentialPredicate, FieldInfo, ExcludeImplicitBounds,
     Interner, MayBeErased, Movability, Region, TraitClause, TraitRef, TypeVisitableExt as _,
     TypingMode, Unnormalized, Upcast as _, elaborate,
 };
@@ -1428,7 +1428,7 @@ where
             ty::Foreign(..)
                 if self
                     .cx()
-                    .is_implicit_trait(goal.predicate.def_id(), IncludeSizedImplicitBounds::No) =>
+                    .is_implicit_trait(goal.predicate.def_id(), ExcludeImplicitBounds::sized()) =>
             {
                 check_impls()
             }

@@ -10,7 +10,7 @@ use rustc_hir::PolyTraitRef;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
-    self as ty, IncludeSizedImplicitBounds, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable,
+    self as ty, ExcludeImplicitBounds, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Ident, Span, bug, kw};
@@ -138,7 +138,7 @@ fn add_trait_bound<'tcx>(
 }
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Adds implicit sizedness, and in the future `Move` and `Forget`, and default trait bounds.
+    /// Adds implicit sizedness, and `Move` and `Forget`, and default trait bounds.
     pub(crate) fn add_implicit_bounds(
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
@@ -146,18 +146,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_bounds: &[hir::GenericBound<'_>],
         context: ImpliedBoundsContext<'tcx>,
         span: Span,
-        // Sized is treated slightly more specially than the other implicit bounds.
-        include_sized: IncludeSizedImplicitBounds,
+        // some caller may want to handle some implicit bounds separately
+        excluding: ExcludeImplicitBounds,
     ) {
         // Skip adding any default bounds if `#![rustc_no_implicit_bounds]`
         if find_attr!(self.tcx(), crate, RustcNoImplicitBounds) {
             return;
         }
 
-        self.add_implicit_move_bound(bounds, self_ty, hir_bounds, context, span);
+        if !excluding.r#move {
+            self.add_implicit_move_bound(bounds, self_ty, hir_bounds, context, span);
+        }
+
         self.add_default_traits(bounds, self_ty, hir_bounds, context, span);
 
-        if let IncludeSizedImplicitBounds::Yes = include_sized {
+        if !excluding.sized {
             self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span);
         }
     }
@@ -314,7 +317,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res
             && (tcx.is_lang_item(def_id, LangItem::Sized)
-                || tcx.is_implicit_trait(def_id, IncludeSizedImplicitBounds::No))
+                || tcx.is_implicit_trait(def_id, ExcludeImplicitBounds::sized()))
         {
             return;
         }

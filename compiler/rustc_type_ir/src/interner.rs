@@ -461,11 +461,7 @@ pub trait Interner:
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
-    fn is_implicit_trait(
-        self,
-        def_id: Self::TraitId,
-        including_sized: IncludeSizedImplicitBounds,
-    ) -> bool;
+    fn is_implicit_trait(self, def_id: Self::TraitId, excluding: ExcludeImplicitBounds) -> bool;
 
     fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
 
@@ -793,7 +789,17 @@ impl<I: Interner> search_graph::Cx for I {
     }
 }
 
-pub enum IncludeSizedImplicitBounds {
-    Yes,
-    No,
+pub struct ExcludeImplicitBounds {
+    pub sized: bool,
+    pub r#move: bool,
+}
+
+impl ExcludeImplicitBounds {
+    pub fn none() -> Self {
+        Self { sized: false, r#move: false }
+    }
+
+    pub fn sized() -> Self {
+        Self { sized: true, ..Self::none() }
+    }
 }
