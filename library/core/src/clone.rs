@@ -242,6 +242,7 @@ pub const trait Clone: Sized {
     /// allocations.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[lang = "clone_from_fn"]
     fn clone_from(&mut self, source: &Self)
     where
         Self: [const] Destruct,
