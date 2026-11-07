@@ -10,6 +10,7 @@ use std::sync::Arc;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::RangeEnd;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
@@ -204,95 +205,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // the element types are restricted to primitives without padding
                 // (see `is_bytewise_comparable`).
                 match *value.ty.kind() {
-                    ty::Array(..) => {
-                        let actual_value_ref_place = self.temp(ref_ty, test.span);
-                        self.cfg.push_assign(
-                            block,
-                            source_info,
-                            actual_value_ref_place,
-                            Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, place),
-                        );
-
-                        let eq_result = self.temp(tcx.types.bool, test.span);
-                        let eq_block = self.call_nounwind_intrinsic(
-                            block,
-                            source_info,
-                            LangItem::RawEq,
-                            &[value.ty.into()],
-                            [Operand::Copy(actual_value_ref_place), expected_value_operand],
-                            eq_result,
-                        );
-                        self.cfg.terminate(
-                            eq_block,
-                            source_info,
-                            TerminatorKind::if_(
-                                Operand::Move(eq_result),
-                                success_block,
-                                fail_block,
-                            ),
-                        );
-                    }
-                    ty::Slice(element_ty) => {
-                        // `compare_bytes` only looks at as many bytes as it is
-                        // told to, so the lengths have to be compared first.
-                        let len = u64::try_from(value.valtree.to_branch().len()).unwrap();
-                        let actual_len =
-                            self.len_of_slice_or_array(block, place, test.span, source_info);
-                        let expected_len = self.push_usize(block, source_info, len);
-                        let compare_bytes_block = self.cfg.start_new_block();
-                        self.compare(
-                            block,
-                            compare_bytes_block,
-                            fail_block,
-                            source_info,
-                            BinOp::Eq,
-                            actual_len,
-                            Operand::Move(expected_len),
-                        );
-
-                        let expected_value_ref_place = self.temp(ref_ty, test.span);
-                        self.cfg.push_assign(
-                            compare_bytes_block,
-                            source_info,
-                            expected_value_ref_place,
-                            Rvalue::Use(expected_value_operand, WithRetag::Yes),
-                        );
-                        let actual_bytes =
-                            self.slice_bytes_ptr(compare_bytes_block, source_info, place);
-                        let expected_bytes = self.slice_bytes_ptr(
-                            compare_bytes_block,
-                            source_info,
-                            tcx.mk_place_deref(expected_value_ref_place),
-                        );
-                        let byte_len = self.push_usize(
-                            compare_bytes_block,
-                            source_info,
-                            len * element_ty.primitive_size(tcx).bytes(),
-                        );
-
-                        let cmp_result = self.temp(tcx.types.i32, test.span);
-                        let cmp_block = self.call_nounwind_intrinsic(
-                            compare_bytes_block,
-                            source_info,
-                            LangItem::CompareBytes,
-                            &[],
-                            [
-                                Operand::Move(actual_bytes),
-                                Operand::Move(expected_bytes),
-                                Operand::Move(byte_len),
-                            ],
-                            cmp_result,
-                        );
-                        // `compare_bytes` returns zero if and only if the bytes are equal.
-                        self.cfg.terminate(
-                            cmp_block,
-                            source_info,
-                            TerminatorKind::SwitchInt {
-                                discr: Operand::Move(cmp_result),
-                                targets: SwitchTargets::static_if(0, success_block, fail_block),
-                            },
-                        );
-                    }
+                    ty::Array(..) => self.array_raw_eq(
+                        block,
+                        success_block,
+                        fail_block,
+                        source_info,
+                        place,
+                        expected_value_operand,
+                    ),
+                    ty::Slice(element_ty) => self.slice_compare_bytes(
+                        block,
+                        success_block,
+                        fail_block,
+                        source_info,
+                        place,
+                        expected_value_operand,
+                        element_ty,
+                        value.valtree.to_branch().len(),
+                    ),
                     _ => bug!("unexpected value type for AggregateEq test: {value:?}"),
                 }
             }
@@ -582,6 +512,99 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
+    /// Compares the array at `place` with the expected array constant using the
+    /// `raw_eq` intrinsic.
+    fn array_raw_eq(
+        &mut self,
+        block: BasicBlock,
+        success_block: BasicBlock,
+        fail_block: BasicBlock,
+        source_info: SourceInfo,
+        place: Place<'tcx>,
+        expected_value_operand: Operand<'tcx>,
+    ) {
+        let tcx = self.tcx;
+        let array_ty = place.ty(&self.local_decls, tcx).ty;
+        let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, array_ty);
+        let actual_value_ref_place = self.temp(ref_ty, source_info.span);
+        self.cfg.push_assign(
+            block,
+            source_info,
+            actual_value_ref_place,
+            Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, place),
+        );
+
+        let eq_result = self.temp(tcx.types.bool, source_info.span);
+        let eq_block = self.call_nounwind_intrinsic(
+            block,
+            source_info,
+            LangItem::RawEq,
+            &[array_ty.into()],
+            [Operand::Copy(actual_value_ref_place), expected_value_operand],
+            eq_result,
+        );
+        self.cfg.terminate(
+            eq_block,
+            source_info,
+            TerminatorKind::if_(Operand::Move(eq_result), success_block, fail_block),
+        );
+    }
+
+    /// Compares the slice at `place` with the expected slice constant of `len`
+    /// elements using the `compare_bytes` intrinsic.
+    ///
+    /// `compare_bytes` only looks at as many bytes as it is told to, so this
+    /// relies on the enclosing slice length test having already checked that
+    /// the slice at `place` has `len` elements too.
+    fn slice_compare_bytes(
+        &mut self,
+        block: BasicBlock,
+        success_block: BasicBlock,
+        fail_block: BasicBlock,
+        source_info: SourceInfo,
+        place: Place<'tcx>,
+        expected_value_operand: Operand<'tcx>,
+        element_ty: Ty<'tcx>,
+        len: usize,
+    ) {
+        let tcx = self.tcx;
+        let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_slice(tcx, element_ty));
+        let expected_value_ref_place = self.temp(ref_ty, source_info.span);
+        self.cfg.push_assign(
+            block,
+            source_info,
+            expected_value_ref_place,
+            Rvalue::Use(expected_value_operand, WithRetag::Yes),
+        );
+        let actual_bytes = self.slice_bytes_ptr(block, source_info, place);
+        let expected_bytes =
+            self.slice_bytes_ptr(block, source_info, tcx.mk_place_deref(expected_value_ref_place));
+        let byte_len = self.push_usize(
+            block,
+            source_info,
+            u64::try_from(len).unwrap() * element_ty.primitive_size(tcx).bytes(),
+        );
+
+        let cmp_result = self.temp(tcx.types.i32, source_info.span);
+        let cmp_block = self.call_nounwind_intrinsic(
+            block,
+            source_info,
+            LangItem::CompareBytes,
+            &[],
+            [Operand::Move(actual_bytes), Operand::Move(expected_bytes), Operand::Move(byte_len)],
+            cmp_result,
+        );
+        // `compare_bytes` returns zero if and only if the bytes are equal.
+        self.cfg.terminate(
+            cmp_block,
+            source_info,
+            TerminatorKind::SwitchInt {
+                discr: Operand::Move(cmp_result),
+                targets: SwitchTargets::static_if(0, success_block, fail_block),
+            },
+        );
+    }
+
     /// Returns a `*const u8` temporary pointing to the start of the slice at `place`.
     fn slice_bytes_ptr(
         &mut self,
@@ -622,6 +645,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
     ) -> BasicBlock {
         let def_id = self.tcx.require_lang_item(lang_item, source_info.span);
+        debug_assert!(
+            self.tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NEVER_UNWIND),
+            "{lang_item:?} must not unwind",
+        );
         let target = self.cfg.start_new_block();
         self.cfg.terminate(
             block,

@@ -7,19 +7,18 @@
 // intrinsic rather than element-by-element comparisons. The call must be marked
 // as non-unwinding.
 //
-// Hand-written array patterns must keep the element-by-element comparisons.
-//
-// In const contexts, the aggregate comparison must NOT be used because the
-// intrinsics are not const-stable.
+// Hand-written patterns and patterns in const contexts are still compared
+// element by element.
 
 #![crate_type = "lib"]
 
 // EMIT_MIR aggregate_array_eq.array_match.built.after.mir
 pub fn array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn array_match(
+    // CHECK-NOT: _1[
     // CHECK: raw_eq::<[u8; 4]>(
     // CHECK-SAME: unwind unreachable
-    // CHECK-NOT: switchInt(copy _1[
+    // CHECK-NOT: _1[
     const EXPECTED: [u8; 4] = [1, 2, 3, 4];
     matches!(x, EXPECTED)
 }
@@ -28,16 +27,21 @@ pub fn array_match(x: [u8; 4]) -> bool {
 pub fn handwritten_array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn handwritten_array_match(
     // CHECK-NOT: raw_eq
-    // CHECK: switchInt
+    // CHECK: switchInt(copy _1[0 of 4])
+    // CHECK: switchInt(copy _1[1 of 4])
+    // CHECK: switchInt(copy _1[2 of 4])
+    // CHECK: switchInt(copy _1[3 of 4])
     matches!(x, [1, 2, 3, 4])
 }
 
-// Constants shorter than `AGGREGATE_EQ_MIN_LEN` are compared element by element.
+// Below a length threshold, constants are still compared element by element.
 // EMIT_MIR aggregate_array_eq.short_array_match.built.after.mir
 pub fn short_array_match(x: [u8; 3]) -> bool {
     // CHECK-LABEL: fn short_array_match(
     // CHECK-NOT: raw_eq
-    // CHECK: switchInt
+    // CHECK: switchInt(copy _1[0 of 3])
+    // CHECK: switchInt(copy _1[1 of 3])
+    // CHECK: switchInt(copy _1[2 of 3])
     const EXPECTED: [u8; 3] = [1, 2, 3];
     matches!(x, EXPECTED)
 }
@@ -51,17 +55,64 @@ pub struct Element(u8);
 pub fn custom_element_array_match(x: [Element; 4]) -> bool {
     // CHECK-LABEL: fn custom_element_array_match(
     // CHECK-NOT: raw_eq
-    // CHECK: switchInt
+    // CHECK: switchInt(copy (_1[0 of 4].0: u8))
+    // CHECK: switchInt(copy (_1[1 of 4].0: u8))
+    // CHECK: switchInt(copy (_1[2 of 4].0: u8))
+    // CHECK: switchInt(copy (_1[3 of 4].0: u8))
     const EXPECTED: [Element; 4] = [Element(1), Element(2), Element(3), Element(4)];
     matches!(x, EXPECTED)
 }
 
+// Slice patterns of the same length share a single length check.
 // EMIT_MIR aggregate_array_eq.slice_match.built.after.mir
-pub fn slice_match(x: &[u8]) -> bool {
+pub fn slice_match(x: &[u8]) -> u32 {
     // CHECK-LABEL: fn slice_match(
+    // CHECK: PtrMetadata(copy _1);
+    // CHECK-NOT: PtrMetadata
+    // CHECK-NOT: (*_1)[
     // CHECK: compare_bytes(
     // CHECK-SAME: unwind unreachable
-    matches!(x, b"ABCD")
+    // CHECK-NOT: PtrMetadata
+    // CHECK-NOT: (*_1)[
+    // CHECK: compare_bytes(
+    // CHECK-SAME: unwind unreachable
+    // CHECK-NOT: PtrMetadata
+    // CHECK-NOT: (*_1)[
+    match x {
+        b"ABCD" => 1,
+        b"EFGH" => 2,
+        _ => 0,
+    }
+}
+
+// EMIT_MIR aggregate_array_eq.short_slice_match.built.after.mir
+pub fn short_slice_match(x: &[u8]) -> bool {
+    // CHECK-LABEL: fn short_slice_match(
+    // CHECK-NOT: compare_bytes
+    // CHECK: PtrMetadata(copy _1);
+    // CHECK: switchInt(copy (*_1)[0 of 3])
+    // CHECK: switchInt(copy (*_1)[1 of 3])
+    // CHECK: switchInt(copy (*_1)[2 of 3])
+    matches!(x, b"ABC")
+}
+
+// `compare_bytes` is given the length in bytes, not in elements.
+// EMIT_MIR aggregate_array_eq.u16_slice_match.built.after.mir
+pub fn u16_slice_match(x: &[u16]) -> bool {
+    // CHECK-LABEL: fn u16_slice_match(
+    // CHECK: [[BYTES:_[0-9]+]] = const 8_usize;
+    // CHECK: compare_bytes({{.*}}, move [[BYTES]])
+    const EXPECTED: &[u16] = &[1, 2, 3, 4];
+    matches!(x, EXPECTED)
+}
+
+// EMIT_MIR aggregate_array_eq.char_slice_match.built.after.mir
+pub fn char_slice_match(x: &[char]) -> bool {
+    // CHECK-LABEL: fn char_slice_match(
+    // CHECK: [[BYTES:_[0-9]+]] = const 16_usize;
+    // CHECK: compare_bytes({{.*}}, move [[BYTES]])
+    const EXPECTED: &[char] = &['a', 'b', 'c', 'd'];
+    matches!(x, EXPECTED)
 }
 
 pub enum MyEnum {
@@ -75,8 +126,10 @@ pub enum MyEnum {
 // EMIT_MIR aggregate_array_eq.try_from_matched.built.after.mir
 pub fn try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
     // CHECK-LABEL: fn try_from_matched(
+    // CHECK: [[SCRUTINEE:_[0-9]+]] = &_1;
+    // CHECK-NOT: (*[[SCRUTINEE]])[
     // CHECK: raw_eq::<[u8; 4]>(
-    // CHECK-NOT: switchInt(copy (*_2)[
+    // CHECK-NOT: (*[[SCRUTINEE]])[
     match &value {
         b"ABCD" => Ok(MyEnum::A),
         b"EFGH" => Ok(MyEnum::B),
@@ -87,12 +140,15 @@ pub fn try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
 }
 
 // In a const fn, the aggregate comparison must not be used because the
-// intrinsics are not const-stable.
+// `compare_bytes` intrinsic is not const-stable.
 // EMIT_MIR aggregate_array_eq.const_array_match.built.after.mir
 pub const fn const_array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn const_array_match(
     // CHECK-NOT: raw_eq
-    // CHECK: switchInt
+    // CHECK: switchInt(copy _1[0 of 4])
+    // CHECK: switchInt(copy _1[1 of 4])
+    // CHECK: switchInt(copy _1[2 of 4])
+    // CHECK: switchInt(copy _1[3 of 4])
     const EXPECTED: [u8; 4] = [1, 2, 3, 4];
     matches!(x, EXPECTED)
 }
@@ -101,7 +157,11 @@ pub const fn const_array_match(x: [u8; 4]) -> bool {
 pub const fn const_try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
     // CHECK-LABEL: fn const_try_from_matched(
     // CHECK-NOT: raw_eq
-    // CHECK: switchInt
+    // CHECK: [[SCRUTINEE:_[0-9]+]] = &_1;
+    // CHECK: switchInt(copy (*[[SCRUTINEE]])[0 of 4])
+    // CHECK: switchInt(copy (*[[SCRUTINEE]])[1 of 4])
+    // CHECK: switchInt(copy (*[[SCRUTINEE]])[2 of 4])
+    // CHECK: switchInt(copy (*[[SCRUTINEE]])[3 of 4])
     match &value {
         b"ABCD" => Ok(MyEnum::A),
         b"EFGH" => Ok(MyEnum::B),

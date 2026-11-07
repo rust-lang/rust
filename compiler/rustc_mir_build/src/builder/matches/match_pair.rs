@@ -35,9 +35,13 @@ fn is_bytewise_comparable(element_ty: Ty<'_>) -> bool {
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Check if we can use aggregate comparisons for constant array/slice patterns.
-    /// This is not possible in const contexts, because the `raw_eq` and
-    /// `compare_bytes` intrinsics are not const-stable yet, nor in `#![no_core]`
-    /// crates that do not define them as lang items.
+    /// This is not possible in const contexts, because the `compare_bytes`
+    /// intrinsic used for slices is not const-stable yet, nor in `#![no_core]`
+    /// crates that do not define both intrinsics as lang items.
+    ///
+    /// `raw_eq`, which is used for arrays, is already const-stable, but arrays
+    /// and slices are gated together, as allowing one without the other is
+    /// not worth the extra complexity.
     // FIXME(const_cmp): remove the const context restriction once `const_cmp` stabilises.
     fn can_use_aggregate_eq(&self) -> bool {
         let in_const_context = self.tcx.is_const_fn(self.def_id.to_def_id())
@@ -442,18 +446,33 @@ impl<'tcx> InterPat<'tcx> {
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 // If this pattern was expanded from a constant, compare the
                 // whole slice against that constant at once rather than
-                // element by element. That comparison takes the length into
-                // account, so no separate length test is needed.
+                // element by element. `compare_bytes` only looks at as many
+                // bytes as the constant has, so the aggregate test is nested
+                // under an ordinary length test, whose result can then be
+                // shared with other patterns of the same length.
                 if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
                     debug_assert!(slice.is_none() && suffix.is_empty());
-                    let testable_case = TestableCase::Constant {
-                        value: aggregate_value,
-                        kind: PatConstKind::Aggregate,
+                    let aggregate_subpat = InterPat {
+                        kind: InterPatKind::Refutable {
+                            place: unwrap_place(),
+                            testable_case: TestableCase::Constant {
+                                value: aggregate_value,
+                                kind: PatConstKind::Aggregate,
+                            },
+                            subpats: vec![],
+                        },
+                        ascriptions: vec![],
+                        pattern_span: pattern.span,
+                        is_never: false,
+                    };
+                    let testable_case = TestableCase::Slice {
+                        len: u64::try_from(prefix.len()).unwrap(),
+                        op: SliceLenOp::Equal,
                     };
                     InterPatKind::Refutable {
                         place: unwrap_place(),
                         testable_case,
-                        subpats: vec![],
+                        subpats: vec![aggregate_subpat],
                     }
                 } else {
                     let mut subpats = vec![];

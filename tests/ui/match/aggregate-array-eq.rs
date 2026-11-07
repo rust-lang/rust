@@ -22,6 +22,27 @@ fn slice_match(x: &[u8]) -> bool {
     matches!(x, b"ABCD")
 }
 
+fn multi_slice_match(x: &[u8]) -> u32 {
+    match x {
+        b"ABCD" => 1,
+        b"EFGH" => 2,
+        b"IJKLM" => 3,
+        _ => 0,
+    }
+}
+
+const U16_SLICE: &[u16] = &[1, 2, 3, 0x1234];
+
+fn u16_slice_match(x: &[u16]) -> bool {
+    matches!(x, U16_SLICE)
+}
+
+const CHAR_SLICE: &[char] = &['a', 'b', 'c', '\u{1F980}'];
+
+fn char_slice_match(x: &[char]) -> bool {
+    matches!(x, CHAR_SLICE)
+}
+
 const NESTED: [[u8; 4]; 4] = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]];
 
 fn nested_array_match(x: [[u8; 4]; 4]) -> bool {
@@ -48,7 +69,7 @@ fn try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
 }
 
 // Const fn variants use element-by-element comparison because the
-// intrinsics are not const-stable.
+// `compare_bytes` intrinsic is not const-stable.
 const fn const_array_match(x: [u8; 4]) -> bool {
     matches!(x, EXPECTED)
 }
@@ -77,6 +98,27 @@ fn main() {
     assert!(!slice_match(b"ABC"));
     assert!(!slice_match(b"ABCDE"));
     assert!(!slice_match(b""));
+
+    assert_eq!(multi_slice_match(b"ABCD"), 1);
+    assert_eq!(multi_slice_match(b"EFGH"), 2);
+    assert_eq!(multi_slice_match(b"IJKLM"), 3);
+    assert_eq!(multi_slice_match(b"IJKL"), 0);
+    assert_eq!(multi_slice_match(b"EFGHI"), 0);
+    assert_eq!(multi_slice_match(b"ABC"), 0);
+    assert_eq!(multi_slice_match(b""), 0);
+
+    assert!(u16_slice_match(&[1, 2, 3, 0x1234]));
+    assert!(!u16_slice_match(&[1, 2, 3, 0x1235]));
+    // Equal in the first half of the bytes, which would wrongly match if the
+    // length passed to `compare_bytes` were in elements rather than bytes.
+    assert!(!u16_slice_match(&[1, 2, 4, 0x1234]));
+    assert!(!u16_slice_match(&[1, 2, 3]));
+    assert!(!u16_slice_match(&[1, 2, 3, 0x1234, 5]));
+
+    assert!(char_slice_match(&['a', 'b', 'c', '\u{1F980}']));
+    assert!(!char_slice_match(&['a', 'b', 'c', '\u{1F981}']));
+    assert!(!char_slice_match(&['a', 'b', 'd', '\u{1F980}']));
+    assert!(!char_slice_match(&['a', 'b', 'c']));
 
     assert!(nested_array_match(NESTED));
     assert!(!nested_array_match([[0; 4]; 4]));
