@@ -313,6 +313,17 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("identifier `{$ident}` is bound more than once in this parameter list")]
+pub(crate) struct BuiltinDuplicateParameterNames {
+    #[primary_span]
+    #[label("used as parameter more than once")]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+    #[label("used here already")]
+    pub(crate) prev_use: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("unused doc comment")]
 pub(crate) struct BuiltinUnusedDocComment<'a> {
     pub kind: &'a str,

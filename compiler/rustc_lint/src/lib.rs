@@ -184,6 +184,7 @@ early_lint_methods!(
             // tidy-alphabetical-start
             AnonymousParameters: AnonymousParameters,
             DoubleNegations: DoubleNegations,
+            DuplicateParameterNames: DuplicateParameterNames,
             EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
             Expr2024: Expr2024,
             IncompleteInternalFeatures: IncompleteInternalFeatures,
