@@ -1,0 +1,32 @@
+error: only builtin and autodiff attributes are supported on autodiff functions
+  --> $DIR/autodiff_with_other_macro.rs:15:1
+   |
+LL | fn foo() {}
+   | ^^^^^^^^^^^
+   |
+note: this attribute is not supported
+  --> $DIR/autodiff_with_other_macro.rs:14:1
+   |
+LL | #[forward_referenced_attr]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: no rules expected `#`
+  --> $DIR/autodiff_with_other_macro.rs:11:1
+   |
+LL | macro_rules! forward_referenced_attr {
+   | ------------------------------------ when calling this macro
+...
+LL | #[autodiff_reverse(Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no rules expected this token in macro call
+   |
+   = note: while trying to match end of macro
+
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/autodiff_with_other_macro.rs:11:1
+   |
+LL | #[autodiff_reverse(Active)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
