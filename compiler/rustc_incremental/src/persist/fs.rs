@@ -107,9 +107,9 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::try_canonicalize;
-use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::dep_graph::{IncrCompSession, WorkProduct};
 use rustc_session::config::OutputType;
-use rustc_session::{IncrCompSession, Session, StableCrateId};
+use rustc_session::{Session, StableCrateId};
 use rustc_span::{Symbol, bug};
 use tracing::debug;
 
@@ -276,17 +276,14 @@ pub(crate) fn prepare_session_directory(
 /// This must not be called if there have been any compilation errors.
 pub fn finalize_session_directory(
     sess: &Session,
-    incr_comp_session: Option<IncrCompSession>,
-    svh: Option<Svh>,
+    mut incr_comp_session: IncrCompSession,
+    svh: Svh,
 ) {
     assert!(sess.dcx().has_errors_or_delayed_bugs().is_none());
 
-    if sess.opts.incremental.is_none() {
-        return;
-    }
-    let mut incr_comp_session = incr_comp_session.unwrap();
-    // The svh is always produced when incr. comp. is enabled.
-    let svh = svh.unwrap();
+    sess.time("serialize_work_products", || {
+        crate::persist::save::save_work_product_index(sess, &incr_comp_session)
+    });
 
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 

@@ -20,13 +20,13 @@ use rustc_incremental::{
 };
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
+use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession, WorkProduct};
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::config::{
     self, JobsMode, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes,
     SwitchWithOptPath,
 };
-use rustc_session::{BorrowedIncrCompSession, IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, FileName, InnerSpan, Span, SyntaxContext, bug};
 use rustc_structures::CrateType;
@@ -458,14 +458,11 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
 
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
-    incr_comp_session: Option<&IncrCompSession>,
+    incr_comp_session: &mut IncrCompSession,
     compiled_modules: &CompiledModules,
-) -> WorkProductMap {
-    let mut work_products = WorkProductMap::default();
-
-    if sess.opts.incremental.is_none() || sess.opts.unstable_opts.disable_incr_comp_backend_caching
-    {
-        return work_products;
+) {
+    if sess.opts.unstable_opts.disable_incr_comp_backend_caching {
+        return;
     }
 
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
@@ -490,16 +487,13 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         if let Some(path) = &module.bytecode {
             files.push((OutputType::Bitcode.extension(), path.as_path()));
         }
-        let (id, product) = copy_cgu_workproduct_to_incr_comp_cache_dir(
+        copy_cgu_workproduct_to_incr_comp_cache_dir(
             sess,
-            incr_comp_session.unwrap(),
+            incr_comp_session,
             &module.name,
             files.as_slice(),
         );
-        work_products.insert(id, product);
     }
-
-    work_products
 }
 
 pub fn produce_final_output_artifacts(
@@ -893,7 +887,11 @@ fn execute_copy_from_cache_work_item(
             source_file_in_incr_comp_dir,
             output_path.display()
         );
-        match link_or_copy(&source_file_in_incr_comp_dir, &output_path) {
+        match link_or_copy(
+            &source_file_in_incr_comp_dir,
+            &output_path,
+            true, // allow_overwrite
+        ) {
             Ok(_) => Some(output_path),
             Err(error) => {
                 dcx.emit_err(diagnostics::CopyPathBuf {
@@ -2117,9 +2115,9 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
     pub fn join(
         self,
         sess: &Session,
-        incr_comp_session: Option<&IncrCompSession>,
+        incr_comp_session: Option<&mut IncrCompSession>,
         crate_info: &CrateInfo,
-    ) -> (CompiledModules, WorkProductMap) {
+    ) -> CompiledModules {
         self.shared_emitter_main.check(sess, true);
 
         let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
@@ -2138,25 +2136,26 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
 
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
-        let compilation_output = catch_fatal_errors(|| match maybe_lto_modules {
+        let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
             MaybeLtoModules::NoLto(compiled_modules) => {
                 drop(shared_emitter);
 
-                let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
-                    sess,
-                    incr_comp_session,
-                    &compiled_modules,
-                );
+                if let Some(incr_comp_session) = incr_comp_session {
+                    copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+                        sess,
+                        incr_comp_session,
+                        &compiled_modules,
+                    );
+                }
 
-                (compiled_modules, work_products)
+                compiled_modules
             }
             MaybeLtoModules::FatLto { cgcx, needs_fat_lto } => {
                 let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
 
                 // FIXME cache local pre-LTO bitcode
-                let work_products = WorkProductMap::default();
 
-                let compiled_modules = CompiledModules {
+                CompiledModules {
                     modules: vec![do_fat_lto(
                         sess,
                         &cgcx,
@@ -2167,9 +2166,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         needs_fat_lto,
                     )],
                     allocator_module: None,
-                };
-
-                (compiled_modules, work_products)
+                }
             }
             MaybeLtoModules::ThinLto { cgcx, needs_thin_lto } => {
                 let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
@@ -2178,7 +2175,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                     modules: do_thin_lto::<B>(
                         &cgcx,
                         &sess.prof,
-                        incr_comp_session.map(|incr_comp_session| incr_comp_session.borrow()),
+                        incr_comp_session.as_deref().map(IncrCompSession::borrow),
                         shared_emitter,
                         tm_factory,
                         &crate_info.exported_symbols_for_lto,
@@ -2191,13 +2188,15 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
                 // FIXME include pre-LTO bitcode in workproduct tracking
                 // FIXME add separate incr comp session for post-LTO outputs to use during link step
-                let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
-                    sess,
-                    incr_comp_session,
-                    &compiled_modules,
-                );
+                if let Some(incr_comp_session) = incr_comp_session {
+                    copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+                        sess,
+                        incr_comp_session,
+                        &compiled_modules,
+                    );
+                }
 
-                (compiled_modules, work_products)
+                compiled_modules
             }
         });
 
@@ -2205,8 +2204,8 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
         sess.dcx().abort_if_errors();
 
-        let (mut compiled_modules, work_products) =
-            compilation_output.expect("fatal error emitted but not sent to SharedEmitter");
+        let mut compiled_modules =
+            compiled_modules.expect("fatal error emitted but not sent to SharedEmitter");
 
         // Regardless of what order these modules completed in, report them to
         // the backend in the same order every time to ensure that we're handing
@@ -2215,7 +2214,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
-        (compiled_modules, work_products)
+        compiled_modules
     }
 
     pub(crate) fn codegen_finished(&self, tcx: TyCtxt<'_>) {
@@ -2259,19 +2258,19 @@ pub(crate) fn submit_post_lto_module_to_llvm<B: WriteBackendMethods>(
 }
 
 pub(crate) fn submit_pre_lto_module_to_llvm<B: WriteBackendMethods>(
-    tcx: TyCtxt<'_>,
+    sess: &Session,
+    incr_comp_session: &IncrCompSession,
     coordinator: &Coordinator<B>,
     module: CachedModuleCodegen,
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
-    let old_bitcode_path =
-        in_old_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename).unwrap();
-    let bitcode_path = in_incr_comp_dir_sess(tcx.incr_comp_session.unwrap(), &filename);
+    let old_bitcode_path = in_old_incr_comp_dir_sess(incr_comp_session, &filename).unwrap();
+    let bitcode_path = in_incr_comp_dir_sess(incr_comp_session, &filename);
 
-    match link_or_copy(&old_bitcode_path, &bitcode_path) {
+    match link_or_copy(&old_bitcode_path, &bitcode_path, false /* allow_overwrite */) {
         Ok(_) => {}
         Err(error) => {
-            tcx.sess.dcx().emit_err(diagnostics::CopyPathBuf {
+            sess.dcx().emit_err(diagnostics::CopyPathBuf {
                 source_file: old_bitcode_path,
                 output_path: bitcode_path,
                 error,

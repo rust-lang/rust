@@ -15,10 +15,10 @@ use std::any::Any;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_metadata::EncodedMetadata;
-use rustc_middle::dep_graph::WorkProductMap;
+use rustc_middle::dep_graph::IncrCompSession;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
-use rustc_session::{IncrCompSession, Session};
 
 struct TheBackend;
 
@@ -39,14 +39,13 @@ impl CodegenBackend for TheBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
-        _incr_comp_session: Option<&IncrCompSession>,
+        _incr_comp_session: Option<&mut IncrCompSession>,
         _outputs: &OutputFilenames,
         _crate_info: &CrateInfo,
-    ) -> (CompiledModules, WorkProductMap) {
-        let codegen_results = ongoing_codegen
+    ) -> CompiledModules {
+        *ongoing_codegen
             .downcast::<CompiledModules>()
-            .expect("in join_codegen: ongoing_codegen is not a CompiledModules");
-        (*codegen_results, WorkProductMap::default())
+            .expect("in join_codegen: ongoing_codegen is not a CompiledModules")
     }
 
     fn link(
