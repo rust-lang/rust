@@ -1,5 +1,5 @@
 error[E0432]: custom message
-  --> $DIR/multiple_errors.rs:9:20
+  --> $DIR/multiple_errors.rs:7:20
    |
 LL |     use std::vec::{NonExisting, Vec, Whatever};
    |                    ^^^^^^^^^^^       ^^^^^^^^ custom label
@@ -10,7 +10,7 @@ LL |     use std::vec::{NonExisting, Vec, Whatever};
    = note: custom note
 
 error[E0432]: custom message
-  --> $DIR/multiple_errors.rs:19:15
+  --> $DIR/multiple_errors.rs:17:15
    |
 LL |     use std::{Whatever, vec::NonExisting, vec::Vec, *};
    |               ^^^^^^^^  ^^^^^-----------
@@ -22,7 +22,7 @@ LL |     use std::{Whatever, vec::NonExisting, vec::Vec, *};
    = note: custom note
 
 error[E0432]: custom message
-  --> $DIR/multiple_errors.rs:31:15
+  --> $DIR/multiple_errors.rs:29:15
    |
 LL |         vec::{NonExisting, Vec},
    |               ^^^^^^^^^^^ custom label
@@ -31,7 +31,7 @@ LL |         vec::{NonExisting, Vec},
    = note: custom note
 
 error[E0432]: custom message
-  --> $DIR/multiple_errors.rs:44:20
+  --> $DIR/multiple_errors.rs:42:20
    |
 LL |         vec::{Vec, non_existing::*},
    |                    ^^^^^^^^^^^^ custom label

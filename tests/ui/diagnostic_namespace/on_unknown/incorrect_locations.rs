@@ -1,6 +1,5 @@
 //@ check-pass
 #![allow(dead_code, unused_imports)]
-#![feature(diagnostic_on_unknown)]
 
 #[diagnostic::on_unknown(message = "foo")]
 //~^WARN cannot be used on

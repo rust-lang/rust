@@ -1,4 +1,3 @@
-#![feature(diagnostic_on_unknown)]
 #[diagnostic::on_unknown]
 //~^WARN missing options for `diagnostic::on_unknown` attribute
 use std::str::FromStr;
