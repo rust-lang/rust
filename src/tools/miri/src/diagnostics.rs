@@ -830,8 +830,8 @@ impl<'tcx> MiriMachine<'tcx> {
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emit_diagnostic(&self, e: NonHaltingDiagnostic) {
-        let this = self.eval_context_ref();
-        this.machine.emit_diagnostic(e);
+        let ecx = self.eval_context_ref();
+        ecx.machine.emit_diagnostic(e);
     }
 
     /// We had a panic in Miri itself, try to print something useful.
@@ -840,16 +840,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         eprintln!(
             "Miri caused an ICE during evaluation. Here's the interpreter backtrace at the time of the panic:"
         );
-        let this = self.eval_context_ref();
-        let stacktrace = this.generate_stacktrace();
+        let ecx = self.eval_context_ref();
+        let stacktrace = ecx.generate_stacktrace();
         report_msg(
             DiagLevel::Note,
             "the place in the program where the ICE was triggered".to_string(),
             vec![],
             vec![],
             &stacktrace,
-            Some(this.active_thread()),
-            &this.machine,
+            Some(ecx.active_thread()),
+            &ecx.machine,
         );
     }
 
@@ -861,18 +861,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dedup: &SpanDedupDiagnostic,
         f: impl FnOnce(/*first*/ bool) -> NonHaltingDiagnostic,
     ) {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         // We want to deduplicate both based on where the error seems to be located "from the user
         // perspective", and the location of the actual operation (to avoid warning about the same
         // operation called from different places in the local code).
-        let span1 = this.machine.current_user_relevant_span();
+        let span1 = ecx.machine.current_user_relevant_span();
         // For the "location of the operation", we still skip `track_caller` frames, to match the
         // span that the diagnostic will point at.
-        let span2 = this
+        let span2 = ecx
             .active_thread_stack()
             .iter()
             .rev()
-            .find(|frame| !frame.instance().def.requires_caller_location(*this.tcx))
+            .find(|frame| !frame.instance().def.requires_caller_location(*ecx.tcx))
             .map(|frame| frame.current_span())
             .unwrap_or(span1);
 
@@ -881,7 +881,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Avoid mutating the hashset unless both spans are new.
         if !lock.contains(&span2) && lock.insert(span1) && (span1 == span2 || lock.insert(span2)) {
             // Both of the two spans were newly inserted.
-            this.emit_diagnostic(f(first));
+            ecx.emit_diagnostic(f(first));
         }
     }
 }

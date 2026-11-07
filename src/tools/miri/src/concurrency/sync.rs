@@ -236,15 +236,15 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         retval: Scalar,
         dest: MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         if let Some(owner) = mutex_ref.owner() {
-            assert_ne!(owner, this.active_thread());
-            this.mutex_enqueue_and_block(mutex_ref, Some((retval, dest)));
+            assert_ne!(owner, ecx.active_thread());
+            ecx.mutex_enqueue_and_block(mutex_ref, Some((retval, dest)));
         } else {
             // We can have it right now!
-            this.mutex_lock(&mutex_ref)?;
+            ecx.mutex_lock(&mutex_ref)?;
             // Don't forget to write the return value.
-            this.write_scalar(retval, &dest)?;
+            ecx.write_scalar(retval, &dest)?;
         }
         interp_ok(())
     }
@@ -739,7 +739,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Increment the semaphore.
     /// Returns whether anyone was woken up.
     fn semaphore_increment(&mut self, semaphore_ref: &SemaphoreRef) -> InterpResult<'tcx, bool> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         let mut semaphore = semaphore_ref.0.borrow_mut();
         // If the value is currently 0, we will unlock one thread later.
@@ -751,11 +751,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         semaphore.value = new_value;
         // Snapshot vector clock.
-        this.release_clock(|clock| semaphore.clock.clone_from(clock))?;
+        ecx.release_clock(|clock| semaphore.clock.clone_from(clock))?;
         drop(semaphore);
 
         if let Some(thread) = wake_thread {
-            this.unblock_thread(thread, BlockReason::Semaphore)?;
+            ecx.unblock_thread(thread, BlockReason::Semaphore)?;
         }
 
         interp_ok(wake_thread.is_some())
