@@ -1,5 +1,7 @@
 use test::{Bencher, black_box};
 
+mod utf8_validation;
+
 #[allow(unused)] // this is a symlink to core benches, we don't use everything here
 #[path = "../../coretests/benches/str/corpora.rs"]
 pub(super) mod corpora;
