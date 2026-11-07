@@ -274,7 +274,16 @@ impl<'a> FmtVisitor<'a> {
 
         let comment_shape = Shape::indented(comment_indent, self.config).comment(self.config);
 
-        if on_same_line {
+        // Style Edition 2024 has stable behavior where first line is preserved for
+        // trailing block comments. We preserve SE 2024 stable behavior here but rewrite
+        // block comment as a whole on SE 2027+, or in case where SE 2024 was producing
+        // broken code.
+        let can_preserve_first_line = subslice.starts_with("//")
+            || (self.config.style_edition() == StyleEdition::Edition2024
+                && !self.config.wrap_comments()
+                && !self.config.normalize_comments());
+
+        if on_same_line && can_preserve_first_line {
             match subslice.find('\n') {
                 None => {
                     self.push_str(subslice);
