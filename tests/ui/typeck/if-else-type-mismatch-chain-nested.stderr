@@ -1,0 +1,43 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-else-type-mismatch-chain-nested.rs:12:13
+   |
+LL |           let _h = if true {
+   |  __________________-
+LL | |             1
+   | |             - expected because of this
+LL | |         } else if true {
+LL | |             "2"
+   | |             ^^^ expected integer, found `&str`
+LL | |         } else {
+LL | |             3
+LL | |         };
+   | |_________- `if` and `else` have incompatible types
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-else-type-mismatch-chain-nested.rs:17:9
+   |
+LL |       let _v = if let Some(a) = oa {
+   |  ______________-
+LL | |         Some(&a)
+   | |         -------- expected because of this
+LL | |     } else if let Some(a) = oa2 {
+LL | |         let _f = 1;
+...  |
+LL | |         &Some(a)
+   | |         ^^^^^^^^ expected `Option<&{integer}>`, found `&Option<{integer}>`
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note:   expected enum `Option<&{integer}>`
+           found reference `&Option<{integer}>`
+help: try using `.as_ref()` to convert `&Option<{integer}>` to `Option<&{integer}>`
+   |
+LL -         &Some(a)
+LL +         Some(a).as_ref()
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

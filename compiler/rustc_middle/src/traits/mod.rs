@@ -334,7 +334,13 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Computing common supertype in an if expression
     IfExpression {
-        expr_id: HirId,
+        outermost_if_expr_id: HirId,
+        /// The branch that established the expected type: the `then` block of a plain
+        /// `if`/`else`, or the preceding branch of an `else if` chain.
+        expected_branch_id: HirId,
+        /// The branch whose type did not match: the `else` block, or the current
+        /// `else if` branch.
+        found_branch_id: HirId,
         // Is the expectation of this match expression an RPIT?
         tail_defines_return_position_impl_trait: Option<LocalDefId>,
     },
