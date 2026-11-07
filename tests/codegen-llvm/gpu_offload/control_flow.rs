@@ -14,9 +14,9 @@
 
 // CHECK: define{{( dso_local)?}} void @main()
 // CHECK-NOT: define
-// CHECK: %.offload_baseptrs = alloca [1 x ptr], align 8
-// CHECK-NEXT: %.offload_ptrs = alloca [1 x ptr], align 8
-// CHECK-NEXT: %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
+// CHECK: %.offload_baseptrs = alloca [8 x i8], align 8
+// CHECK-NEXT: %.offload_ptrs = alloca [8 x i8], align 8
+// CHECK-NEXT: %kernel_args = alloca [104 x i8], align 8
 // CHECK: br label %bb3
 // CHECK-NOT define
 // CHECK: bb3
