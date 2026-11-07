@@ -554,15 +554,6 @@ pub struct WhereRegionPredicate {
     pub bounds: GenericBounds,
 }
 
-/// An equality predicate (unsupported).
-///
-/// E.g., `T = int`.
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct WhereEqPredicate {
-    pub lhs_ty: Box<Ty>,
-    pub rhs_ty: Box<Ty>,
-}
-
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Crate {
     /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold

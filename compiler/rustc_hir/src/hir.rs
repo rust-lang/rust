@@ -1280,13 +1280,6 @@ impl<'hir> WhereRegionPredicate<'hir> {
     }
 }
 
-/// An equality predicate (e.g., `T = int`); currently unsupported.
-#[derive(Debug, Clone, Copy, StableHash)]
-pub struct WhereEqPredicate<'hir> {
-    pub lhs_ty: &'hir Ty<'hir>,
-    pub rhs_ty: &'hir Ty<'hir>,
-}
-
 /// HIR node coupled with its parent's id in the same HIR owner.
 ///
 /// The parent is trash when the node is a HIR owner.
