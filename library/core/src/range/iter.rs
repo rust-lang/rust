@@ -1,9 +1,9 @@
 use crate::iter::{
     FusedIterator, Step, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
 };
+use crate::mem;
 use crate::num::NonZero;
 use crate::range::{Range, RangeFrom, RangeInclusive, legacy};
-use crate::{intrinsics, mem};
 
 /// By-value [`Range`] iterator.
 #[stable(feature = "new_range_api", since = "1.96.0")]
@@ -325,10 +325,8 @@ range_incl_exact_iter_impl! {
 #[stable(feature = "new_range_from_api", since = "1.96.0")]
 #[derive(Debug, Clone)]
 pub struct RangeFromIter<A> {
-    start: A,
-    /// Whether the maximum value of the iterator has yielded.
-    /// Only used when overflow checks are enabled.
-    exhausted: bool,
+    /// None when the type have been exhausted
+    start: Option<A>,
 }
 
 impl<A: Step> RangeFromIter<A> {
@@ -341,23 +339,16 @@ impl<A: Step> RangeFromIter<A> {
     ///
     /// let range = core::range::RangeFrom::from(3..);
     /// let mut iter = range.into_iter();
-    /// assert_eq!(iter.clone().remainder(), range);
+    /// assert_eq!(iter.clone().remainder(), Some(range));
     /// iter.next();
-    /// assert_eq!(iter.remainder(), core::range::RangeFrom::from(4..));
+    /// assert_eq!(iter.remainder(), Some(core::range::RangeFrom::from(4..)));
     /// ```
     #[inline]
     #[rustc_inherit_overflow_checks]
     #[unstable(feature = "new_range_remainder", issue = "154458")]
-    pub fn remainder(self) -> RangeFrom<A> {
-        // Need to handle this case even if overflow-checks are disabled,
-        // because a `RangeFromIter` could be exhausted in a crate with
-        // overflow-checks enabled, but then passed to a crate with them
-        // disabled before this is called.
-        if self.exhausted {
-            return RangeFrom { start: Step::forward(self.start, 1) };
-        }
-
-        RangeFrom { start: self.start }
+    pub fn remainder(self) -> Option<RangeFrom<A>> {
+        let start = self.start?;
+        Some(RangeFrom { start })
     }
 }
 
@@ -368,64 +359,24 @@ impl<A: Step> Iterator for RangeFromIter<A> {
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn next(&mut self) -> Option<A> {
-        if self.exhausted {
-            // This should panic if overflow checks are enabled, since
-            // `forward_checked` returned `None` in prior iteration.
-            self.start = Step::forward(self.start.clone(), 1);
-
-            // If we get here, if means this iterator was exhausted by a crate
-            // with overflow-checks enabled, but now we're iterating in a crate with
-            // overflow-checks disabled. Since we successfully incremented `self.start`
-            // above (in many cases this will wrap around to MIN), we now unset
-            // the flag so we don't repeat this process in the next iteration.
-            //
-            // This could also happen if `forward_checked` returned None but
-            // (for whatever reason, not applicable to any std implementors)
-            // `forward` doesn't panic when overflow-checks are enabled. In that
-            // case, this is also the correct behavior.
-            self.exhausted = false;
-        }
-        if intrinsics::overflow_checks() {
-            let Some(n) = Step::forward_checked(self.start.clone(), 1) else {
-                self.exhausted = true;
-                return Some(self.start.clone());
-            };
-            return Some(mem::replace(&mut self.start, n));
-        }
-
-        let n = Step::forward(self.start.clone(), 1);
-        Some(mem::replace(&mut self.start, n))
+        let current = self.start.clone()?;
+        let next = Step::forward_checked(current, 1);
+        mem::replace(&mut self.start, next)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::MAX, None)
+        (0, None)
     }
 
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn nth(&mut self, n: usize) -> Option<A> {
-        // Typically `forward` will cause an overflow-check panic here,
-        // but unset the exhausted flag to handle the uncommon cases.
-        // See the comments in `next` for more details.
-        if self.exhausted {
-            self.start = Step::forward(self.start.clone(), 1);
-            self.exhausted = false;
-        }
-        if intrinsics::overflow_checks() {
-            let plus_n = Step::forward(self.start.clone(), n);
-            if let Some(plus_n1) = Step::forward_checked(plus_n.clone(), 1) {
-                self.start = plus_n1;
-            } else {
-                self.start = plus_n.clone();
-                self.exhausted = true;
-            }
-            return Some(plus_n);
-        }
-
-        let plus_n = Step::forward(self.start.clone(), n);
-        self.start = Step::forward(plus_n.clone(), 1);
-        Some(plus_n)
+        let current = self.start.clone()?;
+        let plus_n = Step::forward_checked(current, n);
+        let next = plus_n.clone().and_then(|x| Step::forward_checked(x, 1));
+        self.start = next;
+        plus_n
     }
 }
 
@@ -441,6 +392,6 @@ impl<A: Step> IntoIterator for RangeFrom<A> {
     type IntoIter = RangeFromIter<A>;
 
     fn into_iter(self) -> Self::IntoIter {
-        RangeFromIter { start: self.start, exhausted: false }
+        RangeFromIter { start: Some(self.start) }
     }
 }
