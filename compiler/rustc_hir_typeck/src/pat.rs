@@ -657,7 +657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_ref(pat, inner, pinned, mutbl, expected, pat_info)
             }
             PatKind::Slice(before, slice, after) => {
-                self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
+                self.check_pat_slice(pat.span, pat.hir_id, before, slice, after, expected, pat_info)
             }
         }
     }
@@ -3097,6 +3097,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_slice(
         &self,
         span: Span,
+        slice_id: HirId,
         before: &'tcx [Pat<'tcx>],
         slice: Option<&'tcx Pat<'tcx>>,
         after: &'tcx [Pat<'tcx>],
@@ -3134,7 +3135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The expected type must be an array or slice, but was neither, so error.
             _ => {
                 let guar = expected.error_reported().err().unwrap_or_else(|| {
-                    self.error_expected_array_or_slice(span, expected, pat_info)
+                    self.error_expected_array_or_slice(span, slice_id, expected, pat_info)
                 });
                 let err = Ty::new_error(self.tcx, guar);
                 (err, Some(err), err)
@@ -3262,6 +3263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_expected_array_or_slice(
         &self,
         span: Span,
+        slice_id: HirId,
         expected_ty: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> ErrorGuaranteed {
@@ -3285,12 +3287,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (is_slice_or_array_or_vector, resolved_ty) =
                 self.is_slice_or_array_or_vector(resolved_ty);
             match resolved_ty.kind() {
-                ty::Adt(adt_def, _)
+                ty::Adt(adt_def, args)
                     if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                 {
-                    // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                    as_deref = Some(diagnostics::AsDerefSuggestion { span: span.shrink_to_hi() });
+                    let is_option = self.tcx.is_diagnostic_item(sym::Option, adt_def.did());
+                    let deref_ty = args.type_at(0).peel_refs();
+                    if self.can_eq(self.param_env, expected_ty.peel_refs(), deref_ty)
+                        && self.slice_pattern_is_direct_payload(ti.hir_id, slice_id, is_option)
+                    {
+                        as_deref =
+                            Some(diagnostics::AsDerefSuggestion { span: span.shrink_to_hi() });
+                    }
                 }
                 _ => (),
             }
@@ -3307,6 +3315,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             as_deref,
             slicing,
         })
+    }
+
+    fn slice_pattern_is_direct_payload(
+        &self,
+        top_pat_id: HirId,
+        slice_id: HirId,
+        is_option: bool,
+    ) -> bool {
+        let Some(ctor_id) = self.next_significant_pat(slice_id, top_pat_id) else {
+            return false;
+        };
+        self.hir_pat_is_some_or_ok(ctor_id, is_option)
+            && self.only_transparent_pats_until(ctor_id, top_pat_id)
+    }
+
+    /// First ancestor pattern that is not `&`, a guard, a binding, or an or-pattern.
+    /// `None` when that walk reaches `top_pat_id` or leaves the pattern without one.
+    fn next_significant_pat(&self, start: HirId, top_pat_id: HirId) -> Option<HirId> {
+        for (id, node) in self.tcx.hir_parent_iter(start) {
+            let hir::Node::Pat(pat) = node else { return None };
+            if self.pat_is_transparent(pat) {
+                if id == top_pat_id {
+                    return None;
+                }
+                continue;
+            }
+            return Some(id);
+        }
+        None
+    }
+
+    /// `start` is `top_pat_id`, or every pattern from `start` up through `top_pat_id`
+    /// is `&`, a guard, a binding, or an or-pattern.
+    fn only_transparent_pats_until(&self, start: HirId, top_pat_id: HirId) -> bool {
+        if start == top_pat_id {
+            return true;
+        }
+        for (id, node) in self.tcx.hir_parent_iter(start) {
+            let hir::Node::Pat(pat) = node else { return false };
+            if !self.pat_is_transparent(pat) {
+                return false;
+            }
+            if id == top_pat_id {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn pat_is_transparent(&self, pat: &Pat<'_>) -> bool {
+        matches!(
+            pat.kind,
+            PatKind::Ref(..) | PatKind::Guard(..) | PatKind::Binding(..) | PatKind::Or(..)
+        )
+    }
+
+    fn hir_pat_is_some_or_ok(&self, hir_id: HirId, is_option: bool) -> bool {
+        let hir::Node::Pat(pat) = self.tcx.hir_node(hir_id) else { return false };
+        let PatKind::TupleStruct(ref qpath, ..) = pat.kind else { return false };
+        self.tuple_struct_is_some_or_ok(qpath, is_option)
+    }
+
+    fn tuple_struct_is_some_or_ok(&self, qpath: &hir::QPath<'tcx>, is_option: bool) -> bool {
+        let lang_item = if is_option { LangItem::OptionSome } else { LangItem::ResultOk };
+        let hir::QPath::Resolved(_, path) = qpath else { return false };
+        let variant_id = match path.res {
+            Res::Def(DefKind::Ctor(..), ctor_id) => self.tcx.parent(ctor_id),
+            Res::Def(DefKind::Variant, variant_id) => variant_id,
+            _ => return false,
+        };
+        self.tcx.is_lang_item(variant_id, lang_item)
     }
 
     fn is_slice_or_array_or_vector(&self, ty: Ty<'tcx>) -> (bool, Ty<'tcx>) {
