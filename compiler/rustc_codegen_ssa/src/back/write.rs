@@ -23,8 +23,7 @@ use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
-    self, JobsMode, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes,
-    SwitchWithOptPath,
+    self, JobsMode, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
 };
 use rustc_session::{BorrowedIncrCompSession, IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
@@ -332,7 +331,6 @@ pub struct CodegenContext {
     pub crate_types: Vec<CrateType>,
     pub output_filenames: Arc<OutputFilenames>,
     pub module_config: Arc<ModuleConfig>,
-    pub opt_level: OptLevel,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
     pub target_can_use_split_dwarf: bool,
@@ -1247,8 +1245,7 @@ fn start_executing_work<B: WriteBackendMethods>(
             .expect("failed to spawn helper thread")
     });
 
-    let opt_level = tcx.backend_optimization_level(());
-    let tm_factory = backend.target_machine_factory(tcx.sess, opt_level);
+    let tm_factory = backend.target_machine_factory(tcx.sess);
 
     let remark_dir = if let Some(ref dir) = sess.opts.unstable_opts.remark_dir {
         let result = fs::create_dir_all(dir).and_then(|_| dir.canonicalize());
@@ -1275,7 +1272,6 @@ fn start_executing_work<B: WriteBackendMethods>(
         remark_dir,
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
-        opt_level,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
@@ -2151,7 +2147,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 (compiled_modules, work_products)
             }
             MaybeLtoModules::FatLto { cgcx, needs_fat_lto } => {
-                let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
+                let tm_factory = self.backend.target_machine_factory(sess);
 
                 // FIXME cache local pre-LTO bitcode
                 let work_products = WorkProductMap::default();
@@ -2172,7 +2168,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 (compiled_modules, work_products)
             }
             MaybeLtoModules::ThinLto { cgcx, needs_thin_lto } => {
-                let tm_factory = self.backend.target_machine_factory(sess, cgcx.opt_level);
+                let tm_factory = self.backend.target_machine_factory(sess);
 
                 let compiled_modules = CompiledModules {
                     modules: do_thin_lto::<B>(

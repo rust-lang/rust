@@ -404,11 +404,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         false
     }
 
-    fn target_machine_factory(
-        &self,
-        _sess: &Session,
-        _opt_level: OptLevel,
-    ) -> TargetMachineFactoryFn<Self> {
+    fn target_machine_factory(&self, _sess: &Session) -> TargetMachineFactoryFn<Self> {
         // FIXME(antoyo): set opt level.
         Arc::new(|_, _| ())
     }
