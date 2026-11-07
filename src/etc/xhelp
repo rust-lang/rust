@@ -94,5 +94,9 @@ Options:
           Make bootstrap to behave as it's running on the CI environment or not [possible values: true, false]
       --skip-std-check-if-no-download-rustc
           Skip checking the standard library if `rust.download-rustc` isn't available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers
+      --snapshot-sources-name <SNAPSHOT_SOURCES_NAME>
+          Copy the sources in a specific subdirectory with that name in the `build` directory and compile everything from there
+      --snapshot-sources
+          Copy the sources in a specific subdirectory named after the current commit hash in the `build` directory and compile everything from there
   -h, --help
           Print help (see more with '--help')

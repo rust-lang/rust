@@ -567,6 +567,26 @@ pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     git
 }
 
+/// Prepares `BootstrapCommand` that runs jj inside the source directory if given.
+///
+/// Whenever a jj invocation is needed, this function should be preferred over
+/// manually building a jj `BootstrapCommand`. This approach allows us to manage
+/// bootstrap-specific needs from a single source, rather than applying them on next to every
+/// jj command creation, which is painful to ensure that the required change is applied
+/// on each one of them correctly.
+#[track_caller]
+pub fn jj(source_dir: Option<&Path>) -> BootstrapCommand {
+    let mut jj = command("jj");
+    // jj commands are almost always read-only, so cache them by default
+    jj.cached();
+
+    if let Some(source_dir) = source_dir {
+        jj.current_dir(source_dir);
+    }
+
+    jj
+}
+
 /// Sets the file times for a given file at `path`.
 pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Result<()> {
     // Windows requires file to be writable to modify file times. But on Linux CI the file does not
@@ -633,4 +653,40 @@ pub(crate) fn exit_process(code: i32) -> ! {
 pub fn fail(s: &str) -> ! {
     eprintln!("\n\n{s}\n\n");
     exit_process(1);
+}
+
+pub(crate) fn lazily_copy_recursively<P, Q>(from: &P, to: &Q)
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    {
+        let from: &P = from;
+        let to: &Q = to;
+        let from = from.as_ref();
+        let to = to.as_ref();
+
+        // FIXME: is there a reasonable way to avoid TOCTOU issues here?
+        let from_metadata = t!(from.metadata());
+        if up_to_date(from, to) {
+            return;
+        }
+
+        if from_metadata.is_dir() {
+            t!(fs::create_dir_all(to));
+            for entry in t!(fs::read_dir(from)) {
+                let entry = t!(entry);
+                let from = from.join(entry.file_name());
+                let to = to.join(entry.file_name());
+                lazily_copy_recursively(&from, &to);
+            }
+        } else if from_metadata.is_file() {
+            t!(fs::copy(from, to));
+        } else {
+            // Apparently this is never called on symlinks? Anyways, properly copying them is a
+            // bit of a hassle: we need to guess whether the target points somewhere in the set of
+            // copied files, then make sure the target has been copied first.
+            unimplemented!();
+        }
+    }
 }
