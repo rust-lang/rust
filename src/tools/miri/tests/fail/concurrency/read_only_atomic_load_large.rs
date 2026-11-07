@@ -2,7 +2,7 @@
 //@compile-flags: -Zmiri-disable-stacked-borrows
 // Needs atomic accesses larger than the pointer size
 //@ignore-bitwidth: 64
-//@ignore-target: mips-
+//@ignore-target: mips- riscv32
 
 use std::sync::atomic::{AtomicI64, Ordering};
 
