@@ -325,6 +325,7 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, kind: IdentKind) -> bool {
             kw::Async,
             kw::Do,
             kw::Box,
+            kw::Become,
             kw::Break,
             kw::Const,
             kw::Continue,
