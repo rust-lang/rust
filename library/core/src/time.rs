@@ -982,13 +982,13 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_millis_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 345_678_000);
     /// assert_eq!(dur.as_millis_f64(), 2_345.678);
     /// ```
-    #[unstable(feature = "duration_millis_float", issue = "122451")]
+    #[stable(feature = "duration_millis_float", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "duration_millis_float", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn as_millis_f64(&self) -> f64 {
@@ -1002,13 +1002,13 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_millis_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 345_678_000);
     /// assert_eq!(dur.as_millis_f32(), 2_345.678);
     /// ```
-    #[unstable(feature = "duration_millis_float", issue = "122451")]
+    #[stable(feature = "duration_millis_float", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "duration_millis_float", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn as_millis_f32(&self) -> f32 {
