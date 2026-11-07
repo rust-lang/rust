@@ -19,8 +19,8 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
 use rustc_lint_defs::{
-    FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
-    UnstableLintExpectationId,
+    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintExpectationId, LintId, LintName,
+    StableLintExpectationId, UnstableLintExpectationId,
 };
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -30,7 +30,6 @@ use rustc_middle::ty::{self, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode,
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, bug, sym};
-use rustc_structures::LintName;
 use tracing::debug;
 
 use self::TargetLint::*;
@@ -90,6 +89,14 @@ impl DynLintStore for LintStore {
             rustc_session::LintGroup { name, lints, is_externally_loaded }
         }))
     }
+
+    fn check_attribute_lint_name(
+        &self,
+        lint_name: LintName,
+        lint_tools: &RegisteredTools,
+    ) -> CheckLintNameResult<'_> {
+        self.check_lint_name(lint_name, lint_tools)
+    }
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -122,29 +129,6 @@ struct LintGroup {
     lint_ids: Vec<LintId>,
     is_externally_loaded: bool,
     depr: Option<LintAlias>,
-}
-
-#[derive(Debug)]
-pub enum CheckLintNameResult<'a> {
-    Ok(&'a [LintId]),
-    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
-    NoLint(Option<(LintName, bool)>),
-    /// The lint refers to a tool that has not been registered.
-    NoTool(Symbol),
-    /// The lint has been renamed to a new name.
-    Renamed(LintName),
-    /// The lint has been removed due to the given reason.
-    Removed(String),
-
-    /// The lint is from a tool. The `LintId` will be returned as if it were a
-    /// rustc lint. The `Option<String>` indicates if the lint has been
-    /// renamed.
-    Tool(&'a [LintId], Option<LintName>),
-
-    /// The lint is from a tool. Either the lint does not exist in the tool or
-    /// the code was not compiled with the tool and therefore the lint was
-    /// never added to the `LintStore`.
-    MissingTool,
 }
 
 impl LintStore {

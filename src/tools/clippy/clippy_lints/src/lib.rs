@@ -37,6 +37,7 @@ extern crate rustc_index;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
+extern crate rustc_lint_defs;
 extern crate rustc_middle;
 extern crate rustc_parse_format;
 extern crate rustc_resolve;

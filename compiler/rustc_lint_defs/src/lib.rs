@@ -5,6 +5,7 @@
 use std::borrow::Cow;
 use std::fmt::Display;
 
+pub use lint_name::LintName;
 use rustc_ast::attr::version::RustcVersion;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
@@ -18,6 +19,7 @@ use serde::{Deserialize, Serialize};
 pub use self::Level::*;
 
 pub mod builtin;
+mod lint_name;
 
 #[macro_export]
 macro_rules! pluralize {
@@ -602,6 +604,29 @@ pub enum DeprecatedSinceKind {
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
+
+#[derive(Debug)]
+pub enum CheckLintNameResult<'a> {
+    Ok(&'a [LintId]),
+    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
+    NoLint(Option<(LintName, bool)>),
+    /// The lint refers to a tool that has not been registered.
+    NoTool(Symbol),
+    /// The lint has been renamed to a new name.
+    Renamed(LintName),
+    /// The lint has been removed due to the given reason.
+    Removed(String),
+
+    /// The lint is from a tool. The `LintId` will be returned as if it were a
+    /// rustc lint. The `Option<String>` indicates if the lint has been
+    /// renamed.
+    Tool(&'a [LintId], Option<LintName>),
+
+    /// The lint is from a tool. Either the lint does not exist in the tool or
+    /// the code was not compiled with the tool and therefore the lint was
+    /// never added to the `LintStore`.
+    MissingTool,
+}
 
 /// Declares a static item of type `&'static Lint`.
 ///
