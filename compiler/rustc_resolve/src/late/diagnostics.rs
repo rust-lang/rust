@@ -172,6 +172,7 @@ struct BaseError {
     suggestion: Option<(Span, &'static str, String)>,
     module: Option<DefId>,
     notes: Vec<String>,
+    is_async: bool,
 }
 
 #[derive(Debug)]
@@ -413,6 +414,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 suggestion: None,
                 module: None,
                 notes: Vec::new(),
+                is_async: false,
             }
         } else {
             let mut span_label = None;
@@ -557,11 +559,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             let mut msg = format!(
                 "cannot find {expected} `{item_ident}` in {mod_prefix}{tick}{mod_str}{tick}"
             );
-            let mut fallback_label = if path_str == "async" && expected.starts_with("struct") {
-                "`async` blocks are only allowed in Rust 2018 or later".to_string()
-            } else {
-                format!("not found in {tick}{mod_str}{tick}")
-            };
+            let (mut fallback_label, is_async) =
+                if path_str == "async" && expected.starts_with("struct") {
+                    ("`async` blocks are only allowed in Rust 2018 or later".to_string(), true)
+                } else {
+                    (format!("not found in {tick}{mod_str}{tick}"), false)
+                };
             let mut notes = Vec::new();
             if let Some(module_def_id) = module
                 && let Some((this, directive)) = self.r.on_unknown_data(module_def_id)
@@ -596,6 +599,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 suggestion,
                 module,
                 notes,
+                is_async,
             }
         }
     }
@@ -676,7 +680,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         mut source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
         qself: Option<&QSelf>,
-    ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
+    ) -> (Diag<'tcx>, Vec<ImportSuggestion>, bool) {
         let cross_namespace_res = res.filter(|res| !res.matches_ns(source.namespace()));
         let could_be_expr = res.is_some_and(|res| self.could_be_expr(res, span));
         let base_error = self.make_base_error(
@@ -757,7 +761,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if self.suggest_pattern_match_with_let(&mut err, source, span) {
             // Fallback label.
             err.span_label(base_error.span, base_error.fallback_label);
-            return (err, Vec::new());
+            return (err, Vec::new(), base_error.is_async);
         }
 
         self.suggest_self_or_self_ref(&mut err, path, span);
@@ -774,7 +778,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if self.suggest_self_ty(&mut err, source, path, span)
             || self.suggest_self_value(&mut err, source, path, span)
         {
-            return (err, Vec::new());
+            return (err, Vec::new(), base_error.is_async);
         }
 
         if let Some((did, item)) = self.lookup_doc_alias_name(path, source.namespace()) {
@@ -790,7 +794,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
 
-            return (err, Vec::new());
+            return (err, Vec::new(), base_error.is_async);
         };
 
         let (found, suggested_candidates, mut candidates) = self.try_lookup_name_relaxed(
@@ -803,7 +807,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             &base_error,
         );
         if found {
-            return (err, candidates);
+            return (err, candidates, base_error.is_async);
         }
 
         if self.suggest_shadowed(&mut err, source, path, following_seg, span) {
@@ -831,7 +835,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let module = base_error.module.unwrap_or_else(|| CRATE_DEF_ID.to_def_id());
         self.r.find_cfg_stripped(&mut err, &path.last().unwrap().ident.name, module);
 
-        (err, candidates)
+        (err, candidates, base_error.is_async)
     }
 
     /// Captures only accept identifiers, so put the suggested expression in a named argument.

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use rustc_ast::ast;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, DynSend, DynSync, Lock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{EmitterWithNote, stderr_destination};
@@ -83,6 +83,9 @@ pub struct ParseSess {
     /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
     /// provide a single error per unique incorrect identifier.
     pub bad_unicode_identifiers: Lock<FxIndexMap<Symbol, Vec<Span>>>,
+
+    pub async_fn_in_2015: Lock<FxIndexSet<Span>>,
+
     source_map: Arc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Places where *complete* stmt exprs are followed by a token that would've been interpreted as
@@ -124,6 +127,7 @@ impl ParseSess {
             edition: ExpnId::root().expn_data().edition,
             raw_identifier_spans: Default::default(),
             bad_unicode_identifiers: Lock::new(Default::default()),
+            async_fn_in_2015: Lock::new(Default::default()),
             source_map,
             buffered_lints: Lock::new(vec![]),
             complete_stmt_exprs_before_bin_op_lookalike: Lock::new(Default::default()),
