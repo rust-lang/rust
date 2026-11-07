@@ -26,20 +26,44 @@ define-function: (
         store-position: (".top-doc > .docblock", {"x": top_docblock_x})
         assert-position: (".notable-trait-badge-container", {"x": |top_docblock_x|})
         store-position: (".top-doc > summary::before", {"x": top_docblock_toggle_x})
-        assert-position: (".notable-trait-badge-container > a.tooltip", {"x": |top_docblock_toggle_x|})
-        store-position: (".notable-trait-badge-container > a.tooltip + a", {"x": notable_trait_badge_first_x})
-        store-position: (".notable-trait-badge-container > a.tooltip", {"x": notable_trait_tooltip_x})
-        store-size: (".notable-trait-badge-container > a.tooltip", {"width": notable_trait_tooltip_width})
+        assert-position: (
+            ".notable-trait-badge-container > .tooltip",
+            {"x": |top_docblock_toggle_x|},
+        )
+        store-position: (
+            ".notable-trait-badge-container > .tooltip + a",
+            {"x": notable_trait_badge_first_x},
+        )
+        store-position: (
+            ".notable-trait-badge-container > .tooltip",
+            {"x": notable_trait_tooltip_x},
+        )
+        store-size: (
+            ".notable-trait-badge-container > .tooltip",
+            {"width": notable_trait_tooltip_width},
+        )
         assert: |notable_trait_tooltip_x| + |notable_trait_tooltip_width| < |notable_trait_badge_first_x|
 
         set-window-size: (320, 480)
         store-position: (".top-doc > .docblock", {"x": top_docblock_x})
         assert-position: (".notable-trait-badge-container", {"x": |top_docblock_x|})
         store-position: (".top-doc > summary::before", {"x": top_docblock_toggle_x})
-        assert-position: (".notable-trait-badge-container > a.tooltip", {"x": |top_docblock_toggle_x|})
-        store-position: (".notable-trait-badge-container > a.tooltip + a", {"x": notable_trait_badge_first_x})
-        store-position: (".notable-trait-badge-container > a.tooltip", {"x": notable_trait_tooltip_x})
-        store-size: (".notable-trait-badge-container > a.tooltip", {"width": notable_trait_tooltip_width})
+        assert-position: (
+            ".notable-trait-badge-container > .tooltip",
+            {"x": |top_docblock_toggle_x|},
+        )
+        store-position: (
+            ".notable-trait-badge-container > .tooltip + a",
+            {"x": notable_trait_badge_first_x},
+        )
+        store-position: (
+            ".notable-trait-badge-container > .tooltip",
+            {"x": notable_trait_tooltip_x},
+        )
+        store-size: (
+            ".notable-trait-badge-container > .tooltip",
+            {"width": notable_trait_tooltip_width},
+        )
         assert: |notable_trait_tooltip_x| + |notable_trait_tooltip_width| < |notable_trait_badge_first_x|
     }
 )
@@ -83,7 +107,7 @@ call-function: ("test-badges", {
 })
 
 assert-false: ".tooltip.popover"
-click: ".notable-trait-badge-container > a.tooltip"
+click: ".notable-trait-badge-container > .tooltip"
 wait-for: ".tooltip.popover"
 assert-text: (".tooltip.popover h3", "Notable traits for NotableTraitColors")
 assert-count: (".tooltip.popover .where", 8)

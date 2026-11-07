@@ -1683,16 +1683,15 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	position: relative;
 }
 
-.notable-trait-badge-container > a.tooltip {
+.notable-trait-badge-container > .tooltip {
 	position: absolute;
 	width: 16px;
 	line-height: 1.5rem;
-	vertical-align: center;
 	left: calc(-1 * var(--docblock-indent));
 	text-decoration: none;
 }
 
-.notable-trait-badge-container > a:not(.tooltip) {
+.notable-trait-badge-container > a {
 	display: flex;
 	align-items: center;
 	width: fit-content;
@@ -2035,24 +2034,23 @@ Without this extra selector, an empty line with a weird border appears out of no
 	border-right: 3px solid var(--target-border-color);
 }
 
-a.tooltip {
+span.tooltip {
 	font-family: var(--font-family);
-}
-
-.code-header a.tooltip {
+	cursor: pointer;
 	color: inherit;
 	margin-right: 15px;
 	position: relative;
+	display: inline;
 }
 
-.code-header a.tooltip:hover {
+span.tooltip:hover {
 	color: var(--link-color);
 }
 
 /* placeholder thunk so that the mouse can easily travel from "(i)" to popover
 	the resulting "hover tunnel" is a stepped triangle, approximating
 	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
-a.tooltip:hover::after {
+span.tooltip:hover::after {
 	position: absolute;
 	top: calc(100% - 10px);
 	left: -15px;
@@ -2999,7 +2997,7 @@ in src-script.js and main.js
 		left: -11px;
 	}
 
-	.notable-trait-badge-container > a.tooltip {
+	.notable-trait-badge-container > span.tooltip {
 		left: calc(-1 * var(--docblock-indent) - 11px);
 	}
 
