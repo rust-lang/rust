@@ -326,14 +326,31 @@ impl<'a> PartialEq for Components<'a> {
             }
         }
 
-        eq_components(self.clone(), other.clone())
+        // compare back to front since absolute paths often share long prefixes
+        Iterator::eq(self.clone().rev(), other.clone().rev())
     }
 }
 
-/// Prefixed `Components` equality
-pub fn eq_components(left: Components<'_>, right: Components<'_>) -> bool {
-    // compare back to front since absolute paths often share long prefixes
-    Iterator::eq(left.rev(), right.rev())
+/// Prefixed `Components` equality used by PartialEq impls of Path/PathBuf
+#[inline]
+pub fn eq_components<'lhs, 'rhs>(
+    lhs_bytes: &'lhs [u8],
+    lhs_components: impl FnOnce() -> Components<'lhs>,
+    rhs_bytes: &'rhs [u8],
+    rhs_components: impl FnOnce() -> Components<'rhs>,
+) -> bool {
+    // We check for equality between the path slices here instead
+    // of relying on `Components` PartialEq impl for the following
+    // reasons:
+    //     1) We know that the two Paths/PathBufs will result in a `Components`
+    //       iterator that has not consumed any components (no need to check
+    //       for the `Components`s front and back fields)
+    //     2) Because of 1), we can defer constructing the `Components` iterator
+    //        until after we check that the two path slices are equal
+    //     3) We can also as a result directly perform branchless code optimization
+    // FIXME: Ideally "lhs_bytes == rhs_bytes" should use a vectorizable find
+    // first difference method
+    lhs_bytes == rhs_bytes || Iterator::eq(lhs_components().rev(), rhs_components().rev())
 }
 
 impl Eq for Components<'_> {}
