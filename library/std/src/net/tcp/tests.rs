@@ -1,3 +1,5 @@
+#![cfg(not(all(windows, skip_missing_miri_shims)))] // disable tests Miri does not support
+
 use rand::Rng;
 
 use crate::io::prelude::*;

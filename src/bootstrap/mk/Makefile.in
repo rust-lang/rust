@@ -74,11 +74,12 @@ check-aux:
 		$(BOOTSTRAP_ARGS) \
 		--doc
 	# In `std` we cannot test everything. Tests should be disabled under `skip_missing_miri_shims`.
-	$(Q)MIRIFLAGS="-Zmiri-disable-isolation --cfg skip_missing_miri_shims" \
+	# We cover all three tier 1 architectures and operating systems.
+	$(Q)MIRIFLAGS="-Zmiri-disable-isolation --cfg skip_missing_miri_shims" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/std \
 		$(BOOTSTRAP_ARGS) \
-		--target x86_64-unknown-linux-gnu,aarch64-apple-darwin \
+		--target x86_64-unknown-linux-gnu,aarch64-apple-darwin,i686-pc-windows-msvc \
 		--tests # skip all doctests, they are not using skip_missing_miri_shims
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)

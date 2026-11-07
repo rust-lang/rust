@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 use super::child_pipe::{Pipes, child_pipe};
 use super::{Arg, make_command_line};
 use crate::ffi::{OsStr, OsString};
