@@ -434,7 +434,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     pub(super) fn report_ambiguous_assoc_item(
         &self,
-        matching_candidates: &[ty::PolyTraitRef<'tcx>],
+        matching_candidates: &[(ty::PolyTraitRef<'tcx>, ty::AssocItem)],
         qself: AssocItemQSelf,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
@@ -466,17 +466,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // predicates!).
         // FIXME: Turn this into a structured, translatable & more actionable suggestion.
         let mut where_bounds = vec![];
-        for &bound in matching_candidates {
-            let bound_id = bound.def_id();
-            let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
-                tcx,
-                assoc_ident,
-                assoc_tag,
-                bound_id,
-            );
-            let bound_span = assoc_item.and_then(|item| tcx.hir_span_if_local(item.def_id));
-
-            if let Some(bound_span) = bound_span {
+        for &(bound, assoc_item) in matching_candidates {
+            if let Some(bound_span) = tcx.hir_span_if_local(assoc_item.def_id) {
                 err.span_label(
                     bound_span,
                     format!("ambiguous `{assoc_ident}` from `{}`", bound.print_trait_sugared(),),
@@ -487,8 +478,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             let term: ty::Term<'_> = match term {
                                 hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                 hir::Term::Const(ct) => {
-                                    let assoc_item =
-                                        assoc_item.expect("assoc_item should be present");
                                     let projection_term = bound.map_bound(|trait_ref| {
                                         let item_segment = hir::PathSegment {
                                             ident: constraint.ident,
