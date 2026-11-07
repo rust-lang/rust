@@ -7,8 +7,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, GenericClauses, ImplTraitInTraitData, IncludeSizedImplicitBounds, Ty, TyCtxt,
-    TypeVisitable, TypeVisitor, Upcast,
+    self, ClausePolarity, GenericClauses, ImplTraitInTraitData, IncludeSizedImplicitBounds, Ty,
+    TyCtxt, TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -73,12 +73,26 @@ pub(super) fn clauses_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericClauses<'
         );
     }
 
+    // Optimization:
+    // If `#[feature(move_trait)]` is disabled, remove all `T: Move` clauses as they are trivial
+    if !tcx.features().move_trait()
+        && let Some(move_trait) = tcx.lang_items().move_trait()
+        && !result.clauses.is_empty()
+    {
+        result.clauses = tcx.arena.alloc_from_iter(result.clauses.iter().copied().filter(|p| {
+            !p.0.as_trait_clause().is_some_and(|p| {
+                p.polarity() == ClausePolarity::Positive && p.def_id() == move_trait
+            })
+        }));
+    }
+
     debug!("clauses_of({:?}) = {:?}", def_id, result);
     result
 }
 
 /// Returns a list of user-specified type clauses for the definition with ID `def_id`.
-/// N.B., this does not include any implied/inferred constraints.
+/// N.B., this does not include any implied/inferred constraints,
+///       including instead default bounds like `Move`
 #[instrument(level = "trace", skip(tcx), ret)]
 fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::GenericClauses<'_> {
     use rustc_hir::*;
