@@ -2,8 +2,8 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::{
-    self, GenericArgs, IncludeSizedImplicitBounds, PredicateProxy, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast, shift_vars,
+    self, ExcludeImplicitBounds, GenericArgs, PredicateProxy, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, Upcast, shift_vars,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, bug, span_bug};
@@ -60,7 +60,7 @@ fn associated_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    IncludeSizedImplicitBounds::Yes,
+                    ExcludeImplicitBounds::none(),
                 );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
@@ -381,7 +381,7 @@ fn opaque_type_bounds<'tcx>(
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                    IncludeSizedImplicitBounds::Yes,
+                    ExcludeImplicitBounds::none(),
                 );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.

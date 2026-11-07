@@ -7,8 +7,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, ClausePolarity, GenericClauses, ImplTraitInTraitData, IncludeSizedImplicitBounds, Ty,
-    TyCtxt, TypeVisitable, TypeVisitor, Upcast,
+    self, ClausePolarity, ExcludeImplicitBounds, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt,
+    TypeVisitable, TypeVisitor, Upcast,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -216,7 +216,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
             self_bounds,
             ImpliedBoundsContext::TraitDef(def_id),
             span,
-            IncludeSizedImplicitBounds::Yes,
+            ExcludeImplicitBounds::none(),
         );
         clauses.extend(bounds);
     }
@@ -249,7 +249,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
                     &[],
                     ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                     param.span,
-                    IncludeSizedImplicitBounds::Yes,
+                    ExcludeImplicitBounds::none(),
                 );
                 trace!(?bounds);
                 clauses.extend(bounds);
@@ -678,6 +678,13 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
+    let exclude_implicit_bounds = ExcludeImplicitBounds {
+        // Remove the `T: Move` bound when the feature gate is missing
+        // `move_trait` is missing, so the `T: Move` is completely trivial
+        r#move: !tcx.features().move_trait(),
+        ..ExcludeImplicitBounds::none()
+    };
+
     let self_param_ty = tcx.types.self_param;
     let mut bounds = Vec::new();
     icx.lowerer().lower_bounds(
@@ -699,7 +706,7 @@ pub(super) fn implied_clauses_with_filter<'tcx>(
                 superbounds,
                 ImpliedBoundsContext::TraitDef(trait_def_id),
                 item.span,
-                IncludeSizedImplicitBounds::Yes,
+                exclude_implicit_bounds,
             );
         }
         //`ConstIfConst` is only interested in `[const]` bounds.
@@ -995,7 +1002,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                             &[],
                             ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
                             param.span,
-                            IncludeSizedImplicitBounds::Yes,
+                            ExcludeImplicitBounds::none(),
                         );
                     }
                     hir::GenericParamKind::Lifetime { .. }
