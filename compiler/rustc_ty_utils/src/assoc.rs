@@ -336,10 +336,13 @@ fn associated_type_for_impl_trait_in_impl(
     // Copy defaultness of the containing function.
     impl_assoc_ty.defaultness(tcx.defaultness(impl_fn.owner_id));
 
-    // Copy generics_of the trait's associated item but the impl as the parent.
-    // FIXME: This may be detrimental to diagnostics, as we resolve the early-bound vars
-    // here to paramswhose parent are items in the trait. We could synthesize new params
-    // here, but it seems overkill.
+    // Here, we create synthetic params for the assoc type rather than reusing
+    // the trait params. We reuse the spans from the trait params, except for
+    // ty_span on const params, which comes from the impl side assoc type.
+    // Creating new defs is necessary for two reasons sharing the trait params
+    // would leave their def parent pointing to a trait item, which may not be
+    // local, and their type_of would contain parameter indices from the traits
+    // index space rather than the impls.
     impl_assoc_ty.generics_of({
         let trait_assoc_generics = tcx.generics_of(trait_assoc_def_id);
         let trait_assoc_parent_count = trait_assoc_generics.parent_count;
@@ -348,7 +351,29 @@ fn associated_type_for_impl_trait_in_impl(
         let parent_generics = tcx.generics_of(impl_local_def_id.to_def_id());
         let parent_count = parent_generics.count();
 
+        let mut assoc_type_disambiguator = PerParentDisambiguatorState::new(local_def_id);
+
         for param in &mut own_params {
+            let def_kind = match param.kind {
+                ty::GenericParamDefKind::Lifetime => DefKind::LifetimeParam,
+                ty::GenericParamDefKind::Const { .. } => DefKind::ConstParam,
+                ty::GenericParamDefKind::Type { .. } => DefKind::TyParam,
+            };
+            let trait_param_span = tcx.def_span(param.def_id);
+            let trait_ident_span = tcx.def_ident_span(param.def_id);
+            let feed = tcx.at(trait_param_span).create_def(
+                local_def_id,
+                Some(param.name),
+                def_kind,
+                None,
+                &mut assoc_type_disambiguator,
+            );
+            if def_kind == DefKind::ConstParam {
+                feed.ty_span(tcx.def_span(local_def_id));
+            }
+            feed.def_ident_span(trait_ident_span);
+            param.def_id = feed.def_id().to_def_id();
+
             param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;
         }
 
