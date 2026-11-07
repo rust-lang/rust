@@ -43,15 +43,21 @@ extern "win64" fn pass_c_maybezst_win64(_: CMaybeZst) {}
 #[no_mangle]
 extern "win64" fn pass_c_maybezst_2_win64(_: CMaybeZst2) {}
 
-// CHECK: define x86_vectorcallcc void @pass_rust_zst_vectorcall()
+// windows-msvc: define x86_vectorcallcc void @"\01pass_rust_zst_vectorcall@@0"(
+// windows-gnu: define x86_vectorcallcc void @"\01pass_rust_zst_vectorcall@@0"(
+// linux: define x86_vectorcallcc void @pass_rust_zst_vectorcall()
 #[no_mangle]
 extern "vectorcall" fn pass_rust_zst_vectorcall(_: ()) {}
 
-// CHECK: define x86_vectorcallcc void @pass_c_maybezst_vectorcall(ptr {{[^,]*}})
+// windows-msvc: define x86_vectorcallcc void @"\01pass_c_maybezst_vectorcall@@0"(ptr {{[^,]*}})
+// windows-gnu: define x86_vectorcallcc void @"\01pass_c_maybezst_vectorcall@@0"(ptr {{[^,]*}})
+// linux: define x86_vectorcallcc void @pass_c_maybezst_vectorcall(ptr {{[^,]*}})
 #[no_mangle]
 extern "vectorcall" fn pass_c_maybezst_vectorcall(_: CMaybeZst) {}
 
-// CHECK: define x86_vectorcallcc void @pass_c_maybezst_2_vectorcall(ptr {{[^,]*}})
+// windows-msvc: define x86_vectorcallcc void @"\01pass_c_maybezst_2_vectorcall@@0"(ptr {{[^,]*}})
+// windows-gnu: define x86_vectorcallcc void @"\01pass_c_maybezst_2_vectorcall@@0"(ptr {{[^,]*}})
+// linux: define x86_vectorcallcc void @pass_c_maybezst_2_vectorcall(ptr {{[^,]*}})
 #[no_mangle]
 extern "vectorcall" fn pass_c_maybezst_2_vectorcall(_: CMaybeZst2) {}
 
@@ -116,7 +122,9 @@ extern "win64" fn ret_c_maybezst_win64() -> CMaybeZst {
     CMaybeZst
 }
 
-// CHECK: define x86_vectorcallcc void @ret_c_maybezst_vectorcall(ptr {{[^,]*}})
+// windows-msvc: define x86_vectorcallcc void @"\01ret_c_maybezst_vectorcall@@0"(ptr {{[^,]*}})
+// windows-gnu: define x86_vectorcallcc void @"\01ret_c_maybezst_vectorcall@@0"(ptr {{[^,]*}})
+// linux: define x86_vectorcallcc void @ret_c_maybezst_vectorcall(ptr {{[^,]*}})
 #[no_mangle]
 extern "vectorcall" fn ret_c_maybezst_vectorcall() -> CMaybeZst {
     CMaybeZst
