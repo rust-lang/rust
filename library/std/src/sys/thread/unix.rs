@@ -115,17 +115,28 @@ impl Thread {
         };
 
         extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
+            // SAFETY: we are simply recreating the box that was leaked earlier.
+            let init = unsafe { Box::from_raw(data as *mut ThreadInit) };
+            let rust_start = init.init();
+
+            // Now that the thread information is set, set up our stack
+            // overflow handler.
+            let _handler = unsafe { sys::stack_overflow::Handler::new() };
+
+            rust_start();
+
+            // Eagerly run the destructors of thread local variables while the
+            // stack overflow detection logic is still active.
+            // SAFETY:
+            // TLS variables cannot be referenced at this point as there is no
+            // user code running above us in the call chain.
+            #[cfg(target_thread_local)]
             unsafe {
-                // SAFETY: we are simply recreating the box that was leaked earlier.
-                let init = Box::from_raw(data as *mut ThreadInit);
-                let rust_start = init.init();
+                crate::sys::thread_local::native::destructors::run()
+            };
+            #[cfg(target_thread_local)]
+            crate::rt::thread_cleanup();
 
-                // Now that the thread information is set, set up our stack
-                // overflow handler.
-                let _handler = sys::stack_overflow::Handler::new();
-
-                rust_start();
-            }
             ptr::null_mut()
         }
     }

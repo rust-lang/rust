@@ -5,7 +5,7 @@
 use crate::cell::Cell;
 use crate::sys::pal::abi;
 use crate::sys::pal::itron::task;
-use crate::sys::thread_local::destructors;
+use crate::sys::thread_local::native::destructors;
 
 pub fn enable() {
     #[thread_local]
