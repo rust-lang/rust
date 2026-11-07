@@ -549,7 +549,6 @@ symbols! {
         avx512bw,
         avx512f,
         await_macro,
-        backchain,
         backend_repr,
         begin_panic,
         bench,
