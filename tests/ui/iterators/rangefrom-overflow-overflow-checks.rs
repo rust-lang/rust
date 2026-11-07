@@ -4,45 +4,25 @@
 
 #![feature(new_range_remainder)]
 
-use std::panic;
-
 fn main() {
     let mut it = core::range::RangeFrom::from(u8::MAX..).into_iter();
     assert_eq!(it.next().unwrap(), 255);
-
-    let r = panic::catch_unwind(move || {
-        let _ = it.remainder();
-    });
-    assert!(r.is_err());
+    assert!(it.next().is_none());
+    assert!(it.remainder().is_none());
 
     let mut it = core::range::RangeFrom::from(u8::MAX..).into_iter();
     assert_eq!(it.next().unwrap(), 255);
-
-    let r = panic::catch_unwind(move || {
-        let _ = it.next();
-    });
-    assert!(r.is_err());
+    assert!(it.clone().remainder().is_none());
+    assert!(it.next().is_none());
 
     let mut it = core::range::RangeFrom::from(u8::MAX..).into_iter();
     assert_eq!(it.next().unwrap(), 255);
-
-    let r = panic::catch_unwind(move || {
-        let _ = it.nth(0);
-    });
-    assert!(r.is_err());
+    assert!(it.nth(0).is_none());
 
     let mut it = core::range::RangeFrom::from(u8::MAX-1..).into_iter();
     assert_eq!(it.nth(1).unwrap(), 255);
-
-    let r = panic::catch_unwind(move || {
-        let _ = it.next();
-    });
-    assert!(r.is_err());
+    assert!(it.next().is_none());
 
     let mut it = core::range::RangeFrom::from(u8::MAX-1..).into_iter();
-
-    let r = panic::catch_unwind(move || {
-        let _ = it.nth(2);
-    });
-    assert!(r.is_err());
+    assert!(it.nth(2).is_none());
 }
