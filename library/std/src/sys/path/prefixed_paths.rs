@@ -105,6 +105,7 @@ impl<'a> Components<'a> {
 
     /// Obtain prefix component from `Components` iterator
     /// if it exists
+    #[allow(dead_code)]
     pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
         self.prefix
     }
@@ -326,14 +327,31 @@ impl<'a> PartialEq for Components<'a> {
             }
         }
 
-        eq_components(self.clone(), other.clone())
+        // compare back to front since absolute paths often share long prefixes
+        Iterator::eq(self.clone().rev(), other.clone().rev())
     }
 }
 
-/// Prefixed `Components` equality
-pub fn eq_components(left: Components<'_>, right: Components<'_>) -> bool {
-    // compare back to front since absolute paths often share long prefixes
-    Iterator::eq(left.rev(), right.rev())
+/// Prefixed `Components` equality used by PartialEq impls of Path/PathBuf
+#[inline]
+pub fn eq_components<'lhs, 'rhs>(
+    lhs_bytes: &'lhs [u8],
+    lhs_components: impl FnOnce() -> Components<'lhs>,
+    rhs_bytes: &'rhs [u8],
+    rhs_components: impl FnOnce() -> Components<'rhs>,
+) -> bool {
+    // We check for equality between the path slices here instead
+    // of relying on `Components` PartialEq impl for the following
+    // reasons:
+    //     1) We know that the two Paths/PathBufs will result in a `Components`
+    //       iterator that has not consumed any components (no need to check
+    //       for the `Components`s front and back fields)
+    //     2) Because of 1), we can defer constructing the `Components` iterator
+    //        until after we check that the two path slices are equal
+    //     3) We can also as a result directly perform branchless code optimization
+    // FIXME: Ideally "lhs_bytes == rhs_bytes" should use a vectorizable find
+    // first difference method
+    lhs_bytes == rhs_bytes || Iterator::eq(lhs_components().rev(), rhs_components().rev())
 }
 
 impl Eq for Components<'_> {}
@@ -406,26 +424,104 @@ pub fn components(path: &Path) -> Components<'_> {
 
 /// Internal prefixed helper method for `PathBuf::push`
 pub fn push(self_path: &mut PathBuf, other_path: &Path) {
+    // // in general, a separator is needed if the rightmost byte is not a separator
+    // let buf = self_path.inner.as_encoded_bytes();
+    // let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
+
+    // // in the special case of `C:` on Windows, do *not* add a separator
+    // let comps = self_path.components().0;
+
+    // if comps.prefix_len() > 0
+    //     && comps.prefix_len() == comps.path.len()
+    //     && comps.prefix.unwrap().is_drive()
+    // {
+    //     need_sep = false
+    // }
+
+    // let need_clear = if cfg!(target_os = "cygwin") {
+    //     // If path is absolute and its prefix is none, it is like `/foo`,
+    //     // and will be handled below.
+    //     parse_prefix(other_path.as_os_str()).is_some()
+    // } else {
+    //     other_path.is_absolute() || parse_prefix(other_path.as_os_str()).is_some()
+    // };
+
+    // // absolute `path` replaces `self`
+    // if need_clear {
+    //     self_path.inner.clear();
+
+    // // verbatim paths need . and .. removed
+    // } else if comps.prefix_is_verbatim() && !other_path.as_os_str().is_empty() {
+    //     let mut buf: Vec<_> = comps.collect();
+    //     for c in other_path.components() {
+    //         match c {
+    //             Component::RootDir => {
+    //                 buf.truncate(1);
+    //                 buf.push(c);
+    //             }
+    //             Component::CurDir => (),
+    //             Component::ParentDir => {
+    //                 if let Some(Component::Normal(_)) = buf.last() {
+    //                     buf.pop();
+    //                 }
+    //             }
+    //             _ => buf.push(c),
+    //         }
+    //     }
+
+    //     let mut res = OsString::new();
+    //     let mut need_sep = false;
+
+    //     for c in buf {
+    //         if need_sep && c != Component::RootDir {
+    //             res.push(MAIN_SEPARATOR_STR);
+    //         }
+    //         res.push(c.as_os_str());
+
+    //         need_sep = match c {
+    //             Component::RootDir => false,
+    //             Component::Prefix(prefix) => !prefix.parsed.is_drive() && prefix.parsed.len() > 0,
+    //             _ => true,
+    //         }
+    //     }
+
+    //     self_path.inner = res;
+    //     return;
+    // } else if other_path.has_root() {
+    //     let prefix_len = self_path.components().0.prefix_remaining();
+    //     self_path.inner.truncate(prefix_len);
+
+    // // `path` is a pure relative path
+    // } else if need_sep {
+    //     self_path.inner.push(MAIN_SEPARATOR_STR);
+    // }
+
+    // self_path.inner.push(other_path);
+
     // in general, a separator is needed if the rightmost byte is not a separator
     let buf = self_path.inner.as_encoded_bytes();
     let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
-    // in the special case of `C:` on Windows, do *not* add a separator
-    let comps = self_path.components().0;
+    let self_comps = self_path.components().0;
+    let self_prefix_len = self_comps.prefix_len();
 
-    if comps.prefix_len() > 0
-        && comps.prefix_len() == comps.path.len()
-        && comps.prefix.unwrap().is_drive()
+    // in the special case of `C:` on Windows, do *not* add a separator
+    if self_prefix_len > 0
+        && self_prefix_len == self_comps.path.len()
+        && self_comps.prefix.unwrap().is_drive()
     {
         need_sep = false
     }
 
-    let need_clear = if cfg!(target_os = "cygwin") {
-        // If path is absolute and its prefix is none, it is like `/foo`,
-        // and will be handled below.
-        parse_prefix(other_path.as_os_str()).is_some()
+    let path_comps = other_path.components().0;
+
+    let need_clear = if cfg!(any(target_os = "windows", target_os = "cygwin")) {
+        // Windows/Cygwin: If path is absolute and its prefix is none, it is like `\foo`
+        // (Windows) or `/foo` (Cygwin), and will be handled below.
+        path_comps.prefix.is_some()
     } else {
-        other_path.is_absolute() || parse_prefix(other_path.as_os_str()).is_some()
+        // On Unix: prefix is always None.
+        other_path.is_absolute() || path_comps.prefix.is_some()
     };
 
     // absolute `path` replaces `self`
@@ -433,9 +529,9 @@ pub fn push(self_path: &mut PathBuf, other_path: &Path) {
         self_path.inner.clear();
 
     // verbatim paths need . and .. removed
-    } else if comps.prefix_is_verbatim() && !other_path.as_os_str().is_empty() {
-        let mut buf: Vec<_> = comps.collect();
-        for c in other_path.components() {
+    } else if self_comps.prefix_is_verbatim() && !other_path.as_os_str().is_empty() {
+        let mut buf: Vec<_> = self_comps.collect();
+        for c in path_comps {
             match c {
                 Component::RootDir => {
                     buf.truncate(1);
@@ -459,19 +555,15 @@ pub fn push(self_path: &mut PathBuf, other_path: &Path) {
                 res.push(MAIN_SEPARATOR_STR);
             }
             res.push(c.as_os_str());
-
-            need_sep = match c {
-                Component::RootDir => false,
-                Component::Prefix(prefix) => !prefix.parsed.is_drive() && prefix.parsed.len() > 0,
-                _ => true,
-            }
+            need_sep = c != Component::RootDir;
         }
 
         self_path.inner = res;
         return;
+
+    // `path` has a root but no prefix, e.g., `\windows` (Windows only)
     } else if other_path.has_root() {
-        let prefix_len = self_path.components().0.prefix_remaining();
-        self_path.inner.truncate(prefix_len);
+        self_path.inner.truncate(self_prefix_len);
 
     // `path` is a pure relative path
     } else if need_sep {

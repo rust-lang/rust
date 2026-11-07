@@ -284,18 +284,31 @@ impl FusedIterator for Components<'_> {}
 impl<'a> PartialEq for Components<'a> {
     #[inline]
     fn eq(&self, other: &Components<'a>) -> bool {
-        // FIXME: Ideally this should use a vectorizable find first difference
-        // method
-        if self.path == other.path {
-            return true;
-        }
-
-        eq_components(self.clone(), other.clone())
+        eq_components(self.path, || self.clone(), other.path, || other.clone())
     }
 }
 
-/// Prefix-less `Components` equality
-pub fn eq_components(mut left: Components<'_>, mut right: Components<'_>) -> bool {
+#[inline]
+pub fn eq_components<'lhs, 'rhs>(
+    lhs_bytes: &'lhs [u8],
+    lhs_components: impl FnOnce() -> Components<'lhs>,
+    rhs_bytes: &'rhs [u8],
+    rhs_components: impl FnOnce() -> Components<'rhs>,
+) -> bool {
+    // We check for equality between the path slices here instead
+    // of `eq_components_inner` for two reasons:
+    //     - This allows us to perform branchless code optimization
+    //       where we don't need to do if left.path == right.path { return true }
+    //     - We avoid constructing a `Components` iterator, which requires
+    //       a bit more work
+    // FIXME: Ideally "lhs_bytes == rhs_bytes" should use a vectorizable find
+    // first difference method
+    lhs_bytes == rhs_bytes || eq_components_inner(lhs_components(), rhs_components())
+}
+
+/// Prefix-less `Components` equality (contains all Components related equality)
+#[inline]
+pub fn eq_components_inner(mut left: Components<'_>, mut right: Components<'_>) -> bool {
     // Fast path
     //
     // - check if we have empty paths
@@ -380,6 +393,7 @@ impl Ord for Components<'_> {
 }
 
 /// Prefix-less `Components` comparison
+#[inline]
 pub fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cmp::Ordering {
     // Fast path for long shared prefixes
     //

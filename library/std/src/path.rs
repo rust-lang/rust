@@ -1855,14 +1855,12 @@ impl ToOwned for Path {
 impl PartialEq for PathBuf {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        // We check for equality between the path slices here instead
-        // of `eq_components` for two reasons:
-        //     - This allows us to perform branchless code optimization
-        //       where we don't need to do if left.path == right.path { return true }
-        //     - We avoid constructing a `Components` iterator, which requires
-        //       a bit more work
-        self.as_os_str() == other.as_os_str()
-            || path_imp::eq_components(self.components().0, other.components().0)
+        path_imp::eq_components(
+            self.as_u8_slice(),
+            || self.components().0,
+            other.as_u8_slice(),
+            || other.components().0,
+        )
     }
 }
 
@@ -3361,14 +3359,12 @@ impl fmt::Display for Display<'_> {
 impl PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
-        // We check for equality between the path slices here instead
-        // of `eq_components` for two reasons:
-        //     - This allows us to perform branchless code optimization
-        //       where we don't need to do if left.path == right.path { return true }
-        //     - We avoid constructing a `Components` iterator, which requires
-        //       a bit more work
-        self.as_os_str() == other.as_os_str()
-            || path_imp::eq_components(self.components().0, other.components().0)
+        path_imp::eq_components(
+            self.as_u8_slice(),
+            || self.components().0,
+            other.as_u8_slice(),
+            || other.components().0,
+        )
     }
 }
 
