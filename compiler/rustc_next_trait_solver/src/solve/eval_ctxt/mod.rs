@@ -1457,10 +1457,6 @@ where
         self.delegate.deeply_resolve_ignoring_regions(value)
     }
 
-    pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
-        self.delegate.shallow_resolve(ty)
-    }
-
     pub(super) fn eager_resolve_region(&self, r: Region<I>) -> Region<I> {
         if let ty::ReVar(vid) = r.kind() {
             self.delegate.shallow_resolve_region_var(vid)
