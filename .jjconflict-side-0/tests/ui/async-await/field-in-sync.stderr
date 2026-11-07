@@ -1,0 +1,17 @@
+error[E0609]: no field `field` on type `impl Future<Output = S>`
+  --> $DIR/field-in-sync.rs:10:11
+   |
+LL |     foo().field;
+   |           ^^^^^ field not available in `impl Future`, but it is available in its `Output`
+   |
+note: this implements `Future` and its output type has the field, but the future cannot be awaited in a synchronous function
+  --> $DIR/field-in-sync.rs:10:5
+   |
+LL | fn main() -> Result<(), ()> {
+   | --------------------------- this is not `async`
+LL |     foo().field;
+   |     ^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

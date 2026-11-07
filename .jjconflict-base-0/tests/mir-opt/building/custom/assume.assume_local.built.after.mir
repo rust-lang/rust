@@ -1,0 +1,10 @@
+// MIR for `assume_local` after built
+
+fn assume_local(_1: bool) -> () {
+    let mut _0: ();
+
+    bb0: {
+        assume(copy _1);
+        return;
+    }
+}

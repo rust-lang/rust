@@ -1,0 +1,26 @@
+error: invalid `?` in type
+  --> $DIR/trailing-question-in-type.rs:3:16
+   |
+LL | fn foo() -> i32? {
+   |                ^ `?` is only allowed on expressions, not types
+   |
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL - fn foo() -> i32? {
+LL + fn foo() -> Option<i32> {
+   |
+
+error: invalid `?` in type
+  --> $DIR/trailing-question-in-type.rs:4:15
+   |
+LL |     let x: i32? = Some(1);
+   |               ^ `?` is only allowed on expressions, not types
+   |
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL -     let x: i32? = Some(1);
+LL +     let x: Option<i32> = Some(1);
+   |
+
+error: aborting due to 2 previous errors
+

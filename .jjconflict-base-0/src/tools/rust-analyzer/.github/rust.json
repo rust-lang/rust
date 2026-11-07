@@ -1,0 +1,33 @@
+{
+    "problemMatcher": [
+        {
+            "owner": "rustfmt",
+            "severity": "warning",
+            "pattern": [
+                {
+                    "regexp": "^(Diff in (.+)) at line (\\d+):$",
+                    "message": 1,
+                    "file": 2,
+                    "line": 3
+                }
+            ]
+        },
+        {
+            "owner": "clippy",
+            "pattern": [
+                {
+                    "regexp": "^(?:\\x1b\\[[\\d;]+m)*(warning|warn|error)(?:\\x1b\\[[\\d;]+m)*(\\[(.*)\\])?(?:\\x1b\\[[\\d;]+m)*:(?:\\x1b\\[[\\d;]+m)* ([^\\x1b]*)(?:\\x1b\\[[\\d;]+m)*$",
+                    "severity": 1,
+                    "message": 4,
+                    "code": 3
+                },
+                {
+                    "regexp": "^(?:\\x1b\\[[\\d;]+m)*\\s*(?:\\x1b\\[[\\d;]+m)*\\s*--> (?:\\x1b\\[[\\d;]+m)*(.*):(\\d*):(\\d*)(?:\\x1b\\[[\\d;]+m)*$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3
+                }
+            ]
+        }
+    ]
+}

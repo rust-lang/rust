@@ -1,0 +1,75 @@
+error[E0425]: cannot find type `Assoc` in this scope
+  --> $DIR/suggest-assoc-type-from-bounds.rs:6:12
+   |
+LL |     let _: Assoc = todo!();
+   |            ^^^^^
+   |
+help: you might have meant to use an associated type of the same name
+   |
+LL |     let _: <U as Trait<i32>>::Assoc = todo!();
+   |            +++++++++++++++++++
+LL |     let _: <U as Trait<u32>>::Assoc = todo!();
+   |            +++++++++++++++++++
+
+error[E0425]: cannot find type `A` in this scope
+  --> $DIR/suggest-assoc-type-from-bounds.rs:20:12
+   |
+LL |     let _: A = todo!();
+   |            ^
+   |
+help: you might have meant to use an associated type of the same name
+   |
+LL |     let _: <T as ::Foo<'a>>::A = todo!();
+   |            ++++++++++++++++++
+LL |     let _: <T as inner::Foo<'a>>::A = todo!();
+   |            +++++++++++++++++++++++
+help: you might be missing a type parameter
+   |
+LL | fn g<'a, T: ::Foo<'a> + inner::Foo<'a>, A>() {
+   |                                       +++
+
+error[E0425]: cannot find type `Assoc` in this scope
+  --> $DIR/suggest-assoc-type-from-bounds.rs:32:12
+   |
+LL |     let _: Assoc = todo!();
+   |            ^^^^^
+   |
+help: you might have meant to use an associated type of the same name
+   |
+LL |     let _: <T as First>::Assoc = todo!();
+   |            ++++++++++++++
+LL |     let _: <T as Second>::Assoc = todo!();
+   |            +++++++++++++++
+
+error[E0425]: cannot find type `Assoc` in this scope
+  --> $DIR/suggest-assoc-type-from-bounds.rs:40:12
+   |
+LL |     let _: Assoc = todo!();
+   |            ^^^^^
+   |
+help: you might have meant to use an associated type of the same name
+   |
+LL -     let _: Assoc = todo!();
+LL +     let _: T::Assoc<'_> = todo!();
+   |
+
+error[E0425]: cannot find type `Assoc` in this scope
+  --> $DIR/suggest-assoc-type-from-bounds.rs:47:20
+   |
+LL |             let _: Assoc = todo!();
+   |                    ^^^^^
+   |
+help: you might have meant to use an associated type of the same name
+   |
+LL |             let _: U::Assoc = todo!();
+   |                    +++
+
+error[E0425]: cannot find type `Assoc` in this scope
+  --> $DIR/suggest-assoc-type-from-bounds.rs:58:20
+   |
+LL |             let _: Assoc = todo!();
+   |                    ^^^^^ not found in this scope
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

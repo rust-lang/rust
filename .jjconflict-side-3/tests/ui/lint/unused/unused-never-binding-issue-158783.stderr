@@ -1,0 +1,14 @@
+warning: unused variable: `x`
+  --> $DIR/unused-never-binding-issue-158783.rs:29:9
+   |
+LL |     let x = {
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+note: the lint level is defined here
+  --> $DIR/unused-never-binding-issue-158783.rs:3:9
+   |
+LL | #![warn(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

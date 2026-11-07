@@ -1,0 +1,18 @@
+error[E0425]: cannot find value `bar` in this scope
+  --> $DIR/tab.rs:4:2
+   |
+LL |     bar;
+   |     ^^^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/tab.rs:8:2
+   |
+LL | fn foo() {
+   |         - help: try adding a return type: `-> &'static str`
+LL |     "bar            boo"
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&str`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

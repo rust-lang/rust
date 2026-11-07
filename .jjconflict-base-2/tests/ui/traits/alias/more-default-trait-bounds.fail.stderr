@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `Unmarked: Mark` is not satisfied
+  --> $DIR/more-default-trait-bounds.rs:27:34
+   |
+LL | #[cfg(fail)] fn a1_fail() { a1::<Unmarked>; }
+   |                                  ^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Mark` is not implemented for `Unmarked`
+  --> $DIR/more-default-trait-bounds.rs:47:1
+   |
+LL | enum Unmarked {}
+   | ^^^^^^^^^^^^^
+   = note: required for `()` to implement `A1<Unmarked>`
+note: required by a bound in `a1`
+  --> $DIR/more-default-trait-bounds.rs:25:29
+   |
+LL | fn a1<T: ?Mark>() where (): A1<T> { ensure_has_mark::<T>; }
+   |                             ^^^^^ required by this bound in `a1`
+
+error[E0277]: the trait bound `Unmarked: B1` is not satisfied
+  --> $DIR/more-default-trait-bounds.rs:41:34
+   |
+LL | #[cfg(fail)] fn b1_fail() { b1::<Unmarked>; }
+   |                                  ^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Mark` is not implemented for `Unmarked`
+  --> $DIR/more-default-trait-bounds.rs:47:1
+   |
+LL | enum Unmarked {}
+   | ^^^^^^^^^^^^^
+   = note: required for `Unmarked` to implement `B1`
+note: required by a bound in `b1`
+  --> $DIR/more-default-trait-bounds.rs:39:28
+   |
+LL | fn b1<T: ?Mark>() where T: B1 { ensure_has_mark::<T>; }
+   |                            ^^ required by this bound in `b1`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,28 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect-tool-lint-rfc-2383.rs:15:11
+   |
+LL | #![expect(rustdoc::missing_crate_level_docs)]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect-tool-lint-rfc-2383.rs:69:14
+   |
+LL |     #[expect(rustdoc::broken_intra_doc_links)]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect-tool-lint-rfc-2383.rs:74:14
+   |
+LL |     #[expect(rustdoc::invalid_html_tags)]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect-tool-lint-rfc-2383.rs:79:14
+   |
+LL |     #[expect(rustdoc::bare_urls)]
+   |              ^^^^^^^^^^^^^^^^^^
+
+warning: 4 warnings emitted
+

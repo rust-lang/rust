@@ -1,0 +1,29 @@
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized-inherent-impl-self-type.rs:7:17
+   |
+LL | impl<X: ?Sized> S5<X> {
+   |      -          ^^^^^ doesn't have a size known at compile-time
+   |      |
+   |      this type parameter needs to be `Sized`
+   |
+note: required by an implicit `Sized` bound in `S5`
+  --> $DIR/unsized-inherent-impl-self-type.rs:5:11
+   |
+LL | struct S5<Y>(Y);
+   |           ^ required by the implicit `Sized` requirement on this type parameter in `S5`
+help: you could relax the implicit `Sized` bound on `Y` if it were used through indirection like `&Y` or `Box<Y>`
+  --> $DIR/unsized-inherent-impl-self-type.rs:5:11
+   |
+LL | struct S5<Y>(Y);
+   |           ^  - ...if indirection were used here: `Box<Y>`
+   |           |
+   |           this could be changed to `Y: ?Sized`...
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - impl<X: ?Sized> S5<X> {
+LL + impl<X> S5<X> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

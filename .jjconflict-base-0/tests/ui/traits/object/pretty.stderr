@@ -1,0 +1,166 @@
+warning: unnecessary associated type bound for dyn-incompatible associated type
+  --> $DIR/pretty.rs:41:35
+   |
+LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }
+   |                                   ^^^^^^^^^^^^^^^^ help: remove this bound
+   |
+   = note: this associated type has a `where Self: Sized` bound, and while the associated type can be specified, it cannot be used because trait objects are never `Sized`
+   = note: `#[warn(unused_associated_type_bounds)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:25:43
+   |
+LL | fn dyn_super(x: &dyn Super<Assoc = u8>) { x }
+   |                                        -  ^ expected `()`, found `&dyn Super<Assoc = u8>`
+   |                                        |
+   |                                        help: try adding a return type: `-> &dyn Super<Assoc = u8>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn Super<Assoc = u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:26:39
+   |
+LL | fn dyn_any(x: &dyn Any<Assoc = u8>) { x }
+   |                                    -  ^ expected `()`, found `&dyn Any<Assoc = u8>`
+   |                                    |
+   |                                    help: try adding a return type: `-> &dyn Any<Assoc = u8>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn Any<Assoc = u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:27:31
+   |
+LL | fn dyn_fixed(x: &dyn Fixed) { x }
+   |                            -  ^ expected `()`, found `&dyn Fixed`
+   |                            |
+   |                            help: try adding a return type: `-> &dyn Fixed`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn Fixed`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:28:50
+   |
+LL | fn dyn_fixed_multi(x: &dyn Fixed<Assoc = u16>) { x }
+   |                                               -  ^ expected `()`, found `&dyn Fixed<Assoc = u16>`
+   |                                               |
+   |                                               help: try adding a return type: `-> &dyn Fixed<Assoc = u16>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn Fixed<Assoc = u16>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:29:38
+   |
+LL | fn dyn_fixed_sub(x: &dyn FixedSub) { x }
+   |                                   -  ^ expected `()`, found `&dyn FixedSub`
+   |                                   |
+   |                                   help: try adding a return type: `-> &dyn FixedSub`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn FixedSub`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:30:44
+   |
+LL | fn dyn_fixed_static(x: &dyn FixedStatic) { x }
+   |                                         -  ^ expected `()`, found `&dyn FixedStatic`
+   |                                         |
+   |                                         help: try adding a return type: `-> &dyn FixedStatic`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn FixedStatic`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:32:75
+   |
+LL | fn dyn_super_generic(x: &dyn for<'a> SuperGeneric<'a, Assoc2 = &'a u8>) { x }
+   |                                                                        -  ^ expected `()`, found `&dyn SuperGeneric<'a, Assoc2 = &u8>`
+   |                                                                        |
+   |                                                                        help: try adding a return type: `-> &dyn for<'a> SuperGeneric<'a, Assoc2 = &'a u8>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn for<'a> SuperGeneric<'a, Assoc2 = &'a u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:33:71
+   |
+LL | fn dyn_any_generic(x: &dyn for<'a> AnyGeneric<'a, Assoc2 = &'a u8>) { x }
+   |                                                                    -  ^ expected `()`, found `&dyn AnyGeneric<'a, Assoc2 = &u8>`
+   |                                                                    |
+   |                                                                    help: try adding a return type: `-> &dyn for<'a> AnyGeneric<'a, Assoc2 = &'a u8>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn for<'a> AnyGeneric<'a, Assoc2 = &'a u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:34:60
+   |
+LL | fn dyn_fixed_generic1(x: &dyn for<'a> FixedGeneric1<'a>) { x }
+   |                                                         -  ^ expected `()`, found `&dyn FixedGeneric1<'a>`
+   |                                                         |
+   |                                                         help: try adding a return type: `-> &dyn for<'a> FixedGeneric1<'a>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn for<'a> FixedGeneric1<'a>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:36:79
+   |
+LL | fn dyn_fixed_generic_multi(x: &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>) { x }
+   |                                                                            -  ^ expected `()`, found `&dyn FixedGeneric1<'a, Assoc2 = &u8>`
+   |                                                                            |
+   |                                                                            help: try adding a return type: `-> &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:37:40
+   |
+LL | fn dyn_fixed_hrtb(x: &dyn FixedHrtb) { x }
+   |                                     -  ^ expected `()`, found `&dyn FixedHrtb`
+   |                                     |
+   |                                     help: try adding a return type: `-> &dyn FixedHrtb`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn FixedHrtb`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:38:73
+   |
+LL | fn dyn_any_different_binders(x: &dyn AnyDifferentBinders<Assoc = u8>) { x }
+   |                                                                      -  ^ expected `()`, found `&dyn AnyDifferentBinders<Assoc = u8>`
+   |                                                                      |
+   |                                                                      help: try adding a return type: `-> &dyn AnyDifferentBinders<Assoc = u8>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn AnyDifferentBinders<Assoc = u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:39:65
+   |
+LL | fn dyn_fixed_different_binders(x: &dyn FixedDifferentBinders) { x }
+   |                                                              -  ^ expected `()`, found `&dyn FixedDifferentBinders`
+   |                                                              |
+   |                                                              help: try adding a return type: `-> &dyn FixedDifferentBinders`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn FixedDifferentBinders`
+
+error[E0308]: mismatched types
+  --> $DIR/pretty.rs:41:56
+   |
+LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }
+   |                                                     -  ^ expected `()`, found `&dyn HasGat<u8, Assoc<bool> = ()>`
+   |                                                     |
+   |                                                     help: try adding a return type: `-> &dyn HasGat<u8, Assoc<bool> = ()>`
+   |
+   = note: expected unit type `()`
+              found reference `&dyn HasGat<u8, Assoc<bool> = ()>`
+
+error: aborting due to 14 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

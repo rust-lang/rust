@@ -1,0 +1,29 @@
+error[E0403]: the name `'a` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate_lifetimes.rs:8:14
+   |
+LL | macro m($a:lifetime) {
+LL |     fn g<$a, 'a>() {}
+   |              ^^ already used
+...
+LL | m!('a);
+   | ------
+   | |  |
+   | |  first use of `'a`
+   | in this macro invocation
+
+error[E0403]: the name `'a` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/duplicate_lifetimes.rs:13:14
+   |
+LL | macro n($a:lifetime) {
+LL |     fn h<$a, 'a>() {}
+   |              ^^ already used
+...
+LL | n!('a);
+   | ------
+   | |  |
+   | |  first use of `'a`
+   | in this macro invocation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0403`.

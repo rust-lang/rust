@@ -1,0 +1,32 @@
+warning: unused imports: `A` and `C`
+  --> $DIR/unused-imports.rs:22:14
+   |
+LL | use nested::{A, B, C};
+   |              ^     ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-imports.rs:4:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+warning: unused imports: `D`, `E`, and `G`
+  --> $DIR/unused-imports.rs:26:5
+   |
+LL |     D,
+   |     ^
+LL |     even_more::{
+LL |         E,
+   |         ^
+LL |         F,
+LL |         G,
+   |         ^
+
+warning: unused import: `I`
+  --> $DIR/unused-imports.rs:37:29
+   |
+LL | use nested::another::{self, I};
+   |                             ^
+
+warning: 3 warnings emitted
+

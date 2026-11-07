@@ -1,0 +1,48 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/equal-lifetime-params-not-ok.rs:11:37
+   |
+LL |     fn test<'a>() -> Opaque<'a, 'a> {}
+   |                                     ^^
+   |
+note: lifetime used multiple times
+  --> $DIR/equal-lifetime-params-not-ok.rs:9:17
+   |
+LL |     type Opaque<'a, 'b> = impl super::Trait<'a, 'b>;
+   |                 ^^  ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/equal-lifetime-params-not-ok.rs:18:49
+   |
+LL |     fn test<'a: 'b, 'b: 'a>() -> Opaque<'a, 'b> {}
+   |                                                 ^^
+   |
+note: lifetime used multiple times
+  --> $DIR/equal-lifetime-params-not-ok.rs:16:17
+   |
+LL |     type Opaque<'a, 'b> = impl super::Trait<'a, 'b>;
+   |                 ^^  ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/equal-lifetime-params-not-ok.rs:25:61
+   |
+LL |     fn test<'a: 'b, 'b: 'a>(a: &'a str) -> Opaque<'a, 'b> { a }
+   |                                                             ^
+   |
+note: lifetime used multiple times
+  --> $DIR/equal-lifetime-params-not-ok.rs:23:17
+   |
+LL |     type Opaque<'a, 'b> = impl super::Trait<'a, 'b>;
+   |                 ^^  ^^
+
+error[E0792]: expected generic lifetime parameter, found `'static`
+  --> $DIR/equal-lifetime-params-not-ok.rs:36:42
+   |
+LL |     type Opaque<'a> = impl super::Trait<'a, 'a>;
+   |                 -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+LL |     #[define_opaque(Opaque)]
+LL |     fn test<'a: 'static>() -> Opaque<'a> {}
+   |                                          ^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

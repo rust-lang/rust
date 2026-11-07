@@ -1,0 +1,22 @@
+error: unconstrained generic constant
+  --> $DIR/array-size-in-generic-struct-param.rs:8:38
+   |
+LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
+   |                                      ^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]) where [(); 0 + N]:;
+   |                                                    ++++++++++++++++++
+
+error: overly complex generic constant
+  --> $DIR/array-size-in-generic-struct-param.rs:23:15
+   |
+LL |     arr: [u8; CFG.arr_size],
+   |               ^^^^^^^^^^^^ field access is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: aborting due to 2 previous errors
+

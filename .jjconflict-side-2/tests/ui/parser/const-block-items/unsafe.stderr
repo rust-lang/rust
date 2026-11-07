@@ -1,0 +1,8 @@
+error: expected one of `extern` or `fn`, found `{`
+  --> $DIR/unsafe.rs:7:14
+   |
+LL | const unsafe { assert!(foo()) }
+   |              ^ expected one of `extern` or `fn`
+
+error: aborting due to 1 previous error
+

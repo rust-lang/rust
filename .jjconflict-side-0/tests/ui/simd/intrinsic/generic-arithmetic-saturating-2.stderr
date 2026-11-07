@@ -1,0 +1,15 @@
+error[E0511]: invalid monomorphization of `simd_saturating_add` intrinsic: expected element type `f32` of vector type `f32x4` to be a signed or unsigned integer type
+  --> $DIR/generic-arithmetic-saturating-2.rs:31:9
+   |
+LL |         simd_saturating_add(z, z);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0511]: invalid monomorphization of `simd_saturating_sub` intrinsic: expected element type `f32` of vector type `f32x4` to be a signed or unsigned integer type
+  --> $DIR/generic-arithmetic-saturating-2.rs:33:9
+   |
+LL |         simd_saturating_sub(z, z);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0511`.

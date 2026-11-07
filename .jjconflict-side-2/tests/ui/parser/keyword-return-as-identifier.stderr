@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `return`
+  --> $DIR/keyword-return-as-identifier.rs:4:9
+   |
+LL |     let return = "foo";
+   |         ^^^^^^ expected identifier, found keyword
+   |
+help: escape `return` to use it as an identifier
+   |
+LL |     let r#return = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

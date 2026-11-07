@@ -1,0 +1,19 @@
+error[E0573]: cannot find type `x` in this scope
+  --> $DIR/local-type.rs:7:21
+   |
+LL |     let _ = use |x: x| x;
+   |                     ^ not found in this scope
+   |
+   = note: a local variable named `x` exists in another namespace
+
+error[E0573]: cannot find type `x` in this scope
+  --> $DIR/local-type.rs:8:30
+   |
+LL |     let _ = use |x: bool| -> x { x };
+   |                              ^ not found in this scope
+   |
+   = note: a local variable named `x` exists in another namespace
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

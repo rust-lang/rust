@@ -1,0 +1,46 @@
+error[E0599]: no method named `trait_method` found for struct `FooStruct` in the current scope
+  --> $DIR/private-types-suggested-without-extern-crate-56175.rs:6:33
+   |
+LL |     reexported_trait::FooStruct.trait_method();
+   |                                 ^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/reexported-trait-56175.rs:3:12
+   |
+LL |         fn trait_method(&self) {
+   |            ------------ the method is available for `FooStruct` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `trait_method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use reexported_trait_56175::Trait;
+   |
+help: there is a method `trait_method_b` with a similar name
+   |
+LL |     reexported_trait::FooStruct.trait_method_b();
+   |                                             ++
+
+error[E0599]: no method named `trait_method_b` found for struct `FooStruct` in the current scope
+  --> $DIR/private-types-suggested-without-extern-crate-56175.rs:8:33
+   |
+LL |     reexported_trait::FooStruct.trait_method_b();
+   |                                 ^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/reexported-trait-56175.rs:7:12
+   |
+LL |         fn trait_method_b(&self) {
+   |            -------------- the method is available for `FooStruct` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `TraitB` which provides `trait_method_b` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use reexported_trait_56175::TraitBRename;
+   |
+help: there is a method `trait_method` with a similar name
+   |
+LL -     reexported_trait::FooStruct.trait_method_b();
+LL +     reexported_trait::FooStruct.trait_method();
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

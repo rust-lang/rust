@@ -1,0 +1,13 @@
+error: unexpected token: `<-`
+  --> $DIR/placement-syntax.rs:3:9
+   |
+LL |     if x<-1 {
+   |         ^^
+   |
+help: if you meant to write a comparison against a negative value, add a space in between `<` and `-`
+   |
+LL |     if x< -1 {
+   |          +
+
+error: aborting due to 1 previous error
+

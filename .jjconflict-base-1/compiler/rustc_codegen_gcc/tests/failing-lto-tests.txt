@@ -1,0 +1,5 @@
+tests/ui/lto/debuginfo-lto-alloc.rs
+tests/ui/extern/issue-64655-allow-unwind-when-calling-panic-directly.rs
+tests/ui/extern/issue-64655-extern-rust-must-allow-unwind.rs
+tests/ui/lto/thin-lto-inlines2.rs
+tests/ui/lto/lto-thin-rustc-loads-linker-plugin.rs

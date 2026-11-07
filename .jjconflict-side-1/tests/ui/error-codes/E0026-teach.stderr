@@ -1,0 +1,13 @@
+error[E0026]: struct `Thing` does not have a field named `z`
+  --> $DIR/E0026-teach.rs:11:23
+   |
+LL |         Thing { x, y, z } => {}
+   |                       ^ struct `Thing` does not have this field
+   |
+   = note: This error indicates that a struct pattern attempted to extract a nonexistent field from a struct. Struct fields are identified by the name used before the colon : so struct patterns should resemble the declaration of the struct type being matched.
+           
+           If you are using shorthand field patterns but want to refer to the struct field by a different name, you should rename it explicitly.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0026`.

@@ -1,0 +1,52 @@
+// We want to suggest a bound `T: 'a` but `'a` is elided,
+//@ run-rustfix
+//@ edition: 2018
+#![allow(dead_code)]
+
+struct Inv<'a>(Option<*mut &'a u8>);
+
+fn check_bound<'a, A: 'a>(_: A, _: Inv<'a>) {}
+
+struct Elided<'a, T = ()>(Inv<'a>, T);
+
+struct MyTy<X>(X);
+
+impl<'a, X> MyTy<Elided<'a, X>> {
+    async fn foo<A: 'a>(self, arg: A, _: &str) -> &str {
+        check_bound(arg, self.0 .0);
+        //~^ ERROR parameter type `A` may not live long enough
+        ""
+    }
+}
+
+// Make sure the new lifetime name doesn't conflict with
+// other early- or late-bound lifetimes in-scope.
+impl<'a, A> MyTy<(A, &'a ())> {
+    async fn foo2<'b>(
+        arg: A,
+        lt: Inv<'b>,
+    ) -> (
+        impl Into<&'b str> + Into<&'b str> + 'b,
+        impl Into<Option<Elided<'b>>> + 'b,
+        impl Into<Option<Elided<'b, ()>>>,
+    ) where A: 'b {
+        check_bound(arg, lt);
+        //~^ ERROR parameter type `A` may not live long enough
+        ("", None, None)
+    }
+
+    // same as above but there is a late-bound lifetime named `'b`.
+    async fn bar2<'c, 'b>(_dummy: &'a u8, arg: A, lt: Inv<'c>) where A: 'c {
+        check_bound(arg, lt);
+        //~^ ERROR parameter type `A` may not live long enough
+    }
+}
+
+impl<'a, A: 'a> MyTy<Elided<'a, A>> {
+    async fn foo3(self) {
+        check_bound(self.0 .1, self.0 .0);
+        //~^ ERROR parameter type `A` may not live long enough
+    }
+}
+
+fn main() {}

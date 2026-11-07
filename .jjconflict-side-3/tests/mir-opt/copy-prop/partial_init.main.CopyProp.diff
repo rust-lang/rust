@@ -1,0 +1,13 @@
+- // MIR for `main` before CopyProp
++ // MIR for `main` after CopyProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: (isize,);
+  
+      bb0: {
+          (_1.0: isize) = const 1_isize;
+          return;
+      }
+  }
+  

@@ -1,0 +1,16 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/parser-recovery-1.rs:10:54
+   |
+LL | trait Foo {
+   |           - unclosed delimiter
+LL |     fn bar() {
+   |              - this delimiter might not be properly closed...
+LL |         let x = foo();
+LL | }
+   | - ...as it matches this but it has different indentation
+...
+LL | }
+   |                                                     ^
+
+error: aborting due to 1 previous error
+

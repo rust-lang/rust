@@ -1,0 +1,46 @@
+error[E0178]: expected a path on the left-hand side of `+`
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:5:12
+   |
+LL |     let _: &Copy + 'static;
+   |            ^^^^^
+   |
+help: try adding parentheses
+   |
+LL |     let _: &(Copy + 'static);
+   |             +              +
+
+error[E0178]: expected a path on the left-hand side of `+`
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:7:12
+   |
+LL |     let _: &'static Copy + 'static;
+   |            ^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL |     let _: &'static (Copy + 'static);
+   |                     +              +
+
+error[E0038]: the trait `Copy` is not dyn compatible
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:5:13
+   |
+LL |     let _: &Copy + 'static;
+   |             ^^^^ `Copy` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error[E0038]: the trait `Copy` is not dyn compatible
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:7:21
+   |
+LL |     let _: &'static Copy + 'static;
+   |                     ^^^^ `Copy` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0038, E0178.
+For more information about an error, try `rustc --explain E0038`.

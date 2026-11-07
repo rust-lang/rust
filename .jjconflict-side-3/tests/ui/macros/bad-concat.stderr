@@ -1,0 +1,10 @@
+error: expected a literal
+  --> $DIR/bad-concat.rs:5:21
+   |
+LL |     let _ = concat!(x, y, z, "bar");
+   |                     ^  ^  ^
+   |
+   = note: only literals (like `"foo"`, `-42` and `3.14`) can be passed to `concat!()`
+
+error: aborting due to 1 previous error
+

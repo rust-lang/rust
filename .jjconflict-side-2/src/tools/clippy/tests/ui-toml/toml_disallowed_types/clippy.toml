@@ -1,0 +1,15 @@
+disallowed-types = [
+    "std::collections::HashMap",
+    "std::sync::atomic::AtomicU32",
+    "syn::TypePath",
+    "proc_macro2::Ident",
+    "std::thread::Thread",
+    "std::time::Instant",
+    "std::io::Read",
+    "usize",
+    "bool",
+    # can give path and reason with an inline table
+    { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
+    # can use an inline table but omit reason
+    { path = "std::net::TcpListener" },
+]

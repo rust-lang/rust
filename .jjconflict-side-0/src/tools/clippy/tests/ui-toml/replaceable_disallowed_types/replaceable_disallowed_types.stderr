@@ -1,0 +1,11 @@
+error: use of a disallowed type `std::string::String`
+  --> tests/ui-toml/replaceable_disallowed_types/replaceable_disallowed_types.rs:15:13
+   |
+LL |     let _ = String::from("x");
+   |             ^^^^^^ help: use: `wrapper::String`
+   |
+   = note: `-D clippy::disallowed-types` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_types)]`
+
+error: aborting due to 1 previous error
+

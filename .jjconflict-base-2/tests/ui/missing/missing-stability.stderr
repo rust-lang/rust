@@ -1,0 +1,14 @@
+error: function has missing stability attribute
+  --> $DIR/missing-stability.rs:8:1
+   |
+LL | pub fn unmarked() {
+   | ^^^^^^^^^^^^^^^^^
+
+error: function has missing stability attribute
+  --> $DIR/missing-stability.rs:22:5
+   |
+LL |     pub fn unmarked() {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

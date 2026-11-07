@@ -1,0 +1,8 @@
+error: macros cannot use qualified paths
+  --> $DIR/associated-type-macro.rs:3:5
+   |
+LL |     <() as module>::mac!();
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

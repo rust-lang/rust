@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Into<_>` for type `GenX<_>`
+  --> $DIR/issue-27403.rs:5:1
+   |
+LL | impl<S> Into<S> for GenX<S> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T, U> Into<U> for T
+             where U: From<T>;
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

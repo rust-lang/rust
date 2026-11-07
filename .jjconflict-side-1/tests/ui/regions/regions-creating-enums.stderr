@@ -1,0 +1,21 @@
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/regions-creating-enums.rs:23:16
+   |
+LL |         return &Ast::Num((*f)(x));
+   |                ^-----------------
+   |                ||
+   |                |temporary value created here
+   |                returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/regions-creating-enums.rs:28:16
+   |
+LL |         return &Ast::Add(m_x, m_y);
+   |                ^------------------
+   |                ||
+   |                |temporary value created here
+   |                returns a reference to data owned by the current function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

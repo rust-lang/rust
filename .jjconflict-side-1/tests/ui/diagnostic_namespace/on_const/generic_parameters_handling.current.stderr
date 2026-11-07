@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `X<u8, &str>: const Y<_>` is not satisfied
+  --> $DIR/generic_parameters_handling.rs:22:6
+   |
+LL |     .blah();
+   |      ^^^^
+   |
+   = note: Self = X<u8, &str>, Z = Z, A = u8, B = &str
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

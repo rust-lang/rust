@@ -1,0 +1,19 @@
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-47412.rs:11:11
+   |
+LL |     match u.void {}
+   |           ^^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
+  --> $DIR/issue-47412.rs:17:11
+   |
+LL |     match *ptr {}
+   |           ^^^^ dereference of raw pointer
+   |
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

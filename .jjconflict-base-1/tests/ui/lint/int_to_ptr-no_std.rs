@@ -1,0 +1,14 @@
+//@ check-pass
+//@ run-rustfix
+
+#![no_std]
+#![crate_type = "lib"]
+#![allow(unused_unsafe)]
+#![allow(dead_code)]
+
+pub unsafe fn should_lint(a: usize) {
+    let _ptr: *const u8 = unsafe { core::mem::transmute::<usize, *const u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+    let _ptr: *mut u8 = unsafe { core::mem::transmute::<usize, *mut u8>(a) };
+    //~^ WARN transmuting an integer to a pointer
+}

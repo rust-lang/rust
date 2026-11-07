@@ -1,0 +1,14 @@
+error: unknown lint: `clippy`
+  --> $DIR/tool_lints-fail.rs:6:9
+   |
+LL | #![deny(clippy)]
+   |         ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/tool_lints-fail.rs:4:9
+   |
+LL | #![deny(unknown_lints)]
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

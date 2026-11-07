@@ -1,0 +1,23 @@
+error[E0659]: `Rect` is ambiguous
+  --> $DIR/ambiguous-13.rs:18:9
+   |
+LL | fn a(_: Rect) {}
+   |         ^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Rect` could refer to the struct imported here
+  --> $DIR/ambiguous-13.rs:15:5
+   |
+LL | use crate::object::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Rect` to disambiguate
+note: `Rect` could also refer to the struct imported here
+  --> $DIR/ambiguous-13.rs:16:5
+   |
+LL | use crate::content::*;
+   |     ^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Rect` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

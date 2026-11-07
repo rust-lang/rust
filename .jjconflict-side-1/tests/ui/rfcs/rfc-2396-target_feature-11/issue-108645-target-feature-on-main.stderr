@@ -1,0 +1,8 @@
+error: `main` function is not allowed to have `#[target_feature]`
+  --> $DIR/issue-108645-target-feature-on-main.rs:4:1
+   |
+LL | fn main() {}
+   | ^^^^^^^^^ `main` function is not allowed to have `#[target_feature]`
+
+error: aborting due to 1 previous error
+

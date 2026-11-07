@@ -1,0 +1,14 @@
+error: items after a test module
+  --> tests/ui/items_after_test_module/auxiliary/submodule.rs:2:1
+   |
+LL | mod tests {}
+   | ^^^^^^^^^
+LL |
+LL | fn in_submodule() {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::items-after-test-module` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::items_after_test_module)]`
+
+error: aborting due to 1 previous error
+

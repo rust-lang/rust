@@ -1,0 +1,24 @@
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/issue-43162.rs:3:5
+   |
+LL |     break true;
+   |     ^^^^^^^^^^ cannot `break` outside of a loop or labeled block
+
+error[E0308]: mismatched types
+  --> $DIR/issue-43162.rs:1:13
+   |
+LL | fn foo() -> bool {
+   |    ---      ^^^^ expected `bool`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/issue-43162.rs:7:5
+   |
+LL |     break {};
+   |     ^^^^^^^^ cannot `break` outside of a loop or labeled block
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0268, E0308.
+For more information about an error, try `rustc --explain E0268`.

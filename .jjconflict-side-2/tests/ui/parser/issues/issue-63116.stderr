@@ -1,0 +1,18 @@
+error: mismatched closing delimiter: `]`
+  --> $DIR/issue-63116.rs:4:14
+   |
+LL | impl W <s(f;Y(;]
+   |              ^ ^ mismatched closing delimiter
+   |              |
+   |              unclosed delimiter
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-63116.rs:4:18
+   |
+LL | impl W <s(f;Y(;]
+   |          -      ^
+   |          |
+   |          unclosed delimiter
+
+error: aborting due to 2 previous errors
+

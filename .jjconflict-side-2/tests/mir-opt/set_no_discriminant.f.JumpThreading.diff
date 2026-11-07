@@ -1,0 +1,27 @@
+- // MIR for `f` before JumpThreading
++ // MIR for `f` after JumpThreading
+  
+  fn f() -> usize {
+      let mut _0: usize;
+      let mut _1: isize;
+      let mut _2: E<char>;
+  
+      bb0: {
+          _2 = E::<char>::A;
+          discriminant(_2) = 1;
+          _1 = discriminant(_2);
+-         switchInt(copy _1) -> [0: bb1, otherwise: bb2];
++         goto -> bb2;
+      }
+  
+      bb1: {
+          _0 = const 0_usize;
+          return;
+      }
+  
+      bb2: {
+          _0 = const 1_usize;
+          return;
+      }
+  }
+  

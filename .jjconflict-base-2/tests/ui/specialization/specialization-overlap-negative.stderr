@@ -1,0 +1,24 @@
+error[E0751]: found both positive and negative implementation of trait `Send` for type `TestType<_>`:
+  --> $DIR/specialization-overlap-negative.rs:9:1
+   |
+LL | unsafe impl<T: Clone> Send for TestType<T> {}
+   | ------------------------------------------ positive implementation here
+LL | impl<T: MyTrait> !Send for TestType<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
+
+error[E0367]: `!Send` impl requires `T: MyTrait` but the struct it is implemented for does not
+  --> $DIR/specialization-overlap-negative.rs:9:9
+   |
+LL | impl<T: MyTrait> !Send for TestType<T> {}
+   |         ^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/specialization-overlap-negative.rs:6:1
+   |
+LL | struct TestType<T>(::std::marker::PhantomData<T>);
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0367, E0751.
+For more information about an error, try `rustc --explain E0367`.

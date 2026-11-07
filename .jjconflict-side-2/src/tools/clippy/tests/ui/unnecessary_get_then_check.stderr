@@ -1,0 +1,75 @@
+error: unnecessary use of `get("a").is_some()`
+  --> tests/ui/unnecessary_get_then_check.rs:7:15
+   |
+LL |     let _ = s.get("a").is_some();
+   |               ^^^^^^^^^^^^^^^^^^ help: replace it with: `contains("a")`
+   |
+   = note: `-D clippy::unnecessary-get-then-check` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_get_then_check)]`
+
+error: unnecessary use of `get("a").is_none()`
+  --> tests/ui/unnecessary_get_then_check.rs:9:15
+   |
+LL |     let _ = s.get("a").is_none();
+   |             --^^^^^^^^^^^^^^^^^^
+   |             |
+   |             help: replace it with: `!s.contains("a")`
+
+error: unnecessary use of `get("a").is_some()`
+  --> tests/ui/unnecessary_get_then_check.rs:13:15
+   |
+LL |     let _ = s.get("a").is_some();
+   |               ^^^^^^^^^^^^^^^^^^ help: replace it with: `contains_key("a")`
+
+error: unnecessary use of `get("a").is_none()`
+  --> tests/ui/unnecessary_get_then_check.rs:15:15
+   |
+LL |     let _ = s.get("a").is_none();
+   |             --^^^^^^^^^^^^^^^^^^
+   |             |
+   |             help: replace it with: `!s.contains_key("a")`
+
+error: unnecessary use of `get("a").is_some()`
+  --> tests/ui/unnecessary_get_then_check.rs:19:15
+   |
+LL |     let _ = s.get("a").is_some();
+   |               ^^^^^^^^^^^^^^^^^^ help: replace it with: `contains("a")`
+
+error: unnecessary use of `get("a").is_none()`
+  --> tests/ui/unnecessary_get_then_check.rs:21:15
+   |
+LL |     let _ = s.get("a").is_none();
+   |             --^^^^^^^^^^^^^^^^^^
+   |             |
+   |             help: replace it with: `!s.contains("a")`
+
+error: unnecessary use of `get("a").is_some()`
+  --> tests/ui/unnecessary_get_then_check.rs:25:15
+   |
+LL |     let _ = s.get("a").is_some();
+   |               ^^^^^^^^^^^^^^^^^^ help: replace it with: `contains_key("a")`
+
+error: unnecessary use of `get("a").is_none()`
+  --> tests/ui/unnecessary_get_then_check.rs:27:15
+   |
+LL |     let _ = s.get("a").is_none();
+   |             --^^^^^^^^^^^^^^^^^^
+   |             |
+   |             help: replace it with: `!s.contains_key("a")`
+
+error: unnecessary use of `get::<str>("a").is_some()`
+  --> tests/ui/unnecessary_get_then_check.rs:32:15
+   |
+LL |     let _ = s.get::<str>("a").is_some();
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `contains::<str>("a")`
+
+error: unnecessary use of `get::<str>("a").is_none()`
+  --> tests/ui/unnecessary_get_then_check.rs:34:15
+   |
+LL |     let _ = s.get::<str>("a").is_none();
+   |             --^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             help: replace it with: `!s.contains::<str>("a")`
+
+error: aborting due to 10 previous errors
+

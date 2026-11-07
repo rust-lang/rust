@@ -1,0 +1,81 @@
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:12:16
+   |
+LL |     if true && let 0 = 1 {}
+   |                ^^^^^^^^^
+
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:15:8
+   |
+LL |     if let 0 = 1 && true {}
+   |        ^^^^^^^^^
+
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:18:8
+   |
+LL |     if let Range { start: _, end: _ } = (true..true) && false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:21:8
+   |
+LL |     if let 1 = 1 && let true = { true } && false {
+   |        ^^^^^^^^^
+
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:21:21
+   |
+LL |     if let 1 = 1 && let true = { true } && false {
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:30:19
+   |
+LL |     while true && let 0 = 1 {}
+   |                   ^^^^^^^^^
+
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:33:11
+   |
+LL |     while let 0 = 1 && true {}
+   |           ^^^^^^^^^
+
+error: let chains are only allowed in Rust 2024 or later
+  --> $DIR/edition-gate.rs:36:11
+   |
+LL |     while let Range { start: _, end: _ } = (true..true) && false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected expression, found `let` statement
+  --> $DIR/edition-gate.rs:52:20
+   |
+LL |     #[cfg(false)] (let 0 = 1);
+   |                    ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/edition-gate.rs:43:17
+   |
+LL |     noop_expr!((let 0 = 1));
+   |                 ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: no rules expected keyword `let`
+  --> $DIR/edition-gate.rs:54:15
+   |
+LL |     macro_rules! use_expr {
+   |     --------------------- when calling this macro
+...
+LL |     use_expr!(let 0 = 1);
+   |               ^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$e:expr`
+  --> $DIR/edition-gate.rs:47:10
+   |
+LL |         ($e:expr) => {
+   |          ^^^^^^^
+
+error: aborting due to 11 previous errors
+

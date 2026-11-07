@@ -1,0 +1,29 @@
+//@ only-x86_64
+//@ run-rustfix
+
+use std::arch::{asm, global_asm};
+
+fn main() {
+    unsafe {
+        asm!("", options(nomem, ));
+        //~^ ERROR the `nomem` option was already provided
+        asm!("", options(att_syntax, ));
+        //~^ ERROR the `att_syntax` option was already provided
+        asm!("", options(nostack, att_syntax), options());
+        //~^ ERROR the `nostack` option was already provided
+        asm!("", options(nostack, ), options(), options());
+        //~^ ERROR the `nostack` option was already provided
+        //~| ERROR the `nostack` option was already provided
+        //~| ERROR the `nostack` option was already provided
+        asm!(
+            "",
+            options(nomem, noreturn),
+            options(att_syntax, ), //~ ERROR the `noreturn` option was already provided
+            options( nostack),       //~ ERROR the `nomem` option was already provided
+            options(),             //~ ERROR the `noreturn` option was already provided
+        );
+    }
+}
+
+global_asm!("", options(att_syntax, ));
+//~^ ERROR the `att_syntax` option was already provided

@@ -1,0 +1,634 @@
+error: redundant else block
+  --> tests/ui/redundant_else.rs:18:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+   = note: `-D clippy::redundant-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:26:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0)
+LL | |             };
+   | |_____________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL ~             black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:35:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0)
+LL | |             };
+   | |_____________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL ~             black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:46:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:54:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0)
+LL | |             };
+   | |_____________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL ~             black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:60:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0)
+LL | |             };
+   | |_____________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL ~             black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:71:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(())
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(());
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:78:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:85:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0i32)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0i32);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:95:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0);
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:102:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             let _ = 0;
+LL | |             black_box(())
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         let _ = 0;
+LL +         black_box(());
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:110:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             { black_box(()) }
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         { black_box(()) }
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:117:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             if black_box(true) {
+LL | |                 black_box(0);
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         if black_box(true) {
+LL +             black_box(0);
+LL +         }
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:126:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             if black_box(true) {
+...  |
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         if black_box(true) {
+LL +             // empty
+LL +         } else {
+LL +             black_box(())
+LL +         }
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:137:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             match black_box(0) {
+LL | |                 0 => {},
+...  |
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         match black_box(0) {
+LL +             0 => {},
+LL +             1 => {
+LL +                 let _ = 0;
+LL +             },
+LL +             _ => black_box(()),
+LL +         }
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:150:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             loop {
+LL | |                 if black_box(true) {
+...  |
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         loop {
+LL +             if black_box(true) {
+LL +                 break black_box(());
+LL +             }
+LL +         }
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:161:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             while black_box(true) {
+LL | |                 if black_box(true) {
+...  |
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         while black_box(true) {
+LL +             if black_box(true) {
+LL +                 break;
+LL +             }
+LL +         }
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:172:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             for _ in black_box(0..0) {
+LL | |                 if black_box(true) {
+...  |
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         for _ in black_box(0..0) {
+LL +             if black_box(true) {
+LL +                 break;
+LL +             }
+LL +         };
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:183:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(1)
+LL | |         }
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         black_box(1)
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:196:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:206:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:222:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0)
+LL | |             };
+   | |_____________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL ~             black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:235:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:231:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 return;
+LL | |             }
+   | |_____________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL +             return;
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:251:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:289:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:304:10
+   |
+LL |           } else {
+   |  __________^
+LL | |
+LL | |             black_box(0)
+LL | |         };
+   | |_________^
+   |
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL ~         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:325:42
+   |
+LL |             if black_box(true) { return } else { black_box(0) }
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^ help: remove the `else` block and move the contents out: `black_box(0)`
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:425:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0);
+LL | |             }
+   | |_____________^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL +         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:432:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0);
+LL | |             }
+   | |_____________^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL +         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:445:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0);
+LL | |             }
+   | |_____________^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL +         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:440:18
+   |
+LL |                   } else {
+   |  __________________^
+LL | |
+LL | |                     let _ = ();
+LL | |                     return
+LL | |                 }
+   | |_________________^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the `else` block and move the contents out
+   |
+LL ~                 }
+LL +
+LL +         let _ = ();
+LL +         return
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:458:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 black_box(0);
+LL | |             }
+   | |_____________^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL +         black_box(0);
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:472:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 inline!({ black_box(()); })
+LL | |             }
+   | |_____________^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL +         inline!({ black_box(()); });
+   |
+
+error: redundant else block
+  --> tests/ui/redundant_else.rs:480:14
+   |
+LL |               } else {
+   |  ______________^
+LL | |
+LL | |                 $({ black_box(()) })
+LL | |             }
+   | |_____________^
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the `else` block and move the contents out
+   |
+LL ~             }
+LL +
+LL +         $({ black_box(()) });
+   |
+
+error: aborting due to 35 previous errors
+

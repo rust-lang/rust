@@ -1,0 +1,120 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FOR_TYPE
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
+      WHITESPACE " "
+      FN_PTR_TYPE
+        FN_KW "fn"
+        PARAM_LIST
+          L_PAREN "("
+          R_PAREN ")"
+        WHITESPACE " "
+        RET_TYPE
+          THIN_ARROW "->"
+          WHITESPACE " "
+          TUPLE_TYPE
+            L_PAREN "("
+            R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FOR_TYPE
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
+      WHITESPACE " "
+      FN_PTR_TYPE
+        UNSAFE_KW "unsafe"
+        WHITESPACE " "
+        ABI
+          EXTERN_KW "extern"
+          WHITESPACE " "
+          STRING "\"C\""
+        WHITESPACE " "
+        FN_KW "fn"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            REF_TYPE
+              AMP "&"
+              LIFETIME
+                LIFETIME_IDENT "'a"
+              WHITESPACE " "
+              TUPLE_TYPE
+                L_PAREN "("
+                R_PAREN ")"
+          R_PAREN ")"
+        WHITESPACE " "
+        RET_TYPE
+          THIN_ARROW "->"
+          WHITESPACE " "
+          TUPLE_TYPE
+            L_PAREN "("
+            R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Obj"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FOR_TYPE
+      FOR_BINDER
+        FOR_KW "for"
+        GENERIC_PARAM_LIST
+          L_ANGLE "<"
+          LIFETIME_PARAM
+            LIFETIME
+              LIFETIME_IDENT "'a"
+          R_ANGLE ">"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "PartialEq"
+            GENERIC_ARG_LIST
+              L_ANGLE "<"
+              TYPE_ARG
+                REF_TYPE
+                  AMP "&"
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "i32"
+              R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

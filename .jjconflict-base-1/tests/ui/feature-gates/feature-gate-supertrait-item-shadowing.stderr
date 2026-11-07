@@ -1,0 +1,57 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/feature-gate-supertrait-item-shadowing.rs:13:7
+   |
+LL |     x.method();
+   |       ^^^^^^ multiple `method` found
+   |
+note: candidate #1 is defined in the trait `Sup`
+  --> $DIR/feature-gate-supertrait-item-shadowing.rs:2:5
+   |
+LL |     fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in the trait `Trait`
+  --> $DIR/feature-gate-supertrait-item-shadowing.rs:6:5
+   |
+LL |     fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     x.method();
+LL +     Sup::method(&x);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     x.method();
+LL +     Trait::method(&x);
+   |
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/feature-gate-supertrait-item-shadowing.rs:18:7
+   |
+LL |     1.method();
+   |       ^^^^^^ multiple `method` found
+   |
+note: candidate #1 is defined in an impl of the trait `Sup` for the type `i32`
+  --> $DIR/feature-gate-supertrait-item-shadowing.rs:2:5
+   |
+LL |     fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `Trait` for the type `i32`
+  --> $DIR/feature-gate-supertrait-item-shadowing.rs:6:5
+   |
+LL |     fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     1.method();
+LL +     Sup::method(&1);
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     1.method();
+LL +     Trait::method(&1);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0034`.

@@ -1,0 +1,43 @@
+error: future cannot be sent between threads safely
+  --> $DIR/async-fn-nonsend.rs:68:17
+   |
+LL |     assert_send(non_send_temporary_in_match());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
+   |
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/async-fn-nonsend.rs:33:26
+   |
+LL |     match Some(non_send()) {
+   |           ---------------- has type `Option<impl Debug>` which is not `Send`
+LL |         Some(_) => fut().await,
+   |                          ^^^^^ await occurs here, with `Some(non_send())` maybe used later
+note: required by a bound in `assert_send`
+  --> $DIR/async-fn-nonsend.rs:64:24
+   |
+LL | fn assert_send(_: impl Send) {}
+   |                        ^^^^ required by this bound in `assert_send`
+
+error: future cannot be sent between threads safely
+  --> $DIR/async-fn-nonsend.rs:70:17
+   |
+LL |     assert_send(non_sync_with_method_call());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
+   |
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `dyn std::fmt::Write`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/async-fn-nonsend.rs:46:15
+   |
+LL |     let f: &mut std::fmt::Formatter = &mut get_formatter();
+   |                                            --------------- has type `Formatter<'_>` which is not `Send`
+...
+LL |         fut().await;
+   |               ^^^^^ await occurs here, with `get_formatter()` maybe used later
+note: required by a bound in `assert_send`
+  --> $DIR/async-fn-nonsend.rs:64:24
+   |
+LL | fn assert_send(_: impl Send) {}
+   |                        ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 2 previous errors
+

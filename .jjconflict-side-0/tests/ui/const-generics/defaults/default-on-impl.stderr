@@ -1,0 +1,8 @@
+error: defaults for generic parameters are not allowed here
+  --> $DIR/default-on-impl.rs:3:6
+   |
+LL | impl<const N: usize = 1> Foo<N> {}
+   |      ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

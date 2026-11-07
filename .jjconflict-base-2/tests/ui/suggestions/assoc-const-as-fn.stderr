@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: GlUniformScalar` is not satisfied
+  --> $DIR/assoc-const-as-fn.rs:14:6
+   |
+LL |     <T as GlUniformScalar>::FACTORY(1, value);
+   |      ^ the trait `GlUniformScalar` is not implemented for `T`
+   |
+help: consider further restricting type parameter `T` with trait `GlUniformScalar`
+   |
+LL | pub fn foo<T: UniformScalar + GlUniformScalar>(value: T) {
+   |                             +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

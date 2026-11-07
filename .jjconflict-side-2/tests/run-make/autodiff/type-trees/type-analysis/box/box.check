@@ -1,0 +1,12 @@
+// CHECK: callee - {[-1]:Float@float} |{[-1]:Pointer}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = load ptr, ptr %{{[0-9]+}}, align 8, !dbg !{{[0-9]+}}, !nonnull !{{[0-9]+}}, !align !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = load float, ptr %{{[0-9]+}}, align 4, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = fmul float %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: ret float %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}
+// CHECK: callee - {[-1]:Float@float} |{[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@float}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = load ptr, ptr %{{[0-9]+}}, align 8, !dbg !{{[0-9]+}}, !nonnull !{{[0-9]+}}, !align !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = load float, ptr %{{[0-9]+}}, align 4, !dbg !{{[0-9]+}}, !noundef !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: %{{[0-9]+}} = fmul float %{{[0-9]+}}, %{{[0-9]+}}, !dbg !{{[0-9]+}}: {[-1]:Float@float}
+// CHECK-DAG: ret float %{{[0-9]+}}, !dbg !{{[0-9]+}}: {}

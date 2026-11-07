@@ -1,0 +1,26 @@
+error[E0499]: cannot borrow `list[_].value` as mutable more than once at a time
+  --> $DIR/issue-62007-assign-const-index.rs:23:21
+   |
+LL | fn to_refs<T>(mut list: [&mut List<T>; 2]) -> Vec<&mut T> {
+   |                          - let's call the lifetime of this reference `'1`
+...
+LL |         result.push(&mut list[0].value);
+   |                     ^^^^^^^^^^^^^^^^^^ `list[_].value` was mutably borrowed here in the previous iteration of the loop
+...
+LL |             return result;
+   |                    ------ returning this value requires that `list[_].value` is borrowed for `'1`
+
+error[E0499]: cannot borrow `list[_].next` as mutable more than once at a time
+  --> $DIR/issue-62007-assign-const-index.rs:24:26
+   |
+LL | fn to_refs<T>(mut list: [&mut List<T>; 2]) -> Vec<&mut T> {
+   |                          - let's call the lifetime of this reference `'1`
+...
+LL |         if let Some(n) = list[0].next.as_mut() {
+   |                          ^^^^^^^^^^^^ `list[_].next` was mutably borrowed here in the previous iteration of the loop
+LL |             list[0] = n;
+   |             ----------- assignment requires that `list[_].next` is borrowed for `'1`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

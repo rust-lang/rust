@@ -1,0 +1,40 @@
+error: binding has unit type `()`
+  --> $DIR/unit_bindings.rs:50:5
+   |
+LL |     let _ = expr;
+   |     ^^^^-^^^^^^^^
+   |         |
+   |         this pattern is inferred to be the unit type `()`
+   |
+note: the lint level is defined here
+  --> $DIR/unit_bindings.rs:22:30
+   |
+LL | #![cfg_attr(deny_level, deny(unit_bindings))]
+   |                              ^^^^^^^^^^^^^
+
+error: binding has unit type `()`
+  --> $DIR/unit_bindings.rs:51:5
+   |
+LL |     let pat = expr;
+   |     ^^^^---^^^^^^^^
+   |         |
+   |         this pattern is inferred to be the unit type `()`
+
+error: binding has unit type `()`
+  --> $DIR/unit_bindings.rs:52:5
+   |
+LL |     let _pat = expr;
+   |     ^^^^----^^^^^^^^
+   |         |
+   |         this pattern is inferred to be the unit type `()`
+
+error: binding has unit type `()`
+  --> $DIR/unit_bindings.rs:55:5
+   |
+LL |     let list = v.sort();
+   |     ^^^^----^^^^^^^^^^^^
+   |         |
+   |         this pattern is inferred to be the unit type `()`
+
+error: aborting due to 4 previous errors
+

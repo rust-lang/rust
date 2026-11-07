@@ -1,0 +1,6 @@
+error: multiple versions for dependency `winapi`: 0.2.8, 0.3.9
+  |
+  = note: `-D clippy::multiple-crate-versions` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::multiple_crate_versions)]`
+
+error: could not compile `multiple-crate-versions` (bin "multiple-crate-versions") due to 1 previous error

@@ -1,0 +1,10 @@
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/self-param-in-fn-item-cast-to-fn-trait.rs:4:12
+   |
+LL |     fn baz(&self) {}
+   |            ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+error[E0453]: allow(unsafe_code) incompatible with previous forbid
+  --> $DIR/forbid-macro-with-deny.rs:39:5
+   |
+LL | #![forbid(unsafe_code)]
+   |           ----------- `forbid` level set here
+...
+LL |     allow_macro::emit_allow! {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ overruled by previous forbid
+   |
+   = note: this error originates in the macro `allow_macro::emit_allow` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0453]: allow(unsafe_code) incompatible with previous forbid
+  --> $DIR/forbid-macro-with-deny.rs:39:5
+   |
+LL | #![forbid(unsafe_code)]
+   |           ----------- `forbid` level set here
+...
+LL |     allow_macro::emit_allow! {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ overruled by previous forbid
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `allow_macro::emit_allow` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0453`.

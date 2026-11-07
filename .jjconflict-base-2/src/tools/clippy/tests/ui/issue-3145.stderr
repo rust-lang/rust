@@ -1,0 +1,8 @@
+error: expected `,`, found `a`
+  --> tests/ui/issue-3145.rs:2:19
+   |
+LL |     println!("{}" a);
+   |                   ^ expected `,`
+
+error: aborting due to 1 previous error
+

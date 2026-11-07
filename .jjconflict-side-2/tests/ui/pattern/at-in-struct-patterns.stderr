@@ -1,0 +1,69 @@
+error: unexpected `@` in struct pattern
+  --> $DIR/at-in-struct-patterns.rs:8:15
+   |
+LL |     let Foo { var @ field1, .. } = foo;
+   |         ---   ^^^^^
+   |         |
+   |         while parsing the fields for this pattern
+   |
+   = note: struct patterns use `field: pattern` syntax to bind to fields
+   = help: consider replacing `new_name @ field_name` with `field_name: new_name` if that is what you intended
+
+error: `@ ..` is not supported in struct patterns
+  --> $DIR/at-in-struct-patterns.rs:10:26
+   |
+LL |     let Foo { field1: _, bar @ .. } = foo;
+   |         ---              ^^^^^^^^
+   |         |
+   |         while parsing the fields for this pattern
+   |
+help: bind to each field separately or, if you don't need them, just remove `bar @`
+   |
+LL -     let Foo { field1: _, bar @ .. } = foo;
+LL +     let Foo { field1: _, .. } = foo;
+   |
+
+error: `@ ..` is not supported in struct patterns
+  --> $DIR/at-in-struct-patterns.rs:11:15
+   |
+LL |     let Foo { bar @ .. } = foo;
+   |         ---   ^^^^^^^^
+   |         |
+   |         while parsing the fields for this pattern
+   |
+help: bind to each field separately or, if you don't need them, just remove `bar @`
+   |
+LL -     let Foo { bar @ .. } = foo;
+LL +     let Foo { .. } = foo;
+   |
+
+error: expected identifier, found `@`
+  --> $DIR/at-in-struct-patterns.rs:12:15
+   |
+LL |     let Foo { @ } = foo;
+   |         ---   ^ expected identifier
+   |         |
+   |         while parsing the fields for this pattern
+
+error: expected identifier, found `@`
+  --> $DIR/at-in-struct-patterns.rs:13:15
+   |
+LL |     let Foo { @ .. } = foo;
+   |         ---   ^ expected identifier
+   |         |
+   |         while parsing the fields for this pattern
+
+error[E0425]: cannot find value `var` in this scope
+  --> $DIR/at-in-struct-patterns.rs:9:10
+   |
+LL |     dbg!(var);
+   |          ^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use std::env::var;
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,23 @@
+error[E0596]: cannot borrow `outer` as mutable, as it is not declared as mutable
+  --> $DIR/reborrow-in-match-suggest-deref.rs:10:12
+   |
+LL |     match (&mut outer, 23) {
+   |            ^^^^^^^^^^ cannot borrow as mutable
+   |
+note: the binding is already a mutable borrow
+  --> $DIR/reborrow-in-match-suggest-deref.rs:7:16
+   |
+LL | fn test(outer: &mut Option<i32>) {
+   |                ^^^^^^^^^^^^^^^^
+help: consider making the binding mutable if you need to reborrow multiple times
+   |
+LL | fn test(mut outer: &mut Option<i32>) {
+   |         +++
+help: to reborrow the mutable reference, add `*`
+   |
+LL |     match (&mut *outer, 23) {
+   |                 +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

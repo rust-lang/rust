@@ -1,0 +1,116 @@
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/stranded_opaque.rs:11:18
+   |
+LL | fn foo() -> impl ?Future<Output = impl Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/stranded_opaque.rs:21:28
+   |
+LL | fn produce() -> impl Trait<Assoc = impl Trait> {
+   |                            ^^^^^ associated type `Assoc` not found
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/stranded_opaque.rs:28:27
+   |
+LL | fn ill_formed_string() -> String<impl Trait> {
+   |                           ^^^^^^------------ help: remove the unnecessary generics
+   |                           |
+   |                           expected 0 generic arguments
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/stranded_opaque.rs:46:25
+   |
+LL | type IllFormedString =  String<impl Trait>;
+   |                         ^^^^^^------------ help: remove the unnecessary generics
+   |                         |
+   |                         expected 0 generic arguments
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/stranded_opaque.rs:11:18
+   |
+LL | fn foo() -> impl ?Future<Output = impl Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/stranded_opaque.rs:21:28
+   |
+LL | fn produce() -> impl Trait<Assoc = impl Trait> {
+   |                            ^^^^^ associated type `Assoc` not found
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unconstrained opaque type
+  --> $DIR/stranded_opaque.rs:34:12
+   |
+LL | type Foo = impl ?Future<Output = impl Send>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Foo` must be used in combination with a concrete type within the same crate
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/stranded_opaque.rs:34:17
+   |
+LL | type Foo = impl ?Future<Output = impl Send>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/stranded_opaque.rs:34:17
+   |
+LL | type Foo = impl ?Future<Output = impl Send>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unconstrained opaque type
+  --> $DIR/stranded_opaque.rs:34:34
+   |
+LL | type Foo = impl ?Future<Output = impl Send>;
+   |                                  ^^^^^^^^^
+   |
+   = note: `Foo` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/stranded_opaque.rs:40:17
+   |
+LL | type Produce =  impl Trait<Assoc = impl Trait>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Produce` must be used in combination with a concrete type within the same crate
+
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/stranded_opaque.rs:40:28
+   |
+LL | type Produce =  impl Trait<Assoc = impl Trait>;
+   |                            ^^^^^ associated type `Assoc` not found
+
+error[E0220]: associated type `Assoc` not found for `Trait`
+  --> $DIR/stranded_opaque.rs:40:28
+   |
+LL | type Produce =  impl Trait<Assoc = impl Trait>;
+   |                            ^^^^^ associated type `Assoc` not found
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: unconstrained opaque type
+  --> $DIR/stranded_opaque.rs:40:36
+   |
+LL | type Produce =  impl Trait<Assoc = impl Trait>;
+   |                                    ^^^^^^^^^^
+   |
+   = note: `Produce` must be used in combination with a concrete type within the same crate
+
+error: unconstrained opaque type
+  --> $DIR/stranded_opaque.rs:46:32
+   |
+LL | type IllFormedString =  String<impl Trait>;
+   |                                ^^^^^^^^^^
+   |
+   = note: `IllFormedString` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0107, E0220.
+For more information about an error, try `rustc --explain E0107`.

@@ -1,0 +1,2 @@
+error: incorrect value `foo` for codegen option `panic` - either `unwind`, `abort`, or `immediate-abort` was expected
+

@@ -1,0 +1,15 @@
+error: unknown diagnostic attribute
+  --> $DIR/deny_malformed_attribute.rs:5:15
+   |
+LL | #[diagnostic::unknown_attribute]
+   |               ^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deny_malformed_attribute.rs:3:9
+   |
+LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(unknown_diagnostic_attributes)]` implied by `#[deny(unknown_or_malformed_diagnostic_attributes)]`
+
+error: aborting due to 1 previous error
+

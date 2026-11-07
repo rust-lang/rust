@@ -1,0 +1,22 @@
+#![warn(clippy::map_all_any_identity)]
+
+fn main() {
+    let _ = ["foo"].into_iter().any(|s| s == "foo");
+    //~^ map_all_any_identity
+
+    let _ = ["foo"].into_iter().all(|s| s == "foo");
+    //~^ map_all_any_identity
+
+    //
+    // Do not lint
+    //
+    // Not identity
+    let _ = ["foo"].into_iter().map(|s| s.len()).any(|n| n > 0);
+    // Macro
+    macro_rules! map {
+        ($x:expr) => {
+            $x.into_iter().map(|s| s == "foo")
+        };
+    }
+    map!(["foo"]).any(|a| a);
+}

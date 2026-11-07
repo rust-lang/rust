@@ -1,0 +1,73 @@
+// This test checks that comments in item declarations are highlighted.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/private/enum.Enum.html"
+show-text: true
+
+define-function: (
+    "check-item-decl-comment",
+    [theme, url, comment_color],
+    block {
+        go-to: |url|
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (".item-decl .comment", {"color": |comment_color|}, ALL)
+    }
+)
+
+define-function: (
+    "check-items-for-theme",
+    [theme, comment_color],
+    block {
+        call-function: ("check-item-decl-comment", {
+            "theme": |theme|,
+            "url": "file://" + |DOC_PATH| + "/test_docs/private/enum.Enum.html",
+            "comment_color": |comment_color|,
+        })
+        call-function: ("check-item-decl-comment", {
+            "theme": |theme|,
+            "url": "file://" + |DOC_PATH| + "/test_docs/private/struct.Struct.html",
+            "comment_color": |comment_color|,
+        })
+        call-function: ("check-item-decl-comment", {
+            "theme": |theme|,
+            "url": "file://" + |DOC_PATH| + "/test_docs/private/struct.Tuple.html",
+            "comment_color": |comment_color|,
+        })
+        call-function: ("check-item-decl-comment", {
+            "theme": |theme|,
+            "url": "file://" + |DOC_PATH| + "/test_docs/private/union.Union.html",
+            "comment_color": |comment_color|,
+        })
+        call-function: ("check-item-decl-comment", {
+            "theme": |theme|,
+            "url": "file://" + |DOC_PATH| + "/proc_macro_test/macro.make_answer.html",
+            "comment_color": |comment_color|,
+        })
+        call-function: ("check-item-decl-comment", {
+            "theme": |theme|,
+            "url": "file://" + |DOC_PATH| + "/proc_macro_test/derive.HelperAttr.html",
+            "comment_color": |comment_color|,
+        })
+    }
+)
+
+call-function: (
+    "check-items-for-theme",
+    {
+        "theme": "ayu",
+        "comment_color": "#788797",
+    }
+)
+call-function: (
+    "check-items-for-theme",
+    {
+        "theme": "dark",
+        "comment_color": "#8d8d8b",
+    }
+)
+call-function: (
+    "check-items-for-theme",
+    {
+        "theme": "light",
+        "comment_color": "#8e908c",
+    }
+)

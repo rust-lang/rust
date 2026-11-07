@@ -1,0 +1,33 @@
+- // MIR for `c` before SimplifyLocals-before-const-prop
++ // MIR for `c` after SimplifyLocals-before-const-prop
+  
+  fn c() -> () {
+      let mut _0: ();
+      let _1: [u8; 10];
+-     let mut _2: &[u8];
+-     let mut _3: &[u8; 10];
+-     let _4: &[u8; 10];
+      scope 1 {
+          debug bytes => _1;
+          scope 2 {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = [const 0_u8; 10];
+-         StorageLive(_2);
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = &_1;
+-         _3 = &(*_4);
+-         _2 = move _3 as &[u8] (PointerCoercion(Unsize, Implicit));
+-         StorageDead(_3);
+-         StorageDead(_4);
+-         StorageDead(_2);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  
