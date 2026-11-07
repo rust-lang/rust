@@ -155,6 +155,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         self.add_default_traits(bounds, self_ty, hir_bounds, context, span);
+        self.add_implicit_forget_bound(bounds, self_ty, hir_bounds, context, span);
 
         if let IncludeSizedImplicitBounds::Yes = include_sized {
             self.add_implicit_sizedness_bounds(bounds, self_ty, hir_bounds, context, span);
@@ -223,6 +224,37 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     add_trait_bound(tcx, bounds, self_ty, sized_did, span);
                 }
             }
+        }
+    }
+
+    fn add_implicit_forget_bound(
+        &self,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+        self_ty: Ty<'tcx>,
+        hir_bounds: &[hir::GenericBound<'_>],
+        context: ImpliedBoundsContext<'_>,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+        match context {
+            ImpliedBoundsContext::TraitDef(trait_did) => {
+                // Don't add default forget supertrait to default traits.
+                let did = trait_did.to_def_id();
+                if tcx.trait_is_auto(did)
+                    || tcx.is_sizedness_trait(did)
+                    || tcx.is_default_trait(did)
+                {
+                    return;
+                }
+            }
+            ImpliedBoundsContext::AssociatedTypeOrImplTrait | ImpliedBoundsContext::TyParam(..) => {
+            }
+        }
+
+        let forget_did = tcx.require_lang_item(LangItem::Forget, span);
+        let forget_bounds = collect_bounds(hir_bounds, context, forget_did);
+        if !forget_bounds.any() {
+            add_trait_bound(tcx, bounds, self_ty, forget_did, span);
         }
     }
 

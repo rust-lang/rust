@@ -964,8 +964,9 @@ impl<'tcx> TyCtxt<'tcx> {
         including_sized: IncludeSizedImplicitBounds,
     ) -> bool {
         self.is_default_trait(def_id)
-            // NOTE: add move and forget here later
-            || (matches!(including_sized, IncludeSizedImplicitBounds::Yes) && self.is_sizedness_trait(def_id))
+            || self.is_forget_trait(def_id)
+            || (matches!(including_sized, IncludeSizedImplicitBounds::Yes)
+                && self.is_sizedness_trait(def_id))
     }
 
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
