@@ -1,36 +1,64 @@
 error: lifetime may not live long enough
-  --> $DIR/normalization-self.rs:9:14
+  --> $DIR/normalization-self.rs:11:14
    |
 LL |     fn test(x: &(), y: &()) {
    |                - let's call the lifetime of this reference `'1`
 LL |         Self(x);
-   |              ^ this usage requires that `'1` must outlive `'static`
+   |         ---- ^ this usage requires that `'1` must outlive `'static`
+   |         |
+   |         requires lifetime `'static` from the `impl`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -         Self(x);
+LL +         MyTuple(x);
+   |
 
 error: lifetime may not live long enough
-  --> $DIR/normalization-self.rs:11:16
+  --> $DIR/normalization-self.rs:13:16
    |
 LL |     fn test(x: &(), y: &()) {
    |                        - let's call the lifetime of this reference `'2`
 ...
 LL |         let _: Self = MyTuple(y);
    |                ^^^^ type annotation requires that `'2` must outlive `'static`
+   |
+help: consider using the type directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -         let _: Self = MyTuple(y);
+LL +         let _: MyTuple<<&() as Trait>::Assoc> = MyTuple(y);
+   |
 
 error: lifetime may not live long enough
-  --> $DIR/normalization-self.rs:19:21
+  --> $DIR/normalization-self.rs:21:21
    |
 LL |     fn test(x: &(), y: &()) {
    |                - let's call the lifetime of this reference `'1`
 LL |         Self { val: x };
-   |                     ^ this usage requires that `'1` must outlive `'static`
+   |         ----        ^ this usage requires that `'1` must outlive `'static`
+   |         |
+   |         requires lifetime `'static` from the `impl`
+   |
+help: consider using the type's name directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -         Self { val: x };
+LL +         MyStruct { val: x };
+   |
 
 error: lifetime may not live long enough
-  --> $DIR/normalization-self.rs:21:16
+  --> $DIR/normalization-self.rs:23:16
    |
 LL |     fn test(x: &(), y: &()) {
    |                        - let's call the lifetime of this reference `'2`
 ...
 LL |         let _: Self = MyStruct { val: y };
    |                ^^^^ type annotation requires that `'2` must outlive `'static`
+   |
+help: consider using the type directly instead, to avoid conflicting lifetime bounds from the `impl`
+   |
+LL -         let _: Self = MyStruct { val: y };
+LL +         let _: MyStruct<<&() as Trait>::Assoc> = MyStruct { val: y };
+   |
 
 error: aborting due to 4 previous errors
 

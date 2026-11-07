@@ -1,4 +1,6 @@
 //@ check-fail
+//@ run-rustfix
+#![allow(unused)]
 
 trait Trait { type Assoc; }
 impl<'a> Trait for &'a () { type Assoc = &'a (); }
