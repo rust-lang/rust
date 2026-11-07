@@ -330,23 +330,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
-    pub fn consume_clone_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
-        // `x.use` will do one of the following
-        // * if it implements `Copy`, it will be a copy
-        // * if it implements `UseCloned`, it will be a call to `clone`
-        // * otherwise, it is a move
-        //
-        // we do a conservative approximation of this, treating it as a move unless we know that it implements copy or `UseCloned`
-        if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
-            self.delegate.borrow_mut().copy(place_with_id, diag_expr_id);
-        } else if self.cx.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
-            self.delegate.borrow_mut().use_cloned(place_with_id, diag_expr_id);
-        } else {
-            self.delegate.borrow_mut().consume(place_with_id, diag_expr_id);
-        }
-    }
-
     fn consume_exprs(&self, exprs: &[hir::Expr<'_>]) -> Result<(), Cx::Error> {
         for expr in exprs {
             self.consume_expr(expr)?;
@@ -365,9 +348,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub fn consume_or_clone_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
+    pub fn use_cloned_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
         let place_with_id = self.cat_expr(expr)?;
-        self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
+        self.delegate.borrow_mut().use_cloned(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr)?;
         Ok(())
     }
@@ -424,7 +407,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             hir::ExprKind::Use(expr, _) => {
-                self.consume_or_clone_expr(expr)?;
+                self.use_cloned_expr(expr)?;
             }
 
             hir::ExprKind::MethodCall(.., receiver, args, _) => {
@@ -1090,7 +1073,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                             self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByUse => {
-                            self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
+                            self.delegate
+                                .borrow_mut()
+                                .use_cloned(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow_mut().borrow(

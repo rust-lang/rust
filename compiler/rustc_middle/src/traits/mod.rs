@@ -432,6 +432,8 @@ pub enum ObligationCauseCode<'tcx> {
         external_impl: LocalDefId,
         declaration: DefId,
     },
+    /// Receiver of a `.use` expression
+    UseExpr(Span),
 }
 
 /// Whether a value can be extracted into a const.
