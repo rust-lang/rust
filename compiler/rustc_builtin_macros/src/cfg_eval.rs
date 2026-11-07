@@ -100,10 +100,9 @@ impl CfgEval<'_> {
         let orig_tokens = annotatable.to_tokens();
 
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
-        // to the captured `AttrTokenStream` (specifically, we capture
-        // `AttrTokenTree::AttrsTarget` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
+        // for all occurrences of `#[cfg]` and `#[cfg_attr]`.
         //
-        // After that we have our re-parsed `AttrTokenStream`, recursively configuring
+        // After that we have our re-parsed AST nodes, recursively configuring
         // our attribute target will correctly configure the tokens as well.
         let mut parser = Parser::new(&self.0.sess.psess, orig_tokens, None);
         parser.capture_cfg = true;

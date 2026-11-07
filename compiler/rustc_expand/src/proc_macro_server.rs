@@ -527,24 +527,24 @@ impl server::Server for Rustc<'_, '_> {
         .map_err(|_| String::from("failed to parse to literal"))?
         .map_err(cancel_diags_into_string)?;
 
-        let first_span = parser.token.span.data();
+        let (first_span_lo, first_span_hi) = parser.token.span.lo_hi();
         let minus_present = parser.eat(exp!(Minus));
 
-        let lit_span = parser.token.span.data();
+        let (lit_span_lo, lit_span_hi) = parser.token.span.lo_hi();
         let tk::Literal(mut lit) = parser.token.kind else {
             return Err("not a literal".to_string());
         };
 
         // Check no comment or whitespace surrounding the (possibly negative)
         // literal, or more tokens after it.
-        if (lit_span.hi.0 - first_span.lo.0) as usize != s.len() {
+        if (lit_span_hi.0 - first_span_lo.0) as usize != s.len() {
             return Err("comment or whitespace around literal".to_string());
         }
 
         if minus_present {
             // If minus is present, check no comment or whitespace in between it
             // and the literal token.
-            if first_span.hi.0 != lit_span.lo.0 {
+            if first_span_hi.0 != lit_span_lo.0 {
                 return Err("comment or whitespace after minus".to_string());
             }
 

@@ -217,7 +217,7 @@ impl LlvmType for CastTarget {
         let prefix_args = self.prefix.iter().map(|reg| reg.llvm_type(cx));
         let rest_args = (0..rest_count).map(|_| rest_ll_unit);
         let args: Vec<_> = prefix_args.chain(rest_args).collect();
-        cx.type_struct(&args, false)
+        cx.type_struct(&args)
     }
 }
 
@@ -251,7 +251,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Ignore => {}
             // Sized indirect arguments
             PassMode::Indirect { attrs, address_space: _, mode: _ } => {
-                let align = attrs.pointee_align.unwrap_or(self.layout.align.abi);
+                let align = attrs.pointee_align.unwrap_or(self.layout.align);
                 OperandValue::Ref(PlaceValue::new_sized(val, align)).store(bx, dst);
             }
             // Unsized indirect arguments cannot be stored
@@ -280,7 +280,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
-                    self.layout.align.abi,
+                    self.layout.align,
                     llscratch,
                     scratch_align,
                     bx.const_usize(copy_bytes),

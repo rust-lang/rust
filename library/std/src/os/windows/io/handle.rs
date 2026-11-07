@@ -4,6 +4,7 @@
 
 use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::alloc::Allocator;
+use crate::macros::rustdoc_skip_body;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
@@ -193,6 +194,7 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl Drop for HandleOrNull {
     #[inline]
+    #[rustdoc_skip_body]
     fn drop(&mut self) {
         if self.is_valid() {
             unsafe {
@@ -215,10 +217,12 @@ impl BorrowedHandle<'_> {
     /// Creates a new `OwnedHandle` instance that shares the same underlying
     /// object as the existing `BorrowedHandle` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
+    #[rustdoc_skip_body]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedHandle> {
         self.duplicate(0, false, sys::c::DUPLICATE_SAME_ACCESS)
     }
 
+    #[rustdoc_skip_body]
     pub(crate) fn duplicate(
         &self,
         access: u32,
@@ -271,6 +275,7 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl Drop for HandleOrInvalid {
     #[inline]
+    #[rustdoc_skip_body]
     fn drop(&mut self) {
         if self.is_valid() {
             unsafe {
@@ -491,6 +496,7 @@ impl<T: AsHandle + ?Sized> AsHandle for &mut T {
 /// ```
 impl<T: AsHandle + ?Sized> AsHandle for crate::sync::Arc<T> {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()
     }
@@ -499,6 +505,7 @@ impl<T: AsHandle + ?Sized> AsHandle for crate::sync::Arc<T> {
 #[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 impl<T: AsHandle + ?Sized> AsHandle for crate::rc::Rc<T> {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()
     }
@@ -507,6 +514,7 @@ impl<T: AsHandle + ?Sized> AsHandle for crate::rc::Rc<T> {
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: AsHandle + ?Sized> AsHandle for crate::rc::UniqueRc<T> {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()
     }
@@ -515,6 +523,7 @@ impl<T: AsHandle + ?Sized> AsHandle for crate::rc::UniqueRc<T> {
 #[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 impl<T: AsHandle + ?Sized, A: Allocator> AsHandle for Box<T, A> {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         (**self).as_handle()
     }
@@ -542,6 +551,7 @@ impl AsHandle for OwnedHandle {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         self.as_inner().as_handle()
     }
@@ -551,6 +561,7 @@ impl AsHandle for fs::File {
 impl From<fs::File> for OwnedHandle {
     /// Takes ownership of a [`File`](fs::File)'s underlying file handle.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(file: fs::File) -> OwnedHandle {
         file.into_inner().into_inner().into_inner()
     }
@@ -560,6 +571,7 @@ impl From<fs::File> for OwnedHandle {
 impl From<OwnedHandle> for fs::File {
     /// Returns a [`File`](fs::File) that takes ownership of the given handle.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned: OwnedHandle) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned)))
     }
@@ -675,6 +687,7 @@ impl<T> AsHandle for crate::thread::JoinHandle<T> {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl<T> From<crate::thread::JoinHandle<T>> for OwnedHandle {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(join_handle: crate::thread::JoinHandle<T>) -> OwnedHandle {
         join_handle.into_inner().into_handle().into_inner()
     }
@@ -682,6 +695,7 @@ impl<T> From<crate::thread::JoinHandle<T>> for OwnedHandle {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsHandle for io::PipeReader {
+    #[rustdoc_skip_body]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         self.0.as_handle()
     }
@@ -689,6 +703,7 @@ impl AsHandle for io::PipeReader {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<io::PipeReader> for OwnedHandle {
+    #[rustdoc_skip_body]
     fn from(pipe: io::PipeReader) -> Self {
         pipe.into_inner().into_inner()
     }
@@ -696,6 +711,7 @@ impl From<io::PipeReader> for OwnedHandle {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsHandle for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn as_handle(&self) -> BorrowedHandle<'_> {
         self.0.as_handle()
     }
@@ -746,6 +762,7 @@ unsafe_impl_handle_asrefs!(crate::fs::File, io::PipeWriter, io::PipeReader,);
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<io::PipeWriter> for OwnedHandle {
+    #[rustdoc_skip_body]
     fn from(pipe: io::PipeWriter) -> Self {
         pipe.into_inner().into_inner()
     }
@@ -753,6 +770,7 @@ impl From<io::PipeWriter> for OwnedHandle {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<OwnedHandle> for io::PipeReader {
+    #[rustdoc_skip_body]
     fn from(owned_handle: OwnedHandle) -> Self {
         Self::from_inner(FromInner::from_inner(owned_handle))
     }
@@ -760,6 +778,7 @@ impl From<OwnedHandle> for io::PipeReader {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl From<OwnedHandle> for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn from(owned_handle: OwnedHandle) -> Self {
         Self::from_inner(FromInner::from_inner(owned_handle))
     }

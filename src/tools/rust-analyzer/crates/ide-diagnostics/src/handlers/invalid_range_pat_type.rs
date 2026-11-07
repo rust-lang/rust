@@ -52,4 +52,66 @@ fn f(x: u8, c: char) {
 "#,
         );
     }
+
+    #[test]
+    fn inferred_invalid_type_range_patterns() {
+        check_diagnostics(
+            r#"
+trait Zero {
+    const ZERO: Self;
+}
+
+struct S;
+
+impl Zero for S {
+    const ZERO: Self = S;
+}
+
+fn f() {
+    match S {
+        Zero::ZERO..=Zero::ZERO => {}
+      //^^^^^^^^^^^^^^^^^^^^^^^ error: only `char` and numeric types are allowed in range patterns
+        Zero::ZERO.. => {}
+      //^^^^^^^^^^^^ error: only `char` and numeric types are allowed in range patterns
+        ..Zero::ZERO => {}
+      //^^^^^^^^^^^^ error: only `char` and numeric types are allowed in range patterns
+        _ => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inferred_valid_type_range_patterns() {
+        check_diagnostics(
+            r#"
+trait Zero {
+    const ZERO: Self;
+}
+
+impl Zero for u8 {
+    const ZERO: Self = 0;
+}
+
+impl Zero for char {
+    const ZERO: Self = '0';
+}
+
+fn f(x: u8) {
+    match x {
+        Zero::ZERO..=Zero::ZERO => {}
+        _ => {}
+    }
+}
+
+fn g(x: char) {
+    match x {
+        Zero::ZERO..=Zero::ZERO => {}
+        _ => {}
+    }
+}
+"#,
+        );
+    }
 }

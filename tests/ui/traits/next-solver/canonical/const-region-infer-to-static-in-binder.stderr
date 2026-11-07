@@ -1,8 +1,10 @@
-error[E0284]: type annotations needed: cannot satisfy `the constant `{ || {} }` can be evaluated`
+error[E0284]: type annotations needed
   --> $DIR/const-region-infer-to-static-in-binder.rs:4:10
    |
 LL | struct X<const FN: fn() = { || {} }>;
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `{ || {} }` can be evaluated`
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
+   |
+   = note: cannot satisfy `X::{constant#0} == _`
 
 error[E0284]: type annotations needed
   --> $DIR/const-region-infer-to-static-in-binder.rs:4:10

@@ -2,12 +2,33 @@
 //! one way for the serial compiler, and another way the parallel compiler.
 
 use std::any::Any;
+use std::ops::{Index, Range};
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
 use parking_lot::Mutex;
 
 use crate::FatalErrorMarker;
 use crate::sync::{DynSend, DynSync, FromDyn, IntoDynSyncSend, mode};
+
+pub trait Dss = DynSend + DynSync;
+
+pub trait HasLength {
+    fn len(&self) -> usize;
+}
+
+impl<T> HasLength for [T] {
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+impl<T> HasLength for indexmap::set::Slice<T> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+pub trait ParSlice<T> = HasLength + Index<usize, Output = T> + DynSync;
 
 /// A guard used to hold panics that occur during a parallel section to later by unwound.
 /// This is used for the parallel compiler to prevent fatal errors from non-deterministically
@@ -123,10 +144,88 @@ where
     }
 }
 
-fn par_slice<I: DynSend>(
+const MAX_GROUP_COUNT: usize = 128;
+
+fn par_range_internal(
+    range: Range<usize>,
+    guard: &ParallelGuard,
+    proof: FromDyn<()>,
+    op: impl Fn(usize) + Dss,
+) {
+    let len = range.end - range.start;
+    match len {
+        0 => return,
+        1 => {
+            guard.run(|| op(range.start));
+            return;
+        }
+        _ => {}
+    }
+
+    let op = proof.derive(op);
+
+    rustc_thread_pool::scope(|s| {
+        let group_size = len.div_ceil(MAX_GROUP_COUNT);
+        debug_assert!(group_size > 0);
+
+        // Take the first group and execute it after the loop on this thread.
+        let first_group = range.start..range.end.min(range.start + group_size);
+
+        let range = first_group.end..range.end;
+        let mut curr_end = range.end;
+
+        // We iterate from end to start to reverse the chunks as it is done in `par_slice_mut`.
+        loop {
+            let curr_start = curr_end.checked_sub(group_size).unwrap_or(range.start);
+
+            // Don't let the `curr_start` go before the initial range start.
+            let curr_start = curr_start.max(range.start);
+
+            // We can encounter empty range here, don't spawn anything in this case.
+            if curr_start == curr_end {
+                break;
+            }
+
+            let curr_range = curr_start..curr_end;
+            s.spawn(|_| {
+                for idx in curr_range {
+                    guard.run(|| op(idx));
+                }
+            });
+
+            if curr_start == range.start {
+                break;
+            }
+
+            curr_end -= group_size;
+        }
+
+        for idx in first_group {
+            guard.run(|| op(idx));
+        }
+    });
+}
+
+/// Executes the given action `op` with each index from range `range` in parallel
+/// if the parallel frontend is enabled, otherwise executes them sequentially. Action
+/// is executed with each index under parallel guard in both scenarios so if one of them
+/// panics all others will be executed anyway.
+pub fn par_range(range: Range<usize>, op: impl Fn(usize) + Dss) {
+    parallel_guard(|guard| {
+        if let Some(proof) = mode::check_dyn_thread_safe() {
+            par_range_internal(range, guard, proof, op);
+        } else {
+            for i in range {
+                guard.run(|| op(i));
+            }
+        }
+    })
+}
+
+fn par_slice_mut<I: DynSend>(
     items: &mut [I],
     guard: &ParallelGuard,
-    for_each: impl Fn(&mut I) + DynSync + DynSend,
+    for_each: impl Fn(&mut I) + Dss,
     proof: FromDyn<()>,
 ) {
     match items {
@@ -143,7 +242,6 @@ fn par_slice<I: DynSend>(
     rustc_thread_pool::scope(|s| {
         let proof = items.derive(());
 
-        const MAX_GROUP_COUNT: usize = 128;
         let group_size = items.len().div_ceil(MAX_GROUP_COUNT);
         let mut groups = items.chunks_mut(group_size);
 
@@ -169,20 +267,17 @@ fn par_slice<I: DynSend>(
     });
 }
 
-pub fn par_for_each_in<I: DynSend, T: IntoIterator<Item = I>>(
-    t: T,
-    for_each: impl Fn(&I) + DynSync + DynSend,
-) {
+pub fn par_for_each_in<T: Dss>(items: &(impl ParSlice<T> + ?Sized), for_each: impl Fn(&T) + Dss) {
+    let range = 0..items.len();
     parallel_guard(|guard| {
         if let Some(proof) = mode::check_dyn_thread_safe() {
-            let mut items: Vec<_> = t.into_iter().collect();
-            par_slice(&mut items, guard, |i| for_each(&*i), proof)
+            par_range_internal(range, guard, proof, |idx| for_each(&items[idx]));
         } else {
-            t.into_iter().for_each(|i| {
-                guard.run(|| for_each(&i));
-            });
+            for idx in range {
+                guard.run(|| for_each(&items[idx]));
+            }
         }
-    });
+    })
 }
 
 // FIXME: actually make parallel and `T: DynSend`
@@ -198,40 +293,34 @@ pub fn par_for_each_slice<T>(items: &mut [T], for_each: impl Fn(&mut T)) {
 /// `for_each` calls returns `Err`, the function will also return `Err`. The error returned
 /// will be non-deterministic, but this is expected to be used with `ErrorGuaranteed` which
 /// are all equivalent.
-pub fn try_par_for_each_in<T: IntoIterator, E: DynSend>(
-    t: T,
-    for_each: impl Fn(&<T as IntoIterator>::Item) -> Result<(), E> + DynSync + DynSend,
-) -> Result<(), E>
-where
-    <T as IntoIterator>::Item: DynSend,
-{
+pub fn try_par_for_each_in<T: Dss, E: DynSend>(
+    items: &(impl ParSlice<T> + ?Sized),
+    for_each: impl Fn(&T) -> Result<(), E> + Dss,
+) -> Result<(), E> {
+    let range = 0..items.len();
     parallel_guard(|guard| {
         if let Some(proof) = mode::check_dyn_thread_safe() {
-            let mut items: Vec<_> = t.into_iter().collect();
-
             let error = Mutex::new(None);
 
-            par_slice(
-                &mut items,
-                guard,
-                |i| {
-                    if let Err(err) = for_each(&*i) {
-                        *error.lock() = Some(err);
-                    }
-                },
-                proof,
-            );
+            par_range_internal(range, guard, proof, |idx| {
+                if let Err(err) = for_each(&items[idx]) {
+                    *error.lock() = Some(err);
+                }
+            });
 
             if let Some(err) = error.into_inner() { Err(err) } else { Ok(()) }
         } else {
-            t.into_iter().filter_map(|i| guard.run(|| for_each(&i))).fold(Ok(()), Result::and)
+            range
+                .into_iter()
+                .filter_map(|idx| guard.run(|| for_each(&items[idx])))
+                .fold(Ok(()), Result::and)
         }
     })
 }
 
 pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterator<R>>(
     t: T,
-    map: impl Fn(I) -> R + DynSync + DynSend,
+    map: impl Fn(I) -> R + Dss,
 ) -> C {
     parallel_guard(|guard| {
         if let Some(proof) = mode::check_dyn_thread_safe() {
@@ -240,7 +329,7 @@ pub fn par_map<I: DynSend, T: IntoIterator<Item = I>, R: DynSend, C: FromIterato
             let mut items: Vec<(Option<I>, Option<R>)> =
                 t.into_iter().map(|i| (Some(i), None)).collect();
 
-            par_slice(
+            par_slice_mut(
                 &mut items,
                 guard,
                 |i| {

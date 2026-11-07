@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
-use std::mem;
 use std::ops::{ControlFlow, Deref};
 
 use rustc_attr_ir::lang_items::LangItem;
@@ -11,7 +10,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
-    QueryRegionConstraint,
+    Canonicalized, QueryRegionConstraint, instantiate_value,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::{
@@ -34,7 +33,7 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::inspect::InferCtxtProofTreeExt;
 use crate::solve::inspect::{self, InspectConfig, ProofTreeVisitor};
-use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, implicit_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -179,7 +178,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
                             let predicate = self.deeply_resolve_ignoring_regions(goal.predicate);
-                            if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                            if implicit_fast_path(self.tcx, predicate, goal.param_env) {
                                 Outcome::TriviallyHolds
                             } else {
                                 Outcome::NoFastPath
@@ -406,6 +405,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         constraints
     }
 
+    fn instantiate_value<V>(&self, value: Canonicalized<V>, values: CanonicalVarValues<'tcx>) -> V
+    where
+        V: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        instantiate_value(self.tcx, &values, value.into_uninstantiated())
+    }
+
     fn instantiate_canonical<V>(
         &self,
         canonical: Canonical<'tcx, V>,
@@ -421,16 +427,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         kind: CanonicalVarKind<'tcx>,
         span: Span,
-        var_values: &[ty::GenericArg<'tcx>],
+        prev_var_values: &[ty::GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, kind, var_values, universe_map)
+        self.0.instantiate_canonical_var(span, kind, prev_var_values, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(
         &self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
@@ -499,15 +505,20 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             .ok_or(NoSolution)
     }
 
-    fn obtain_canonicalizer_state(&self) -> CanonicalizerState<Self::Interner> {
-        // We temporarily take the canonicalizer state.
-        mem::take(&mut self.canonicalizer_state.borrow_mut())
+    fn obtain_canonicalizer_state(&self) -> Box<CanonicalizerState<Self::Interner>> {
+        // Get the top state, or create a new one if none are available.
+        self.cx()
+            .caches
+            .canonicalizer_states
+            .lock()
+            .pop()
+            .unwrap_or_else(|| Box::new(CanonicalizerState::default()))
     }
 
-    fn release_canonicalizer_state(&self, mut state: CanonicalizerState<Self::Interner>) {
+    fn release_canonicalizer_state(&self, mut state: Box<CanonicalizerState<Self::Interner>>) {
         // Clear (don't deallocate) the state for later reuse.
         state.clear();
-        *self.canonicalizer_state.borrow_mut() = state;
+        self.cx().caches.canonicalizer_states.lock().push(state);
     }
 
     fn emit_next_solver_overflow_fcw(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>, span: Span) {
@@ -520,10 +531,17 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 // We do this in the decorator as that avoids the work
                 // if we don't actually emit the lint.
                 let goal = self.deeply_resolve_ignoring_regions(goal);
+                let recursion_limit = if let Some(specified_limit) = tcx.next_solver_overflow_fcw_limit()
+                {
+                    // Double default limit allows us to see the whole chain.
+                    usize::min(specified_limit, tcx.recursion_limit().0 * 2)
+                } else {
+                    usize::min(16, tcx.recursion_limit().0)
+                };
                 let mut visitor = OverflowedGoalChain {
                     span,
                     predicates: vec![],
-                    recursion_limit: usize::min(16, tcx.recursion_limit().0),
+                    recursion_limit,
                 };
 
                 let _ = self.with_disabled_next_solver_overflow_fcw(|| {

@@ -90,7 +90,7 @@ macro_rules! return_if_di_node_created_in_meantime {
 /// Extract size and alignment from a TyAndLayout.
 #[inline]
 fn size_and_align_of(ty_and_layout: TyAndLayout<'_>) -> (Size, Align) {
-    (ty_and_layout.size, ty_and_layout.align.abi)
+    (ty_and_layout.size, ty_and_layout.align)
 }
 
 /// Creates debuginfo for a fixed size array (e.g. `[u64; 123]`).
@@ -180,7 +180,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
         None => {
             // This is a thin pointer. Create a regular pointer type and give it the correct name.
             assert_eq!(
-                (pointer_size, pointer_align.abi),
+                (pointer_size, pointer_align),
                 cx.size_and_align_of(ptr_type),
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
@@ -189,7 +189,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 cx,
                 pointee_type_di_node,
                 pointer_size,
-                pointer_align.abi,
+                pointer_align,
                 &ptr_type_debuginfo_name,
             );
 
@@ -243,7 +243,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         cx,
                         pointee_type_di_node,
                         addr_field.size,
-                        addr_field.align.abi,
+                        addr_field.align,
                         "",
                     );
 
@@ -326,9 +326,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
         ty::FnDef(..) => (Size::ZERO, Align::ONE),
-        ty::FnPtr(..) => {
-            (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align().abi)
-        }
+        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align()),
         _ => unreachable!(),
     };
     let di_node = create_pointer_type(cx, fn_di_node, size, align, &name);
@@ -1595,7 +1593,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     let usize_di_node = type_di_node(cx, tcx.types.usize);
     let pointer_layout = cx.layout_of(void_pointer_ty);
     let pointer_size = pointer_layout.size;
-    let pointer_align = pointer_layout.align.abi;
+    let pointer_align = pointer_layout.align;
     // If `usize` is not pointer-sized and -aligned then the size and alignment computations
     // for the vtable as a whole would be wrong. Let's make sure this holds even on weird
     // platforms.

@@ -28,28 +28,31 @@
 -         StorageLive(_2);
 -         _2 = make_fields(const 0_u8) -> [return: bb1, unwind unreachable];
 +         nop;
++         StorageLive(_10);
 +         _10 = make_fields(const 0_u8) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
 -         StorageLive(_3);
 -         StorageLive(_4);
--         StorageLive(_5);
++         nop;
++         nop;
++         nop;
+          StorageLive(_5);
 -         _5 = &raw const _2;
-+         nop;
-+         nop;
-+         nop;
 +         _5 = &raw const _10;
++         StorageLive(_4);
           _4 = observe(move _5) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
 -         StorageDead(_5);
--         StorageDead(_4);
+          StorageDead(_4);
 -         StorageLive(_6);
 -         StorageLive(_7);
 -         _7 = copy _1;
 -         switchInt(move _7) -> [0: bb5, otherwise: bb3];
++         StorageDead(_5);
 +         nop;
 +         nop;
 +         nop;
@@ -77,8 +80,11 @@
 +         nop;
 +         nop;
 +         _0 = move _10;
++         StorageDead(_10);
 +         nop;
++         StorageLive(_6);
           _6 = const ();
++         StorageDead(_6);
           goto -> bb6;
       }
   
@@ -86,12 +92,14 @@
 -         StorageLive(_10);
 -         _10 = move _2;
 -         _3 = move _10;
--         StorageDead(_10);
 +         nop;
 +         nop;
 +         _0 = move _10;
+          StorageDead(_10);
 +         nop;
++         StorageLive(_6);
           _6 = const ();
++         StorageDead(_6);
           goto -> bb6;
       }
   
@@ -99,22 +107,24 @@
 -         StorageDead(_7);
 -         StorageDead(_6);
 -         StorageLive(_11);
--         StorageLive(_12);
++         nop;
++         nop;
++         nop;
++         nop;
+          StorageLive(_12);
 -         _12 = &raw const _3;
-+         nop;
-+         nop;
-+         nop;
-+         nop;
 +         _12 = &raw const _0;
++         StorageLive(_11);
           _11 = observe(move _12) -> [return: bb7, unwind unreachable];
       }
   
       bb7: {
 -         StorageDead(_12);
--         StorageDead(_11);
+          StorageDead(_11);
 -         _0 = move _3;
 -         StorageDead(_3);
 -         StorageDead(_2);
++         StorageDead(_12);
 +         nop;
 +         nop;
 +         nop;

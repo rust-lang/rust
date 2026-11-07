@@ -224,11 +224,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "lgammaf_r" => {
                 let [x, signp] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(f32, *_) -> f32),
+                    shim_sig!(extern "C" fn(f32, *i32) -> f32),
                     (link_name, abi, args),
                 )?;
                 let x = this.read_scalar(x)?.to_f32()?;
-                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
+                let signp = this.deref_pointer(signp)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
@@ -246,11 +246,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "lgamma_r" => {
                 let [x, signp] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(f64, *_) -> f64),
+                    shim_sig!(extern "C" fn(f64, *i32) -> f64),
                     (link_name, abi, args),
                 )?;
                 let x = this.read_scalar(x)?.to_f64()?;
-                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
+                let signp = this.deref_pointer(signp)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();

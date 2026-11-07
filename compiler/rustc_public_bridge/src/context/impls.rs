@@ -18,9 +18,9 @@ use rustc_middle::ty::print::{
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
-    ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef, List,
-    PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy,
-    ValTree, VariantDef, VtblEntry,
+    ExistentialTraitRef, FnSig, GenericArgs, Instance, InstanceKind, IntrinsicDef, List, PolyFnSig,
+    ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy, ValTree,
+    VariantDef, VtblEntry,
 };
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -289,26 +289,14 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Return registered tool attributes with the given attribute name.
     ///
-    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
-    /// attributes will simply return an empty list.
-    ///
-    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
-    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
+    /// For example, `#[rustfmt::skip]` can be specified as
+    /// `&["rustfmt".to_string(), "skip".to_string()]`.
     pub fn tool_attrs(&self, def_id: DefId, attr: &[String]) -> Vec<(String, Span)> {
         let attr_name: Vec<_> = attr.iter().map(|seg| Symbol::intern(&seg)).collect();
-        #[allow(deprecated)]
         self.tcx
-            .get_all_attrs(def_id)
-            .into_iter()
-            .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute
-                    && u.path.segments.iter().eq(&attr_name)
-                {
-                    let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
-                    Some((attr_str, u.span))
-                } else {
-                    None
-                }
+            .tool_attrs(def_id, &attr_name)
+            .map(|attribute| {
+                (rustc_hir_pretty::attritem_to_string(self, attribute), attribute.span)
             })
             .collect()
     }
@@ -322,7 +310,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         };
         attrs_iter
             .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute {
+                if let Attribute::Tool(u) = attribute {
                     let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
                     Some((attr_str, u.span))
                 } else {
@@ -389,11 +377,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     /// Retrieve the function signature for the given generic arguments.
-    pub fn fn_sig(
-        &self,
-        def_id: DefId,
-        args_ref: GenericArgsRef<'tcx>,
-    ) -> Binder<'tcx, FnSig<'tcx>> {
+    pub fn fn_sig(&self, def_id: DefId, args_ref: GenericArgs<'tcx>) -> Binder<'tcx, FnSig<'tcx>> {
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args_ref).skip_norm_wip();
         sig
     }
@@ -420,7 +404,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     /// Retrieve the closure signature for the given generic arguments.
-    pub fn closure_sig(&self, args_ref: GenericArgsRef<'tcx>) -> Binder<'tcx, FnSig<'tcx>> {
+    pub fn closure_sig(&self, args_ref: GenericArgs<'tcx>) -> Binder<'tcx, FnSig<'tcx>> {
         args_ref.as_closure().sig()
     }
 
@@ -442,7 +426,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     pub fn coroutine_discr_for_variant(
         &self,
         coroutine: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         variant: rustc_abi::VariantIdx,
     ) -> Discr<'tcx> {
         args.as_coroutine().discriminant_for_variant(coroutine, self.tcx, variant)
@@ -571,7 +555,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     /// Returns the type of given definition instantiated with the given arguments.
-    pub fn def_ty_with_args(&self, item: DefId, args_ref: GenericArgsRef<'tcx>) -> Ty<'tcx> {
+    pub fn def_ty_with_args(&self, item: DefId, args_ref: GenericArgs<'tcx>) -> Ty<'tcx> {
         let def_ty = self.tcx.type_of(item);
         self.tcx.instantiate_and_normalize_erasing_regions(args_ref, self.typing_env(), def_ty)
     }
@@ -613,7 +597,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     /// Get the instantiation types.
-    pub fn instance_args(&self, instance: ty::Instance<'tcx>) -> GenericArgsRef<'tcx> {
+    pub fn instance_args(&self, instance: ty::Instance<'tcx>) -> GenericArgs<'tcx> {
         instance.args
     }
 
@@ -676,7 +660,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     pub fn resolve_instance(
         &self,
         def_id: DefId,
-        args_ref: GenericArgsRef<'tcx>,
+        args_ref: GenericArgs<'tcx>,
     ) -> Option<Instance<'tcx>> {
         match Instance::try_resolve(self.tcx, self.typing_env(), def_id, args_ref) {
             Ok(Some(instance)) => Some(instance),
@@ -694,7 +678,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     pub fn resolve_for_fn_ptr(
         &self,
         def_id: DefId,
-        args_ref: GenericArgsRef<'tcx>,
+        args_ref: GenericArgs<'tcx>,
     ) -> Option<Instance<'tcx>> {
         Instance::resolve_for_fn_ptr(self.tcx, self.typing_env(), def_id, args_ref)
     }
@@ -703,7 +687,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     pub fn resolve_closure(
         &self,
         def_id: DefId,
-        args_ref: GenericArgsRef<'tcx>,
+        args_ref: GenericArgs<'tcx>,
         closure_kind: ClosureKind,
     ) -> Option<Instance<'tcx>> {
         Some(Instance::resolve_closure(self.tcx, def_id, args_ref, closure_kind))

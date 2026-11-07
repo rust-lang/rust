@@ -993,7 +993,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     gen_arg_spans[self.num_expected_type_or_const_args() - 1]
                 };
             let span_hi_redundant_type_or_const_args = gen_arg_spans[gen_arg_spans.len() - 1];
-            if !span_lo_redundant_type_or_const_args.eq_ctxt(span_hi_redundant_type_or_const_args) {
+            if span_lo_redundant_type_or_const_args.ctxt()
+                != span_hi_redundant_type_or_const_args.ctxt()
+            {
                 return;
             }
             let span_redundant_type_or_const_args = span_lo_redundant_type_or_const_args
@@ -1111,6 +1113,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let msg = {
             let def_kind = self.tcx.def_descr(self.def_id);
             let (quantifier, bound) = self.get_quantifier_and_bound();
+            if let hir::def::DefKind::AssocFn | hir::def::DefKind::AssocTy =
+                self.tcx.def_kind(self.def_id)
+            {
+                spans.push_span_context(
+                    self.tcx.def_span(self.tcx.parent(self.def_id)).shrink_to_lo(),
+                );
+            }
 
             let params = if bound == 0 {
                 String::new()

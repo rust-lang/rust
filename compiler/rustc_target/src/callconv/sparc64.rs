@@ -39,7 +39,7 @@ fn classify<'a, Ty, C>(
     match arg_layout.backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
             Primitive::Float(float) => {
-                if offset.is_aligned(Ord::min(*float.align(cx), Align::EIGHT)) {
+                if offset.is_aligned(Ord::min(float.align(cx), Align::EIGHT)) {
                     let index = offset.bytes_usize() / 8;
                     match float {
                         Float::F128 => {
@@ -118,7 +118,7 @@ fn classify_arg<'a, Ty, C>(
     // arguments to be inserted where necessary to ensure that 16-aligned arguments are passed in an
     // aligned set of registers.
 
-    let pad = !total_double_word_count.is_multiple_of(2) && arg.layout.align.abi.bytes() == 16;
+    let pad = !total_double_word_count.is_multiple_of(2) && arg.layout.align.bytes() == 16;
     // The number of double words used by this argument.
     let double_word_count = arg.layout.size.bytes_usize().div_ceil(8);
     // The number of double words before this argument, including any padding.

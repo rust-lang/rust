@@ -350,11 +350,7 @@ impl LiteralDigitGrouping {
         }
 
         let group_sizes: Vec<usize> = num_lit.integer.split('_').map(str::len).collect();
-        if UUID_GROUP_LENS.len() == group_sizes.len() {
-            iter::zip(&UUID_GROUP_LENS, &group_sizes).all(|(&a, &b)| a == b)
-        } else {
-            false
-        }
+        UUID_GROUP_LENS.len() == group_sizes.len() && iter::zip(&UUID_GROUP_LENS, &group_sizes).all(|(&a, &b)| a == b)
     }
 
     /// Given the sizes of the digit groups of both integral and fractional

@@ -2,8 +2,7 @@ use std::cmp;
 use std::ops::Range;
 
 use rustc_abi::{
-    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Reg, Size,
-    VariantIdx, Variants, WrappingRange,
+    Align, ArmCall, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Size, VariantIdx, Variants,
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -629,10 +628,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         scratch.val.llval
                     }
                     Ref(place_val) => {
-                        assert_eq!(
-                            place_val.align, op.layout.align.abi,
-                            "return place is unaligned!"
-                        );
+                        assert_eq!(place_val.align, op.layout.align, "return place is unaligned!");
                         place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
@@ -645,7 +641,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.clear_padding_cmse(bx, llslot, ret_layout.size, ret_layout);
                 }
 
-                load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
+                load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align)
             }
             PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
@@ -1038,7 +1034,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             };
 
                         if let Some(place) = result_place
-                            && place.align < result_layout.align.abi
+                            && place.align < result_layout.align
                         {
                             // Currently, MIR code generation does not create calls
                             // that store directly to fields of packed structs (in
@@ -1508,11 +1504,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         let span = terminator.source_info.span;
 
+        // If any input operand is `!`, then  we don't need to generate the asm terminator,
+        // but we still need to evaluate the operands.
+        // We do this in codegen instead of MIR building so that it doesn't affect borrowck.
+        // Fixes an ICE with `!` inline asm inputs (#154904).
+        let mut any_input_uninhabited = false;
+
         let operands: Vec<_> = operands
             .iter()
             .map(|op| match *op {
                 mir::InlineAsmOperand::In { reg, ref value } => {
                     let value = self.codegen_operand(bx, value);
+                    if value.layout.is_uninhabited() {
+                        any_input_uninhabited = true;
+                    }
                     InlineAsmOperandRef::In { reg, value }
                 }
                 mir::InlineAsmOperand::Out { reg, late, ref place } => {
@@ -1521,6 +1526,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::InOut { reg, late, ref in_value, ref out_place } => {
                     let in_value = self.codegen_operand(bx, in_value);
+                    if in_value.layout.is_uninhabited() {
+                        any_input_uninhabited = true;
+                    }
                     let out_place =
                         out_place.map(|out_place| self.codegen_place(bx, out_place.as_ref()));
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
@@ -1580,18 +1588,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
             .collect();
 
-        helper.do_inlineasm(
-            self,
-            bx,
-            template,
-            &operands,
-            options,
-            line_spans,
-            if asm_macro.diverges(options) { None } else { targets.get(0).copied() },
-            unwind,
-            instance,
-            mergeable_succ,
-        )
+        if any_input_uninhabited {
+            bx.unreachable();
+            MergingSucc::False
+        } else {
+            helper.do_inlineasm(
+                self,
+                bx,
+                template,
+                &operands,
+                options,
+                line_spans,
+                if asm_macro.diverges(options) { None } else { targets.get(0).copied() },
+                unwind,
+                instance,
+                mergeable_succ,
+            )
+        }
     }
 
     pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
@@ -1927,7 +1940,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let discr_ty = layout.ty.discriminant_ty(bx.tcx());
         let enum_ptr = bx.inbounds_ptradd(base_ptr, bx.const_usize(base_offset.bytes()));
         let operand = OperandRef {
-            val: OperandValue::Ref(PlaceValue::new_sized(enum_ptr, layout.align.abi)),
+            val: OperandValue::Ref(PlaceValue::new_sized(enum_ptr, layout.align)),
             layout,
             move_annotation: None,
         };
@@ -1975,109 +1988,98 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) {
         match arg.mode {
-            PassMode::Ignore => return,
-            PassMode::Cast { pad_i32_count, .. } => {
-                // Fill padding with undef value, where applicable.
-                let undef = bx.const_undef(bx.reg_backend_type(&Reg::i32()));
-                llargs.extend(std::iter::repeat_n(undef, usize::from(pad_i32_count)));
-            }
+            PassMode::Ignore => {}
+            PassMode::Direct(_) => match op.val {
+                Immediate(v) => llargs.push(v),
+                _ => bug!("codegen_argument: {:?} invalid for direct argument", op),
+            },
             PassMode::Pair(..) => match op.val {
                 Pair(a, b) => {
                     llargs.push(a);
                     llargs.push(b);
-                    return;
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
-            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => match op.val {
-                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
-                    llargs.push(a);
-                    llargs.push(b);
-                    return;
-                }
-                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
-            },
-            _ => {}
-        }
-
-        // Force by-ref if we have to load through a cast pointer.
-        let (mut llval, align, by_ref) = match op.val {
-            Immediate(_) | Pair(..) => match arg.mode {
-                PassMode::Indirect { attrs, .. } => {
-                    // Indirect argument may have higher alignment requirements than the type's
-                    // alignment. This can happen, e.g. when passing types with <4 byte alignment
-                    // on the stack on x86.
-                    let required_align = match attrs.pointee_align {
-                        Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                        None => arg.layout.align.abi,
-                    };
-                    let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
-                    bx.lifetime_start(scratch.llval, arg.layout.size);
-                    op.store_with_annotation(bx, scratch.with_type(arg.layout));
-                    lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
-                    (scratch.llval, scratch.align, true)
-                }
-                PassMode::Cast { .. } => {
-                    let scratch = PlaceRef::alloca(bx, arg.layout);
-                    op.store_with_annotation(bx, scratch);
-                    (scratch.val.llval, scratch.val.align, true)
-                }
-                PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
-                PassMode::Ignore | PassMode::Pair(..) | PassMode::IndirectUnsized { .. } => {
-                    unreachable!("handled above")
-                }
-            },
-            Ref(op_place_val) => match arg.mode {
-                PassMode::Indirect { attrs, mode, .. } => {
-                    if mode == IndirectMode::AmdgpuKernelArg {
-                        bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
-                    }
-                    // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
-                    // alignment requirements may be higher than the type's alignment, so copy
-                    // to a higher-aligned alloca.
-                    let required_align = match attrs.pointee_align {
-                        Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                        None => arg.layout.align.abi,
-                    };
-                    // Copy to an alloca when the argument is neither by-val nor by-move.
-                    if op_place_val.align < required_align
-                        || (mode == IndirectMode::Pointer && !by_move)
-                    {
+            PassMode::Indirect { attrs, address_space: _, mode } => {
+                let value = match op.val {
+                    Immediate(_) | Pair(..) => {
+                        // Indirect argument may have higher alignment requirements than the type's
+                        // alignment. This can happen, e.g. when passing types with <4 byte alignment
+                        // on the stack on x86.
+                        let required_align = match attrs.pointee_align {
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align),
+                            None => arg.layout.align,
+                        };
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.lifetime_start(scratch.llval, arg.layout.size);
                         op.store_with_annotation(bx, scratch.with_type(arg.layout));
                         lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
-                        (scratch.llval, scratch.align, true)
-                    } else {
-                        (op_place_val.llval, op_place_val.align, true)
+                        scratch
                     }
+                    Ref(op_place_val) => {
+                        if mode == IndirectMode::AmdgpuKernelArg {
+                            bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
+                        }
+                        // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
+                        // alignment requirements may be higher than the type's alignment, so copy
+                        // to a higher-aligned alloca.
+                        let required_align = match attrs.pointee_align {
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align),
+                            None => arg.layout.align,
+                        };
+                        // Copy to an alloca when the argument is neither by-val nor by-move.
+                        if op_place_val.align < required_align
+                            || (mode == IndirectMode::Pointer && !by_move)
+                        {
+                            let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
+                            bx.lifetime_start(scratch.llval, arg.layout.size);
+                            op.store_with_annotation(bx, scratch.with_type(arg.layout));
+                            lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
+                            scratch
+                        } else {
+                            op_place_val
+                        }
+                    }
+                    ZeroSized => {
+                        match mode {
+                            IndirectMode::AmdgpuKernelArg => {
+                                bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}")
+                            }
+                            // It doesn't seem like any target can have `byval` ZSTs, so this assert
+                            // is here to replace a would-be untested codepath.
+                            IndirectMode::OnStack => {
+                                bug!("ZST {op:?} passed on stack with abi {arg:?}")
+                            }
+                            IndirectMode::Pointer => {}
+                        }
+                        // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
+                        // a pointer for `repr(C)` structs even when empty, so get
+                        // one from an `alloca` (which can be left uninitialized).
+                        PlaceRef::alloca(bx, arg.layout).val
+                    }
+                };
+                llargs.push(value.llval);
+            }
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => match op.val {
+                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
+                    llargs.push(a);
+                    llargs.push(b);
                 }
-                PassMode::IndirectUnsized { .. } => unreachable!("handled above"),
-                _ => (op_place_val.llval, op_place_val.align, true),
+                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
             },
-            ZeroSized => match arg.mode {
-                PassMode::Indirect { mode, .. } => {
-                    if mode == IndirectMode::AmdgpuKernelArg {
-                        bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
+            PassMode::Cast { pad_i32_count, ref cast } => {
+                // Fill padding with undef value, where applicable.
+                let undef = bx.const_undef(bx.type_i32());
+                llargs.extend(std::iter::repeat_n(undef, usize::from(pad_i32_count)));
+                let value = match op.val {
+                    Immediate(_) | Pair(..) => {
+                        let scratch = PlaceRef::alloca(bx, arg.layout);
+                        op.store_with_annotation(bx, scratch);
+                        scratch.val
                     }
-                    if mode == IndirectMode::OnStack {
-                        // It doesn't seem like any target can have `byval` ZSTs, so this assert
-                        // is here to replace a would-be untested codepath.
-                        bug!("ZST {op:?} passed on stack with abi {arg:?}");
-                    }
-                    // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
-                    // a pointer for `repr(C)` structs even when empty, so get
-                    // one from an `alloca` (which can be left uninitialized).
-                    let scratch = PlaceRef::alloca(bx, arg.layout);
-                    (scratch.val.llval, scratch.val.align, true)
-                }
-                _ => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
-            },
-        };
-
-        if by_ref && !arg.is_indirect() {
-            // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast { cast, pad_i32_count: _ } = &arg.mode {
+                    Ref(op_place_val) => op_place_val,
+                    ZeroSized => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
+                };
                 // The ABI mandates that the value is passed as a different struct representation.
                 // Spill and reload it from the stack to convert from the Rust representation to
                 // the ABI representation.
@@ -2091,14 +2093,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //   when passed by value, making it larger.
                 let copy_bytes = cmp::min(cast.unaligned_size(bx).bytes(), arg.layout.size.bytes());
                 // Allocate some scratch space...
-                let llscratch = bx.alloca(scratch_size, scratch_align);
-                bx.lifetime_start(llscratch, scratch_size);
+                let scratch = bx.alloca(scratch_size, scratch_align);
+                bx.lifetime_start(scratch, scratch_size);
                 // ...memcpy the value...
                 bx.memcpy(
-                    llscratch,
+                    scratch,
                     scratch_align,
-                    llval,
-                    align,
+                    value.llval,
+                    value.align,
                     bx.const_usize(copy_bytes),
                     MemFlags::empty(),
                     None,
@@ -2107,35 +2109,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // The arguments of an `extern "cmse-nonsecure-call"` function cross the secure
                 // boundary. Clear any padding bytes so information does not leak.
                 if conv == CanonAbi::Arm(ArmCall::CCmseNonSecureCall) {
-                    self.clear_padding_cmse(
-                        bx,
-                        llscratch,
-                        Size::from_bytes(copy_bytes),
-                        arg.layout,
-                    );
+                    self.clear_padding_cmse(bx, scratch, Size::from_bytes(copy_bytes), arg.layout);
                 }
 
                 // ...and then load it with the ABI type.
-                llval = load_cast(bx, cast, llscratch, scratch_align);
-                bx.lifetime_end(llscratch, scratch_size);
-            } else {
-                // We can't use `PlaceRef::load` here because the argument
-                // may have a type we don't treat as immediate, but the ABI
-                // used for this call is passing it by-value. In that case,
-                // the load would just produce `OperandValue::Ref` instead
-                // of the `OperandValue::Immediate` we need for the call.
-                llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-                    if scalar.is_bool() {
-                        bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                    }
-                    // We store bools as `i8` so we need to truncate to `i1`.
-                    llval = bx.to_immediate_scalar(llval, scalar);
-                }
+                llargs.push(load_cast(bx, cast, scratch, scratch_align));
+                bx.lifetime_end(scratch, scratch_size);
             }
         }
-
-        llargs.push(llval);
     }
 
     fn codegen_arguments_untupled(
@@ -2489,7 +2470,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_place(bx, dest.as_ref())
         };
         if fn_ret.is_indirect() {
-            if dest.val.align < dest.layout.align.abi {
+            if dest.val.align < dest.layout.align {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
                 // fact, the calls it creates write only to temps).

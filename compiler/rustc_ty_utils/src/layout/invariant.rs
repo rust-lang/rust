@@ -99,7 +99,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         let size = layout.backend_repr.scalar_size(cx);
         if let Some(align) = align {
             assert_eq!(
-                layout.layout.align().abi,
+                layout.layout.align(),
                 align,
                 "alignment mismatch between ABI and layout in {layout:#?}"
             );
@@ -156,7 +156,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                         );
                         assert_eq!(field.size, size, "`Scalar` field with bad size in {inner:#?}",);
                         assert_eq!(
-                            field.align.abi, align,
+                            field.align, align,
                             "`Scalar` field with bad align in {inner:#?}",
                         );
                         assert!(
@@ -225,9 +225,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 };
                 // The fields should be at the right offset, and match the `scalar` layout.
                 let size1 = scalar1.size(cx);
-                let align1 = scalar1.default_align(cx).abi;
+                let align1 = scalar1.default_align(cx);
                 let size2 = scalar2.size(cx);
-                let align2 = scalar2.default_align(cx).abi;
+                let align2 = scalar2.default_align(cx);
                 assert_eq!(
                     offset1,
                     Size::ZERO,
@@ -238,7 +238,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` first field with bad size in {inner:#?}",
                 );
                 assert_eq!(
-                    field1.align.abi, align1,
+                    field1.align, align1,
                     "`ScalarPair` first field with bad align in {inner:#?}",
                 );
                 assert_matches!(
@@ -260,7 +260,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` second field with bad size in {inner:#?}",
                 );
                 assert_eq!(
-                    field2.align.abi, align2,
+                    field2.align, align2,
                     "`ScalarPair` second field with bad align in {inner:#?}",
                 );
                 assert_matches!(
@@ -270,9 +270,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 );
             }
             BackendRepr::SimdVector { element, count } => {
-                let align = layout.align.abi;
+                let align = layout.align;
                 let size = layout.size;
-                let element_align = element.default_align(cx).abi;
+                let element_align = element.default_align(cx);
                 let element_size = element.size(cx);
                 // Currently, vectors must always be aligned to at least their elements:
                 assert!(align >= element_align);

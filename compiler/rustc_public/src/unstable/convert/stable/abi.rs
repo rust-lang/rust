@@ -75,7 +75,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi
             fields: self.fields.stable(tables, cx),
             variants: self.variants.stable(tables, cx),
             value_repr: self.backend_repr.stable(tables, cx),
-            abi_align: self.align.abi.stable(tables, cx),
+            abi_align: self.align.stable(tables, cx),
             size: self.size.stable(tables, cx),
         }
     }

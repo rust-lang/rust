@@ -26,6 +26,13 @@ pub trait DefaultStrategy {
     fn default_strategy() -> Self::Strategy;
 }
 
+impl DefaultStrategy for bool {
+    type Strategy = proptest::bool::Any;
+    fn default_strategy() -> Self::Strategy {
+        proptest::bool::ANY
+    }
+}
+
 macro_rules! impl_num {
     { $type:tt } => {
         impl DefaultStrategy for $type {

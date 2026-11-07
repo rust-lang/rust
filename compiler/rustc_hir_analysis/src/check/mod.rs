@@ -88,9 +88,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
-use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, OutlivesClause, Region, Ty, TyCtxt, TypingMode,
-};
+use rustc_middle::ty::{self, GenericArgs, OutlivesClause, Region, Ty, TyCtxt, TypingMode};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug};
@@ -404,7 +402,9 @@ fn bounds_from_generic_clauses<'tcx>(
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
-                if !tcx.is_default_trait(def_id) && !tcx.is_lang_item(def_id, LangItem::Sized) {
+                if !tcx.is_implicit_trait(def_id, ty::IncludeSizedImplicitBounds::No)
+                    && !tcx.is_lang_item(def_id, LangItem::Sized)
+                {
                     // Do not add that restriction to the list if it is a positive requirement.
                     entry.push(trait_predicate.def_id());
                 }
@@ -585,7 +585,7 @@ fn suggestion_signature<'tcx>(
     assoc: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> String {
-    let args = ty::GenericArgs::identity_for_item(tcx, assoc.def_id).rebase_onto(
+    let args = GenericArgs::identity_for_item(tcx, assoc.def_id).rebase_onto(
         tcx,
         assoc.container_id(tcx),
         impl_trait_ref.with_replaced_self_ty(tcx, tcx.types.self_param).args,

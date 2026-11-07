@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
         );
 
         if let ExprKind::Block(block, _) = &cond.kind {
-            if !block.span.eq_ctxt(expr.span) {
+            if block.span.ctxt() != expr.span.ctxt() {
                 // If the block comes from a macro, or as an argument to a macro,
                 // do not lint.
                 return;

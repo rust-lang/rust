@@ -163,11 +163,6 @@ pub enum ReprAttr {
     ReprAlign(Align),
 }
 
-pub enum TransparencyError {
-    UnknownTransparency(Symbol, Span),
-    MultipleTransparencyAttrs(Span, Span),
-}
-
 #[derive(Eq, PartialEq, Debug, Copy, Clone, PartialOrd, Ord)]
 #[derive(Encodable, Decodable, StableHash, PrintAttribute)]
 pub enum IntType {
@@ -503,7 +498,7 @@ pub struct DocAttribute {
     pub keyword: Option<(Symbol, Span)>,
     pub attribute: Option<(Symbol, Span)>,
     pub masked: Option<Span>,
-    pub notable_trait: Option<Span>,
+    pub notable_trait: Option<(Option<(NotableTraitColor, Span)>, Span)>,
     pub search_unbox: Option<Span>,
 
     // valid on crate
@@ -518,6 +513,41 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum NotableTraitColor {
+    Grey,
+    Red,
+    Green,
+    Yellow,
+    Blue,
+    Magenta,
+    Cyan,
+    Transparent,
+}
+
+impl From<NotableTraitColor> for &'static str {
+    fn from(color: NotableTraitColor) -> &'static str {
+        use NotableTraitColor::*;
+        match color {
+            Grey => "grey",
+            Red => "red",
+            Green => "green",
+            Yellow => "yellow",
+            Blue => "blue",
+            Magenta => "magenta",
+            Cyan => "cyan",
+            Transparent => "transparent",
+        }
+    }
+}
+
+impl std::fmt::Display for NotableTraitColor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str((*self).into())
+    }
 }
 
 impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
@@ -951,8 +981,18 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
+    /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    LintAsPtr,
+
     /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
     LintCheck(ThinVec<LintCheck>),
+
+    /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
+    LintNeverReturnsNullPtr,
+
+    /// Represents `#[lint::should_not_be_called_on_const_items]` (used by the
+    /// `const_item_interior_mutations` lint).
+    LintShouldNotBeCalledOnConstItems,
 
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
@@ -1164,9 +1204,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_lifetime_dependent_specialization]`.
     RustcAllowLifetimeDependentSpecialization,
 
-    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    RustcAsPtr,
-
     /// Represents `#[rustc_assert_variance]`.
     RustcAssertVariance {
         span: Span,
@@ -1361,9 +1398,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_must_match_exhaustively]`
     RustcMustMatchExhaustively(Span),
 
-    /// Represents `#[rustc_never_returns_null_ptr]`
-    RustcNeverReturnsNullPtr,
-
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 
@@ -1513,6 +1547,10 @@ pub enum AttributeKind {
     TypeLengthLimit {
         limit: Limit,
     },
+
+    /// Represents `#[rustc_unchecked_type_alias]`
+    // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
+    UncheckedTypeAlias,
 
     /// Represents `#[rustc_unroll]`
     // FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity

@@ -11,6 +11,9 @@ pub mod diy_float;
 pub mod flt2dec;
 pub mod fmt;
 
+// Public for core_arch.
+pub mod ppcf128;
+
 pub(crate) mod int_bits;
 pub(crate) mod int_log10;
 pub(crate) mod int_sqrt;

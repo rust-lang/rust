@@ -1,4 +1,5 @@
 //@ compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat
+//@ needs-offload
 
 #![feature(gpu_offload)]
 

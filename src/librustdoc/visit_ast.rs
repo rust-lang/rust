@@ -3,7 +3,6 @@
 
 use std::mem;
 
-use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::{DocInline, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
@@ -258,6 +257,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         please_inline: bool,
         import_id: Option<LocalDefId>,
     ) -> bool {
+        fn inherits_hidden(tcx: TyCtxt<'_>, document_hidden: bool, res_did: LocalDefId) -> bool {
+            let inherits_hidden = !document_hidden && inherits_doc_hidden(tcx, res_did, None);
+            debug!(?inherits_hidden);
+            inherits_hidden
+        }
+
         if renamed == Some(kw::Underscore) {
             debug!("not inlining `_` reexports");
             // We never inline `_` reexports.
@@ -282,7 +287,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Doc(d)
             if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline)
         ) || (document_hidden
-            && use_attrs.iter().any(|attr| attr.is_doc_hidden()));
+            && find_attr!(use_attrs, Doc(rustc_attr_ir::DocAttribute { hidden: Some(_), .. })));
 
         if is_no_inline {
             debug!("doc::no_inline or doc::hidden");
@@ -313,16 +318,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 .insert((ori_res_did, renamed), InlinedForeign { res, import_id: def_id });
             return true;
         };
-
-        let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
-        debug!(?is_private);
         let item = tcx.hir_node_by_def_id(res_did);
 
         if !please_inline {
-            let inherits_hidden = !document_hidden && inherits_doc_hidden(tcx, res_did, None);
-            debug!(?inherits_hidden);
+            let is_private_and_should_be_inlined = (is_glob || !self.cx.document_private())
+                && !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
+            debug!(?is_private_and_should_be_inlined);
+
             // Only inline if requested or if the item would otherwise be stripped.
-            if (!is_private && !inherits_hidden) || (
+            if (!is_private_and_should_be_inlined && !inherits_hidden(tcx, document_hidden, res_did)) || (
                 is_hidden &&
                 // If it's a doc hidden module, we need to keep it in case some of its inner items
                 // are re-exported.

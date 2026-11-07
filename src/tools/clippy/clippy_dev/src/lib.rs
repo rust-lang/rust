@@ -29,6 +29,7 @@ pub mod fmt;
 pub mod lint;
 pub mod new_lint;
 pub mod release;
+pub mod remark;
 pub mod serve;
 pub mod setup;
 pub mod sync;

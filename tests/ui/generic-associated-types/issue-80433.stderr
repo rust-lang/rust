@@ -18,6 +18,7 @@ LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-80433.rs:7:10
    |
+LL | trait TestMut {
 LL |     type Output<'a>;
    |          ^^^^^^ --
 help: add missing lifetime argument

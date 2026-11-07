@@ -29,15 +29,15 @@ impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     #[inline]
     fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
-        let this = self.eval_context_mut();
-        let active_thread = this.active_thread_mut();
+        let ecx = self.eval_context_mut();
+        let active_thread = ecx.active_thread_mut();
         active_thread.origin_span = DUMMY_SP; // reset, the old value no longer applies
         let mut callback = active_thread
             .on_stack_empty
             .take()
             .expect("`on_stack_empty` not set up, or already running");
-        let res = callback(this)?;
-        this.active_thread_mut().on_stack_empty = Some(callback);
+        let res = callback(ecx)?;
+        ecx.active_thread_mut().on_stack_empty = Some(callback);
         interp_ok(res)
     }
 
@@ -50,26 +50,26 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ///
     /// If GenMC mode is active, the scheduling is instead handled by GenMC.
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // In GenMC mode, we let GenMC do the scheduling.
-        if this.machine.data_race.as_genmc_ref().is_some() {
+        if ecx.machine.data_race.as_genmc_ref().is_some() {
             loop {
-                let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
-                let Some(next_thread_id) = genmc_ctx.schedule_thread(this)? else {
+                let genmc_ctx = ecx.machine.data_race.as_genmc_ref().unwrap();
+                let Some(next_thread_id) = genmc_ctx.schedule_thread(ecx)? else {
                     return interp_ok(SchedulingAction::ExecuteStep);
                 };
                 // If a thread is blocked on GenMC, we have to implicitly unblock it when it gets scheduled again.
-                if this.machine.threads.thread_ref(next_thread_id).is_blocked_on(BlockReason::Genmc)
+                if ecx.machine.threads.thread_ref(next_thread_id).is_blocked_on(BlockReason::Genmc)
                 {
                     info!(
                         "GenMC: scheduling blocked thread {next_thread_id:?}, so we unblock it now."
                     );
-                    this.unblock_thread(next_thread_id, BlockReason::Genmc)?;
+                    ecx.unblock_thread(next_thread_id, BlockReason::Genmc)?;
                 }
                 // The thread we just unblocked may have been blocked again during the unblocking callback.
                 // In that case, we need to ask for a different thread to run next.
-                let thread_manager = &mut this.machine.threads;
+                let thread_manager = &mut ecx.machine.threads;
                 if thread_manager.thread_ref(next_thread_id).is_enabled() {
                     // Set the new active thread.
                     thread_manager.set_active_thread(next_thread_id);
@@ -79,7 +79,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
 
         // We are not in GenMC mode, so we control the scheduling.
-        let thread_manager = &this.machine.threads;
+        let thread_manager = &ecx.machine.threads;
         // Check if we can just keep running the current thread.
         if thread_manager.active_thread_ref().is_enabled() && !thread_manager.yield_active_thread {
             // The currently active thread is still enabled, just continue with it.
@@ -92,9 +92,9 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // There may be delayed readiness updates we have to process. We only care about this
         // if it may unblock other threads, or if someone calls `epoll_wait`, and for the latter
         // case there is another call in `ReadinessWatcher::get_ready_interests`.
-        DelayedReadinessUpdates::process(this)?;
+        DelayedReadinessUpdates::process(ecx)?;
 
-        if this.machine.communicate() {
+        if ecx.machine.communicate() {
             // When isolation is disabled we need to check for events for threads
             // which are blocked on host I/O. Unlike the `poll_and_unblock` before
             // any foreign item, the call here is needed to ensure that threads which
@@ -104,7 +104,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             // which received events are available for scheduling afterwards.
 
             // Perform a non-blocking poll for newly available I/O events from the OS.
-            this.poll_and_unblock(Some(Duration::ZERO))?;
+            ecx.poll_and_unblock(Some(Duration::ZERO))?;
         }
 
         // We also check timeouts before running any other thread, to ensure that timeouts
@@ -112,10 +112,10 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // `pthread_cond_timedwait`, "an error is returned if [...] the absolute time specified by
         // abstime has already been passed at the time of the call".
         // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
-        let potential_sleep_time = this.unblock_expired_deadlines()?;
+        let potential_sleep_time = ecx.unblock_expired_deadlines()?;
 
-        let thread_manager = &mut this.machine.threads;
-        let rng = this.machine.rng.get_mut();
+        let thread_manager = &mut ecx.machine.threads;
+        let rng = ecx.machine.rng.get_mut();
 
         // No callbacks immediately scheduled, pick a regular thread to execute.
         // The active thread blocked or yielded. So we go search for another enabled thread.
@@ -150,14 +150,14 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
 
         // We have not found a thread to execute.
-        if this.machine.threads.all_threads().all(|(_id, thread)| thread.is_terminated()) {
+        if ecx.machine.threads.all_threads().all(|(_id, thread)| thread.is_terminated()) {
             unreachable!("all threads terminated without the main thread terminating?!");
         } else if let Some(sleep_time) = potential_sleep_time {
             // All threads are currently blocked, but we have unexecuted
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.
             interp_ok(SchedulingAction::SleepAndWaitForIo(Some(sleep_time)))
-        } else if this.any_thread_blocked_on_host() {
+        } else if ecx.any_thread_blocked_on_host() {
             // At least one thread doesn't have a timeout set, and is blocked on host I/O or is waiting on an
             // epoll instance which contains a host source interest. Hence, we sleep indefinitely in the
             // hope that eventually an I/O event happens.
@@ -172,14 +172,14 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Public because this is used by Priroda.
     fn step_current_thread(&mut self) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        if !this.step()? {
+        if !ecx.step()? {
             // The stack is empty. See if this thread can do something else.
-            match this.run_on_stack_empty()? {
+            match ecx.run_on_stack_empty()? {
                 Poll::Pending => {} // keep going
                 Poll::Ready(()) => {
-                    this.terminate_active_thread(/* for_exit */ false)?;
+                    ecx.terminate_active_thread(/* for_exit */ false)?;
                 }
             }
         }
@@ -190,28 +190,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Run the core interpreter loop. Returns only when an interrupt occurs (an error or program
     /// termination).
     fn run_threads(&mut self) -> InterpResult<'tcx, !> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         loop {
             if CTRL_C_RECEIVED.load(Ordering::Relaxed) {
-                this.machine.handle_abnormal_termination();
+                ecx.machine.handle_abnormal_termination();
                 throw_machine_stop!(TerminationInfo::Interrupted);
             }
-            match this.schedule()? {
+            match ecx.schedule()? {
                 SchedulingAction::ExecuteStep => {
-                    this.step_current_thread()?;
+                    ecx.step_current_thread()?;
                 }
                 SchedulingAction::SleepAndWaitForIo(duration) => {
-                    if this.machine.communicate() {
+                    if ecx.machine.communicate() {
                         // When we're running with isolation disabled, instead of
                         // strictly sleeping the duration we allow waking up
                         // early for I/O events from the OS.
 
-                        this.poll_and_unblock(duration)?;
+                        ecx.poll_and_unblock(duration)?;
                     } else {
                         let duration = duration.expect(
                             "Infinite sleep should not be triggered when isolation is enabled",
                         );
-                        this.machine.monotonic_clock.sleep(duration);
+                        ecx.machine.monotonic_clock.sleep(duration);
                     }
                 }
             }

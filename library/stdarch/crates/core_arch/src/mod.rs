@@ -308,9 +308,11 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "loongarch64", doc))]
     #[doc(cfg(target_arch = "loongarch64"))]
-    #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+    #[stable(feature = "stdarch_loongarch64", since = "CURRENT_RUSTC_VERSION")]
     pub mod loongarch64 {
+        #[stable(feature = "stdarch_loongarch64", since = "CURRENT_RUSTC_VERSION")]
         pub use crate::core_arch::loongarch_shared::*;
+        #[stable(feature = "stdarch_loongarch64", since = "CURRENT_RUSTC_VERSION")]
         pub use crate::core_arch::loongarch64::*;
     }
 

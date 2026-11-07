@@ -816,6 +816,10 @@ pub mod tyalias {
     pub type Y = X<u8>;
 }
 
+/// [check here](#short-anchor)
+///
+/// <a id="short-anchor"></a>
+/// # Some header with a long text that I don't want type in full every time I want to refer to it
 pub mod notable {
     #[doc(notable_trait)]
     pub trait Labeled {}
@@ -827,3 +831,6 @@ pub mod notable {
 pub macro decl_macro {
     () => { "bar" }
 }
+
+/// Some text before the code so the width isn't too small `Color::srgba_u8`, `blob`.
+pub mod inline_code {}

@@ -821,7 +821,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
                 {
                     (base, variant_idx, field_idx)
                 } else {
@@ -841,7 +841,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let field_name = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { name, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
                 {
                     name
                 } else {
@@ -862,7 +862,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
                 {
                     (base, variant_idx, field_idx)
                 } else {
@@ -882,7 +882,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { ty, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                        def.field_representing_type_info(ecx.tcx.tcx, *args)
                 {
                     ecx.tcx.erase_and_anonymize_regions(ty)
                 } else {

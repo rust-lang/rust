@@ -13,7 +13,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, SizedTraitKind, Ty, Unnormalized, Upcast};
+use rustc_middle::ty::{self, GenericArgs, SizedTraitKind, Ty, Unnormalized, Upcast};
 use rustc_next_trait_solver::solve::flatten_answer_tree;
 use rustc_span::def_id::DefId;
 use rustc_span::{bug, span_bug};
@@ -399,7 +399,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn vtable_impl(
         &mut self,
         impl_def_id: DefId,
-        args: Normalized<'tcx, GenericArgsRef<'tcx>>,
+        args: Normalized<'tcx, GenericArgs<'tcx>>,
         cause: &ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,

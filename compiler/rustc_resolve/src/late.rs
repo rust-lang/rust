@@ -17,6 +17,7 @@ use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
 };
 use rustc_ast::*;
+use rustc_attr_ir::target::Target;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -50,8 +51,11 @@ use crate::{
 };
 
 mod diagnostics;
+mod lang_items;
+pub(super) mod weak_lang_items;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
+pub(super) use lang_items::{Duplicate, collect_item};
 
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
@@ -1130,6 +1134,13 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         with_owner(self, foreign_item.id, |this| {
             this.resolve_doc_links(&foreign_item.attrs, MaybeExported::Ok(foreign_item.id));
             let def_kind = this.r.tcx.def_kind(this.r.current_owner.def_id);
+            this.check_for_lang(
+                Target::from_foreign_item_kind(&foreign_item.kind),
+                this.r.current_owner.def_id,
+                &foreign_item.attrs,
+                foreign_item.span,
+                None,
+            );
             match foreign_item.kind {
                 ForeignItemKind::TyAlias(TyAlias { ref generics, .. }) => {
                     this.with_generic_param_rib(
@@ -1549,6 +1560,13 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         self.visit_vis(&v.vis);
         self.visit_ident(&v.ident);
         self.visit_variant_data(&v.data);
+        self.check_for_lang(
+            Target::Variant,
+            self.r.current_owner.node_id_to_def_id[&v.id],
+            &v.attrs,
+            v.span,
+            None,
+        );
         if let Some(discr) = &v.disr_expr {
             self.resolve_anon_const(discr, AnonConstKind::EnumDiscriminant);
         }
@@ -2989,6 +3007,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         debug!("(resolving item) resolving {:?} ({:?})", item.kind.ident(), item.kind);
 
         let def_kind = self.r.tcx.def_kind(self.r.current_owner.def_id);
+
+        self.check_for_lang(
+            Target::from_ast_item(item),
+            self.r.current_owner.def_id,
+            &item.attrs,
+            item.span,
+            item.opt_generics(),
+        );
+
         match &item.kind {
             ItemKind::TyAlias(TyAlias { generics, .. }) => {
                 self.with_generic_param_rib(
@@ -3588,6 +3615,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
 
         self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+        self.check_for_lang(
+            Target::from_assoc_item_kind(&item.kind, AssocCtxt::Trait),
+            self.r.current_owner.def_id,
+            &item.attrs,
+            item.span,
+            item.opt_generics(),
+        );
         match &item.kind {
             AssocItemKind::Const(ast::ConstItem { generics, ty, body, define_opaque, .. }) => {
                 self.with_generic_param_rib(
@@ -3819,6 +3853,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         let prev = self.diag_metadata.current_impl_item.take();
         self.diag_metadata.current_impl_item = Some(&item);
+        self.check_for_lang(
+            Target::from_assoc_item_kind(
+                &item.kind,
+                AssocCtxt::Impl { of_trait: is_in_trait_impl },
+            ),
+            self.r.current_owner.def_id,
+            &item.attrs,
+            item.span,
+            item.opt_generics(),
+        );
         match &item.kind {
             AssocItemKind::Const(ast::ConstItem {
                 ident,
@@ -5100,10 +5144,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         partial_res
     }
 
-    fn self_type_is_available(&mut self) -> bool {
+    fn self_type_is_available(&mut self) -> Option<DefId> {
         let binding = self
             .maybe_resolve_ident_in_lexical_scope(Ident::with_dummy_span(kw::SelfUpper), TypeNS);
-        if let Some(LateDecl::RibDef(res)) = binding { res != Res::Err } else { false }
+        if let Some(LateDecl::RibDef(
+            Res::SelfTyAlias { alias_to, .. } | Res::SelfTyParam { trait_: alias_to },
+        )) = binding
+        {
+            Some(alias_to)
+        } else {
+            None
+        }
     }
 
     fn self_value_is_available(&mut self, self_span: Span) -> bool {
@@ -5756,7 +5807,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             ResolveDocLinks::Exported
                 if !maybe_exported.eval(self.r)
-                    && !rustdoc::has_primitive_or_keyword_or_attribute_docs(attrs) =>
+                    && !rustdoc::has_primitive_or_keyword_or_attribute_docs_ast(attrs) =>
             {
                 return;
             }
@@ -5848,6 +5899,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let ns = if i + 1 == path.len() { ns } else { TypeNS };
             let res = self.r.partial_res_map.get(&seg.id?)?.full_res()?;
             let binding = self.resolve_ident_in_lexical_scope(seg.ident, ns, None, None)?;
+            // Do not suggest removing the qualification if the unqualified path would be
+            // ambiguous, e.g. when several glob imports bring the same name into scope.
+            if let LateDecl::Decl(binding) = binding
+                && binding.descent_to_ambiguity().is_some()
+            {
+                return None;
+            }
             (res == binding.res()).then_some((seg, binding))
         });
 

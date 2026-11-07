@@ -42,6 +42,7 @@ impl TestCx<'_> {
             emit,
             AllowUnused::No,
             LinkToAux::Yes,
+            self.edition(),
             Vec::new(),
         );
 

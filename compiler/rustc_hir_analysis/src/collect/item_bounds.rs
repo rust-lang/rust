@@ -2,8 +2,8 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::{
-    self, GenericArgs, PredicateProxy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Upcast, shift_vars,
+    self, GenericArgs, IncludeSizedImplicitBounds, PredicateProxy, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast, shift_vars,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, bug, span_bug};
@@ -54,19 +54,13 @@ fn associated_type_bounds<'tcx>(
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
                 // Implicit bounds are added to associated types unless a `?Trait` bound is found.
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    item_ty,
-                    hir_bounds,
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-                    span,
+                    IncludeSizedImplicitBounds::Yes,
                 );
 
                 // Also collect `where Self::Assoc: Trait` from the parent trait's where clauses.
@@ -153,7 +147,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
             {
                 // We have found the GAT in question...
                 // Return the vars, since we may need to remap them.
-                break &alias_ty.args[item_trait_ref.args.len()..];
+                break tcx.mk_args(&alias_ty.args.as_slice()[item_trait_ref.args.len()..]);
             } else {
                 // Only collect *self* type bounds if the filter is for self.
                 match filter {
@@ -381,19 +375,13 @@ fn opaque_type_bounds<'tcx>(
             | PredicateFilter::SelfOnly
             | PredicateFilter::SelfTraitThatDefines(_)
             | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                icx.lowerer().add_implicit_sizedness_bounds(
+                icx.lowerer().add_implicit_bounds(
                     &mut bounds,
                     item_ty,
                     hir_bounds,
                     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     span,
-                );
-                icx.lowerer().add_default_traits(
-                    &mut bounds,
-                    item_ty,
-                    hir_bounds,
-                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
-                    span,
+                    IncludeSizedImplicitBounds::Yes,
                 );
             }
             //`ConstIfConst` is only interested in `[const]` bounds.

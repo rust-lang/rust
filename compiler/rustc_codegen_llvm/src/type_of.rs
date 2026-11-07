@@ -33,42 +33,13 @@ fn uncached_llvm_type<'a, 'tcx>(
             let vector_type = cx.type_scalable_vector(element, count.as_u64());
             return match number_of_vectors.0 {
                 1 => vector_type,
-                2 => cx.type_struct(&[vector_type, vector_type], false),
-                3 => cx.type_struct(&[vector_type, vector_type, vector_type], false),
-                4 => cx.type_struct(&[vector_type, vector_type, vector_type, vector_type], false),
-                5 => cx.type_struct(
-                    &[vector_type, vector_type, vector_type, vector_type, vector_type],
-                    false,
-                ),
-                6 => cx.type_struct(
-                    &[vector_type, vector_type, vector_type, vector_type, vector_type, vector_type],
-                    false,
-                ),
-                7 => cx.type_struct(
-                    &[
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                    ],
-                    false,
-                ),
-                8 => cx.type_struct(
-                    &[
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                    ],
-                    false,
-                ),
+                2 => cx.type_struct(&[vector_type; 2]),
+                3 => cx.type_struct(&[vector_type; 3]),
+                4 => cx.type_struct(&[vector_type; 4]),
+                5 => cx.type_struct(&[vector_type; 5]),
+                6 => cx.type_struct(&[vector_type; 6]),
+                7 => cx.type_struct(&[vector_type; 7]),
+                8 => cx.type_struct(&[vector_type; 8]),
                 _ => bug!("`#[rustc_scalable_vector]` tuple struct with too many fields"),
             };
         }
@@ -103,12 +74,12 @@ fn uncached_llvm_type<'a, 'tcx>(
 
     match layout.fields {
         FieldsShape::Primitive | FieldsShape::Union(_) => {
-            let fill = cx.type_padding_filler(layout.size, layout.align.abi);
-            let packed = false;
+            let fill = cx.type_padding_filler(layout.size, layout.align);
             match name {
-                None => cx.type_struct(&[fill], packed),
+                None => cx.type_struct(&[fill]),
                 Some(ref name) => {
                     let llty = cx.type_named_struct(name);
+                    let packed = false;
                     cx.set_struct_body(llty, &[fill], packed);
                     llty
                 }
@@ -118,7 +89,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         FieldsShape::Arbitrary { .. } => match name {
             None => {
                 let (llfields, packed) = struct_llfields(cx, layout);
-                cx.type_struct(&llfields, packed)
+                if packed { cx.type_packed_struct(&llfields) } else { cx.type_struct(&llfields) }
             }
             Some(ref name) => {
                 let llty = cx.type_named_struct(name);
@@ -138,14 +109,14 @@ fn struct_llfields<'a, 'tcx>(
 
     let mut packed = false;
     let mut offset = Size::ZERO;
-    let mut prev_effective_align = layout.align.abi;
+    let mut prev_effective_align = layout.align;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
         let effective_field_align =
-            layout.align.abi.min(field.align.abi).restrict_for_offset(target_offset);
-        packed |= effective_field_align < field.align.abi;
+            layout.align.min(field.align).restrict_for_offset(target_offset);
+        packed |= effective_field_align < field.align;
 
         debug!(
             "struct_llfields: {}: {:?} offset: {:?} target_offset: {:?} \
@@ -190,7 +161,7 @@ fn struct_llfields<'a, 'tcx>(
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     pub(crate) fn align_of(&self, ty: Ty<'tcx>) -> Align {
-        self.layout_of(ty).align.abi
+        self.layout_of(ty).align
     }
 
     pub(crate) fn size_of(&self, ty: Ty<'tcx>) -> Size {
@@ -203,7 +174,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 
     pub(crate) fn spanned_size_and_align_of(&self, ty: Ty<'tcx>, span: Span) -> (Size, Align) {
         let layout = self.spanned_layout_of(ty, span);
-        (layout.size, layout.align.abi)
+        (layout.size, layout.align)
     }
 }
 
@@ -294,13 +265,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::ScalarPair { .. } => {
                 // An immediate pair always contains just the two elements, without any padding
                 // filler, as it should never be stored to memory.
-                return cx.type_struct(
-                    &[
-                        self.scalar_pair_element_llvm_type(cx, 0, true),
-                        self.scalar_pair_element_llvm_type(cx, 1, true),
-                    ],
-                    false,
-                );
+                return cx.type_struct(&[
+                    self.scalar_pair_element_llvm_type(cx, 0, true),
+                    self.scalar_pair_element_llvm_type(cx, 1, true),
+                ]);
             }
             _ => {}
         };

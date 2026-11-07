@@ -3,6 +3,7 @@
 fn main() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
+        assert_eq!(libc::pthread_mutexattr_init(&mut mutexattr as *mut _), 0);
         assert_eq!(
             libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, libc::PTHREAD_MUTEX_NORMAL),
             0,

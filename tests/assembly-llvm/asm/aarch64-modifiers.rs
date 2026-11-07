@@ -5,7 +5,7 @@
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: aarch64
 
-#![feature(no_core)]
+#![feature(asm_experimental_reg, no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]

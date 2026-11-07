@@ -6,8 +6,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{SubregionOrigin, TypeOutlivesConstraint};
 use rustc_middle::ty::{
-    self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, CallerBoundsIterator, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::{DUMMY_SP, bug};
 
@@ -250,7 +250,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     for (parent_outlived_region, opaque_outlived_arg_idx) in parent_outlives_regions.iter() {
         let mut opaque_outlives_args = DenseBitSet::new_empty(self_identity_args.len());
         for (parent_outlived_arg_idx, parent_outlives_arg) in
-            self_identity_args[..generics.parent_count].iter().enumerate()
+            self_identity_args.as_slice()[..generics.parent_count].iter().enumerate()
         {
             let type_outlives = match parent_outlives_arg.kind() {
                 // Consts don't have any non-static regions
@@ -554,7 +554,7 @@ where
                 };
                 let mut capturable = tcx.live_args_for_alias_from_outlives_bounds(kind).clone();
 
-                for clause in param_env.caller_bounds() {
+                for clause in param_env.caller_bounds().non_trait_clauses().iter() {
                     let Some(outlives) = clause.as_type_outlives_clause() else {
                         continue;
                     };

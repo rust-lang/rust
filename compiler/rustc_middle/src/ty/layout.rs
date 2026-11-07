@@ -140,7 +140,7 @@ impl abi::Float {
             F16B => Ty::new_adt(
                 tcx,
                 tcx.adt_def(tcx.require_lang_item(LangItem::F16B, DUMMY_SP)),
-                ty::List::empty(),
+                ty::GenericArgs::empty(),
             ),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
@@ -148,7 +148,7 @@ impl abi::Float {
             PpcF128 => Ty::new_adt(
                 tcx,
                 tcx.adt_def(tcx.require_lang_item(LangItem::PpcF128, DUMMY_SP)),
-                ty::List::empty(),
+                ty::GenericArgs::empty(),
             ),
         }
     }
@@ -387,7 +387,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         let err = match tcx.layout_of(typing_env.as_query_input(ty)) {
             Ok(layout) => {
                 if layout.is_sized() {
-                    return Ok(SizeSkeleton::Known(layout.size, Some(layout.align.abi)));
+                    return Ok(SizeSkeleton::Known(layout.size, Some(layout.align)));
                 } else {
                     // Just to be safe, don't claim a known layout for unsized types.
                     return Err(tcx.arena.alloc(LayoutError::Unknown(ty)));
@@ -1098,7 +1098,7 @@ where
                         }
                     };
 
-                    PointeeInfo { safe: Some(kind), size, align: layout.align.abi }
+                    PointeeInfo { safe: Some(kind), size, align: layout.align }
                 })
             }
 
@@ -1116,7 +1116,7 @@ where
                     PointeeInfo {
                         safe: Some(PointerKind::Box { unpin, global: this.ty.is_box_global(tcx) }),
                         size,
-                        align: layout.align.abi,
+                        align: layout.align,
                     }
                 })
             }

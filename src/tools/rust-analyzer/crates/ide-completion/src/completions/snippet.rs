@@ -31,8 +31,8 @@ pub(crate) fn complete_expr_snippet(
     }
 
     if in_block_expr {
-        snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc, ctx.db);
-        snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc, ctx.db);
+        snippet(ctx, cap, "pd", "eprintln!(\"$1 = {:?}\", $1);").add_to(acc, ctx.db);
+        snippet(ctx, cap, "ppd", "eprintln!(\"$1 = {:#?}\", $1);").add_to(acc, ctx.db);
         let item = snippet(
             ctx,
             cap,

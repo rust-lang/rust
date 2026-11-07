@@ -1,6 +1,7 @@
 #![deny(clippy::outer_expn_expn_data)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
+#![feature(default_field_values)]
 
 extern crate rustc_hir;
 #[macro_use]

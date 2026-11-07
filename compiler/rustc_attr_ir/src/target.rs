@@ -2,9 +2,79 @@
 
 use std::fmt::{self, Display};
 
+use rustc_abi::ExternAbi;
 pub use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{AssocItemKind, ForeignItemKind, ast};
+use rustc_ast::{
+    Arm, AssocItemKind, Closure, ConstBlockItem, ConstItem, Crate, EnumDef, Expr, ExprField,
+    FieldDef, Fn, ForeignItemKind, ForeignMod, GenericParam, GenericParamKind, Generics, Impl,
+    InlineAsm, MacroDef, ModKind, Param, Pat, Safety, StaticItem, Stmt, Trait, TraitAlias, TyAlias,
+    UseTree, Variant, VariantData, WherePredicate, ast,
+};
 use rustc_macros::StableHash;
+use rustc_span::{Ident, Symbol};
+
+/// This enum lists all possible types of AST items.
+#[derive(Clone, Copy, Debug)]
+pub enum AstTarget<'a> {
+    // Target types that may correspond to different kinds of items.
+    Delegation {
+        mac: bool,
+    },
+    MacroCall,
+
+    // Target types that correspond exclusively to `AssocItem` kind. Mapping is obtained from `Target::from_assoc_item_kind`.
+    AssocConst(&'a ConstItem, AssocCtxt),
+    Method(&'a Fn, MethodKind),
+    AssocTy(&'a TyAlias, AssocCtxt),
+
+    // Target types that correspond exclusively to `ForeignItem` kind. Mapping is obtained from `Target::from_foreign_item_kind`.
+    ForeignStatic(&'a StaticItem),
+    ForeignFn(&'a Fn),
+    ForeignTy(&'a TyAlias),
+
+    // Target types that correspond exclusively to `Item` kind. Mapping is obtained from `Target::from_ast_item`.
+    ExternCrate(&'a Option<Symbol>, &'a Ident),
+    Use(&'a UseTree),
+    Static(&'a StaticItem),
+    Const(ConstTypeAstTarget<'a>),
+    Fn(&'a Fn),
+    Mod(&'a Safety, &'a Ident, &'a ModKind),
+    ForeignMod(&'a ForeignMod),
+    GlobalAsm(&'a InlineAsm),
+    TyAlias(&'a TyAlias),
+    Enum(&'a Ident, &'a Generics, &'a EnumDef),
+    Struct(&'a Ident, &'a Generics, &'a VariantData),
+    Union(&'a Ident, &'a Generics, &'a VariantData),
+    Trait(&'a Trait),
+    TraitAlias(&'a TraitAlias),
+    Impl(&'a Impl),
+    MacroDef(&'a Ident, &'a MacroDef),
+
+    // Target types that correspond exclusively to `Expr` kind. Mapping is obtained from `Target::from_expr`.
+    Closure(&'a Closure),
+    Expression(&'a Expr),
+
+    Arm(&'a Arm),
+    Crate(&'a Crate),
+    ExprField(&'a ExprField),
+    Field(&'a FieldDef),
+    GenericParam(&'a GenericParam),
+    Param(&'a Param),
+    PatField(&'a Pat),
+    Statement(&'a Stmt),
+    Variant(&'a Variant),
+    WherePredicate(&'a WherePredicate),
+
+    /// Used when it is not possible to obtain detailed AST information.
+    /// In this case, None is just a wrapper for `Target`.
+    None(Target),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ConstTypeAstTarget<'a> {
+    ConstItem(&'a ConstItem),
+    ConstBlockItem(&'a ConstBlockItem),
+}
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum MethodKind {
@@ -19,6 +89,8 @@ pub enum MethodKind {
     Inherent,
 }
 
+// FIXME(rtjkro): `AstTarget` has nearly one-to-one mapping with `Target`, barring the extra fields from `AssocConst`, `Method`, and `AssocTy`.
+// In the future, remove `Target` and use `AstTarget` instead.
 #[derive(Copy, Clone, PartialEq, Debug, Eq, StableHash)]
 pub enum Target {
     ExternCrate,
@@ -65,6 +137,94 @@ pub enum Target {
     Break,
 }
 
+impl<'a> AstTarget<'a> {
+    pub fn get_abi(&self) -> Option<ExternAbi> {
+        let ext = match self {
+            AstTarget::Method(fn_item, _) => fn_item.sig.header.ext,
+            AstTarget::Fn(fn_item) => fn_item.sig.header.ext,
+            AstTarget::ForeignFn(fn_item) => fn_item.sig.header.ext,
+            _ => return None,
+        };
+
+        match ext {
+            ast::Extern::None => Some(ExternAbi::Rust),
+            ast::Extern::Implicit(_) => Some(ExternAbi::FALLBACK),
+            ast::Extern::Explicit(abi, _) => Some(abi.symbol_unescaped.as_str().parse().ok()?),
+        }
+    }
+
+    pub fn get_fn_sig(&self) -> Option<&rustc_ast::ast::FnSig> {
+        match self {
+            AstTarget::Method(fn_item, _) => Some(&fn_item.sig),
+            AstTarget::Fn(fn_item) => Some(&fn_item.sig),
+            AstTarget::ForeignFn(fn_item) => Some(&fn_item.sig),
+            _ => None,
+        }
+    }
+
+    pub fn from_foreign_item_kind(kind: &'a ast::ForeignItemKind) -> Self {
+        match kind {
+            ForeignItemKind::Static(static_item) => AstTarget::ForeignStatic(static_item),
+            ForeignItemKind::Fn(f) => AstTarget::ForeignFn(f),
+            ForeignItemKind::TyAlias(ty_alias) => AstTarget::ForeignTy(ty_alias),
+            ForeignItemKind::MacCall(_) => AstTarget::MacroCall,
+        }
+    }
+
+    pub fn from_assoc_item_kind(kind: &'a ast::AssocItemKind, assoc_ctxt: AssocCtxt) -> Self {
+        match kind {
+            AssocItemKind::Const(const_item) => AstTarget::AssocConst(const_item, assoc_ctxt),
+            AssocItemKind::Fn(f) => AstTarget::Method(
+                f,
+                match assoc_ctxt {
+                    AssocCtxt::Trait => MethodKind::Trait { body: f.body.is_some() },
+                    AssocCtxt::Impl { of_trait, .. } => {
+                        if of_trait {
+                            MethodKind::TraitImpl
+                        } else {
+                            MethodKind::Inherent
+                        }
+                    }
+                },
+            ),
+            AssocItemKind::Type(type_alias) => AstTarget::AssocTy(type_alias, assoc_ctxt),
+            AssocItemKind::Delegation(_) => AstTarget::Delegation { mac: false },
+            AssocItemKind::DelegationMac(_) => AstTarget::Delegation { mac: true },
+            AssocItemKind::MacCall(_) => AstTarget::MacroCall,
+        }
+    }
+
+    pub fn from_ast_item(kind: &'a ast::ItemKind) -> Self {
+        match kind {
+            ast::ItemKind::ExternCrate(symbol, ident) => AstTarget::ExternCrate(symbol, ident),
+            ast::ItemKind::Use(use_tree) => AstTarget::Use(use_tree),
+            ast::ItemKind::Static(static_item) => AstTarget::Static(static_item),
+            ast::ItemKind::Const(const_item) => {
+                AstTarget::Const(ConstTypeAstTarget::ConstItem(const_item))
+            }
+            ast::ItemKind::ConstBlock(const_block_item) => {
+                AstTarget::Const(ConstTypeAstTarget::ConstBlockItem(const_block_item))
+            }
+            ast::ItemKind::Fn(f) => AstTarget::Fn(f),
+            ast::ItemKind::Mod(s, i, mk) => AstTarget::Mod(s, i, mk),
+            ast::ItemKind::ForeignMod(foreign_mod) => AstTarget::ForeignMod(foreign_mod),
+            ast::ItemKind::GlobalAsm(inline_asm) => AstTarget::GlobalAsm(inline_asm),
+            ast::ItemKind::TyAlias(ty_alias) => AstTarget::TyAlias(ty_alias),
+            ast::ItemKind::Enum(i, g, ed) => AstTarget::Enum(i, g, ed),
+            ast::ItemKind::Struct(i, g, vd) => AstTarget::Struct(i, g, vd),
+            ast::ItemKind::Union(i, g, vd) => AstTarget::Union(i, g, vd),
+            ast::ItemKind::Trait(trait_kind) => AstTarget::Trait(trait_kind),
+            ast::ItemKind::TraitAlias(trait_alias) => AstTarget::TraitAlias(trait_alias),
+            ast::ItemKind::Impl(i) => AstTarget::Impl(i),
+            ast::ItemKind::MacCall(..) => AstTarget::MacroCall,
+            ast::ItemKind::MacroDef(ident, macro_def) => AstTarget::MacroDef(ident, macro_def),
+            ast::ItemKind::Delegation(..) => AstTarget::Delegation { mac: false },
+            ast::ItemKind::DelegationMac(..) => AstTarget::Delegation { mac: true },
+            ast::ItemKind::TestBinderConstraints(..) => AstTarget::MacroCall,
+        }
+    }
+}
+
 impl Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", Self::name(*self))
@@ -74,6 +234,58 @@ impl Display for Target {
 rustc_error_messages::into_diag_arg_using_display!(Target);
 
 impl Target {
+    pub fn from_ast_target(ast_item: &AstTarget<'_>) -> Self {
+        match ast_item {
+            AstTarget::Delegation { mac } => Target::Delegation { mac: *mac },
+            AstTarget::MacroCall => Target::MacroCall,
+
+            AstTarget::AssocConst(_, assoc_ctxt) => Target::AssocConst(*assoc_ctxt),
+            AstTarget::Method(_, method_kind) => Target::Method(*method_kind),
+            AstTarget::AssocTy(_, assoc_ctxt) => Target::AssocTy(*assoc_ctxt),
+
+            AstTarget::ForeignStatic(_) => Target::ForeignStatic,
+            AstTarget::ForeignFn(_) => Target::ForeignFn,
+            AstTarget::ForeignTy(_) => Target::ForeignTy,
+
+            AstTarget::ExternCrate(..) => Target::ExternCrate,
+            AstTarget::Use(_) => Target::Use,
+            AstTarget::Static(_) => Target::Static,
+            AstTarget::Const(_) => Target::Const,
+            AstTarget::Fn(_) => Target::Fn,
+            AstTarget::Mod(..) => Target::Mod,
+            AstTarget::ForeignMod(_) => Target::ForeignMod,
+            AstTarget::GlobalAsm(_) => Target::GlobalAsm,
+            AstTarget::TyAlias(_) => Target::TyAlias,
+            AstTarget::Enum(..) => Target::Enum,
+            AstTarget::Struct(..) => Target::Struct,
+            AstTarget::Union(..) => Target::Union,
+            AstTarget::Trait(_) => Target::Trait,
+            AstTarget::TraitAlias(_) => Target::TraitAlias,
+            AstTarget::Impl(i) => Target::Impl { of_trait: i.of_trait.is_some() },
+            AstTarget::MacroDef(..) => Target::MacroDef,
+
+            AstTarget::Closure(_) => Target::Closure,
+            AstTarget::Expression(e) => Target::from_expr(e),
+
+            AstTarget::Arm(_) => Target::Arm,
+            AstTarget::Crate(_) => Target::Crate,
+            AstTarget::ExprField(_) => Target::ExprField,
+            AstTarget::Field(_) => Target::Field,
+            AstTarget::GenericParam(g) => match g.kind {
+                GenericParamKind::Type { .. } => Target::TypeParam,
+                GenericParamKind::Lifetime => Target::LifetimeParam,
+                GenericParamKind::Const { .. } => Target::ConstParam,
+            },
+            AstTarget::Param(_) => Target::Param,
+            AstTarget::PatField(_) => Target::PatField,
+            AstTarget::Statement(_) => Target::Statement,
+            AstTarget::Variant(_) => Target::Variant,
+            AstTarget::WherePredicate(_) => Target::WherePredicate,
+
+            AstTarget::None(target) => *target,
+        }
+    }
+
     pub fn is_associated_item(self) -> bool {
         match self {
             Target::AssocConst(_) | Target::AssocTy(_) | Target::Method(_) => true,

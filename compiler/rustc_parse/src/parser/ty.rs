@@ -237,17 +237,8 @@ impl<'a> Parser<'a> {
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, FnRetTy> {
         let lo = self.prev_token.span;
-        Ok(if self.eat(exp!(RArrow)) {
-            // FIXME(Centril): Can we unconditionally `allow_plus`?
-            let ty = self.parse_ty_common(
-                allow_plus,
-                AllowCVariadic::No,
-                recover_qpath,
-                recover_return_sign,
-                None,
-                RecoverQuestionMark::Yes,
-            )?;
-            FnRetTy::Ty(ty)
+        let ate_arrow = if self.eat(exp!(RArrow)) {
+            true
         } else if recover_return_sign.can_recover(&self.token.kind) {
             // Don't `eat` to prevent `=>` from being added as an expected token which isn't
             // actually expected and could only confuse users
@@ -256,15 +247,42 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 suggestion: lo.between(self.token.span),
             });
-            let ty = self.parse_ty_common(
-                allow_plus,
-                AllowCVariadic::No,
-                recover_qpath,
-                recover_return_sign,
-                None,
-                RecoverQuestionMark::Yes,
-            )?;
-            FnRetTy::Ty(ty)
+            true
+        } else {
+            false
+        };
+
+        Ok(if ate_arrow {
+            FnRetTy::Ty(
+                // FIXME(Centril): Can we unconditionally `allow_plus`?
+                match self.parse_ty_common(
+                    allow_plus,
+                    AllowCVariadic::No,
+                    recover_qpath,
+                    recover_return_sign,
+                    None,
+                    RecoverQuestionMark::Yes,
+                ) {
+                    Ok(ty) => ty,
+                    Err(e) if self.may_recover() => {
+                        while !matches!(
+                            self.token.kind,
+                            TokenKind::OpenBrace
+                                | TokenKind::CloseBrace
+                                | TokenKind::Semi
+                                | TokenKind::Eof
+                        ) {
+                            self.bump();
+                        }
+                        // only emit the recovered type if the end of the type actually was found
+                        if self.token.kind == TokenKind::Eof {
+                            return Err(e);
+                        }
+                        self.mk_ty(self.prev_token.span, TyKind::Err(e.emit_err()))
+                    }
+                    Err(e) => return Err(e),
+                },
+            )
         } else {
             FnRetTy::Default(self.prev_token.span.shrink_to_hi())
         })
@@ -308,8 +326,6 @@ impl<'a> Parser<'a> {
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
             self.parse_typeof_ty(lo)?
-        } else if self.is_builtin() {
-            self.parse_builtin_ty()?
         } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -405,6 +421,8 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |tok| tok.kind == token::Lt)
         {
             self.parse_unsafe_binder_ty()?
+        } else if self.eat_forced_keyword_noexpect(kw::FieldOf) {
+            self.parse_ty_field_of(lo)?
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.dcx().struct_span_err(lo, msg);
@@ -808,16 +826,9 @@ impl<'a> Parser<'a> {
         Ok(TyKind::Err(guar))
     }
 
-    fn parse_builtin_ty(&mut self) -> PResult<'a, TyKind> {
-        self.parse_builtin(|this, lo, ident| {
-            Ok(match ident.name {
-                sym::field_of => Some(this.parse_ty_field_of(lo)?),
-                _ => None,
-            })
-        })
-    }
+    pub(crate) fn parse_ty_field_of(&mut self, lo: Span) -> PResult<'a, TyKind> {
+        self.expect(exp!(OpenParen))?;
 
-    pub(crate) fn parse_ty_field_of(&mut self, _lo: Span) -> PResult<'a, TyKind> {
         let container = self.parse_ty()?;
         self.expect(exp!(Comma))?;
 
@@ -826,30 +837,36 @@ impl<'a> Parser<'a> {
 
         if let Err(mut e) = self.expect_one_of(&[], &[exp!(CloseParen)]) {
             if trailing_comma {
-                e.note("unexpected third argument to field_of");
+                e.note("unexpected third argument to `field_of`");
             } else {
-                e.note("field_of expects dot-separated field and variant names");
+                e.note("`field_of` expects dot-separated field and variant names");
             }
             e.emit();
         }
 
-        // Eat tokens until the macro call ends.
+        // Eat tokens until the construct ends.
         if self.may_recover() {
             while !self.token.kind.is_close_delim_or_eof() {
                 self.bump();
             }
         }
 
+        // FIXME: Odd not to include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly by not pointing into the wrapper macros.
+        let span = self.token.span;
+        self.expect(exp!(CloseParen))?;
+
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+
         match *fields {
-            [] => Err(self.dcx().struct_span_err(
-                self.token.span,
-                "`field_of!` expects dot-separated field and variant names",
-            )),
+            [] => Err(self
+                .dcx()
+                .struct_span_err(span, "`field_of` expects dot-separated field and variant names")),
             [field] => Ok(TyKind::FieldOf(container, None, field)),
             [variant, field] => Ok(TyKind::FieldOf(container, Some(variant), field)),
             _ => Err(self.dcx().struct_span_err(
                 fields.iter().map(|f| f.span).collect::<Vec<_>>(),
-                "`field_of!` only supports a single field or a variant with a field",
+                "`field_of` only supports a single field or a variant with a field",
             )),
         }
     }

@@ -144,7 +144,7 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
 
 impl<'a, 'tcx, Ie, Id, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<Ie, Id, T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
-        e.emit_usize(self.width);
+        e.emit_usize(self.width_and_sparse);
         e.emit_usize(self.len);
         e.emit_lazy_distance(self.position);
     }
@@ -945,26 +945,22 @@ struct AnalyzeAttrState {
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
 fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -> bool {
-    let mut should_encode = false;
-    if let rustc_attr_ir::Attribute::Parsed(p) = attr
-        && p.encode_cross_crate() == EncodeCrossCrate::No
-    {
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
-        // We keep all doc comments reachable to rustdoc because they might be "imported" into
-        // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
-        // their own.
-        if state.is_exported {
-            should_encode = true;
+    match attr {
+        Attribute::Parsed(AttributeKind::DocComment { .. }) => {
+            // We keep all doc comments reachable to rustdoc because they might be "imported" into
+            // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
+            // their own.
+            state.is_exported
         }
-    } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr {
-        should_encode = true;
-        if d.hidden.is_some() {
-            state.is_doc_hidden = true;
+        Attribute::Parsed(AttributeKind::Doc(d)) => {
+            if d.hidden.is_some() {
+                state.is_doc_hidden = true;
+            }
+            true
         }
-    } else {
-        should_encode = true;
+        Attribute::Parsed(p) => p.encode_cross_crate() == EncodeCrossCrate::Yes,
+        Attribute::Tool(_) | Attribute::DeriveHelper(_) => true,
     }
-    should_encode
 }
 
 fn should_encode_span(def_kind: DefKind) -> bool {
@@ -2476,7 +2472,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
     }
 
     let reachable_set = tcx.reachable_set(());
-    par_for_each_in(tcx.mir_keys(()), |&&def_id| {
+    par_for_each_in(tcx.mir_keys(()).as_slice(), |&def_id| {
         if tcx.is_trivial_const(def_id) {
             return;
         }

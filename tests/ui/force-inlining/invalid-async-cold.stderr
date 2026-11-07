@@ -1,0 +1,20 @@
+error: attribute cannot be applied to a `async`, `gen` or `async gen` function
+  --> $DIR/invalid-async-cold.rs:12:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | pub async fn async_cold() {}
+   | ------------------------- `async`, `gen` or `async gen` function
+
+error: attribute cannot be applied to a `async`, `gen` or `async gen` function
+  --> $DIR/invalid-async-cold.rs:17:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | pub gen fn gen_cold() {}
+   | --------------------- `async`, `gen` or `async gen` function
+
+error: aborting due to 2 previous errors
+

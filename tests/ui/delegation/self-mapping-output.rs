@@ -137,16 +137,20 @@ mod more_than_one_field {
     impl Trait for W {
         reuse Trait::method { self.0 }
         //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
+        //~| ERROR: the `more_than_one_field::W` must contain one field for wrapping the return value in delegation
         reuse Trait::r#static;
         //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
+        //~| ERROR: the `more_than_one_field::W` must contain one field for wrapping the return value in delegation
         reuse Trait::raw_S { self.0 }
     }
 
     impl W {
         reuse Trait::method { self.0 }
         //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
+        //~| ERROR: the `more_than_one_field::W` must contain one field for wrapping the return value in delegation
         reuse Trait::r#static;
         //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
+        //~| ERROR: the `more_than_one_field::W` must contain one field for wrapping the return value in delegation
         reuse Trait::raw_S { self.0 }
     }
 }

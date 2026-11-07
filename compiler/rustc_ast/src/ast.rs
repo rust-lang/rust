@@ -34,13 +34,12 @@ use rustc_span::{
     ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
     sym,
 };
-use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream, TokenTree};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 use crate::util::parser::{ExprPrecedence, Fixity};
 use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
@@ -1221,7 +1220,7 @@ impl Stmt {
     /// a trailing semicolon.
     ///
     /// This only modifies the parsed AST struct, not the attached
-    /// `LazyAttrTokenStream`. The parser is responsible for calling
+    /// `LazyTokenStream`. The parser is responsible for calling
     /// `ToAttrTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
     pub fn add_trailing_semicolon(mut self) -> Self {
@@ -1281,7 +1280,7 @@ pub struct MacCallStmt {
     pub mac: Box<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, Walkable)]
@@ -1308,7 +1307,7 @@ pub struct Local {
     pub span: Span,
     pub colon_sp: Option<Span>,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -1409,7 +1408,7 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Expr {
@@ -1779,7 +1778,7 @@ pub enum ExprKind {
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(Box<Expr>, Box<Ty>),
-    /// A type ascription (e.g., `builtin # type_ascribe(42, usize)`).
+    /// A type ascription (e.g., `k#type_ascribe(42, usize)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `type_ascribe!(...)`.
@@ -1871,7 +1870,7 @@ pub enum ExprKind {
     /// Output of the `asm!()` macro.
     InlineAsm(Box<InlineAsm>),
 
-    /// An `offset_of` expression (e.g., `builtin # offset_of(Struct, field)`).
+    /// An `offset_of` expression (e.g., `k#offset_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
@@ -2570,7 +2569,7 @@ pub enum TyKind {
     /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZero<u32>`,
     /// just as part of the type system.
     Pat(Box<Ty>, Box<TyPat>),
-    /// A `field_of` expression (e.g., `builtin # field_of(Struct, field)`).
+    /// A `field_of` expression (e.g., `k#field_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.
@@ -3523,43 +3522,26 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn is_doc_comment(&self) -> Option<Span> {
+    pub fn is_doc_comment(&self) -> bool {
         match self {
-            GeneratedAttr::AutomaticallyDerived => None,
-            GeneratedAttr::RustcConstUnstableDerived => None,
-            GeneratedAttr::Inline => None,
-            GeneratedAttr::DocHidden => None,
-            GeneratedAttr::CoverageOff => None,
-            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::AutomaticallyDerived => false,
+            GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::Inline => false,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::RustcTestMarker(_) => false,
         }
     }
 
-    pub fn name(&self) -> Option<Symbol> {
+    pub fn path(&self) -> &[Symbol] {
         match self {
-            GeneratedAttr::AutomaticallyDerived => Some(sym::automatically_derived),
-            GeneratedAttr::RustcConstUnstableDerived => Some(sym::rustc_const_unstable),
-            GeneratedAttr::Inline => Some(sym::inline),
-            GeneratedAttr::DocHidden => Some(sym::doc),
-            GeneratedAttr::CoverageOff => Some(sym::coverage),
-            GeneratedAttr::RustcTestMarker(_) => Some(sym::rustc_test_marker),
-        }
-    }
-
-    pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        let path = match self {
             GeneratedAttr::AutomaticallyDerived => &[sym::automatically_derived],
             GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
             GeneratedAttr::Inline => &[sym::inline],
             GeneratedAttr::DocHidden => &[sym::doc],
             GeneratedAttr::CoverageOff => &[sym::coverage],
             GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
-        };
-
-        path == name
-    }
-
-    pub fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
-        self.name().map(|n| smallvec![n])
+        }
     }
 
     pub fn path_span(&self) -> Option<Span> {
@@ -3605,7 +3587,7 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn token_trees(&self) -> Vec<TokenTree> {
+    pub fn append_token_trees_to(&self, _res: &mut Vec<TokenTree>) {
         unimplemented!(
             "generated attribute `{}` cannot re-enter the parser at this time",
             self.descr()
@@ -3618,7 +3600,7 @@ pub struct NormalAttr {
     pub item: AttrItem,
     // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
     // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl NormalAttr {
@@ -3889,7 +3871,7 @@ pub struct Item<K = ItemKind> {
     ///
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Item {
@@ -4237,11 +4219,25 @@ pub struct TestBinderConstraints {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderBody {
     pub span: Span,
-    pub foralls: ThinVec<TestBinderForall>,
-    pub exists: ThinVec<TestBinderExists>,
-    pub constraints: Vec<TestBinderConstraint>,
+    pub items: Vec<TestBinderItem>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum TestBinderItem {
+    Forall(TestBinderForall),
+    Exists(TestBinderExists),
+    RegionEquality(TestBinderRegionEquality),
+    Constraint(TestBinderConstraint),
     /// These are not where clauses, but rather predicates within the body to be proven
-    pub predicates: Vec<WherePredicate>,
+    Predicate(WherePredicate),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct TestBinderRegionEquality {
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub lhs: Lifetime,
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub rhs: Lifetime,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

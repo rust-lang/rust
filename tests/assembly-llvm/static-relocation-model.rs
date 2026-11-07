@@ -47,7 +47,8 @@ pub fn peach() -> u8 {
 // x64:      movq    EXOCHORDA{{(\(%[a-z0-9]+\))?}}, %[[REG:[a-z0-9]+]]
 // x64-NEXT: {{movb|movzbl}}   (%[[REG]]), %{{[a-z0-9]+}}
 // A64:      adrp    [[REG2:[a-z0-9]+]], EXOCHORDA
-// A64-NEXT: ldr     {{[a-z0-9]+}}, {{\[}}[[REG2]], :lo12:EXOCHORDA]
+// A64-NEXT: add     [[REG2]], [[REG2]], :lo12:EXOCHORDA
+// A64-NEXT: ldr     {{[a-z0-9]+}}, {{\[}}[[REG2]]{{\]}}
 #[no_mangle]
 pub fn mango() -> u8 {
     unsafe { *EXOCHORDA }

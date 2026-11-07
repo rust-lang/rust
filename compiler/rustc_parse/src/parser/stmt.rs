@@ -126,11 +126,7 @@ impl<'a> Parser<'a> {
                 diagnostics::InvalidVariableDeclarationSub::UseLetNotVar,
                 force_collect,
             )?
-        } else if self.check_path()
-            && !self.token.is_qpath_start()
-            && !self.is_path_start_item()
-            && !self.is_builtin()
-        {
+        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
@@ -765,7 +761,7 @@ impl<'a> Parser<'a> {
                 snapshot = Some(self.create_snapshot_for_diagnostic());
             }
             let stmt = match self.parse_full_stmt(recover) {
-                Err(mut err) if recover.yes() => {
+                Err(mut err) if recover.yes(self) => {
                     if let Some(ref mut snapshot) = snapshot {
                         snapshot.recover_vcs_conflict_marker();
                     }
@@ -1072,7 +1068,7 @@ impl<'a> Parser<'a> {
                             let res =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr);
 
-                            Some(if recover.no() {
+                            Some(if recover.no(self) {
                                 res?
                             } else {
                                 res.unwrap_or_else(|mut e| {

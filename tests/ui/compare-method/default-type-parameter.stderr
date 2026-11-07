@@ -1,0 +1,107 @@
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/default-type-parameter.rs:17:17
+   |
+LL | impl Trait for S {
+LL |     fn foo() -> u32 { 0 }
+   |                 ^^^ expected `()`, found `u32`
+   |
+note: type in trait
+  --> $DIR/default-type-parameter.rs:9:8
+   |
+LL | trait Trait<
+LL |     T = (),
+   |     ------ expected to match the default of type parameter `T`
+...
+LL |     fn foo()
+LL |     -> T;
+   |        ^
+   = note: expected signature `fn() -> ()`
+              found signature `fn() -> u32`
+help: change the output type to match the trait
+   |
+LL -     fn foo() -> u32 { 0 }
+LL +     fn foo() -> () { 0 }
+   |
+
+error[E0053]: method `bar` has an incompatible type for trait
+  --> $DIR/default-type-parameter.rs:18:17
+   |
+LL | impl Trait for S {
+LL |     fn foo() -> u32 { 0 }
+LL |     fn bar() -> u32 { 0 }
+   |                 ^^^ expected `S`, found `u32`
+   |
+note: type in trait
+  --> $DIR/default-type-parameter.rs:11:8
+   |
+LL | trait Trait<
+LL |     T = (),
+LL |     K = Self,
+   |     -------- expected to match the `Self` default of type parameter `K`
+...
+LL |     fn bar()
+LL |     -> K;
+   |        ^
+   = note: expected signature `fn() -> S`
+              found signature `fn() -> u32`
+help: change the output type to match the trait
+   |
+LL -     fn bar() -> u32 { 0 }
+LL +     fn bar() -> S { 0 }
+   |
+
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/default-type-parameter.rs:21:17
+   |
+LL | impl Trait<i32> for () {
+LL |     fn foo() -> u32 { 0 }
+   |                 ^^^ expected `i32`, found `u32`
+   |
+note: type in trait
+  --> $DIR/default-type-parameter.rs:9:8
+   |
+LL | trait Trait<
+LL |     T = (),
+   |     ------ expected to match type parameter `T`
+...
+LL |     fn foo()
+LL |     -> T;
+   |        ^
+   = note: expected signature `fn() -> i32`
+              found signature `fn() -> u32`
+help: change the output type to match the trait
+   |
+LL -     fn foo() -> u32 { 0 }
+LL +     fn foo() -> i32 { 0 }
+   |
+
+error[E0053]: method `bar` has an incompatible type for trait
+  --> $DIR/default-type-parameter.rs:22:17
+   |
+LL | impl Trait<i32> for () {
+LL |     fn foo() -> u32 { 0 }
+LL |     fn bar() -> u32 { 0 }
+   |                 ^^^ expected `()`, found `u32`
+   |
+note: type in trait
+  --> $DIR/default-type-parameter.rs:11:8
+   |
+LL | trait Trait<
+LL |     T = (),
+LL |     K = Self,
+   |     -------- expected to match the `Self` default of type parameter `K`
+...
+LL |     fn bar()
+LL |     -> K;
+   |        ^
+   = note: expected signature `fn() -> ()`
+              found signature `fn() -> u32`
+help: change the output type to match the trait
+   |
+LL -     fn bar() -> u32 { 0 }
+LL +     fn bar() -> () { 0 }
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

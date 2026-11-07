@@ -231,7 +231,7 @@ mod tests {
                     anchor,
                     ctx: make_ctx(),
                 },
-                is_raw: tt::IdentIsRaw::No,
+                kind: tt::IdentKind::Normal,
             }
             .into(),
         );
@@ -243,7 +243,7 @@ mod tests {
                     anchor,
                     ctx: make_ctx(),
                 },
-                is_raw: tt::IdentIsRaw::Yes,
+                kind: tt::IdentKind::Raw,
             }
             .into(),
         );

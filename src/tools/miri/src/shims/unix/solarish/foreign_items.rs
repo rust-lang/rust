@@ -44,7 +44,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "epoll_wait" => {
                 this.assert_target_os(Os::Illumos, "epoll_wait");
                 let [epfd, events, maxevents, timeout] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, i32, i32) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::epoll_event, i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
@@ -101,7 +101,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Sockets and pipes
             "__xnet_socketpair" => {
                 let [domain, type_, protocol, sv] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.socketpair(domain, type_, protocol, sv)?;
@@ -119,7 +119,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_bind" => {
                 let [socket, address, address_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.bind(socket, address, address_len)?;
@@ -127,14 +127,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "__xnet_connect" => {
                 let [socket, address, address_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.connect(socket, address, address_len, dest)?;
             }
             "__xnet_getaddrinfo" => {
                 let [node, service, hints, res] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*_, *_, *_, **_) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.getaddrinfo(node, service, hints, res)?;
@@ -160,9 +160,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             "stack_getbounds" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [stack] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let stack = this.deref_pointer_as(stack, this.libc_ty_layout("stack_t"))?;
+                let [stack] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::stack_t) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let stack = this.deref_pointer(stack)?;
 
                 this.write_int_fields_named(
                     &[
@@ -181,7 +183,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pset_info" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [pset, tpe, cpus, list] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, *_, *u32, *_) -> i32),
                     (link_name, abi, args),
                 )?;
                 // We do not need to handle the current process cpu mask, available_parallelism
@@ -206,7 +208,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     throw_unsup_format!("pset_info is only supported with list==NULL");
                 }
 
-                let cpus = this.deref_pointer_as(cpus, this.machine.layouts.u32)?;
+                let cpus = this.deref_pointer(cpus)?;
                 this.write_scalar(Scalar::from_u32(this.machine.num_cpus), &cpus)?;
                 this.write_null(dest)?;
             }

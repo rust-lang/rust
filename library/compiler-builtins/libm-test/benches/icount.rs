@@ -110,6 +110,7 @@ library_benchmark_group!(
         icount_bench_exp2f,
         icount_bench_exp2m1,
         icount_bench_exp2m1f,
+        icount_bench_exp2m1f16,
         icount_bench_expf,
         icount_bench_expm1,
         icount_bench_expm1f,

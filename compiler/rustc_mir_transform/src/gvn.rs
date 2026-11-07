@@ -1735,7 +1735,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         || adt_def.all_fields().any(|field| {
                             ty_may_have_ref_inner(
                                 tcx,
-                                field.ty(tcx, args).skip_normalization(),
+                                field.ty(tcx, *args).skip_normalization(),
                                 depth,
                             )
                         })
@@ -1849,7 +1849,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, *args).skip_norm_wip()))
         } else {
             None
         }
@@ -1959,9 +1959,9 @@ fn op_to_prop_const<'tcx>(
         if let GlobalAlloc::Memory(alloc) = ecx.tcx.global_alloc(alloc_id)
             // Transmuting a constant is just an offset in the allocation. If the alignment of the
             // allocation is not enough, fallback to copying into a properly aligned value.
-            && alloc.inner().align >= op.layout.align.abi
+            && alloc.inner().align >= op.layout.align
             // If this is a packed field the offset must also be sufficiently aligned.
-            && offset.bytes().is_multiple_of(op.layout.align.abi.bytes())
+            && offset.bytes().is_multiple_of(op.layout.align.bytes())
         {
             return Some(ConstValue::Indirect { alloc_id, offset });
         }

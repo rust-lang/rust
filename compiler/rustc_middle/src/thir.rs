@@ -35,8 +35,8 @@ use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, Ty,
-    TyCtxt, UpvarArgs,
+    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgs, Ty, TyCtxt,
+    UpvarArgs,
 };
 
 pub mod visit;
@@ -147,7 +147,7 @@ pub struct AdtExpr<'tcx> {
     pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
     pub variant_index: VariantIdx,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
 
     /// Optional user-given args: for something like `let x =
     /// Bar::<T> { ... }`.
@@ -466,7 +466,7 @@ pub enum ExprKind<'tcx> {
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
         did: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     },
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
@@ -529,7 +529,7 @@ pub enum ExprKind<'tcx> {
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         user_ty: UserTy<'tcx>,
     },
     ConstParam {
@@ -795,7 +795,7 @@ pub enum PatKind<'tcx> {
     /// multiple variants.
     Variant {
         adt_def: AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPat<'tcx>>,
     },

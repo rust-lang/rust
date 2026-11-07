@@ -1,5 +1,5 @@
 # The Rust standard library's portable SIMD API
-![Build Status](https://github.com/rust-lang/portable-simd/actions/workflows/ci.yml/badge.svg?branch=master)
+![Build Status](https://github.com/rust-lang/portable-simd/actions/workflows/ci.yml/badge.svg?branch=main)
 
 Code repository for the [Portable SIMD Project Group](https://github.com/rust-lang/project-portable-simd).
 Please refer to [CONTRIBUTING.md](./CONTRIBUTING.md) for our contributing guidelines.

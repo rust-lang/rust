@@ -1,31 +1,34 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, ConstTypeAstTarget, Target};
 use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
-    DocInline, HideOrShow,
+    DocInline, HideOrShow, NotableTraitColor,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_errors::{Applicability, MultiSpan, msg};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
-use rustc_span::{Span, Symbol, edition, sym};
+use rustc_span::{Span, Symbol, edition, kw, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
-    AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
-    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
-    DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
-    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse,
+    DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
+    DocAttrNotCrateLevel, DocAttrNotParameters, DocAttrNotTraitLevel, DocAttributeNotAttribute,
+    DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
+    DocAutoCfgHideShowNoIdentBeforeValues, DocAutoCfgHideShowUnexpectedItem,
+    DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix,
+    DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse, DocKeywordAttributeNotAnonConst,
     DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
-    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
-    ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight,
+    DuplicateNotableTraitColor, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput,
+    InvalidNotableTraitAttr, InvalidNotableTraitColor, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
+use crate::target_checking::Policy::{Allow, AllowSilent};
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -63,15 +66,6 @@ fn check_attr_not_crate_level(
     true
 }
 
-/// Checks that an attribute is used at the crate level. Returns `true` if valid.
-fn check_attr_crate_level(cx: &mut AcceptContext<'_, '_>, span: Span) -> bool {
-    if cx.shared.target != Target::Crate {
-        cx.emit_lint(INVALID_DOC_ATTRIBUTES, AttrCrateLevelOnly, span);
-        return false;
-    }
-    true
-}
-
 // FIXME: To be removed once merged and replace with `cx.expected_name_value(span, _name)`.
 fn expected_name_value(cx: &mut AcceptContext<'_, '_>, span: Span, _name: Option<Symbol>) {
     cx.emit_lint(INVALID_DOC_ATTRIBUTES, ExpectedNameValue, span);
@@ -90,6 +84,124 @@ fn expected_string_literal(
     _actual_literal: Option<&MetaItemLit>,
 ) {
     cx.emit_lint(INVALID_DOC_ATTRIBUTES, MalformedDoc, span);
+}
+
+fn parse_notable_trait(
+    cx: &mut AcceptContext<'_, '_>,
+    path: &OwnedPathParser,
+    args: &ArgParser,
+    attr_value: &mut Option<(Option<(NotableTraitColor, Span)>, Span)>,
+    attr_name: Symbol,
+) {
+    let span = path.span();
+
+    let notable_trait_color_attr = match args {
+        ArgParser::NoArgs => None,
+        ArgParser::List(meta_item_list_parser) => {
+            if meta_item_list_parser.is_empty() {
+                None
+            } else if let Some(meta_item) = meta_item_list_parser.as_single() {
+                Some(meta_item)
+            } else {
+                let color_spans: Option<Vec<_>> = meta_item_list_parser
+                    .mixed()
+                    .map(|item| {
+                        let meta = item.meta_item()?;
+                        meta.path().word_is(sym::color).then(|| meta.path().span())
+                    })
+                    .collect();
+
+                if let Some(color_spans) = color_spans {
+                    let first_span = color_spans[0];
+                    let duplicate_spans = &color_spans[1..];
+
+                    let mut spans = MultiSpan::from_spans(duplicate_spans.to_vec());
+                    spans.push_span_label(first_span, "");
+
+                    for &duplicate_span in duplicate_spans {
+                        spans.push_span_label(duplicate_span, msg!("multiple colors specified"));
+                    }
+
+                    cx.emit_lint(INVALID_DOC_ATTRIBUTES, DuplicateNotableTraitColor, spans);
+                } else {
+                    let spans = meta_item_list_parser
+                        .mixed()
+                        .map(|item| match item.meta_item() {
+                            Some(meta) => meta.path().span(),
+                            None => item.span(),
+                        })
+                        .collect();
+
+                    cx.emit_lint(
+                        INVALID_DOC_ATTRIBUTES,
+                        InvalidNotableTraitAttr,
+                        MultiSpan::from_spans(spans),
+                    );
+                }
+
+                return;
+            }
+        }
+        ArgParser::NameValue(_) => {
+            // FIXME(164728): every invalid notable trait attribute lint produces exactly
+            // the same warning and we should switch to more specific diagnostics
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            return;
+        }
+    };
+
+    let notable_trait_color_and_span = if let Some(notable_trait_color_attr) =
+        notable_trait_color_attr
+    {
+        let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            return;
+        };
+        if !notable_trait_color_attr.path().word_is(sym::color) {
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            return;
+        }
+        let Some(notable_trait_color) = notable_trait_color_attr.args().as_name_value() else {
+            cx.emit_lint(
+                INVALID_DOC_ATTRIBUTES,
+                InvalidNotableTraitAttr,
+                notable_trait_color_attr.path().span(),
+            );
+            return;
+        };
+
+        let color_value_span = notable_trait_color.value_span;
+
+        let Some(notable_trait_color) = notable_trait_color.value_as_str() else {
+            cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
+            return;
+        };
+
+        let notable_trait_color = match notable_trait_color.as_str() {
+            "grey" | "gray" => NotableTraitColor::Grey,
+            "red" => NotableTraitColor::Red,
+            "green" => NotableTraitColor::Green,
+            "yellow" => NotableTraitColor::Yellow,
+            "blue" => NotableTraitColor::Blue,
+            "magenta" => NotableTraitColor::Magenta,
+            "cyan" => NotableTraitColor::Cyan,
+            "transparent" => NotableTraitColor::Transparent,
+            _ => {
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitColor, color_value_span);
+                return;
+            }
+        };
+        Some((notable_trait_color, notable_trait_color_attr.span()))
+    } else {
+        None
+    };
+
+    if cx.shared.target != Target::Trait {
+        cx.emit_lint(INVALID_DOC_ATTRIBUTES, DocAttrNotTraitLevel { span, attr_name }, span);
+        return;
+    }
+
+    *attr_value = Some((notable_trait_color_and_span, span));
 }
 
 fn parse_keyword_and_attribute(
@@ -128,6 +240,15 @@ fn parse_keyword_and_attribute(
         return;
     }
 
+    if !matches!(
+        cx.ast_target,
+        AstTarget::Const(ConstTypeAstTarget::ConstItem(item))
+        if item.ident.name == kw::Underscore)
+    {
+        cx.emit_err(DocKeywordAttributeNotAnonConst { span, attr_name });
+        return;
+    }
+
     *attr_value = Some((value, span));
 }
 
@@ -163,22 +284,26 @@ impl DocParser {
                     return;
                 }
 
-                if !check_attr_crate_level(cx, path.span()) {
-                    return;
-                }
+                cx.check_target(
+                    sym::no_crate_inject.as_str(),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param),
+                    ]),
+                );
 
                 self.attribute.no_crate_inject = Some(path.span())
             }
             Some(sym::attr) => {
                 let Some(list) = args.as_list() else {
-                    // FIXME: remove this method once merged and uncomment the line below instead.
-                    // cx.expected_list(cx.attr_span, args);
+                    // FIXME(164728): remove this method once merged and uncomment the line
+                    // below instead. cx.expected_list(cx.attr_span, args);
                     let span = cx.attr_span;
                     cx.emit_lint(INVALID_DOC_ATTRIBUTES, MalformedDoc, span);
                     return;
                 };
-
-                // FIXME: convert list into a Vec of `AttributeKind` because current code is awful.
+                // FIXME(164728): remove this method once merged and uncomment the line
+                // below instead. cx.expected_list(cx.attr_span, args);
                 for attr in list.mixed() {
                     // Arguments of `attr` are checked via the span, so can be safely ignored
                     attr.ignore_args();
@@ -276,7 +401,7 @@ impl DocParser {
         }
 
         match cx.target {
-            Target::Use | Target::ExternCrate => {}
+            Target::Use | Target::ExternCrate | Target::Param => {} // Param has a custom error
             _ => {
                 let item_span = cx.target_span;
                 cx.emit_lint(
@@ -552,9 +677,13 @@ impl DocParser {
                     return;
                 }
                 let span = path.span();
-                if !check_attr_crate_level(cx, span) {
-                    return;
-                }
+                cx.check_target(
+                    concat!("(", stringify!($ident), ")"),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param), // Param has a custom error
+                    ]),
+                );
                 self.attribute.$ident = Some(span);
             }};
         }
@@ -570,9 +699,13 @@ impl DocParser {
                     return;
                 };
 
-                if !check_attr_crate_level(cx, path.span()) {
-                    return;
-                }
+                cx.check_target(
+                    s.as_str(),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param), // Param has a custom error
+                    ]),
+                );
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.
@@ -616,7 +749,13 @@ impl DocParser {
             }
             Some(sym::notable_trait) => {
                 gated!(doc_notable_trait);
-                no_args!(notable_trait)
+                parse_notable_trait(
+                    cx,
+                    path,
+                    args,
+                    &mut self.attribute.notable_trait,
+                    sym::notable_trait,
+                )
             }
             Some(sym::keyword) => {
                 gated!(rustdoc_internals);
@@ -726,6 +865,9 @@ impl DocParser {
     }
 
     fn accept_single_doc_attr(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
+        if cx.shared.target == Target::Param {
+            cx.emit_err(DocAttrNotParameters { span: cx.attr_span });
+        }
         match args {
             ArgParser::List(items) if !items.is_empty() => {
                 for i in items.mixed() {

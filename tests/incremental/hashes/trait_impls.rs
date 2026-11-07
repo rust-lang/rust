@@ -81,7 +81,7 @@ impl ChangeMethodBodyTrait for Foo {
 impl ChangeMethodBodyTrait for Foo {
     #[rustc_clean(except="hir_owner,typeck_root", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="hir_owner,typeck_root", cfg="bpass5")]
+    #[rustc_clean(except="hir_owner,typeck_root,optimized_mir", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method_name() {
         ()

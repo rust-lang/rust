@@ -6,7 +6,6 @@ use std::ops::{Deref, DerefMut};
 use std::str;
 
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
-use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::diagnostics as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -47,8 +46,8 @@ use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 /// other compiler pieces. Here we define a small subset which has enough information and can be
 /// moved around more freely.
 pub(crate) struct SCx<'ll> {
-    pub llmod: &'ll llvm::Module,
-    pub llcx: &'ll llvm::Context,
+    pub llmod: llvm::Module<'ll>,
+    pub llcx: llvm::Context<'ll>,
     pub isize_ty: &'ll Type,
 }
 
@@ -184,17 +183,16 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
 
 pub(crate) unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
-    llcx: &'ll llvm::Context,
+    llcx: llvm::Context<'ll>,
     mod_name: &str,
-) -> *const llvm::Module {
+) -> llvm::Module<'ll> {
     let mod_name_cstr = SmallCStr::new(mod_name);
-    let llmod_raw =
-        unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name_cstr.as_ptr(), llcx) };
-    init_module(tcx, llcx, unsafe { &*llmod_raw });
-    llmod_raw
+    let llmod = unsafe { llvm::LLVMModuleCreateWithNameInContext(mod_name_cstr.as_ptr(), llcx) };
+    init_module(tcx, llcx, llmod);
+    llmod
 }
 
-fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: &'ll llvm::Context, llmod: &'ll llvm::Module) {
+fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: llvm::Module<'ll>) {
     let sess = tcx.sess;
     let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
 
@@ -207,7 +205,13 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: &'ll llvm::Context, llmod: &'
             target_data_layout = target_data_layout.replace("-S64", "");
         }
     }
-
+    if llvm_version < (24, 0, 0) {
+        if sess.target.arch == Arch::AmdGpu {
+            // LLVM 24 updated the amdgpu layout: http://github.com/llvm/llvm-project/pull/209746 Add BARRIER address space
+            target_data_layout = target_data_layout
+                .replace("-p10:32:32-p11:32:32-p12:32:32-p13:32:32-p14:32:32-p15:32:32", "");
+        }
+    }
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(sess);
@@ -235,7 +239,7 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: &'ll llvm::Context, llmod: &'
         llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
     }
 
-    let llvm_target = SmallCStr::new(&versioned_llvm_target(sess));
+    let llvm_target = SmallCStr::new(&llvm_util::llvm_target(sess));
     unsafe {
         llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
     }
@@ -880,8 +884,8 @@ impl<'ll> SimpleCx<'ll> {
 }
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn new(
-        llmod: &'ll llvm::Module,
-        llcx: &'ll llvm::Context,
+        llmod: llvm::Module<'ll>,
+        llcx: llvm::Context<'ll>,
         pointer_size: Size,
     ) -> Self {
         let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);
@@ -1021,7 +1025,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     tcx,
                     self.typing_env(),
                     def_id,
-                    ty::List::empty(),
+                    ty::GenericArgs::empty(),
                     DUMMY_SP,
                 ),
                 tcx.sess.pointer_authentication_functions(),
@@ -1226,7 +1230,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// - `LLVMAddNamedMetadataOperand` (to set that node as metadata of `kind_name` for `module`)
     pub(crate) fn module_add_named_metadata_node(
         &self,
-        module: &'ll Module,
+        module: Module<'ll>,
         kind_name: &CStr,
         md_list: &[&'ll Metadata],
     ) {

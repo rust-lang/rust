@@ -70,10 +70,13 @@
 //!   as `Index` projections. These locals may only be replaced by another bare
 //!   local.
 //!
-//! # Storage lifetimes
+//! # Storage reconstruction
 //!
-//! The original storage markers no longer describe the merged locals, so they
-//! are removed. Locals without storage markers have storage for the full function.
+//! The original `StorageLive` and `StorageDead` statements no longer describe
+//! the merged liveness produced by unification, so they are removed and rebuilt
+//! from the liveness matrix when lifetime markers are emitted. This is done for
+//! all locals, even ones that have not been merged, which has the additional
+//! benefit of tightening the storage lifetime passed to LLVM.
 //!
 //! # Aliasing fixup
 //!
@@ -101,16 +104,23 @@
 //!   `Discriminant`, `Ref`, and `RawPtr`, are left untouched because their
 //!   codegen does not rely on the no-aliasing assumption.
 
+use std::range::RangeInclusive;
+
 use rustc_abi::{ExternAbi, FieldIdx, VariantIdx};
 use rustc_const_eval::util::most_packed_projection;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_mir_dataflow::impls::{SplitPointIndex, dump_liveness_matrix, liveness_matrix};
+use rustc_mir_dataflow::impls::{
+    DefUse, SplitPointEffect, SplitPointIndex, VisitAllocatedLocalsWith, dump_liveness_matrix,
+    liveness_matrix,
+};
 use rustc_mir_dataflow::points::DenseLocationMap;
+use rustc_mir_dataflow::{Analysis, Backward, GenKill, ResultsVisitor, visit_results};
 use tracing::{debug, trace};
 
 use crate::PassPolicy;
@@ -153,6 +163,10 @@ impl<'tcx> crate::MirPass<'tcx> for MoveElimination {
         apply_mappings(tcx, body, &remapped_locals);
 
         dump_liveness_matrix(tcx, body, "MoveElimination.post-liveness", &points, &liveness_matrix);
+
+        if tcx.sess.emit_lifetime_markers() {
+            reconstruct_storage(tcx, body, &points, &liveness_matrix);
+        }
 
         apply_alias_fixup(tcx, body);
     }
@@ -589,6 +603,345 @@ impl<'tcx> MutVisitor<'tcx> for PlaceUpdater<'_, 'tcx> {
 
         self.super_statement(statement, location);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Storage reconstruction
+
+/// Backward dataflow analysis which answers the question: from this point, is
+/// there a path whose first access to a local is an initialization?
+///
+/// This is used when a local is dead in a predecessor but maybe-live in its
+/// successor. A `StorageLive` is inserted on that edge only if some continuation
+/// initializes the local before reading it. If every continuation instead
+/// reads the local first or never accesses it, `StorageLive` would be
+/// unnecessary: it only allocates uninitialized storage and cannot make the
+/// read valid.
+///
+/// For example:
+///
+/// ```text
+///              bb1                              bb2
+///     StorageLive(_1); _1 = ...             // _1 is dead
+///              _flag = true                  _flag = false
+///                       \                     /
+///                        \                   /
+///                               bb3
+///                         switchInt(_flag)
+///                           /          \
+///                  bb4: use(_1)     bb5: no use
+/// ```
+///
+/// Liveness is path-insensitive, so `_1` is maybe-live in `bb3`: it is live in
+/// `bb1` and `bb4`, but dead in `bb2` and `bb5`. Nevertheless, no `StorageLive`
+/// is needed on `bb2 -> bb3`. The continuation to `bb5` never accesses `_1`,
+/// while the continuation to `bb4` reads `_1` without initializing it first and
+/// is therefore already UB. (The `_flag` assignments make that latter
+/// continuation dynamically impossible, but this analysis does not need to
+/// prove the correlation.)
+///
+/// Live ranges which start in the middle of a block do not need this analysis:
+/// such ranges always start at an initialization, so a `StorageLive` is
+/// unconditionally required there.
+///
+/// This analysis deliberately ignores the reconstructed `StorageDead`
+/// boundaries. This can cause an initialization from a later allocation range
+/// to propagate into an earlier range and result in an unnecessary
+/// `StorageLive`, but cannot cause a required `StorageLive` to be omitted.
+struct InitializedBeforeUse;
+
+impl<'tcx> Analysis<'tcx> for InitializedBeforeUse {
+    type Domain = DenseBitSet<Local>;
+    type Direction = Backward;
+
+    const NAME: &'static str = "initialized-before-use";
+
+    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
+        DenseBitSet::new_empty(body.local_decls.len())
+    }
+
+    fn initialize_start_block(&self, _body: &Body<'tcx>, _state: &mut Self::Domain) {}
+
+    fn apply_primary_statement_effect(
+        &self,
+        state: &mut Self::Domain,
+        statement: &Statement<'tcx>,
+        location: Location,
+    ) {
+        // In backward order, process writes before reads.
+        VisitAllocatedLocalsWith(|local, _| state.gen_(local)).visit_statement(statement, location);
+        VisitPlacesWith(|place: Place<'tcx>, context| {
+            if matches!(DefUse::for_place(place, context), DefUse::Use) {
+                state.kill(place.local);
+            }
+        })
+        .visit_statement(statement, location);
+    }
+
+    fn apply_primary_terminator_effect(
+        &self,
+        state: &mut Self::Domain,
+        terminator: &Terminator<'tcx>,
+        location: Location,
+    ) {
+        // In backward order, process writes before reads.
+        VisitAllocatedLocalsWith(|local, _| state.gen_(local))
+            .visit_terminator(terminator, location);
+        VisitPlacesWith(|place: Place<'tcx>, context| {
+            if matches!(DefUse::for_place(place, context), DefUse::Use) {
+                state.kill(place.local);
+            }
+        })
+        .visit_terminator(terminator, location);
+    }
+}
+
+impl InitializedBeforeUse {
+    /// Computes the analysis state at the start of each block.
+    fn compute<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+    ) -> IndexVec<BasicBlock, DenseBitSet<Local>> {
+        let results =
+            Self.iterate_to_fixpoint(tcx, body, Some("MoveElimination.initialized-before-use"));
+        let mut block_start = IndexVec::from_elem_n(
+            DenseBitSet::new_empty(body.local_decls.len()),
+            body.basic_blocks.len(),
+        );
+
+        struct BlockStartVisitor<'a> {
+            block_start: &'a mut IndexVec<BasicBlock, DenseBitSet<Local>>,
+        }
+
+        impl<'tcx> ResultsVisitor<'tcx, InitializedBeforeUse> for BlockStartVisitor<'_> {
+            fn visit_block_exit(&mut self, state: &DenseBitSet<Local>, block: BasicBlock) {
+                self.block_start[block].clone_from(state);
+            }
+        }
+
+        visit_results(
+            body,
+            rustc_middle::mir::traversal::reachable(body).map(|(block, _)| block),
+            &results,
+            &mut BlockStartVisitor { block_start: &mut block_start },
+        );
+        block_start
+    }
+}
+
+/// Helper function to split a critical edge if necessary.
+fn get_or_split_edge<'tcx>(
+    patcher: &mut MirPatch<'tcx>,
+    body: &Body<'tcx>,
+    split_edges: &mut FxHashMap<(BasicBlock, BasicBlock), BasicBlock>,
+    pred: BasicBlock,
+    succ: BasicBlock,
+) -> BasicBlock {
+    if let Some(&split_bb) = split_edges.get(&(pred, succ)) {
+        return split_bb;
+    }
+    let source_info = body.basic_blocks[pred].terminator().source_info;
+    let split_bb = patcher.new_block(BasicBlockData::new(
+        Some(Terminator { source_info, kind: TerminatorKind::goto(succ) }),
+        body.basic_blocks[succ].is_cleanup,
+    ));
+    patcher.mutate_terminator(body, pred, |kind| {
+        kind.successors_mut(|t| {
+            if *t == succ {
+                *t = split_bb;
+            }
+        });
+    });
+    split_edges.insert((pred, succ), split_bb);
+    split_bb
+}
+
+/// Live range boundary within a block which indicates where a storage statement
+/// should be inserted.
+enum RangeBoundary {
+    /// The range boundary is at the given location, and storage statements
+    /// should be inserted before/after it.
+    Loc(Location),
+
+    /// The range is live across a block edge, and storage statements should be
+    /// inserted in predecessor/successor blocks.
+    Edge(BasicBlock),
+}
+
+/// Splits a live interval at block boundaries, returning the location at which
+/// storage statements need to be inserted at the start and end of the range.
+///
+/// This is needed because `SparseIntervalMatrix` coalesces numerically adjacent
+/// ranges, which can span multiple basic blocks.
+fn split_range_by_block(
+    points: &DenseLocationMap,
+    range: RangeInclusive<SplitPointIndex>,
+) -> impl Iterator<Item = (RangeBoundary, RangeBoundary)> {
+    let start = points.to_location(range.start.point());
+    let end = points.to_location(range.last.point());
+    debug_assert!(start.block <= end.block);
+
+    (start.block.index()..=end.block.index()).map(move |block| {
+        let block = BasicBlock::from_usize(block);
+
+        // If the live range starts at the first statement's `Early` point,
+        // the value came from a predecessor block. A write from the first
+        // statement would happen at the `Late` point instead.
+        let start = if block != start.block
+            || (start.statement_index == 0 && range.start.effect() == SplitPointEffect::Early)
+        {
+            RangeBoundary::Edge(block)
+        } else {
+            RangeBoundary::Loc(start)
+        };
+
+        // We need to insert `StorageDead` after the last statement that
+        // uses a local. If this is a terminator then we need to instead
+        // insert it at the start of every successor block where the local
+        // is dead on entry.
+        let end = if block == end.block && range.last.point() != points.terminator(block) {
+            RangeBoundary::Loc(end)
+        } else {
+            RangeBoundary::Edge(block)
+        };
+        (start, end)
+    })
+}
+
+/// Re-constructs storage statements for all locals.
+fn reconstruct_storage<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    points: &DenseLocationMap,
+    liveness_matrix: &SparseIntervalMatrix<Local, SplitPointIndex>,
+) {
+    let initialized_before_use = InitializedBeforeUse::compute(tcx, body);
+    let mut patcher = MirPatch::new(body);
+    let mut split_edges: FxHashMap<(BasicBlock, BasicBlock), BasicBlock> = Default::default();
+    let mut storage_lives = Vec::new();
+
+    for local in body.local_decls.indices() {
+        // Arguments and return values don't use storage statements.
+        match body.local_kind(local) {
+            LocalKind::Arg | LocalKind::ReturnPointer => continue,
+            LocalKind::Temp => {}
+        }
+
+        // Ignore dead locals.
+        let Some(row) = liveness_matrix.row(local) else { continue };
+        if row.is_empty() {
+            continue;
+        }
+
+        let mut emit_storage_live_in_preds =
+            |body: &mut Body<'tcx>,
+             patcher: &mut MirPatch<'tcx>,
+             storage_lives: &mut Vec<(Location, Local)>,
+             local: Local,
+             block: BasicBlock| {
+                if !initialized_before_use[block].contains(local) {
+                    // No continuation initializes the local before reading it,
+                    // so allocating storage cannot make any such read valid.
+                    return;
+                }
+
+                for &pred in &body.basic_blocks.predecessors()[block].clone() {
+                    // If the local is live at any point in the predecessor's
+                    // terminator then no StorageLive is needed.
+                    let term = points.terminator(pred);
+                    let term_early = SplitPointIndex::new(term, SplitPointEffect::Early);
+                    let term_late = SplitPointIndex::new(term, SplitPointEffect::Late);
+                    if !row.intersects_range(term_early..=term_late) {
+                        // The local must be live on at least one predecessor,
+                        // so if this is the only one then there is nothing to
+                        // do.
+                        debug_assert!(body.basic_blocks.predecessors()[block].len() > 1);
+
+                        // If the predecessor block has multiple successors then
+                        // we need to split the critical edge before inserting
+                        // StorageLive, otherwise the local would end up live on
+                        // paths where it is supposed to be dead.
+                        let loc = if body.basic_blocks[pred].terminator().successors().count() > 1 {
+                            get_or_split_edge(patcher, body, &mut split_edges, pred, block)
+                                .start_location()
+                        } else {
+                            body.terminator_loc(pred)
+                        };
+                        storage_lives.push((loc, local));
+                    }
+                }
+            };
+        let emit_storage_dead_in_succs =
+            |body: &mut Body<'tcx>,
+             patcher: &mut MirPatch<'tcx>,
+             local: Local,
+             block: BasicBlock| {
+                for succ in body.basic_blocks[block].terminator().successors() {
+                    if !row.contains(SplitPointIndex::new(
+                        points.entry_point(succ),
+                        SplitPointEffect::Early,
+                    )) {
+                        // We don't care about critical edges here: if the local
+                        // is already dead in the successor then it doesn't
+                        // matter if we emit a redundant StorageDead.
+
+                        patcher.add_statement(
+                            succ.start_location(),
+                            StatementKind::StorageDead(local),
+                        );
+                    }
+                }
+            };
+
+        // Iterate through the live range of the local and insert `StorageLive`
+        // and `StorageDead` at the points where it transitions from dead to
+        // live and vice versa.
+        for (start, end) in
+            row.iter_intervals().flat_map(|range| split_range_by_block(points, range))
+        {
+            match start {
+                // Live-in from predecessor blocks: emit StorageLive in
+                // predecessors in which it wasn't previously live.
+                RangeBoundary::Edge(block) => {
+                    emit_storage_live_in_preds(
+                        body,
+                        &mut patcher,
+                        &mut storage_lives,
+                        local,
+                        block,
+                    );
+                }
+                // Otherwise just add `StorageLive` before the statement that
+                // starts the live range.
+                RangeBoundary::Loc(location) => storage_lives.push((location, local)),
+            }
+
+            match end {
+                // If the range includes the terminator then emit StorageDead in
+                // successors which the local is dead on entry.
+                RangeBoundary::Edge(block) => {
+                    emit_storage_dead_in_succs(body, &mut patcher, local, block);
+                }
+                // Otherwise just add `StorageDead` after the statement at which
+                // the live range ends.
+                RangeBoundary::Loc(location) => {
+                    patcher.add_statement(
+                        location.successor_within_block(),
+                        StatementKind::StorageDead(local),
+                    );
+                }
+            }
+        }
+    }
+
+    // Queue all `StorageLive` statements after `StorageDead` so that, when
+    // both are inserted at the same location, `StorageDead` always precedes
+    // `StorageLive` to avoid false overlaps.
+    for (loc, local) in storage_lives {
+        patcher.add_statement(loc, StatementKind::StorageLive(local));
+    }
+
+    patcher.apply(body);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

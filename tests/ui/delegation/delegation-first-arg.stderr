@@ -74,6 +74,11 @@ LL | trait Trait: Sized {
 ...
 LL |     fn static_empty() {}
    |        ^^^^^^^^^^^^
+note: associated function provided through this `impl`
+  --> $DIR/delegation-first-arg.rs:13:1
+   |
+LL | impl Trait for S {}
+   | ^^^^^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -     reuse <S as Trait>::static_empty { self.0 }

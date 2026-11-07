@@ -1,6 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
 //@compile-flags: -Zmiri-deterministic-concurrency
-//@error-in-other-file: deallocation of `pthread_mutex_t` is forbidden while the queue is non-empty
+//@error-in-other-file: forbidden while the queue is non-empty
 
 use std::cell::UnsafeCell;
 use std::sync::atomic::*;

@@ -4,8 +4,6 @@
 //~^ ERROR malformed `register_tool` attribute input
 #![register_tool(_)]
 //~^ ERROR expected identifier, found reserved identifier `_`
-//~| ERROR expected identifier, found reserved identifier `_`
-//~| ERROR expected identifier, found reserved identifier `_`
 //~| ERROR malformed `register_tool` attribute input
 
 // Special path keywords cannot be used.

@@ -595,7 +595,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             // for the purpose of validity, consider foreign types to have
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
-            .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
+            .unwrap_or_else(|| (place.layout.size, place.layout.align));
 
         // If we're not allow to dangle, make sure this is dereferenceable and retag it for
         // the aliasing model.
@@ -655,9 +655,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // Try to compute the end address. Cannot use `Size` addition as that also applies
                 // the "max obj size" bound.
                 let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx)).bytes();
-                if addr
+                // addr + size must fit into usize, i.e., `sum <= usize::MAX`.
+                if !addr
                     .checked_add(size.bytes())
-                    .is_none_or(|result| result >= self.ecx.target_usize_max())
+                    .is_some_and(|result| result <= self.ecx.target_usize_max())
                 {
                     throw_validation_failure!(
                         self.path,
@@ -1119,7 +1120,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         let (size, _align) = self
             .ecx
             .size_and_align_of_val(&mplace)?
-            .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
+            .unwrap_or((mplace.layout.size, mplace.layout.align));
         // If there is no padding at all, we can skip the rest: check for
         // a single data range covering the entire value.
         if data_bytes.0 == &[(start_offset, size)] {

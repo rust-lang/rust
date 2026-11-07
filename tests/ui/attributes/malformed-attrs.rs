@@ -46,8 +46,9 @@
 //~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
-#[rustc_as_ptr = 5]
+#[lint::as_ptr = 5]
 //~^ ERROR malformed
+//~| ERROR cannot find module or crate `lint` in this scope
 #[inline = 5]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
@@ -207,6 +208,8 @@ static mut TLS: u8 = 42;
 
 #[no_link()]
 //~^ ERROR malformed
+//~| ERROR use of deprecated `no_link` attribute
+//~| WARN this was previously accepted by the compiler
 #[macro_use = 1]
 //~^ ERROR malformed
 extern crate wloop;
