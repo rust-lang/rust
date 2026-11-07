@@ -121,6 +121,7 @@ struct ConfigBuilder {
     profiler_runtime: bool,
     rustc_debug_assertions: bool,
     std_debug_assertions: bool,
+    std_overflow_checks: bool,
     std_remap_debuginfo: bool,
     disable_minification: bool,
 }
@@ -196,6 +197,11 @@ impl ConfigBuilder {
         self
     }
 
+    fn std_overflow_checks(&mut self, is_enabled: bool) -> &mut Self {
+        self.std_overflow_checks = is_enabled;
+        self
+    }
+
     fn std_remap_debuginfo(&mut self, is_enabled: bool) -> &mut Self {
         self.std_remap_debuginfo = is_enabled;
         self
@@ -268,6 +274,9 @@ impl ConfigBuilder {
         }
         if self.std_debug_assertions {
             args.push("--with-std-debug-assertions".to_owned());
+        }
+        if self.std_overflow_checks {
+            args.push("--with-std-overflow-checks".to_owned());
         }
         if self.std_remap_debuginfo {
             args.push("--with-std-remap-debuginfo".to_owned());
@@ -443,6 +452,19 @@ fn std_debug_assertions() {
 
     assert!(!check_ignore(&config, "//@ needs-std-debug-assertions"));
     assert!(check_ignore(&config, "//@ ignore-std-debug-assertions"));
+}
+
+#[test]
+fn std_overflow_checks() {
+    let config: Config = cfg().std_overflow_checks(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-std-overflow-checks"));
+    assert!(!check_ignore(&config, "//@ ignore-std-overflow-checks"));
+
+    let config: Config = cfg().std_overflow_checks(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-std-overflow-checks"));
+    assert!(check_ignore(&config, "//@ ignore-std-overflow-checks"));
 }
 
 #[test]

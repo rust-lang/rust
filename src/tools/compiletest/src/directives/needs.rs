@@ -350,6 +350,11 @@ pub(crate) fn prepare_needs_conditions(config: &Config) -> PreparedNeedsConditio
             ignore_reason: "ignored if std wasn't built with debug assertions",
         },
         Need {
+            name: "needs-std-overflow-checks",
+            condition: config.with_std_overflow_checks,
+            ignore_reason: "ignored if std wasn't built with overflow checks",
+        },
+        Need {
             name: "needs-std-remap-debuginfo",
             condition: config.with_std_remap_debuginfo,
             ignore_reason: "ignored if std wasn't built with remapping of debuginfo",

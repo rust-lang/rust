@@ -222,6 +222,11 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         "when std is built with debug assertions",
     );
     builder.cond(
+        "std-overflow-checks",
+        config.with_std_overflow_checks,
+        "when std is built with overflow checks",
+    );
+    builder.cond(
         "std-remap-debuginfo",
         config.with_std_remap_debuginfo,
         "when std is built with remapping of debuginfo",
