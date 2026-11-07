@@ -1,11 +1,7 @@
 use hir::{HasSource, Name, sym};
 use syntax::{
     AstNode,
-    ast::{
-        self, HasName, HasVisibility,
-        edit::{AstNodeEdit, IndentLevel},
-    },
-    syntax_editor::Position,
+    ast::{self, HasName, HasVisibility, edit::IndentLevel},
 };
 
 use crate::{
@@ -80,42 +76,21 @@ pub(crate) fn generate_is_empty_from_len(
         "Generate a is_empty impl from a len function",
         range,
         |builder| {
-            let editor = builder.make_editor(ctx.source_file().syntax());
-            let make = editor.make();
             let place = crate::utils::cover_edit_range(ctx.source_file().syntax(), range);
             let indent = IndentLevel::from_element(place.start());
+            let unsafe_kw = if fn_node.unsafe_token().is_some() { "unsafe " } else { "" };
+            let const_kw = if fn_node.const_token().is_some() { "const " } else { "" };
+            let vis = fn_node.visibility().map_or(String::new(), |it| format!("{it} "));
 
-            let call =
-                make.expr_method_call(make.expr_self(), make.name_ref("len"), make.arg_list([]));
-            let expr_bin_op = make.expr_bin_op(
-                call.into(),
-                ast::BinaryOp::CmpOp(ast::CmpOp::Eq { negated: false }),
-                make.expr_literal("0").into(),
-            );
-            let must_use = make.attr_outer(make.meta_path(make.ident_path("must_use")));
-            let code = make.fn_(
-                [must_use],
-                fn_node.visibility(),
-                make.name("is_empty"),
-                None,
-                None,
-                make.param_list(Some(make.self_param()), []),
-                make.block_expr([], Some(expr_bin_op)),
-                Some(make.ret_type(make.ty("bool"))),
-                false,
-                fn_node.const_token().is_some(),
-                fn_node.unsafe_token().is_some(),
-                false,
-            );
+            let code = format!(
+                r#"
 
-            editor.insert_all(
-                Position::after(place.end()),
-                vec![
-                    make.whitespace(&format!("\n\n{indent}")).into(),
-                    code.indent(indent).syntax().clone().into(),
-                ],
+#[must_use]
+{vis}{const_kw}{unsafe_kw}fn is_empty(&self) -> bool {{
+    self.len() == 0
+}}"#
             );
-            builder.add_file_edits(ctx.vfs_file_id(), editor);
+            builder.insert(range.end(), stdx::indent_string(&code, indent.0));
         },
     )
 }
