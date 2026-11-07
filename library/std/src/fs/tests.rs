@@ -3311,9 +3311,16 @@ fn test_dir_remove_file() {
     let tmpdir = tmpdir();
     let mut f = check!(File::create(tmpdir.join("foo.txt")));
     check!(f.write(b"bar"));
-    check!(f.flush());
     drop(f);
     let dir = check!(Dir::open(tmpdir.path()));
+
+    if got_symlink_permission(&tmpdir) {
+        // Removing a symlink should remove the link, not the destination.
+        check!(symlink_file("foo.txt", &tmpdir.join("link")));
+        check!(dir.remove_file("link"));
+        assert!(check!(dir.metadata("foo.txt")).is_file()); // file still exists
+    }
+
     check!(dir.remove_file("foo.txt"));
     assert!(!matches!(exists(tmpdir.join("foo.txt")), Ok(true)));
 }
@@ -3330,6 +3337,14 @@ fn test_dir_rename_file() {
     let mut buf = [0u8; 3];
     check!(f.read_exact(&mut buf));
     assert_eq!(b"bar", &buf);
+
+    // Renaming a symlink should rename the link, not the destination.
+    if got_symlink_permission(&tmpdir) {
+        check!(symlink_file("baz.txt", &tmpdir.join("link")));
+        check!(dir.rename("link", &dir, "link-renamed"));
+        assert!(check!(dir.symlink_metadata("baz.txt")).is_file()); // file still exists
+        assert!(check!(dir.symlink_metadata("link-renamed")).is_symlink()); // symlink has new name
+    }
 }
 
 #[test]
@@ -3337,6 +3352,21 @@ fn test_dir_remove_dir() {
     let tmpdir = tmpdir();
     check!(fs::create_dir(tmpdir.join("foo")));
     let dir = check!(Dir::open(tmpdir.path()));
+
+    if got_symlink_permission(&tmpdir) {
+        // Removing a symlink should remove the link, not the destination.
+        check!(symlink_dir("foo", &tmpdir.join("link")));
+        if cfg!(windows) {
+            // directory symlinks need `remove_dir` on Windows
+            dir.remove_file("link").unwrap_err();
+            check!(dir.remove_dir("link"));
+        } else {
+            dir.remove_dir("link").unwrap_err();
+            check!(dir.remove_file("link"));
+        }
+        assert!(check!(dir.metadata("foo")).is_dir()); // dir still exists
+    }
+
     check!(dir.remove_dir("foo"));
     assert!(!matches!(exists(tmpdir.join("foo")), Ok(true)));
 }
@@ -3349,6 +3379,14 @@ fn test_dir_rename_dir() {
     check!(dir.rename("foo", &dir, "baz"));
     let m = check!(tmpdir.join("baz").metadata());
     assert!(m.is_dir());
+
+    // Renaming a symlink should rename the link, not the destination.
+    if got_symlink_permission(&tmpdir) {
+        check!(symlink_dir("baz", &tmpdir.join("link")));
+        check!(dir.rename("link", &dir, "link-renamed"));
+        assert!(check!(dir.symlink_metadata("baz")).is_dir()); // dir still exists
+        assert!(check!(dir.symlink_metadata("link-renamed")).is_symlink()); // symlink has new name
+    }
 }
 
 #[test]
