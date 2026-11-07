@@ -220,7 +220,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         });
     }
 
-    tcx.ensure_ok().check_unused_traits(());
+    tcx.ensure_ok().check_unused_traits(tcx.hir_crate_items(()).body_owners());
 }
 
 /// Lower a [`hir::Ty`] to a [`Ty`].
