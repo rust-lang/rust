@@ -1116,6 +1116,11 @@ impl ExitStatus {
         self.exited().then(|| libc::WEXITSTATUS(self.0))
     }
 
+    pub fn exit_code(&self) -> Option<ExitCode> {
+        // The code is always at most 8 bits on Unix.
+        self.code().map(|c| ExitCode::from(c as u8))
+    }
+
     pub fn signal(&self) -> Option<i32> {
         libc::WIFSIGNALED(self.0).then(|| libc::WTERMSIG(self.0))
     }

@@ -790,8 +790,13 @@ impl ExitStatus {
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }
     }
+
     pub fn code(&self) -> Option<i32> {
         Some(self.0 as i32)
+    }
+
+    pub fn exit_code(&self) -> Option<ExitCode> {
+        Some(ExitCode(self.0))
     }
 }
 
