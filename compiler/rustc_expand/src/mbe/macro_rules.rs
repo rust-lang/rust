@@ -90,6 +90,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
                     kind,
                     bindings,
                     matched_rule_bindings,
+                    is_trailing_mac,
                 );
                 return kind.dummy(site_span, guar);
             }
