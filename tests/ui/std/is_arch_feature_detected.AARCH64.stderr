@@ -62,6 +62,17 @@ LL |     let _ = arch::is_mips_feature_detected!("msa");
    |
    = note: this error originates in the macro `arch::is_mips_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0658]: use of unstable library feature `feature_detection_boolean_syntax`
+  --> $DIR/is_arch_feature_detected.rs:56:13
+   |
+LL |     let _ = arch::is_aarch64_feature_detected!("neon" && "sve");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #164651 <https://github.com/rust-lang/rust/issues/164651> for more information
+   = help: add `#![feature(feature_detection_boolean_syntax)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0658]: use of unstable library feature `stdarch_aarch64_feature_detection`
   --> $DIR/is_arch_feature_detected.rs:48:13
    |
@@ -73,6 +84,6 @@ LL |     let _ = arch::is_aarch64_feature_detected!("wfxt");
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `$crate::detect_feature` which comes from the expansion of the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

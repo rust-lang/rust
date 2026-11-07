@@ -57,6 +57,58 @@ impl Initializer {
         let v = self.0;
         self.0 = unset_bit(v, bit);
     }
+
+    /// Splits the initializer into initialized cache slots.
+    #[inline]
+    const fn into_slots(self) -> [usize; 3] {
+        [
+            ((self.0) as usize & Cache::MASK) | Cache::INITIALIZED_BIT,
+            ((self.0 >> Cache::CAPACITY) as usize & Cache::MASK) | Cache::INITIALIZED_BIT,
+            ((self.0 >> (2 * Cache::CAPACITY)) as usize & Cache::MASK) | Cache::INITIALIZED_BIT,
+        ]
+    }
+}
+
+/// Local cache of loaded `CACHE` slots to avoid redundant atomic loads when
+/// testing multiple features in a single `is_*_feature_detected!` invocation.
+#[doc(hidden)]
+#[unstable(feature = "stdarch_internal", issue = "none")]
+pub struct LocalCache([usize; 3]);
+
+impl LocalCache {
+    /// Creates an uninitialized local cache.
+    #[inline]
+    #[doc(hidden)]
+    #[unstable(feature = "stdarch_internal", issue = "none")]
+    pub const fn uninitialized() -> Self {
+        LocalCache([0; 3])
+    }
+
+    /// Tests the `bit` in the local cache, loading from `CACHE` (or initializing it)
+    /// if the corresponding slot has not been loaded into `self` yet.
+    #[inline]
+    pub(crate) fn test(&mut self, bit: u32) -> bool {
+        let (relative_bit, idx) = if bit < Cache::CAPACITY {
+            (bit, 0)
+        } else if bit < 2 * Cache::CAPACITY {
+            (bit - Cache::CAPACITY, 1)
+        } else {
+            (bit - 2 * Cache::CAPACITY, 2)
+        };
+        let cached = if self.0[idx] != 0 {
+            self.0[idx]
+        } else {
+            let v = CACHE[idx].0.load(Ordering::Relaxed);
+            if v != 0 {
+                self.0[idx] = v;
+                v
+            } else {
+                self.0 = detect_and_initialize().into_slots();
+                self.0[idx]
+            }
+        };
+        (cached & (1usize << relative_bit)) != 0
+    }
 }
 
 /// This global variable is a cache of the features supported by the CPU.

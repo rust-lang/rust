@@ -27,6 +27,9 @@ mod arch;
 #[unstable(feature = "stdarch_internal", issue = "none")]
 pub use self::arch::__is_feature_detected;
 pub(crate) use self::arch::Feature;
+#[doc(hidden)]
+#[unstable(feature = "stdarch_internal", issue = "none")]
+pub use self::cache::LocalCache;
 
 mod bit;
 mod cache;
@@ -87,6 +90,13 @@ cfg_select! {
 #[allow(dead_code)]
 fn check_for(x: Feature) -> bool {
     cache::test(x as u32)
+}
+
+/// Performs run-time feature detection using a `LocalCache`.
+#[inline]
+#[allow(dead_code)]
+fn check_for_cached(cache: &mut LocalCache, x: Feature) -> bool {
+    cache.test(x as u32)
 }
 
 /// Returns an `Iterator<Item=(&'static str, bool)>` where
