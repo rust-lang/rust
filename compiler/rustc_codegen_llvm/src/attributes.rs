@@ -520,7 +520,10 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
             to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
             to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
         }
-        OptimizeAttr::Speed => {}
+        OptimizeAttr::Speed => {
+            // Suppress default attrs (such as a global opt-for-size).
+            // We cannot actually tell LLVM to optimize *more* per-function.
+        }
     }
 
     if let Some(instance) = instance {

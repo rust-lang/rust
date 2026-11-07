@@ -1,5 +1,6 @@
 //@ edition: 2024
 //@ run-pass
+#![feature(optimize_speed)]
 #![feature(gen_blocks)]
 #![feature(async_iterator)]
 #![allow(dead_code)]
