@@ -106,8 +106,19 @@ class StdStrProvider(printer_base):
 
 
 def _enumerate_array_elements(element_ptrs):
-    for i, element_ptr in enumerate(element_ptrs):
+    element_ptrs = iter(element_ptrs)
+    i = 0
+    while True:
         key = "[{}]".format(i)
+        try:
+            element_ptr = next(element_ptrs)
+        except StopIteration:
+            break
+        except gdb.error:
+            # `data_ptr` was optimized out, but the length was not.
+            yield key, "<optimized out>"
+
+            break
         element = element_ptr.dereference()
 
         try:
@@ -120,6 +131,7 @@ def _enumerate_array_elements(element_ptrs):
             break
 
         yield key, element
+        i += 1
 
 
 class StdSliceProvider(printer_base):
