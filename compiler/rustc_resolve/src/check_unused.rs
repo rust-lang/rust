@@ -299,6 +299,27 @@ enum UnusedSpanResult {
     PartialUnused { spans: Vec<Span>, remove: Vec<Span> },
 }
 
+/// Derives the span to remove an item from a multi-item nested `UseTree` group
+/// using only AST spans, avoiding source-text scanning and byte arithmetic.
+pub(crate) fn nested_item_removal_span(
+    items: &[ast::UseTreeAndId],
+    pos: usize,
+    with_preceding_comma: bool,
+) -> Span {
+    debug_assert!(items.len() >= 2);
+    debug_assert!(pos < items.len());
+    let item = &items[pos].inner;
+    if with_preceding_comma {
+        debug_assert!(pos > 0);
+        let prev = &items[pos - 1].inner;
+        prev.hi_span().shrink_to_hi().to(item.hi_span())
+    } else {
+        debug_assert!(pos + 1 < items.len());
+        let next = &items[pos + 1].inner;
+        item.prefix.span.to(next.prefix.span.shrink_to_lo())
+    }
+}
+
 fn calc_unused_spans(
     unused_import: &UnusedImport,
     use_tree: &ast::UseTree,
@@ -352,14 +373,11 @@ fn calc_unused_spans(
                 if let Some(remove) = remove {
                     let remove_span = if nested.len() == 1 {
                         remove
-                    } else if pos == nested.len() - 1 || used_children > 0 {
-                        // Delete everything from the end of the last import, to delete the
-                        // previous comma
-                        nested[pos - 1].inner.hi_span().shrink_to_hi().to(use_tree.inner.hi_span())
                     } else {
-                        // Delete everything until the next import, to delete the trailing commas
-                        let inner = &nested[pos + 1].inner;
-                        use_tree.inner.prefix.span.to(inner.prefix.span.shrink_to_lo())
+                        // Delete previous comma when earlier items are kept or at the last position;
+                        // otherwise delete trailing comma.
+                        let with_preceding_comma = pos == nested.len() - 1 || used_children > 0;
+                        nested_item_removal_span(nested, pos, with_preceding_comma)
                     };
 
                     // Try to collapse adjacent spans into a single one. This prevents all cases of
