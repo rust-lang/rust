@@ -99,7 +99,6 @@ fn x<'lt, T, const C: usize>() -> $0
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             tp T
             un Union                  Union
             bt u32                      u32
@@ -126,7 +125,6 @@ fn x() u$0
             st Record (adds ->)      Record
             st Tuple (adds ->)        Tuple
             st Unit (adds ->)          Unit
-            tt Trait (adds ->)
             un Union (adds ->)        Union
             bt u32 (adds ->)            u32
             kw crate:: (adds ->)
@@ -150,7 +148,6 @@ fn x() $0
             st Record (adds ->)      Record
             st Tuple (adds ->)        Tuple
             st Unit (adds ->)          Unit
-            tt Trait (adds ->)
             un Union (adds ->)        Union
             bt u32 (adds ->)            u32
             kw crate:: (adds ->)
@@ -364,7 +361,6 @@ fn x() u$0 {&2u32}
             st Record (adds ->)      Record
             st Tuple (adds ->)        Tuple
             st Unit (adds ->)          Unit
-            tt Trait (adds ->)
             un Union (adds ->)        Union
             bt u32 (adds ->)            u32
             it &u32 (adds ->)
@@ -438,7 +434,6 @@ fn foo() -> B$0 {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             it ()
@@ -467,7 +462,6 @@ const FOO: $0 = Foo(2);
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             it Foo<i32>
@@ -496,7 +490,6 @@ static FOO: $0 = Foo(2);
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             it Foo<i32>
@@ -526,7 +519,6 @@ fn f2() {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             it i32
@@ -558,7 +550,6 @@ fn f2() {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             it u64
@@ -587,7 +578,6 @@ fn f2(x: u64) -> $0 {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             it u64
@@ -617,7 +607,6 @@ fn f2(x: $0) {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
             bt u32                      u32
             it i32
@@ -654,7 +643,6 @@ fn foo<'lt, T, const C: usize>() {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             tp T
             un Union                  Union
             bt u32                      u32
@@ -687,7 +675,6 @@ fn foo<'lt, T, const C: usize>() {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             tp T
             un Union                  Union
             bt u32                      u32
@@ -718,7 +705,6 @@ fn foo<'lt, T, const C: usize>() {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             tp T
             un Union                  Union
             bt u32                      u32
@@ -744,7 +730,6 @@ fn foo<'lt, T, const C: usize>() {
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
             un Union                  Union
         "#]],
     );
@@ -1621,7 +1606,23 @@ fn f(_: $0)
             st Record                Record
             st Tuple                  Tuple
             st Unit                    Unit
-            tt Trait
+            un Union                  Union
+            bt u32                      u32
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { enable_auto_dyn: false, ..TEST_CONFIG },
+        r#"
+//- /a.rs crate:a edition:2021
+fn f(_: $0)
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module::
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
             un Union                  Union
             bt u32                      u32
         "#]],
@@ -1640,6 +1641,92 @@ fn f(_: &$0)
             st Tuple                  Tuple
             st Unit                    Unit
             tt dyn Trait
+            un Union                  Union
+            bt u32                      u32
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { enable_auto_dyn: false, ..TEST_CONFIG },
+        r#"
+//- /a.rs crate:a edition:2021
+fn f(_: &$0)
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module::
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            un Union                  Union
+            bt u32                      u32
+        "#]],
+    );
+    check_with_config(
+        TEST_CONFIG,
+        r#"
+//- /a.rs crate:a edition:2021
+fn f() -> $0
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module::
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            un Union                  Union
+            bt u32                      u32
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { enable_auto_dyn: false, ..TEST_CONFIG },
+        r#"
+//- /a.rs crate:a edition:2021
+fn f() -> $0
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module::
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            un Union                  Union
+            bt u32                      u32
+        "#]],
+    );
+    check_with_config(
+        TEST_CONFIG,
+        r#"
+//- /a.rs crate:a edition:2021
+fn f() -> &$0
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module::
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
+            tt dyn Trait
+            un Union                  Union
+            bt u32                      u32
+        "#]],
+    );
+    check_with_config(
+        CompletionConfig { enable_auto_dyn: false, ..TEST_CONFIG },
+        r#"
+//- /a.rs crate:a edition:2021
+fn f() -> &$0
+"#,
+        expect![[r#"
+            en Enum                    Enum
+            ma makro!(…) macro_rules! makro
+            md module::
+            st Record                Record
+            st Tuple                  Tuple
+            st Unit                    Unit
             un Union                  Union
             bt u32                      u32
         "#]],
