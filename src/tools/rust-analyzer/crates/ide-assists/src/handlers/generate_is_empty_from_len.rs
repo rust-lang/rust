@@ -315,6 +315,74 @@ impl MyStruct {
     }
 
     #[test]
+    fn with_indent() {
+        check_assist(
+            generate_is_empty_from_len,
+            r#"
+mod module {
+    struct MyStruct { data: Vec<String> }
+
+    impl MyStruct {
+        #[must_use]
+        p$0ub fn len(&self) -> usize {
+            self.data.len()
+        }
+    }
+}
+"#,
+            r#"
+mod module {
+    struct MyStruct { data: Vec<String> }
+
+    impl MyStruct {
+        #[must_use]
+        pub fn len(&self) -> usize {
+            self.data.len()
+        }
+
+        #[must_use]
+        pub fn is_empty(&self) -> bool {
+            self.len() == 0
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generate_is_empty_with_vis() {
+        check_assist(
+            generate_is_empty_from_len,
+            r#"
+struct MyStruct { data: Vec<String> }
+
+impl MyStruct {
+    #[must_use]
+    pub(crate) fn $0len(&self) -> usize {
+        self.data.len()
+    }
+}
+"#,
+            r#"
+struct MyStruct { data: Vec<String> }
+
+impl MyStruct {
+    #[must_use]
+    pub(crate) fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    #[must_use]
+    pub(crate) fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn multiple_functions_in_impl() {
         check_assist(
             generate_is_empty_from_len,
