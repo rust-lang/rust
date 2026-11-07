@@ -552,9 +552,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
                         assert_matches!(cast.backend_repr, BackendRepr::ScalarPair { .. });
-                        let (lldata, llextra) = operand.val.pointer_parts();
-                        let (lldata, llextra) =
-                            base::unsize_ptr(bx, lldata, operand.layout.ty, cast.ty, llextra);
+                        let (lldata, llextra) = match operand.val {
+                            OperandValue::Pair(..) | OperandValue::Immediate(_) => {
+                                let (lldata, llextra) = operand.val.pointer_parts();
+                                base::unsize_ptr(bx, lldata, operand.layout.ty, cast.ty, llextra)
+                            }
+                            OperandValue::Ref(val) => {
+                                if val.llextra.is_some() {
+                                    bug!("unsized coercion on an unsized rvalue");
+                                }
+                                let place = val.with_type(operand.layout);
+                                base::unsize_ptr_ref(bx, place, mir_cast_ty)
+                            }
+                            OperandValue::ZeroSized => {
+                                bug!("unsized coercion on a ZST rvalue");
+                            }
+                        };
                         OperandValue::Pair(lldata, llextra)
                     }
                     mir::CastKind::PointerCoercion(
