@@ -2850,6 +2850,14 @@ pub fn build_session_options(
         );
     }
 
+    if unstable_opts.pseudo_probe_for_profiling
+        && (cg.profile_generate.enabled() || cg.profile_use.is_some())
+    {
+        early_dcx.early_fatal(
+            "option `-Z pseudo-probe-for-profiling` cannot be used with `-C profile-generate` or `-C profile-use`",
+        );
+    }
+
     // Check for unstable values of `-C symbol-mangling-version`.
     // This is what prevents them from being used on stable compilers.
     match cg.symbol_mangling_version {

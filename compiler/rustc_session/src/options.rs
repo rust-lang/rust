@@ -2846,6 +2846,8 @@ options! {
         "profile size of closures"),
     profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
         "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
+    pseudo_probe_for_profiling: bool = (false, parse_bool, [TRACKED],
+        "emit pseudo probes for context-sensitive sample profiling (CSSPGO) (default: no)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
