@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 use super::{get_path_canonical, get_path_fallback};
 use crate::env;
 use crate::fs::{File, canonicalize};

@@ -166,6 +166,8 @@ check-cfg = [
     'cfg(target_has_reliable_f16_math)',
     'cfg(target_has_reliable_f128)',
     'cfg(target_has_reliable_f128_math)',
+    # Controlling which tests we run in Miri.
+    'cfg(skip_missing_miri_shims)',
 ]
 
 [lints.cargo]

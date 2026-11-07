@@ -1,3 +1,5 @@
+#![cfg(not(all(windows, skip_missing_miri_shims)))] // disable tests Miri does not support
+
 use crate::net::tests::{sa4, sa6, tsa};
 use crate::net::*;
 

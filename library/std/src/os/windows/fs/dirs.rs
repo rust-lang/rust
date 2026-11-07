@@ -287,6 +287,7 @@ mod sys {
 }
 
 #[cfg(test)]
+#[cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
 mod tests {
     use super::*;
 
