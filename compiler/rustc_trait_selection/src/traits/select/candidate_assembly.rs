@@ -716,6 +716,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // FIXME: Function definitions could actually implement `FnPtr` by
                 // casting the ZST function def to a function pointer.
                 ty::FnDef(_, _) => return true,
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
 
             // Generic params can implement `FnPtr` if the predicate
@@ -904,6 +907,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::Error(_) => {
                     candidates.vec.push(AutoImplCandidate);
                 }
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
     }
@@ -1242,6 +1248,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1299,7 +1308,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             },
 
             // Not `MetaSized` or `Sized`.
-            ty::Foreign(..) => {}
+            ty::Foreign(..) | ty::View(..) => {}
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => {}
 
@@ -1365,6 +1374,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Placeholder(_) => {}
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1413,6 +1425,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
                 candidates.ambiguous = true;
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1457,6 +1472,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

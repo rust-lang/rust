@@ -2099,6 +2099,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Pat(..) => Some(22),
                 ty::UnsafeBinder(..) => Some(23),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
 

@@ -1260,6 +1260,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 panic!("unexpected type `{self_ty:?}`")
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
 
         ImplSource::Builtin(BuiltinImplSource::Misc, obligations)

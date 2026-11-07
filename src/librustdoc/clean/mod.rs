@@ -2376,6 +2376,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Infer(..) => panic!("Infer"),
 
         ty::Error(_) => FatalError.raise(),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 

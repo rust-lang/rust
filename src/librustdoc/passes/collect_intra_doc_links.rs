@@ -558,6 +558,9 @@ fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
         | ty::Placeholder(_)
         | ty::Infer(_)
         | ty::Error(_) => return None,
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     })
 }
 

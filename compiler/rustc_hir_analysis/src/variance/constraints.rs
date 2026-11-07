@@ -321,6 +321,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::Placeholder(..) | ty::CoroutineWitness(..) | ty::Bound(..) | ty::Infer(..) => {
                 bug!("unexpected type encountered in variance inference: {}", ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

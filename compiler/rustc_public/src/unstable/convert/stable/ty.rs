@@ -508,6 +508,9 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Placeholder(..) | ty::Infer(_) | ty::Error(_) => {
                 unreachable!();
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

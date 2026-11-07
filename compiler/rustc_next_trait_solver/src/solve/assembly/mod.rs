@@ -864,6 +864,9 @@ where
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return Ok(());
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         match consider_self_bounds {
@@ -973,6 +976,9 @@ where
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => panic!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         // Do not consider built-in object impls for dyn-incompatible types.

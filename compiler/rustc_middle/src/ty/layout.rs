@@ -1028,6 +1028,9 @@ where
                 | ty::Param(_)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
 

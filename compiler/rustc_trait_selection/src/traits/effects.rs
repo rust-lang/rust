@@ -428,6 +428,9 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
             .instantiate(tcx, args)
             .skip_norm_wip()
             .map_bound(|bound| bound.types.to_vec())),
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }?;
 
     Ok(constituent_tys
@@ -527,6 +530,9 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     };
 
     Ok(const_conditions

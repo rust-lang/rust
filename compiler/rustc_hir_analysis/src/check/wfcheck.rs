@@ -1974,6 +1974,41 @@ fn receiver_is_valid<'tcx>(
 
         confirm_type_is_not_a_method_generic_param(potential_self_ty, method_generics)?;
 
+        let potential_self_ty = match potential_self_ty.kind() {
+            // Treat view types in receiver position like their counterpart.
+            ty::View(def, args, _) => Ty::new_adt(wfcx.tcx(), *def, *args),
+
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Pat(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::UnsafeBinder(_)
+            | ty::Dynamic(_, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Alias(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_) => potential_self_ty,
+        };
+
         // Check if the self type unifies. If it does, then commit the result
         // since it may have region side-effects.
         if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
