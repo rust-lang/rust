@@ -277,3 +277,48 @@ mod pin_coerce_unsized {
         assert_eq!(pin_box_struct.as_ref().action(), "MyStruct");
     }
 }
+#[test]
+fn box_new_uninit_in_zst() {
+    let b = Box::<(), _>::new_uninit_in(std::alloc::System);
+    let b = unsafe { b.assume_init() };
+    assert_eq!(*b, ());
+}
+
+#[test]
+fn box_new_zeroed_in() {
+    let b = Box::<u32, _>::new_zeroed_in(std::alloc::System);
+    let b = unsafe { b.assume_init() };
+    assert_eq!(*b, 0);
+}
+
+#[test]
+fn box_new_uninit_slice_in_empty() {
+    let b = Box::<[u32], _>::new_uninit_slice_in(0, std::alloc::System);
+    assert_eq!(b.len(), 0);
+}
+
+#[test]
+fn box_new_zeroed_slice_in() {
+    let b = Box::<[u32], _>::new_zeroed_slice_in(3, std::alloc::System);
+    let b = unsafe { b.assume_init() };
+    assert_eq!(b.len(), 3);
+    assert!(b.iter().all(|x| *x == 0));
+}
+
+#[test]
+fn box_pin_in() {
+    let b = Box::pin_in(42, std::alloc::System);
+    assert_eq!(*b, 42);
+}
+
+#[test]
+fn box_clone_from_ref_in_str() {
+    let b = Box::clone_from_ref_in("hello", std::alloc::System);
+    assert_eq!(&*b, "hello");
+}
+
+#[test]
+fn box_try_clone_from_ref_in_str() {
+    let b = Box::try_clone_from_ref_in("hello", std::alloc::System).unwrap();
+    assert_eq!(&*b, "hello");
+}
