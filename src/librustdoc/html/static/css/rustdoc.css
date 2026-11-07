@@ -3167,7 +3167,6 @@ in src-script.js and main.js
 }
 
 .variants > .docblock,
-.implementors-toggle > .docblock,
 .impl-items > .toggle[open]:not(:last-child),
 .methods > .toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {

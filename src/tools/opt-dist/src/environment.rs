@@ -30,6 +30,26 @@ pub struct Environment {
     build_llvm: bool,
     #[builder(default)]
     stage0_root: Option<Utf8PathBuf>,
+
+    /// Whether we want to optimize cargo. We do on CI, so it's on by default, but it is an option
+    /// so local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_cargo: bool,
+
+    /// Whether we want to optimize clippy. We do on CI, so it's on by default, but it is an option
+    /// so local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_clippy: bool,
+
+    /// Whether we want to optimize the cranelift backend. We do on CI, so it's on by default, but
+    /// it is an option so local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_cranelift: bool,
+
+    /// Whether we want to optimize rustdoc. We do on CI, so it's on by default, but it is an option
+    /// so local runs can avoid it.
+    #[builder(default = "true")]
+    pub(crate) optimize_rustdoc: bool,
 }
 
 impl Environment {
@@ -82,9 +102,13 @@ impl Environment {
         self.prebuilt_rustc_perf.clone()
     }
 
-    /// Path to the built rustc-perf benchmark suite.
+    /// Path to the rustc-perf benchmark suite, either built locally, or provided in a prebuilt
+    /// form.
     pub fn rustc_perf_dir(&self) -> Utf8PathBuf {
-        self.artifact_dir.join("rustc-perf")
+        match &self.prebuilt_rustc_perf {
+            Some(prebuilt_rustc_perf) => prebuilt_rustc_perf.clone(),
+            None => self.artifact_dir.join("rustc-perf"),
+        }
     }
 
     pub fn host_llvm_dir(&self) -> Utf8PathBuf {
