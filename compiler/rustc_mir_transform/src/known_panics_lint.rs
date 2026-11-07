@@ -256,6 +256,26 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
+        // Under mgca and gca_adts, it's possible for ty-level constants here
+        // to have a type that isn't well-formed, and attempting to evaluate
+        // such a constant would cause an ICE. We check for that here explicitly
+        // and avoid evaluating the constant in that case. See #164294.
+        //
+        // This does not help if the const here is a Const::Unevaluated, in which
+        // case any inner ty-level constants with ill-formed types will still trigger
+        // a crash.
+        if let Const::Ty(..) = c.const_
+            && c.ty()
+                .walk()
+                .filter_map(|ty| ty.as_type())
+                .filter_map(|ty| ty.ty_adt_def())
+                .filter_map(|adt_def| adt_def.did().as_local())
+                .map(|local_id| self.tcx.check_well_formed(local_id))
+                .any(|res| res.is_err())
+        {
+            return None;
+        }
+
         // Normalization needed b/c known panics lint runs in
         // `mir_drops_elaborated_and_const_checked`, which happens before
         // optimized MIR. Only after optimizing the MIR can we guarantee
