@@ -1,26 +1,23 @@
-error[E0599]: the method `partial_cmp` exists for reference `&P<Q>`, but its trait bounds were not satisfied
+error[E0599]: `&P<Q>` is not an iterator
   --> $DIR/index-out-of-bounds-on-partial-cmp-ice-114056.rs:7:14
    |
 LL | struct P<Q>(Q);
-   | ----------- doesn't satisfy `P<Q>: Iterator` or `P<Q>: PartialOrd<_>`
+   | ----------- doesn't satisfy `P<Q>: Iterator`
 ...
 LL |         self.partial_cmp(())
-   |              ^^^^^^^^^^^ method cannot be called on `&P<Q>` due to unsatisfied trait bounds
+   |              ^^^^^^^^^^^ `&P<Q>` is not an iterator
    |
    = note: the following trait bounds were not satisfied:
-           `P<Q>: PartialOrd<_>`
-           which is required by `&P<Q>: PartialOrd<&_>`
            `&P<Q>: Iterator`
            which is required by `&mut &P<Q>: Iterator`
            `P<Q>: Iterator`
            which is required by `&mut P<Q>: Iterator`
 note: the trait `Iterator` must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-help: consider annotating `P<Q>` with `#[derive(PartialEq, PartialOrd)]`
-   |
-LL + #[derive(PartialEq, PartialOrd)]
-LL | struct P<Q>(Q);
-   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `partial_cmp`, perhaps you need to implement one of them:
+           candidate #1: `PartialOrd`
+   = note: the trait `Iterator` defines an item `partial_cmp`, but is explicitly unimplemented
 
 error: aborting due to 1 previous error
 

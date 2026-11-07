@@ -17,7 +17,7 @@ fn main() {
     let a = "a".to_string();
     let b = "a";
 
-    if b < &a {
+    if b < &*a {
         println!("OK");
     }
 
@@ -103,7 +103,7 @@ mod issue_2597 {
     fn ex1() {
         let a: &str = "abc";
         let b: String = "abc".to_owned();
-        println!("{}", a > &b);
+        println!("{}", a > &*b);
     }
 
     pub fn ex2<T: Ord + PartialOrd>(array: &[T], val: &T, idx: usize) -> bool {

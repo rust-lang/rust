@@ -1,26 +1,21 @@
-error[E0599]: the associated function or constant `partial_cmp` exists for struct `A`, but its trait bounds were not satisfied
+error[E0599]: `A` is not an iterator
   --> $DIR/derive-sugg-arg-arity.rs:5:23
    |
 LL | pub struct A;
-   | ------------ associated function or constant `partial_cmp` not found for this struct because it doesn't satisfy `A: Iterator` or `A: PartialOrd<_>`
+   | ------------ associated function or constant `partial_cmp` not found for this struct because it doesn't satisfy `A: Iterator`
 ...
 LL |         _ => match A::partial_cmp() {},
-   |                       ^^^^^^^^^^^ associated function or constant cannot be called on `A` due to unsatisfied trait bounds
+   |                       ^^^^^^^^^^^ `A` is not an iterator
    |
    = note: the following trait bounds were not satisfied:
-           `A: PartialOrd<_>`
-           which is required by `&A: PartialOrd<&_>`
-           `A: PartialOrd<_>`
-           which is required by `&mut A: PartialOrd<&mut _>`
            `A: Iterator`
            which is required by `&mut A: Iterator`
 note: the trait `Iterator` must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
-   |
-LL + #[derive(PartialEq, PartialOrd)]
-LL | pub struct A;
-   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `partial_cmp`, perhaps you need to implement one of them:
+           candidate #1: `Iterator`
+           candidate #2: `PartialOrd`
 
 error: aborting due to 1 previous error
 
