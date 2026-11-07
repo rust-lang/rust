@@ -198,14 +198,6 @@ pub fn os2path(s: &[u16]) -> PathBuf {
     PathBuf::from(OsString::from_wide(s))
 }
 
-pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
-    match unrolled_find_u16s(0, v) {
-        // don't include the 0
-        Some(i) => &v[..i],
-        None => v,
-    }
-}
-
 pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
     if s.as_ref().encode_wide().any(|b| b == 0) {
         Err(io::const_error!(io::ErrorKind::InvalidInput, "nul byte found in provided data"))

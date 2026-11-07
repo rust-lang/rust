@@ -280,6 +280,25 @@ impl fmt::Debug for Dir {
     }
 }
 
+impl AsInner<Handle> for Dir {
+    #[inline]
+    fn as_inner(&self) -> &Handle {
+        &self.handle
+    }
+}
+
+impl IntoInner<Handle> for Dir {
+    fn into_inner(self) -> Handle {
+        self.handle
+    }
+}
+
+impl FromInner<Handle> for Dir {
+    fn from_inner(handle: Handle) -> Dir {
+        Dir { handle }
+    }
+}
+
 #[unstable(feature = "dirfd", issue = "120426")]
 impl AsRawHandle for fs::Dir {
     fn as_raw_handle(&self) -> RawHandle {

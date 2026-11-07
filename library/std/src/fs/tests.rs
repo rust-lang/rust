@@ -52,11 +52,13 @@ pub(crate) fn got_symlink_permission(tmpdir: &TempDir) -> bool {
     }
     let link = tmpdir.join("some_hopefully_unique_link_name");
 
-    match symlink_file(r"nonexisting_target", link) {
+    let res = match symlink_file(r"nonexisting_target", &link) {
         // ERROR_PRIVILEGE_NOT_HELD = 1314
         Err(ref err) if err.raw_os_error() == Some(1314) => false,
         Ok(_) | Err(_) => true,
-    }
+    };
+    fs::remove_file(link).ok(); // do not leave behind junk
+    res
 }
 
 #[test]
@@ -2250,12 +2252,23 @@ fn realpath_works_tricky() {
 
 #[test]
 fn dir_entry_methods() {
+    #[cfg(windows)]
+    use crate::os::windows::fs::FileTypeExt;
+
     let tmpdir = tmpdir();
+    let mut num_files = 0;
 
     fs::create_dir_all(&tmpdir.join("a")).unwrap();
     File::create(&tmpdir.join("b")).unwrap();
+    num_files += 2;
+    if got_symlink_permission(&tmpdir) {
+        symlink_dir("a", &tmpdir.join("c")).unwrap();
+        symlink_file("b", &tmpdir.join("d")).unwrap();
+        num_files += 2;
+    }
 
     for file in tmpdir.path().read_dir().unwrap().map(|f| f.unwrap()) {
+        num_files -= 1;
         let fname = file.file_name();
         match fname.to_str() {
             Some("a") => {
@@ -2266,9 +2279,28 @@ fn dir_entry_methods() {
                 assert!(file.file_type().unwrap().is_file());
                 assert!(file.metadata().unwrap().is_file());
             }
+            Some("c") => {
+                assert!(file.file_type().unwrap().is_symlink());
+                assert!(file.metadata().unwrap().is_symlink());
+                #[cfg(windows)]
+                {
+                    assert!(file.file_type().unwrap().is_symlink_dir());
+                    assert!(file.metadata().unwrap().file_type().is_symlink_dir());
+                }
+            }
+            Some("d") => {
+                assert!(file.file_type().unwrap().is_symlink());
+                assert!(file.metadata().unwrap().is_symlink());
+                #[cfg(windows)]
+                {
+                    assert!(file.file_type().unwrap().is_symlink_file());
+                    assert!(file.metadata().unwrap().file_type().is_symlink_file());
+                }
+            }
             f => panic!("unknown file name: {f:?}"),
         }
     }
+    assert_eq!(num_files, 0);
 }
 
 #[test]
@@ -2286,6 +2318,15 @@ fn dir_entry_debug() {
 fn read_dir_not_found() {
     let res = fs::read_dir("/path/that/does/not/exist");
     assert_eq!(res.err().unwrap().kind(), ErrorKind::NotFound);
+}
+
+#[test]
+fn read_dir_not_directory() {
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file");
+    File::create(&filename).unwrap();
+    let res = fs::read_dir(&filename);
+    assert_eq!(res.err().unwrap().kind(), ErrorKind::NotADirectory);
 }
 
 #[test]
