@@ -36,8 +36,16 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     // Armv8.0 features not using the standard identifiers
     let fp = _sysctlbyname(c"hw.optional.floatingpoint");
-    let asimd = _sysctlbyname(c"hw.optional.AdvSIMD") || _sysctlbyname(c"hw.optional.arm.AdvSIMD");
+    let asimd = _sysctlbyname(c"hw.optional.AdvSIMD")
+        || _sysctlbyname(c"hw.optional.arm.AdvSIMD")
+        || _sysctlbyname(c"hw.optional.arm.neon");
     let crc_old = _sysctlbyname(c"hw.optional.armv8_crc32");
+    let lse_old = _sysctlbyname(c"hw.optional.armv8_1_atomics");
+    let fp16_old = _sysctlbyname(c"hw.optional.neon_fp16");
+    let fhm_old = _sysctlbyname(c"hw.optional.armv8_2_fhm");
+    let sha512_old = _sysctlbyname(c"hw.optional.armv8_2_sha512");
+    let sha3_old = _sysctlbyname(c"hw.optional.armv8_2_sha3");
+    let fcma_old = _sysctlbyname(c"hw.optional.armv8_3_compnum");
 
     // Armv8 and Armv9 features using the standard identifiers
     let aes = _sysctlbyname(c"hw.optional.arm.FEAT_AES");
@@ -50,11 +58,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let dpb = _sysctlbyname(c"hw.optional.arm.FEAT_DPB");
     let dpb2 = _sysctlbyname(c"hw.optional.arm.FEAT_DPB2");
     let ecv = _sysctlbyname(c"hw.optional.arm.FEAT_ECV");
+    let faminmax = _sysctlbyname(c"hw.optional.arm.FEAT_FAMINMAX");
     let fcma = _sysctlbyname(c"hw.optional.arm.FEAT_FCMA");
     let fhm = _sysctlbyname(c"hw.optional.arm.FEAT_FHM");
     let flagm = _sysctlbyname(c"hw.optional.arm.FEAT_FlagM");
     let flagm2 = _sysctlbyname(c"hw.optional.arm.FEAT_FlagM2");
+    let fp8 = _sysctlbyname(c"hw.optional.arm.FEAT_FP8");
     let fp16 = _sysctlbyname(c"hw.optional.arm.FEAT_FP16");
+    let fpmr = _sysctlbyname(c"hw.optional.arm.FEAT_FPMR");
     let frintts = _sysctlbyname(c"hw.optional.arm.FEAT_FRINTTS");
     let hbc = _sysctlbyname(c"hw.optional.arm.FEAT_HBC");
     let i8mm = _sysctlbyname(c"hw.optional.arm.FEAT_I8MM");
@@ -63,23 +74,28 @@ pub(crate) fn detect_features() -> cache::Initializer {
     let rcpc2 = _sysctlbyname(c"hw.optional.arm.FEAT_LRCPC2");
     let lse = _sysctlbyname(c"hw.optional.arm.FEAT_LSE");
     let lse2 = _sysctlbyname(c"hw.optional.arm.FEAT_LSE2");
+    let lut = _sysctlbyname(c"hw.optional.arm.FEAT_LUT");
     let mte = _sysctlbyname(c"hw.optional.arm.FEAT_MTE");
     let mte2 = _sysctlbyname(c"hw.optional.arm.FEAT_MTE2");
     let pauth = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth");
+    let pauth_lr = _sysctlbyname(c"hw.optional.arm.FEAT_PAuth_LR");
     let pmull = _sysctlbyname(c"hw.optional.arm.FEAT_PMULL");
     let rdm = _sysctlbyname(c"hw.optional.arm.FEAT_RDM");
     let sb = _sysctlbyname(c"hw.optional.arm.FEAT_SB");
     let sha1 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA1");
     let sha256 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA256");
-    let sha3 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA3");
     let sha512 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA512");
+    let sha3 = _sysctlbyname(c"hw.optional.arm.FEAT_SHA3");
     let sme = _sysctlbyname(c"hw.optional.arm.FEAT_SME");
     let sme2 = _sysctlbyname(c"hw.optional.arm.FEAT_SME2");
     let sme2p1 = _sysctlbyname(c"hw.optional.arm.FEAT_SME2p1");
     let sme_b16b16 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_B16B16");
+    let sme_f8f16 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_F8F16");
+    let sme_f8f32 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_F8F32");
     let sme_f16f16 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_F16F16");
     let sme_f64f64 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_F64F64");
     let sme_i16i64 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_I16I64");
+    let sme_lutv2 = _sysctlbyname(c"hw.optional.arm.FEAT_SME_LUTv2");
     let ssbs = _sysctlbyname(c"hw.optional.arm.FEAT_SSBS");
     let sve_b16b16 = _sysctlbyname(c"hw.optional.arm.FEAT_SVE_B16B16");
     let wfxt = _sysctlbyname(c"hw.optional.arm.FEAT_WFxT");
@@ -89,6 +105,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // exist, and may potentially be exposed later.
     /*
     let afp = _sysctlbyname(c"hw.optional.arm.FEAT_AFP");
+    let cpa = _sysctlbyname(c"hw.optional.arm.FEAT_CPA");
+    let cpa2 = _sysctlbyname(c"hw.optional.arm.FEAT_CPA2");
     let csv2 = _sysctlbyname(c"hw.optional.arm.FEAT_CSV2");
     let csv3 = _sysctlbyname(c"hw.optional.arm.FEAT_CSV3");
     let ebf16 = _sysctlbyname(c"hw.optional.arm.FEAT_EBF16");
@@ -131,35 +149,43 @@ pub(crate) fn detect_features() -> cache::Initializer {
     enable_feature(Feature::dpb, dpb);
     enable_feature(Feature::dpb2, dpb2);
     enable_feature(Feature::ecv, ecv);
-    enable_feature(Feature::fcma, fcma);
-    enable_feature(Feature::fhm, fhm);
+    enable_feature(Feature::faminmax, faminmax);
+    enable_feature(Feature::fcma, fcma_old || fcma);
+    enable_feature(Feature::fhm, fhm_old || fhm);
     enable_feature(Feature::flagm, flagm);
     enable_feature(Feature::flagm2, flagm2);
     enable_feature(Feature::fp, fp);
-    enable_feature(Feature::fp16, fp16);
+    enable_feature(Feature::fp8, fp8);
+    enable_feature(Feature::fp16, fp16_old || fp16);
+    enable_feature(Feature::fpmr, fpmr);
     enable_feature(Feature::frintts, frintts);
     enable_feature(Feature::hbc, hbc);
     enable_feature(Feature::i8mm, i8mm);
     enable_feature(Feature::jsconv, jsconv);
-    enable_feature(Feature::lse, lse);
+    enable_feature(Feature::lse, lse_old || lse);
     enable_feature(Feature::lse2, lse2);
+    enable_feature(Feature::lut, lut);
     enable_feature(Feature::mte, mte && mte2);
     enable_feature(Feature::paca, pauth);
     enable_feature(Feature::pacg, pauth);
+    enable_feature(Feature::pauth_lr, pauth_lr);
     enable_feature(Feature::pmull, aes && pmull);
     enable_feature(Feature::rcpc, rcpc);
     enable_feature(Feature::rcpc2, rcpc2);
     enable_feature(Feature::rdm, rdm);
     enable_feature(Feature::sb, sb);
     enable_feature(Feature::sha2, sha1 && sha256 && asimd);
-    enable_feature(Feature::sha3, sha512 && sha3 && asimd);
+    enable_feature(Feature::sha3, (sha512_old || sha512) && (sha3_old || sha3) && asimd);
     enable_feature(Feature::sme, sme);
     enable_feature(Feature::sme2, sme2);
     enable_feature(Feature::sme2p1, sme2p1);
     enable_feature(Feature::sme_b16b16, sme_b16b16);
+    enable_feature(Feature::sme_f8f16, sme_f8f16);
+    enable_feature(Feature::sme_f8f32, sme_f8f32);
     enable_feature(Feature::sme_f16f16, sme_f16f16);
     enable_feature(Feature::sme_f64f64, sme_f64f64);
     enable_feature(Feature::sme_i16i64, sme_i16i64);
+    enable_feature(Feature::sme_lutv2, sme_lutv2);
     enable_feature(Feature::ssbs, ssbs);
     enable_feature(Feature::sve_b16b16, sve_b16b16);
     enable_feature(Feature::wfxt, wfxt);
