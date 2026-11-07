@@ -417,7 +417,7 @@ impl MetadataExt for Metadata {
     #[rustdoc_skip_body]
     fn st_ctime(&self) -> i64 {
         let file_attr = self.as_inner();
-        #[cfg(all(target_env = "gnu", target_pointer_width = "32"))]
+        #[cfg(target_pointer_width = "32")]
         if let Some(ctime) = file_attr.stx_ctime() {
             return ctime.tv_sec;
         }
