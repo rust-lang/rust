@@ -1007,13 +1007,14 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     const char *Producer, size_t ProducerLen, bool isOptimized,
     const char *Flags, unsigned RuntimeVer, const char *SplitName,
     size_t SplitNameLen, LLVMRustDebugEmissionKind Kind, uint64_t DWOId,
-    bool SplitDebugInlining, LLVMRustDebugNameTableKind TableKind) {
+    bool SplitDebugInlining, bool DebugInfoForProfiling,
+    LLVMRustDebugNameTableKind TableKind) {
   auto *File = unwrapDI<DIFile>(FileRef);
 
   return wrap(unwrap(Builder)->createCompileUnit(
       Lang, File, StringRef(Producer, ProducerLen), isOptimized, Flags,
       RuntimeVer, StringRef(SplitName, SplitNameLen), fromRust(Kind), DWOId,
-      SplitDebugInlining, false, fromRust(TableKind)));
+      SplitDebugInlining, DebugInfoForProfiling, fromRust(TableKind)));
 }
 
 extern "C" LLVMMetadataRef
