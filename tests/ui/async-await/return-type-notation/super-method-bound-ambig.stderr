@@ -1,14 +1,22 @@
 error[E0221]: ambiguous associated function `test` in bounds of `Foo`
   --> $DIR/super-method-bound-ambig.rs:24:12
    |
+LL | trait Super1<'a> {
 LL |     async fn test();
    |     ---------------- ambiguous `test` from `for<'a> Super1<'a>`
 ...
+LL | trait Super2 {
 LL |     async fn test();
    |     ---------------- ambiguous `test` from `Super2`
 ...
 LL |     T: Foo<test(..): Send>,
    |            ^^^^^^^^^^^^^^ ambiguous associated function `test`
+   |
+help: consider being explicit about the bounds
+   |
+LL -     T: Foo<test(..): Send>,
+LL +     T: Foo + Super2<test(..): Send> + for<'a> Super1<'a, test(..): Send>,
+   |
 
 error: aborting due to 1 previous error
 

@@ -1,6 +1,7 @@
 error[E0191]: the value of the associated type `A` in `Foo` must be specified
   --> $DIR/missing-associated-type-in-trait-object-22434.rs:6:23
    |
+LL | pub trait Foo {
 LL |     type A;
    |     ------ `A` defined here
 ...
