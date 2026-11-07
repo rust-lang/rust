@@ -75,8 +75,7 @@ def execute_command(command_interpreter: lldb.SBCommandInterpreter, command: str
     command_interpreter.HandleCommand(command, res)
 
     if res.Succeeded():
-        if res.HasResult():
-            print(normalize_whitespace(res.GetOutput() or ""), end="\n")
+        print(normalize_whitespace(res.GetOutput() or ""), end="\n")
 
         # If the command introduced any breakpoints, make sure to register
         # them with the breakpoint
@@ -179,10 +178,23 @@ def get_env_arg(name):
 def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> bool:
     # We save importing the check until we actually see a repr command. This prevents us from trying
     # to load input data from tests that don't use `repr` commands.
-    from .check_lldb import check
     from ..common import Result
+    from .check_lldb import check
 
     return check(var_name, breakpoint_index, frame) == Result.Ok
+
+
+def flush_all(debugger: lldb.SBDebugger):
+    """
+    Flushes the output and error files of the passed-in debugger, the python interpreter, and
+    the parent LLDB debugger.
+    """
+    debugger.GetOutputFile().Flush()
+    debugger.GetErrorFile().Flush()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    lldb.debugger.GetOutputFile().Flush()
+    lldb.debugger.GetErrorFile().Flush()
 
 
 def quit_with_error(debugger: lldb.SBDebugger):
@@ -190,10 +202,7 @@ def quit_with_error(debugger: lldb.SBDebugger):
 
     # file handles aren't guaranteed to be flushed when python doesn't return control back to LLDB,
     # so we need to do it manually
-    debugger.GetOutputFile().Flush()
-    debugger.GetErrorFile().Flush()
-    sys.stdout.flush()
-    sys.stderr.flush()
+    flush_all(debugger)
 
     # When using a debugger created from the python script (e.g. `lldb.SBDebugger.Create()`), this
     # doesn't actually work, but it doesn't hurt to try =)
@@ -212,6 +221,9 @@ def quit_with_error(debugger: lldb.SBDebugger):
 
 
 def main():
+    # We need to make sure the debugger running this script doesn't run in async mode.
+    # This helps prevent a number of issues (e.g. file handles not being flushed).
+    lldb.debugger.SetAsync(False)
     target_path = get_env_arg("DEBUGGER_TESTER_TARGET_PATH")
     script_path = get_env_arg("DEBUGGER_TESTER_SCRIPT_PATH")
 
@@ -315,8 +327,8 @@ def main():
             # from trying to load input data from tests that don't use `repr` commands.
             from ..common import (
                 BLESS,
-                BlessMetadata,
                 INPUT_DATA,
+                BlessMetadata,
                 tested_all_types,
                 tested_all_variables,
             )
@@ -359,5 +371,7 @@ the test data by overwriting the data in {path} with the following:")
                         sys.version, debugger.GetVersionString(), str(FEATURE_FLAGS)
                     )
                 )
+
+            flush_all(debugger)
     finally:
         script_file.close()
