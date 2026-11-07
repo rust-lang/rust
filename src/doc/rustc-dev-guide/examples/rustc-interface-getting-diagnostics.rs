@@ -59,14 +59,13 @@ fn main() {
     let x: &str = 1;
 }
 "
-                .into(),
+            .into(),
         },
         crate_cfg: Vec::new(),
         crate_check_cfg: Vec::new(),
         output_dir: None,
         output_file: None,
         file_loader: None,
-        lint_caps: rustc_hash::FxHashMap::default(),
         psess_created: Some(Box::new(|parse_sess| {
             parse_sess.dcx().set_emitter(Box::new(DebugEmitter {
                 source_map: parse_sess.clone_source_map(),
