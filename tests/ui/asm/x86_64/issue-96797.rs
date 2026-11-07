@@ -32,3 +32,5 @@ fn main() {
     }
     unsafe { call_foobar() };
 }
+
+//@ reference: asm.directives.supported-directives

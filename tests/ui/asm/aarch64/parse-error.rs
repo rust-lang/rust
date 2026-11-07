@@ -24,3 +24,5 @@ fn main() {
         //~^^ ERROR attempt to use a non-constant value in a constant
     }
 }
+
+//@ reference: asm.ts-args.positional-first

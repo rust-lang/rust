@@ -246,3 +246,5 @@ trait Foo {
         naked_asm!(".Lbbb: nop; ret;") //~ ERROR avoid using named labels
     }
 }
+
+//@ reference: asm.rules.not-exactly-once

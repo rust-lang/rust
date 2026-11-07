@@ -10,3 +10,5 @@ fn _f<T>(p: *mut T) {
 }
 
 fn main() {}
+
+//@ reference: asm.register-operands.allowed-types

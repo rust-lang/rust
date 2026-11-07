@@ -381,3 +381,8 @@ fn f() {
         //~^ ERROR can only be used as a clobber
     }
 }
+
+//@ reference: asm.register-names.not-for-io
+//@ reference: asm.register-operands.error-overlapping
+//@ reference: asm.register-operands.supported-register-classes
+//@ reference: asm.register-operands.value-type-constraints
