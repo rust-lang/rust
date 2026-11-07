@@ -1843,7 +1843,6 @@ impl<'a> Formatter<'a> {
         };
 
         // Writes the sign if it exists, and then the prefix if it was requested
-        #[inline(never)]
         fn write_prefix(f: &mut Formatter<'_>, sign: Option<char>, prefix: Option<&str>) -> Result {
             if let Some(c) = sign {
                 f.buf.write_char(c)?;
