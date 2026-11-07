@@ -1,0 +1,362 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:6:5
+   |
+LL | fn explicit_bound<'a, T: Error + 'static>(err: &(dyn Error + 'a)) -> bool {
+   |                   --                      --- `err` is only valid in the function body
+   |                   |
+   |                   lifetime `'a` defined here
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:10:5
+   |
+LL | fn explicit_placeholder<T: Error + 'static>(err: &(dyn Error + '_)) -> bool {
+   |                                             ---                -- lifetime `'1` introduced here
+   |                                             |
+   |                                             `err` is only valid in the function body
+   |                                             has type `&(dyn std::error::Error + '1)`
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+
+error: lifetime may not live long enough
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:14:5
+   |
+LL | fn return_static(err: &dyn Error) -> &'static dyn Error {
+   |                       - let's call the lifetime of this reference `'1`
+LL |     err
+   |     ^^^ returning this value requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `err`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn return_static(err: &dyn Error) -> &'static dyn Error + '_ {
+   |                                                         ++++
+
+error: lifetime may not live long enough
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:18:5
+   |
+LL | fn return_other<'a, 'b>(err: &'a dyn Error) -> &'b dyn Error {
+   |                 --  -- lifetime `'b` defined here
+   |                 |
+   |                 lifetime `'a` defined here
+LL |     err
+   |     ^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:24:5
+   |
+LL | fn static_reference_argument(err: &dyn Error) {
+   |                              ---  - let's call the lifetime of this reference `'1`
+   |                              |
+   |                              `err` is only valid in the function body
+LL |     takes_static_reference(err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:30:5
+   |
+LL | fn static_reference_and_object(err: &dyn Error) {
+   |                                ---  - let's call the lifetime of this reference `'1`
+   |                                |
+   |                                `err` is only valid in the function body
+LL |     takes_static_object_and_reference(err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:36:5
+   |
+LL | fn repeated_static_reference(err: &dyn Error) {
+   |                              ---  - let's call the lifetime of this reference `'1`
+   |                              |
+   |                              `err` is only valid in the function body
+LL |     takes_object_and_static_reference(err, err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:42:5
+   |
+LL | fn unrelated_parameter<'a>(err: &'a dyn Error, other: &'a u32) {
+   |                        --  --- `err` is only valid in the function body
+   |                        |
+   |                        lifetime `'a` defined here
+LL |     takes_object_and_reference(err, other);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:48:5
+   |
+LL | fn generic_bound(err: &dyn Error) {
+   |                  ---  - let's call the lifetime of this reference `'1`
+   |                  |
+   |                  `err` is only valid in the function body
+LL |     takes_generic_static(err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `takes_generic_static` introduced here
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:45:37
+   |
+LL | fn takes_generic_static<T: ?Sized + 'static>(_: &T) {}
+   |                                     ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:56:5
+   |
+LL | fn where_self(err: &dyn Trait) {
+   |               ---  - let's call the lifetime of this reference `'1`
+   |               |
+   |               `err` is only valid in the function body
+LL |     err.needs_static();
+   |     ^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `Trait::needs_static` introduced here
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:52:40
+   |
+LL | trait Trait {
+LL |     fn needs_static(&self) where Self: 'static {}
+   |                                        ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:60:5
+   |
+LL | fn elided_output<T: Error + 'static>(err: &dyn Error) -> Option<&T> {
+   |                                      ---  - let's call the lifetime of this reference `'1`
+   |                                      |
+   |                                      `err` is only valid in the function body
+LL |     err.downcast_ref::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::downcast_ref` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+note: this trait object's lifetime defaults to the reference's lifetime
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:59:44
+   |
+LL | fn elided_output<T: Error + 'static>(err: &dyn Error) -> Option<&T> {
+   |                                            ^^^^^^^^^
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:64:5
+   |
+LL | fn named_input_elided_output<'a, T: Error + 'static>(err: &'a dyn Error) -> Option<&T> {
+   |                              --                      --- `err` is only valid in the function body
+   |                              |
+   |                              lifetime `'a` defined here
+LL |     err.downcast_ref::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::downcast_ref` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+note: this trait object's lifetime defaults to the reference's lifetime
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:63:63
+   |
+LL | fn named_input_elided_output<'a, T: Error + 'static>(err: &'a dyn Error) -> Option<&T> {
+   |                                                               ^^^^^^^^^
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:68:5
+   |
+LL | fn placeholder_output<T: Error + 'static>(err: &dyn Error) -> Option<&'_ T> {
+   |                                           ---  - let's call the lifetime of this reference `'1`
+   |                                           |
+   |                                           `err` is only valid in the function body
+LL |     err.downcast_ref::<T>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::downcast_ref` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+note: this trait object's lifetime defaults to the reference's lifetime
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:67:49
+   |
+LL | fn placeholder_output<T: Error + 'static>(err: &dyn Error) -> Option<&'_ T> {
+   |                                                 ^^^^^^^^^
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:74:5
+   |
+LL | fn predicate_reference(err: &dyn Error) {
+   |                        ---  - let's call the lifetime of this reference `'1`
+   |                        |
+   |                        `err` is only valid in the function body
+LL |     takes_predicate_reference(err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `takes_predicate_reference` introduced here
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:71:34
+   |
+LL | fn takes_predicate_reference<'a: 'static>(_: &'a (dyn Error + 'static)) {}
+   |                                  ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:80:5
+   |
+LL | fn transitive_reference(err: &dyn Error) {
+   |                         ---  - let's call the lifetime of this reference `'1`
+   |                         |
+   |                         `err` is only valid in the function body
+LL |     takes_transitive_reference(err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `takes_transitive_reference` introduced here
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:77:43
+   |
+LL | fn takes_transitive_reference<'a: 'b, 'b: 'static>(_: &'a (dyn Error + 'static)) {}
+   |                                           ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:90:5
+   |
+LL | fn reference_type_bound(err: &dyn Error) {
+   |                         ---  - let's call the lifetime of this reference `'1`
+   |                         |
+   |                         `err` is only valid in the function body
+LL |     takes_reference_type(err);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `takes_reference_type` introduced here
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:85:32
+   |
+LL | fn takes_reference_type<'a>(_: &'a (dyn Error + 'static))
+LL | where
+LL |     &'a (dyn Error + 'static): 'static,
+   |                                ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:98:5
+   |
+LL | fn mismatched_argument<'a>(arg: &'a dyn LifetimeArgument<'a>) {
+   |                        --  --- `arg` is only valid in the function body
+   |                        |
+   |                        lifetime `'a` defined here
+LL |     takes_static_argument(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:108:5
+   |
+LL | fn mismatched_associated_type<'a>(arg: &'a dyn AssociatedType<Item = &'a u32>) {
+   |                               --  --- `arg` is only valid in the function body
+   |                               |
+   |                               lifetime `'a` defined here
+LL |     takes_static_associated_type(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:117:5
+   |
+LL | fn mismatched_repeated_lifetime<'a, 'b>(arg: &'a dyn RepeatedLifetime<'a, 'b>) {
+   |                                 --      --- `arg` is only valid in the function body
+   |                                 |
+   |                                 lifetime `'a` defined here
+LL |
+LL |     takes_repeated_lifetime(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:117:5
+   |
+LL | fn mismatched_repeated_lifetime<'a, 'b>(arg: &'a dyn RepeatedLifetime<'a, 'b>) {
+   |                                     --  --- `arg` is only valid in the function body
+   |                                     |
+   |                                     lifetime `'b` defined here
+LL |
+LL |     takes_repeated_lifetime(arg);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `arg` escapes the function body here
+   |     argument requires that `'b` must outlive `'static`
+
+error: one or more lifetime errors were found in this item
+  --> $DIR/implicit-object-lifetime-no-suggestion.rs:115:4
+   |
+LL | fn mismatched_repeated_lifetime<'a, 'b>(arg: &'a dyn RepeatedLifetime<'a, 'b>) {
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace `'a` with `'static`
+   = help: replace `'b` with `'static`
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0521`.
