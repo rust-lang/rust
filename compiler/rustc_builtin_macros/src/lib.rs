@@ -45,13 +45,11 @@ mod global_allocator;
 mod iter;
 mod log_syntax;
 mod offload;
-mod pattern_type;
 mod rustdoc_skip_body;
 mod source_util;
 mod test;
 mod test_binder_constraints;
 mod trace_macros;
-mod view_type;
 
 pub mod asm;
 pub mod cmdline_attrs;
@@ -100,13 +98,11 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         module_path: source_util::expand_mod,
         naked_asm: asm::expand_naked_asm,
         option_env: env::expand_option_env,
-        pattern_type: pattern_type::expand,
         std_panic: edition_panic::expand_panic,
         stringify: source_util::expand_stringify,
         test_binder_constraints: test_binder_constraints::expand,
         trace_macros: trace_macros::expand_trace_macros,
         unreachable: edition_panic::expand_unreachable,
-        view_type: view_type::expand,
         // tidy-alphabetical-end
     }
 

@@ -20,7 +20,6 @@
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(pattern_types)]
-#![feature(pattern_type_macro)]
 #![feature(prelude_import)]
 #![feature(specialization)]
 #![feature(trace_macros)]
@@ -846,7 +845,7 @@ mod types {
 
     /// TyKind::Pat
     fn ty_pat() {
-        let _: core::pattern_type!(u32 is 1..);
+        let _: pattern_type!(u32 is 1..);
     }
 }
 
