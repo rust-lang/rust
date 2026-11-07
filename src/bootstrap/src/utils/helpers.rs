@@ -634,3 +634,39 @@ pub fn fail(s: &str) -> ! {
     eprintln!("\n\n{s}\n\n");
     exit_process(1);
 }
+
+pub(crate) fn lazily_copy_recursively<P, Q>(from: &P, to: &Q)
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    {
+        let from: &P = from;
+        let to: &Q = to;
+        let from = from.as_ref();
+        let to = to.as_ref();
+
+        // FIXME: is there a reasonable way to avoid TOCTOU issues here?
+        let from_metadata = t!(from.metadata());
+        if up_to_date(from, to) {
+            return;
+        }
+
+        if from_metadata.is_dir() {
+            t!(fs::create_dir_all(to));
+            for entry in t!(fs::read_dir(from)) {
+                let entry = t!(entry);
+                let from = from.join(entry.file_name());
+                let to = to.join(entry.file_name());
+                lazily_copy_recursively(&from, &to);
+            }
+        } else if from_metadata.is_file() {
+            t!(fs::copy(from, to));
+        } else {
+            // Apparently this is never called on symlinks? Anyways, properly copying them is a
+            // bit of a hassle: we need to guess whether the target points somewhere in the set of
+            // copied files, then make sure the target has been copied first.
+            unimplemented!();
+        }
+    }
+}
