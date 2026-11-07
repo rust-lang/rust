@@ -1,7 +1,7 @@
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Target;
+use rustc_target::spec::{Arch, Target};
 
 use self::shims::unix::linux::mem::EvalContextExt as _;
 use self::shims::unix::linux_like::eventfd::EvalContextExt as _;
@@ -19,9 +19,15 @@ use crate::*;
 const TASK_COMM_LEN: u64 = 16;
 
 pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
-    matches!(name, "copy_file_range" | "gettid" | "statx")
-        || (target.env == rustc_target::spec::Env::Gnu
-            && matches!(name, "__cxa_thread_atexit_impl"))
+    match name {
+        "copy_file_range" | "gettid" | "statx" => true,
+        "__cxa_thread_atexit_impl" => target.env == rustc_target::spec::Env::Gnu,
+        // glibc only exposes this symbol on targets with a 32-bit time_t.
+        "__futimens64" =>
+            target.env == rustc_target::spec::Env::Gnu
+                && matches!(target.arch, Arch::X86 | Arch::Arm | Arch::Mips),
+        _ => false,
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -178,6 +184,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [dirp] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
                 ecx.readdir(dirp, dest, "dirent64")?;
+            }
+            "__futimens64" if ecx.is_dyn_sym("__futimens64") => {
+                // libc has no separate time64 type; its timespec uses 32-bit time_t here.
+                // (See https://github.com/rust-lang/libc/issues/3223.)
+                let [fd, times] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *std::sys::pal::time::__timespec64) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = ecx.futimens(fd, times)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             // epoll, eventfd
