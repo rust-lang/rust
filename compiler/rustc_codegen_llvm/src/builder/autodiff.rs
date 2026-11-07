@@ -286,7 +286,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     fn_to_diff: &'ll Value,
     outer_name: &str,
-    ret_ty: &'ll Type,
+    ret_ty: Type<'ll>,
     fn_args: &[&'ll Value],
     attrs: &RustcAutodiff,
     dest_layout: ty::layout::TyAndLayout<'tcx>,

@@ -189,7 +189,7 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
 fn check_and_apply_linkage<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
-    llty: &'ll Type,
+    llty: Type<'ll>,
     sym: &str,
     def_id: DefId,
 ) -> &'ll Value {
@@ -281,11 +281,11 @@ fn check_and_apply_linkage<'ll, 'tcx>(
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: Type<'ll>) -> &'ll Value {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
-    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: Type<'ll>) -> &'ll Value {
         unsafe { llvm::LLVMConstPointerCast(val, ty) }
     }
 
@@ -364,7 +364,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     #[instrument(level = "debug", skip(self, llty))]
-    fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
+    fn get_static_inner(&self, def_id: DefId, llty: Type<'ll>) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             trace!("used cached value");
@@ -714,7 +714,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     // We do our best here to match what Clang does when compiling Objective-C natively.
     // See Clang's `ObjCNonFragileABITypesHelper`:
     // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L6052
-    fn get_objc_class_t(&self) -> &'ll Type {
+    fn get_objc_class_t(&self) -> Type<'ll> {
         if let Some(class_t) = self.objc_class_t.get() {
             return class_t;
         }
