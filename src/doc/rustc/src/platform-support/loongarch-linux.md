@@ -8,7 +8,7 @@ LoongArch is a RISC ISA developed by Loongson Technology Corporation Limited.
 | Target | Description |
 |--------|-------------|
 | `loongarch64-unknown-linux-gnu` | LoongArch64 Linux, LP64D ABI (kernel 5.19, glibc 2.36), LSX required |
-| `loongarch64-unknown-linux-musl` | LoongArch64 Linux, LP64D ABI (kernel 5.19, musl 1.2.6), LSX required |
+| `loongarch64-unknown-linux-musl` | LoongArch64 Linux, LP64D ABI (kernel 5.19, musl 1.2.5), LSX required |
 
 These support both native and cross builds, and have full support for `std`.
 

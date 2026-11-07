@@ -16,7 +16,7 @@ Linux musl libc RISC-V target using the *RV64I* base instruction set with the
 This target requires:
 
 * Linux Kernel version 4.20 or later
-* musl libc 1.2.6 or later
+* musl libc 1.2.5 or later
 
 
 ## Building the target
