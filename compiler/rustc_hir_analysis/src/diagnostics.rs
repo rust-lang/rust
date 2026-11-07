@@ -1357,36 +1357,11 @@ pub(crate) struct CoerceMulti {
 
 #[derive(Diagnostic)]
 #[diag(
-    "implementing `{$trait_name}` requires that a single lifetime parameter is passed between source and target"
+    "implementing `{$trait_name}` requires at least one lifetime argument in the reborrowed type"
 )]
-pub(crate) struct CoerceSharedNotSingleLifetimeParam {
+pub(crate) struct ReborrowNoLifetimes {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "implementing `{$trait_name}` requires exactly one lifetime argument in the reborrowed type"
-)]
-pub(crate) struct CoerceSharedMulti {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "implementing `{$trait_name}` requires source and target to use the same reborrow lifetime \
-     argument"
-)]
-pub(crate) struct CoerceSharedLifetimeMismatch {
-    #[primary_span]
-    pub span: Span,
-    #[label("source reborrow lifetime")]
-    pub source_lifetime_span: Option<Span>,
-    #[label("target reborrow lifetime")]
-    pub target_lifetime_span: Option<Span>,
     pub trait_name: &'static str,
 }
 

@@ -1086,7 +1086,6 @@ impl DirEntry {
             target_os = "nto",
             target_os = "qnx",
             target_os = "vita",
-            target_os = "l4re",
         )))]
         match self.entry.d_type {
             libc::DT_CHR => return Ok(FileType { mode: libc::S_IFCHR }),

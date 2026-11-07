@@ -51,6 +51,6 @@ impl<'a> Copy for CustomRef<'a> {}
 
 
 impl<'a> Reborrow for CustomMut<'a> {}
-impl<'a> CoerceShared<CustomRefAlias<'a>> for CustomMutAlias<'a> {}
+impl<'a: 'b, 'b> CoerceShared<CustomRefAlias<'b>> for CustomMutAlias<'a> {}
 
 fn main() {}
