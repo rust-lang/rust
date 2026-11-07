@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Dict, Generator, List, Optional
 from lldb import (
     SBData,
     SBError,
+    SBType,
     eBasicTypeChar32,
     eBasicTypeDouble,
     eBasicTypeFloat,
@@ -346,6 +347,40 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
         return result.GetArrayType(int(length))
 
     return result
+
+
+def get_generic_at_index(valobj: SBValue, idx: int) -> SBType:
+    """
+    Emulates the behavior of `SBType.GetTemplateArgumentType`, but abstracts over the differences
+    between DWARF and PDB template arg handling. Fallback methods are used to acquire the template
+    arg if any step fails.
+
+    Returns an invalid `SBType` if all fallbacks fail.
+    """
+
+    ty = valobj.GetType()
+
+    generic = ty.GetTemplateArgumentType(0)
+
+    if generic.IsValid():
+        return generic
+
+    # Likely dealing with PDB debug info. Since PDB can't represent generics, we attempt to pull
+    # the type from the artificial static field.
+    if LLDBFeature.StaticFields in FEATURE_FLAGS:
+        generic = ty.GetStaticFieldWithName("GENERIC_ARG_0").GetType()
+
+        if generic.IsValid():
+            return generic
+
+    # It's possible this was compiled for a version of Rust prior to when we started outputting the
+    # artifical static, so we can try looking the generic up by type name.
+    arg_name = next(get_template_args(ty.GetName()))
+
+    if arg_name is None:
+        return SBType()
+
+    return resolve_msvc_template_arg(arg_name, valobj.GetTarget())
 
 
 def StructSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
@@ -1159,14 +1194,7 @@ class StdVecSyntheticProvider:
         ptr_size = valobj.GetTarget().GetAddressByteSize() * 8
         self.no_hi_bit_max = 1 << (ptr_size - 1)
 
-        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
-
-        if not self.element_type.IsValid():
-            arg_name = next(get_template_args(self.valobj.GetTypeName()))
-
-            self.element_type = resolve_msvc_template_arg(
-                arg_name, self.valobj.GetTarget()
-            )
+        self.element_type = get_generic_at_index(valobj, 0)
 
         self.element_type_size = self.element_type.GetByteSize()
         self.update()
@@ -1322,12 +1350,7 @@ class StdVecDequeSyntheticProvider:
         # logger = Logger.Logger()
         # logger >> "[StdVecDequeSyntheticProvider] for " + str(valobj.GetName())
         self.valobj = valobj
-        self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
-
-        if not self.element_type.IsValid():
-            arg_name = next(get_template_args(self.valobj.GetTypeName()))
-
-            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
+        self.element_type = get_generic_at_index(valobj, 0)
 
         self.element_type_size = self.element_type.GetByteSize()
 
@@ -1515,12 +1538,7 @@ class StdHashMapSyntheticProvider:
 
         self.size = inner_table.GetChildMemberWithName("items").GetValueAsUnsigned()
 
-        self.pair_type = table.GetType().GetTemplateArgumentType(0)
-
-        if not self.pair_type.IsValid():
-            arg_name = next(get_template_args(table.GetTypeName()))
-
-            self.pair_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
+        self.pair_type = get_generic_at_index(table, 0)
 
         if self.pair_type.IsTypedefType():
             self.pair_type = self.pair_type.GetTypedefedType()

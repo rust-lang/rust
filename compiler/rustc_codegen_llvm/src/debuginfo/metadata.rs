@@ -40,7 +40,7 @@ use crate::llvm::debuginfo::{
     DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
     DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
 };
-use crate::llvm::{self, FromGeneric, Value};
+use crate::llvm::{self, FromGeneric, Metadata, Value};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -1101,7 +1101,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
 ) -> DINodeCreationResult<'ll> {
     let struct_type = unique_type_id.expect_ty();
 
-    let ty::Adt(adt_def, _) = struct_type.kind() else {
+    let ty::Adt(adt_def, generic_args) = struct_type.kind() else {
         bug!("build_struct_type_di_node() called with non-struct-type: {:?}", struct_type);
     };
     assert!(adt_def.is_struct());
@@ -1143,7 +1143,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
         ),
         // Fields:
         |cx, owner| {
-            variant_def
+            let mut fields: smallvec::SmallVec<[&Metadata; 16]> = variant_def
                 .fields
                 .iter()
                 .enumerate()
@@ -1172,7 +1172,34 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         def_id,
                     )
                 })
-                .collect()
+                .collect();
+
+            if cpp_like_debuginfo(cx.tcx) {
+                for (i, arg) in generic_args.types().enumerate() {
+                    const GENERIC_AS_STATIC_PREFIX: &str = "GENERIC_ARG_";
+                    let static_field_name = format!("{GENERIC_AS_STATIC_PREFIX}{i}");
+                    let actual_type = cx
+                        .tcx
+                        .normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(arg));
+                    let actual_type_di_node = type_di_node(cx, actual_type);
+                    fields.push(unsafe {
+                        llvm::LLVMDIBuilderCreateStaticMemberType(
+                            DIB(cx),
+                            owner,
+                            static_field_name.as_ptr(),
+                            static_field_name.len(),
+                            unknown_file_metadata(cx),
+                            UNKNOWN_LINE_NUMBER,
+                            actual_type_di_node,
+                            DIFlags::FlagPublic,
+                            None,
+                            8,
+                        )
+                    })
+                }
+            }
+
+            fields
         },
         |cx| build_generic_type_param_di_nodes(cx, struct_type),
     )
