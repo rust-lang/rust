@@ -112,21 +112,20 @@ fn test_bind_ipv4_invalid_addr_len() {
     };
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
-    if cfg!(miri) {
-        // A too big size is also invalid. Some native hosts (e.g. Linux)
-        // allow too big sizes, so we skip this test on native hosts:
-        // <https://github.com/rust-lang/miri/pull/5059#discussion_r3305439221>
-        // Make sure the bigger size is still fully in-bounds.
-        let addrs = [addr; 2];
-        let err = unsafe {
-            errno_result(libc::bind(
-                sockfd,
-                addrs.as_ptr().cast::<libc::sockaddr>(),
-                (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
-            ))
-            .unwrap_err()
-        };
-        assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    // A too big size is also invalid according to the spec, but accepted on Linux.
+    // Make sure the bigger size is still fully in-bounds.
+    let addrs = [addr; 2];
+    let res = unsafe {
+        errno_result(libc::bind(
+            sockfd,
+            addrs.as_ptr().cast::<libc::sockaddr>(),
+            (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
+        ))
+    };
+    if cfg!(miri) || cfg!(not(target_os = "linux")) {
+        assert_eq!(res.unwrap_err().raw_os_error().unwrap(), libc::EINVAL);
+    } else {
+        assert_eq!(res.unwrap(), 0);
     }
 }
 

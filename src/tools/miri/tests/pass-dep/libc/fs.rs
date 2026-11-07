@@ -360,8 +360,8 @@ fn test_open_nofollow() {
     let fd =
         errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) })
             .unwrap();
-    let data = libc_utils::read_exact_array::<5>(fd).unwrap();
-    assert!(bytes.starts_with(&data));
+    let data = libc_utils::read_to_end(fd).unwrap();
+    assert_eq!(*bytes, *data);
     errno_check(unsafe { libc::close(fd) });
 
     // But trying to open a symlink errors.
@@ -515,7 +515,7 @@ fn test_openat(
 
     // Open file relative to dirfd.
     let fd = errno_result(unsafe { openat(dirfd, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
-    let data = libc_utils::read_exact_array::<4>(fd).unwrap();
+    let data = libc_utils::read_to_end(fd).unwrap();
     assert_eq!(&data, b"data");
     errno_check(unsafe { libc::close(fd) });
     // That should error with O_DIRECTORY.
@@ -547,7 +547,7 @@ fn test_openat(
         // This link points to above `dirfd2` but that should still work.
         let fd =
             errno_result(unsafe { openat(dirfd2, c"filelink".as_ptr(), libc::O_RDONLY) }).unwrap();
-        let data = libc_utils::read_exact_array::<4>(fd).unwrap();
+        let data = libc_utils::read_to_end(fd).unwrap();
         assert_eq!(&data, b"data");
         errno_check(unsafe { libc::close(fd) });
         errno_check(unsafe { libc::close(dirfd2) });
@@ -575,7 +575,7 @@ fn test_openat(
                 openat(dirfd, c"dirlink/file.txt".as_ptr(), libc::O_NOFOLLOW)
             })
             .unwrap();
-            let data = libc_utils::read_exact_array::<4>(fd).unwrap();
+            let data = libc_utils::read_to_end(fd).unwrap();
             assert_eq!(&data, b"data");
             errno_check(unsafe { libc::close(fd) });
         }
@@ -592,7 +592,7 @@ fn test_create_read_write() {
     let fd =
         errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_CREAT, 0o666) })
             .unwrap();
-    let read_err = libc_utils::read_exact_array::<4>(fd).unwrap_err();
+    let read_err = libc_utils::read_to_end(fd).unwrap_err(); // cannot read from WRONLY
     assert_eq!(read_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {read_err}");
     libc_utils::write_all(fd, content).unwrap();
     errno_check(unsafe { libc::close(fd) });
@@ -600,8 +600,8 @@ fn test_create_read_write() {
     let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
     let write_err = libc_utils::write_all(fd, content).unwrap_err();
     assert_eq!(write_err.raw_os_error().unwrap(), libc::EBADF, "unexpected errno: {write_err}");
-    let data = libc_utils::read_exact_array::<8>(fd).unwrap();
-    assert!(content.starts_with(&data));
+    let data = libc_utils::read_to_end(fd).unwrap();
+    assert_eq!(*content, *data);
     errno_check(unsafe { libc::close(fd) });
 }
 

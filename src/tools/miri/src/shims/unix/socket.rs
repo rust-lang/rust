@@ -515,6 +515,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let dest_addr_len_int =
                     this.read_scalar(dest_addr_len)?.to_uint(socklen_layout.size)?;
 
+                // POSIX says the destination is entirely ignored for TCP sockets, but that does not
+                // match reality, so we eagerly read the destination when one is given.
                 if dest_addr_ptr == Pointer::null() || dest_addr_len_int == 0 {
                     // If the address pointer is a nullptr or the address length is zero we ignore
                     // the destination address. BSDs return EINVAL when the address length is zero
@@ -522,10 +524,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // POSIX documents for TCP sockets that we do not try to emulate it.
                     None
                 } else {
-                    // If they are both non-null/zero, we read the address even if the socket does
-                    // not care about it. This is stricter than what POSIX says (POSIX says the
-                    // destination is ignored for TCP sockets), but most OSes seem to do something
-                    // similar.
                     match this.read_socket_address(dest_addr, dest_addr_len, "sendto")? {
                         Ok(dest_addr) => Some(dest_addr),
                         Err(e) => return this.set_errno_and_return_neg1(e, dest),

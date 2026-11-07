@@ -76,8 +76,9 @@ fn test_pipe_threaded() {
     let thread2 = thread::spawn(move || {
         yield_now();
         write_all(fds[1], b"12345").unwrap();
+        errno_check(unsafe { libc::close(fds[1]) }); // signal EOF
     });
-    let buf = read_exact_array::<5>(fds[0]).unwrap();
+    let buf = read_to_end(fds[0]).unwrap();
     assert_eq!(&buf, b"12345");
     thread2.join().unwrap();
 }
