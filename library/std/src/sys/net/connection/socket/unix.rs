@@ -477,15 +477,15 @@ impl Socket {
 
     // bionic libc makes no use of this flag
     #[cfg(target_os = "linux")]
-    pub fn set_deferaccept(&self, accept: Duration) -> io::Result<()> {
+    pub fn set_defer_accept(&self, accept: Duration) -> io::Result<()> {
         let val = cmp::min(accept.as_secs(), c_int::MAX as u64) as c_int;
         unsafe { setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, val) }
     }
 
     #[cfg(target_os = "linux")]
-    pub fn deferaccept(&self) -> io::Result<Duration> {
+    pub fn defer_accept(&self) -> io::Result<Option<Duration>> {
         let raw: c_int = unsafe { getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)? };
-        Ok(Duration::from_secs(raw as _))
+        Ok((raw != 0).then(|| Duration::from_secs(raw as u64)))
     }
 
     #[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
