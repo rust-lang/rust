@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, TargetOptions};
+use crate::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, TargetOptions, cvs};
 
 pub(crate) fn opts(endian: Endian) -> TargetOptions {
     TargetOptions {
@@ -24,6 +24,10 @@ pub(crate) fn opts(endian: Endian) -> TargetOptions {
         // and would require a bit of a refactor.
         min_atomic_width: Some(64),
         max_atomic_width: Some(64),
+        llvm_args: cvs![
+            // Allow all libcalls.
+            "-bpf-allows-libcalls",
+        ],
         ..Default::default()
     }
 }
