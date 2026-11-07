@@ -212,6 +212,9 @@ impl ExactSizeIterator for EscapeUnicode {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl TrustedLen for EscapeUnicode {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeUnicode {}
 
@@ -288,6 +291,9 @@ impl ExactSizeIterator for EscapeDefault {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl TrustedLen for EscapeDefault {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDefault {}
 
@@ -353,6 +359,9 @@ impl ExactSizeIterator for EscapeDebug {
         self.0.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl TrustedLen for EscapeDebug {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDebug {}
