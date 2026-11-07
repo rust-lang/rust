@@ -5,7 +5,7 @@ LL │ ┏     Box::new(
 LL │ ┃         Ok::<_, ()>(
 LL │ ┃             Err::<(), _>(
 LL │ ┃                 Ok::<_, ()>(
-   ‡ ┃
+   ┆ ┇
 LL │ ┃     )
    │ ┗━━━━━┛ type mismatch resolving `<Result<_, ()> as Future>::Error == Foo`
    ╰╴
