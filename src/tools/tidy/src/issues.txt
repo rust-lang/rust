@@ -2939,8 +2939,6 @@ ui/uninhabited/issue-107505.rs
 ui/union/issue-41073.rs
 ui/union/issue-81199.rs
 ui/union/issue-99375.rs
-ui/unsafe/auxiliary/issue-106126.rs
-ui/unsafe/issue-106126-good-path-bug.rs
 ui/unsafe/issue-115348-false-positive-warning-of-unnecessary-unsafe.rs
 ui/unsafe/issue-3080.rs
 ui/unsafe/issue-45087-unreachable-unsafe.rs
