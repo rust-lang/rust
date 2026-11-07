@@ -19,7 +19,7 @@ impl SwitchTargets {
     /// `goto otherwise;`.
     pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
         let (values, mut targets): (SmallVec<_>, SmallVec<_>) =
-            targets.map(|(v, t)| (Pu128(v), t)).unzip();
+            targets.map(|(v, t)| (Pu128(v), t)).collect();
         targets.push(otherwise);
         Self { values, targets }
     }

@@ -231,7 +231,7 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                 },
             )
         })
-        .unzip();
+        .collect();
 
     let (enum_defs, enum_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .enums
@@ -303,7 +303,7 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                 },
             )
         })
-        .unzip();
+        .collect();
     let (any_node_defs, any_node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
@@ -388,7 +388,7 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                 },
             )
         })
-        .unzip();
+        .collect();
 
     let enum_names = grammar.enums.iter().map(|it| &it.name);
     let node_names = grammar.nodes.iter().map(|it| &it.name);
@@ -465,7 +465,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         .iter()
         .filter(|(token, _name)| token.len() == 1)
         .map(|(token, name)| (token.chars().next().unwrap(), format_ident!("{}", name)))
-        .unzip();
+        .collect();
 
     let punctuation_values = grammar.punct.iter().map(|(token, _name)| {
         if "{}[]()".contains(token) {

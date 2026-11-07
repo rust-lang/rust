@@ -15,6 +15,10 @@
 #![feature(iter_partition_in_place)]
 #![feature(trusted_random_access)]
 #![feature(try_find)]
+#![expect(
+    deprecated,
+    reason = "'unzip' is deprecated and fn_delegation wildcard imports do not exclude them",
+)]
 
 impl X {
 //~^ ERROR: cannot find type `X` in this scope
