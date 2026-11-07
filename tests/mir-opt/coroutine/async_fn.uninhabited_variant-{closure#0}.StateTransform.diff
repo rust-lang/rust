@@ -384,9 +384,11 @@
 - 
 -     bb29: {
 -         StorageDead(_29);
--         goto -> bb30;
--     }
-- 
++     bb28 (cleanup): {
++         StorageDead(_35);
+          goto -> bb30;
+      }
+  
 -     bb30: {
 -         StorageDead(_26);
 -         StorageDead(_25);
@@ -432,13 +434,10 @@
 -     }
 - 
 -     bb38 (cleanup): {
-+     bb28 (cleanup): {
-          StorageDead(_36);
-          StorageDead(_35);
+-         StorageDead(_35);
 -         goto -> bb40;
-+         goto -> bb30;
-      }
-  
+-     }
+- 
 -     bb39 (cleanup): {
 +     bb29 (cleanup): {
           StorageDead(_33);
@@ -448,7 +447,6 @@
   
 -     bb40 (cleanup): {
 +     bb30 (cleanup): {
-          StorageDead(_34);
           StorageDead(_32);
           StorageDead(_31);
           StorageDead(_30);
@@ -500,7 +498,6 @@
 - 
 -     bb47 (cleanup): {
 +     bb36 (cleanup): {
-          StorageDead(_17);
           StorageDead(_16);
 -         goto -> bb49;
 +         goto -> bb38;
@@ -515,7 +512,6 @@
   
 -     bb49 (cleanup): {
 +     bb38 (cleanup): {
-          StorageDead(_15);
           StorageDead(_13);
           StorageDead(_12);
           StorageDead(_11);
