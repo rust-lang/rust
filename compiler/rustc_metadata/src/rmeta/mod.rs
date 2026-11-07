@@ -70,7 +70,7 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 12;
+const METADATA_VERSION: u8 = 13;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
@@ -318,6 +318,12 @@ pub(crate) struct CrateRoot {
     expn_hashes: ExpnHashTable,
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
+
+    /// The `DefIndex`es whose body was proven never to unwind, one bit each.
+    ///
+    /// The set is cut off after its last member, so it costs what the crate proves, not what it
+    /// defines. Anything past the end decodes as "no proof was found".
+    cannot_unwind: LazyValue<DenseBitSet<u32>>,
 
     source_map: LazyTable<u32, u32, Option<LazyValue<rustc_span::SourceFile>>>,
     target_modifiers: LazyArray<TargetModifier>,

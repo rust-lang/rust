@@ -2789,6 +2789,42 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Whether this function's MIR body is proven never to unwind.
+    ///
+    /// Unlike `ty::layout::fn_can_unwind`, which only looks at the ABI and at attributes, this
+    /// looks at what the body does. Codegen uses it to emit a plain call instead of an `invoke`,
+    /// and to attach `nounwind` to the definition and to call sites.
+    ///
+    /// `false` means "no proof was found", *not* that the function unwinds.
+    query cannot_unwind(def_id: DefId) -> bool {
+        desc { "checking whether the body of `{}` never unwinds", tcx.def_path_str(def_id) }
+        separate_provide_extern
+        handle_cycle_error
+    }
+
+    /// Whether the MIR body codegen will emit for this shim is proven never to unwind.
+    ///
+    /// The same question as `cannot_unwind`, for bodies the compiler writes itself instead of
+    /// reading from a `DefId`. Shim bodies are generated in every crate that instantiates them,
+    /// so unlike `cannot_unwind` this needs no metadata.
+    ///
+    /// `false` means "no proof was found", not "this unwinds".
+    query cannot_unwind_shim(shim: ty::ShimKind<'tcx>) -> bool {
+        desc { "checking whether shim `{:?}` never unwinds", shim }
+        handle_cycle_error
+    }
+
+    /// Whether the body codegen will emit for this monomorphization is proven never to unwind.
+    ///
+    /// The same question as `cannot_unwind`, for one instance rather than a declaration: only
+    /// here are the types behind a generic parameter or a generic type's drop concrete.
+    ///
+    /// `false` means "no proof was found", not "this unwinds".
+    query cannot_unwind_instance(instance: ty::Instance<'tcx>) -> bool {
+        desc { "checking whether instance `{}` never unwinds", instance }
+        handle_cycle_error
+    }
+
     /// Perform monomorphization-time checking on this item.
     /// This is used for lints/errors that can only be checked once the instance is fully
     /// monomorphized.
