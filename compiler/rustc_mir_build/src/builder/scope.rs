@@ -1621,7 +1621,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn diverge_from(&mut self, start: BasicBlock) {
         debug_assert!(
             matches!(
-                self.cfg.block_data(start).terminator().kind,
+                self.cfg.block_data(start).as_ref().left().unwrap().terminator().kind,
                 TerminatorKind::Assert { .. }
                     | TerminatorKind::Call { .. }
                     | TerminatorKind::Drop { .. }
@@ -1681,7 +1681,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn coroutine_drop_cleanup(&mut self, yield_block: BasicBlock) {
         debug_assert!(
             matches!(
-                self.cfg.block_data(yield_block).terminator().kind,
+                self.cfg.block_data(yield_block).as_ref().left().unwrap().terminator().kind,
                 TerminatorKind::Yield { .. }
             ),
             "coroutine_drop_cleanup called on block with non-yield terminator."
@@ -2108,7 +2108,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
         // There should be an existing terminator with real source info and a
         // dummy TerminatorKind. Replace it with a proper goto.
         // (The dummy is added by `break_scope` and `break_from_if_then_scope`.)
-        let term = cfg.block_data_mut(from).terminator_mut();
+        let term = cfg.block_data_mut(from).as_mut().left().unwrap().terminator_mut();
         if let TerminatorKind::UnwindResume = term.kind {
             term.kind = TerminatorKind::goto(to);
         } else {
@@ -2124,7 +2124,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for CoroutineDrop {
         cfg.start_new_block()
     }
     fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
-        let term = cfg.block_data_mut(from).terminator_mut();
+        let term = cfg.block_data_mut(from).as_mut().left().unwrap().terminator_mut();
         if let TerminatorKind::Yield { ref mut drop, .. } = term.kind {
             *drop = Some(to);
         } else if let TerminatorKind::Drop { ref mut drop, .. } = term.kind {
@@ -2146,7 +2146,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
         cfg.start_new_cleanup_block()
     }
     fn link_entry_point(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock) {
-        let term = &mut cfg.block_data_mut(from).terminator_mut();
+        let term = &mut cfg.block_data_mut(from).as_mut().left().unwrap().terminator_mut();
         match &mut term.kind {
             TerminatorKind::Drop { unwind, .. } => {
                 if let UnwindAction::Cleanup(unwind) = *unwind {
