@@ -5,7 +5,6 @@
     .fg-bright-cyan { fill: #55FFFF }
     .fg-bright-red { fill: #FF5555 }
     .fg-bright-white { fill: #FFFFFF }
-    .fg-magenta { fill: #AA00AA }
     .container {
       padding: 0 10px;
       line-height: 18px;
@@ -33,7 +32,7 @@
 </tspan>
     <tspan x="10px" y="118px"><tspan>   </tspan><tspan class="fg-bright-cyan bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-bright-cyan bold">= </tspan><tspan class="fg-bright-white bold">note</tspan><tspan>: allowed there are: </tspan><tspan class="fg-magenta bold">`=&gt;`</tspan><tspan>, </tspan><tspan class="fg-magenta bold">`,`</tspan><tspan> or </tspan><tspan class="fg-magenta bold">`;`</tspan>
+    <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-bright-cyan bold">= </tspan><tspan class="fg-bright-white bold">note</tspan><tspan>: allowed there are: </tspan><tspan class="fg-bright-cyan bold">`=&gt;`</tspan><tspan>, </tspan><tspan class="fg-bright-cyan bold">`,`</tspan><tspan> or </tspan><tspan class="fg-bright-cyan bold">`;`</tspan>
 </tspan>
     <tspan x="10px" y="154px">
 </tspan>
