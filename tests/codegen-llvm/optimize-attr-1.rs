@@ -4,6 +4,7 @@
 //@[SPEED-OPT] compile-flags: -Copt-level=3 -Ccodegen-units=1
 
 #![crate_type = "rlib"]
+#![feature(optimize_speed)]
 
 // CHECK-LABEL: define{{.*}}i32 @nothing
 // CHECK-SAME: [[NOTHING_ATTRS:#[0-9]+]]

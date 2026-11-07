@@ -1,3 +1,4 @@
+#![feature(optimize_speed)]
 //! Basic smoke test for `#[optimize(..)]` attributes.
 //@ run-pass
 

@@ -36,7 +36,18 @@ impl SingleAttributeParser for OptimizeParser {
 
         let res = match single.meta_item_no_args().and_then(|i| i.path().word().map(|i| i.name)) {
             Some(sym::size) => OptimizeAttr::Size,
-            Some(sym::speed) => OptimizeAttr::Speed,
+            Some(sym::speed) => {
+                if !cx.features().optimize_speed() {
+                    feature_err(
+                        cx.sess(),
+                        sym::optimize_speed,
+                        cx.attr_span,
+                        "`#[optimize(speed)]` is currently unstable",
+                    )
+                    .emit();
+                }
+                OptimizeAttr::Speed
+            }
             Some(sym::none) => OptimizeAttr::DoNotOptimize,
             _ => {
                 cx.adcx()
