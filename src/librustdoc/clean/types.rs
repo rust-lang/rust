@@ -1124,17 +1124,6 @@ impl GenericBound {
         )
     }
 
-    pub(crate) fn maybe_move(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::lang_item_with(
-            cx,
-            LangItem::Move,
-            hir::TraitBoundModifiers {
-                polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
-                constness: hir::BoundConstness::Never,
-            },
-        )
-    }
-
     fn lang_item_with(
         cx: &mut DocContext<'_>,
         item: LangItem,
@@ -1157,10 +1146,6 @@ impl GenericBound {
 
     pub(crate) fn is_meta_sized_bound(&self, tcx: TyCtxt<'_>) -> bool {
         self.is_bounded_by_lang_item(tcx, LangItem::MetaSized)
-    }
-
-    pub(crate) fn is_move_bound(&self, tcx: TyCtxt<'_>) -> bool {
-        self.is_bounded_by_lang_item(tcx, LangItem::Move)
     }
 
     fn is_bounded_by_lang_item(&self, tcx: TyCtxt<'_>, lang_item: LangItem) -> bool {
