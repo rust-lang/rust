@@ -1,0 +1,34 @@
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:10:1
+   |
+LL | const REGION_OUTLIVES_0<'a, 'b>: Option<&'a &'b ()> = None;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: 'b: 'a
+
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:16:1
+   |
+LL | const REGION_OUTLIVES_1<'a, 'b>: &'a &'b () = &&();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: 'b: 'a
+
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:22:1
+   |
+LL | const TYPE_OUTLIVES_0<'a, T>: Option<&'a T> = None;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:28:1
+   |
+LL | const TYPE_OUTLIVES_1<'a, T: Def>: &'a T = &T::DEF;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: aborting due to 4 previous errors
+
