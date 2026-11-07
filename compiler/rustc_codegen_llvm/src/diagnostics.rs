@@ -225,6 +225,10 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("`-Zcf-protection=return` and `full` require `-Ctarget-feature=+zimop` on RISC-V")]
+pub(crate) struct CfProtectionReturnRequiresZimop;
+
+#[derive(Diagnostic)]
 #[diag("`-Zpacked-stack` is incompatible with `backchain` target feature")]
 #[note(
     "enabling both `-Zpacked-stack` and the `backchain` target feature is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both attributes"
