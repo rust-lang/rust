@@ -194,6 +194,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // talking about `&mut T: Trait` and instead remain talking about
                             // `T: Trait` instead
                             && leaf_trait_predicate.def_id() != root_pred.def_id()
+                            // The root trait is not CoerceUnsized, because it's not something the user
+                            // will be concerned about since it's the predicate is generated internally in the new solver.
+                            && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::CoerceUnsized)
                             // The root trait is not `Unsize`, as to avoid talking about it in
                             // `tests/ui/coercion/coerce-issue-49593-box-never.rs`.
                             && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::Unsize)
