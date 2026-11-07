@@ -141,6 +141,7 @@
     - [\*-unknown-netbsd\*](platform-support/netbsd.md)
     - [\*-unknown-openbsd](platform-support/openbsd.md)
     - [\*-unknown-redox](platform-support/redox.md)
+    - [\*-unknown-serenity](platform-support/serenity.md)
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
     - [\*-pc-windows-msvc](platform-support/windows-msvc.md)
     - [\*-uwp-windows-msvc](platform-support/uwp-windows-msvc.md)
