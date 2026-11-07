@@ -1,6 +1,7 @@
 #include "LLVMWrapper.h"
 
 #include "llvm-c/Core.h"
+#include "llvm-c/Support.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -449,7 +450,17 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   if (Initialized)
     return;
   Initialized = true;
+#if LLVM_VERSION_GE(24, 0)
+  char *Err;
+  if (LLVMParseCommandLineOptionsWithError(Argc, Argv, "", &Err)) {
+    // FIXME: Report the error via Rust's diagnostics infrastructure.
+    errs() << Err;
+    LLVMDisposeMessage(Err);
+    exit(1);
+  }
+#else
   cl::ParseCommandLineOptions(Argc, Argv);
+#endif
 }
 
 enum class LLVMRustFileType {
