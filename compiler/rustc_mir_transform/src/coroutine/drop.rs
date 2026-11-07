@@ -377,7 +377,7 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
     // call coroutine_drop()
-    let call_bb = body.basic_blocks_mut().push(BasicBlockData::new(None, false));
+    let call_bb = body.basic_blocks_mut().push(BasicBlockData::maybe_unterminated(None, false));
 
     // return Poll::Ready()
     let ret_bb = insert_poll_ready_block(tcx, &mut body);

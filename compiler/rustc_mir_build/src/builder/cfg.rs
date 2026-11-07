@@ -21,7 +21,7 @@ impl<'tcx> CFG<'tcx> {
     // it as #[inline(never)] to keep rustc's stack use in check.
     #[inline(never)]
     pub(crate) fn start_new_block(&mut self) -> BasicBlock {
-        self.basic_blocks.push(BasicBlockData::new(None, false))
+        self.basic_blocks.push(BasicBlockData::maybe_unterminated(None, false))
     }
 
     pub(crate) fn start_new_cleanup_block(&mut self) -> BasicBlock {
