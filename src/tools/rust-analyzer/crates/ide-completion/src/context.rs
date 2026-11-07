@@ -245,7 +245,13 @@ impl TypeLocation {
             TypeLocation::AssocConstEq => false,
             TypeLocation::AssocTypeEq => true,
             TypeLocation::ImplTrait => false,
-            _ => true,
+
+            TypeLocation::TupleField
+            | TypeLocation::TypeAscription(_)
+            | TypeLocation::GenericArg { .. }
+            | TypeLocation::TypeBound
+            | TypeLocation::ImplTarget
+            | TypeLocation::Other => true,
         }
     }
 
@@ -255,7 +261,14 @@ impl TypeLocation {
                 matches!(param, ast::GenericParam::TypeParam(_))
             }
             TypeLocation::AssocConstEq | TypeLocation::TypeAscription(_) => false,
-            _ => true,
+
+            TypeLocation::TupleField
+            | TypeLocation::GenericArg { .. }
+            | TypeLocation::AssocTypeEq
+            | TypeLocation::TypeBound
+            | TypeLocation::ImplTarget
+            | TypeLocation::ImplTrait
+            | TypeLocation::Other => true,
         }
     }
 
