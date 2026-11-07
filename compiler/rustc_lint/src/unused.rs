@@ -1412,7 +1412,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
                     continue;
                 }
                 match m {
-                    adjustment::AutoBorrowMutability::Not => {
+                    adjustment::AutoBorrowMutability::Not { .. } => {
                         cx.emit_span_lint(UNUSED_ALLOCATION, e.span, UnusedAllocationDiag);
                     }
                     adjustment::AutoBorrowMutability::Mut { .. } => {

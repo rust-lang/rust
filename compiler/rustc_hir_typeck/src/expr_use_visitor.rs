@@ -22,7 +22,7 @@ use rustc_middle::hir::place::ProjectionKind;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::thir::DerefPatBorrowMode;
-use rustc_middle::ty::adjustment::DerefAdjustKind;
+use rustc_middle::ty::adjustment::{AutoBorrowMutability, DerefAdjustKind, ForComparisonOp};
 use rustc_middle::ty::{
     self, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
@@ -70,6 +70,12 @@ pub trait Delegate<'tcx> {
         diag_expr_id: HirId,
         bk: ty::BorrowKind,
     );
+
+    /// The value found at `place` is being implicitly borrowed immutably
+    /// as an operand of one of the comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`).
+    fn borrow_for_comparison(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::Immutable);
+    }
 
     /// The value found at `place` is being copied.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
@@ -121,6 +127,10 @@ impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
         bk: ty::BorrowKind,
     ) {
         (**self).borrow(place_with_id, diag_expr_id, bk)
+    }
+
+    fn borrow_for_comparison(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).borrow_for_comparison(place_with_id, diag_expr_id)
     }
 
     fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
@@ -777,6 +787,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         );
 
         match *autoref {
+            adjustment::AutoBorrow::Ref(AutoBorrowMutability::Not {
+                for_comparison_op: ForComparisonOp::Yes,
+            }) => {
+                self.delegate.borrow_mut().borrow_for_comparison(base_place, base_place.hir_id);
+            }
+
             adjustment::AutoBorrow::Ref(m) => {
                 self.delegate.borrow_mut().borrow(
                     base_place,
@@ -1098,6 +1114,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                                 place_with_id.hir_id,
                                 upvar_borrow,
                             );
+                        }
+                        ty::UpvarCapture::ByCopy => {
+                            self.delegate.borrow_mut().copy(&place_with_id, place_with_id.hir_id);
                         }
                     }
                 }

@@ -1735,7 +1735,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 matches!(
                     adj.kind,
                     ty::adjustment::Adjust::Borrow(ty::adjustment::AutoBorrow::Ref(
-                        ty::adjustment::AutoBorrowMutability::Not
+                        ty::adjustment::AutoBorrowMutability::Not { .. }
                             | ty::adjustment::AutoBorrowMutability::Mut {
                                 allow_two_phase_borrow: ty::adjustment::AllowTwoPhase::No
                             }
