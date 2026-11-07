@@ -231,11 +231,20 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
             }
 
-            ast::ItemKind::ForeignMod(ForeignMod { safety, .. }) => {
-                if let Safety::Unsafe(_) = safety {
+            ast::ItemKind::ForeignMod(ForeignMod { safety, .. }) => match safety {
+                Safety::Unsafe(_) => {
                     self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeExternBlock);
                 }
-            }
+                Safety::Default => {
+                    // Before edition 2024, the `unsafe` token is optional, but it's still unsafe
+                    // either way
+                    self.report_unsafe(cx, it.span, BuiltinUnsafe::BareExternBlock);
+                }
+                Safety::Safe(_) => {
+                    // This should be a syntax error on all editions, but in any case, if it's
+                    // explicitly safe then it's not unsafe code
+                }
+            },
 
             ast::ItemKind::MacroDef(..) => {
                 if let Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(

@@ -1,0 +1,18 @@
+error: usage of an `extern` block
+  --> $DIR/extern-block.rs:9:1
+   |
+LL | / extern "C" {
+LL | |
+LL | |     fn bar();
+LL | | }
+   | |_^
+   |
+   = note: this is unsafe in all editions, even though `unsafe` only became required in the 2024 edition
+note: the lint level is defined here
+  --> $DIR/extern-block.rs:2:9
+   |
+LL | #![deny(unsafe_code)]
+   |         ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
