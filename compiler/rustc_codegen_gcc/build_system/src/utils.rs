@@ -519,6 +519,19 @@ pub fn setup_rustc_folder(env: &HashMap<String, String>) -> Result<PathBuf, Stri
     Ok(rust_dir_path)
 }
 
+pub fn show_help_with_indent(mut commands: Vec<(&str, &str)>, add_help: bool) {
+    commands.sort_unstable_by(|a, b| a.0.cmp(b.0));
+    if add_help {
+        // Always at the end.
+        commands.push(("--help", "Show this help"));
+    }
+    let longest = commands.iter().map(|(name, _)| name.len()).max().unwrap();
+    for (name, doc) in commands {
+        let spacing = " ".repeat(longest - name.len() + 1);
+        println!("    {name}{spacing}: {doc}");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

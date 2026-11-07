@@ -72,24 +72,16 @@ fn get_number_after_arg(
 }
 
 fn show_usage() {
-    println!(
-        r#"
-`test` command help:
-
-    --features [arg]       : Add a new feature [arg]
-    --use-system-gcc       : Use system installed libgccjit
-    --build-only           : Only build rustc_codegen_gcc then exits
-    --nb-parts             : Used to split rustc_tests (for CI needs)
-    --current-part         : Used with `--nb-parts`, allows you to specify which parts to test"#
-    );
-    ConfigInfo::show_usage();
-    for (option, (doc, _)) in get_runners() {
-        // FIXME: Instead of using the hard-coded `23` value, better to compute it instead.
-        let needed_spaces = 23_usize.saturating_sub(option.len());
-        let spaces: String = std::iter::repeat_n(' ', needed_spaces).collect();
-        println!("    {option}{spaces}: {doc}");
-    }
-    println!("    --help                 : Show this help");
+    println!("`test` command help:\n");
+    let mut options = vec![
+        ("--use-system-gcc", "Use system installed libgccjit"),
+        ("--build-only", "Only build rustc_codegen_gcc then exits"),
+        ("--nb-parts", "Used to split rustc_tests (for CI needs)"),
+        ("--current-part", "Used with `--nb-parts`, allows you to specify which parts to test"),
+    ];
+    options.extend(ConfigInfo::usage());
+    options.extend(get_runners().into_iter().map(|(option, (doc, _))| (option, doc)));
+    crate::utils::show_help_with_indent(options, true);
 }
 
 #[derive(Default, Debug)]

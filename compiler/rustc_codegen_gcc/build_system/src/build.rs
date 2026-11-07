@@ -10,57 +10,14 @@ use crate::utils::{
     walk_dir,
 };
 
-#[derive(Default)]
-struct BuildArg {
-    flags: Vec<String>,
-    config_info: ConfigInfo,
-    build_sysroot: bool,
-}
-
-impl BuildArg {
-    /// Creates a new `BuildArg` instance by parsing command-line arguments.
-    fn new() -> Result<Option<Self>, String> {
-        let mut build_arg = Self::default();
-        // Skip binary name and the `build` command.
-        let mut args = std::env::args().skip(2);
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "--sysroot" => {
-                    build_arg.build_sysroot = true;
-                }
-                "--help" => {
-                    Self::usage();
-                    return Ok(None);
-                }
-                arg => {
-                    if !build_arg.config_info.parse_argument(arg, &mut args)? {
-                        return Err(format!("Unknown argument `{arg}`"));
-                    }
-                }
-            }
-        }
-        Ok(Some(build_arg))
-    }
-
-    fn usage() {
-        println!(
-            r#"
-`build` command help:
-    --sysroot              : When used on its own, build backend in dev mode with optimized dependencies
-                             and sysroot in dev mode (unoptimized)
-                             When used together with --release, build backend in release mode with optimized dependencies
-                             When used together with --release-sysroot,
-                             build the sysroot in release mode with optimized dependencies instead of in dev mode
-    --release-sysroot      : When combined with --sysroot, additionally
-                             build the sysroot in release mode with optimized dependencies.
-                             It has no effect if `--sysroot` is not specified.
-                             It should not be used on its own.
-    --sysroot-panic-abort  : Build the sysroot without unwinding support"#
-        );
-        ConfigInfo::show_usage();
-        println!("    --help                 : Show this help");
-    }
+sub_command_decl! {
+    BuildArg => "build",
+    build_sysroot: bool = "--sysroot" => "When used on its own, build backend in dev mode with \
+optimized dependencies and sysroot in dev mode (unoptimized). When used together with \
+`--release`, build backend in release mode with optimized dependencies. When used together with \
+`--release-sysroot`, build the sysroot in release mode with optimized dependencies instead of \
+in dev mode",
+    + config_info: ConfigInfo
 }
 
 fn cleanup_sysroot_previous_build(library_dir: &Path) {
@@ -263,10 +220,6 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     }
     if args.config_info.no_default_features {
         command.push(&"--no-default-features");
-    }
-    let flags = args.flags.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-    for flag in &flags {
-        command.push(flag);
     }
     if args.config_info.prebuilt_backend_path.is_none() {
         run_command_with_output_and_env(&command, None, Some(&env))?;
