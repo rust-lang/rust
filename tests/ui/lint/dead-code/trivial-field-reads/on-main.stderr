@@ -1,0 +1,19 @@
+error: struct `Foo` is never constructed
+  --> $DIR/on-main.rs:5:8
+   |
+LL | struct Foo(usize);
+   |        ^^^
+   |
+note: `Foo` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/on-main.rs:8:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/on-main.rs:2:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -545,7 +545,7 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
-        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+        trivial_usage_sites: Vec<TrivialUsageSite>,
     },
     #[diag(
         "{ $multiple ->
@@ -569,7 +569,7 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
-        ignored_derived_impls: Option<IgnoredDerivedImpls>,
+        trivial_usage_sites: Vec<TrivialUsageSite>,
     },
 }
 
@@ -607,18 +607,17 @@ pub(crate) struct ParentInfo<'tcx> {
 
 #[derive(Subdiagnostic)]
 #[note(
-    "`{$name}` has {$trait_list_len ->
-        [one] a derived impl
-        *[other] derived impls
-    } for the {$trait_list_len ->
-        [one] trait {$trait_list}, but this is
-        *[other] traits {$trait_list}, but these are
-    } intentionally ignored during dead code analysis"
+    "{$names} { $multiple ->
+        *[true] are
+        [false] is
+    } used {$usage_kind}, but this is intentionally ignored during dead code analysis"
 )]
-pub(crate) struct IgnoredDerivedImpls {
-    pub name: Symbol,
-    pub trait_list: DiagSymbolList,
-    pub trait_list_len: usize,
+pub(crate) struct TrivialUsageSite {
+    #[primary_span]
+    pub span: Span,
+    pub names: DiagSymbolList,
+    pub multiple: bool,
+    pub usage_kind: &'static str,
 }
 
 #[derive(Subdiagnostic)]

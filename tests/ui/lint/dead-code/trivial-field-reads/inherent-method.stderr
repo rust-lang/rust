@@ -1,0 +1,22 @@
+error: field `0` is never read
+  --> $DIR/inherent-method.rs:5:12
+   |
+LL | struct Foo(usize);
+   |        --- ^^^^^
+   |        |
+   |        field in this struct
+   |
+   = help: consider removing this field
+note: `0` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/inherent-method.rs:9:5
+   |
+LL |     fn bar(&self) -> usize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/inherent-method.rs:3:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

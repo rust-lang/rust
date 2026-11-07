@@ -1,0 +1,21 @@
+error: field `value` is never read
+  --> $DIR/deduplicate-usage-sites.rs:8:5
+   |
+LL | struct Data {
+   |        ---- field in this struct
+LL |     value: bool,
+   |     ^^^^^
+   |
+note: `value` is used here, but this is intentionally ignored during dead code analysis
+  --> $DIR/deduplicate-usage-sites.rs:12:1
+   |
+LL | fn helper(data: &Data) {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/deduplicate-usage-sites.rs:5:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
