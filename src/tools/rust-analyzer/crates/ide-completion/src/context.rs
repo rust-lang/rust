@@ -249,6 +249,16 @@ impl TypeLocation {
         }
     }
 
+    pub(crate) fn complete_traits(&self) -> bool {
+        match self {
+            TypeLocation::GenericArg { corresponding_param: Some(param), .. } => {
+                matches!(param, ast::GenericParam::TypeParam(_))
+            }
+            TypeLocation::AssocConstEq | TypeLocation::TypeAscription(_) => false,
+            _ => true,
+        }
+    }
+
     pub(crate) fn complete_self_type(&self) -> bool {
         self.complete_types() && !matches!(self, TypeLocation::ImplTarget | TypeLocation::ImplTrait)
     }
