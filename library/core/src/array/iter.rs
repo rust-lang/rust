@@ -228,6 +228,12 @@ impl<T, const N: usize> IntoIter<T, N> {
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         self.unsize_mut().as_mut_slice()
     }
+
+    pub(crate) fn into_inner(self) -> ([MaybeUninit<T>; N], Range<usize>) {
+        let mut this = ManuallyDrop::new(self);
+        let (alive, data) = unsafe { ManuallyDrop::take(&mut this.inner).into_inner() };
+        (data, alive.start()..alive.end())
+    }
 }
 
 #[stable(feature = "array_value_iter_default", since = "1.89.0")]
