@@ -181,6 +181,7 @@ language_item_table! {
     DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct,         GenericRequirement::None;
 
     NonNull,                 sym::non_null,            non_null_trait,             Target::Struct,         GenericRequirement::Exact(1);
+    NonZero,                 sym::NonZero,             nonzero_trait,              Target::Struct,         GenericRequirement::Exact(1);
 
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
     UnsafeUnpin,             sym::unsafe_unpin,        unsafe_unpin_trait,         Target::Trait,          GenericRequirement::Exact(0);
