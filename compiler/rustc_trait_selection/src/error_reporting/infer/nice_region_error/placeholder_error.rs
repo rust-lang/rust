@@ -464,17 +464,17 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
                     self.tcx().hir_node_by_def_id(local_def_id)
             {
-                let body = self.tcx().hir_body(closure.body);
                 // For Fn traits, args[1] is the tupled input types (e.g. `(&mut [u8],)`).
                 let expected_input_tys = expected_args.type_at(1);
                 if let ty::Tuple(input_tys) = *expected_input_tys.kind() {
-                    let suggestions: Vec<_> = body
-                        .params
+                    let suggestions: Vec<_> = closure
+                        .fn_decl
+                        .inputs
                         .iter()
                         .zip(input_tys.iter())
                         .filter_map(|(param, ty)| {
                             // ty_span == pat.span means no explicit type annotation was written.
-                            if param.ty_span == param.pat.span
+                            if param.ty.span == param.pat.span
                                 && ty.is_suggestable(self.tcx(), false)
                             {
                                 Some((param.pat.span.shrink_to_hi(), format!(": {ty}")))

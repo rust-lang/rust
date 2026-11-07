@@ -26,12 +26,12 @@ impl S {
 // because they had similar problems. But the pretty-printing tests currently
 // can't contain compile errors.
 
-fn bare_fn(x: fn(u32, _: u32, a: u32)) { }
+fn bare_fn(x: fn(_: u32, _: u32, a: u32)) { }
 
 extern "C" {
     unsafe fn foreign_fn(_: u32, a: u32);
 }
 
 trait T {
-    fn trait_fn(u32, _: u32, a: u32);
+    fn trait_fn(_: u32, _: u32, a: u32);
 }

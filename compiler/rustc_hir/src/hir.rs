@@ -1952,7 +1952,6 @@ pub struct BodyId {
 /// map using `body_owner_def_id()`.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Body<'hir> {
-    pub params: &'hir [Param<'hir>],
     pub value: &'hir Expr<'hir>,
 }
 
@@ -3062,7 +3061,7 @@ impl<'hir> TraitItem<'hir> {
         expect_const, (&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
             TraitItemKind::Const(ty, rhs), (ty, *rhs);
 
-        expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
+        expect_fn, (&FnSig<'hir>, &TraitFn),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
 
         expect_type, (GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
@@ -3072,9 +3071,9 @@ impl<'hir> TraitItem<'hir> {
 
 /// Represents a trait method's body (or just argument names).
 #[derive(Debug, Clone, Copy, StableHash)]
-pub enum TraitFn<'hir> {
+pub enum TraitFn {
     /// No default body in the trait, just a signature.
-    Required(&'hir [Option<Ident>]),
+    Required,
 
     /// Both signature and body are provided in the trait.
     Provided(BodyId),
@@ -3086,7 +3085,7 @@ pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
     /// An associated function with an optional body.
-    Fn(FnSig<'hir>, TraitFn<'hir>),
+    Fn(FnSig<'hir>, TraitFn),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds<'hir>, Option<&'hir Ty<'hir>>),
@@ -3495,9 +3494,6 @@ pub struct FnPtrTy<'hir> {
     pub abi: ExternAbi,
     pub generic_params: &'hir [GenericParam<'hir>],
     pub decl: &'hir FnDecl<'hir>,
-    // `Option` because bare fn parameter identifiers are optional. We also end up
-    // with `None` in some error cases, e.g. invalid parameter patterns.
-    pub param_idents: &'hir [Option<Ident>],
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]
@@ -3694,6 +3690,8 @@ pub enum TyKind<'hir, Unambig = ()> {
     /// This variant is not always used to represent inference types, sometimes
     /// [`GenericArg::Infer`] is used instead.
     Infer(Unambig),
+    /// Only used as the type of C-variadic (...) parameters
+    CVarArgs,
 }
 
 /// Stores explicit register name from source
@@ -3815,8 +3813,8 @@ pub struct Param<'hir> {
     #[stable_hash(ignore)]
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
-    pub ty_span: Span,
-    pub span: Span,
+    pub ty: &'hir Ty<'hir>,
+    pub param_span: Span,
 }
 
 /// Error type for splatted argument index errors.
@@ -3876,6 +3874,9 @@ impl FnDeclFlags {
 
     /// Bitflag for lifetime elision.
     const LIFETIME_ELISION_ALLOWED_FLAG: u8 = 1 << 4;
+
+    /// Bitflag for whether there is a body associated with this function
+    const HAS_BODY: u8 = 1 << 5;
 
     /// Marker index for "no splatted argument".
     /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `rustc_ast::FnDecl::NO_SPLATTED_ARG_INDEX`.
@@ -3995,15 +3996,28 @@ impl FnDeclFlags {
     pub fn splatted(self) -> Option<u8> {
         if self.splatted == Self::NO_SPLATTED_ARG_INDEX { None } else { Some(self.splatted) }
     }
+
+    pub fn has_body(self) -> bool {
+        (self.flags & Self::HAS_BODY) != 0
+    }
+
+    /// Set whether this fn decl is associated with a body
+    #[must_use = "this method does not modify the receiver"]
+    pub fn set_has_body(mut self, allowed: bool) -> Self {
+        if allowed {
+            self.flags |= Self::HAS_BODY;
+        } else {
+            self.flags &= !Self::HAS_BODY;
+        }
+
+        self
+    }
 }
 
 /// Represents the header (not the body) of a function declaration.
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct FnDecl<'hir> {
-    /// The types of the function's parameters.
-    ///
-    /// Additional argument data is stored in the function's [body](Body::params).
-    pub inputs: &'hir [Ty<'hir>],
+    pub inputs: &'hir [Param<'hir>],
     pub output: FnRetTy<'hir>,
     /// The packed function declaration attributes.
     pub fn_decl_kind: FnDeclFlags,
@@ -4874,7 +4888,7 @@ pub enum ForeignItemKind<'hir> {
     /// `&[Option<Ident>]` is used because of code paths shared with `TraitFn`
     /// and `FnPtrTy`. The sharing is due to all of these cases not allowing
     /// arbitrary patterns for parameters.
-    Fn(FnSig<'hir>, &'hir [Option<Ident>], &'hir Generics<'hir>),
+    Fn(FnSig<'hir>, &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability, Safety),
     /// A foreign type.
@@ -4930,7 +4944,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
             | OwnerNode::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+                kind: ForeignItemKind::Fn(fn_sig, _), ..
             }) => Some(fn_sig),
             _ => None,
         }
@@ -4942,7 +4956,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
             | OwnerNode::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+                kind: ForeignItemKind::Fn(fn_sig, _), ..
             }) => Some(fn_sig.decl),
             _ => None,
         }
@@ -5150,7 +5164,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
-            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _), .. }) => {
                 Some(fn_sig.decl)
             }
             Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. }) => {
@@ -5178,7 +5192,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn { sig: fn_sig, .. }, .. })
-            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _), .. }) => {
                 Some(fn_sig)
             }
             _ => None,
@@ -5271,9 +5285,7 @@ impl<'hir> Node<'hir> {
 
     pub fn generics(self) -> Option<&'hir Generics<'hir>> {
         match self {
-            Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(_, _, generics), ..
-            })
+            Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(_, generics), .. })
             | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
             Node::Item(item) => item.kind.generics(),
@@ -5367,12 +5379,12 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
-    static_assert_size!(Body<'_>, 24);
+    static_assert_size!(Body<'_>, 8);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 88);
-    static_assert_size!(ForeignItemKind<'_>, 56);
+    static_assert_size!(ForeignItem<'_>, 72);
+    static_assert_size!(ForeignItemKind<'_>, 40);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 64);
     static_assert_size!(Generics<'_>, 56);
@@ -5392,8 +5404,8 @@ mod size_asserts {
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
     static_assert_size!(TraitImplHeader<'_>, 48);
-    static_assert_size!(TraitItem<'_>, 88);
-    static_assert_size!(TraitItemKind<'_>, 48);
+    static_assert_size!(TraitItem<'_>, 80);
+    static_assert_size!(TraitItemKind<'_>, 40);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end

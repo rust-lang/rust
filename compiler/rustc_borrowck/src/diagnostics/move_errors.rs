@@ -1,7 +1,7 @@
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{HirTyCtxt, Visitor};
 use rustc_hir::{self as hir, CaptureBy, ExprKind, HirId, Node};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -847,7 +847,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         hir::Node::Param(param) => {
                             // Instead of pointing at the path where we access the value within a
                             // closure, we point at the type of the outer `fn` argument.
-                            param.ty_span
+                            param.ty.span
                         }
                         hir::Node::LetStmt(stmt) => match (stmt.ty, stmt.init) {
                             // We point at the type of the outer let-binding.
@@ -1188,6 +1188,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             cannot_remove: FxHashSet::default(),
             desugar_binding_spans: Vec::new(),
         };
+        finder.visit_fn_decl(tcx.hir_fn_decl(self.mir_hir_id()));
         finder.visit_body(body);
 
         let mut suggestions = Vec::new();

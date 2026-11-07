@@ -6,7 +6,7 @@ use clippy_utils::{is_from_proc_macro, is_lint_allowed, last_path_segment, std_o
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Block, Body, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Stmt, StmtKind, UnOp};
+use rustc_hir::{Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Stmt, StmtKind, UnOp, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::{TyCtxt, TypeckResults};
 use rustc_span::sym;
@@ -168,12 +168,12 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                 .iter()
                 .map(|id| cx.tcx.hir_impl_item(*id))
                 .filter_map(|assoc| {
-                    if let ImplItemKind::Fn(_, body_id) = assoc.kind
+                    if let ImplItemKind::Fn(sig, body_id) = assoc.kind
                         && let body = cx.tcx.hir_body(body_id)
                         && let ExprKind::Block(block, ..) = body.value.kind
                         && !block.span.in_external_macro(cx.sess().source_map())
                     {
-                        Some((assoc, body, block))
+                        Some((assoc, sig.decl, body, block))
                     } else {
                         None
                     }
@@ -186,7 +186,7 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                     if let Some(copy_trait) = self.copy_trait
                         && implements_trait(cx, trait_impl.self_ty(), copy_trait, &[])
                     {
-                        for (assoc, body, _) in assoc_fns {
+                        for (assoc, _, body, _) in assoc_fns {
                             check_clone_on_copy(cx, assoc, body.value);
                         }
                     }
@@ -198,10 +198,10 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                         && lhs == rhs
                         && let Some(ord_trait) = self.ord_trait
                         && implements_trait(cx, trait_impl.self_ty(), ord_trait, &[])
-                        && let Some((assoc, body, block)) =
-                            assoc_fns.find(|(assoc, _, _)| assoc.ident.name == sym::partial_cmp)
+                        && let Some((assoc, decl, _, block)) =
+                            assoc_fns.find(|(assoc, _, _, _)| assoc.ident.name == sym::partial_cmp)
                     {
-                        check_partial_ord_on_ord(cx, assoc, item, body, block);
+                        check_partial_ord_on_ord(cx, assoc, item, decl, block);
                     }
                 },
             }
@@ -292,7 +292,7 @@ fn check_partial_ord_on_ord<'tcx>(
     cx: &LateContext<'tcx>,
     impl_item: &ImplItem<'_>,
     item: &Item<'_>,
-    body: &Body<'_>,
+    decl: &FnDecl<'_>,
     block: &Block<'tcx>,
 ) {
     // If the `cmp` call likely needs to be fully qualified in the suggestion
@@ -326,7 +326,7 @@ fn check_partial_ord_on_ord<'tcx>(
         item.span,
         "non-canonical implementation of `partial_cmp` on an `Ord` type",
         |diag| {
-            let [_, other] = body.params else {
+            let [_, other] = decl.inputs else {
                 return;
             };
             let Some(std_or_core) = std_or_core(cx) else {

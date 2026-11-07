@@ -35,7 +35,7 @@ note: method defined here
    |
 LL | trait Trait2 {
 LL |     fn method(&self) -> u8;
-   |        ^^^^^^  ----
+   |        ^^^^^^ -----
 help: provide the argument
    |
 LL |     reuse Trait2::*(/* value */);
@@ -61,7 +61,7 @@ note: method defined here
    |
 LL | trait Trait1 {
 LL |     fn method(&self) -> u8;
-   |        ^^^^^^  ----
+   |        ^^^^^^ -----
 help: provide the argument
    |
 LL |     reuse Trait1::*(/* value */);

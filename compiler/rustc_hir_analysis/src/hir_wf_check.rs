@@ -195,14 +195,14 @@ pub(super) fn diagnostic_hir_wf_check<'tcx>(
         WellFormedLoc::Param { param_idx, .. } => {
             let fn_decl = tcx.hir_fn_decl_by_hir_id(hir_id).unwrap();
             // Get return type
-            if param_idx as usize == fn_decl.inputs.len() {
+            if param_idx == fn_decl.inputs.len() {
                 match fn_decl.output {
                     hir::FnRetTy::Return(ty) => vec![ty],
                     // The unit type `()` is always well-formed
                     hir::FnRetTy::DefaultReturn(_span) => vec![],
                 }
             } else {
-                vec![&fn_decl.inputs[param_idx as usize]]
+                vec![fn_decl.inputs[param_idx].ty]
             }
         }
         WellFormedLoc::HirId(_) | WellFormedLoc::None => return None,

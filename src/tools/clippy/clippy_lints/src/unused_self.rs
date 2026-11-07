@@ -59,17 +59,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind
             && assoc_item.is_method()
-            && let ImplItemKind::Fn(.., body_id) = &impl_item.kind
+            && let ImplItemKind::Fn(sig, body_id) = &impl_item.kind
             && (!cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) || !self.avoid_breaking_exported_api)
+            && let [self_param, ..] = sig.decl.inputs
             && let body = cx.tcx.hir_body(*body_id)
-            && let [self_param, ..] = body.params
             && !is_local_used(cx, body, self_param.pat.hir_id)
             && !is_todo_unimplemented_stub(cx, body.value)
         {
             span_lint_and_help(
                 cx,
                 UNUSED_SELF,
-                self_param.span,
+                self_param.param_span,
                 "unused `self` argument",
                 None,
                 "consider refactoring to an associated function",

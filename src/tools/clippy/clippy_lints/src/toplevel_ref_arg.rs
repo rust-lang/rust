@@ -54,15 +54,15 @@ impl<'tcx> LateLintPass<'tcx> for ToplevelRefArg {
         cx: &LateContext<'tcx>,
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
-        body: &'tcx Body<'_>,
+        _: &'tcx Body<'_>,
         _: Span,
         _: LocalDefId,
     ) {
         if !matches!(k, FnKind::Closure) {
-            for arg in iter_input_pats(decl, body) {
+            for arg in iter_input_pats(decl) {
                 if let PatKind::Binding(BindingMode(ByRef::Yes(..), _), ..) = arg.pat.kind
                     && is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id)
-                    && !arg.span.in_external_macro(cx.tcx.sess.source_map())
+                    && !arg.ty.span.in_external_macro(cx.tcx.sess.source_map())
                 {
                     span_lint_hir(
                         cx,

@@ -61,7 +61,10 @@ impl ReplaceBox {
                     consumed_locals: &mut self.consumed_locals,
                 },
             )
-            .consume_body(cx.tcx.hir_body(body_id))
+            .consume_body(
+                cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.hir_body_owner(body_id)).unwrap(),
+                cx.tcx.hir_body(body_id)
+            )
             .into_ok();
         }
 
