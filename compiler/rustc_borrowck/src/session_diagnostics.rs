@@ -676,3 +676,16 @@ impl<'a, F: FnOnce(&mut Diag<'_>)> Diagnostic<'a> for TailExprDropOrder<F> {
         diag
     }
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "consider annotating the closure's argument type to explicitly specify its lifetime",
+    applicability = "maybe-incorrect",
+    style = "verbose",
+    code = "{replacement}"
+)]
+pub(crate) struct SuggestClosureAnnotation {
+    #[primary_span]
+    pub span: Span,
+    pub replacement: &'static str,
+}

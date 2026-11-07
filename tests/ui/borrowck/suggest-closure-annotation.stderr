@@ -1,0 +1,87 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:14:11
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(&a);
+   |         - ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+   |
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let f = |v: &_| map[v];
+   |               ++++
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:24:11
+   |
+LL |     for mut a in 0..1 {
+   |         ----- binding `a` declared here
+LL |         f(&mut a);
+   |         - ^^^^^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+   |
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let mut f = |v: &mut _| {
+   |                   ++++++++
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:32:14
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(0, &a);
+   |         -    ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+   |
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let f = |x, y: &_| map[y] + x;
+   |                  ++++
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:40:15
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f("", &a);
+   |         -     ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+   |
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let f = |x: &str, y: &_| map[y] + x.len();
+   |                        ++++
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/suggest-closure-annotation.rs:48:12
+   |
+LL |         f(&String::new());
+   |         -  ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |         |  |
+   |         |  creates a temporary value which is freed while still in use
+   |         borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let f = |v: &_| map.get(v).copied().unwrap_or(0);
+   |               ++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0597, E0716.
+For more information about an error, try `rustc --explain E0597`.
