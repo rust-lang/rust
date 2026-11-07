@@ -89,6 +89,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
 
     match bx.cx.tcx.sess.target.arch {
         Arch::PowerPC | Arch::PowerPC64 => match scalar.primitive() {
+            Primitive::Bool => unreachable!(),
             Primitive::Int(integer, _) => match integer {
                 Integer::I8 | Integer::I16 => unreachable!(),
                 Integer::I32 | Integer::I64 => { /* fall through */ }
@@ -337,7 +338,9 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
     let is_int = match layout.layout.backend_repr() {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
-            rustc_abi::Primitive::Int(_, _) | rustc_abi::Primitive::Pointer(_) => true,
+            rustc_abi::Primitive::Bool
+            | rustc_abi::Primitive::Int(_, _)
+            | rustc_abi::Primitive::Pointer(_) => true,
             rustc_abi::Primitive::Float(_) => false,
         },
         _ => unreachable!("all instances of VaArgSafe are represented as scalars"),
@@ -487,7 +490,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
                 Primitive::Float(Float::F16 | Float::F32 | Float::F64) => true,
                 Primitive::Float(Float::F128) => false,
-                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+                Primitive::Bool | Primitive::Int(_, _) | Primitive::Pointer(_) => false,
                 Primitive::Float(Float::F16B) => {
                     bug!("`f16b` use in varadics unsupported on s390x")
                 }
@@ -606,6 +609,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
         Primitive::Pointer(_) => {
             num_gp_registers += 1;
         }
+        Primitive::Bool => bug!("bool should not be allowed in va_arg"),
     };
 
     match layout.layout.backend_repr() {
@@ -690,6 +694,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
                 copy_to_temporary_if_more_aligned(bx, reg_addr, layout, gp_align)
             }
             Primitive::Float(_) => bx.inbounds_ptradd(reg_save_area_v, fp_offset_v),
+            Primitive::Bool => bug!("bool should not be allowed in va_arg"),
         },
         BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset: offset } => {
             let ty_lo = bx.cx().scalar_pair_element_backend_type(layout, 0, false);
@@ -730,6 +735,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
                     let (reg_lo_addr, reg_hi_addr) = match scalar1.primitive() {
                         Primitive::Float(_) => (fp_addr, gp_addr),
                         Primitive::Int(_, _) | Primitive::Pointer(_) => (gp_addr, fp_addr),
+                        Primitive::Bool => bug!("bool should not be allowed in va_arg"),
                     };
 
                     let tmp = bx.alloca(layout.size, layout.align);

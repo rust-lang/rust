@@ -21,7 +21,7 @@ where
         return match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
                 Primitive::Float(float) => float.size() == outer_size,
-                Primitive::Int(_, _) | Primitive::Pointer(_) => false,
+                Primitive::Bool | Primitive::Int(_, _) | Primitive::Pointer(_) => false,
             },
             BackendRepr::Memory { .. } => {
                 // Structs, unions and arrays all qualify.
