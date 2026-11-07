@@ -560,6 +560,7 @@ impl SyntaxFactory {
         ast
     }
 
+    // FIXME: exists make.expr_bin
     pub fn expr_bin_op(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
         let ast::Expr::BinExpr(ast) = make::expr_bin_op(lhs.clone(), op, rhs.clone()) else {
             unreachable!()
@@ -2050,6 +2051,18 @@ impl SyntaxFactory {
             builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
             let ast::Meta::TokenTreeMeta(meta) = &ast else { unreachable!() };
             builder.map_node(tt.syntax().clone(), meta.token_tree().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn meta_path(&self, path: ast::Path) -> ast::Meta {
+        let ast = make::meta_path(path.clone());
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
             builder.finish(&mut mapping);
         }
 

@@ -1,7 +1,11 @@
 use hir::{HasSource, Name, sym};
 use syntax::{
     AstNode,
-    ast::{self, HasName},
+    ast::{
+        self, HasName, HasVisibility,
+        edit::{AstNodeEdit, IndentLevel},
+    },
+    syntax_editor::Position,
 };
 
 use crate::{
@@ -43,7 +47,7 @@ pub(crate) fn generate_is_empty_from_len(
     acc: &mut Assists,
     ctx: &AssistContext<'_, '_>,
 ) -> Option<()> {
-    let fn_node = ctx.find_node_at_offset::<ast::Fn>()?;
+    let fn_node = ctx.find_node_at_offset_with_descend::<ast::Fn>()?;
     let fn_name = fn_node.name()?;
 
     if fn_name.text() != "len" {
@@ -69,21 +73,49 @@ pub(crate) fn generate_is_empty_from_len(
     }
 
     let node = len_fn.source(ctx.sema.db)?;
-    let range = node.syntax().value.text_range();
+    let range = crate::utils::original_range_in(ctx.file_id(), &ctx.sema, node.value.syntax())?;
 
     acc.add(
         AssistId::generate("generate_is_empty_from_len"),
         "Generate a is_empty impl from a len function",
         range,
         |builder| {
-            let code = r#"
+            let editor = builder.make_editor(ctx.source_file().syntax());
+            let make = editor.make();
+            let place = crate::utils::cover_edit_range(ctx.source_file().syntax(), range);
+            let indent = IndentLevel::from_element(place.start());
 
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }"#
-            .to_owned();
-            builder.insert(range.end(), code)
+            let call =
+                make.expr_method_call(make.expr_self(), make.name_ref("len"), make.arg_list([]));
+            let expr_bin_op = make.expr_bin_op(
+                call.into(),
+                ast::BinaryOp::CmpOp(ast::CmpOp::Eq { negated: false }),
+                make.expr_literal("0").into(),
+            );
+            let must_use = make.attr_outer(make.meta_path(make.ident_path("must_use")));
+            let code = make.fn_(
+                [must_use],
+                fn_node.visibility(),
+                make.name("is_empty"),
+                None,
+                None,
+                make.param_list(Some(make.self_param()), []),
+                make.block_expr([], Some(expr_bin_op)),
+                Some(make.ret_type(make.ty("bool"))),
+                false,
+                fn_node.const_token().is_some(),
+                fn_node.unsafe_token().is_some(),
+                false,
+            );
+
+            editor.insert_all(
+                Position::after(place.end()),
+                vec![
+                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    code.indent(indent).syntax().clone().into(),
+                ],
+            );
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -208,6 +240,73 @@ impl MyStruct {
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generate_const_is_empty() {
+        check_assist(
+            generate_is_empty_from_len,
+            r#"
+struct MyStruct { data: Vec<String> }
+
+impl MyStruct {
+    #[must_use]
+    p$0ub const fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+"#,
+            r#"
+struct MyStruct { data: Vec<String> }
+
+impl MyStruct {
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generate_is_empty_in_macro() {
+        check_assist(
+            generate_is_empty_from_len,
+            r#"
+//- proc_macros: identity
+struct MyStruct { data: Vec<String> }
+
+#[proc_macros::identity]
+impl MyStruct {
+    #[must_use]
+    p$0ub const fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+"#,
+            r#"
+struct MyStruct { data: Vec<String> }
+
+#[proc_macros::identity]
+impl MyStruct {
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 }
