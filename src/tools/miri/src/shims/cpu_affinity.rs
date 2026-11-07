@@ -100,22 +100,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         mask: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let pid = this.read_scalar(pid)?.to_u32()?;
-        let cpusetsize = this.read_target_usize(cpusetsize)?;
-        let mask = this.read_pointer(mask)?;
+        let pid = ecx.read_scalar(pid)?.to_u32()?;
+        let cpusetsize = ecx.read_target_usize(cpusetsize)?;
+        let mask = ecx.read_pointer(mask)?;
 
-        if this.machine.thread_cpu_affinity.is_none() {
+        if ecx.machine.thread_cpu_affinity.is_none() {
             throw_unsup_format!("`sched_getaffinity` is not supported on #![no_core] programs")
         }
 
         let thread_id = if pid == 0 {
-            this.active_thread()
-        } else if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
+            ecx.active_thread()
+        } else if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android) {
             // On Linux/Android, pid can be a TID as returned by `gettid`.
-            let Some(thread_id) = this.get_thread_id_from_linux_tid(pid) else {
-                this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
+            let Some(thread_id) = ecx.get_thread_id_from_linux_tid(pid) else {
+                ecx.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
                 return interp_ok(());
             };
             thread_id
@@ -126,21 +126,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // The mask is stored in chunks, and the size must be a whole number of chunks.
-        let chunk_size = CpuAffinityMask::chunk_size(this);
+        let chunk_size = CpuAffinityMask::chunk_size(ecx);
 
-        if this.ptr_is_null(mask)? {
-            this.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
+        if ecx.ptr_is_null(mask)? {
+            ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
         } else if cpusetsize == 0 || cpusetsize.checked_rem(chunk_size).unwrap() != 0 {
             // we only copy whole chunks of size_of::<c_ulong>()
-            this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+            ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
         } else if let Some(cpuset) =
-            this.machine.thread_cpu_affinity.as_ref().unwrap().get(&thread_id)
+            ecx.machine.thread_cpu_affinity.as_ref().unwrap().get(&thread_id)
         {
             let cpuset = cpuset.clone();
             // we only copy whole chunks of size_of::<c_ulong>()
             let byte_count = Ord::min(cpuset.as_slice().len(), cpusetsize.try_into().unwrap());
-            this.write_bytes_ptr(mask, cpuset.as_slice()[..byte_count].iter().copied())?;
-            this.write_int(0, dest)?;
+            ecx.write_bytes_ptr(mask, cpuset.as_slice()[..byte_count].iter().copied())?;
+            ecx.write_int(0, dest)?;
         } else {
             unreachable!("we validated the thread ID above");
         }
@@ -155,22 +155,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         mask: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let pid = this.read_scalar(pid)?.to_u32()?;
-        let cpusetsize = this.read_target_usize(cpusetsize)?;
-        let mask = this.read_pointer(mask)?;
+        let pid = ecx.read_scalar(pid)?.to_u32()?;
+        let cpusetsize = ecx.read_target_usize(cpusetsize)?;
+        let mask = ecx.read_pointer(mask)?;
 
-        if this.machine.thread_cpu_affinity.is_none() {
+        if ecx.machine.thread_cpu_affinity.is_none() {
             throw_unsup_format!("`sched_setaffinity` is not supported on #![no_core] programs")
         }
 
         let thread_id = if pid == 0 {
-            this.active_thread()
-        } else if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android) {
+            ecx.active_thread()
+        } else if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android) {
             // On Linux/Android, pid can be a TID as returned by `gettid`.
-            let Some(thread_id) = this.get_thread_id_from_linux_tid(pid) else {
-                this.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
+            let Some(thread_id) = ecx.get_thread_id_from_linux_tid(pid) else {
+                ecx.set_errno_and_return_neg1(LibcError("ESRCH"), dest)?;
                 return interp_ok(());
             };
             thread_id
@@ -180,25 +180,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             )
         };
 
-        if this.ptr_is_null(mask)? {
-            this.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
+        if ecx.ptr_is_null(mask)? {
+            ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest)?;
         } else {
             // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`.
             // Any unspecified bytes are treated as zero here (none of the CPUs are configured).
             // This is not exactly documented, so we assume that this is the behavior in practice.
             let bits_slice =
-                this.read_bytes_ptr_strip_provenance(mask, Size::from_bytes(cpusetsize))?;
+                ecx.read_bytes_ptr_strip_provenance(mask, Size::from_bytes(cpusetsize))?;
             // This ignores the bytes beyond `CpuAffinityMask::CPU_MASK_BYTES`
             let bits_array: [u8; CpuAffinityMask::CPU_MASK_BYTES] =
                 std::array::from_fn(|i| bits_slice.get(i).copied().unwrap_or(0));
-            match CpuAffinityMask::from_array(this, this.machine.num_cpus, bits_array) {
+            match CpuAffinityMask::from_array(ecx, ecx.machine.num_cpus, bits_array) {
                 Some(cpuset) => {
-                    this.machine.thread_cpu_affinity.as_mut().unwrap().insert(thread_id, cpuset);
-                    this.write_int(0, dest)?;
+                    ecx.machine.thread_cpu_affinity.as_mut().unwrap().insert(thread_id, cpuset);
+                    ecx.write_int(0, dest)?;
                 }
                 None => {
                     // The intersection between the mask and the available CPUs was empty.
-                    this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+                    ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
                 }
             }
         }
