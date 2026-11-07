@@ -9,6 +9,22 @@ or file new issues specifically to get help.
 All contributors are expected to follow our [Code of
 Conduct](CODE_OF_CONDUCT.md).
 
+## Table of contents
+
+* [LLM policy](#llm-policy)
+  * [Experimental rules](#experimental-rules)
+* [Test and file issues](#test-and-file-issues)
+* [Fuzzing guidelines](#fuzzing-guidelines)
+* [Create test cases](#create-test-cases)
+  * [Updating snapshots](#updating-snapshots)
+* [Debugging](#debugging)
+* [Hack!](#hack)
+  * [Guidelines](#guidelines)
+  * [Run Rustfmt from source code](#run-rustfmt-from-source-code)
+  * [Gate formatting changes](#gate-formatting-changes)
+  * [A quick tour of Rustfmt](#a-quick-tour-of-rustfmt)
+* [Linting](#linting)
+* [Subtree syncs](#subtree-syncs)
 
 ## LLM policy
 
