@@ -172,6 +172,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id
         | sym::type_id_array_len
         | sym::type_id_element_ty
+        | sym::type_id_env_var
         | sym::type_id_eq
         | sym::type_id_field_representing_type
         | sym::type_id_fields
@@ -294,6 +295,16 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_array_len => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_element_ty => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_eq => (0, 0, vec![type_id_ty(), type_id_ty()], tcx.types.bool),
+        sym::type_id_env_var => {
+            let slice_u8 = Ty::new_slice(tcx, tcx.types.u8);
+            let slice_u8_static: Ty<'_> = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, slice_u8);
+
+            let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon };
+            let var_name =
+                Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), tcx.types.str_);
+
+            (0, 0, vec![var_name], Ty::new_option(tcx, slice_u8_static))
+        }
         sym::type_id_field_representing_type => {
             (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
         }
