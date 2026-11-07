@@ -431,7 +431,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Err(e) => return ecx.set_errno_and_return_neg1(e, &dest),
                     };
 
-                    if address_ptr != Pointer::null() {
+                    if !ecx.ptr_is_null(address_ptr)? {
                         // We only attempt a write if the address pointer is not a null pointer.
                         // If the address pointer is a null pointer the user isn't interested in the
                         // address and we don't need to write anything.
@@ -517,7 +517,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // POSIX says the destination is entirely ignored for TCP sockets, but that does not
                 // match reality, so we eagerly read the destination when one is given.
-                if dest_addr_ptr == Pointer::null() || dest_addr_len_int == 0 {
+                if this.ptr_is_null(dest_addr_ptr)? || dest_addr_len_int == 0 {
                     // If the address pointer is a nullptr or the address length is zero we ignore
                     // the destination address. BSDs return EINVAL when the address length is zero
                     // and the address pointer is an invalid pointer; that is so far away from what
@@ -691,7 +691,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     };
 
                     if let Some((addr_ptr, addr_len_mplace)) = dest_addr  {
-                        if addr_ptr == Pointer::null() {
+                        if ecx.ptr_is_null(addr_ptr)? {
                             // When the `addr_ptr` is a null pointer the caller is not interested in
                             // the socket address.
                             origin_addr_opt = None;
@@ -781,7 +781,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        if option_value_ptr == Pointer::null() || option_len_ptr == Pointer::null() {
+        if this.ptr_is_null(option_value_ptr)? || this.ptr_is_null(option_len_ptr)? {
             // This socket option returns a value and thus we need to return EFAULT
             // when either the value or the length pointers are null pointers.
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
