@@ -15,7 +15,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, Node};
 use rustc_lint::{LateContext, LateLintPass, Lint, impl_lint_pass};
-use rustc_middle::ty::{self, ClauseKind, ClausePolarity, GenericArgKind, Ty};
+use rustc_middle::ty::{self, ClauseKind, ClausePolarity, GenericArgKind, Ty, CallerBoundsIterator};
 use rustc_span::{DesugaringKind, Span, Spanned, SyntaxContext};
 use std::cmp::Ordering;
 
@@ -149,21 +149,17 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,no_run
-    /// fn main() {
-    ///     (10..=0).for_each(|x| println!("{}", x));
+    /// (10..=0).for_each(|x| println!("{}", x));
     ///
-    ///     let arr = [1, 2, 3, 4, 5];
-    ///     let sub = &arr[3..1];
-    /// }
+    /// let arr = [1, 2, 3, 4, 5];
+    /// let sub = &arr[3..1];
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     (0..=10).rev().for_each(|x| println!("{}", x));
+    /// (0..=10).rev().for_each(|x| println!("{}", x));
     ///
-    ///     let arr = [1, 2, 3, 4, 5];
-    ///     let sub = &arr[1..3];
-    /// }
+    /// let arr = [1, 2, 3, 4, 5];
+    /// let sub = &arr[1..3];
     /// ```
     #[clippy::version = "1.45.0"]
     pub REVERSED_EMPTY_RANGES,
@@ -432,6 +428,8 @@ fn can_switch_ranges<'tcx>(
                 .tcx
                 .param_env(id)
                 .caller_bounds()
+            .all_clauses(cx.tcx)
+            .iter()
                 .into_iter()
                 .any(|c| {
                     if let ClauseKind::Trait(t) = c.kind().skip_binder()

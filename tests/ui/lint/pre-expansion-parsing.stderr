@@ -1,9 +1,10 @@
-error[E0452]: malformed lint attribute input
+error: malformed `expect` attribute input
   --> $DIR/pre-expansion-parsing.rs:6:10
    |
 LL | #[expect(expect(expect))]
-   |          ^^^^^^^^^^^^^^ bad attribute argument
+   |          ^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[expect(dead_code)]` for `dead_code`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0452`.

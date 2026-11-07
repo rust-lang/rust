@@ -1,6 +1,6 @@
 use rustc_abi::ExternAbi;
-use rustc_ast::ItemKind;
 use rustc_attr_ir::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::*;
 use rustc_errors::msg;
 use rustc_feature::{AttributeStability, Features};
@@ -32,6 +32,7 @@ impl SingleAttributeParser for LinkNameParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
@@ -74,7 +75,7 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn extend(
@@ -262,14 +263,10 @@ impl CombineAttributeParser for LinkParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        if cx.target != Target::ForeignMod {
+        let AstTarget::ForeignMod(fm) = cx.ast_target else {
             return;
-        }
-
-        let item = cx.target_item.expect("missing AST target item for Target::ForeignMod");
-        let ItemKind::ForeignMod(fm) = &item.kind else {
-            panic!("expected foreign module AST target item for Target::ForeignMod");
         };
+
         let abi = fm.abi.map_or(ExternAbi::FALLBACK, |abi| {
             abi.symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
                 cx.dcx().span_delayed_bug(
@@ -531,6 +528,7 @@ impl SingleAttributeParser for LinkSectionParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",

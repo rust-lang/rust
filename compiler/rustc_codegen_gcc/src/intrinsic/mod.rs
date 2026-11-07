@@ -5,7 +5,7 @@ mod simd;
 use std::iter;
 
 use gccjit::{CType, ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
-use rustc_abi::{Align, BackendRepr, HasDataLayout, WrappingRange};
+use rustc_abi::{Align, BackendRepr, HasDataLayout};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
@@ -222,7 +222,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 );
                 return IntrinsicResult::WroteIntoPlace;
             }
-            sym::breakpoint => {
+            sym::breakpoint | sym::resumable_breakpoint => {
                 unimplemented!();
             }
             sym::va_arg => {
@@ -233,7 +233,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let ptr = args[0].immediate();
-                let abi_align = result_layout.align.abi;
+                let abi_align = result_layout.align;
                 let ptr_align = if name == sym::volatile_load { abi_align } else { Align::ONE };
                 let load = self.volatile_load(result.layout.gcc_type(self), ptr, ptr_align);
                 if let BackendRepr::Scalar(scalar) = result.layout.backend_repr {
@@ -593,35 +593,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_ptr = func.get_address(None);
         let fn_ty = fn_ptr.get_type();
 
-        let mut call_args = vec![];
-
-        for arg in args {
-            match arg.val {
-                OperandValue::ZeroSized => {}
-                OperandValue::Immediate(_) => call_args.push(arg.immediate()),
-                OperandValue::Pair(a, b) => {
-                    call_args.push(a);
-                    call_args.push(b);
-                }
-                OperandValue::Ref(op_place_val) => {
-                    let mut llval = op_place_val.llval;
-                    // We can't use `PlaceRef::load` here because the argument
-                    // may have a type we don't treat as immediate, but the ABI
-                    // used for this call is passing it by-value. In that case,
-                    // the load would just produce `OperandValue::Ref` instead
-                    // of the `OperandValue::Immediate` we need for the call.
-                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
-                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-                        if scalar.is_bool() {
-                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                        }
-                        // We store bools as `i8` so we need to truncate to `i1`.
-                        llval = self.to_immediate_scalar(llval, scalar);
-                    }
-                    call_args.push(llval);
-                }
-            }
-        }
+        let call_args = args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>();
 
         // FIXME directly use the llvm intrinsic adjustment functions here
         let llret =
@@ -748,7 +720,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             return;
         }
         if self.is_sized_indirect() {
-            OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align.abi)).store(bx, dst)
+            OperandValue::Ref(PlaceValue::new_sized(val, self.layout.align)).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` cannot be stored");
         } else if let PassMode::Cast { ref cast, .. } = self.mode {
@@ -758,7 +730,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             if can_store_through_cast_ptr {
                 let cast_ptr_llty = bx.type_ptr_to(cast.gcc_type(bx));
                 let cast_dst = bx.pointercast(dst.val.llval, cast_ptr_llty);
-                bx.store(val, cast_dst, self.layout.align.abi);
+                bx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -786,7 +758,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
-                    self.layout.align.abi,
+                    self.layout.align,
                     scratch,
                     scratch_align,
                     bx.const_usize(self.layout.size.bytes()),

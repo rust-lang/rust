@@ -196,7 +196,7 @@ pub(crate) struct ExplicitDestructorCall {
     #[label("explicit destructor calls not allowed")]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: ExplicitDestructorCallSugg,
+    pub sugg: Option<ExplicitDestructorCallSugg>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1393,4 +1393,12 @@ pub(crate) struct WrapConstBlock {
     pub left: Span,
     #[suggestion_part(code = " }}")]
     pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the `{$adt_name}` must contain one field for wrapping the return value in delegation")]
+pub(crate) struct DelegationInvalidAdtForReturnWrapping {
+    #[primary_span]
+    pub span: Span,
+    pub adt_name: String,
 }

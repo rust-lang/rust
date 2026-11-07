@@ -9,6 +9,7 @@ LL |     let _ = S::new::<isize,f64>(1, 1.0);
 note: associated function defined here, with 1 generic parameter: `U`
   --> $DIR/bad-mid-path-type-params.rs:6:8
    |
+LL | impl<T> S<T> {
 LL |     fn new<U>(x: T, _: U) -> S<T> {
    |        ^^^ -
 
@@ -37,6 +38,7 @@ LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
 note: associated function defined here, with 1 generic parameter: `U`
   --> $DIR/bad-mid-path-type-params.rs:14:8
    |
+LL | trait Trait<T> {
 LL |     fn new<U>(x: T, y: U) -> Self;
    |        ^^^ -
 
@@ -65,6 +67,7 @@ LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
 note: associated function defined here, with 1 generic parameter: `U`
   --> $DIR/bad-mid-path-type-params.rs:14:8
    |
+LL | trait Trait<T> {
 LL |     fn new<U>(x: T, y: U) -> Self;
    |        ^^^ -
 

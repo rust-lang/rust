@@ -2,11 +2,12 @@
 go-to: "file://" + |DOC_PATH| + "/test_docs/notable/struct.Wrapper.html"
 show-text: true
 store-css: (".notable-trait-badge-container", {"background-color": background_color})
-// The background color should be different.
-assert-css-false: (".notable-trait-badge-container > a", {"background-color": |background_color|})
+// The border color should be different.
+assert-css-false: (".notable-trait-badge-container > a:not(.tooltip)", {"border-color": |background_color|})
+assert-css-false: (".notable-trait-badge-container > a:not(.tooltip)", {"border-color": "transparent"})
 
 store-css: ("#trait-implementations", {"color": text_color})
-assert-css: (".notable-trait-badge-container > a", {
+assert-css: (".notable-trait-badge-container > a:not(.tooltip)", {
     // The color should be the same as the "main color".
     "color": |text_color|,
     // Checking some additional CSS values.

@@ -20,8 +20,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:16:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
-   |                                               -------               ------- has type `VaList<'1>`
-   |                                               |
+   |                                               -------       ------  ------- has type `VaList<'1>`
+   |                                               |             |
+   |                                               |             lifetime `'2` introduced here
    |                                               has type `&mut VaList<'2>`
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'1` must outlive `'2`
@@ -30,8 +31,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:21:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
-   |                                               -------               ------- has type `VaList<'2>`
-   |                                               |
+   |                                               -------       ------  ------- has type `VaList<'2>`
+   |                                               |             |
+   |                                               |             lifetime `'1` introduced here
    |                                               has type `&mut VaList<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
@@ -44,8 +46,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:21:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
-   |                                               -------               ------- has type `VaList<'2>`
-   |                                               |
+   |                                               -------       ------  ------- has type `VaList<'2>`
+   |                                               |             |
+   |                                               |             lifetime `'1` introduced here
    |                                               has type `&mut VaList<'1>`
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'2` must outlive `'1`
@@ -74,8 +77,9 @@ error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:28:5
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaList, mut ap1: ...) {
-   |                                               -------               ------- has type `VaList<'1>`
-   |                                               |
+   |                                               -------       ------  ------- has type `VaList<'1>`
+   |                                               |             |
+   |                                               |             lifetime `'2` introduced here
    |                                               has type `&mut VaList<'2>`
 LL |     *ap0 = ap1.clone();
    |     ^^^^ assignment requires that `'1` must outlive `'2`

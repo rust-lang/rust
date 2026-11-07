@@ -226,7 +226,7 @@ fn check_fn_inner<'tcx>(
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
 
     for typ in types {
-        if !typ.span.eq_ctxt(span) {
+        if typ.span.ctxt() != span.ctxt() {
             return;
         }
 
@@ -269,7 +269,7 @@ fn check_fn_inner<'tcx>(
     let elidable = could_use_elision(cx, sig.decl, body, trait_sig, generics.params, msrv);
     let has_elidable_lts = elidable
         .as_ref()
-        .is_some_and(|(_, usages)| !usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)));
+        .is_some_and(|(_, usages)| !usages.iter().any(|usage| usage.ident.span.ctxt() != span.ctxt()));
 
     // Only check is_from_proc_macro if we're about to emit a lint (it's an expensive check)
     if (has_elidable_lts || report_extra_lifetimes) && is_from_proc_macro() {

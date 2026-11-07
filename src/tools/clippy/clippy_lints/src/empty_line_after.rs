@@ -9,7 +9,7 @@ use rustc_ast::{AssocItemKind, AttrKind, AttrStyle, Attribute, Crate, Item, Item
 use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _, impl_lint_pass};
-use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw, sym};
+use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, Symbol, kw, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -244,7 +244,7 @@ impl Stop {
     }
 
     fn from_attr(cx: &EarlyContext<'_>, attr: &Attribute) -> Option<Self> {
-        let SpanData { lo, hi, .. } = attr.span.data();
+        let (lo, hi) = attr.span.lo_hi();
         let file = cx.sess().source_map().lookup_source_file(lo);
 
         Some(Self {

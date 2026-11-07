@@ -4,6 +4,7 @@
 
 use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::alloc::Allocator;
+use crate::macros::rustdoc_skip_body;
 use crate::marker::PhantomData;
 use crate::mem::{self, ManuallyDrop};
 #[cfg(not(target_vendor = "uwp"))]
@@ -78,6 +79,7 @@ impl OwnedSocket {
     // FIXME(strict_provenance_magic): we defined RawSocket to be a u64 ;-;
     #[allow(implicit_provenance_casts)]
     #[cfg(not(target_vendor = "uwp"))]
+    #[rustdoc_skip_body]
     pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
         cvt(unsafe {
             sys::c::SetHandleInformation(
@@ -99,6 +101,7 @@ impl BorrowedSocket<'_> {
     /// Creates a new `OwnedSocket` instance that shares the same underlying
     /// object as the existing `BorrowedSocket` instance.
     #[stable(feature = "io_safety", since = "1.63.0")]
+    #[rustdoc_skip_body]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedSocket> {
         let mut info = unsafe { mem::zeroed::<sys::c::WSAPROTOCOL_INFOW>() };
         let result = unsafe {
@@ -154,6 +157,7 @@ impl BorrowedSocket<'_> {
 }
 
 /// Returns the last error from the Windows socket interface.
+#[rustdoc_skip_body]
 fn last_error() -> io::Error {
     io::Error::from_raw_os_error(unsafe { sys::c::WSAGetLastError() })
 }
@@ -194,6 +198,7 @@ impl FromRawSocket for OwnedSocket {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl Drop for OwnedSocket {
     #[inline]
+    #[rustdoc_skip_body]
     fn drop(&mut self) {
         unsafe {
             let _ = sys::c::closesocket(self.socket.as_inner() as sys::c::SOCKET);

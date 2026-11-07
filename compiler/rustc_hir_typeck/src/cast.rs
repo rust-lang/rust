@@ -242,6 +242,7 @@ pub fn check_cast<'tcx>(
 
     let root_ctxt = crate::TypeckRootCtxt::new(tcx, local_def_id);
     let fn_ctxt = FnCtxt::new(&root_ctxt, param_env, local_def_id);
+    fn_ctxt.write_ty(hir_id, from_ty);
 
     if let Ok(check) = CastCheck::new(
         &fn_ctxt, e, from_ty, to_ty,
@@ -562,7 +563,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .must_apply_modulo_regions()
                         {
                             let to_ty = if let ty::Adt(def, args) = self.cast_ty.kind() {
-                                fcx.tcx.value_path_str_with_args(def.did(), args)
+                                fcx.tcx.value_path_str_with_args(def.did(), *args)
                             } else {
                                 self.cast_ty.to_string()
                             };

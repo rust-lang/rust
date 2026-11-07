@@ -1304,6 +1304,7 @@ impl ExitStatusError {
 #[cfg(target_os = "linux")]
 mod linux_child_ext {
     use crate::io::ErrorKind;
+    use crate::macros::rustdoc_skip_body;
     use crate::os::linux::process as os;
     use crate::sys::{FromInner, process as imp};
     use crate::{io, mem};
@@ -1319,6 +1320,7 @@ mod linux_child_ext {
                 .ok_or_else(|| io::const_error!(ErrorKind::Uncategorized, "no pidfd was created."))
         }
 
+        #[rustdoc_skip_body]
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {
             self.handle
                 .pidfd

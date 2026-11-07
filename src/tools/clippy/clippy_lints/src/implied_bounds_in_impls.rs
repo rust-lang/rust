@@ -181,7 +181,7 @@ fn try_resolve_type<'tcx>(
 /// Here i32 != i64, so this will return false.
 fn is_same_generics<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_predicate_args: &'tcx [ty::GenericArg<'tcx>],
+    trait_predicate_args: ty::GenericArgs<'tcx>,
     implied_by_args: &'tcx [GenericArg<'tcx>],
     implied_args: &'tcx [GenericArg<'tcx>],
     implied_by_def_id: DefId,

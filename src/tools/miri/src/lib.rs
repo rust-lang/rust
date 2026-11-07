@@ -46,6 +46,8 @@
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
     clippy::len_zero,
+    clippy::while_let_loop,
+    clippy::new_instead_of_clear,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]
@@ -94,6 +96,7 @@ mod helpers;
 mod intrinsics;
 mod machine;
 mod math;
+mod meta_obj;
 mod operator;
 mod provenance_gc;
 mod shims;
@@ -165,6 +168,7 @@ pub use crate::machine::{
     MiriMachine, MiriMemoryKind, PrimitiveLayouts, Provenance, ProvenanceExtra, RejectOpWith,
     ValidationMode,
 };
+pub use crate::meta_obj::{EvalContextExt as _, MetaObj};
 pub use crate::operator::EvalContextExt as _;
 pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};
 pub use crate::shims::EmulateItemResult;
@@ -197,9 +201,10 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     // we let Miri do these checks.
     "-Zmir-enable-passes=-CheckAlignment,-CheckNull,-CheckEnums",
     // FIXME: Disable some passes to make higher opt levels also work.
-    // - ReferencePropagation is incompatible with SB's ref-to-raw castb behavior.
+    // - ReferencePropagation is incompatible with SB's ref-to-raw cast behavior.
     //   The fix here is to ditch SB and use TB instead but we're not yet ready for that.
     // - GVN is not yet adjusted for implicit retags during assignments.
+    //   <https://github.com/rust-lang/rust/issues/165327>
     "-Zmir-enable-passes=-ReferencePropagation,-GVN",
     // Deduplicating diagnostics means we miss events when tracking what happens during an
     // execution. Let's not do that.

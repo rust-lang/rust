@@ -58,6 +58,7 @@ use alloc::wtf8::Wtf8Buf;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::iter::FusedIterator;
+use crate::macros::rustdoc_skip_body;
 use crate::sys::os_str::Buf;
 use crate::sys::{AsInner, FromInner};
 
@@ -88,6 +89,7 @@ pub impl(self) trait OsStringExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStringExt for OsString {
+    #[rustdoc_skip_body]
     fn from_wide(wide: &[u16]) -> OsString {
         FromInner::from_inner(Buf { inner: Wtf8Buf::from_wide(wide) })
     }
@@ -125,6 +127,7 @@ pub impl(self) trait OsStrExt {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStrExt for OsStr {
     #[inline]
+    #[rustdoc_skip_body]
     fn encode_wide(&self) -> EncodeWide<'_> {
         EncodeWide { inner: self.as_inner().inner.encode_wide() }
     }

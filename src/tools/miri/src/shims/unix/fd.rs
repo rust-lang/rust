@@ -8,11 +8,11 @@ use rand::RngExt;
 use rustc_abi::{Align, Size};
 use rustc_target::spec::Os;
 
-use crate::shims::FileDescriptionRef;
 use crate::shims::files::{DynFileDescriptionRef, FdNum, FileDescription};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::shims::unix::*;
+use crate::shims::{FdTable, FileDescriptionRef};
 use crate::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -77,20 +77,6 @@ pub trait UnixFileDescription: FileDescription {
         throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
     }
 
-    /// Modifies device parameters.
-    /// `op` is the device-dependent operation code. It's either a `c_long` or `c_int`, depending on
-    /// the target and whether it uses glibc or musl.
-    /// `arg` is the optional third argument which exists depending on the operation code. It's either
-    /// an integer or a pointer.
-    fn ioctl<'tcx>(
-        &self,
-        _op: Scalar,
-        _args: Varargs<'tcx, '_>,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
-        throw_unsup_format!("cannot use ioctl on {}", self.name());
-    }
-
     /// Returns this file description as a Unix socket, if it represents one.
     fn as_socket(
         self: FileDescriptionRef<Self>,
@@ -141,7 +127,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
-        interp_ok(Scalar::from_i32(this.machine.fds.insert(fd)))
+        let Some(new_fd) = this.machine.fds.insert(fd) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        interp_ok(Scalar::from_i32(new_fd))
     }
 
     fn dup2(&mut self, old_fd_num: FdNum, new_fd_num: FdNum) -> InterpResult<'tcx, Scalar> {
@@ -150,6 +139,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
+        if !FdTable::fd_num_valid(new_fd_num) {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        }
         if new_fd_num != old_fd_num {
             if this.machine.fds.get(new_fd_num).is_some() {
                 // Close the FD currently holding this spot.
@@ -157,7 +149,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 assert!(ret.to_i32().unwrap() == 0);
             }
             // Insert new FD in this spot.
-            let actual_fd_num = this.machine.fds.insert_with_min_num(fd, new_fd_num);
+            let Some(actual_fd_num) = this.machine.fds.insert_with_min_num(fd, new_fd_num) else {
+                panic!("we validated new_fd_num above")
+            };
             assert_eq!(actual_fd_num, new_fd_num);
         }
         interp_ok(Scalar::from_i32(new_fd_num))
@@ -214,15 +208,52 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Handle common opcodes.
         let fioclex = this.eval_libc("FIOCLEX");
         let fionclex = this.eval_libc("FIONCLEX");
+        let fionbio = this.eval_libc("FIONBIO");
+
         if op == fioclex || op == fionclex {
             // Since we don't support `exec`, those are NOPs.
-            return interp_ok(Scalar::from_i32(0));
-        }
+            interp_ok(Scalar::from_i32(0))
+        } else if op == fionbio {
+            // On these OSes, the Rust standard library uses the ioctl for changing the blocking mode
+            // of certain file descriptors, so we trust that it is reasonable and controls the same
+            // internal flag as fcntl.
+            if !matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
+            {
+                // FIONBIO cannot be used to change the blocking mode of some file descriptors on solarish targets:
+                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
+                // Since there might be more targets which do weird things with this option, we use
+                // an allowlist instead of just denying solarish targets.
+                throw_unsup_format!(
+                    "ioctl: setting FIONBIO is unsupported on {} on target {}",
+                    fd.name(),
+                    this.tcx.sess.target.os
+                );
+            }
 
-        // Since some ioctl operations use the return value as an output parameter, we cannot strictly use the convention of
-        // zero indicating success and -1 indicating an error.
-        let return_value = fd.as_unix().ioctl(op, varargs, this)?;
-        interp_ok(Scalar::from_i32(return_value))
+            let ([value_ptr], _) = this.check_varargs(shim_varargs![*i32], varargs, "ioctl")?;
+            let value = this.deref_pointer(&value_ptr)?;
+            let non_block = this.read_scalar(&value)?.to_i32()? != 0;
+
+            let o_nonblock = this.eval_libc_i32("O_NONBLOCK");
+
+            // We change the blocking mode of the file description using `set_flags`.
+            // For this we first fetch the current flags using `get_flags` and then
+            // we add or subtract O_NONBLOCK to them.
+
+            let unix_fd = fd.as_unix();
+            let mut flags = unix_fd.get_flags(this)?.to_i32()?;
+            if non_block {
+                // Add O_NONBLOCK to the existing flags.
+                flags |= o_nonblock
+            } else {
+                // Remove O_NONBLOCK from the existing flags.
+                flags &= !o_nonblock
+            }
+            unix_fd.set_flags(flags & !this.setfl_ignored_flags(), this)?;
+            interp_ok(Scalar::from_i32(0))
+        } else {
+            throw_unsup_format!("ioctl: unsupported operation {op:#x} on {}", fd.name())
+        }
     }
 
     fn fcntl(
@@ -269,11 +300,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let ([start], _) = this.check_varargs(shim_varargs![i32], varargs, cmd_name)?;
                 let start = this.read_scalar(&start)?.to_i32()?;
 
-                if let Some(fd) = this.machine.fds.get(fd_num) {
-                    interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start)))
-                } else {
-                    this.set_errno_and_return_neg1_i32(LibcError("EBADF"))
+                let Some(fd) = this.machine.fds.get(fd_num) else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                };
+                if !FdTable::fd_num_valid(start) {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
                 }
+                let Some(new_fd_num) = this.machine.fds.insert_with_min_num(fd, start) else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
+                interp_ok(Scalar::from_i32(new_fd_num))
             }
             cmd if cmd == f_getfl => {
                 // Check if this is a valid open file descriptor.
@@ -293,19 +329,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_varargs(shim_varargs![i32], varargs, "fcntl(fd, F_SETFL, ...)")?;
                 let flag = this.read_scalar(&flag)?.to_i32()?;
 
-                // Ignore flags that never get stored by SETFL.
-                // "File access mode (O_RDONLY, O_WRONLY, O_RDWR) and file
-                // creation flags (i.e., O_CREAT, O_EXCL, O_NOCTTY, O_TRUNC)
-                // in arg are ignored."
-                let ignored_flags = this.eval_libc_i32("O_RDONLY")
-                    | this.eval_libc_i32("O_WRONLY")
-                    | this.eval_libc_i32("O_RDWR")
-                    | this.eval_libc_i32("O_CREAT")
-                    | this.eval_libc_i32("O_EXCL")
-                    | this.eval_libc_i32("O_NOCTTY")
-                    | this.eval_libc_i32("O_TRUNC");
-
-                fd.as_unix().set_flags(flag & !ignored_flags, this)
+                fd.as_unix().set_flags(flag & !this.setfl_ignored_flags(), this)
             }
             cmd if this.tcx.sess.target.os == Os::MacOs
                 && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
@@ -469,8 +493,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd)?.to_i32()?;
-        let iov_ptr = this.read_pointer(iov)?;
-        let iovcnt: u64 = this.read_scalar(iovcnt)?.to_i32()?.try_into().unwrap();
+        let iov = this.deref_pointer(iov)?;
+        let iovcnt = this.read_scalar(iovcnt)?.to_i32()?;
+
         // `readv` is the same as `preadv` without an offset.
         let offset = if let Some(offset) = offset {
             if matches!(this.tcx.sess.target.os, Os::Solaris) {
@@ -483,33 +508,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None
         };
 
+        let Ok(iovcnt) = u64::try_from(iovcnt) else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+
         // Check that the FD exists.
         let Some(fd) = this.machine.fds.get(fd) else {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let iovec_layout = this.libc_array_ty_layout("iovec", iovcnt);
-        let iov_ptr_mplace = this.ptr_to_mplace(iov_ptr, iovec_layout);
-
-        // Read list of buffers from `iov`.
-        let mut buffers = Vec::new();
-
-        let mut array = this.project_array_fields(&iov_ptr_mplace)?;
-        while let Some((_idx, iovec)) = array.next(this)? {
-            let iov_len_field = this.project_field_named(&iovec, "iov_len")?;
-            let iov_len: u64 = this
-                .read_scalar(&iov_len_field)?
-                .to_int(iov_len_field.layout.size)?
-                .try_into()
-                .unwrap();
-
-            let iov_base_field = this.project_field_named(&iovec, "iov_base")?;
-            let iov_base_ptr = this.read_pointer(&iov_base_field)?;
-
-            buffers.push((iov_base_ptr, iov_len));
-        }
-
-        let total_bytes = buffers.iter().map(|(_, len)| len).sum::<u64>();
+        let Some((buffers, total_bytes)) = this.read_iovec_array(&iov, iovcnt)? else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
 
         // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
         let tmp_ptr: Pointer = this
@@ -592,8 +602,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd)?.to_i32()?;
-        let iov_ptr = this.read_pointer(iov)?;
-        let iovcnt: u64 = this.read_scalar(iovcnt)?.to_i32()?.try_into().unwrap();
+        let iov = this.deref_pointer(iov)?;
+        let iovcnt = this.read_scalar(iovcnt)?.to_i32()?;
         // `writev` is the same as `pwritev` without an offset.
         let offset = if let Some(offset) = offset {
             if matches!(this.tcx.sess.target.os, Os::Solaris) {
@@ -606,33 +616,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None
         };
 
+        let Ok(iovcnt) = u64::try_from(iovcnt) else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+
         // Check that the FD exists.
         let Some(fd) = this.machine.fds.get(fd) else {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let iovec_layout = this.libc_array_ty_layout("iovec", iovcnt);
-        let iov_ptr_mplace = this.ptr_to_mplace(iov_ptr, iovec_layout);
-
-        // Read list of buffers from `iov`.
-        let mut buffers = Vec::new();
-
-        let mut array = this.project_array_fields(&iov_ptr_mplace)?;
-        while let Some((_idx, iovec)) = array.next(this)? {
-            let iov_len_field = this.project_field_named(&iovec, "iov_len")?;
-            let iov_len: u64 = this
-                .read_scalar(&iov_len_field)?
-                .to_int(iov_len_field.layout.size)?
-                .try_into()
-                .unwrap();
-
-            let iov_base_field = this.project_field_named(&iovec, "iov_base")?;
-            let iov_base_ptr = this.read_pointer(&iov_base_field)?;
-
-            buffers.push((iov_base_ptr, iov_len));
-        }
-
-        let total_bytes = buffers.iter().map(|(_, len)| len).sum::<u64>();
+        let Some((buffers, total_bytes)) = this.read_iovec_array(&iov, iovcnt)? else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
 
         // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
         let tmp_ptr: Pointer = this
@@ -788,5 +783,64 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         };
         interp_ok(())
+    }
+
+    /// Flags that never get stored by SETFL.
+    fn setfl_ignored_flags(&self) -> i32 {
+        let this = self.eval_context_ref();
+
+        // The F_SETFL man page specifies that the "[...] File access mode
+        // (O_RDONLY, O_WRONLY, O_RDWR) and file creation flags (i.e., O_CREAT,
+        // O_EXCL, O_NOCTTY, O_TRUNC) in arg are ignored."
+
+        this.eval_libc_i32("O_RDONLY")
+            | this.eval_libc_i32("O_WRONLY")
+            | this.eval_libc_i32("O_RDWR")
+            | this.eval_libc_i32("O_CREAT")
+            | this.eval_libc_i32("O_EXCL")
+            | this.eval_libc_i32("O_NOCTTY")
+            | this.eval_libc_i32("O_TRUNC")
+    }
+
+    /// Read the first `iovcnt` entries of the `iovec` array `iov`.
+    /// Returns the `(iov_base, iov_len)` pair of every entry together with the sum of all
+    /// `iov_len` values, after checking that every buffer is valid memory.
+    /// If that sum does not fit in the target's `ssize_t`, [`None`] is returned instead, and
+    /// the caller should fail with `EINVAL`.
+    fn read_iovec_array(
+        &mut self,
+        iov: &MPlaceTy<'tcx>,
+        iovcnt: u64,
+    ) -> InterpResult<'tcx, Option<(Vec<(Pointer, u64)>, u64)>> {
+        let ecx = self.eval_context_mut();
+        let ssize_max = u64::try_from(ecx.target_isize_max()).unwrap();
+
+        let mut buffers = Vec::new();
+        let mut total_bytes: u64 = 0;
+        for idx in 0..iovcnt {
+            let iov_elem = ecx.project_c_array_field(iov, idx)?;
+            let iov_len_field = ecx.project_field_named(&iov_elem, "iov_len")?;
+            let iov_len = ecx.read_target_usize(&iov_len_field)?;
+            let iov_base_field = ecx.project_field_named(&iov_elem, "iov_base")?;
+            let iov_base_ptr = ecx.read_pointer(&iov_base_field)?;
+
+            // POSIX functions taking an `iovec` array, such as `readv` and `writev`, "shall fail"
+            // with EINVAL if "the sum of the iov_len values in the iov array overflowed an
+            // ssize_t". This also covers a single `iov_len` that is larger than `SSIZE_MAX`.
+            match total_bytes.checked_add(iov_len) {
+                Some(sum) if sum <= ssize_max => total_bytes = sum,
+                _ => return interp_ok(None),
+            }
+            buffers.push((iov_base_ptr, iov_len));
+        }
+
+        // Check that all buffers are valid memory, like `read` and `write` do. This also means
+        // that every `iov_len` is bounded by the size of a real allocation, so callers do not
+        // have to deal with arbitrarily large lengths.
+        for &(ptr, len) in &buffers {
+            ecx.check_ptr_access(ptr, Size::from_bytes(len), CheckInAllocMsg::MemoryAccess)?;
+        }
+
+        interp_ok(Some((buffers, total_bytes)))
     }
 }

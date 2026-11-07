@@ -208,8 +208,18 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
         }
     }
 
-    // Replace the return variable
+    // Replace the return variable and initialize it once for all return paths.
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.types.unit, source_info);
+    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Use(
+                Operand::zero_sized_constant(tcx.types.unit, source_info.span),
+                WithRetag::Yes,
+            ),
+        ))),
+    ));
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
 

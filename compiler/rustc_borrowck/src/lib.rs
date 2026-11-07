@@ -154,7 +154,7 @@ struct PropagatedBorrowCheckResults<'tcx> {
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
 }
 
-type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgsRef<'tcx>, Locations)>;
+type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgs<'tcx>, Locations)>;
 
 /// After we borrow check a closure, we are left with various
 /// requirements that we have inferred between the free regions that
@@ -2756,6 +2756,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             }
 
             let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+            let span = span.trim_start(mut_span).unwrap_or(span);
 
             tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
         }

@@ -13,7 +13,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, Binder, Const, DelayedSet, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::TyOrConstInferVar;
@@ -33,7 +33,7 @@ use crate::infer::InferCtxt;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{EvaluateConstErr, sizedness_fast_path};
+use crate::traits::{EvaluateConstErr, implicit_fast_path};
 
 pub(crate) type PendingPredicateObligations<'tcx> = ThinVec<PendingPredicateObligation<'tcx>>;
 
@@ -398,7 +398,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         let infcx = self.selcx.infcx;
 
         if !infcx.disable_trait_solver_fast_paths()
-            && sizedness_fast_path(infcx.tcx, obligation.predicate, obligation.param_env)
+            && implicit_fast_path(infcx.tcx, obligation.predicate, obligation.param_env)
         {
             return ProcessResult::Changed(thin_vec![]);
         }
@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 /// Returns the set of inference variables contained in `args`.
 fn args_infer_vars<'tcx>(
     selcx: &SelectionContext<'_, 'tcx>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, GenericArgs<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar> {
     selcx
         .infcx

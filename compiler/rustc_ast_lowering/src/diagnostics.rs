@@ -266,6 +266,18 @@ pub(crate) enum InvalidAsmTemplateModifierRegClassSub {
     SupportModifier { class_name: Symbol, modifiers: DiagSymbolList<char> },
     #[note("the `{$class_name}` register class does not support template modifiers")]
     DoesNotSupportModifier { class_name: Symbol },
+
+    /// Enabling a feature is needed to use the requested modifier.
+    #[note(
+        "the `{$class_name}` register class only supports the following template modifiers on stable: {$stable_modifiers}"
+    )]
+    #[note("enabling the `{$feature}` feature will allow using: {$all_modifiers}")]
+    ModifierIsGated {
+        class_name: Symbol,
+        feature: Symbol,
+        stable_modifiers: DiagSymbolList<char>,
+        all_modifiers: DiagSymbolList<char>,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -386,16 +398,28 @@ pub(crate) struct MatchArmWithNoBody {
 pub(crate) struct NeverPatternWithBody {
     #[primary_span]
     #[label("this will never be executed")]
-    #[suggestion("remove this expression", code = "", applicability = "maybe-incorrect")]
     pub span: Span,
+    #[suggestion(
+        "remove the match arm body, leaving only the pattern",
+        code = "",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub remove_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag("a guard on a never pattern will never be run")]
 pub(crate) struct NeverPatternWithGuard {
     #[primary_span]
-    #[suggestion("remove this guard", code = "", applicability = "maybe-incorrect")]
     pub span: Span,
+    #[suggestion(
+        "remove the guard, leaving only the pattern",
+        code = "",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub remove_span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -1,8 +1,8 @@
-#![allow(foo = "")] //~ ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
+#![allow(foo = "")] //~ ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
 fn main() {
 }

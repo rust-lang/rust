@@ -43,6 +43,8 @@ fn semantics<F>(
     restricted_pat6: fn(&true: ()),
     //~^ ERROR patterns aren't allowed in function pointer types
 
+    variadics: extern "C" fn(...),
+
     duplicate_names: fn(x: usize, x: usize),
 ) { }
 
@@ -72,6 +74,8 @@ fn syntax<F>(
     restricted_pat4: fn(false: ()),
     restricted_pat5: fn(&_: ()),
     restricted_pat6: fn(&true: ()),
+
+    variadics: extern "C" fn(...),
 ) { }
 
 struct Thing { a: bool, b: bool }

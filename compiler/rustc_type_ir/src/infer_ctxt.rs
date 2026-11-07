@@ -12,8 +12,8 @@ use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
 use crate::solve::{TyOrConstInferVar, VisibleForLeakCheck};
 use crate::{
-    self as ty, Const, Interner, PredicateProxy, Region, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self as ty, CallerBoundsIterator, Const, Interner, PredicateProxy, Region, TyVid, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
 mod private {
@@ -600,7 +600,7 @@ where
     Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
-    for clause in param_env.caller_bounds() {
+    for clause in param_env.caller_bounds().non_trait_clauses().iter() {
         if let ty::ClauseKind::UnstableFeature(sym) = clause.kind().skip_binder() {
             if sym == symbol {
                 return true;

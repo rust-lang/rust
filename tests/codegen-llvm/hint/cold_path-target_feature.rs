@@ -28,10 +28,10 @@ pub fn test1(x: bool) {
     }
 
     // CHECK-LABEL: @test1(
-    // CHECK: br i1 %x, label %bb1, label %bb2, !prof ![[NUM:[0-9]+]]
-    // CHECK: bb2:
+    // CHECK: br i1 %x, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM:[0-9]+]]
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
-    // CHECK: bb1:
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
 }
 
@@ -46,10 +46,10 @@ pub fn with_target_feature(x: bool) {
     }
 
     // CHECK-LABEL: @with_target_feature(
-    // CHECK: br i1 %x, label %bb1, label %bb2, !prof ![[NUM]]
-    // CHECK: bb2:
+    // CHECK: br i1 %x, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM]]
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
-    // CHECK: bb1:
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
 }
 

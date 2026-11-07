@@ -1,7 +1,5 @@
 //@ compile-flags:-g
 
-//@ ignore-windows-gnu: #128981
-
 // Note: u128 visualization was not supported in 10.0.22621.3233 but was fixed in 10.0.26100.2161.
 
 // FIXME(#133107): this is temporarily marked as `only-64bit` because of course 32-bit msvc has

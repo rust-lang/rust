@@ -1,0 +1,28 @@
+error: `gen` is a keyword in the 2024 edition
+  --> $DIR/gen_in_macro_input.rs:8:10
+   |
+LL |     wat!(gen);
+   |          ^^^ help: you can use a raw identifier to stay compatible: `r#gen`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/gen-keyword.html>
+note: the lint level is defined here
+  --> $DIR/gen_in_macro_input.rs:6:12
+   |
+LL |     #[deny(keyword_idents_2024)]
+   |            ^^^^^^^^^^^^^^^^^^^
+
+warning: the `deny` attribute cannot be used on macro calls
+  --> $DIR/gen_in_macro_input.rs:6:7
+   |
+LL |     #[deny(keyword_idents_2024)]
+   |       ^^^^
+LL |
+LL |     wat!(gen);
+   |
+   = help: the `deny` attribute can be applied to associated consts, associated types, break expressions, const parameters, constants, crates, data types, enum variants, extern crates, for loops, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, loops, macro defs, match arms, modules, pattern fields, statics, struct fields, trait aliases, traits, type aliases, type parameters, use statements, and while loops
+   = note: attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion
+   = note: requested on the command line with `-W unused-attributes`
+
+error: aborting due to 1 previous error; 1 warning emitted
+

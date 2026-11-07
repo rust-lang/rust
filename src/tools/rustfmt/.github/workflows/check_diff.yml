@@ -51,6 +51,8 @@ jobs:
     steps:
     - name: checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Build check_diff binary
       working-directory: ./check_diff
@@ -60,19 +62,25 @@ jobs:
       working-directory: ./check_diff
       env:
         CHECK_DIFF_LOG: info
+        GITHUB_EVENT_INPUTS_COMMIT_HASH: ${{ github.event.inputs.commit_hash }}
+        GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS: ${{ github.event.inputs.rustfmt_configs }}
+        GITHUB_EVENT_INPUTS_CLONE_URL: ${{ github.event.inputs.clone_url }}
+        GITHUB_EVENT_INPUTS_BRANCH_NAME: ${{ github.event.inputs.branch_name }}
+        GITHUB_EVENT_INPUTS_LANGUAGE_EDITION: ${{ github.event.inputs.language_edition }}
+        GITHUB_EVENT_INPUTS_STYLE_EDITION: ${{ github.event.inputs.style_edition }}
       shell: bash
       run: |
         OPTIONS=""
 
-        if [[ -n "${{ github.event.inputs.commit_hash }}" ]]; then
-          OPTIONS+="--commit-hash ${{ github.event.inputs.commit_hash }} "
+        if [[ -n "${GITHUB_EVENT_INPUTS_COMMIT_HASH}" ]]; then
+          OPTIONS+="--commit-hash ${GITHUB_EVENT_INPUTS_COMMIT_HASH} "
         fi
 
-        if [[ -n "${{ github.event.inputs.rustfmt_configs }}" ]]; then
-          OPTIONS+="--rustfmt-config ${{ github.event.inputs.rustfmt_configs }} "
+        if [[ -n "${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS}" ]]; then
+          OPTIONS+="--rustfmt-config ${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS} "
         fi
 
-        target/release/check_diff ${{ github.event.inputs.clone_url }} ${{ github.event.inputs.branch_name }} \
-          --edition ${{ github.event.inputs.language_edition }} \
-          --style-edition ${{ github.event.inputs.style_edition }} \
+        target/release/check_diff ${GITHUB_EVENT_INPUTS_CLONE_URL} ${GITHUB_EVENT_INPUTS_BRANCH_NAME} \
+          --edition ${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION} \
+          --style-edition ${GITHUB_EVENT_INPUTS_STYLE_EDITION} \
           $OPTIONS

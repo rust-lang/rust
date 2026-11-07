@@ -54,7 +54,9 @@ use rustc_abi::ExternAbi;
 use rustc_attr_ir::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
+use rustc_errors::{
+    Applicability, Diag, DiagStyledString, IntoDiagArg, MultiSpan, StringPart, pluralize,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
@@ -64,8 +66,8 @@ use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
-    self, List, Mutability, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, Unnormalized,
+    self, IsRigid, List, Mutability, ParamEnv, Region, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, bug, sym};
 use thin_vec::ThinVec;
@@ -713,7 +715,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         t1_out: &mut DiagStyledString,
         t2_out: &mut DiagStyledString,
         path: String,
-        args: &'tcx [ty::GenericArg<'tcx>],
+        args: &[ty::GenericArg<'tcx>],
         other_path: String,
         other_ty: Ty<'tcx>,
     ) -> bool {
@@ -752,9 +754,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn cmp_fn_sig(
         &self,
         sig1: ty::PolyFnSig<'tcx>,
-        fn_def1: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
+        fn_def1: Option<(DefId, Option<ty::GenericArgs<'tcx>>)>,
         sig2: ty::PolyFnSig<'tcx>,
-        fn_def2: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
+        fn_def2: Option<(DefId, Option<ty::GenericArgs<'tcx>>)>,
     ) -> (DiagStyledString, DiagStyledString) {
         let sig1 = self.normalize_fn_sig(Unnormalized::new_wip(sig1));
         let sig2 = self.normalize_fn_sig(Unnormalized::new_wip(sig2));
@@ -1174,7 +1176,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // process starts here
         match (t1.kind(), t2.kind()) {
-            (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
+            (&ty::Adt(def1, sub1_args), &ty::Adt(def2, sub2_args)) => {
+                let sub1 = sub1_args.as_slice();
+                let sub2 = sub2_args.as_slice();
                 let did1 = def1.did();
                 let did2 = def2.did();
 
@@ -1182,8 +1186,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let generics2 = self.tcx.generics_of(did2);
 
                 let non_default_after_default = generics1
-                    .check_concrete_type_after_default(self.tcx, sub1)
-                    || generics2.check_concrete_type_after_default(self.tcx, sub2);
+                    .check_concrete_type_after_default(self.tcx, sub1_args)
+                    || generics2.check_concrete_type_after_default(self.tcx, sub2_args);
                 let sub_no_defaults_1 = if non_default_after_default {
                     generics1.own_args(sub1)
                 } else {
@@ -1407,8 +1411,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 }}
                             }
                             // We skip the type of `Self`:
-                            let args1 = &trait_ref1.args[1..];
-                            let args2 = &trait_ref2.args[1..];
+                            let args1 = &trait_ref1.args.as_slice()[1..];
+                            let args2 = &trait_ref2.args.as_slice()[1..];
                             self.compare_generics(&mut values, args1, args2);
                         } else {
                             values
@@ -1462,7 +1466,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
-        secondary_span: Option<(Span, Cow<'static, str>, bool)>,
+        secondary_span: Option<(MultiSpan, Cow<'static, str>, bool)>,
         mut values: Option<ty::ParamEnvAnd<'tcx, ValuePairs<'tcx>>>,
         terr: TypeError<'tcx>,
         prefer_label: bool,
@@ -1638,9 +1642,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         };
 
-        let mut label_or_note = |span: Span, msg: Cow<'static, str>| {
-            if (prefer_label && is_simple_error) || &[span] == diag.span.primary_spans() {
-                diag.span_label(span, msg);
+        let mut label_or_note = |span: MultiSpan, msg: Cow<'static, str>| {
+            if !span.has_span_labels()
+                && span.span_context().is_empty()
+                && ((prefer_label && is_simple_error)
+                    || span.primary_spans() == diag.span.primary_spans())
+            {
+                for span in span.primary_spans() {
+                    diag.span_label(*span, msg.clone());
+                }
             } else {
                 diag.span_note(span, msg);
             }
@@ -1656,9 +1666,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     terr.to_string(self.tcx)
                 };
                 label_or_note(secondary_span, terr);
-                label_or_note(span, secondary_msg);
+                label_or_note(span.into(), secondary_msg);
             } else {
-                label_or_note(span, terr.to_string(self.tcx));
+                label_or_note(span.into(), terr.to_string(self.tcx));
                 label_or_note(secondary_span, secondary_msg);
             }
         } else if let Some(values) = values
@@ -1670,12 +1680,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
             let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
             if expected == found {
-                label_or_note(span, terr.to_string(self.tcx));
+                label_or_note(span.into(), terr.to_string(self.tcx));
             } else {
-                label_or_note(span, Cow::from(format!("expected {expected}, found {found}")));
+                label_or_note(
+                    span.into(),
+                    Cow::from(format!("expected {expected}, found {found}")),
+                );
             }
         } else {
-            label_or_note(span, terr.to_string(self.tcx));
+            label_or_note(span.into(), terr.to_string(self.tcx));
         }
 
         if let Some(param_env) = param_env {
@@ -2187,7 +2200,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn format_on_type_error_notes(
         &self,
         directive: &Directive,
-        args: &ty::GenericArgsRef<'tcx>,
+        args: &ty::GenericArgs<'tcx>,
         item_def: ty::AdtDef<'tcx>,
         expected_ty: Ty<'tcx>,
         found_ty: Ty<'tcx>,
@@ -2466,6 +2479,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
     /// FloatVar inference type are compatible with themselves or their concrete types (Int and
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
+    /// Non-rigid aliases are treated just like TyVar since normalization can be ambiguous here.
     pub fn same_type_modulo_infer<T: relate::Relate<TyCtxt<'tcx>>>(&self, a: T, b: T) -> bool {
         let (a, b) = self.deeply_resolve_ignoring_regions((a, b));
         SameTypeModuloInfer(self).relate(a, b).is_ok()
@@ -2484,9 +2498,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
         a_ty: Ty<'tcx>,
         _: Ty<'tcx>,
         _: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         relate::relate_args_invariantly(self, a_args, b_args)?;
         Ok(a_ty)
@@ -2515,7 +2529,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
                 ty::Float(_) | ty::Infer(ty::InferTy::FloatVar(_)),
             )
             | (ty::Infer(ty::InferTy::TyVar(_)), _)
-            | (_, ty::Infer(ty::InferTy::TyVar(_))) => Ok(a),
+            | (_, ty::Infer(ty::InferTy::TyVar(_)))
+            | (ty::Alias(IsRigid::No, _), _)
+            | (_, ty::Alias(IsRigid::No, _)) => Ok(a),
             (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Mismatch),
             _ => relate::structurally_relate_tys(self, a, b),
         }

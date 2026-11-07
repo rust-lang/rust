@@ -121,7 +121,7 @@ fn render(
         } else {
             compute_type_match(completion, &ctx.completion.rebase_ty(&func.ty(db)))
         },
-        exact_name_match: compute_exact_name_match(completion, &call),
+        exact_name_match: compute_exact_name_match(completion, name.as_str()),
         function,
         trait_: trait_info,
         is_skipping_completion: matches!(func_kind, FuncKind::Method(_, Some(_))),
@@ -394,7 +394,7 @@ fn params<'db>(
     ctx.config.callable.as_ref()?;
 
     // Don't add parentheses if the expected type is a function reference with the same signature.
-    if let Some(expected) = ctx.expected_type.as_ref().filter(|e| e.is_fn())
+    if let Some(expected) = ctx.expected.ty.as_ref().filter(|e| e.is_fn())
         && let Some(expected) = expected.as_callable(ctx.db)
         && let Some(completed) = func.ty(ctx.db).as_callable(ctx.db)
         && expected.sig() == completed.sig()
@@ -403,8 +403,8 @@ fn params<'db>(
         return None;
     }
     // Handle generic signature, do not use FnSig::eq
-    if ctx.expected_type.as_ref().is_none_or(|it| it.is_unknown()) // only process generic expected
-        && let Some(expected) = &ctx.expected_func
+    if ctx.expected.ty.as_ref().is_none_or(|it| it.is_unknown()) // only process generic expected
+        && let Some(expected) = &ctx.expected.func
         && let Some(completed) = func.ty(ctx.db).as_callable(ctx.db)
         && expected.n_params() == completed.n_params()
         && ctx.rebase_ty(&expected.return_type()).could_unify_with(ctx.db, ret_type)

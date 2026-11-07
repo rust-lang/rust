@@ -723,10 +723,10 @@ impl<T> [T] {
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
     #[inline(always)]
     #[must_use]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
     }
@@ -754,8 +754,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     #[inline(always)]
     #[must_use]
     #[rustc_no_writable]
@@ -5326,6 +5326,32 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(Range { start: 1, end: 3 }));
     /// assert_eq!(iter.next(), Some(Range { start: 4, end: 4 }));
     /// assert_eq!(iter.next(), Some(Range { start: 5, end: 6 }));
+    /// ```
+    /// Returning `None` with a slice not aligned to the elements of the base array:
+    /// ```
+    /// use core::range::Range;
+    /// use core::slice::from_ref;
+    ///
+    /// let arr: &[[u8; 4]] = &[[0, 1, 2, 3], [4, 5, 6, 7]];
+    /// let flattened: &[u8] = arr.as_flattened();
+    ///
+    /// // This sub-slice is aligned with the first element of `arr`:
+    /// // &[[0, 1, 2, 3], [4, 5, 6, 7]]
+    /// // &[[0, 1, 2, 3]]
+    /// let aligned_elem: &[u8; 4] = flattened[0..4].try_into().unwrap();
+    /// let aligned_slice: &[[u8; 4]] = from_ref(aligned_elem);
+    ///
+    /// // `aligned_slice` is `&arr[0..1]`
+    /// assert_eq!(arr.subslice_range(aligned_slice), Some(Range { start: 0, end: 1 }));
+    ///
+    /// // This sub-slice is **not** aligned to the elements of `arr`, despite pointing inside it:
+    /// // &[[0, 1, 2, 3], [4, 5, 6, 7]]
+    /// //    &[[1, 2, 3,   4]]
+    /// let misaligned_elem: &[u8; 4] = flattened[1..5].try_into().unwrap();
+    /// let misaligned_slice: &[[u8; 4]] = from_ref(misaligned_elem);
+    ///
+    /// // `misaligned_slice` has no corresponding slice of `arr`
+    /// assert_eq!(arr.subslice_range(misaligned_slice), None);
     /// ```
     #[must_use]
     #[stable(feature = "substr_range", since = "1.98.0")]

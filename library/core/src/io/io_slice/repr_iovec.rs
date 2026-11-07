@@ -18,7 +18,7 @@ pub(crate) struct IoSlice<'a> {
 
 impl<'a> IoSlice<'a> {
     #[inline]
-    pub(crate) fn new(buf: &'a [u8]) -> IoSlice<'a> {
+    pub(crate) const fn new(buf: &'a [u8]) -> IoSlice<'a> {
         IoSlice {
             vec: iovec { iov_base: buf.as_ptr() as *mut u8 as *mut c_void, iov_len: buf.len() },
             _p: PhantomData,
@@ -26,10 +26,8 @@ impl<'a> IoSlice<'a> {
     }
 
     #[inline]
-    pub(crate) fn advance(&mut self, n: usize) {
-        if self.vec.iov_len < n {
-            panic!("advancing IoSlice beyond its length");
-        }
+    pub(crate) const fn advance(&mut self, n: usize) {
+        assert!(n <= self.vec.iov_len, "advancing IoSlice beyond its length");
 
         // SAFETY:
         //  * `n <= iov_len` as asserted above.
@@ -56,7 +54,7 @@ pub(crate) struct IoSliceMut<'a> {
 
 impl<'a> IoSliceMut<'a> {
     #[inline]
-    pub(crate) fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+    pub(crate) const fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut {
             vec: iovec { iov_base: buf.as_mut_ptr() as *mut c_void, iov_len: buf.len() },
             _p: PhantomData,
@@ -64,10 +62,8 @@ impl<'a> IoSliceMut<'a> {
     }
 
     #[inline]
-    pub(crate) fn advance(&mut self, n: usize) {
-        if self.vec.iov_len < n {
-            panic!("advancing IoSliceMut beyond its length");
-        }
+    pub(crate) const fn advance(&mut self, n: usize) {
+        assert!(n <= self.vec.iov_len, "advancing IoSliceMut beyond its length");
 
         // SAFETY:
         //  * `n <= iov_len` as asserted above.
@@ -79,7 +75,7 @@ impl<'a> IoSliceMut<'a> {
     }
 
     #[inline]
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub(crate) const fn as_slice(&self) -> &[u8] {
         // SAFETY:
         //  * `iov_base` and `iov_len` come from a prior decomposition of a valid slice.
         unsafe { slice::from_raw_parts(self.vec.iov_base as *mut u8, self.vec.iov_len) }
@@ -93,7 +89,7 @@ impl<'a> IoSliceMut<'a> {
     }
 
     #[inline]
-    pub(crate) fn as_mut_slice(&mut self) -> &mut [u8] {
+    pub(crate) const fn as_mut_slice(&mut self) -> &mut [u8] {
         // SAFETY:
         //  * `iov_base` and `iov_len` come from a prior decomposition of a valid slice.
         unsafe { slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len) }

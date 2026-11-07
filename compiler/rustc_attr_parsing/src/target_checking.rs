@@ -6,7 +6,7 @@ use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
 };
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
@@ -113,12 +113,11 @@ impl<'sess> AttributeParser<'sess> {
 
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
-        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, false);
-            return;
-        }
-        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, true);
+        if let AllowedTargets::AllowList(policies) | AllowedTargets::AllowListWarnRest(policies) = allowed_targets
+            // If only crate is `Allow`
+            && policies.iter().filter(|p| matches!(p, Allow(_))).all(|p| *p == Allow(Target::Crate))
+        {
+            Self::check_crate_level(cx, allowed_targets);
             return;
         }
 
@@ -130,6 +129,8 @@ impl<'sess> AttributeParser<'sess> {
         let allowed_targets = allowed_targets.allowed_targets();
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
+        let is_lint_check_attr = [sym::allow, sym::expect, sym::deny, sym::warn, sym::forbid]
+            .contains(&cx.attr_path.segments[0]);
 
         let span = if attribute_args.is_empty() {
             // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
@@ -144,7 +145,7 @@ impl<'sess> AttributeParser<'sess> {
             // exactly but is as close as we can get.
             cx.inner_span
         };
-        let target_span = if span.eq_ctxt(cx.target_span) && cx.target != Target::Crate {
+        let target_span = if span.ctxt() == cx.target_span.ctxt() && cx.target != Target::Crate {
             cx.target_span.shrink_to_lo()
         } else {
             span
@@ -160,7 +161,9 @@ impl<'sess> AttributeParser<'sess> {
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args: attribute_args.to_string(),
             help: Self::target_checking_help(attribute_args, cx),
-            previously_accepted: matches!(result, AllowedResult::Warn) && !is_diagnostic_attr,
+            previously_accepted: matches!(result, AllowedResult::Warn)
+                && !is_diagnostic_attr
+                && !is_lint_check_attr,
             on_macro_call: matches!(cx.target, Target::MacroCall),
         };
 
@@ -220,10 +223,15 @@ impl<'sess> AttributeParser<'sess> {
         }
     }
 
-    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>, warn: bool) {
-        if cx.target == Target::Crate {
-            return;
-        }
+    pub(crate) fn check_crate_level(
+        cx: &mut AcceptContext<'_, 'sess>,
+        allowed_targets: &AllowedTargets<'_>,
+    ) {
+        let warn = match allowed_targets.is_allowed(cx.target) {
+            AllowedResult::Allowed => return,
+            AllowedResult::Warn => true,
+            AllowedResult::Error => false,
+        };
 
         let name = cx.attr_path.to_string();
         let is_used_as_inner = cx.attr_style == AttrStyle::Inner;
@@ -243,6 +251,16 @@ impl<'sess> AttributeParser<'sess> {
                 (true, src.path(RemapPathScopeComponents::DIAGNOSTICS).display().to_string())
             })
             .unwrap_or_default();
+
+        if name == "doc" {
+            let diag = crate::diagnostics::AttrCrateLevelOnly;
+            if warn {
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, diag, attr_span);
+            } else {
+                cx.emit_err(diag);
+            }
+            return;
+        }
 
         let diag = crate::diagnostics::InvalidAttrStyle {
             name,
@@ -358,7 +376,7 @@ impl<'sess> AttributeParser<'sess> {
                     Attribute::Parsed(AttributeKind::Doc(attr)) => Some(attr.first_span),
                     // Checked during attribute parsing target checking
                     Attribute::Parsed(_) => None,
-                    Attribute::Unparsed(attr) => Some(attr.span),
+                    Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.span),
                 }
             })
             .collect::<Vec<_>>();

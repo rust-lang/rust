@@ -11,8 +11,8 @@ use rustc_macros::extension;
 use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, Flags, GenericArg,
-    GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt,
-    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
+    GenericArgs, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
@@ -439,8 +439,8 @@ impl<'a, 'tcx> ToArgRegionsFolder<'a, 'tcx> {
     fn fold_closure_args(
         &mut self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> Result<GenericArgsRef<'tcx>, RegionVid> {
+        args: GenericArgs<'tcx>,
+    ) -> Result<GenericArgs<'tcx>, RegionVid> {
         let generics = self.cx().generics_of(def_id);
         self.cx().mk_args_from_iter(args.iter().enumerate().map(|(index, arg)| {
             if index < generics.parent_count {

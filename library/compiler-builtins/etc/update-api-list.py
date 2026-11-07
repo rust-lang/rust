@@ -218,8 +218,7 @@ class Crate:
             return
 
         relpath = fpath.relative_to(ROOT_DIR)
-        eprint(f"functions not found at {relpath}:{line_num}: {not_found}")
-        exit(1)
+        sys.exit(f"functions not found at {relpath}:{line_num}: {not_found}")
 
 
 def diff_and_exit(actual: str, expected: str, name: str):
@@ -235,8 +234,7 @@ def diff_and_exit(actual: str, expected: str, name: str):
 
     diff = difflib.unified_diff(a, b, "actual", "expected")
     sys.stdout.writelines(diff)
-    print(f"mismatched {name}")
-    exit(1)
+    sys.exit(f"mismatched {name}")
 
 
 def base_name(name: str) -> tuple[str, str]:
@@ -257,15 +255,15 @@ def base_name(name: str) -> tuple[str, str]:
         return found
 
     if name.endswith("f"):
-        return (name.rstrip("f"), "f32")
+        return (name.removesuffix("f"), "f32")
     elif name.endswith("f16"):
-        return (name.rstrip("f16"), "f16")
+        return (name.removesuffix("f16"), "f16")
     elif name.endswith("f32"):
-        return (name.rstrip("f32"), "f32")
+        return (name.removesuffix("f32"), "f32")
     elif name.endswith("f64"):
-        return (name.rstrip("f64"), "f64")
+        return (name.removesuffix("f64"), "f64")
     elif name.endswith("f128"):
-        return (name.rstrip("f128"), "f128")
+        return (name.removesuffix("f128"), "f128")
 
     return (name, "f64")
 
@@ -290,7 +288,7 @@ def main():
             ensure_updated_list(True)
         case _:
             print("unrecognized arguments")
-            exit(1)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

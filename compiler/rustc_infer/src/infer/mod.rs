@@ -29,12 +29,12 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType, PseudoCanonicalInput,
+    Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol, bug};
-use rustc_type_ir::{CanonicalizerState, MayBeErased};
+use rustc_type_ir::MayBeErased;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use ty::solve::TyOrConstInferVar;
@@ -348,11 +348,6 @@ pub struct InferCtxt<'tcx> {
     enable_next_solver_overflow_fcw: Cell<bool>,
 
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
-
-    /// State reused by each new canonicalizer, and then cleared (but not deallocated) once the
-    /// canonicalizer is finished. A performance win, because it avoids reallocating new
-    /// vecs/hashmaps for every canonicalizer.
-    pub canonicalizer_state: RefCell<CanonicalizerState<TyCtxt<'tcx>>>,
 }
 
 impl<'tcx> Drop for InferCtxt<'tcx> {
@@ -696,7 +691,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             next_trait_solver,
             enable_next_solver_overflow_fcw: Cell::new(enable_next_solver_overflow_fcw),
             obligation_inspector: Cell::new(None),
-            canonicalizer_state: Default::default(),
         }
     }
 }
@@ -883,7 +877,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
             if a_is_expected {
-                Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
+                Ok(self.sub_raw(cause, param_env, DefineOpaqueTypes::Yes, a, b))
             } else {
                 Ok(self.sup_raw(cause, param_env, DefineOpaqueTypes::Yes, b, a))
             }
@@ -1076,7 +1070,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
     /// each type/region parameter to a fresh inference variable.
-    pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgsRef<'tcx> {
+    pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgs<'tcx> {
         GenericArgs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
     }
 

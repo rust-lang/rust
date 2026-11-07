@@ -195,6 +195,12 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+#[cfg(not(no_global_oom_handling))]
+use self::spec_extend_with::SpecExtendWith;
+
+#[cfg(not(no_global_oom_handling))]
+mod spec_extend_with;
+
 #[cfg(all(target_arch = "aarch64", target_feature = "sve"))]
 mod sve_retain;
 
@@ -1490,8 +1496,9 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Shrinks the capacity of the vector as much as possible.
     ///
-    /// The behavior of this method depends on the allocator, which may either shrink the vector
-    /// in-place or reallocate. The resulting vector might still have some excess capacity, just as
+    /// When `vec.len() == vec.capacity()` the allocation is unchanged. Otherwise, the behavior of
+    /// this method depends on the allocator, which may either shrink the vector in-place or
+    /// reallocate. The resulting vector might still have some excess capacity, just as
     /// is the case for [`with_capacity`]. See [`Allocator::shrink`] for more details.
     ///
     /// [`with_capacity`]: Vec::with_capacity
@@ -1610,12 +1617,10 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Converts the vector into [`Box<[T]>`][owned slice].
+    /// Converts the vector into a boxed slice.
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
-    ///
-    /// [owned slice]: Box
-    /// [`shrink_to_fit`]: Vec::shrink_to_fit
+    /// This conversion is in-place if `vec.len() == vec.capacity()`. Otherwise excess capacity
+    /// is discarded by reallocating before doing the conversion.
     ///
     /// # Examples
     ///
@@ -1875,9 +1880,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [didn't allocate]: self#memory-layout
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
     #[inline]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     pub const fn as_ptr(&self) -> *const T {
         // We shadow the slice method of the same name to avoid going through
         // `deref`, which creates an intermediate reference.
@@ -1960,8 +1965,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [didn't allocate]: self#memory-layout
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     #[inline]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // We shadow the slice method of the same name to avoid going through
@@ -2028,7 +2033,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [didn't allocate]: self#memory-layout
     #[unstable(feature = "vec_as_non_null", issue = "157843")]
     #[rustc_const_unstable(feature = "vec_as_non_null", issue = "157843")]
-    #[rustc_as_ptr]
+    #[lint::as_ptr]
     #[inline]
     pub const fn as_non_null(&mut self) -> NonNull<T> {
         self.buf.non_null()
@@ -2531,6 +2536,90 @@ impl<T, A: Allocator> Vec<T, A> {
         // SAFETY: `write` is always less than or equal to original_len.
         unsafe { g.v.set_len(g.write) };
         mem::forget(g);
+    }
+
+    /// Retains only the elements specified by the predicate, passing a mutable reference to it.
+    ///
+    /// In other words, remove all elements `e` such that `f(&mut e)` returns `false`.
+    /// This method does not maintain the relative order of the retained elements. If order matters,
+    /// consider using [`Vec::retain_mut`] instead. However, if no items are removed, then all items
+    /// are left in their original positions.
+    ///
+    /// [`Vec::retain_mut`]: crate::vec::Vec::retain_mut
+    ///
+    /// Time complexity: *O*(*n*)
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_unstable)]
+    /// let mut vec = vec![4, 3, 2, 1];
+    /// vec.retain_unstable(|x| if *x <= 3 {
+    ///     *x += 1;
+    ///     true
+    /// } else {
+    ///     false
+    /// });
+    ///
+    /// vec.sort(); // it might be in any order, so normalize before asserting
+    /// assert_eq!(vec, [2, 3, 4]);
+    /// ```
+    #[unstable(feature = "retain_unstable", issue = "164152")]
+    pub fn retain_unstable<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        // Currently this does the following:
+        // 1) Search backward until you find an element you want to remove
+        // 2) Swap this element with an element that was kept in the back
+        //    (or if there are no remaining elements, simply truncate the vec)
+        // 3) Repeat from 1) until there's no element to iterate through
+
+        let original_len = self.len();
+
+        if original_len == 0 {
+            // Empty case: explicit return allows better optimization, vs letting compiler infer it
+            return;
+        }
+
+        let mut read_back = original_len;
+        let mut hole = loop {
+            if read_back == 0 {
+                // All elements are kept
+                return;
+            }
+            // SAFETY: read_back - 1 < original_len
+            let cur = unsafe { &mut *self.as_mut_ptr().add(read_back - 1) };
+            if hint::unlikely(!f(cur)) {
+                break cur;
+            }
+            read_back -= 1;
+        };
+
+        if read_back < self.len {
+            let swap = self.pop().unwrap();
+            *hole = swap;
+        } else {
+            self.truncate(self.len - 1);
+        }
+        read_back -= 1;
+
+        while read_back > 0 {
+            // SAFETY: read_back - 1 is always less than current length of
+            // the vector and the loop condition, read_back > 0, prevents
+            // read_back from underflowing
+            hole = unsafe { &mut *self.as_mut_ptr().add(read_back - 1) };
+            if !f(hole) {
+                if read_back < self.len {
+                    let swap = self.pop().unwrap();
+                    *hole = swap;
+                } else {
+                    self.truncate(self.len - 1);
+                }
+            }
+            read_back -= 1;
+        }
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
@@ -3688,32 +3777,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` clones of value.
     fn extend_with(&mut self, n: usize, value: T) {
-        self.reserve(n);
-
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.clone());
-                ptr = ptr.add(1);
-                // Increment the length in every step in case clone() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value);
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
+        self.spec_extend_with(n, value);
     }
 }
 
@@ -3877,11 +3941,24 @@ fn find_first_duplicate<T: PartialEq>(v: &[T], chunk_size: usize) -> Option<usiz
 // Internal methods and functions
 ////////////////////////////////////////////////////////////////////////////////
 
+// This function is no longer used internally (`from_elem_global` is used instead).
+// It is only kept so as not to break a few crates who mistakenly used it at a
+// time when we didn't have the ability to gate internal methods used by public macros.
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "vec_from_elem"]
+// NOTE: the real deprecation version is the same as the stabilization version.
+// I.e. it should never have been used even in version 1.0.
+#[deprecated(since = "CURRENT_RUSTC_VERSION", note = "use the `vec!` macro instead")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
+    vec![elem; n]
+}
+
+#[doc(hidden)]
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "liballoc_internals", issue = "none")]
+#[rustc_diagnostic_item = "vec_from_elem"]
+pub fn from_elem_global<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
 }
 
@@ -4647,10 +4724,8 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// Converts a vector into a boxed slice.
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`Vec::shrink_to_fit`].
-    ///
-    /// [owned slice]: Box
-    /// [`Vec::shrink_to_fit`]: Vec::shrink_to_fit
+    /// This conversion is in-place if `vec.len() == vec.capacity()`. Otherwise, excess capacity
+    /// is discarded by reallocating before doing the conversion.
     ///
     /// # Examples
     ///

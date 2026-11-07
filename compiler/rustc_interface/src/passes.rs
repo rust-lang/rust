@@ -36,7 +36,7 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
-use rustc_session::config::{Input, OutFileName, OutputFilenames, OutputType};
+use rustc_session::config::{Input, Offload, OutFileName, OutputFilenames, OutputType};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::search_paths::PathKind;
@@ -900,6 +900,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.queries.analysis = analysis;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
+    providers.queries.get_lang_items = |tcx, ()| &tcx.resolutions(()).lang_items;
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).2;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
@@ -1142,13 +1143,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                     tcx.ensure_ok().check_mod_attrs(module);
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
-            },
-            &mut || {
-                // We force these queries to run,
-                // since they might not otherwise get called.
-                // This marks the corresponding crate-level attributes
-                // as used, and ensures that their values are valid.
-                tcx.ensure_ok().limits(());
             },
         ]);
     });
@@ -1488,6 +1482,16 @@ pub fn collect_crate_types(
         } else {
             base.sort();
             base.dedup();
+        }
+    }
+
+    // GPU code is never run as a binary; the offload runtime looks up kernels by
+    // name, and only cdylibs export their symbols.
+    if session.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_))) {
+        for crate_type in &mut base {
+            if *crate_type == CrateType::Executable {
+                *crate_type = CrateType::Cdylib;
+            }
         }
     }
 

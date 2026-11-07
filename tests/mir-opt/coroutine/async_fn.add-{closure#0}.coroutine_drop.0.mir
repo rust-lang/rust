@@ -48,6 +48,7 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
 
     bb0: {
         _26 = discriminant((*_1));
+        _0 = const ();
         switchInt(move _26) -> [0: bb11, 3: bb12, otherwise: bb13];
     }
 

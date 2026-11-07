@@ -1,5 +1,5 @@
 warning: variable does not need to be mutable
-  --> $DIR/issue-73592-borrow_mut-through-deref.rs:42:17
+  --> $DIR/issue-73592-borrow_mut-through-deref.rs:42:21
    |
 LL | fn test_mut_pin(mut s: Pin<&S>) {
    |                 ----^
@@ -13,7 +13,7 @@ LL | #![warn(unused_mut)]
    |         ^^^^^^^^^^
 
 warning: variable does not need to be mutable
-  --> $DIR/issue-73592-borrow_mut-through-deref.rs:47:21
+  --> $DIR/issue-73592-borrow_mut-through-deref.rs:47:25
    |
 LL | fn test_mut_pin_mut(mut s: Pin<&mut S>) {
    |                     ----^

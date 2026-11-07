@@ -1,12 +1,11 @@
 use std::range::{RangeFrom, RangeToInclusive};
 
-use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, NicheOptimizations, ReprOptions, Scalar, Size,
-    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
+    self as abi, AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout,
+    Layout, LayoutCalculatorError, LayoutData, Niche, NicheOptimizations, ReprOptions, Scalar,
+    Size, StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
@@ -886,7 +885,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tc
         cx.tcx().sess.code_stats.record_type_size(
             kind,
             type_desc,
-            layout.align.abi,
+            layout.align,
             layout.size,
             packed,
             opt_discr_size,
@@ -996,7 +995,7 @@ fn variant_info_for_coroutine<'tcx>(
     cx: &LayoutCx<'tcx>,
     layout: TyAndLayout<'tcx>,
     def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
     use itertools::Itertools;
 

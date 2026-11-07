@@ -1,4 +1,4 @@
-use rustc_ast::ItemKind;
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{MacroUseArgs, find_attr};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_MACRO_EXPORT_ARGUMENTS, UNUSED_ATTRIBUTES};
@@ -39,6 +39,7 @@ const MACRO_USE_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListW
     Allow(Target::Mod),
     Allow(Target::ExternCrate),
     Error(Target::WherePredicate),
+    Error(Target::Param),
 ]);
 
 impl AttributeParser for MacroUseParser {
@@ -152,6 +153,7 @@ impl SingleAttributeParser for MacroExportParser {
         Allow(Target::MacroDef),
         Error(Target::WherePredicate),
         Error(Target::Crate),
+        Error(Target::Param),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -181,14 +183,11 @@ impl SingleAttributeParser for MacroExportParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        if cx.target != Target::MacroDef {
+        let AstTarget::MacroDef(_, macro_def) = cx.ast_target else {
             return;
-        }
+        };
 
-        let item = cx.target_item.unwrap();
-        if let ItemKind::MacroDef(_, macro_def) = &item.kind
-            && !macro_def.macro_rules
-        {
+        if !macro_def.macro_rules {
             cx.emit_lint(UNUSED_ATTRIBUTES, MacroExport::OnDeclMacro, attr_span);
         }
     }

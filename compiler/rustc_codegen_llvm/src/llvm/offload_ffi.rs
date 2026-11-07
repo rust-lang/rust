@@ -6,9 +6,8 @@ use super::ffi::{Module, Value};
 
 type LLVMRustOffloadMapperFn = unsafe extern "C" fn(&Value, &Value, *const &Value);
 type LLVMRustOffloadWrapImagesFn =
-    unsafe extern "C" fn(&Module, *const c_char, *const c_char) -> bool;
+    for<'ll> unsafe extern "C" fn(Module<'ll>, *const c_char) -> bool;
 
-use rustc_fs_util::path_to_c_string;
 use rustc_session::config::host_tuple;
 use rustc_session::filesearch;
 
@@ -17,7 +16,6 @@ use crate::llvm;
 pub(crate) struct RustOffloadWrapper {
     LLVMRustOffloadMapper: LLVMRustOffloadMapperFn,
     LLVMRustOffloadWrapImages: LLVMRustOffloadWrapImagesFn,
-    lld_path: Option<PathBuf>,
     // Keep the dynamic library loaded while the function pointers are used.
     _lib: libloading::Library,
 }
@@ -56,21 +54,18 @@ impl RustOffloadWrapper {
         unsafe { (self.LLVMRustOffloadMapper)(v1, v2, vs.as_ptr()) }
     }
 
-    pub(crate) unsafe fn llvm_rust_offload_wrap_images(
+    pub(crate) unsafe fn llvm_rust_offload_wrap_images<'ll>(
         &self,
-        host_m: &Module,
-        device_bitcode_path: &CStr,
+        host_m: Module<'ll>,
+        device_image_path: &CStr,
     ) -> bool {
-        let lld_c = self.lld_path.as_deref().map(path_to_c_string).unwrap_or_default();
-        unsafe {
-            (self.LLVMRustOffloadWrapImages)(host_m, lld_c.as_ptr(), device_bitcode_path.as_ptr())
-        }
+        unsafe { (self.LLVMRustOffloadWrapImages)(host_m, device_image_path.as_ptr()) }
     }
 
     fn call_dynamic(
         sysroot: &rustc_session::config::Sysroot,
     ) -> Result<Self, RustOffloadLibraryError> {
-        let (rust_offload_path, lld_path) = Self::get_offload_and_lld_paths(sysroot)?;
+        let rust_offload_path = Self::get_offload_path(sysroot)?;
         let lib = unsafe { libloading::Library::new(rust_offload_path)? };
 
         let llvm_rust_offload_wrapper =
@@ -81,14 +76,13 @@ impl RustOffloadWrapper {
         Ok(Self {
             LLVMRustOffloadMapper: llvm_rust_offload_wrapper,
             LLVMRustOffloadWrapImages: llvm_rust_offload_wrap_images,
-            lld_path,
             _lib: lib,
         })
     }
 
-    fn get_offload_and_lld_paths(
+    fn get_offload_path(
         sysroot: &rustc_session::config::Sysroot,
-    ) -> Result<(PathBuf, Option<PathBuf>), RustOffloadLibraryError> {
+    ) -> Result<PathBuf, RustOffloadLibraryError> {
         let llvm_version_major = llvm::LLVMRustVersionMajor();
         let mut searched = Vec::new();
 
@@ -102,11 +96,7 @@ impl RustOffloadWrapper {
                 continue;
             }
 
-            let lld_path = filesearch::make_target_bin_path(root, host_tuple())
-                .join(format!("rust-lld{}", std::env::consts::EXE_SUFFIX));
-            let lld_path = lld_path.is_file().then_some(lld_path);
-
-            return Ok((rust_offload_path, lld_path));
+            return Ok(rust_offload_path);
         }
 
         Err(RustOffloadLibraryError::NotFound {

@@ -276,14 +276,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         path_ty_layout(this, &["std", "sys", "pal", "windows", "c", name])
     }
 
-    /// Helper function to get `TyAndLayout` of an array that consists of `libc` type.
-    fn libc_array_ty_layout(&self, name: &str, size: u64) -> TyAndLayout<'tcx> {
-        let this = self.eval_context_ref();
-        let elem_ty_layout = this.libc_ty_layout(name);
-        let array_ty = Ty::new_array(*this.tcx, elem_ty_layout.ty, size);
-        this.layout_of(array_ty).unwrap()
-    }
-
     /// Project to the given *named* field (which must be a struct or union type).
     fn try_project_field_named<P: Projectable<'tcx, Provenance>>(
         &self,
@@ -310,6 +302,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             self.try_project_field_named(base, name)?
                 .unwrap_or_else(|| bug!("no field named {} in type {}", name, base.layout().ty)),
         )
+    }
+
+    /// Assuming `base` is the beginning of a C array (i.e., the already-dereferenced pointer),
+    /// returns the element at position `idx`.
+    fn project_c_array_field<P: Projectable<'tcx, Provenance>>(
+        &self,
+        base: &P,
+        idx: u64,
+    ) -> InterpResult<'tcx, P> {
+        let this = self.eval_context_ref();
+        let offset = base.layout().size * idx; // `Size` multiplication
+        base.offset(offset, base.layout(), this)
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -684,60 +688,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.eval_context_ref().tcx.sess.target.families.iter().any(|f| f == "unix")
     }
 
-    /// Dereference a pointer operand to a place using `layout` instead of the pointer's declared type
-    fn deref_pointer_as(
-        &self,
-        op: &impl Projectable<'tcx, Provenance>,
-        layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let this = self.eval_context_ref();
-        let ptr = this.read_pointer(op)?;
-        interp_ok(this.ptr_to_mplace(ptr, layout))
-    }
-
-    /// Calculates the MPlaceTy given the offset and layout of an access on an operand
-    fn deref_pointer_and_offset(
-        &self,
-        op: &impl Projectable<'tcx, Provenance>,
-        offset: u64,
-        base_layout: TyAndLayout<'tcx>,
-        value_layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let this = self.eval_context_ref();
-        let op_place = this.deref_pointer_as(op, base_layout)?;
-        let offset = Size::from_bytes(offset);
-
-        // Ensure that the access is within bounds.
-        assert!(base_layout.size >= offset + value_layout.size);
-        let value_place = op_place.offset(offset, value_layout, this)?;
-        interp_ok(value_place)
-    }
-
-    fn deref_pointer_and_read(
-        &self,
-        op: &impl Projectable<'tcx, Provenance>,
-        offset: u64,
-        base_layout: TyAndLayout<'tcx>,
-        value_layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_ref();
-        let value_place = this.deref_pointer_and_offset(op, offset, base_layout, value_layout)?;
-        this.read_scalar(&value_place)
-    }
-
-    fn deref_pointer_and_write(
-        &mut self,
-        op: &impl Projectable<'tcx, Provenance>,
-        offset: u64,
-        value: impl Into<Scalar>,
-        base_layout: TyAndLayout<'tcx>,
-        value_layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        let value_place = this.deref_pointer_and_offset(op, offset, base_layout, value_layout)?;
-        this.write_scalar(value, &value_place)
-    }
-
     /// Read bytes from a byte slice.
     fn read_byte_slice<'a>(&'a self, slice: &ImmTy<'tcx>) -> InterpResult<'tcx, &'a [u8]>
     where
@@ -882,7 +832,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             this.libc_ty_layout("wchar_t")
         };
-        self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
+        self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align)
     }
 
     fn frame_in_std(&self) -> bool {

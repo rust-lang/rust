@@ -15,8 +15,8 @@ use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, ExistentialPredicate, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt,
-    elaborate,
+    self, CallerBoundsIterator, ExistentialPredicate, FieldInfo, IncludeSizedImplicitBounds,
+    SizedTraitKind, TraitRef, Ty, TypeVisitableExt, elaborate,
 };
 use rustc_span::{DUMMY_SP, bug, span_bug};
 use tracing::{debug, instrument, trace};
@@ -280,9 +280,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .obligation
             .param_env
             .caller_bounds()
-            .filter_map(|c| c.as_trait_clause())
+            .trait_clauses(self.tcx())
             // Micro-optimization: filter out predicates with different polarities.
-            .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
+            .with_polarity(stack.obligation.predicate.polarity())
+            .iter();
 
         let drcx = DeepRejectCtxt::relate_rigid_rigid(self.tcx());
         let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;
@@ -782,7 +783,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     // Backward compatibility for default auto traits.
                     // Test: ui/traits/default_auto_traits/extern-types.rs
-                    if self.tcx().is_default_trait(def_id) {
+                    if self.tcx().is_implicit_trait(def_id, IncludeSizedImplicitBounds::No) {
                         check_impls()
                     }
                 }
@@ -1497,7 +1498,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // encountering query cycles instead.
         if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
             && let Some(FieldInfo { base, ty, .. }) =
-                def.field_representing_type_info(self.tcx(), args)
+                def.field_representing_type_info(self.tcx(), *args)
             // NOTE: these bounds have to be kept in sync with the definition of the `Field` trait
             // in `library/core/src/field.rs` as well as the new trait solver `fn
             // consider_builtin_field_candidate` in

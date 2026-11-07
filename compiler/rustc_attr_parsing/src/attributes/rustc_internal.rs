@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use rustc_ast::{GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit};
+use rustc_ast::{GenericParamKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, RustcAssertVarianceKind, RustcCleanAttribute,
     RustcCleanQueries, RustcMirKind,
@@ -88,22 +89,6 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
     }
 }
 
-pub(crate) struct RustcNeverReturnsNullPtrParser;
-
-impl NoArgsAttributeParser for RustcNeverReturnsNullPtrParser {
-    const PATH: &[Symbol] = &[sym::rustc_never_returns_null_ptr];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-    ]);
-    const STABILITY: AttributeStability = unstable!(rustc_attrs);
-
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
-}
-
 pub(crate) struct RustcPanicsWhenZeroParser;
 
 impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
@@ -171,13 +156,8 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
     }
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        if cx.target != Target::Fn {
-            // Invalid targets are already diagnosed by target checking.
+        let AstTarget::Fn(function) = cx.ast_target else {
             return;
-        }
-        let item = cx.target_item.expect("missing AST target item for Target::Fn");
-        let ItemKind::Fn(function) = &item.kind else {
-            panic!("expected fn AST target item for Target::Fn");
         };
         let index_list = rustc_attr_ir::find_attr!(cx.parsed_attrs, RustcLegacyConstGenerics { fn_indexes, .. } => fn_indexes)
             .expect("missing parsed RustcLegacyConstGenerics attribute in finalize_check");

@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
             if let Some(attr) = attr {
                 // If we are currently capturing tokens (i.e. we are within a call to
                 // `Parser::collect_tokens`) record the token positions of this inner attribute,
-                // for possible later processing in a `LazyAttrTokenStream`.
+                // for possible later processing in a `LazyTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
                     let end_pos = self.num_bump_calls;
                     let parser_range = ParserRange(start_pos..end_pos);
@@ -549,5 +549,19 @@ impl<'a> Parser<'a> {
             .emit();
 
         Ok(())
+    }
+
+    /// Parse inner attributes and error if they are present
+    /// Returns whether any inner attributes were discarded
+    pub fn recover_inner_attributes(&mut self) -> PResult<'a, bool> {
+        let attributes = self.parse_inner_attributes()?;
+        for attr in &attributes {
+            self.error_on_forbidden_inner_attr(
+                attr.span,
+                InnerAttrPolicy::Forbidden(Some(InnerAttrForbiddenReason::InCodeBlock)),
+                true,
+            );
+        }
+        Ok(!attributes.is_empty())
     }
 }

@@ -14,7 +14,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgKind, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
@@ -23,8 +23,8 @@ use crate::clean::auto_trait::synthesize_auto_trait_impls;
 use crate::clean::blanket_impl::synthesize_blanket_impls;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    AssocItemConstraint, AssocItemConstraintKind, Crate, ExternalCrate, Generic, GenericArg,
-    GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
+    AssocItemConstraint, AssocItemConstraintKind, AssocType, Crate, ExternalCrate, Generic,
+    GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
     PrimitiveType, Term, Type, clean_doc_module, clean_middle_const, clean_middle_region,
     clean_middle_ty, inline,
 };
@@ -43,7 +43,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let mut module = clean_doc_module(&module, cx);
 
     match module.kind {
-        ItemKind::ModuleItem(ref module) => {
+        ItemKind::Module(ref module) => {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
@@ -67,20 +67,20 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let keywords = local_crate.keywords(cx.tcx);
     let documented_attributes = local_crate.documented_attributes(cx.tcx);
     {
-        let ItemKind::ModuleItem(m) = &mut module.inner.kind else { unreachable!() };
+        let ItemKind::Module(m) = &mut module.inner.kind else { unreachable!() };
         m.items.extend(primitives.map(|(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
                 Some(prim.as_sym()),
-                ItemKind::PrimitiveItem(prim),
+                ItemKind::PrimitiveType(prim),
                 cx.tcx,
             )
         }));
         m.items.extend(keywords.map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx.tcx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::Keyword, cx.tcx)
         }));
         m.items.extend(documented_attributes.into_iter().map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::AttributeItem, cx.tcx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::Attribute, cx.tcx)
         }));
     }
 
@@ -89,7 +89,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
 pub(crate) fn clean_middle_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
+    args: ty::Binder<'tcx, ty::GenericArgs<'tcx>>,
     mut has_self: bool,
     owner: DefId,
 ) -> ThinVec<GenericArg> {
@@ -106,20 +106,18 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     let generics = cx.tcx.generics_of(owner);
     let args = if !has_self && generics.has_own_self() {
         has_self = true;
-        [cx.tcx.types.trait_object_dummy_self.into()]
-            .into_iter()
-            .chain(args.iter().copied())
-            .collect::<Vec<_>>()
-            .into()
+        cx.tcx.mk_args_from_iter(
+            [cx.tcx.types.trait_object_dummy_self.into()].into_iter().chain(args.iter()),
+        )
     } else {
-        std::borrow::Cow::from(args)
+        args
     };
 
     let mut elision_has_failed_once_before = false;
 
     // Calculates where the parent trait's generic parameters end
     let index_offset = generics.count() - args.len();
-    let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
+    let clean_arg = |(index, arg): (usize, ty::GenericArg<'tcx>)| {
         // Elide the self type.
         if has_self && index == 0 {
             return None;
@@ -215,7 +213,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
     did: DefId,
     has_self: bool,
     mut constraints: ThinVec<AssocItemConstraint>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, ty::GenericArgs<'tcx>>,
 ) -> GenericArgs {
     if cx.tcx.is_trait(did)
         && cx.tcx.trait_def(did).paren_sugar
@@ -235,7 +233,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
         return GenericArgs::Parenthesized { inputs, output };
     }
 
-    let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
+    let args = clean_middle_generic_args(cx, args, has_self, did);
 
     GenericArgs::AngleBracketed { args, constraints }
 }
@@ -245,7 +243,7 @@ pub(super) fn clean_middle_path<'tcx>(
     did: DefId,
     has_self: bool,
     constraints: ThinVec<AssocItemConstraint>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, ty::GenericArgs<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.opt_item_name(did).unwrap_or(sym::dummy);
@@ -275,19 +273,18 @@ pub(crate) fn build_deref_target_impls(
     let tcx = cx.tcx;
 
     for item in items {
-        let target = match item.kind {
-            ItemKind::AssocTypeItem(ref t, _) => &t.type_,
-            _ => continue,
+        let ItemKind::AssocType(AssocType { type_: Some(target), .. }) = &item.kind else {
+            continue;
         };
 
-        if let Some(prim) = target.primitive_type() {
+        if let Some(prim) = target.type_.primitive_type() {
             let _prof_timer = tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
             for did in prim.impls(tcx).filter(|did| !did.is_local()) {
                 cx.with_param_env(did, |cx| {
                     inline::build_impl(cx, did, None, ret);
                 });
             }
-        } else if let Type::Path { path } = target {
+        } else if let Type::Path { path } = &target.type_ {
             let did = path.def_id();
             if !did.is_local() {
                 cx.with_param_env(did, |cx| {

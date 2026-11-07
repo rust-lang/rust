@@ -1,8 +1,10 @@
-error[E0284]: type annotations needed: cannot satisfy `the constant `Self::HOST_SIZE` can be evaluated`
+error[E0284]: type annotations needed
   --> $DIR/too_generic_eval_ice.rs:11:13
    |
 LL |         [5; Self::HOST_SIZE] == [6; 0]
-   |             ^^^^^^^^^^^^^^^ cannot satisfy `the constant `Self::HOST_SIZE` can be evaluated`
+   |             ^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
+   |
+   = note: cannot satisfy `Foo<A, B>::crash::{constant#0} == _`
 
 error: aborting due to 1 previous error
 

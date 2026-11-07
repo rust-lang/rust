@@ -1,5 +1,5 @@
 //@ignore-target: windows # no libc
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
 //@run-native
 
 use std::thread;
@@ -10,6 +10,16 @@ mod libc_utils;
 use libc_utils::*;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(10));
+    }
+}
 
 fn main() {
     test_poll_returns_masked();
@@ -90,9 +100,8 @@ fn test_poll_readiness_update() {
     unsafe { errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr())) };
 
     let t1 = thread::spawn(move || {
-        // Yield to main thread to ensure it's blocked on `poll` before
-        // we write into the socket.
-        thread::sleep(Duration::from_millis(10));
+        // Yield to main thread to ensure it's blocked on `poll` before we write into the socket.
+        yield_now();
 
         unsafe {
             errno_result(libc::write(fds[1], TEST_BYTES.as_ptr().cast(), TEST_BYTES.len())).unwrap()
@@ -170,9 +179,8 @@ fn test_readiness_event_after_poll_blocked() {
     unsafe { errno_check(libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr())) };
 
     let t1 = thread::spawn(move || {
-        // Yield to main thread to ensure it's blocked on `poll` before
-        // we write into the socket.
-        thread::sleep(Duration::from_millis(10));
+        // Yield to main thread to ensure it's blocked on `poll` before we write into the socket.
+        yield_now();
 
         unsafe {
             errno_result(libc::write(fds[1], TEST_BYTES.as_ptr().cast(), TEST_BYTES.len())).unwrap()
@@ -207,7 +215,7 @@ fn test_poll_race() {
         write_all(fds[0], TEST_BYTES).unwrap();
     });
     // Make the other thread go first.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
     // Wait for `fds[1]` to be come readable.
     let mut interests = [libc::pollfd { fd: fds[1], events: libc::POLLIN, revents: 0 }];
     let ready = unsafe {

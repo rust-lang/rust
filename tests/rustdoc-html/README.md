@@ -20,6 +20,10 @@ docs.
 
 Contains tests checking the rendering of `async` items.
 
+## `tests/rustdoc-html/attributes`
+
+Contains tests checking the rendering of attributes in the docs.
+
 ## `tests/rustdoc-html/auto`
 
 Contains tests related to auto traits implementations.

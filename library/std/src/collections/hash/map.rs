@@ -2989,7 +2989,8 @@ impl<'a, K: 'a, V: 'a, A: Allocator> VacantEntry<'a, K, V, A> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
     /// if let Entry::Vacant(o) = map.entry("poneyland") {
-    ///     o.insert_entry(37);
+    ///     let entry = o.insert_entry(37);
+    ///     assert_eq!(entry.get(), &37);
     /// }
     /// assert_eq!(map["poneyland"], 37);
     /// ```

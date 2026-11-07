@@ -264,8 +264,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             int128_align: tcx
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.i128))
                 .expect("Can't get the layout of `i128`")
-                .align
-                .abi,
+                .align,
             const_cache: Default::default(),
             codegen_unit,
             context,
@@ -507,7 +506,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     tcx,
                     self.typing_env(),
                     def_id,
-                    ty::List::empty(),
+                    ty::GenericArgs::empty(),
                     DUMMY_SP,
                 );
 

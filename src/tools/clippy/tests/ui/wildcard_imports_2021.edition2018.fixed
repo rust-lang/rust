@@ -2,12 +2,14 @@
 //@[edition2018] edition:2018
 //@[edition2021] edition:2021
 
+//@aux-build:proc_macros.rs
 //@aux-build:wildcard_imports_helper.rs
 
 #![warn(clippy::wildcard_imports)]
 #![deny(unused_imports)]
 #![expect(clippy::let_unit_value)]
 
+extern crate proc_macros;
 extern crate wildcard_imports_helper;
 
 use crate::fn_mod::foo;
@@ -288,6 +290,28 @@ mod super_imports {
 
         fn with_explicit() {
             let _ = foofoo();
+        }
+    }
+
+    mod issue17200 {
+        use proc_macros::with_span;
+
+        struct ShouldNotLintWithAutomaticallyDerived;
+
+        #[automatically_derived]
+        impl ShouldNotLintWithAutomaticallyDerived {
+            fn should_not_lint() {
+                use super::*;
+                let _ = foofoo();
+            }
+        }
+
+        fn in_proc_macro() {
+            with_span! {
+                sp
+                use super::*;
+                foofoo();
+            }
         }
     }
 }

@@ -12,7 +12,6 @@ use rustc_middle::throw_unsup_format;
 use rustc_target::spec::Os;
 
 use crate::shims::files::{EvalContextExt as _, FdNum, FileDescription, FileDescriptionRef};
-use crate::shims::sig::Varargs;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::{EvalContextExt, UnixSocketFileDescription};
 use crate::*;
@@ -239,41 +238,6 @@ impl UnixFileDescription for TcpSocket {
         }
 
         interp_ok(Scalar::from_i32(0))
-    }
-
-    fn ioctl<'tcx>(
-        &self,
-        op: Scalar,
-        args: Varargs<'tcx, '_>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
-        assert!(ecx.machine.communicate(), "cannot have `TcpSocket` with isolation enabled!");
-
-        let fionbio = ecx.eval_libc("FIONBIO");
-
-        if op == fionbio {
-            // On these OSes, Rust uses the ioctl, so we trust that it is reasonable and controls
-            // the same internal flag as fcntl.
-            if !matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
-            {
-                // FIONBIO cannot be used to change the blocking mode of a socket on solarish targets:
-                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
-                // Since there might be more targets which do weird things with this option, we use
-                // an allowlist instead of just denying solarish targets.
-                throw_unsup_format!(
-                    "ioctl: setting FIONBIO on sockets is unsupported on target {}",
-                    ecx.tcx.sess.target.os
-                );
-            }
-
-            let ([value_ptr], _) = ecx.check_varargs(shim_varargs![*i32], args, "ioctl")?;
-            let value = ecx.deref_pointer_as(&value_ptr, ecx.machine.layouts.i32)?;
-            let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
-            self.is_non_block.set(non_block);
-            return interp_ok(0);
-        }
-
-        throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
     }
 
     fn as_socket(
@@ -1071,7 +1035,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Register the socket to the blocking I/O manager because
         // there is an associated host socket.
         this.machine.blocking_io.register(fd.clone());
-        let sockfd = this.machine.fds.insert(fd);
+        let Some(sockfd) = this.machine.fds.insert(fd) else {
+            return interp_ok(Err(LibcError("EMFILE")));
+        };
         interp_ok(Ok((sockfd, addr)))
     }
 

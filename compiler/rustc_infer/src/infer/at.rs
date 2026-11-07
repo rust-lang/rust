@@ -88,7 +88,6 @@ impl<'tcx> InferCtxt<'tcx> {
             next_trait_solver: self.next_trait_solver,
             enable_next_solver_overflow_fcw: self.enable_next_solver_overflow_fcw.clone(),
             obligation_inspector: self.obligation_inspector.clone(),
-            canonicalizer_state: Default::default(),
         }
     }
 
@@ -119,7 +118,6 @@ impl<'tcx> InferCtxt<'tcx> {
             next_trait_solver: self.next_trait_solver,
             enable_next_solver_overflow_fcw: self.enable_next_solver_overflow_fcw.clone(),
             obligation_inspector: self.obligation_inspector.clone(),
-            canonicalizer_state: Default::default(),
         };
         forked.inner.borrow_mut().projection_cache().clear();
         forked
@@ -171,7 +169,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// If possible, prefer the wrapper methods on `ObligationCtxt`,
     /// `FnCtxt`, or `TypeChecker`.
     pub fn sub_raw<T>(
-        self,
+        &self,
         cause: &ObligationCause<'tcx>,
         param_env: ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
@@ -181,7 +179,20 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.at(cause, param_env).sub(define_opaque_types, expected, actual)
+        if self.next_trait_solver {
+            NextSolverRelate::relate(self, param_env, expected, ty::Covariant, actual, cause.span)
+                .map(|goals| self.goals_to_obligations(cause, goals))
+        } else {
+            let mut op = TypeRelating::new(
+                self,
+                ToTrace::to_trace(cause, expected, actual),
+                param_env,
+                define_opaque_types,
+                ty::Covariant,
+            );
+            op.relate(expected, actual)?;
+            Ok(InferOk { value: (), obligations: op.into_obligations() })
+        }
     }
 
     /// Makes `expected == actual`.
@@ -288,41 +299,6 @@ pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
-    /// Makes `expected <: actual`.
-    ///
-    /// FIXME: To be removed in favor of the [`InferCtxt::sub_raw`] method instead.
-    pub fn sub<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        if self.infcx.next_trait_solver {
-            NextSolverRelate::relate(
-                self.infcx,
-                self.param_env,
-                expected,
-                ty::Covariant,
-                actual,
-                self.cause.span,
-            )
-            .map(|goals| self.goals_to_obligations(goals))
-        } else {
-            let mut op = TypeRelating::new(
-                self.infcx,
-                ToTrace::to_trace(self.cause, expected, actual),
-                self.param_env,
-                define_opaque_types,
-                ty::Covariant,
-            );
-            op.relate(expected, actual)?;
-            Ok(InferOk { value: (), obligations: op.into_obligations() })
-        }
-    }
-
     /// Makes `expected == actual`.
     ///
     /// FIXME: To be removed in favor of the [`InferCtxt::eq_raw`] method instead.
@@ -391,7 +367,13 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: ToTrace<'tcx>,
     {
         match variance {
-            ty::Covariant => self.sub(define_opaque_types, expected, actual),
+            ty::Covariant => self.infcx.sub_raw(
+                self.cause,
+                self.param_env,
+                define_opaque_types,
+                expected,
+                actual,
+            ),
             ty::Invariant => self.eq(define_opaque_types, expected, actual),
             ty::Contravariant => self.infcx.sup_raw(
                 self.cause,

@@ -10,6 +10,7 @@ fn std::ptr::drop_glue(_1: &mut Vec<i32>) -> () {
     }
 
     bb1: {
+        _0 = const ();
         return;
     }
 

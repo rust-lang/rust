@@ -14,22 +14,22 @@ pub(crate) struct IoSlice<'a> {
 
 impl<'a> IoSlice<'a> {
     #[inline]
-    pub(crate) fn new(buf: &'a [u8]) -> IoSlice<'a> {
-        let len = buf.len().try_into().unwrap();
-        Self { len, data: buf.as_ptr(), _p: PhantomData }
+    pub(crate) const fn new(buf: &'a [u8]) -> IoSlice<'a> {
+        assert!(buf.len() <= u32::MAX as usize, "slice too large for IoSlice");
+        IoSlice { len: buf.len() as u32, data: buf.as_ptr(), _p: PhantomData }
     }
 
     #[inline]
-    pub(crate) fn advance(&mut self, n: usize) {
-        self.len = u32::try_from(n)
-            .ok()
-            .and_then(|n| self.len.checked_sub(n))
-            .expect("advancing IoSlice beyond its length");
+    pub(crate) const fn advance(&mut self, n: usize) {
+        assert!(n <= self.len as usize, "advancing IoSlice beyond its length");
 
         // SAFETY:
         //  * `n <= len` as asserted above.
         //  * The allocation pointed to by `data` is valid up to `data + len`.
-        unsafe { self.data = self.data.add(n) };
+        unsafe {
+            self.len -= n as u32;
+            self.data = self.data.add(n);
+        }
     }
 
     #[inline]
@@ -49,26 +49,26 @@ pub(crate) struct IoSliceMut<'a> {
 
 impl<'a> IoSliceMut<'a> {
     #[inline]
-    pub(crate) fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
-        let len = buf.len().try_into().unwrap();
-        Self { len, data: buf.as_mut_ptr(), _p: PhantomData }
+    pub(crate) const fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+        assert!(buf.len() <= u32::MAX as usize, "slice too large for IoSliceMut");
+        IoSliceMut { len: buf.len() as u32, data: buf.as_mut_ptr(), _p: PhantomData }
     }
 
     #[inline]
-    pub(crate) fn advance(&mut self, n: usize) {
-        self.len = u32::try_from(n)
-            .ok()
-            .and_then(|n| self.len.checked_sub(n))
-            .expect("advancing IoSlice beyond its length");
+    pub(crate) const fn advance(&mut self, n: usize) {
+        assert!(n <= self.len as usize, "advancing IoSliceMut beyond its length");
 
         // SAFETY:
         //  * `n <= len` as asserted above.
         //  * The allocation pointed to by `data` is valid up to `data + len`.
-        unsafe { self.data = self.data.add(n) };
+        unsafe {
+            self.len -= n as u32;
+            self.data = self.data.add(n);
+        }
     }
 
     #[inline]
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub(crate) const fn as_slice(&self) -> &[u8] {
         // SAFETY:
         //  * `data` and `len` come from a prior decomposition of a valid slice.
         unsafe { slice::from_raw_parts(self.data, self.len as usize) }
@@ -82,7 +82,7 @@ impl<'a> IoSliceMut<'a> {
     }
 
     #[inline]
-    pub(crate) fn as_mut_slice(&mut self) -> &mut [u8] {
+    pub(crate) const fn as_mut_slice(&mut self) -> &mut [u8] {
         // SAFETY:
         //  * `data` and `len` come from a prior decomposition of a valid slice.
         unsafe { slice::from_raw_parts_mut(self.data, self.len as usize) }

@@ -1,6 +1,6 @@
 //@only-target: linux android illumos
 // test_race, test_blocking_read and test_blocking_write depend on a deterministic schedule.
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
 //@run-native
 
 // FIXME(static_mut_refs): use raw pointers instead of references
@@ -12,6 +12,16 @@ use std::time::Duration;
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 use libc_utils::*;
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(10));
+    }
+}
 
 fn main() {
     test_read_write();
@@ -112,7 +122,7 @@ fn test_blocking_read() {
         assert_eq!(val, 1);
     });
     // Pass control to thread1 so it can block on eventfd `read`.
-    thread::yield_now();
+    yield_now();
     // Write 1 to the counter to unblock thread1.
     eventfd::write_val(fd, 1).unwrap();
     thread1.join().unwrap();
@@ -131,7 +141,7 @@ fn test_blocking_write() {
         eventfd::write_val(fd, 1).unwrap();
     });
     // Pass control to thread1 so it can block on eventfd `write`.
-    thread::yield_now();
+    yield_now();
     // This will unblock previously blocked eventfd read.
     let val = eventfd::read_val(fd).unwrap();
     assert_eq!(val, u64::MAX - 1);
@@ -159,6 +169,7 @@ fn test_two_threads_blocked_on_eventfd() {
     });
 
     let thread3 = thread::spawn(move || {
+        yield_now();
         let val = eventfd::read_val(fd).unwrap();
         assert_eq!(val, u64::MAX - 1);
     });
@@ -177,10 +188,7 @@ fn test_close_while_blocked() {
 
     // Spawn server thread.
     let server_thread = thread::spawn(move || {
-        if !cfg!(miri) {
-            // Ensure main thread is blocked on reading from the client socket.
-            thread::sleep(Duration::from_millis(10));
-        }
+        yield_now(); // main thread goes first
 
         unsafe { errno_check(libc::close(fd)) };
 

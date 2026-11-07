@@ -1,0 +1,82 @@
+error: argument never used
+  --> $DIR/format-args-concat-foreign-specifier.rs:9:43
+   |
+LL |     format_args!(concat!("é", "aaaaa%d"), 1);
+   |                                           ^ argument never used
+   |
+   = note: format specifiers use curly braces: `%d` should be written as `{}`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/format-args-concat-foreign-specifier.rs:11:41
+   |
+LL |     format_args!(concat!("𐏿", "aaa%d"), 1);
+   |                                         ^ argument never used
+   |
+   = note: format specifiers use curly braces: `%d` should be written as `{}`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/format-args-concat-foreign-specifier.rs:13:43
+   |
+LL |     format_args!(concat!("é", "aaaaa$1"), 1);
+   |                                           ^ argument never used
+   |
+   = note: format specifiers use curly braces: `$1` should be written as `{1}`
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/format-args-concat-foreign-specifier.rs:15:41
+   |
+LL |     format_args!(concat!("𐏿", "aaa$1"), 1);
+   |                                         ^ argument never used
+   |
+   = note: format specifiers use curly braces: `$1` should be written as `{1}`
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/format-args-concat-foreign-specifier.rs:19:37
+   |
+LL |     format_args!(concat!("%d", ""), 1);
+   |                                     ^ argument never used
+   |
+   = note: format specifiers use curly braces: `%d` should be written as `{}`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/format-args-concat-foreign-specifier.rs:21:37
+   |
+LL |     format_args!(concat!("$1", ""), 1);
+   |                                     ^ argument never used
+   |
+   = note: format specifiers use curly braces: `$1` should be written as `{1}`
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
+
+error: multiple unused formatting arguments
+  --> $DIR/format-args-concat-foreign-specifier.rs:25:40
+   |
+LL |     format_args!(concat!("%d %s", ""), 1, 2);
+   |                  --------------------  ^  ^ argument never used
+   |                  |                     |
+   |                  |                     argument never used
+   |                  multiple missing formatting specifiers
+   |
+   = note: format specifiers use curly braces: `%d` should be written as `{}`
+   = note: format specifiers use curly braces: `%s` should be written as `{}`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: argument never used
+  --> $DIR/format-args-concat-foreign-specifier.rs:30:40
+   |
+LL |     format_args!(concat!("%5.3d", ""), 1);
+   |                                        ^ argument never used
+   |
+note: format specifiers use curly braces, and width and precision cannot both be specified for integer conversions
+  --> $DIR/format-args-concat-foreign-specifier.rs:30:18
+   |
+LL |     format_args!(concat!("%5.3d", ""), 1);
+   |                  ^^^^^^^^^^^^^^^^^^^^
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: aborting due to 8 previous errors
+

@@ -7,6 +7,7 @@ LL |     let _ = A::foo::<S>();
 note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-89064.rs:4:8
    |
+LL | trait A<T> {
 LL |     fn foo() {}
    |        ^^^
 help: consider moving this generic argument to the `A` trait, which takes up to 1 argument
@@ -29,6 +30,7 @@ LL |     let _ = B::bar::<S, S>();
 note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-89064.rs:8:8
    |
+LL | trait B<T, U> {
 LL |     fn bar() {}
    |        ^^^
 help: consider moving these generic arguments to the `B` trait, which takes up to 2 arguments
@@ -53,6 +55,7 @@ LL |     let _ = A::<S>::foo::<S>();
 note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-89064.rs:4:8
    |
+LL | trait A<T> {
 LL |     fn foo() {}
    |        ^^^
 

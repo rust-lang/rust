@@ -201,16 +201,6 @@ pub(crate) struct FnParamDocComment {
     pub span: Span,
 }
 
-// FIXME(splat): add splat to the allowed built-in attributes when it is complete/stabilized
-#[derive(Diagnostic)]
-#[diag(
-    "allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters"
-)]
-pub(crate) struct FnParamForbiddenAttr {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
 pub(crate) struct EiiImplAttributeNotSupported<'a> {
@@ -697,6 +687,15 @@ pub(crate) struct PatternFnPointer {
 pub(crate) struct PatternParenthesizedArgList {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("C-variadic parameters aren't allowed in parenthesized argument lists")]
+pub(crate) struct PathFoundCVariadicParams {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion("remove the C-variadics", applicability = "machine-applicable", code = "")]
+    pub sugg_span: Span,
 }
 
 #[derive(Diagnostic)]

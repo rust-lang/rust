@@ -32,7 +32,7 @@ pub trait Printer<'tcx>: Sized {
     fn print_def_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         self.default_print_def_path(def_id, args)
     }
@@ -41,7 +41,7 @@ pub trait Printer<'tcx>: Sized {
     fn print_impl_path(
         &mut self,
         impl_def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let tcx = self.tcx();
         let self_ty = tcx.type_of(impl_def_id);
@@ -115,7 +115,7 @@ pub trait Printer<'tcx>: Sized {
     fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        args: &[GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError>;
 
     /// Appends a representation of a qualified path segment, e.g. `<OsString as From<&T>>`.
@@ -129,10 +129,13 @@ pub trait Printer<'tcx>: Sized {
     fn print_coroutine_with_kind(
         &mut self,
         def_id: DefId,
-        parent_args: &'tcx [GenericArg<'tcx>],
+        parent_args: ty::GenericArgs<'tcx>,
         kind: Ty<'tcx>,
     ) -> Result<(), PrintError> {
-        self.print_path_with_generic_args(|p| p.print_def_path(def_id, parent_args), &[kind.into()])
+        self.print_path_with_generic_args(
+            |p| p.print_def_path(def_id, parent_args),
+            self.tcx().mk_args(&[kind.into()]),
+        )
     }
 
     fn reset_path(&mut self) -> Result<(), PrintError> {
@@ -148,7 +151,7 @@ pub trait Printer<'tcx>: Sized {
     fn default_print_def_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let key = self.tcx().def_key(def_id);
         debug!(?key);
@@ -164,11 +167,11 @@ pub trait Printer<'tcx>: Sized {
             _ => {
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
 
-                let mut parent_args = args;
+                let mut parent_args = args.as_slice();
                 let mut trait_qualify_parent = false;
                 if !args.is_empty() {
                     let generics = self.tcx().generics_of(def_id);
-                    parent_args = &args[..generics.parent_count.min(args.len())];
+                    parent_args = &args.as_slice()[..generics.parent_count.min(args.len())];
 
                     match key.disambiguated_data.data {
                         DefPathData::Closure => {
@@ -182,7 +185,7 @@ pub trait Printer<'tcx>: Sized {
                             {
                                 return self.print_coroutine_with_kind(
                                     def_id,
-                                    parent_args,
+                                    self.tcx().mk_args(parent_args),
                                     args[parent_args.len()].expect_ty(),
                                 );
                             } else {
@@ -202,10 +205,12 @@ pub trait Printer<'tcx>: Sized {
                         // on top of the same path, but without its own generics.
                         _ => {
                             if !generics.is_own_empty() && args.len() >= generics.count() {
-                                let args = generics.own_args_no_defaults(self.tcx(), args);
+                                let args =
+                                    generics.own_args_no_defaults(self.tcx(), args.as_slice());
+                                let parent_args = self.tcx().mk_args(parent_args);
                                 return self.print_path_with_generic_args(
                                     |p| p.print_def_path(def_id, parent_args),
-                                    args,
+                                    self.tcx().mk_args(args),
                                 );
                             }
                         }
@@ -222,17 +227,15 @@ pub trait Printer<'tcx>: Sized {
                 let omit_parent = matches!(key.disambiguated_data.data, DefPathData::TypeNs(..))
                     && self.should_omit_parent_def_path(parent_def_id);
 
+                let parent_args = self.tcx().mk_args(parent_args);
                 self.print_path_with_simple(
                     |p: &mut Self| {
                         if omit_parent {
                             p.reset_path()?;
                             Ok(())
                         } else if trait_qualify_parent {
-                            let trait_ref = ty::TraitRef::new(
-                                p.tcx(),
-                                parent_def_id,
-                                parent_args.iter().copied(),
-                            );
+                            let trait_ref =
+                                ty::TraitRef::new(p.tcx(), parent_def_id, parent_args.iter());
                             p.print_path_with_qualified(trait_ref.self_ty(), Some(trait_ref))
                         } else {
                             p.print_def_path(parent_def_id, parent_args)
@@ -277,7 +280,7 @@ pub trait Printer<'tcx>: Sized {
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
             self.print_path_with_impl(
-                |p| p.print_def_path(parent_def_id, &[]),
+                |p| p.print_def_path(parent_def_id, ty::GenericArgs::empty()),
                 self_ty,
                 impl_trait_ref,
             )

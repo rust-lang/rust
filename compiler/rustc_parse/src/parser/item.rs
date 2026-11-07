@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let inject_use_span = post_attr_lo.data().with_hi(post_attr_lo.lo());
+        let inject_use_span = post_attr_lo.with_hi(post_attr_lo.lo());
         let mod_spans = ModSpans { inner_span: lo.to(self.prev_token.span), inject_use_span };
         Ok((attrs, items, mod_spans))
     }
@@ -354,9 +354,6 @@ impl<'a> Parser<'a> {
             // UNION ITEM
             self.bump(); // `union`
             self.parse_item_union()?
-        } else if self.is_builtin() {
-            // BUILTIN# ITEM
-            return self.parse_item_builtin();
         } else if self.eat_keyword_case(exp!(Macro), case) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
@@ -597,11 +594,6 @@ impl<'a> Parser<'a> {
         };
 
         if let Some(err) = err { Err(self.dcx().create_err(err)) } else { Ok(()) }
-    }
-
-    fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemKind>> {
-        // To be expanded
-        Ok(None)
     }
 
     /// Parses an item macro, e.g., `item!();`.
@@ -1927,6 +1919,9 @@ impl<'a> Parser<'a> {
             (thin_vec![], Trailing::No)
         } else {
             self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
+                if p.recover_inner_attributes()? && p.check(exp![CloseBrace]) {
+                    return Ok(None);
+                }
                 p.parse_enum_variant(ident.span)
             })
             .map_err(|mut err| {
@@ -2165,6 +2160,9 @@ impl<'a> Parser<'a> {
         let mut recovered = Recovered::No;
         if self.eat(exp!(OpenBrace)) {
             while self.token != token::CloseBrace {
+                if self.recover_inner_attributes()? && self.check(exp![CloseBrace]) {
+                    break;
+                }
                 match self.parse_field_def(adt_ty, ident_span) {
                     Ok(field) => {
                         fields.push(field);
@@ -2727,31 +2725,45 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_test_binder_body(&mut self) -> PResult<'a, TestBinderBody> {
-        let mut foralls = ThinVec::new();
-        let mut exists = ThinVec::new();
-        let mut constraints = Vec::new();
-        let mut predicates = Vec::new();
+        let mut items: Vec<TestBinderItem> = Vec::new();
         let mut span = self.token.span;
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
             match this.token.ident() {
                 Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
                     let span = this.token.span;
                     this.bump();
-                    predicates.extend(this.parse_where_clause_predicates(None, span)?.0);
+                    items.extend(
+                        this.parse_where_clause_predicates(None, span)?
+                            .0
+                            .into_iter()
+                            .map(TestBinderItem::Predicate),
+                    );
                 }
                 Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
-                    foralls.push(this.parse_test_binder_forall()?)
+                    items.push(TestBinderItem::Forall(this.parse_test_binder_forall()?));
                 }
                 Some((Ident { name: sym::exists, .. }, IdentKind::Normal)) => {
-                    exists.push(this.parse_test_binder_exists()?)
+                    items.push(TestBinderItem::Exists(this.parse_test_binder_exists()?));
                 }
 
-                _ => constraints.push(this.parse_test_binder_constraint()?),
+                _ if this.token.is_lifetime() && this.look_ahead(1, |t| t.kind == token::Eq) => {
+                    let lhs = this.expect_lifetime();
+                    this.expect(exp!(Eq))?;
+                    if !this.check_lifetime() {
+                        this.unexpected()?;
+                    }
+                    let rhs = this.expect_lifetime();
+                    items.push(TestBinderItem::RegionEquality(TestBinderRegionEquality {
+                        lhs,
+                        rhs,
+                    }));
+                }
+                _ => items.push(TestBinderItem::Constraint(this.parse_test_binder_constraint()?)),
             }
             Ok(())
         })?;
         span = span.to(self.prev_token.span);
-        Ok(TestBinderBody { foralls, exists, constraints, predicates, span })
+        Ok(TestBinderBody { items, span })
     }
 
     pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.7 - 2026-10-20
+
+- Add `SmolStr::INLINE_CAP`
+- Add some missing methods and trait implements for `SmolStr` and `SmolStrBuilder`
+- Fix incorrect `eq` implements for `SmolStrBuilder`
+- Fix borsh deserialization off-by-one for inline threshold
+
 ## 0.3.6 - 2026-03-04
 - Fix the `borsh` feature.
 

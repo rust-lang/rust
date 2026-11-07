@@ -27,7 +27,7 @@ use salsa::SalsaValue;
 use span::Edition;
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow, CallableDefId, InferBodyId, ParamEnvAndCrate,
+    Adjust, Adjustment, AutoBorrow, CallableDefId, InferBodyId, ParamEnvAndCrate, ThinFxHashMap,
     consteval::ConstEvalError,
     db::{GeneralConstId, HirDatabase, InternedClosure, InternedClosureId},
     generics::generics,
@@ -208,7 +208,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             locals,
             start_block,
             binding_locals,
-            upvar_locals: FxHashMap::default(),
+            upvar_locals: ThinFxHashMap::default(),
             param_locals: vec![],
             owner,
             closures: vec![],

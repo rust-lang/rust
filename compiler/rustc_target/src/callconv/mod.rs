@@ -436,7 +436,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NoUndef)
             .set(ArgAttribute::NoFree);
         attrs.pointee_size = layout.size;
-        attrs.pointee_align = Some(layout.align.abi);
+        attrs.pointee_align = Some(layout.align);
 
         if layout.is_unsized() {
             PassMode::IndirectUnsized { attrs, meta_attrs: ArgAttributes::new() }
@@ -613,36 +613,9 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     where
         Ty: PartialEq,
     {
-        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
-        // at the type.
-        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode) && {
-            // `fn_arg_sanity_check` accepts `PassMode::Direct` for some aggregates.
-            // That elevates any type difference to an ABI difference since we just use the
-            // full Rust type as the LLVM argument/return type.
-            if matches!(self.mode, PassMode::Direct(..))
-                && matches!(self.layout.backend_repr, BackendRepr::Memory { .. })
-            {
-                // For aggregates in `Direct` mode to be compatible, the types need to be equal.
-                self.layout.ty == other.layout.ty
-            } else {
-                true
-            }
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
-pub enum RiscvInterruptKind {
-    Machine,
-    Supervisor,
-}
-
-impl RiscvInterruptKind {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Machine => "machine",
-            Self::Supervisor => "supervisor",
-        }
+        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will
+        // look at the type.
+        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
     }
 }
 

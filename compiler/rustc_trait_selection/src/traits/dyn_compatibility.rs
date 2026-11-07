@@ -223,7 +223,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.args[1..]
+            data.trait_ref.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(
@@ -251,7 +251,7 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_term.args[1..]
+            data.projection_term.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(
@@ -535,14 +535,14 @@ fn virtual_call_violations_for_method<'tcx>(
                 // Get the `Span` for all of `self: Ty`, not just `Ty`.
                 match trait_fn {
                     hir::TraitFn::Required([Some(name), ..])
-                        if name.span.eq_ctxt(sig.decl.inputs[0].span) =>
+                        if name.span.ctxt() == sig.decl.inputs[0].span.ctxt() =>
                     {
                         Some(name.span.to(sig.decl.inputs[0].span))
                     }
                     hir::TraitFn::Provided(body_id)
                         if let body = tcx.hir_body(*body_id)
                             && let Some(p) = body.params.get(0)
-                            && p.span.eq_ctxt(p.ty_span) =>
+                            && p.span.ctxt() == p.ty_span.ctxt() =>
                     {
                         Some(p.span.to(p.ty_span))
                     }
