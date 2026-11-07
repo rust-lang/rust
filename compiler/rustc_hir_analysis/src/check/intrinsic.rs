@@ -86,6 +86,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::codeview_annotation
         | sym::cold_path
         | sym::comptime_fetch_file
+        | sym::comptime_list_files
         | sym::const_eval_select
         | sym::contract_check_ensures
         | sym::contract_check_requires
@@ -298,6 +299,12 @@ pub(crate) fn check_intrinsic_type(
                 Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), tcx.types.str_);
 
             (0, 0, vec![var_name], Ty::new_option(tcx, slice_u8_static))
+        }
+
+        sym::comptime_list_files => {
+            let slice = Ty::new_slice(tcx, Ty::new_static_str(tcx));
+            let slice_static: Ty<'_> = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, slice);
+            (0, 0, vec![], slice_static)
         }
 
         sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
