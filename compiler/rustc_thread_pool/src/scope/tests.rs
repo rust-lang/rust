@@ -1,7 +1,7 @@
 use std::iter::once;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Barrier, Mutex};
-use std::vec;
+use std::{ptr, vec};
 
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
@@ -263,6 +263,31 @@ fn panic_propagate_still_execute_4() {
     match result {
         Ok(_) => panic!("failed to propagate panic"),
         Err(_) => assert!(x, "panic in spawn tainted scope"),
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore)]
+fn job_panicked_does_not_drop_losing_panic_payload() {
+    struct PanicOnDrop;
+
+    impl Drop for PanicOnDrop {
+        fn drop(&mut self) {
+            panic!("drop panic");
+        }
+    }
+
+    let scope = super::ScopeBase::new(None, None);
+    scope.job_panicked(Box::new("first panic"));
+
+    // `job_panicked` runs before the scope waits for all jobs.
+    let result = unwind::halt_unwinding(|| scope.job_panicked(Box::new(PanicOnDrop)));
+    assert!(result.is_ok(), "losing panic payload was dropped before the scope waited");
+
+    let panic = scope.panic.swap(ptr::null_mut(), Ordering::Relaxed);
+    assert!(!panic.is_null());
+    unsafe {
+        drop(Box::from_raw(panic));
     }
 }
 
