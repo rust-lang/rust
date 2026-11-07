@@ -1,4 +1,4 @@
-@@ -65,10 +65,31 @@
+@@ -67,10 +67,31 @@
                          Set a codegen option
      -V, --version       Print version info and exit
      -v, --verbose       Use verbose output
