@@ -1,5 +1,5 @@
+use rustc_middle::mir;
 use rustc_middle::mir::coverage::{CoverageKind, PointKind};
-use rustc_middle::mir::{self, Statement, StatementKind};
 use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
@@ -47,15 +47,17 @@ pub(crate) fn extract_raw_spans_from_mir<'tcx>(
 /// return it; otherwise return `None`.
 fn filtered_statement_span<'tcx>(
     hir_info: &ExtractedHirInfo,
-    statement: &Statement<'tcx>,
+    statement: &mir::Statement<'tcx>,
 ) -> Option<Span> {
-    let StatementKind::Coverage(CoverageKind::Point { point_kind, hir_id }) = statement.kind else {
+    let mir::StatementKind::Coverage(CoverageKind::Point { point_kind, hir_id }) = statement.kind
+    else {
         return None;
     };
     match point_kind {
         // These PointKind variants contribute to normal code spans.
-        // (Other variants added in the future might want to return None here.)
         PointKind::Expr | PointKind::ImplicitElse | PointKind::FunctionEnd => {}
+        // Ignore branch-outcome points for normal span extraction.
+        PointKind::BranchOutcome { .. } => return None,
     }
     if hir_info.nodes_to_ignore.contains(&hir_id) {
         return None;
