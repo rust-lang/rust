@@ -71,6 +71,88 @@ Please consult the full [LLM usage policy] for nuances.
 It would be really useful to have people use rustfmt on their projects and file
 issues where it does something you don't expect.
 
+## Fuzzing guidelines
+
+rustfmt broadly follows the same fuzzing guidelines as rustc. Please consult the
+[rustc-dev-guide fuzzing guidelines] *before* opening issues uncovered via
+fuzzing.
+
+The guidelines apply to fuzzed issues regardless of methodology, including ones
+found via LLMs. The [LLM usage policy](#llm-policy) applies.
+
+### Bug types
+
+We are primarily interested in:
+
+* Panics
+* Internal Compiler Errors (ICE)
+* Non-idempotent formatting (formatting the output again changes it)
+* Formatting that changes semantic meaning
+* Input that parses but no longer parses after formatting
+* Formatting that drops code or comments
+
+#### Out of scope
+
+* Code that fails to parse (as rustfmt intentionally does not format it)
+* `error_on_line_overflow` errors on lines that rustfmt cannot shorten
+
+### In a nutshell
+
+*Please do*:
+
+* Ensure the bug is still present on the latest nightly rustfmt and latest
+  `main`
+* Include a reasonably minimal, standalone example along with any bug report
+* Include all of the information requested in the bug report template
+* Search for existing reports with similar behavior, and check if it is a
+  duplicate
+* Try to minimize rustfmt configuration options and flags required to reproduce
+  the bug
+* Add `S-found-by-fuzzing` label in the bug report: `@rustbot label:
+  +S-found-by-fuzzing`
+* If the test case requires unstable configuration options to reproduce failure,
+  add relevant `UO-*` labels: `@rustbot label: +UO-<option_name>`
+
+*Please don't*:
+
+* Use bots, scripts or agents to automatically file issues
+* File large quantities of fuzzed issues without discussing this beforehand with
+  the rustfmt team in the [`#t-rustfmt` Zulip channel][rustfmt-zulip]
+* Seed your fuzzer with inputs that are known to crash rustfmt (i.e. already
+  reported on the issue tracker)
+
+### Discussion
+
+If you are not sure if a bug is a duplicate, report it and link to the issues
+that you think are related.
+
+### Building a corpus
+
+When building a corpus, be sure to avoid collecting samples that are already
+known to crash rustfmt. A fuzzer that is seeded with such tests is more likely
+to generate bugs with the same root cause.
+
+### Extra credit
+
+Here are a few things you can do to help rustfmt after filing a bug:
+
+* For regressions: bisect the bug to figure out when it was introduced. If you
+  find the regressing PR / commit, you can mark the issue with the label
+  `S-has-bisection`. If not, consider applying `E-needs-bisection` instead.
+* Fix "distractions": problems with the test case that don't contribute to
+  triggering the bug, for example unrelated syntax errors or extra items.
+* Minimize the test case. If successful, you can label the issue with
+  `S-has-mcve`. Otherwise, you can apply `E-needs-mcve`.
+
+### Minimization
+
+It is helpful to carefully minimize the fuzzer-generated input. When minimizing,
+be careful to preserve the original error, and avoid introducing distracting
+problems such as additional syntax errors.
+
+[rustc-dev-guide fuzzing guidelines]:
+    https://rustc-dev-guide.rust-lang.org/fuzzing.html#fuzzing
+
 ## Create test cases
 
 Having a strong test suite for a tool like this is essential. It is very easy
