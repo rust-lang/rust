@@ -529,9 +529,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
         args: &[OpTy<'tcx>],
     ) -> InterpResult<'tcx, bool> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Get the pointer to the function in the shared object file if it exists.
-        let Some(code_ptr) = this.get_func_ptr_explicitly_from_lib(link_name) else {
+        let Some(code_ptr) = ecx.get_func_ptr_explicitly_from_lib(link_name) else {
             // Shared object file does not export this function -- try the shims next.
             return interp_ok(false);
         };
@@ -542,23 +542,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Get the function arguments, copy them, and prepare the type descriptions.
         let mut libffi_args = Vec::<OwnedArg>::with_capacity(args.len());
         for arg in args.iter() {
-            libffi_args.push(this.op_to_ffi_arg(arg, tracing)?);
+            libffi_args.push(ecx.op_to_ffi_arg(arg, tracing)?);
         }
-        let ret_ty = this
+        let ret_ty = ecx
             .ty_to_ffitype(dest.layout)
             .map_err(|ty| err_unsup_format!("unsupported return type for native call: {ty}"))?;
 
         // Prepare all exposed memory (both previously exposed, and just newly exposed since a
         // pointer was passed as argument). Uninitialised memory is left as-is, but any data
         // exposed this way is garbage anyway.
-        this.visit_reachable_allocs(this.exposed_allocs(), |this, alloc_id, info| {
+        ecx.visit_reachable_allocs(ecx.exposed_allocs(), |ecx, alloc_id, info| {
             // If there is no data behind this pointer, skip this.
             if !matches!(info.kind, AllocKind::LiveData) {
                 return interp_ok(());
             }
             // It's okay to get raw access, what we do does not correspond to any actual
             // AM operation, it just approximates the state to account for the native call.
-            let alloc = this.get_alloc_raw(alloc_id)?;
+            let alloc = ecx.get_alloc_raw(alloc_id)?;
             // Also expose the provenance of the interpreter-level allocation, so it can
             // be read by FFI. The `black_box` is defensive programming as LLVM likes
             // to (incorrectly) optimize away ptr2int casts whose result is unused.
@@ -569,13 +569,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // $whatever. Can be skipped when tracing; in that case we'll expose just the
                 // actually-read parts later.
                 for prov in alloc.provenance().provenances() {
-                    this.expose_provenance(prov)?;
+                    ecx.expose_provenance(prov)?;
                 }
             }
 
             // Prepare for possible write from native code if mutable.
             if info.mutbl.is_mut() {
-                let (alloc, cx) = this.get_alloc_raw_mut(alloc_id)?;
+                let (alloc, cx) = ecx.get_alloc_raw_mut(alloc_id)?;
                 // These writes could initialize everything and wreck havoc with the pointers.
                 // We can skip that when tracing; in that case we'll later do that only for the
                 // memory that got actually written.
@@ -591,11 +591,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Call the function and store its output.
         let (ret, maybe_memevents) =
-            this.call_native_raw(code_ptr, &mut libffi_args, (ret_ty, dest.layout.size))?;
+            ecx.call_native_raw(code_ptr, &mut libffi_args, (ret_ty, dest.layout.size))?;
         if tracing {
-            this.tracing_apply_accesses(maybe_memevents.unwrap())?;
+            ecx.tracing_apply_accesses(maybe_memevents.unwrap())?;
         }
-        this.ffi_ret_to_mem(ret, dest)?;
+        ecx.ffi_ret_to_mem(ret, dest)?;
         interp_ok(true)
     }
 }

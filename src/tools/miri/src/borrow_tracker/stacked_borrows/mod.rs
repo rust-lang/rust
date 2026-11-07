@@ -827,24 +827,24 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         new_perm: NewPermission,
         info: RetagInfo, // diagnostics info about this retag
     ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let this = self.eval_context_mut();
-        let size = this.size_and_align_of_val(place)?.map(|(size, _)| size);
+        let ecx = self.eval_context_mut();
+        let size = ecx.size_and_align_of_val(place)?.map(|(size, _)| size);
         // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
         // bail out -- we cannot reasonably figure out which memory range to reborrow.
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
         let Some(size) = size else {
             static DEDUP: AtomicBool = AtomicBool::new(false);
             if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
+                ecx.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
             }
             return interp_ok(place.clone());
         };
 
         // Compute new borrow.
-        let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
+        let new_tag = ecx.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
 
         // Reborrow.
-        let new_prov = this.sb_reborrow(place, size, new_perm, new_tag, info)?;
+        let new_prov = ecx.sb_reborrow(place, size, new_perm, new_tag, info)?;
 
         // Adjust place.
         // (If the closure gets called, that means the old provenance was `Some`, and hence the new
@@ -861,7 +861,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ty: Ty<'tcx>,
         mode: RetagMode,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let cause = match mode {
             RetagMode::TwoPhase => RetagCause::TwoPhase,
             RetagMode::FnEntry => RetagCause::FnEntry,
@@ -869,20 +869,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             RetagMode::None => return interp_ok(None), // no retagging
         };
         let new_perm = if ty.is_box() {
-            if ty.is_box_global(*this.tcx) {
-                NewPermission::from_box_ty(val.layout.ty, mode, this)
+            if ty.is_box_global(*ecx.tcx) {
+                NewPermission::from_box_ty(val.layout.ty, mode, ecx)
             } else {
                 // Boxes with custom allocator are not retagged.
                 return interp_ok(None);
             }
         } else {
-            NewPermission::from_ref_ty(val.layout.ty, mode, this)
+            NewPermission::from_ref_ty(val.layout.ty, mode, ecx)
         };
 
         let info = RetagInfo { cause };
-        let place = this.imm_ptr_to_mplace(val)?;
-        let new_place = this.sb_retag_place(&place, new_perm, info)?;
-        interp_ok(Some(ImmTy::from_immediate(new_place.to_ref(this), val.layout)))
+        let place = ecx.imm_ptr_to_mplace(val)?;
+        let new_place = ecx.sb_retag_place(&place, new_perm, info)?;
+        interp_ok(Some(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout)))
     }
 
     /// Protect a place so that it cannot be used any more for the duration of the current function
@@ -890,7 +890,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// This is used to ensure soundness of in-place function argument/return passing.
     fn sb_protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Retag it. With protection! That is the entire point.
         let new_perm = NewPermission::Uniform {
@@ -898,23 +898,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        this.sb_retag_place(place, new_perm, RetagInfo { cause: RetagCause::InPlaceFnPassing })
+        ecx.sb_retag_place(place, new_perm, RetagInfo { cause: RetagCause::InPlaceFnPassing })
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
     fn sb_expose_tag(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Stacked Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
-        let kind = this.get_alloc_info(alloc_id).kind;
+        let kind = ecx.get_alloc_info(alloc_id).kind;
         match kind {
             AllocKind::LiveData => {
                 // This should have alloc_extra data, but `get_alloc_extra` can still fail
                 // if converting this alloc_id from a global to a local one
                 // uncovers a non-supported `extern static`.
-                let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.borrow_tracker_sb().borrow_mut().exposed_tags.insert(tag);
             }
@@ -930,8 +930,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn print_stacks(&self, alloc_id: AllocId) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
-        let alloc_extra = this.get_alloc_extra(alloc_id)?;
+        let ecx = self.eval_context_ref();
+        let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
         let stacks = alloc_extra.borrow_tracker_sb().borrow();
         for (range, stack) in stacks.stacks.iter_all() {
             print!("{range:?}: [");

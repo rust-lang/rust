@@ -314,6 +314,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
+    fn return_io_result_via_errno<T: Into<i128>, E: Into<IoError>>(
+        &mut self,
+        res: Result<T, E>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        match res {
+            Ok(ret) => ecx.write_int(ret, dest),
+            Err(err) => ecx.set_errno_and_return_neg1(err, dest),
+        }
+    }
+
     /// Sets the last OS error and return `-1` as a `i32`-typed Scalar
     fn set_errno_and_return_neg1_i32(
         &mut self,

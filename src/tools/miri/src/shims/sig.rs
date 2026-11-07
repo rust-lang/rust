@@ -29,12 +29,12 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 #[macro_export]
 macro_rules! shim_sig {
     (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
-        |this| {
-            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
+        |ecx| {
+            let (args, c_variadic) = shim_sig_args_sep!(ecx, [$($args)*]);
             $crate::shims::sig::ShimSig {
                 abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
                 args,
-                ret: shim_sig_arg!(this, $($ret)*),
+                ret: shim_sig_arg!(ecx, $($ret)*),
                 c_variadic,
             }
         }
@@ -45,8 +45,8 @@ macro_rules! shim_sig {
 #[macro_export]
 macro_rules! shim_varargs {
     ($($args:tt)*) => {
-        |this| {
-            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
+        |ecx| {
+            let (args, c_variadic) = shim_sig_args_sep!(ecx, [$($args)*]);
             assert!(!c_variadic); // don't accept `...` here
             args
         }
