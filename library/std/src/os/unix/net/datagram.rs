@@ -357,7 +357,7 @@ impl UnixDatagram {
         Ok((count as usize, addr))
     }
 
-    /// Receives data from the socket.
+    /// Receives data from the socket, writing into the given slice.
     ///
     /// On success, returns the number of bytes read and the address from
     /// whence the data came.
@@ -370,8 +370,8 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     let mut buf = vec![0; 10];
-    ///     let (size, sender) = sock.recv_from(buf.as_mut_slice())?;
+    ///     let mut buf = vec![0; 10]; // OBS: len > 0
+    ///     let (size, sender) = sock.recv_from(&mut buf)?;
     ///     println!("received {size} bytes from {sender:?}");
     ///     Ok(())
     /// }
@@ -381,7 +381,7 @@ impl UnixDatagram {
         self.recv_from_flags(buf, 0)
     }
 
-    /// Receives data from the socket.
+    /// Receives data from the socket, writing into the given slice.
     ///
     /// On success, returns the number of bytes read.
     ///
@@ -393,8 +393,8 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::bind("/path/to/the/socket")?;
-    ///     let mut buf = vec![0; 10];
-    ///     sock.recv(buf.as_mut_slice()).expect("`UnixDatagram::recv` should not fail");
+    ///     let mut buf = vec![0; 10]; // OBS: len > 0
+    ///     sock.recv(&mut buf).expect("`UnixDatagram::recv` should not fail");
     ///     Ok(())
     /// }
     /// ```
