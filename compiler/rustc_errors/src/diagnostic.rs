@@ -420,7 +420,6 @@ macro_rules! with_fn {
     } => {
         // The original function.
         $(#[$attrs])*
-        #[doc = concat!("See [`Diag::", stringify!($f), "()`].")]
         pub fn $f(&mut $self, $($name: $ty),*) -> &mut Self {
             $($body)*
         }
