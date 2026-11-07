@@ -555,6 +555,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // `main` should respect same config for frame pointer elimination as rest of code
         cx.set_frame_pointer_type(llfn);
         cx.apply_target_cpu_attr(llfn);
+        // The shim has no item behind it, so it does not go through the per-item attribute path.
+        cx.apply_default_optimisation_attrs(llfn);
 
         let llbb = Bx::append_block(cx, llfn, "top");
         let mut bx = Bx::build(cx, llbb);
@@ -1217,23 +1219,16 @@ impl CrateInfo {
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.backend_optimization_level = |tcx, cratenum| {
-        let for_speed = match tcx.sess.opts.optimize {
-            // If globally no optimisation is done, #[optimize] has no effect.
-            //
-            // This is done because if we ended up "upgrading" to `-O2` here, we’d populate the
-            // pass manager and it is likely that some module-wide passes (such as inliner or
-            // cross-function constant propagation) would ignore the `optnone` annotation we put
-            // on the functions, thus necessarily involving these functions into optimisations.
-            config::OptLevel::No => return config::OptLevel::No,
-            // If globally optimise-speed is already specified, just use that level.
-            config::OptLevel::Less => return config::OptLevel::Less,
-            config::OptLevel::More => return config::OptLevel::More,
-            config::OptLevel::Aggressive => return config::OptLevel::Aggressive,
-            // If globally optimize-for-size has been requested, use -O2 instead (if optimize(size)
-            // are present).
-            config::OptLevel::Size => config::OptLevel::More,
-            config::OptLevel::SizeMin => config::OptLevel::More,
-        };
+        let global = tcx.sess.opts.optimize;
+
+        // Nothing to promote outside a size build. At `-Copt-level=0` the upgrade would populate
+        // the pass manager, and its module-wide passes ignore the `optnone` annotation.
+        if global.objective() != config::OptimizationObjective::Size {
+            return global;
+        }
+
+        // A speed-marked body in a size build needs a speed level, and `-O2` is the lowest one.
+        let for_speed = config::OptLevel::More;
 
         let defids = tcx.collect_and_partition_mono_items(cratenum).all_mono_items;
 
@@ -1242,11 +1237,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             matches!(optimize, OptimizeAttr::Speed)
         });
 
-        if any_for_speed {
-            return for_speed;
-        }
-
-        tcx.sess.opts.optimize
+        if any_for_speed { for_speed } else { global }
     };
 }
 
