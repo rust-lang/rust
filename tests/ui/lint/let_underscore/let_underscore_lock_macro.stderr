@@ -1,0 +1,19 @@
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock_macro.rs:6:9
+   |
+LL |     let _ = dbg!(data.lock().unwrap());
+   |         ^ this lock is not assigned to a binding and is immediately dropped
+   |
+   = note: `#[deny(let_underscore_lock)]` (part of `#[deny(let_underscore)])` on by default
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = dbg!(data.lock().unwrap());
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = dbg!(data.lock().unwrap());
+LL +     drop(dbg!(data.lock().unwrap()));
+   |
+
+error: aborting due to 1 previous error
+
