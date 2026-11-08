@@ -13,9 +13,10 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
 use rustc_infer::infer::{NllRegionVariableOrigin, SubregionOrigin};
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
+use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint, TerminatorKind};
 use rustc_middle::ty::{
-    self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
+    self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypeVisitor,
+    fold_regions,
 };
 use rustc_span::{Ident, Span, Symbol, bug, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -36,6 +37,7 @@ use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
+use crate::type_check::Locations;
 use crate::universal_regions::DefiningTy;
 use crate::{MirBorrowckCtxt, borrowck_errors};
 
@@ -728,6 +730,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         self.add_placeholder_from_predicate_note(&mut diag, path);
         self.add_sized_or_copy_bound_info(&mut diag, category, path);
+        self.add_impl_trait_captured_type_param_note(&mut diag, path);
 
         for constraint in path {
             if let ConstraintCategory::Cast { is_raw_ptr_dyn_type_cast: true, .. } =
@@ -1553,6 +1556,74 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 "move ",
                 Applicability::MaybeIncorrect,
             );
+        }
+    }
+
+    /// Add a note to region errors when the borrow reaches the returned `impl Trait`
+    /// through one of the function's type parameters.
+    fn add_impl_trait_captured_type_param_note(
+        &self,
+        diag: &mut Diag<'_>,
+        path: &[OutlivesConstraint<'tcx>],
+    ) {
+        let tcx = self.infcx.tcx;
+
+        let returns_impl_trait = |def_id: DefId| {
+            tcx.fn_sig(def_id)
+                .instantiate_identity()
+                .skip_normalization()
+                .output()
+                .skip_binder()
+                .has_opaque_types()
+        };
+
+        let contains_region = |ty: Ty<'tcx>, vid: RegionVid| {
+            tcx.any_free_region_meets(&ty, |r| self.regioncx.to_region_vid(r) == vid)
+        };
+
+        // Look for two adjacent constraints in `path`:
+        // - `current`: the lifetime in the passed value must outlive the lifetime in the
+        //   type passed for a type parameter.
+        // - `next`: the lifetime in that type must outlive the lifetime in the returned value.
+        for [current, next] in path.array_windows() {
+            // The function type in `current.category` has its lifetimes erased, so read it
+            // from the MIR call instead to compare its generic args with `current.sub`.
+            if let ConstraintCategory::CallArgument(Some(_)) = current.category
+                && let Locations::Single(loc) = current.locations
+                && let TerminatorKind::Call { func, destination, .. } =
+                    &self.body[loc.block].terminator().kind
+                && let func_ty = func.ty(self.body, tcx)
+                && let ty::FnDef(def_id, args) = *func_ty.kind()
+                && returns_impl_trait(def_id)
+                && let Some(idx) = args.iter().position(|arg_binder| {
+                    arg_binder
+                        .skip_binder()
+                        .as_type()
+                        .is_some_and(|ty| contains_region(ty, current.sub))
+                })
+                && contains_region(destination.ty(self.body, tcx).ty, next.sub)
+            {
+                let return_type = func_ty.fn_sig(tcx).output().skip_binder();
+                let func_name = tcx.item_name(def_id);
+                let param_name = tcx.generics_of(def_id).param_at(idx, tcx).name;
+                let arg = args.skip_binder()[idx];
+
+                diag.span_note(
+                    current.span,
+                    format!(
+                        "the `{return_type}` returned by `{func_name}` captures `{param_name}` \
+                        (here `{arg}`)"
+                    ),
+                );
+
+                diag.note(
+                    "a returned `impl Trait` is assumed to hold \
+                    the type parameters it captures, even if the function does not use them",
+                );
+
+                // One note is enough. Nested calls like `func(func(func(x)))` would repeat it
+                return;
+            }
         }
     }
 }

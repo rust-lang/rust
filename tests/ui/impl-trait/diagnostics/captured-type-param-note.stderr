@@ -1,0 +1,270 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:11:5
+   |
+LL | fn foo(a: &str) {
+   |        -  - let's call the lifetime of this reference `'1`
+   |        |
+   |        `a` is only valid in the function body
+LL |     assert_static(bar(a.split(',')));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Iterator<Item = u8>` returned by `bar` captures `T` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:11:19
+   |
+LL |     assert_static(bar(a.split(',')));
+   |                   ^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:17:5
+   |
+LL | fn tuple(a: &str) {
+   |          -  - let's call the lifetime of this reference `'1`
+   |          |
+   |          `a` is only valid in the function body
+LL |     assert_static((bar(a.split(',')), 1u8));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Iterator<Item = u8>` returned by `bar` captures `T` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:17:20
+   |
+LL |     assert_static((bar(a.split(',')), 1u8));
+   |                    ^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:23:5
+   |
+LL | fn nested(a: &str) {
+   |           -  - let's call the lifetime of this reference `'1`
+   |           |
+   |           `a` is only valid in the function body
+LL |     assert_static(bar(bar(a.split(','))));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Iterator<Item = u8>` returned by `bar` captures `T` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:23:23
+   |
+LL |     assert_static(bar(bar(a.split(','))));
+   |                       ^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:33:5
+   |
+LL | fn capture_t(a: &str) {
+   |              -  - let's call the lifetime of this reference `'1`
+   |              |
+   |              `a` is only valid in the function body
+LL |     assert_static(bar2(a.split(','), 5u8));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Iterator<Item = u8>` returned by `bar2` captures `T` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:33:19
+   |
+LL |     assert_static(bar2(a.split(','), 5u8));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:39:5
+   |
+LL | fn capture_u(a: &str) {
+   |              -  - let's call the lifetime of this reference `'1`
+   |              |
+   |              `a` is only valid in the function body
+LL |     assert_static(bar2(5u8, a.split(',')));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Iterator<Item = u8>` returned by `bar2` captures `U` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:39:19
+   |
+LL |     assert_static(bar2(5u8, a.split(',')));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:47:5
+   |
+LL | fn foo_async(a: &str) {
+   |              -  - let's call the lifetime of this reference `'1`
+   |              |
+   |              `a` is only valid in the function body
+LL |     assert_static(bar3(a.split(',')));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Future<Output = ()>` returned by `bar3` captures `T` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:47:19
+   |
+LL |     assert_static(bar3(a.split(',')));
+   |                   ^^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:61:5
+   |
+LL | fn method_param(a: &str) {
+   |                 -  - let's call the lifetime of this reference `'1`
+   |                 |
+   |                 `a` is only valid in the function body
+LL |     assert_static(S(5u8).m(a.split(',')));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Iterator<Item = u8>` returned by `m` captures `T` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:61:19
+   |
+LL |     assert_static(S(5u8).m(a.split(',')));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:67:5
+   |
+LL | fn impl_param(a: &str) {
+   |               -  - let's call the lifetime of this reference `'1`
+   |               |
+   |               `a` is only valid in the function body
+LL |     assert_static(S(a.split(',')).m(5u8));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+note: the `impl Iterator<Item = u8>` returned by `m` captures `U` (here `std::str::Split<'_, char>`)
+  --> $DIR/captured-type-param-note.rs:67:19
+   |
+LL |     assert_static(S(a.split(',')).m(5u8));
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+   = note: a returned `impl Trait` is assumed to hold the type parameters it captures, even if the function does not use them
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:75:5
+   |
+LL | fn tuple_no_error_on_bar(a: &str) {
+   |                          -  - let's call the lifetime of this reference `'1`
+   |                          |
+   |                          `a` is only valid in the function body
+LL |     assert_static((bar(5u8), a.split(',')));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+   = note: requirement occurs because of the type `std::str::Split<'_, char>`, which makes the generic argument `'_` invariant
+   = note: the struct `std::str::Split<'a, P>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:80:5
+   |
+LL | fn bar_not_shortest_path(a: &str) {
+   |                          -  - let's call the lifetime of this reference `'1`
+   |                          |
+   |                          `a` is only valid in the function body
+LL |     assert_static((bar(a.split(',')), a.split(',')));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+   = note: requirement occurs because of the type `std::str::Split<'_, char>`, which makes the generic argument `'_` invariant
+   = note: the struct `std::str::Split<'a, P>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/captured-type-param-note.rs:89:5
+   |
+LL | fn not_related_to_impl_trait_err(a: &str) {
+   |                                  -  - let's call the lifetime of this reference `'1`
+   |                                  |
+   |                                  `a` is only valid in the function body
+...
+LL |     assert_static(out);
+   |     ^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `a` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/captured-type-param-note.rs:4:21
+   |
+LL | fn assert_static<T: 'static>(_: T) {}
+   |                     ^^^^^^^ lifetime requirement introduced here
+   = note: requirement occurs because of the type `std::str::Split<'_, char>`, which makes the generic argument `'_` invariant
+   = note: the struct `std::str::Split<'a, P>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0521`.
