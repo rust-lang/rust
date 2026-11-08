@@ -985,77 +985,68 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
+fn parse_directives_and_validate_names(path: &Utf8Path, file_contents: &str) -> Result<(), ()> {
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
-    let result = directives::do_early_directives_check(TestMode::Ui, &file_directives);
-    if result.is_err() {
-        *poisoned = true;
-    }
+    directives::validate_name(TestMode::Ui, &file_directives).map_err(drop)
 }
 
 #[test]
 fn test_unknown_directive_check() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/unknown_directive.rs"),
     );
-    assert!(poisoned);
+    assert!(result.is_err());
 }
 
 #[test]
 fn test_known_directive_check_no_error() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/known_directive.rs"),
     );
-    assert!(!poisoned);
+    assert!(result.is_ok());
 }
 
 #[test]
 fn test_error_annotation_no_error() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/error_annotation.rs"),
     );
-    assert!(!poisoned);
+    assert!(result.is_ok());
 }
 
 #[test]
 fn test_non_rs_unknown_directive_not_checked() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.Makefile"),
         include_str!("./test-auxillary/not_rs.Makefile"),
     );
-    assert!(!poisoned);
+    assert!(result.is_ok());
 }
 
 #[test]
 fn test_trailing_directive() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
-    assert!(poisoned);
+    let result =
+        parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
+    assert!(result.is_err());
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86   only-arm with comment");
-    assert!(poisoned);
+    let result = parse_directives_and_validate_names(
+        Utf8Path::new("a.rs"),
+        "//@ only-x86   only-arm with comment",
+    );
+    assert!(result.is_err());
 }
 
 #[test]
 fn test_not_trailing_directive() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ revisions: incremental");
-    assert!(!poisoned);
+    let result =
+        parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ revisions: incremental");
+    assert!(result.is_ok());
 }
 
 #[test]
