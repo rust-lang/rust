@@ -2363,7 +2363,10 @@ impl CommandLineStep for Assemble {
             .into_iter()
             .filter_map(|(path, dependency_type)| {
                 if dependency_type == DependencyType::Host {
-                    Some(path.file_name().unwrap().to_owned().into_string().unwrap())
+                    // Match by crate name, as cross builds also have a copy of each proc-macro
+                    // built for the target (`-Zdual-proc-macros`) with a different hash.
+                    let filename = path.file_name().unwrap().to_str().unwrap();
+                    Some(filename.split_once('-').unwrap().0.to_owned())
                 } else {
                     None
                 }
@@ -2377,7 +2380,8 @@ impl CommandLineStep for Assemble {
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
 
-            let is_proc_macro = proc_macros.contains(&filename);
+            let is_proc_macro =
+                filename.split_once('-').is_some_and(|(name, _)| proc_macros.contains(name));
             let is_dylib_or_debug = is_dylib(&f.path()) || is_debug_info(&filename);
 
             // `rustc_driver` statically links to stdlib, so do not copy the libstd dynamic library file
