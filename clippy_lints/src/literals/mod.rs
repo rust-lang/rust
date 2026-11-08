@@ -1,3 +1,5 @@
+mod mistyped_literal_suffix;
+
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
@@ -159,18 +161,12 @@ enum WarningType {
     InconsistentDigitGrouping,
     LargeDigitGroups,
     DecimalRepresentation,
-    MistypedLiteralSuffix,
     UnusualByteGroupings,
 }
 
 impl WarningType {
     fn lint_and_text(&self) -> (&'static Lint, &'static str, &'static str) {
         match self {
-            Self::MistypedLiteralSuffix => (
-                MISTYPED_LITERAL_SUFFIXES,
-                "mistyped literal suffix",
-                "did you mean to write",
-            ),
             Self::UnreadableLiteral => (UNREADABLE_LITERAL, "long literal lacking separators", "consider"),
             Self::LargeDigitGroups => (LARGE_DIGIT_GROUPS, "digit groups should be smaller", "consider"),
             Self::InconsistentDigitGrouping => (
@@ -231,7 +227,7 @@ impl LiteralDigitGrouping {
             && let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
         {
-            if !Self::check_for_mistyped_suffix(cx, span, &mut num_lit) {
+            if !mistyped_literal_suffix::check(cx, span, &mut num_lit) {
                 return;
             }
 
@@ -265,73 +261,12 @@ impl LiteralDigitGrouping {
                     | WarningType::InconsistentDigitGrouping
                     | WarningType::UnusualByteGroupings
                     | WarningType::LargeDigitGroups => !span.from_expansion(),
-                    WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => true,
+                    WarningType::DecimalRepresentation => true,
                 };
                 if should_warn {
                     warning_type.display(&num_lit, cx, span);
                 }
             }
-        }
-    }
-
-    // Returns `false` if the check fails
-    fn check_for_mistyped_suffix(cx: &EarlyContext<'_>, span: Span, num_lit: &mut NumericLiteral<'_>) -> bool {
-        if num_lit.suffix.is_some() {
-            return true;
-        }
-
-        let (part, mistyped_suffixes, is_float) = if let Some((_, exponent)) = &mut num_lit.exponent {
-            (exponent, &["32", "64"][..], true)
-        } else if num_lit.fraction.is_some() {
-            return true;
-        } else {
-            (&mut num_lit.integer, &["8", "16", "32", "64"][..], false)
-        };
-
-        let mut split = part.rsplit('_');
-        let last_group = split.next().expect("At least one group");
-        if split.next().is_some() && mistyped_suffixes.contains(&last_group) {
-            let main_part = &part[..part.len() - last_group.len()];
-            let missing_char;
-            if is_float {
-                missing_char = 'f';
-            } else {
-                let radix = match num_lit.radix {
-                    Radix::Binary => 2,
-                    Radix::Octal => 8,
-                    Radix::Decimal => 10,
-                    Radix::Hexadecimal => 16,
-                };
-                if let Ok(int) = u64::from_str_radix(&main_part.replace('_', ""), radix) {
-                    missing_char = match (last_group, int) {
-                        ("8", i) if i8::try_from(i).is_ok() => 'i',
-                        ("16", i) if i16::try_from(i).is_ok() => 'i',
-                        ("32", i) if i32::try_from(i).is_ok() => 'i',
-                        ("64", i) if i64::try_from(i).is_ok() => 'i',
-                        ("8", u) if u8::try_from(u).is_ok() => 'u',
-                        ("16", u) if u16::try_from(u).is_ok() => 'u',
-                        ("32", u) if u32::try_from(u).is_ok() => 'u',
-                        ("64", _) => 'u',
-                        _ => {
-                            return true;
-                        },
-                    }
-                } else {
-                    return true;
-                }
-            }
-            *part = main_part;
-            let (lint, message, try_msg) = WarningType::MistypedLiteralSuffix.lint_and_text();
-            span_lint_and_then(cx, lint, span, message, |diag| {
-                let mut sugg = num_lit.format();
-                sugg.push('_');
-                sugg.push(missing_char);
-                sugg.push_str(last_group);
-                diag.span_suggestion(span, try_msg, sugg, Applicability::MaybeIncorrect);
-            });
-            false
-        } else {
-            true
         }
     }
 
