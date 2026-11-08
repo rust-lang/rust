@@ -227,5 +227,16 @@ LL | |         println!("{x}");
 LL | |     }
    | |_____^ help: try: `'outer: while let Some(x) = it.next() { .. }`
 
-error: aborting due to 15 previous errors; 1 warning emitted
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:343:9
+   |
+LL | /         loop {
+LL | |
+LL | |             // since break pattern is a wildcard
+LL | |             match f() {
+...  |
+LL | |         }
+   | |_________^ help: try: `while let Ok(()) = f() { .. }`
+
+error: aborting due to 16 previous errors; 1 warning emitted
 
