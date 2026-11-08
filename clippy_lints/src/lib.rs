@@ -517,7 +517,6 @@ rustc_lint::early_lint_methods!(
         Precedence: precedence::Precedence = precedence::Precedence,
         NeedlessArbitrarySelfType: needless_arbitrary_self_type::NeedlessArbitrarySelfType = needless_arbitrary_self_type::NeedlessArbitrarySelfType,
         LiteralDigitGrouping: literals::LiteralDigitGrouping = literals::LiteralDigitGrouping::new(conf),
-        DecimalLiteralRepresentation: literals::DecimalLiteralRepresentation = literals::DecimalLiteralRepresentation::new(conf),
         TabsInDocComments: tabs_in_doc_comments::TabsInDocComments = tabs_in_doc_comments::TabsInDocComments,
         SingleComponentPathImports: single_component_path_imports::SingleComponentPathImports = single_component_path_imports::SingleComponentPathImports::default(),
         OptionEnvUnwrap: option_env_unwrap::OptionEnvUnwrap = option_env_unwrap::OptionEnvUnwrap,

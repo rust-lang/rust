@@ -1,3 +1,4 @@
+mod decimal_literal_representation;
 mod mistyped_literal_suffix;
 
 use clippy_config::Conf;
@@ -146,9 +147,8 @@ declare_clippy_lint! {
     "binary or hex literals that aren't grouped by four"
 }
 
-impl_lint_pass!(DecimalLiteralRepresentation => [DECIMAL_LITERAL_REPRESENTATION]);
-
 impl_lint_pass!(LiteralDigitGrouping => [
+    DECIMAL_LITERAL_REPRESENTATION,
     INCONSISTENT_DIGIT_GROUPING,
     LARGE_DIGIT_GROUPS,
     MISTYPED_LITERAL_SUFFIXES,
@@ -160,7 +160,6 @@ enum WarningType {
     UnreadableLiteral,
     InconsistentDigitGrouping,
     LargeDigitGroups,
-    DecimalRepresentation,
     UnusualByteGroupings,
 }
 
@@ -172,11 +171,6 @@ impl WarningType {
             Self::InconsistentDigitGrouping => (
                 INCONSISTENT_DIGIT_GROUPING,
                 "digits grouped inconsistently by underscores",
-                "consider",
-            ),
-            Self::DecimalRepresentation => (
-                DECIMAL_LITERAL_REPRESENTATION,
-                "integer literal has a better hexadecimal representation",
                 "consider",
             ),
             Self::UnusualByteGroupings => (
@@ -197,6 +191,7 @@ impl WarningType {
 }
 
 pub struct LiteralDigitGrouping {
+    literal_representation_threshold: u64,
     lint_fraction_readability: bool,
 }
 
@@ -208,6 +203,9 @@ impl EarlyLintPass for LiteralDigitGrouping {
             && !expr.span.in_external_macro(cx.sess().source_map())
         {
             self.check_lit(cx, lit, expr.span);
+            if matches!(lit.kind, token::LitKind::Integer) {
+                decimal_literal_representation::check(cx, lit, expr.span, self.literal_representation_threshold);
+            }
         }
     }
 }
@@ -218,6 +216,7 @@ const UUID_GROUP_LENS: [usize; 5] = [8, 4, 4, 4, 12];
 impl LiteralDigitGrouping {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
+            literal_representation_threshold: conf.literal_representation_threshold,
             lint_fraction_readability: conf.unreadable_literal_lint_fractions,
         }
     }
@@ -261,7 +260,6 @@ impl LiteralDigitGrouping {
                     | WarningType::InconsistentDigitGrouping
                     | WarningType::UnusualByteGroupings
                     | WarningType::LargeDigitGroups => !span.from_expansion(),
-                    WarningType::DecimalRepresentation => true,
                 };
                 if should_warn {
                     warning_type.display(&num_lit, cx, span);
@@ -341,90 +339,5 @@ impl LiteralDigitGrouping {
         } else {
             Ok(None)
         }
-    }
-}
-
-pub struct DecimalLiteralRepresentation {
-    threshold: u64,
-}
-
-impl EarlyLintPass for DecimalLiteralRepresentation {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        // Only integer tokens can produce `LitKind::Int`.
-        if let ExprKind::Lit(lit) = expr.kind
-            && lit.kind == token::LitKind::Integer
-            && !expr.span.in_external_macro(cx.sess().source_map())
-        {
-            self.check_lit(cx, lit, expr.span);
-        }
-    }
-}
-
-impl DecimalLiteralRepresentation {
-    pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            threshold: conf.literal_representation_threshold,
-        }
-    }
-    fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
-        // Lint integral literals.
-        if let Ok(lit_kind) = LitKind::from_token_lit(lit)
-            && let LitKind::Int(val, _) = lit_kind
-            && val >= u128::from(self.threshold)
-            && let Some(src) = span.get_text(cx)
-            && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
-            && num_lit.radix == Radix::Decimal
-        {
-            let hex = format!("{val:#X}");
-            let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
-            let _: Result<(), ()> = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                warning_type.display(&num_lit, cx, span);
-            });
-        }
-    }
-
-    fn do_lint(digits: &str) -> Result<(), WarningType> {
-        if digits.len() == 1 {
-            // Lint for 1 digit literals, if someone really sets the threshold that low
-            if digits == "1"
-                || digits == "2"
-                || digits == "4"
-                || digits == "8"
-                || digits == "3"
-                || digits == "7"
-                || digits == "F"
-            {
-                return Err(WarningType::DecimalRepresentation);
-            }
-        } else if digits.len() < 4 {
-            // Lint for Literals with a hex-representation of 2 or 3 digits
-            let f = &digits[0..1]; // first digit
-            let s = &digits[1..]; // suffix
-
-            // Powers of 2
-            if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && s.chars().all(|c| c == '0'))
-                // Powers of 2 minus 1
-                || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && s.chars().all(|c| c == 'F'))
-            {
-                return Err(WarningType::DecimalRepresentation);
-            }
-        } else {
-            // Lint for Literals with a hex-representation of 4 digits or more
-            let f = &digits[0..1]; // first digit
-            let m = &digits[1..digits.len() - 1]; // middle digits, except last
-            let s = &digits[1..]; // suffix
-
-            // Powers of 2 with a margin of +15/-16
-            if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && m.chars().all(|c| c == '0'))
-                || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && m.chars().all(|c| c == 'F'))
-                // Lint for representations with only 0s and Fs, while allowing 7 as the first
-                // digit
-                || ((f.eq("7") || f.eq("F")) && s.chars().all(|c| c == '0' || c == 'F'))
-            {
-                return Err(WarningType::DecimalRepresentation);
-            }
-        }
-
-        Ok(())
     }
 }
