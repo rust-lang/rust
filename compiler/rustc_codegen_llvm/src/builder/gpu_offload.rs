@@ -171,7 +171,7 @@ pub(crate) fn generate_at_one<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Value<'ll> 
     ];
     let struct_elems_ty: Vec<_> = struct_elems.iter().map(|&x| cx.val_ty(x)).collect();
     let initializer = crate::common::named_struct(struct_ident_ty, &struct_elems);
-    cx.set_struct_body(struct_ident_ty, &struct_elems_ty, false);
+    cx.set_struct_body(struct_ident_ty, &struct_elems_ty);
     let at_one = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
     llvm::set_alignment(at_one, Align::EIGHT);
     at_one
@@ -199,7 +199,7 @@ impl TgtOffloadEntry {
         // For each kernel to run on the gpu, we will later generate one entry of this type.
         // copied from LLVM
         let entry_elements = vec![ti64, ti16, ti16, ti32, tptr, tptr, ti64, ti64, tptr];
-        cx.set_struct_body(offload_entry_ty, &entry_elements, false);
+        cx.set_struct_body(offload_entry_ty, &entry_elements);
         offload_entry_ty
     }
 

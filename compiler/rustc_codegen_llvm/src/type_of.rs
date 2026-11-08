@@ -79,8 +79,7 @@ fn uncached_llvm_type<'ll, 'tcx>(
                 None => cx.type_struct(&[fill]),
                 Some(ref name) => {
                     let llty = cx.type_named_struct(name);
-                    let packed = false;
-                    cx.set_struct_body(llty, &[fill], packed);
+                    cx.set_struct_body(llty, &[fill]);
                     llty
                 }
             }
@@ -269,7 +268,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
         if let Some((llty, layout)) = defer {
             let (llfields, packed) = struct_llfields(cx, layout);
-            cx.set_struct_body(llty, &llfields, packed);
+            if packed {
+                cx.set_struct_body_packed(llty, &llfields)
+            } else {
+                cx.set_struct_body(llty, &llfields)
+            }
         }
         llty
     }
