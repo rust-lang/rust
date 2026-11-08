@@ -788,7 +788,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                             pos > 0,
                         )))
                     } else {
-                        Some(nested.unwrap_or(NestedImportRemoval::ReplaceRoot))
+                        nested.or(Some(NestedImportRemoval::ReplaceRoot(root_span)))
                     };
                     self.build_reduced_graph_for_use_tree(
                         item,
@@ -823,7 +823,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         &tree,
                         id,
                         &prefix,
-                        nested.or(Some(NestedImportRemoval::ReplaceRoot)),
+                        nested.or(Some(NestedImportRemoval::ReplaceRoot(root_span))),
                         true,
                         vis,
                         root_span,

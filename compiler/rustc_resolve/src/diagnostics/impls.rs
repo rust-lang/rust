@@ -55,9 +55,9 @@ use crate::late::{ConstantRequiresType, DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
     DelayedVisResolutionError, Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey,
-    LateDecl, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
-    PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
-    VisResolutionError, path_names_to_string,
+    LateDecl, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot, NestedImportRemoval,
+    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
+    Segment, UseError, Used, VisResolutionError, path_names_to_string,
 };
 
 /// A vector of spans and replacements, a message and applicability.
@@ -2953,17 +2953,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             err.subdiagnostic(note);
         }
-        // The suggestion replaces `dedup_span` with a path reaching the failing ident.
-        // That's valid only when
-        // 1) the failing ident is the imported leaf, otherwise `as` renames and trailing segments
-        //    get dropped, and
-        // 2) the use isn't nested, otherwise `dedup_span` is one ident in `{...}`.
+        // The suggestion replaces `sugg_span` with a path reaching the failing ident.
+        // That's valid only when:
+        // 1) the failing ident is the imported leaf, otherwise trailing segments get dropped, and
+        // 2) for grouped imports, the failing item is the only item in the root use-tree.
         //
-        // See issue #156060.
-        let can_replace_use = !shown_candidates
-            && nested.is_none()
-            && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
-        if can_replace_use {
+        // See issue #156060 and #157453.
+        let is_leaf = !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
+        let sugg_span = match nested {
+            None => Some(dedup_span),
+            Some(NestedImportRemoval::ReplaceRoot(root_span)) => {
+                // Replacing the root with a path drops renames (`A as Renamed`) and globs (`m::*`).
+                let is_renamed_or_glob = dedup_span.hi() != ident.span.hi();
+                (!is_renamed_or_glob && root_span.can_be_used_for_suggestions())
+                    .then_some(root_span)
+            }
+            Some(NestedImportRemoval::Remove(_)) => None,
+        };
+        if !shown_candidates
+            && is_leaf
+            && let Some(sugg_span) = sugg_span
+        {
             // We prioritize shorter paths, non-core imports and direct imports over the
             // alternatives.
             sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
@@ -2977,9 +2987,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let ident = *sugg.last().expect("at least one segment");
                 let path = join_path_idents(sugg);
                 let sugg = if reexport {
-                    diagnostics::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
+                    diagnostics::ImportIdent::ThroughReExport { span: sugg_span, ident, path }
                 } else {
-                    diagnostics::ImportIdent::Directly { span: dedup_span, ident, path }
+                    diagnostics::ImportIdent::Directly { span: sugg_span, ident, path }
                 };
                 err.subdiagnostic(sugg);
                 break;

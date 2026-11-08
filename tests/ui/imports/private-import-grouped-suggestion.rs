@@ -73,8 +73,18 @@ mod nested_group_single {
     //~^ ERROR struct import `A` is private [E0603]
 }
 
+mod nested_single_in_single {
+    use crate::{b::{A}};
+    //~^ ERROR struct import `A` is private [E0603]
+}
+
 mod pub_use {
     pub use crate::b::{A, Z};
+    //~^ ERROR struct import `A` is private [E0603]
+}
+
+mod pub_use_single {
+    pub use crate::b::{A};
     //~^ ERROR struct import `A` is private [E0603]
 }
 
@@ -118,6 +128,12 @@ mod with_attribute {
     //~^ ERROR struct import `A` is private [E0603]
 }
 
+mod with_attribute_single {
+    #[allow(unused_imports)]
+    use crate::b::{A};
+    //~^ ERROR struct import `A` is private [E0603]
+}
+
 mod inside_function_same_line {
     fn f() { use crate::b::{A, Z}; }
     //~^ ERROR struct import `A` is private [E0603]
@@ -137,6 +153,17 @@ macro_rules! define_use {
 
 mod macro_generated {
     define_use!();
+}
+
+macro_rules! define_use_single {
+    () => {
+        use crate::b::{A};
+        //~^ ERROR struct import `A` is private [E0603]
+    };
+}
+
+mod macro_generated_single {
+    define_use_single!();
 }
 
 mod x {
@@ -167,6 +194,23 @@ mod non_glob_control_single {
 
 mod non_glob_control_multi {
     use crate::c::{m::Item, Other};
+    //~^ ERROR module import `m` is private [E0603]
+}
+
+mod unexported {
+    mod hidden {
+        pub mod m {
+            pub struct Item;
+        }
+    }
+
+    pub mod intermediate {
+        use super::hidden::m;
+    }
+}
+
+mod glob_in_single_group_no_candidate {
+    use crate::unexported::intermediate::{m::*};
     //~^ ERROR module import `m` is private [E0603]
 }
 

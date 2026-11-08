@@ -1082,9 +1082,9 @@ impl<'ra> DeclKind<'ra> {
 /// Removal or replacement strategy for diagnostics on nested use-trees.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum NestedImportRemoval {
-    /// The root use statement imports only this item (e.g. `use a::{B};`, `use a::{b::{C}};`),
-    /// so the entire statement can be replaced in-place by a path.
-    ReplaceRoot,
+    /// The root use-tree imports only this item (e.g. `use a::{B};`, `use a::{b::{C}};`),
+    /// so it can be replaced in-place by a path.
+    ReplaceRoot(Span),
     /// Span removing the item and an adjacent comma (trailing if first item, preceding otherwise).
     Remove(Span),
 }
