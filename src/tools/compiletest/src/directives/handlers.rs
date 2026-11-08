@@ -184,9 +184,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             config.push_name_value_directive(ln, EXEC_ENV, &mut props.exec_env, Config::parse_env);
         }),
         handler(UNSET_EXEC_ENV, |config, ln, props| {
-            config.push_name_value_directive(ln, UNSET_EXEC_ENV, &mut props.unset_exec_env, |r| {
-                r.trim().to_owned()
-            });
+            config.push_name_value_directive(ln, UNSET_EXEC_ENV, &mut props.unset_exec_env, |r| r);
         }),
         handler(RUSTC_ENV, |config, ln, props| {
             config.push_name_value_directive(
@@ -201,7 +199,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
                 ln,
                 UNSET_RUSTC_ENV,
                 &mut props.unset_rustc_env,
-                |r| r.trim().to_owned(),
+                |r| r,
             );
         }),
         handler(FORBID_OUTPUT, |config, ln, props| {
@@ -252,7 +250,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
         handler(FAILURE_STATUS, |config, ln, props| {
             if let Some(code) = config
                 .parse_name_value_directive(ln, FAILURE_STATUS)
-                .and_then(|code| code.trim().parse::<i32>().ok())
+                .and_then(|code| code.parse::<i32>().ok())
             {
                 props.failure_status = Some(code);
             }
@@ -275,9 +273,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             );
         }),
         handler(ASSEMBLY_OUTPUT, |config, ln, props| {
-            config.set_name_value_directive(ln, ASSEMBLY_OUTPUT, &mut props.assembly_output, |r| {
-                r.trim().to_string()
-            });
+            config.set_name_value_directive(ln, ASSEMBLY_OUTPUT, &mut props.assembly_output);
         }),
         handler(STDERR_PER_BITWIDTH, |config, ln, props| {
             config.set_name_directive(ln, STDERR_PER_BITWIDTH, &mut props.stderr_per_bitwidth);
@@ -289,7 +285,6 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             // Unlike the other `name_value_directive`s this needs to be handled manually,
             // because it sets a `bool` flag.
             if let Some(known_bug) = config.parse_name_value_directive(ln, KNOWN_BUG) {
-                let known_bug = known_bug.trim();
                 if known_bug == "unknown"
                     || known_bug.split(',').all(|issue_ref| {
                         issue_ref
@@ -312,9 +307,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             }
         }),
         handler(TEST_MIR_PASS, |config, ln, props| {
-            config.set_name_value_directive(ln, TEST_MIR_PASS, &mut props.mir_unit_test, |s| {
-                s.trim().to_string()
-            });
+            config.set_name_value_directive(ln, TEST_MIR_PASS, &mut props.mir_unit_test);
         }),
         handler(REMAP_SRC_BASE, |config, ln, props| {
             config.set_name_directive(ln, REMAP_SRC_BASE, &mut props.remap_src_base);
@@ -363,9 +356,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
         handler(DONT_REQUIRE_ANNOTATIONS, |config, ln, props| {
             if let Some(err_kind) = config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
             {
-                props
-                    .dont_require_annotations
-                    .insert(ErrorKind::expect_from_user_str(err_kind.trim()));
+                props.dont_require_annotations.insert(ErrorKind::expect_from_user_str(&err_kind));
             }
         }),
         handler(DISABLE_GDB_PRETTY_PRINTERS, |config, ln, props| {

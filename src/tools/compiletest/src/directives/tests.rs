@@ -83,7 +83,7 @@ fn test_parse_normalize_rule() {
             "something (32 bits)",
             "something ($WORD bits)",
         ),
-        (r#"  " with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
+        (r#"" with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
     ];
 
     for &(input, expected_regex, expected_replacement) in good_data {
@@ -616,7 +616,7 @@ fn test_extract_version_range() {
 }
 
 #[test]
-#[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
+#[should_panic(expected = "duplicate revision: `rpass1` in line `rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
     parse_early_props(&config, "//@ revisions: rpass1 rpass1");
@@ -661,10 +661,7 @@ fn test_empty_directive() {
     let line = "//@";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(
-        result,
-        Some(Ok(DirectiveLine { revision: None, name: "", payload: None, .. }))
-    );
+    assert_matches!(result, Some(Err(Error { kind: ErrorKind::InvalidName { name: "" }, .. })));
 }
 
 #[test]
@@ -674,8 +671,27 @@ fn test_non_alphanumeric_directive_name() {
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(
         result,
-        Some(Ok(DirectiveLine { revision: None, name: "#&$?+)^", payload: None, .. }))
+        Some(Err(Error { kind: ErrorKind::InvalidName { name: "#&$?+)^" }, .. }))
     );
+}
+
+#[test]
+fn test_non_alphanumeric_directive_name_with_payload() {
+    let line = "//@ #&$?+)^ payload";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Err(Error { kind: ErrorKind::InvalidName { name: "#&$?+)^" }, .. }))
+    );
+}
+
+#[test]
+fn test_missing_directive_name() {
+    let line = "//@: value";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(result, Some(Err(Error { kind: ErrorKind::InvalidName { name: "" }, .. })));
 }
 
 #[test]
@@ -688,7 +704,7 @@ fn test_key_value_directive() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "aux-build",
-            payload: Some(DirectivePayload::Value(" file.rs")),
+            payload: Some(DirectivePayload::Value("file.rs")),
             ..
         }))
     );
@@ -731,7 +747,7 @@ fn test_indented_directive() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "key",
-            payload: Some(DirectivePayload::Value(" value")),
+            payload: Some(DirectivePayload::Value("value")),
             ..
         }))
     );
@@ -739,7 +755,10 @@ fn test_indented_directive() {
 
 #[test]
 fn test_directive_padded_colon() {
-    let line = "//@ key :value";
+    // Historical context: For the longest time we used to parse this as a valueless directive with
+    // remark ` : value` since we were naively splitting by [':', ' '].
+
+    let line = "//@ key : value";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(
@@ -747,7 +766,26 @@ fn test_directive_padded_colon() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "key",
-            payload: Some(DirectivePayload::Remark(":value")),
+            payload: Some(DirectivePayload::Value("value")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_directive_two_names() {
+    // We parse the second half as a remark so we can later reject it as a trailing directive if
+    // `key1` turns out to be the name of a real directive.
+
+    let line = "//@ key0 key1: value";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key0",
+            payload: Some(DirectivePayload::Remark("key1: value")),
             ..
         }))
     );
@@ -763,7 +801,7 @@ fn test_key_value_directive_trailing_whitespace() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "key",
-            payload: Some(DirectivePayload::Value(" value  \t ")),
+            payload: Some(DirectivePayload::Value("value")),
             ..
         }))
     );
@@ -776,12 +814,7 @@ fn test_valueless_directive_with_trailing_whitespace() {
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(
         result,
-        Some(Ok(DirectiveLine {
-            revision: None,
-            name: "key",
-            payload: Some(DirectivePayload::Remark("  \t ")),
-            ..
-        }))
+        Some(Ok(DirectiveLine { revision: None, name: "key", payload: None, .. }))
     );
 }
 
@@ -790,15 +823,7 @@ fn test_directive_empty_value_0() {
     let line = "//@ key:";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(
-        result,
-        Some(Ok(DirectiveLine {
-            revision: None,
-            name: "key",
-            payload: Some(DirectivePayload::Value("")),
-            ..
-        }))
-    );
+    assert_matches!(result, Some(Err(Error { kind: ErrorKind::EmptyValue, .. })));
 }
 
 #[test]
@@ -806,15 +831,7 @@ fn test_directive_empty_value_1() {
     let line = "//@ key:   \t ";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(
-        result,
-        Some(Ok(DirectiveLine {
-            revision: None,
-            name: "key",
-            payload: Some(DirectivePayload::Value("   \t ")),
-            ..
-        }))
-    );
+    assert_matches!(result, Some(Err(Error { kind: ErrorKind::EmptyValue, .. })));
 }
 
 #[test]
@@ -1239,7 +1256,7 @@ fn test_not_trailing_directive() {
         Ok([DirectiveLine {
             revision: None,
             name: "revisions",
-            payload: Some(DirectivePayload::Value(" incremental")),
+            payload: Some(DirectivePayload::Value("incremental")),
             ..
         },])
     );

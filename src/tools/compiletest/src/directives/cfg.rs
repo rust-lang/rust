@@ -101,7 +101,7 @@ fn parse_cfg_name_directive<'a>(
     // We should instead forbid the colon syntax for these directives.
     let comment = match line.payload {
         Some(DirectivePayload::Value(comment) | DirectivePayload::Remark(comment)) => {
-            Some(comment.trim().trim_start_matches('-').trim())
+            Some(comment.trim_start_matches('-').trim())
         }
         _ => None,
     };

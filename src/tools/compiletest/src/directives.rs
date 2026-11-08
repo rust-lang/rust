@@ -469,7 +469,6 @@ pub(crate) fn validate_name<'a>(
         // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
         // second "directive" would actually be ignored with no effect.
         if let Some(line::DirectivePayload::Remark(remark)) = directive_line.payload {
-            let remark = remark.trim_start();
             let token = remark.split([':', ' ']).next().unwrap();
             if KNOWN_DIRECTIVE_NAMES_SET.contains(token) {
                 return Err(Error {
@@ -706,15 +705,14 @@ impl Config {
         *value = *value || self.parse_name_directive(line, directive);
     }
 
-    fn set_name_value_directive<T>(
+    fn set_name_value_directive(
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        value: &mut Option<T>,
-        parse: impl FnOnce(String) -> T,
+        value: &mut Option<String>,
     ) {
         if value.is_none() {
-            *value = self.parse_name_value_directive(line, directive).map(parse);
+            *value = self.parse_name_value_directive(line, directive);
         }
     }
 
@@ -798,7 +796,6 @@ fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     let captures = static_regex!(
         r#"(?x) # (verbose mode regex)
         ^
-        \s*                     # (leading whitespace)
         "(?<regex>[^"]*)"       # "REGEX"
         \s+->\s+                # ->
         "(?<replacement>[^"]*)" # "REPLACEMENT"
@@ -1047,7 +1044,6 @@ fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
         if line.name == "min-cdb-version"
             && let Some(DirectivePayload::Value(rest)) = line.payload
         {
-            let rest = rest.trim();
             let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
                 panic!("couldn't parse version range: {:?}", rest);
             });
@@ -1081,7 +1077,6 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
         if line.name == "min-gdb-version"
             && let Some(DirectivePayload::Value(rest)) = line.payload
         {
-            let rest = rest.trim();
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
                     panic!("couldn't parse version range: {:?}", rest);
@@ -1100,7 +1095,6 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
         } else if line.name == "ignore-gdb-version"
             && let Some(DirectivePayload::Value(rest)) = line.payload
         {
-            let rest = rest.trim();
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
                     panic!("couldn't parse version range: {:?}", rest);
@@ -1145,7 +1139,6 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
                 let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
-                let rest = rest.trim();
 
                 let LldbVersion::Apple(min_vers) = LldbVersion::apple_from_str(rest) else {
                     unreachable!()
@@ -1164,7 +1157,6 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
                 let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
-                let rest = rest.trim();
 
                 let LldbVersion::Llvm(min_vers) = LldbVersion::llvm_from_str(rest) else {
                     unreachable!()
