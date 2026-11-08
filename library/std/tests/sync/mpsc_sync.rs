@@ -339,11 +339,13 @@ fn oneshot_single_thread_peek_open() {
 #[test]
 fn oneshot_multi_task_recv_then_send() {
     let (tx, rx) = sync_channel::<Box<i32>>(0);
-    let _t = thread::spawn(move || {
+    let t = thread::spawn(move || {
         assert!(*rx.recv().unwrap() == 10);
     });
 
     tx.send(Box::new(10)).unwrap();
+
+    t.join().unwrap();
 }
 
 #[test]
