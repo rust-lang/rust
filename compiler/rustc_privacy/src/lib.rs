@@ -1047,7 +1047,12 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
-    fn visit_fn_decl(&mut self, _fd: &'tcx FnDecl<'tcx>) -> Self::Result {}
+    fn visit_fn_decl(&mut self, fd: &'tcx FnDecl<'tcx>) -> Self::Result {
+        if fd.fn_decl_kind.has_body() {
+            return;
+        } // Covered by the param walk in `visit_nested_body`
+        intravisit::walk_fn_decl(self, fd);
+    }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let new_typeck_results = self.tcx.typeck_body(body_id);
@@ -1056,6 +1061,9 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             return;
         }
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(new_typeck_results);
+        if let Some(decl) = self.tcx.hir_fn_decl_by_hir_id(self.tcx.hir_body_owner(body_id)) {
+            intravisit::walk_fn_decl(self, decl);
+        }
         self.visit_body(self.tcx.hir_body(body_id));
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
