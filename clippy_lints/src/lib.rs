@@ -193,8 +193,8 @@ mod let_if_seq;
 mod let_underscore;
 mod let_with_type_underscore;
 mod lifetimes;
-mod literal_representation;
 mod literal_string_with_formatting_args;
+mod literals;
 mod loops;
 mod macro_metavars_in_unsafe;
 mod macro_use;
@@ -516,8 +516,8 @@ rustc_lint::early_lint_methods!(
         UnusedUnit: unused_unit::UnusedUnit = unused_unit::UnusedUnit,
         Precedence: precedence::Precedence = precedence::Precedence,
         NeedlessArbitrarySelfType: needless_arbitrary_self_type::NeedlessArbitrarySelfType = needless_arbitrary_self_type::NeedlessArbitrarySelfType,
-        LiteralDigitGrouping: literal_representation::LiteralDigitGrouping = literal_representation::LiteralDigitGrouping::new(conf),
-        DecimalLiteralRepresentation: literal_representation::DecimalLiteralRepresentation = literal_representation::DecimalLiteralRepresentation::new(conf),
+        LiteralDigitGrouping: literals::LiteralDigitGrouping = literals::LiteralDigitGrouping::new(conf),
+        DecimalLiteralRepresentation: literals::DecimalLiteralRepresentation = literals::DecimalLiteralRepresentation::new(conf),
         TabsInDocComments: tabs_in_doc_comments::TabsInDocComments = tabs_in_doc_comments::TabsInDocComments,
         SingleComponentPathImports: single_component_path_imports::SingleComponentPathImports = single_component_path_imports::SingleComponentPathImports::default(),
         OptionEnvUnwrap: option_env_unwrap::OptionEnvUnwrap = option_env_unwrap::OptionEnvUnwrap,
