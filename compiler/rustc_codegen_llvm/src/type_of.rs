@@ -12,11 +12,11 @@ use tracing::debug;
 use crate::common::*;
 use crate::llvm::Type;
 
-fn uncached_llvm_type<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
+fn uncached_llvm_type<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
     layout: TyAndLayout<'tcx>,
-    defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
-) -> &'a Type {
+    defer: &mut Option<(Type<'ll>, TyAndLayout<'tcx>)>,
+) -> Type<'ll> {
     match layout.backend_repr {
         BackendRepr::Scalar(_) => bug!("handled elsewhere"),
         BackendRepr::SimdVector { element, count } => {
@@ -100,10 +100,10 @@ fn uncached_llvm_type<'a, 'tcx>(
     }
 }
 
-fn struct_llfields<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
+fn struct_llfields<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool) {
+) -> (Vec<Type<'ll>>, bool) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -179,15 +179,15 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 }
 
 pub(crate) trait LayoutLlvmExt<'tcx> {
-    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
-    fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type;
-    fn scalar_pair_element_llvm_type<'a>(
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
+    fn immediate_llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
+    fn scalar_llvm_type_at<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> Type<'ll>;
+    fn scalar_pair_element_llvm_type<'ll>(
         &self,
-        cx: &CodegenCx<'a, 'tcx>,
+        cx: &CodegenCx<'ll, 'tcx>,
         index: usize,
         immediate: bool,
-    ) -> &'a Type;
+    ) -> Type<'ll>;
 }
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
@@ -202,7 +202,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     /// with the innermost trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
-    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
@@ -222,7 +222,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             Variants::Single { index } => Some(index),
             _ => None,
         };
-        if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+        if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)).copied() {
             return llty;
         }
 
@@ -255,7 +255,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         llty
     }
 
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
+    fn immediate_llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         match self.backend_repr {
             BackendRepr::Scalar(scalar) => {
                 if scalar.is_bool() {
@@ -275,7 +275,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         self.llvm_type(cx)
     }
 
-    fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type {
+    fn scalar_llvm_type_at<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> Type<'ll> {
         match scalar.primitive() {
             Int(i, _) => cx.type_from_integer(i),
             Float(f) => cx.type_from_float(f),
@@ -283,12 +283,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
     }
 
-    fn scalar_pair_element_llvm_type<'a>(
+    fn scalar_pair_element_llvm_type<'ll>(
         &self,
-        cx: &CodegenCx<'a, 'tcx>,
+        cx: &CodegenCx<'ll, 'tcx>,
         index: usize,
         immediate: bool,
-    ) -> &'a Type {
+    ) -> Type<'ll> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.

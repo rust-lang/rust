@@ -121,15 +121,15 @@ pub(crate) fn CreateDereferenceableOrNullAttr<'ll>(
     unsafe { LLVMRustCreateDereferenceableOrNullAttr(llcx, bytes) }
 }
 
-pub(crate) fn CreateByValAttr<'ll>(llcx: Context<'ll>, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateByValAttr<'ll>(llcx: Context<'ll>, ty: Type<'ll>) -> &'ll Attribute {
     unsafe { LLVMRustCreateByValAttr(llcx, ty) }
 }
 
-pub(crate) fn CreateByRefAttr<'ll>(llcx: Context<'ll>, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateByRefAttr<'ll>(llcx: Context<'ll>, ty: Type<'ll>) -> &'ll Attribute {
     unsafe { LLVMRustCreateByRefAttr(llcx, ty) }
 }
 
-pub(crate) fn CreateStructRetAttr<'ll>(llcx: Context<'ll>, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateStructRetAttr<'ll>(llcx: Context<'ll>, ty: Type<'ll>) -> &'ll Attribute {
     unsafe { LLVMRustCreateStructRetAttr(llcx, ty) }
 }
 
@@ -248,7 +248,7 @@ pub(crate) fn set_section(llglobal: &Value, section_name: &CStr) {
     }
 }
 
-pub(crate) fn add_global<'ll>(llmod: Module<'ll>, ty: &'ll Type, name_cstr: &CStr) -> &'ll Value {
+pub(crate) fn add_global<'ll>(llmod: Module<'ll>, ty: Type<'ll>, name_cstr: &CStr) -> &'ll Value {
     unsafe { LLVMAddGlobal(llmod, ty, name_cstr.as_ptr()) }
 }
 
@@ -363,7 +363,7 @@ impl Intrinsic {
     pub(crate) fn get_declaration<'ll>(
         self,
         llmod: Module<'ll>,
-        type_params: &[&'ll Type],
+        type_params: &[Type<'ll>],
     ) -> &'ll Value {
         unsafe {
             LLVMGetIntrinsicDeclaration(llmod, self.id, type_params.as_ptr(), type_params.len())
@@ -503,7 +503,7 @@ pub(crate) fn append_module_inline_asm<'ll>(
 /// Safe wrapper for `LLVMAddAlias2`
 pub(crate) fn add_alias<'ll>(
     module: Module<'ll>,
-    ty: &Type,
+    ty: Type<'ll>,
     address_space: AddressSpace,
     aliasee: &Value,
     name: &CStr,
