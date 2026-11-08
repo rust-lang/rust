@@ -1,0 +1,17 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/const-cannot-move-shared-ref.rs:4:18
+   |
+LL |     let &moved = &NonCopy(0);
+   |          -----   ^^^^^^^^^^^
+   |          |
+   |          data moved here because `moved` has type `NonCopy`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     let &moved = &NonCopy(0);
+LL +     let moved = &NonCopy(0);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.
