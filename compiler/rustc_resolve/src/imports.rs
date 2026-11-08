@@ -34,9 +34,9 @@ use crate::diagnostics::{
 use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
     AmbiguityError, BindingKey, Decl, DeclData, DeclKind, Determinacy, Finalize, IdentKey,
-    ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope, PathResult,
-    PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
-    names_to_string,
+    ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, NestedImportRemoval,
+    ParentScope, PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    module_to_string, names_to_string,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -208,6 +208,7 @@ pub(crate) struct ImportData<'ra> {
     ///
     /// This is `None` if the feature flag for `diagnostic::on_unknown` is disabled.
     pub on_unknown_attr: Option<OnUnknownData>,
+    pub nested: Option<NestedImportRemoval>,
 }
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
@@ -1200,7 +1201,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             errors.iter().filter(|error| error.warning.is_none()).count()
         };
         let prev_ambiguity_errors_len = ambiguity_errors_len(&self.ambiguity_errors);
-        let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
+        let finalize = Finalize {
+            nested: import.nested,
+            ..Finalize::with_root_span(import.root_id, import.span, import.root_span)
+        };
 
         // We'll provide more context to the privacy errors later, up to `len`.
         let privacy_errors_len = self.privacy_errors.len();

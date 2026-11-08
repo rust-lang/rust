@@ -1365,7 +1365,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         finalize: Finalize,
         shadowing: Shadowing,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
-        let Finalize { path_span, report_private, used, root_span, .. } = finalize;
+        let Finalize { path_span, report_private, used, .. } = finalize;
 
         let Some(binding) = binding else {
             return Err(ControlFlow::Continue(Determined));
@@ -1381,7 +1381,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     outermost_res: None,
                     source: None,
                     parent_scope: *parent_scope,
-                    single_nested: path_span != root_span,
+                    nested: finalize.nested,
                 });
             } else {
                 return Err(ControlFlow::Break(Determined));

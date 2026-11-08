@@ -2727,7 +2727,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             decl,
             outermost_res,
             parent_scope,
-            single_nested,
+            nested,
             dedup_span,
             ref source,
         } = *privacy_error;
@@ -2765,7 +2765,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 &import_suggestions,
                 Instead::Yes,
                 FoundUse::Yes,
-                DiagMode::Import { append: single_nested, unresolved_import: false },
+                DiagMode::Import { append: nested.is_some(), unresolved_import: false },
                 vec![],
                 "",
             );
@@ -2961,7 +2961,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         //
         // See issue #156060.
         let can_replace_use = !shown_candidates
-            && !single_nested
+            && nested.is_none()
             && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
         if can_replace_use {
             // We prioritize shorter paths, non-core imports and direct imports over the

@@ -1079,15 +1079,26 @@ impl<'ra> DeclKind<'ra> {
     }
 }
 
+/// Removal or replacement strategy for diagnostics on nested use-trees.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum NestedImportRemoval {
+    /// The root use statement imports only this item (e.g. `use a::{B};`, `use a::{b::{C}};`),
+    /// so the entire statement can be replaced in-place by a path.
+    ReplaceRoot,
+    /// Span removing the item and an adjacent comma (trailing if first item, preceding otherwise).
+    Remove(Span),
+}
+
 #[derive(Debug)]
 struct PrivacyError<'ra> {
     ident: Ident,
     decl: Decl<'ra>,
+    /// Span of the use-tree or AST path, used as the deduplication key and replacement target.
     dedup_span: Span,
     outermost_res: Option<(Res, Ident)>,
     parent_scope: ParentScope<'ra>,
-    /// Is the format `use a::{b,c}`?
-    single_nested: bool,
+    /// Removal strategy if part of a nested use-tree, for diagnostic suggestions.
+    nested: Option<NestedImportRemoval>,
     source: Option<ast::Expr>,
 }
 
@@ -2873,6 +2884,8 @@ struct Finalize {
     stage: Stage = Stage::Early,
     /// Some import data, in case we are resolving an import's final segment.
     import: Option<ImportSummary> = None,
+    /// Removal strategy if part of a nested use-tree, for diagnostic suggestions.
+    nested: Option<NestedImportRemoval> = None,
 }
 
 impl Finalize {

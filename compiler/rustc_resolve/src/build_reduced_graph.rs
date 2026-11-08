@@ -31,6 +31,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
+use crate::check_unused::nested_item_removal_span;
 use crate::def_collector::DefCollector;
 use crate::diagnostics::impls::{OnUnknownData, StructCtor};
 use crate::imports::{ImportData, ImportKind, NameResolution, NameResolutionRef};
@@ -39,8 +40,8 @@ use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
     ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used, VisResolutionError,
-    diagnostics,
+    NestedImportRemoval, ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used,
+    VisResolutionError, diagnostics,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -548,6 +549,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         root_span: Span,
         root_id: NodeId,
         vis: Visibility,
+        nested: Option<NestedImportRemoval>,
     ) {
         let current_module = self.parent_scope.module.expect_local();
         let import = self.r.arenas.alloc_import(ImportData {
@@ -564,6 +566,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             vis,
             vis_span: item.vis.span,
             on_unknown_attr: OnUnknownData::from_attrs(self.r, &item.attrs),
+            nested,
         });
 
         self.r.indeterminate_imports.push((import, None, 0));
@@ -595,20 +598,20 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         use_tree: &ast::UseTree,
         id: NodeId,
         parent_prefix: &[Segment],
-        nested: bool,
+        nested: Option<NestedImportRemoval>,
         list_stem: bool,
         vis: Visibility,
         root_span: Span,
         feed: TyCtxtFeed<'tcx, LocalDefId>,
     ) {
         debug!(
-            "build_reduced_graph_for_use_tree(parent_prefix={:?}, use_tree={:?}, nested={})",
+            "build_reduced_graph_for_use_tree(parent_prefix={:?}, use_tree={:?}, nested={:?})",
             parent_prefix, use_tree, nested
         );
 
         // Top level use tree reuses the item's id and list stems reuse their parent
         // use tree's ids, so in both cases their visibilities are already filled.
-        if nested && !list_stem {
+        if nested.is_some() && !list_stem {
             self.r.feed_visibility(feed, vis);
         }
 
@@ -733,18 +736,36 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     source: source.ident,
                     target: ident,
                     decls: Default::default(),
-                    nested,
+                    nested: nested.is_some(),
                     id,
                     def_id: feed.def_id(),
                 };
 
-                self.add_import(module_path, kind, use_tree.span(), item, root_span, item.id, vis);
+                self.add_import(
+                    module_path,
+                    kind,
+                    use_tree.span(),
+                    item,
+                    root_span,
+                    item.id,
+                    vis,
+                    nested,
+                );
             }
             ast::UseTreeKind::Glob(_) => {
                 if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
                     let kind =
                         ImportKind::Glob { max_vis: CmCell::new(None), id, def_id: feed.def_id() };
-                    self.add_import(prefix, kind, use_tree.span(), item, root_span, item.id, vis);
+                    self.add_import(
+                        prefix,
+                        kind,
+                        use_tree.span(),
+                        item,
+                        root_span,
+                        item.id,
+                        vis,
+                        nested,
+                    );
                 } else {
                     // Resolve the prelude import early.
                     let path_res =
@@ -757,15 +778,24 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
-                for tree in items {
+                for (pos, tree) in items.iter().enumerate() {
                     let id = tree.id;
                     let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
+                    let item_nested = if items.len() > 1 {
+                        Some(NestedImportRemoval::Remove(nested_item_removal_span(
+                            items,
+                            pos,
+                            pos > 0,
+                        )))
+                    } else {
+                        Some(nested.unwrap_or(NestedImportRemoval::ReplaceRoot))
+                    };
                     self.build_reduced_graph_for_use_tree(
                         item,
                         &tree.inner,
                         id,
                         &prefix,
-                        true,
+                        item_nested,
                         false,
                         vis,
                         root_span,
@@ -789,7 +819,15 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         self.parent_scope.module.nearest_parent_mod().expect_local(),
                     );
                     self.build_reduced_graph_for_use_tree(
-                        item, &tree, id, &prefix, true, true, vis, root_span, feed,
+                        item,
+                        &tree,
+                        id,
+                        &prefix,
+                        nested.or(Some(NestedImportRemoval::ReplaceRoot)),
+                        true,
+                        vis,
+                        root_span,
+                        feed,
                     );
                 }
             }
@@ -840,7 +878,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     use_tree,
                     item.id,
                     &[],
-                    false,
+                    None,
                     false,
                     vis,
                     use_tree.span(),
@@ -1053,6 +1091,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             vis,
             vis_span: item.vis.span,
             on_unknown_attr: OnUnknownData::from_attrs(self.r, &item.attrs),
+            nested: None,
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1185,6 +1224,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 vis: Visibility::Restricted(CRATE_MOD_ID),
                 vis_span: item.vis.span,
                 on_unknown_attr: OnUnknownData::from_attrs(this.r, &item.attrs),
+                nested: None,
             })
         };
 
@@ -1368,6 +1408,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     vis,
                     vis_span: item.vis.span,
                     on_unknown_attr: OnUnknownData::from_attrs(self.r, &item.attrs),
+                    nested: None,
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);
