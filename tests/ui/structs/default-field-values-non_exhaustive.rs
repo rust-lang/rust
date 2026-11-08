@@ -19,8 +19,8 @@ enum Enum {
 enum EnumWithDefault {
     #[non_exhaustive]
     //~^ ERROR `#[non_exhaustive]` can't be used to annotate structs with default field values
-    #[default]
-    Variant { //~ ERROR default variant must be exhaustive
+    #[default] //~ ERROR default variant must be exhaustive
+    Variant {
         field: i32 = 42 + 3,
     }
 }

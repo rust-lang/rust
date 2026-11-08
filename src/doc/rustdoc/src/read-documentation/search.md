@@ -280,7 +280,7 @@ Item filters can be used in both name-based and type signature-based searches.
 
 ```text
 ident = *(ALPHA / DIGIT / "_")
-path = ident *(DOUBLE-COLON ident) [BANG]
+path = ident *((DOUBLE-COLON / DOT) ident) [BANG]
 slice-like = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
 tuple-like = OPEN-PAREN [ nonempty-arg-list ] CLOSE-PAREN
 borrow-ref = AMP *WS [MUT] *WS [arg]
@@ -336,6 +336,7 @@ OPEN-PAREN = "("
 CLOSE-PAREN = ")"
 COLON = ":"
 DOUBLE-COLON = "::"
+DOT = "."
 QUOTE = %x22
 COMMA = ","
 RETURN-ARROW = "->"
