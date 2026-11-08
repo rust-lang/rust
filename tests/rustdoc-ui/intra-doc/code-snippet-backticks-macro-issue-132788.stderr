@@ -1,0 +1,20 @@
+error: unresolved link to `idx`
+  --> $DIR/code-snippet-backticks-macro-issue-132788.rs:7:29
+   |
+LL | macro_rules! generated_doc {
+LL |     () => {
+LL |         #[doc = "Access arr[idx]."]
+   |                             ^^^ no item named `idx` in scope
+...
+LL | generated_doc!();
+   | ---------------- in this macro invocation
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+note: the lint level is defined here
+  --> $DIR/code-snippet-backticks-macro-issue-132788.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

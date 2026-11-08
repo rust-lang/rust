@@ -1,0 +1,27 @@
+error: unresolved link to `idx`
+  --> $DIR/code-snippet-backticks-issue-132788.rs:4:16
+   |
+LL | /// Access arr[idx].
+   |                ^^^ no item named `idx` in scope
+   |
+note: the lint level is defined here
+  --> $DIR/code-snippet-backticks-issue-132788.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try marking as source code
+   |
+LL - /// Access arr[idx].
+LL + /// Access `arr[idx]`.
+   |
+
+error: unresolved link to `DefinitelyMissingType`
+  --> $DIR/code-snippet-backticks-issue-132788.rs:12:10
+   |
+LL | /// See [DefinitelyMissingType].
+   |          ^^^^^^^^^^^^^^^^^^^^^ no item named `DefinitelyMissingType` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: aborting due to 2 previous errors
+

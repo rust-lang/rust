@@ -2098,6 +2098,63 @@ fn suggest_path_name_typo(
     true
 }
 
+/// Returns a span and replacement for wrapping a likely indexing expression in backticks.
+///
+/// Only handles `ident[ident]` where the bracketed name was parsed as a link.
+/// Returns `None` if the expression cannot be mapped to matching, non-expanded source text.
+fn indexing_code_suggestion(
+    tcx: TyCtxt<'_>,
+    diag_info: &DiagnosticInfo<'_>,
+) -> Option<(rustc_span::Span, String)> {
+    let MarkdownLinkRange::Destination(label_range) = &diag_info.link_range else {
+        return None;
+    };
+
+    let dox = diag_info.dox;
+    let open = label_range.start.checked_sub(1)?;
+    let end = label_range.end.checked_add(1)?;
+    if dox.as_bytes().get(open) != Some(&b'[') || dox.as_bytes().get(label_range.end) != Some(&b']')
+    {
+        return None;
+    }
+
+    let index = dox.get(label_range.clone())?;
+    if !rustc_lexer::is_ident(index) {
+        return None;
+    }
+
+    let prefix = dox.get(..open)?;
+    let start = prefix.trim_end_matches(rustc_lexer::is_id_continue).len();
+    let receiver = prefix.get(start..)?;
+    if !rustc_lexer::is_ident(receiver) {
+        return None;
+    }
+
+    if prefix[..start]
+        .chars()
+        .next_back()
+        .is_some_and(|ch| matches!(ch, '.' | ':' | '#' | '\\' | '`'))
+    {
+        return None;
+    }
+
+    let after = dox.get(end..)?.trim_start();
+    if after.starts_with('[') || after.starts_with('(') {
+        return None;
+    }
+
+    let range = start..end;
+    let code = dox.get(range.clone())?;
+    let (span, from_expansion) =
+        source_span_for_markdown_range(tcx, dox, &range, &diag_info.item.attrs.doc_strings)?;
+
+    if from_expansion || tcx.sess.source_map().span_to_snippet(span).ok()?.as_str() != code {
+        return None;
+    }
+
+    Some((span, format!("`{code}`")))
+}
+
 /// Reports a link that failed to resolve.
 ///
 /// This also tries to resolve any intermediate path segments that weren't
@@ -2223,6 +2280,24 @@ fn resolution_failure(
                             diag.span_label(span, note);
                         } else {
                             diag.note(note);
+                        }
+
+                        // A disambiguator or resolved path prefix suggests an intended item link.
+                        // Otherwise, prefer formatting a likely indexing expression as code instead
+                        // of offering competing typo or bracket-escaping suggestions.
+                        if disambiguator.is_none()
+                            && partial_res.is_none()
+                            && let Some((span, replacement)) =
+                                indexing_code_suggestion(tcx, &diag_info)
+                        {
+                            diag.span_suggestion_verbose(
+                                span,
+                                "try marking as source code",
+                                replacement,
+                                Applicability::MaybeIncorrect,
+                            );
+
+                            continue;
                         }
 
                         // Prefer a concrete correction over generic advice about external links.
