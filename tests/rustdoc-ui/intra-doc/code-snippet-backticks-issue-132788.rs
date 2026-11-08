@@ -13,3 +13,26 @@ pub struct AlreadyFormattedIndexing;
 //~^ ERROR unresolved link to `DefinitelyMissingType`
 //~| HELP to escape `[` and `]` characters
 pub struct OrdinaryBrokenLink;
+
+
+/// Access arr[0].
+//~^ ERROR unresolved link to `0`
+//~| HELP try marking as source code
+pub struct NumericIndexing;
+
+
+/// Access state.arr[idx].
+//~^ ERROR unresolved link to `idx`
+//~| HELP try marking as source code
+pub struct FieldIndexing;
+
+/// Access module::ARR[idx].
+//~^ ERROR unresolved link to `idx`
+//~| HELP try marking as source code
+pub struct QualifiedPathIndexing;
+
+// Malformed receiver syntax should retain the existing fallback advice.
+/// Access state:::arr[idx].
+//~^ ERROR unresolved link to `idx`
+//~| HELP to escape `[` and `]` characters
+pub struct MalformedReceiver;

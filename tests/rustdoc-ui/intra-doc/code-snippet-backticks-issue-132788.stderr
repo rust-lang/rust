@@ -23,5 +23,49 @@ LL | /// See [DefinitelyMissingType].
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
-error: aborting due to 2 previous errors
+error: unresolved link to `0`
+  --> $DIR/code-snippet-backticks-issue-132788.rs:18:16
+   |
+LL | /// Access arr[0].
+   |                ^ no item named `0` in scope
+   |
+help: try marking as source code
+   |
+LL - /// Access arr[0].
+LL + /// Access `arr[0]`.
+   |
+
+error: unresolved link to `idx`
+  --> $DIR/code-snippet-backticks-issue-132788.rs:24:22
+   |
+LL | /// Access state.arr[idx].
+   |                      ^^^ no item named `idx` in scope
+   |
+help: try marking as source code
+   |
+LL - /// Access state.arr[idx].
+LL + /// Access `state.arr[idx]`.
+   |
+
+error: unresolved link to `idx`
+  --> $DIR/code-snippet-backticks-issue-132788.rs:29:24
+   |
+LL | /// Access module::ARR[idx].
+   |                        ^^^ no item named `idx` in scope
+   |
+help: try marking as source code
+   |
+LL - /// Access module::ARR[idx].
+LL + /// Access `module::ARR[idx]`.
+   |
+
+error: unresolved link to `idx`
+  --> $DIR/code-snippet-backticks-issue-132788.rs:35:24
+   |
+LL | /// Access state:::arr[idx].
+   |                        ^^^ no item named `idx` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: aborting due to 6 previous errors
 

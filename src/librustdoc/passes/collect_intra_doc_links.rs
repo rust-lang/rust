@@ -2098,6 +2098,71 @@ fn suggest_path_name_typo(
     true
 }
 
+/// Checks whether the entire candidate parses as an indexing expression,
+/// without emitting diagnostics.
+fn is_indexing_expression(code: &str) -> bool {
+    use std::sync::Arc;
+
+    use rustc_ast::{ExprKind, token};
+    use rustc_errors::emitter::SilentEmitter;
+    use rustc_errors::{DiagCtxt, catch_fatal_errors};
+    use rustc_parse::lexer::StripTokens;
+    use rustc_parse::new_parser_from_source_str;
+    use rustc_parse::parser::Recovery;
+    use rustc_session::parse::ParseSess;
+    use rustc_span::FileName;
+    use rustc_span::source_map::{FilePathMapping, SourceMap};
+
+    // This is a speculative parse: invalid candidates must not produce
+    // additional errors or affect rustdoc's actual compilation session.
+    let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
+    let dcx = DiagCtxt::new(Box::new(SilentEmitter));
+    let psess = ParseSess::with_dcx(dcx, source_map);
+
+    // Some lexer/parser failures abort through a fatal-error unwind.
+    // For this check, those failures simply mean "not a suitable candidate".
+    let is_indexing = catch_fatal_errors(|| {
+        let mut parser = match new_parser_from_source_str(
+            &psess,
+            FileName::anon_source_code(code),
+            code.to_owned(),
+            StripTokens::Nothing,
+        ) {
+            // Do not repair malformed code and then accept the repaired AST.
+            Ok(parser) => parser.recovery(Recovery::Forbidden),
+            Err(errors) => {
+                for error in errors {
+                    error.cancel();
+                }
+                return false;
+            }
+        };
+
+        match parser.parse_expr() {
+            Ok(expr) => {
+                // Require the whole candidate, not just a valid prefix.
+                // Also require indexing: an ordinary name parses as a path.
+                parser.token == token::Eof && matches!(expr.kind, ExprKind::Index(..))
+            }
+            Err(error) => {
+                // Returned diagnostics must be explicitly consumed.
+                error.cancel();
+                false
+            }
+        }
+    })
+    .unwrap_or(false);
+
+    // Lexing or parsing can emit errors internally even when an AST is returned.
+    let accepted = is_indexing && psess.dcx().has_errors_or_delayed_bugs().is_none();
+
+    // Discard diagnostics belonging only to this speculative session.
+    // Never reset rustdoc's real diagnostic context here.
+    psess.dcx().reset_err_count();
+
+    accepted
+}
+
 /// Returns a span and replacement for wrapping a likely indexing expression in backticks.
 ///
 /// Only handles `ident[ident]` where the bracketed name was parsed as a link.
@@ -2118,23 +2183,22 @@ fn indexing_code_suggestion(
         return None;
     }
 
-    let index = dox.get(label_range.clone())?;
-    if !rustc_lexer::is_ident(index) {
-        return None;
-    }
-
     let prefix = dox.get(..open)?;
-    let start = prefix.trim_end_matches(rustc_lexer::is_id_continue).len();
-    let receiver = prefix.get(start..)?;
-    if !rustc_lexer::is_ident(receiver) {
+
+    // Include field separators and path separators when selecting the receiver.
+    // This selects "state.arr" or "module::ARR", rather than just "arr" or "ARR".
+    let start = prefix
+        .trim_end_matches(|ch| rustc_lexer::is_id_continue(ch) || matches!(ch, '.' | ':'))
+        .len();
+
+    // There must be some receiver text before the opening bracket.
+    if start == prefix.len() {
         return None;
     }
 
-    if prefix[..start]
-        .chars()
-        .next_back()
-        .is_some_and(|ch| matches!(ch, '.' | ':' | '#' | '\\' | '`'))
-    {
+    // Preserve the existing protection against starting inside a raw identifier,
+    // or immediately after an escape or backtick.
+    if prefix[..start].chars().next_back().is_some_and(|ch| matches!(ch, '#' | '\\' | '`')) {
         return None;
     }
 
@@ -2145,6 +2209,11 @@ fn indexing_code_suggestion(
 
     let range = start..end;
     let code = dox.get(range.clone())?;
+
+    if code.contains(['`', '\n', '\r']) || !is_indexing_expression(code) {
+        return None;
+    }
+
     let (span, from_expansion) =
         source_span_for_markdown_range(tcx, dox, &range, &diag_info.item.attrs.doc_strings)?;
 
