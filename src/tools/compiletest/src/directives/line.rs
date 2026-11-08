@@ -62,7 +62,7 @@ pub(crate) fn line_directive<'a>(
             };
             true
         })
-        .map(|(name, payload)| (name, Some(kind(payload))))
+        .map(|(name, payload)| (name, Some(kind(payload.trim()))))
         .unwrap_or((directive, None));
 
     Some(Ok(DirectiveLine { file_path, line_number, revision, name, payload }))
@@ -100,7 +100,7 @@ pub(crate) struct DirectiveLine<'a> {
     /// Name of the directive.
     pub(crate) name: &'a str,
 
-    /// The playload of the directive.
+    /// The (whitespace-trimmed) playload of the directive.
     ///
     /// If the payload was separated using a colon (`:`) it will get represented as a
     /// [`DirectivePayload::Value`]. If the payload was separated using a space, it will be
@@ -124,7 +124,7 @@ impl<'ln> DirectiveLine<'ln> {
             f.write_str(self.name)?;
             if let Some(payload) = &self.payload {
                 match payload {
-                    DirectivePayload::Value(value) => write!(f, ":{value}"),
+                    DirectivePayload::Value(value) => write!(f, ": {value}"),
                     DirectivePayload::Remark(remark) => write!(f, " {remark}"),
                 }?;
             }

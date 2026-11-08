@@ -62,7 +62,7 @@ impl DebuggerCommands {
                 ("-repr", Some(var_name)) => {
                     // pseudo-command intercepted by `debugger_tester` to run custom variable
                     // inspection logic.
-                    commands.push(format!("repr {}", var_name.trim()));
+                    commands.push(format!("repr {var_name}"));
                     // Artificially output by `debugger_tester` to confirm that the inspection logic
                     // encountered no errors.
                     check_lines.push((line_number, format!("{var_name}: Ok")));

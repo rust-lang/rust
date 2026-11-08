@@ -83,7 +83,7 @@ fn test_parse_normalize_rule() {
             "something (32 bits)",
             "something ($WORD bits)",
         ),
-        (r#"  " with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
+        (r#"" with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
     ];
 
     for &(input, expected_regex, expected_replacement) in good_data {
@@ -616,7 +616,7 @@ fn test_extract_version_range() {
 }
 
 #[test]
-#[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
+#[should_panic(expected = "duplicate revision: `rpass1` in line `rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
     parse_early_props(&config, "//@ revisions: rpass1 rpass1");
@@ -666,7 +666,7 @@ fn test_ok_directive() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "aux-build",
-            payload: Some(DirectivePayload::Value(" file.rs")),
+            payload: Some(DirectivePayload::Value("file.rs")),
             ..
         }))
     );
@@ -682,7 +682,7 @@ fn indented_directive() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "key",
-            payload: Some(DirectivePayload::Value(" value")),
+            payload: Some(DirectivePayload::Value("value")),
             ..
         }))
     );
@@ -1110,7 +1110,7 @@ fn test_not_trailing_directive() {
         Ok([DirectiveLine {
             revision: None,
             name: "revisions",
-            payload: Some(DirectivePayload::Value(" incremental")),
+            payload: Some(DirectivePayload::Value("incremental")),
             ..
         },])
     );
