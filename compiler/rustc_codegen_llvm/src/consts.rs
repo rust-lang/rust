@@ -216,7 +216,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 {
                     should_sign = true;
                 }
-                cx.declare_fn(sym, &fn_abi, None)
+                cx.declare_fn(sym, fn_abi, None)
             } else {
                 cx.declare_global(sym, cx.type_i8())
             }
@@ -891,7 +891,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let llval = crate::common::named_struct(llty, &[version, size, name, symtab]);
 
         let sym = "OBJC_MODULES";
-        let g = self.define_global(&sym, llty).unwrap_or_else(|| {
+        let g = self.define_global(sym, llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", sym);
         });
         set_global_alignment(self, g, self.tcx.data_layout.pointer_align());

@@ -363,7 +363,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     match_args_from_caller_to_enzyme(bx, attrs.width, &mut args, &attrs.input_activity, fn_args);
 
     if !fnc_tree.args.is_empty() || !fnc_tree.ret.0.is_empty() {
-        crate::typetree::add_tt(&bx, fn_to_diff, fnc_tree);
+        crate::typetree::add_tt(bx, fn_to_diff, fnc_tree);
     }
 
     let call = bx.call(enzyme_ty, None, None, ad_fn, ReturnSlot::Direct, &args, None, None);

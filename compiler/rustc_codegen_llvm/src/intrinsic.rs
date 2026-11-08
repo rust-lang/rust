@@ -251,9 +251,8 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 if let CVariadicStatus::Unstable { feature } = stability
                     && !self.tcx.features().enabled(feature)
                 {
-                    let msg =
-                        format!("C-variadic function definitions on this target are unstable");
-                    feature_err(&*self.sess(), feature, span, msg).emit();
+                    let msg = "C-variadic function definitions on this target are unstable";
+                    feature_err(self.sess(), feature, span, msg).emit();
                 }
 
                 let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
@@ -1808,7 +1807,7 @@ fn codegen_autodiff<'ll, 'tcx>(
     };
 
     let val_arr = get_args_from_tuple(bx, args[2], fn_diff);
-    let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
+    let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff, LOCAL_CRATE);
 
     let Some(Some(mut diff_attrs)) =
         find_attr!(tcx, fn_diff.def_id(), RustcAutodiff(attr) => attr.clone())
@@ -1910,7 +1909,7 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
     let offload_data =
-        gpu_offload::gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
+        gpu_offload::gen_define_handling(cx, &metadata, target_symbol, offload_globals);
     gpu_offload::gen_call_handling(
         bx,
         &offload_data,

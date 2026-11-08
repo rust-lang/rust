@@ -1160,7 +1160,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             _ => {
                 let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
                     .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
-                let f = intrinsic.get_declaration(self.llmod, &type_params);
+                let f = intrinsic.get_declaration(self.llmod, type_params);
                 (self.get_type_of_global(f), f)
             }
         }

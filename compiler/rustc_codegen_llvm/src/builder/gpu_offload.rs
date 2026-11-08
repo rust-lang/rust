@@ -127,7 +127,7 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (llvm::Value<'ll>, llvm::T
     let args = vec![tptr, ti64, ti32, ti32, tptr, tptr];
     let tgt_fn_ty = cx.type_func(&args, ti32);
     let name = "__tgt_target_kernel";
-    let tgt_decl = declare_offload_fn(&cx, name, tgt_fn_ty);
+    let tgt_decl = declare_offload_fn(cx, name, tgt_fn_ty);
     let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
     attributes::apply_to_llfn(tgt_decl, Function, &[nounwind]);
     (tgt_decl, tgt_fn_ty)
@@ -141,7 +141,7 @@ pub(crate) fn declare_omp_get_num_devices<'ll>(
     let ti32 = cx.type_i32();
     let tgt_fn_ty = cx.type_func(&[], ti32);
     let name = "omp_get_num_devices";
-    let tgt_decl = declare_offload_fn(&cx, name, tgt_fn_ty);
+    let tgt_decl = declare_offload_fn(cx, name, tgt_fn_ty);
     let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
     attributes::apply_to_llfn(tgt_decl, Function, &[nounwind]);
     (tgt_decl, tgt_fn_ty)
@@ -157,7 +157,7 @@ pub(crate) fn generate_at_one<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Value<'ll> 
     let c_entry_name = CString::new(unknown_txt).unwrap();
     let c_val = c_entry_name.as_bytes_with_nul();
     let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
-    let at_zero = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
+    let at_zero = add_unnamed_global(cx, "", initializer, PrivateLinkage);
     llvm::set_alignment(at_zero, Align::ONE);
 
     // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
@@ -172,7 +172,7 @@ pub(crate) fn generate_at_one<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Value<'ll> 
     let struct_elems_ty: Vec<_> = struct_elems.iter().map(|&x| cx.val_ty(x)).collect();
     let initializer = crate::common::named_struct(struct_ident_ty, &struct_elems);
     cx.set_struct_body(struct_ident_ty, &struct_elems_ty);
-    let at_one = add_unnamed_global(&cx, &"", initializer, PrivateLinkage);
+    let at_one = add_unnamed_global(cx, "", initializer, PrivateLinkage);
     llvm::set_alignment(at_one, Align::EIGHT);
     at_one
 }
@@ -355,9 +355,9 @@ fn gen_tgt_data_mappers<'ll>(
     let mapper_begin = "__tgt_target_data_begin_mapper";
     let mapper_update = "__tgt_target_data_update_mapper";
     let mapper_end = "__tgt_target_data_end_mapper";
-    let begin_mapper_decl = declare_offload_fn(&cx, mapper_begin, mapper_fn_ty);
-    let update_mapper_decl = declare_offload_fn(&cx, mapper_update, mapper_fn_ty);
-    let end_mapper_decl = declare_offload_fn(&cx, mapper_end, mapper_fn_ty);
+    let begin_mapper_decl = declare_offload_fn(cx, mapper_begin, mapper_fn_ty);
+    let update_mapper_decl = declare_offload_fn(cx, mapper_update, mapper_fn_ty);
+    let end_mapper_decl = declare_offload_fn(cx, mapper_end, mapper_fn_ty);
 
     let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
     attributes::apply_to_llfn(begin_mapper_decl, Function, &[nounwind]);
@@ -455,34 +455,34 @@ pub(crate) fn gen_define_handling<'ll>(
         })
         .collect::<Vec<_>>();
     let offload_sizes =
-        add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &actual_sizes);
+        add_priv_unnamed_arr(cx, &format!(".offload_sizes.{symbol}"), &actual_sizes);
     let memtransfer_begin =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.begin"), &transfer_to);
+        add_priv_unnamed_arr(cx, &format!(".offload_maptypes.{symbol}.begin"), &transfer_to);
     let memtransfer_kernel =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.kernel"), &transfer_kernel);
+        add_priv_unnamed_arr(cx, &format!(".offload_maptypes.{symbol}.kernel"), &transfer_kernel);
     let memtransfer_end =
-        add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{symbol}.end"), &transfer_from);
+        add_priv_unnamed_arr(cx, &format!(".offload_maptypes.{symbol}.end"), &transfer_from);
 
     // Next: For each function, generate these three entries. A weak constant,
     // the llvm.rodata entry name, and  the llvm_offload_entries value
 
     let name = format!(".{symbol}.region_id");
     let initializer = cx.get_const_i8(0);
-    let region_id = add_global(&cx, &name, initializer, WeakAnyLinkage);
+    let region_id = add_global(cx, &name, initializer, WeakAnyLinkage);
 
     let c_entry_name = CString::new(symbol.clone()).unwrap();
     let c_val = c_entry_name.as_bytes_with_nul();
     let offload_entry_name = format!(".offloading.entry_name.{symbol}");
 
     let initializer = crate::common::bytes_in_context(cx.llcx, c_val);
-    let llglobal = add_unnamed_global(&cx, &offload_entry_name, initializer, InternalLinkage);
+    let llglobal = add_unnamed_global(cx, &offload_entry_name, initializer, InternalLinkage);
     llvm::set_alignment(llglobal, Align::ONE);
     llvm::set_section(llglobal, c".llvm.rodata.offloading");
 
     let name = format!(".offloading.entry.{symbol}");
 
     // See the __tgt_offload_entry documentation above.
-    let elems = TgtOffloadEntry::new(&cx, region_id, llglobal);
+    let elems = TgtOffloadEntry::new(cx, region_id, llglobal);
 
     let initializer = crate::common::named_struct(offload_entry_ty, &elems);
     let c_name = CString::new(name).unwrap();
@@ -735,7 +735,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         s_ident_t,
     );
     let values = KernelArgsTy::new(
-        &cx,
+        cx,
         num_args,
         memtransfer_kernel,
         geps,

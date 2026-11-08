@@ -154,7 +154,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
             llvm::LLVMBuildPointerCast(self.llbuilder(), alloca, self.cx.type_ptr(), UNNAMED)
         };
         if !name.is_empty() {
-            llvm::set_value_name(val, &name.as_bytes());
+            llvm::set_value_name(val, name.as_bytes());
         }
         val
     }

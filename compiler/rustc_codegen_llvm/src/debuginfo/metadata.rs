@@ -531,7 +531,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
 
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
 fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
-    *debug_context(cx).recursion_marker_type.get_or_init(move || {
+    debug_context(cx).recursion_marker_type.get_or_init(move || {
         // The choice of type here is pretty arbitrary -
         // anything reading the debuginfo for a recursive
         // type is going to see *something* weird - the only

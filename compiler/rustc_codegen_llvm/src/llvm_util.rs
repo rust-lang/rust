@@ -144,7 +144,7 @@ unsafe fn configure_llvm(sess: &EarlySession) {
         }
 
         for arg in sess_args {
-            add(&(*arg), true);
+            add(arg, true);
         }
 
         match (
@@ -528,7 +528,7 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
 
 fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
     let cpu_names = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustPrintTargetCPUs(&tm, s);
+        llvm::LLVMRustPrintTargetCPUs(tm, s);
     })
     .unwrap();
 
@@ -594,7 +594,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
             }
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
             // strings.
-            let llvm_feature = to_llvm_features(&sess.target, *feature)?.llvm_feature_name;
+            let llvm_feature = to_llvm_features(&sess.target, feature)?.llvm_feature_name;
             let desc =
                 match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
                     Some(index) => {
