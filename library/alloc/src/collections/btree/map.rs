@@ -3253,6 +3253,151 @@ impl<'a, K, V> Cursor<'a, K, V> {
         }
     }
 
+    /// Repositions the [`Cursor`] to the gap before the smallest key
+    /// greater than the given bound and returns a reference to the
+    /// key and value of the next element.
+    ///
+    /// Passing `Bound::Included(x)` will reposition the cursor to the
+    /// gap before the smallest key greater than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will reposition the cursor to the
+    /// gap before the smallest key greater than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will reposition the cursor to the
+    /// gap before the smallest key in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    /// #![feature(btree_cursors_find)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let map = BTreeMap::from([
+    ///     (1, "a"),
+    ///     (2, "b"),
+    ///     (3, "c"),
+    ///     (4, "d"),
+    /// ]);
+    ///
+    /// let mut cursor = map.lower_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.find_lower(Bound::Included(&1)), Some((&1, &"a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&1, &"a")));
+    ///
+    /// let mut cursor = map.lower_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.find_lower(Bound::Excluded(&1)), Some((&2, &"b")));
+    /// assert_eq!(cursor.peek_prev(), Some((&1, &"a")));
+    /// assert_eq!(cursor.peek_next(), Some((&2, &"b")));
+    ///
+    /// let mut cursor = map.lower_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.find_lower(Bound::Unbounded), Some((&1, &"a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&1, &"a")));
+    /// ```
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_lower<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> Option<(&'a K, &'a V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if matches!(bound, Bound::Unbounded) {
+            self.current = match self.root {
+                None => return None,
+                Some(root) => {
+                    let edge = root.reborrow().lower_bound(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            }
+        } else {
+            self.current = match self.current {
+                None => return None,
+                Some(current) => {
+                    let current_node = current.into_node().forget_type();
+                    let edge = current_node.lower_bound_from_node(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            };
+        }
+
+        self.peek_next()
+    }
+
+    /// Repositions the [`Cursor`] to the gap after the greatest key smaller than
+    /// the given bound and returns a reference to the key and value of the
+    /// next element.
+    ///
+    /// Passing `Bound::Included(x)` will reposition the cursor to the
+    /// gap after the greatest key smaller than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will reposition the cursor to the
+    /// gap after the greatest key smaller than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will reposition the cursor to the
+    /// gap after the greatest key in the map.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    /// #![feature(btree_cursors_find)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let map = BTreeMap::from([
+    ///     (1, "a"),
+    ///     (2, "b"),
+    ///     (3, "c"),
+    ///     (4, "d"),
+    /// ]);
+    ///
+    /// let mut cursor = map.upper_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.find_upper(Bound::Included(&1)), Some((&2, &"b")));
+    /// assert_eq!(cursor.peek_prev(), Some((&1, &"a")));
+    /// assert_eq!(cursor.peek_next(), Some((&2, &"b")));
+    ///
+    /// let mut cursor = map.upper_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.find_upper(Bound::Excluded(&1)), Some((&1, &"a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&1, &"a")));
+    ///
+    /// let mut cursor = map.upper_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.find_upper(Bound::Unbounded), None);
+    /// assert_eq!(cursor.peek_prev(), Some((&4, &"d")));
+    /// assert_eq!(cursor.peek_next(), None);
+    /// ```
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_upper<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> Option<(&'a K, &'a V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if matches!(bound, Bound::Unbounded) {
+            self.current = match self.root {
+                None => return None,
+                Some(root) => {
+                    let edge = root.reborrow().upper_bound(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            }
+        } else {
+            self.current = match self.current {
+                None => return None,
+                Some(current) => {
+                    let current_node = current.into_node().forget_type();
+                    let edge = current_node.upper_bound_from_node(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            };
+        }
+
+        self.peek_next()
+    }
+
     /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
@@ -3292,6 +3437,115 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn prev(&mut self) -> Option<(&K, &mut V)> {
         let (k, v) = self.inner.prev()?;
+        Some((&*k, v))
+    }
+
+    /// Repositions the [`CursorMut`] to the gap before the smallest key
+    /// greater than the given bound and returns a reference to the
+    /// key and value of the next element.
+    ///
+    /// Passing `Bound::Included(x)` will reposition the cursor to the
+    /// gap before the smallest key greater than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will reposition the cursor to the
+    /// gap before the smallest key greater than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will reposition the cursor to the
+    /// gap before the smallest key in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    /// #![feature(btree_cursors_find)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut map = BTreeMap::from([
+    ///     (1, "a"),
+    ///     (2, "b"),
+    ///     (3, "c"),
+    ///     (4, "d"),
+    /// ]);
+    ///
+    /// let mut cursor = map.lower_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.find_lower(Bound::Included(&1)), Some((&1, &mut "a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&1, &mut "a")));
+    ///
+    /// let mut cursor = map.lower_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.find_lower(Bound::Excluded(&1)), Some((&2, &mut "b")));
+    /// assert_eq!(cursor.peek_prev(), Some((&1, &mut "a")));
+    /// assert_eq!(cursor.peek_next(), Some((&2, &mut "b")));
+    ///
+    /// let mut cursor = map.lower_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.find_lower(Bound::Unbounded), Some((&1, &mut "a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&1, &mut "a")));
+    /// ```
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_lower<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> Option<(&K, &mut V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        let (k, v) = self.inner.find_lower(bound)?;
+        Some((&*k, v))
+    }
+
+    /// Repositions the [`CursorMut`] to the gap after the greatest key smaller than
+    /// the given bound and returns a reference to the key and value of the
+    /// next element.
+    ///
+    /// Passing `Bound::Included(x)` will reposition the cursor to the
+    /// gap after the greatest key smaller than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will reposition the cursor to the
+    /// gap after the greatest key smaller than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will reposition the cursor to the
+    /// gap after the greatest key in the map.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    /// #![feature(btree_cursors_find)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut map = BTreeMap::from([
+    ///     (1, "a"),
+    ///     (2, "b"),
+    ///     (3, "c"),
+    ///     (4, "d"),
+    /// ]);
+    ///
+    /// let mut cursor = map.upper_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.find_upper(Bound::Included(&1)), Some((&2, &mut "b")));
+    /// assert_eq!(cursor.peek_prev(), Some((&1, &mut "a")));
+    /// assert_eq!(cursor.peek_next(), Some((&2, &mut "b")));
+    ///
+    /// let mut cursor = map.upper_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.find_upper(Bound::Excluded(&1)), Some((&1, &mut "a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&1, &mut "a")));
+    ///
+    /// let mut cursor = map.upper_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.find_upper(Bound::Unbounded), None);
+    /// assert_eq!(cursor.peek_prev(), Some((&4, &mut "d")));
+    /// assert_eq!(cursor.peek_next(), None);
+    /// ```
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_upper<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> Option<(&K, &mut V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        let (k, v) = self.inner.find_upper(bound)?;
         Some((&*k, v))
     }
 
@@ -3393,6 +3647,165 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
                 None
             }
         }
+    }
+
+    /// Repositions the [`CursorMutKey`] to the gap before the smallest key
+    /// greater than the given bound and returns a reference to the
+    /// key and value of the next element.
+    ///
+    /// Passing `Bound::Included(x)` will reposition the cursor to the
+    /// gap before the smallest key greater than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will reposition the cursor to the
+    /// gap before the smallest key greater than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will reposition the cursor to the
+    /// gap before the smallest key in the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    /// #![feature(btree_cursors_find)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut map = BTreeMap::from([
+    ///     (1, "a"),
+    ///     (2, "b"),
+    ///     (3, "c"),
+    ///     (4, "d"),
+    /// ]);
+    ///
+    /// // SAFETY: We don't intend to mutate any keys, so the sorted order
+    /// // of the map should be preserved.
+    /// let mut cursor = unsafe { map.lower_bound_mut(Bound::Included(&3)).with_mutable_key() };
+    /// assert_eq!(cursor.find_lower(Bound::Included(&1)), Some((&mut 1, &mut "a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&mut 1, &mut "a")));
+    ///
+    /// // SAFETY: We don't intend to mutate any keys, so the sorted order
+    /// // of the map should be preserved.
+    /// let mut cursor = unsafe { map.lower_bound_mut(Bound::Included(&3)).with_mutable_key() };
+    /// assert_eq!(cursor.find_lower(Bound::Excluded(&1)), Some((&mut 2, &mut "b")));
+    /// assert_eq!(cursor.peek_prev(), Some((&mut 1, &mut "a")));
+    /// assert_eq!(cursor.peek_next(), Some((&mut 2, &mut "b")));
+    ///
+    /// // SAFETY: We don't intend to mutate any keys, so the sorted order
+    /// // of the map should be preserved.
+    /// let mut cursor = unsafe { map.lower_bound_mut(Bound::Included(&3)).with_mutable_key() };
+    /// assert_eq!(cursor.find_lower(Bound::Unbounded), Some((&mut 1, &mut "a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&mut 1, &mut "a")));
+    /// ```
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_lower<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> Option<(&mut K, &mut V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if matches!(bound, Bound::Unbounded) {
+            // SAFETY: We're not using this to mutate the tree.
+            self.current = match unsafe { self.root.reborrow() } {
+                None => return None,
+                Some(root) => {
+                    let edge = root.borrow_mut().lower_bound(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            }
+        } else {
+            self.current = match self.current.take() {
+                None => return None,
+                Some(current) => {
+                    let current_node = current.into_node().forget_type();
+                    let edge = current_node.lower_bound_from_node(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            };
+        }
+
+        self.peek_next()
+    }
+
+    /// Repositions the [`CursorMutKey`] to the gap after the greatest key smaller than
+    /// the given bound and returns a reference to the key and value of the
+    /// next element.
+    ///
+    /// Passing `Bound::Included(x)` will reposition the cursor to the
+    /// gap after the greatest key smaller than or equal to `x`.
+    ///
+    /// Passing `Bound::Excluded(x)` will reposition the cursor to the
+    /// gap after the greatest key smaller than `x`.
+    ///
+    /// Passing `Bound::Unbounded` will reposition the cursor to the
+    /// gap after the greatest key in the map.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_cursors)]
+    /// #![feature(btree_cursors_find)]
+    ///
+    /// use std::collections::BTreeMap;
+    /// use std::ops::Bound;
+    ///
+    /// let mut map = BTreeMap::from([
+    ///     (1, "a"),
+    ///     (2, "b"),
+    ///     (3, "c"),
+    ///     (4, "d"),
+    /// ]);
+    ///
+    /// // SAFETY: We don't intend to mutate any keys, so the sorted order
+    /// // of the map should be preserved.
+    /// let mut cursor = unsafe { map.upper_bound_mut(Bound::Included(&3)).with_mutable_key() };
+    /// assert_eq!(cursor.find_upper(Bound::Included(&1)), Some((&mut 2, &mut "b")));
+    /// assert_eq!(cursor.peek_prev(), Some((&mut 1, &mut "a")));
+    /// assert_eq!(cursor.peek_next(), Some((&mut 2, &mut "b")));
+    ///
+    /// // SAFETY: We don't intend to mutate any keys, so the sorted order
+    /// // of the map should be preserved.
+    /// let mut cursor = unsafe { map.upper_bound_mut(Bound::Included(&3)).with_mutable_key() };
+    /// assert_eq!(cursor.find_upper(Bound::Excluded(&1)), Some((&mut 1, &mut "a")));
+    /// assert_eq!(cursor.peek_prev(), None);
+    /// assert_eq!(cursor.peek_next(), Some((&mut 1, &mut "a")));
+    ///
+    /// // SAFETY: We don't intend to mutate any keys, so the sorted order
+    /// // of the map should be preserved.
+    /// let mut cursor = unsafe { map.upper_bound_mut(Bound::Included(&3)).with_mutable_key() };
+    /// assert_eq!(cursor.find_upper(Bound::Unbounded), None);
+    /// assert_eq!(cursor.peek_prev(), Some((&mut 4, &mut "d")));
+    /// assert_eq!(cursor.peek_next(), None);
+    /// ```
+    #[unstable(feature = "btree_cursors_find", issue = "10000")]
+    pub fn find_upper<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> Option<(&mut K, &mut V)>
+    where
+        K: Borrow<Q> + Ord,
+        Q: Ord,
+    {
+        if matches!(bound, Bound::Unbounded) {
+            // SAFETY: We're not using this to mutate the tree.
+            self.current = match unsafe { self.root.reborrow() } {
+                None => return None,
+                Some(root) => {
+                    let edge = root.borrow_mut().upper_bound(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            }
+        } else {
+            self.current = match self.current.take() {
+                None => return None,
+                Some(current) => {
+                    let current_node = current.into_node().forget_type();
+                    let edge = current_node.upper_bound_from_node(SearchBound::from_range(bound));
+                    Some(edge)
+                }
+            };
+        }
+
+        self.peek_next()
     }
 
     /// Returns a reference to the key and value of the next element without
