@@ -147,17 +147,14 @@ unsafe fn configure_llvm(sess: &EarlySession) {
             add(arg, true);
         }
 
-        match (
-            sess.opts.unstable_opts.small_data_threshold,
-            sess.target.small_data_threshold_support(),
-        ) {
-            // Set up the small-data optimization limit for architectures that use
-            // an LLVM argument to control this.
-            (Some(threshold), SmallDataThresholdSupport::LlvmArg(arg)) => {
-                add(&format!("--{arg}={threshold}"), false)
-            }
-            _ => (),
-        };
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM argument to control this.
+        if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold
+            && let SmallDataThresholdSupport::LlvmArg(arg) =
+                sess.target.small_data_threshold_support()
+        {
+            add(&format!("--{arg}={threshold}"), false);
+        }
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
@@ -345,13 +342,8 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
             // do *not* consider the `-Ctarget-feature`s here (that's why we passed `for_cfg: true`
             // to `global_llvm_features` above) because that will be handled later in
             // `internal_target_features`.
-            if let Some(feat) = to_llvm_features(&sess.target, feature)
-                && mc_subtarget_info.has_features(feat)
-            {
-                true
-            } else {
-                false
-            }
+            to_llvm_features(&sess.target, feature)
+                .is_some_and(|feat| mc_subtarget_info.has_features(feat))
         },
     );
 
