@@ -11,4 +11,8 @@ fn main() {
     match 1 {
         ((y if x)) => {}
     }
+    match Some(1) {
+        Some(_ if x) => {}
+        _ => {}
+    }
 }
