@@ -1400,7 +1400,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     macro_rules! arith_red {
-        ($name:ident : $vec_op:expr, $float_reduce:ident, $ordered:expr, $int:expr, $op:ident,
+        ($name:ident : $vec_op:expr, $float_reduce:ident, ordered: $ordered:expr, allow_int: $int:expr, $op:ident,
          $identity:expr) => {
             if name == sym::$name {
                 require!(
@@ -1443,48 +1443,48 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     arith_red!(
         simd_reduce_add_unordered: BinaryOp::Plus,
         vector_reduce_fadd_reassoc,
-        false,
-        true,
+        ordered: false,
+        allow_int: true,
         add,
         0.0 // FIXME: Use this argument.
     );
     arith_red!(
         simd_reduce_mul_unordered: BinaryOp::Mult,
         vector_reduce_fmul_reassoc,
-        false,
-        true,
+        ordered: false,
+        allow_int: true,
         mul,
         1.0
     );
     arith_red!(
         simd_reduce_add_algebraic: BinaryOp::Plus,
         vector_reduce_fadd_algebraic,
-        false,
-        false,
+        ordered: false,
+        allow_int: false,
         add,
         0.0
     );
     arith_red!(
         simd_reduce_mul_algebraic: BinaryOp::Mult,
         vector_reduce_fmul_algebraic,
-        false,
-        false,
+        ordered: false,
+        allow_int: false,
         mul,
         1.0
     );
     arith_red!(
         simd_reduce_add_ordered: BinaryOp::Plus,
         vector_reduce_fadd,
-        true,
-        true,
+        ordered: true,
+        allow_int: true,
         add,
         0.0
     );
     arith_red!(
         simd_reduce_mul_ordered: BinaryOp::Mult,
         vector_reduce_fmul,
-        true,
-        true,
+        ordered: true,
+        allow_int: true,
         mul,
         1.0
     );
