@@ -1,16 +1,16 @@
 error: memory leaked: ALLOC (Rust heap, SIZE, ALIGN), allocated here:
-  --> RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
+  --> RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
    |
-LL |                     |layout| alloc.allocate(layout),
-   |                              ^^^^^^^^^^^^^^^^^^^^^^
+LL |     let allocation_ptr = alloc.allocate(rc_layout.layout())?;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: stack backtrace:
-           0: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new_uninit_in::{closure#0}
-               at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
-           1: std::rc::Rc::<std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>>>::try_allocate_for_layout::<{closure@std::rc::Rc<std::cell::RefCell<std::option::Option<Dummy>>>::new_uninit_in::{closure#0}}, fn(*mut u8) -> *mut std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>> {std::ptr::mut_ptr::<impl *mut u8>::cast::<std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>>>}>
-               at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
-           2: std::rc::Rc::<std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>>>::allocate_for_layout::<{closure@std::rc::Rc<std::cell::RefCell<std::option::Option<Dummy>>>::new_uninit_in::{closure#0}}, fn(*mut u8) -> *mut std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>> {std::ptr::mut_ptr::<impl *mut u8>::cast::<std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>>>}>
-               at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
+           0: alloc::rcs::common::try_allocate_uninit::<std::alloc::Global>
+               at RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
+           1: alloc::rcs::common::allocate_uninit::<std::alloc::Global>
+               at RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
+           2: alloc::rcs::common::Header::<std::cell::Cell<usize>>::allocate_uninit_for_type::<std::alloc::Global, std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>>>
+               at RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
            3: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new_uninit_in
                at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
            4: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new_in

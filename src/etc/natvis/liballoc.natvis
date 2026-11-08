@@ -131,58 +131,58 @@
 
   <!-- alloc::sync::Arc<T> -->
   <Type Name="alloc::rcs::arc::Arc&lt;*&gt;">
-    <DisplayString Optional="true">{ptr.pointer->data}</DisplayString>
+    <DisplayString Optional="true">{*ptr.ptr.pointer}</DisplayString>
     <Expand>
       <!-- thin -->
-      <ExpandedItem Optional="true">ptr.pointer->data</ExpandedItem>
-      <Item Name="[Reference count]" Optional="true">ptr.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer->weak</Item>
+      <ExpandedItem Optional="true">*ptr.ptr.pointer</ExpandedItem>
+      <Item Name="[Reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer - 1)->weak</Item>
 
       <!-- dyn -->
-      <Item Name="[Reference count]" Optional="true">ptr.pointer.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer.pointer->weak</Item>
+      <Item Name="[Reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.pointer - 1)->weak</Item>
     </Expand>
   </Type>
 
   <!-- alloc::sync::Arc<[T]> -->
   <Type Name="alloc::rcs::arc::Arc&lt;slice2$&lt;*&gt;,*&gt;">
-    <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
+    <DisplayString>{{ len={ptr.ptr.pointer.length} }}</DisplayString>
     <Expand>
-      <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
-      <Item Name="[Reference count]">ptr.pointer.data_ptr->strong</Item>
-      <Item Name="[Weak reference count]">ptr.pointer.data_ptr->weak</Item>
+      <Item Name="[Length]" ExcludeView="simple">ptr.ptr.pointer.length</Item>
+      <Item Name="[Reference count]">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.data_ptr - 1)->strong</Item>
+      <Item Name="[Weak reference count]">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.data_ptr - 1)->weak</Item>
       <ArrayItems>
-        <Size>ptr.pointer.length</Size>
-        <ValuePointer>($T1*)(((size_t*)ptr.pointer.data_ptr) + 2)</ValuePointer>
+        <Size>ptr.ptr.pointer.length</Size>
+        <ValuePointer>($T1*)ptr.ptr.pointer.data_ptr</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
 
   <!-- alloc::sync::Weak<T> -->
   <Type Name="alloc::rcs::arc::Weak&lt;*&gt;">
-    <DisplayString Optional="true">{ptr.pointer->data}</DisplayString>
+    <DisplayString Optional="true">{*ptr.ptr.pointer}</DisplayString>
     <Expand>
       <!-- thin -->
-      <ExpandedItem Optional="true">ptr.pointer->data</ExpandedItem>
-      <Item Name="[Reference count]" Optional="true">ptr.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer->weak</Item>
+      <ExpandedItem Optional="true">*ptr.ptr.pointer</ExpandedItem>
+      <Item Name="[Reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer - 1)->weak</Item>
 
       <!-- dyn -->
-      <Item Name="[Reference count]" Optional="true">ptr.pointer.pointer->strong</Item>
-      <Item Name="[Weak reference count]" Optional="true">ptr.pointer.pointer->weak</Item>
+      <Item Name="[Reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.pointer - 1)->strong</Item>
+      <Item Name="[Weak reference count]" Optional="true">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.pointer - 1)->weak</Item>
     </Expand>
   </Type>
 
   <!-- alloc::sync::Weak<[T]> -->
   <Type Name="alloc::rcs::arc::Weak&lt;slice2$&lt;*&gt;,*&gt;">
-    <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
+    <DisplayString>{{ len={ptr.ptr.pointer.length} }}</DisplayString>
     <Expand>
-      <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
-      <Item Name="[Reference count]">ptr.pointer.data_ptr->strong</Item>
-      <Item Name="[Weak reference count]">ptr.pointer.data_ptr->weak</Item>
+      <Item Name="[Length]" ExcludeView="simple">ptr.ptr.pointer.length</Item>
+      <Item Name="[Reference count]">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.data_ptr - 1)->strong</Item>
+      <Item Name="[Weak reference count]">((alloc::rcs::common::Header&lt;core::sync::atomic::Atomic&lt;usize&gt;&gt; *)ptr.ptr.pointer.data_ptr - 1)->weak</Item>
       <ArrayItems>
-        <Size>ptr.pointer.length</Size>
-        <ValuePointer>($T1*)(((size_t*)ptr.pointer.data_ptr) + 2)</ValuePointer>
+        <Size>ptr.ptr.pointer.length</Size>
+        <ValuePointer>($T1*)ptr.ptr.pointer.data_ptr</ValuePointer>
       </ArrayItems>
     </Expand>
   </Type>
