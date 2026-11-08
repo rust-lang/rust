@@ -104,6 +104,12 @@ pub(crate) struct DirectiveLine<'a> {
 }
 
 impl<'ln> DirectiveLine<'ln> {
+    // FIXME: Get rid of synthetic directives.
+    //        See also <https://github.com/rust-lang/rust/pull/165651#discussion_r4541102589>.
+    pub(crate) fn synthetic(name: &'static str, file_path: &'ln Utf8Path) -> Self {
+        Self { file_path, line_number: LineNumber::ZERO, revision: None, raw_directive: name, name }
+    }
+
     pub(crate) fn applies_to_test_revision(&self, test_revision: Option<&str>) -> bool {
         self.revision.is_none() || self.revision == test_revision
     }
