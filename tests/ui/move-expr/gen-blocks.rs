@@ -1,6 +1,8 @@
 //@ edition: 2024
 //@ run-pass
+// This needs to remain a run-pass test to check capture behavior at runtime.
 #![allow(incomplete_features)]
+#![deny(unused_mut)]
 #![feature(gen_blocks, move_expr)]
 
 use std::cell::Cell;
@@ -59,4 +61,19 @@ fn main() {
     assert_eq!(iter.next(), Some(2));
     drop(iter);
     assert_eq!(Arc::strong_count(&z), 1);
+
+    let data = vec![1];
+    let mut iter = gen {
+        for _ in 0..2 {
+            let len = {
+                let data = &mut move(data);
+                data.push(2);
+                data.len()
+            };
+            yield len;
+        }
+    };
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), None);
 }

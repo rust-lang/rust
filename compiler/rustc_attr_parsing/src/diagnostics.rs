@@ -1281,7 +1281,7 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[non_exhaustive]` can't be used to annotate items with default field values")]
+#[diag("`#[non_exhaustive]` can't be used to annotate structs with default field values")]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
     pub attr_span: Span,
@@ -1451,7 +1451,7 @@ pub(crate) struct InvalidTarget {
     )]
     pub previously_accepted: bool,
     #[note(
-        "placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute"
+        "attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion"
     )]
     pub on_macro_call: bool,
 }

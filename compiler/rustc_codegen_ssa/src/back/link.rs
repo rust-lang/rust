@@ -32,8 +32,8 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs, OutFileName,
-    OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    self, CFGuard, DebugInfo, InstrumentMcount, JobsMode, LinkerFeaturesCli, LinkerJobs,
+    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -44,7 +44,7 @@ use rustc_span::{Symbol, bug};
 use rustc_structures::{CrateType, NativeLibKind};
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
+    Arch, BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
     LinkSelfContainedDefault, LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, Os, RelocModel,
     RelroLevel, SanitizerSet, SplitDebuginfo,
 };
@@ -1336,12 +1336,34 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, Lld::Yes))
             && unknown_arg_regex.is_match(&out)
             && out.contains("-fuse-ld=lld")
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-fuse-ld=lld")
+            && cmd.get_args().iter().any(|e| e == "-fuse-ld=lld")
         {
             info!("linker output: {:?}", out);
             info!("The linker driver does not support `-fuse-ld=lld`. Retrying without it.");
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() != "-fuse-ld=lld" {
+                if arg != "-fuse-ld=lld" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{cmd:?}");
+            continue;
+        }
+
+        // Check if linking failed with an error message that the linker doesn't recognise the
+        // cortex-a53 mitigation. We pass `-mfix-cortex-a53-843419` to CC-based linker drivers,
+        // which forward `--fix-cortex-a53-843419` to the linker itself, but either component may
+        // not recognise each flag. Notably this was only added to Clang in version 21.
+        if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
+            && unknown_arg_regex.is_match(&out)
+            && out.contains("fix-cortex-a53-843419")
+            && cmd.get_args().iter().any(|e| e == "-mfix-cortex-a53-843419")
+        {
+            info!("linker output: {:?}", out);
+            info!(
+                "The linker or linker driver do not support `fix-cortex-a53-843419`. Retrying without it."
+            );
+            for arg in cmd.take_args() {
+                if arg != "-mfix-cortex-a53-843419" {
                     cmd.arg(arg);
                 }
             }
@@ -2405,6 +2427,16 @@ fn add_post_link_objects(
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    // Emit the CC flag for the A53 mitigation early, as later linker args can override it if
+    // required with `-mno-fix-cortex-a53-843419`
+    if sess.target.arch == Arch::AArch64
+        && !sess.target.is_like_darwin
+        && sess.target.os != Os::Windows
+        && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, ..))
+    {
+        cmd.cc_arg("-mfix-cortex-a53-843419");
+    }
+
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
     }
@@ -3175,32 +3207,37 @@ fn linker_with_args(
 
     // Only LLD supports controlling parallelism at the moment.
     let mut tokens = Vec::new();
-    if let LinkerJobs::Explicit(limit) = sess.opts.jobs.linker
+    if let LinkerJobs::Explicit(mode) = sess.opts.jobs.linker
         && flavor.uses_lld()
     {
-        // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
-        // linking. One token is available implicitly since we are running on the main thread.
-        let client = jobserver::client();
+        let threads = if let JobsMode::Parallel(limit) = mode {
+            // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
+            // linking. One token is available implicitly since we are running on the main thread.
+            let client = jobserver::client();
 
-        let mut unsupported = false;
-        for _ in 0..limit.get() - 1 {
-            match client.try_acquire() {
-                Ok(Some(token)) => tokens.push(token),
-                Ok(None) => {}
-                Err(e) if e.kind() == io::ErrorKind::Unsupported => {
-                    assert!(tokens.is_empty());
-                    unsupported = true;
-                    break;
+            let mut unsupported = false;
+            for _ in 0..limit.get() - 1 {
+                match client.try_acquire() {
+                    Ok(Some(token)) => tokens.push(token),
+                    Ok(None) => {}
+                    Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                        assert!(tokens.is_empty());
+                        unsupported = true;
+                        break;
+                    }
+                    Err(e) => bug!("IO error when acquiring jobserver token: {e}"),
                 }
-                Err(e) => bug!("IO error when acquiring jobserver token: {e}"),
             }
-        }
+
+            // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
+            // Linking is typically the last step in a multi-crate project build,
+            // so the resources should usually be free.
+            if unsupported { limit.get() } else { 1 + tokens.len() }
+        } else {
+            1
+        };
 
         let prefix = if sess.target.is_like_windows { "/threads:" } else { "--threads=" };
-        // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
-        // Linking is typically the last step in a multi-crate project build,
-        // so the resources should usually be free.
-        let threads = if unsupported { limit.get() } else { 1 + tokens.len() };
         cmd.link_arg(format!("{prefix}{threads}"));
     }
 

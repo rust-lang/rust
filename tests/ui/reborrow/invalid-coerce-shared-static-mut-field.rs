@@ -18,10 +18,10 @@ impl<'a> Reborrow for ReorderMut<'a> {}
 struct ReorderRef<'a> {
     b: &'a u16,
     a: &'a u8,
-    //~^ ERROR implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
 }
 
 impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}
+//~^ ERROR implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
 
 fn read(value: ReorderRef<'_>) -> (u16, u8) {
     (*value.b, *value.a)

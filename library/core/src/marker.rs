@@ -884,7 +884,7 @@ pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
     #[lang = "discriminant_type"]
-    type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
+    type Discriminant: Copy + Debug + Eq + Hash + Ord + Send + Sync + Unpin;
 }
 
 /// Used to determine whether a type contains
@@ -1385,4 +1385,39 @@ pub trait CoerceShared<Target: Copy>: Reborrow {
 #[unstable(feature = "reborrow", issue = "145612")]
 pub macro CoerceShared($item:item) {
     /* compiler built-in */
+}
+
+/// Marks a type as "forgettable", giving it the ability to be passed to
+/// [`mem::forget`](core::mem::forget), and other apis that may forget values.
+/// A notable example of forgetting values, though slightly less obvious than
+/// `mem::forget`, is using a value inside an `Rc`. Values inside `Rc`s or `Arc`s
+/// can end up being forgotten as the result of a reference cycle.
+///
+/// By default, all types are assumed to be `Forget`. Similar to [`Sized`], the
+/// syntax `T: ?Forget` can be used to relax this bound for some type `T`. However,
+/// `Forget` bounds are implicitly added in *all* cases unless explicitly opted out
+/// of - notably, in trait definitions and associated types. If the `forget_trait`
+/// feature is enabled, these can similarly be opted out of:
+/// ```ignore (illustrative, unsupported)
+/// #![feature(forget_trait)]
+/// use std::marker::Forget;
+///
+/// trait Foo: ?Forget {
+///     type Bar: ?Forget;
+/// }
+/// ```
+/// The explicit goal of [`mem::forget`](core::mem::forget) is not to run the destructor
+/// of a value (i.e. its implementation of [`Drop`](core::ops::Drop)).
+/// As a dual to this, since `?Forget` types cannot be forgotten, the destructors
+/// of `?Forget` types are **guaranteed to be run**.
+#[rustc_specialization_trait]
+#[rustc_coinductive]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may not be forgotten",
+    label = "value may be forgotten"
+)]
+#[lang = "forget"]
+#[unstable(feature = "forget_trait", issue = "165370")]
+pub unsafe auto trait Forget {
+    // Empty.
 }

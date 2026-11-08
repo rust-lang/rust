@@ -7,6 +7,7 @@ LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/issue-78671.rs:2:10
    |
+LL | trait CollectionFamily {
 LL |     type Member<T>;
    |          ^^^^^^ -
 help: add missing generic argument

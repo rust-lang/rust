@@ -2,16 +2,9 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_errors::PResult;
-use rustc_span::Span;
 
 use crate::exp;
 use crate::parser::{AttrWrapper, ForceCollect, Parser, Restrictions, Trailing, UsePreAttrPos};
-
-#[derive(Default)]
-pub struct CfgSelectBranchAttrSpans {
-    pub attrs: Vec<Span>,
-    pub doc_comments: Vec<Span>,
-}
 
 impl<'a> Parser<'a> {
     /// Parses the right-hand side of a `cfg_select!` branch,

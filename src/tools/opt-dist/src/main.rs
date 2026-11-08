@@ -99,7 +99,7 @@ enum EnvironmentCmd {
         #[arg(long)]
         run_tests: bool,
 
-        /// Will be LLVM built during the run?
+        /// Will LLVM be built during the run?
         #[arg(long, default_value_t = true, action(clap::ArgAction::Set))]
         build_llvm: bool,
 
@@ -111,6 +111,26 @@ enum EnvironmentCmd {
         /// Path to custom stage0 root
         #[arg(long)]
         stage0_root: Option<Utf8PathBuf>,
+
+        /// Do we want to optimize cargo in this run? Locally it's unlikely, so the default is not
+        /// to do it.
+        #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
+        optimize_cargo: bool,
+
+        /// Do we want to optimize clippy in this run? Locally it's unlikely, so the default is not
+        /// to do it.
+        #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
+        optimize_clippy: bool,
+
+        /// Do we want to optimize the cranelift backend in this run? Locally it's unlikely, so the
+        /// default is not to do it.
+        #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
+        optimize_cranelift: bool,
+
+        /// Do we want to optimize rustdoc in this run? Locally it's unlikely, so the default is not
+        /// to do it.
+        #[arg(long, default_value_t = false, action(clap::ArgAction::Set))]
+        optimize_rustdoc: bool,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -149,6 +169,10 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             build_llvm,
             build_dir,
             stage0_root,
+            optimize_cargo,
+            optimize_clippy,
+            optimize_cranelift,
+            optimize_rustdoc,
         } => {
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -166,6 +190,10 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(build_llvm)
                 .stage0_root(stage0_root)
+                .optimize_cargo(optimize_cargo)
+                .optimize_clippy(optimize_clippy)
+                .optimize_cranelift(optimize_cranelift)
+                .optimize_rustdoc(optimize_rustdoc)
                 .build()?;
 
             (env, shared.build_args)
@@ -228,34 +256,51 @@ fn execute_pipeline(
 ) -> anyhow::Result<()> {
     reset_directory(&env.artifact_dir())?;
 
-    with_log_group("Building rustc-perf", || {
-        let rustc_perf_checkout_dir = match env.prebuilt_rustc_perf() {
-            Some(dir) => dir,
-            None => env.checkout_path().join("src").join("tools").join("rustc-perf"),
-        };
-        copy_rustc_perf(env, &rustc_perf_checkout_dir)
+    with_log_group("Building rustc-perf", || match env.prebuilt_rustc_perf() {
+        Some(_) => Ok(()),
+        None => {
+            let rustc_perf_checkout_dir =
+                env.checkout_path().join("src").join("tools").join("rustc-perf");
+            copy_and_build_rustc_perf(env, &rustc_perf_checkout_dir)
+        }
     })?;
 
-    let optimize_clippy = !is_fast_try_build();
-    let optimize_cranelift = !is_fast_try_build();
+    let optimize_cargo = env.optimize_cargo;
+    let optimize_clippy = !is_fast_try_build() && env.optimize_clippy;
+    let optimize_cranelift = !is_fast_try_build() && env.optimize_cranelift;
+    let optimize_rustdoc = env.optimize_rustdoc;
 
-    // Stage 1: Build PGO instrumented rustc
+    // Stage 1: Build PGO-instrumented rustc
     // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
     // same time can cause issues, because the host and in-tree LLVM versions can diverge.
+    let stage1_label = format!(
+        "Stage 1 ({} PGO)",
+        optimized_component_label(
+            optimize_rustdoc,
+            optimize_cargo,
+            optimize_clippy,
+            optimize_cranelift,
+        )
+    );
     let (rustc_pgo_profile, rustdoc_pgo_profile, clippy_pgo_profile, cranelift_pgo_profile) = timer
-        .section("Stage 1 (Rustc + rustdoc + cargo + clippy PGO)", |stage| {
+        .section(&stage1_label, |stage| {
             let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
-            stage.section("Build PGO instrumented rustc and LLVM", |section| {
-                // Rustc and rustdoc profiles are gathered together into the same directory, because
-                // they are executed together within a single rustc-perf invocation.
-                // Their profiles are then merged together into a single PGO profile.
-                let mut builder = Bootstrap::build(env)
-                    .with_rustdoc()
-                    .with_cargo()
-                    .rustc_pgo_instrument(&rustc_profile_dir_root)
-                    .cargo_pgo_instrument(&rustc_profile_dir_root)
-                    .rustdoc_pgo_instrument(&rustc_profile_dir_root);
+            stage.section("Build PGO-instrumented rustc, and vanilla LLVM", |section| {
+                // Note that we gather the profiles into the same directory:
+                // - we want the profiles of all the binaries using librustc_driver to optimize the
+                //   driver according to the global use of rustc code
+                // - the profiles for the tool binaries themselves will be about different symbols
+                //   and thus will not collide when merged
+                // The profiles are then merged together into a single PGO profile.
+                let mut builder =
+                    Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+                if optimize_cargo {
+                    builder = builder.with_cargo().cargo_pgo_instrument(&rustc_profile_dir_root)
+                }
+                if optimize_rustdoc {
+                    builder = builder.with_rustdoc().rustdoc_pgo_instrument(&rustc_profile_dir_root)
+                }
                 if optimize_clippy {
                     builder = builder.with_clippy().clippy_pgo_instrument(&rustc_profile_dir_root);
                 }
@@ -278,9 +323,14 @@ fn execute_pipeline(
             let rustc_profile = stage.section("Gather rustc profiles", |_| {
                 gather_rustc_profiles(env, &rustc_profile_dir_root)
             })?;
-            let rustdoc_profile = stage.section("Gather rustdoc profiles", |_| {
-                gather_rustdoc_profiles(env, &rustc_profile_dir_root)
-            })?;
+            let rustdoc_profile = if optimize_rustdoc {
+                stage.section("Gather rustdoc profiles", |_| {
+                    Ok(Some(gather_rustdoc_profiles(env, &rustc_profile_dir_root)?))
+                })?
+            } else {
+                None
+            };
+
             let clippy_profile = if optimize_clippy {
                 stage.section("Gather clippy profiles", |_| {
                     Ok(Some(gather_clippy_profiles(env, &rustc_profile_dir_root)?))
@@ -297,13 +347,23 @@ fn execute_pipeline(
             };
             print_free_disk_space()?;
 
-            stage.section("Build PGO optimized rustc", |section| {
-                let mut cmd = Bootstrap::build(env)
-                    .with_rustdoc()
-                    .with_cargo()
-                    .rustc_pgo_optimize(&rustc_profile)
-                    .cargo_pgo_optimize(&rustc_profile)
-                    .rustdoc_pgo_optimize(&rustdoc_profile);
+            let section_label = format!(
+                "Build PGO-optimized {}",
+                optimized_component_label(
+                    rustdoc_profile.is_some(),
+                    optimize_cargo,
+                    clippy_profile.is_some(),
+                    cranelift_profile.is_some(),
+                )
+            );
+            stage.section(&section_label, |section| {
+                let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&rustc_profile);
+                if optimize_cargo {
+                    cmd = cmd.with_cargo().cargo_pgo_optimize(&rustc_profile);
+                }
+                if let Some(rustdoc_profile) = rustdoc_profile.as_ref() {
+                    cmd = cmd.with_rustdoc().rustdoc_pgo_optimize(rustdoc_profile);
+                }
                 if let Some(clippy_profile) = clippy_profile.as_ref() {
                     cmd = cmd.with_clippy().clippy_pgo_optimize(clippy_profile);
                 }
@@ -321,7 +381,7 @@ fn execute_pipeline(
         })?;
 
     // Stage 2: Gather LLVM PGO profiles
-    // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
+    // Here we build a PGO-instrumented LLVM, reusing the previously PGO-optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = if env.build_llvm() {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
@@ -330,7 +390,7 @@ fn execute_pipeline(
 
             let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
-            stage.section("Build PGO instrumented LLVM", |section| {
+            stage.section("Build PGO-instrumented LLVM", |section| {
                 Bootstrap::build(env)
                     .llvm_pgo_instrument(&llvm_profile_dir_root)
                     .avoid_rustc_rebuild()
@@ -355,14 +415,14 @@ fn execute_pipeline(
 
     let bolt_profiles = if env.use_bolt() {
         // Stage 3: Build BOLT instrumented LLVM
-        // We build a PGO optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
+        // We build a PGO-optimized LLVM in this step, then instrument it with BOLT and gather BOLT profiles.
         // Note that we don't remove LLVM artifacts after this step, so that they are reused in the final dist build.
         // BOLT instrumentation is performed "on-the-fly" when the LLVM library is copied to the sysroot of rustc,
         // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
         let libdir = env.build_artifacts().join("stage2").join("lib");
         timer.section("Stage 3 (BOLT)", |stage| {
             let llvm_data = if env.build_llvm() {
-                stage.section("Build PGO optimized LLVM", |stage| {
+                stage.section("Build PGO-optimized LLVM", |stage| {
                     Bootstrap::build(env)
                         .with_llvm_bolt_ldflags()
                         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
@@ -450,9 +510,13 @@ fn execute_pipeline(
 
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
-        .rustc_pgo_optimize(&rustc_pgo_profile)
-        .cargo_pgo_optimize(&rustc_pgo_profile)
-        .rustdoc_pgo_optimize(&rustdoc_pgo_profile);
+        .rustc_pgo_optimize(&rustc_pgo_profile);
+    if optimize_cargo {
+        dist = dist.cargo_pgo_optimize(&rustc_pgo_profile);
+    }
+    if let Some(rustdoc_pgo_profile) = rustdoc_pgo_profile {
+        dist = dist.rustdoc_pgo_optimize(&rustdoc_pgo_profile);
+    }
     if let Some(clippy_pgo_profile) = clippy_pgo_profile {
         dist = dist.clippy_pgo_optimize(&clippy_pgo_profile);
     }
@@ -460,7 +524,7 @@ fn execute_pipeline(
         dist = dist.cranelift_pgo_optimize(&cranelift_pgo_profile);
     }
 
-    // if LLVM is not built we'll have PGO optimized rustc
+    // if LLVM is not built we'll have PGO-optimized rustc
     dist = if env.supports_shared_llvm() || !env.build_llvm() {
         dist.avoid_rustc_rebuild()
     } else {
@@ -472,7 +536,7 @@ fn execute_pipeline(
     }
 
     // Final stage: Assemble the dist artifacts
-    // The previous PGO optimized rustc build and PGO optimized LLVM builds should be reused.
+    // The previous PGO-optimized rustc build and PGO-optimized LLVM builds should be reused.
     timer.section("Stage 5 (final build)", |stage| dist.run(stage))?;
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
@@ -483,6 +547,24 @@ fn execute_pipeline(
     }
 
     Ok(())
+}
+
+/// Compute a label of the components that will be optimized, in addition to rustc.
+fn optimized_component_label(rustdoc: bool, cargo: bool, clippy: bool, cranelift: bool) -> String {
+    let mut label = String::from("rustc");
+    if rustdoc {
+        label.push_str(" + rustdoc");
+    }
+    if cargo {
+        label.push_str(" + cargo");
+    }
+    if clippy {
+        label.push_str(" + clippy");
+    }
+    if cranelift {
+        label.push_str(" + cranelift");
+    }
+    label
 }
 
 fn main() -> anyhow::Result<()> {
@@ -564,7 +646,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 // Copy rustc-perf from the given path into the environment and build it.
-fn copy_rustc_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
+fn copy_and_build_rustc_perf(env: &Environment, dir: &Utf8Path) -> anyhow::Result<()> {
     copy_directory(dir, &env.rustc_perf_dir())?;
     build_rustc_perf(env)
 }

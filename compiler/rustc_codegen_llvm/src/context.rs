@@ -6,7 +6,6 @@ use std::ops::{Deref, DerefMut};
 use std::str;
 
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
-use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::diagnostics as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -206,7 +205,13 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
             target_data_layout = target_data_layout.replace("-S64", "");
         }
     }
-
+    if llvm_version < (24, 0, 0) {
+        if sess.target.arch == Arch::AmdGpu {
+            // LLVM 24 updated the amdgpu layout: http://github.com/llvm/llvm-project/pull/209746 Add BARRIER address space
+            target_data_layout = target_data_layout
+                .replace("-p10:32:32-p11:32:32-p12:32:32-p13:32:32-p14:32:32-p15:32:32", "");
+        }
+    }
     // Ensure the data-layout values hardcoded remain the defaults.
     {
         let tm = crate::back::write::create_informational_target_machine(sess);
@@ -234,7 +239,7 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
         llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
     }
 
-    let llvm_target = SmallCStr::new(&versioned_llvm_target(sess));
+    let llvm_target = SmallCStr::new(&llvm_util::llvm_target(sess));
     unsafe {
         llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
     }
@@ -1063,6 +1068,11 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let mut attrs = SmallVec::<[_; 2]>::new();
         attrs.push(attributes::target_cpu_attr(self, self.sess()));
         attrs.extend(attributes::tune_cpu_attr(self, self.sess()));
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
+    }
+
+    fn apply_default_optimisation_attrs(&self, llfn: &'ll Value) {
+        let attrs = attributes::default_optimisation_attrs(self, self.sess());
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
     }
 

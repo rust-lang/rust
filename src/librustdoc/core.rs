@@ -31,6 +31,7 @@ use tracing::debug;
 use crate::clean::inline::build_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
+use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::html::macro_expansion::{ExpandedCode, source_macro_expansion};
 use crate::passes;
@@ -348,7 +349,10 @@ pub(crate) fn run_global_ctxt(
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>) {
+) -> Result<
+    (clean::Crate, RenderOptions, Cache, FxHashMap<rustc_span::BytePos, Vec<ExpandedCode>>),
+    Error,
+> {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -432,11 +436,8 @@ pub(crate) fn run_global_ctxt(
     let store;
     (krate, store) = passes::run(krate, &mut ctxt, show_coverage);
 
-    if show_coverage
-        && let Err(error) = crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)
-    {
-        eprintln!("{error}");
-        std::process::exit(1);
+    if show_coverage {
+        crate::calculate_doc_coverage::run(&krate, &mut ctxt, &render_options)?;
     }
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
@@ -448,7 +449,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.dcx().abort_if_errors();
 
-    (krate, render_options, ctxt.cache, expanded_macros)
+    Ok((krate, render_options, ctxt.cache, expanded_macros))
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

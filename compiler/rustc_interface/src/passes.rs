@@ -36,7 +36,7 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
-use rustc_session::config::{Input, OutFileName, OutputFilenames, OutputType};
+use rustc_session::config::{Input, Offload, OutFileName, OutputFilenames, OutputType};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::search_paths::PathKind;
@@ -1159,7 +1159,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This improves performance by allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
 
-    sess.time("MIR_borrow_checking", || {
+    sess.time("MIR_checking", || {
         tcx.par_hir_body_owners(|def_id| {
             let not_typeck_child = !tcx.is_typeck_child(def_id.to_def_id());
             if not_typeck_child {
@@ -1482,6 +1482,16 @@ pub fn collect_crate_types(
         } else {
             base.sort();
             base.dedup();
+        }
+    }
+
+    // GPU code is never run as a binary; the offload runtime looks up kernels by
+    // name, and only cdylibs export their symbols.
+    if session.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_))) {
+        for crate_type in &mut base {
+            if *crate_type == CrateType::Executable {
+                *crate_type = CrateType::Cdylib;
+            }
         }
     }
 

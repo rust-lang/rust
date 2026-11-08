@@ -2,8 +2,7 @@
 // That pass replaces debuginfo for `a => _x` where `_x = &b` to be `a => &b`,
 // and leaves codegen to create a ladder of allocations so as `*a == b`.
 //
-// FIXME: Currently emits warning: MIR pass `ConstDebugInfo` is unknown and will be ignored
-//@ compile-flags:-g -Zmir-enable-passes=+ReferencePropagation,-ConstDebugInfo
+//@ compile-flags:-g -Zmir-enable-passes=+ReferencePropagation,-SingleUseConsts
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 

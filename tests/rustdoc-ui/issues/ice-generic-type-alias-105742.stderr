@@ -7,6 +7,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
 help: add missing lifetime argument
@@ -23,6 +25,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
 help: add missing generic argument
@@ -39,6 +43,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
 help: add missing lifetime argument
@@ -55,6 +61,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
 help: add missing generic argument
@@ -71,6 +79,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
 help: add missing lifetime argument
@@ -87,6 +97,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
 help: add missing generic argument
@@ -103,6 +115,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
 help: add missing lifetime argument
@@ -119,6 +133,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
 help: add missing generic argument
@@ -135,6 +151,8 @@ LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
 help: add missing lifetime argument
@@ -151,6 +169,8 @@ LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
 help: add missing generic argument
@@ -167,6 +187,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -184,6 +206,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -201,6 +225,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -218,6 +244,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -235,6 +263,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -252,6 +282,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -269,6 +301,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -286,6 +320,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -332,6 +368,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -349,6 +387,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -366,6 +406,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -383,6 +425,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -400,6 +444,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -417,6 +463,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -434,6 +482,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -451,6 +501,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -468,6 +520,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -485,6 +539,8 @@ LL |     <Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -502,6 +558,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -519,6 +577,8 @@ LL |     Output = <Index<<Self as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -536,6 +596,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -553,6 +615,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -570,6 +634,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -587,6 +653,8 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item,
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -604,6 +672,8 @@ LL |     fn len(&self) -> <Self as SVec>::Item;
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^ --
 help: add missing lifetime argument
@@ -620,6 +690,8 @@ LL |     fn len(&self) -> <Self as SVec>::Item;
 note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/ice-generic-type-alias-105742.rs:62:10
    |
+LL | pub trait SVec: Index<
+...
 LL |     type Item<'a, T>;
    |          ^^^^     -
 help: add missing generic argument

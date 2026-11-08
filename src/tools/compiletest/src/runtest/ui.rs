@@ -260,6 +260,7 @@ impl TestCx<'_> {
                 emit_metadata,
                 AllowUnused::No,
                 LinkToAux::Yes,
+                self.edition(),
                 Vec::new(),
             );
 

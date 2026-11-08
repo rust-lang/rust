@@ -271,30 +271,29 @@ fn resolve_associated_item<'tcx>(
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, _) => {
             if tcx.is_lang_item(trait_ref.def_id, LangItem::Clone) {
-                // FIXME(eddyb) use lang items for methods instead of names.
-                let name = tcx.item_name(trait_item_id);
-                if name == sym::clone {
-                    let self_ty = trait_ref.self_ty();
-                    match self_ty.kind() {
-                        ty::FnDef(..) | ty::FnPtr(..) => (),
-                        ty::Coroutine(..)
-                        | ty::CoroutineWitness(..)
-                        | ty::Closure(..)
-                        | ty::CoroutineClosure(..)
-                        | ty::Tuple(..) => {}
-                        _ => return Ok(None),
-                    };
+                let self_ty = trait_ref.self_ty();
+                match self_ty.kind() {
+                    ty::FnDef(..)
+                    | ty::FnPtr(..)
+                    | ty::Coroutine(..)
+                    | ty::CoroutineWitness(..)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Tuple(..) => {}
+                    _ => return Ok(None),
+                };
 
-                    Some(Instance {
+                match tcx.as_lang_item(trait_item_id) {
+                    Some(LangItem::CloneFn) => Some(Instance {
                         def: ty::InstanceKind::Shim(ty::ShimKind::Clone(trait_item_id, self_ty)),
                         args: rcvr_args,
-                    })
-                } else {
-                    assert_eq!(name, sym::clone_from);
-
-                    // Use the default `fn clone_from` from `trait Clone`.
-                    let args = tcx.erase_and_anonymize_regions(rcvr_args);
-                    Some(ty::Instance::new_raw(trait_item_id, args))
+                    }),
+                    Some(LangItem::CloneFromFn) => {
+                        // Use the default `fn clone_from` from `trait Clone`.
+                        let args = tcx.erase_and_anonymize_regions(rcvr_args);
+                        Some(ty::Instance::new_raw(trait_item_id, args))
+                    }
+                    _ => bug!("unknown `Clone` item"),
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
                 let self_ty = trait_ref.self_ty();
