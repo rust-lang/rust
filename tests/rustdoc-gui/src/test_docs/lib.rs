@@ -770,12 +770,6 @@ pub mod impls_indent {
     pub struct Context;
 
     /// Working with objects.
-    ///
-    /// # Safety
-    ///
-    /// Functions that take indices of locals do not check bounds on these indices;
-    /// the caller must ensure that the indices are less than the number of locals
-    /// in the current stack frame.
     impl Context {
     }
 
@@ -816,6 +810,10 @@ pub mod tyalias {
     pub type Y = X<u8>;
 }
 
+/// [check here](#short-anchor)
+///
+/// <a id="short-anchor"></a>
+/// # Some header with a long text that I don't want type in full every time I want to refer to it
 pub mod notable {
     #[doc(notable_trait)]
     pub trait Labeled {}

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/zero_diverging_type_relative_consts_consts.rs:14:19
+  --> $DIR/zero_diverging_type_relative_consts.rs:14:19
    |
 LL | fn ex_nihilo() -> u32 {
    |    ---------      ^^^ expected `u32`, found `()`

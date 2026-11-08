@@ -169,6 +169,7 @@ language_item_table! {
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    CloneFromFn,             sym::clone_from_fn,       clone_from_fn,              Target::Method(MethodKind::Trait { body: true }), GenericRequirement::None;
     UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
     TrivialClone,            sym::trivial_clone,       trivial_clone_trait,        Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
@@ -191,6 +192,7 @@ language_item_table! {
     Code,                    sym::code,                code,                       Target::ForeignTy,      GenericRequirement::None;
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
+    Forget,                  sym::forget,              forget_trait,               Target::Trait,          GenericRequirement::None;
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
     AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::None;
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);

@@ -972,6 +972,10 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.as_lang_item(def_id), Some(LangItem::Sized | LangItem::MetaSized))
     }
 
+    pub fn is_forget_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Forget))
+    }
+
     pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> T::Lifted {
         value.lift_to_interner(self)
     }
@@ -2885,6 +2889,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
             && !self.sess.opts.unstable_opts.higher_ranked_assumptions
             && !self.features().generic_const_exprs()
+    }
+
+    pub fn next_solver_overflow_fcw_limit(self) -> Option<usize> {
+        self.sess.opts.unstable_opts.next_solver_overflow_fcw_limit
     }
 
     pub fn disable_trait_solver_fast_paths(self) -> bool {

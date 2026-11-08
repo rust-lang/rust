@@ -10,7 +10,6 @@ use rustc_abi::{AddressSpace, Align, Size, WrappingRange};
 use rustc_llvm::RustString;
 
 pub(crate) use self::CallConv::*;
-pub(crate) use self::CodeGenOptSize::*;
 pub(crate) use self::conversions::*;
 pub(crate) use self::ffi::*;
 pub(crate) use self::metadata_kind::*;
@@ -195,14 +194,6 @@ impl AttributePlace {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
-#[repr(C)]
-pub(crate) enum CodeGenOptSize {
-    CodeGenOptSizeNone = 0,
-    CodeGenOptSizeDefault = 1,
-    CodeGenOptSizeAggressive = 2,
-}
-
 pub(crate) fn SetInstructionCallConv(instr: &Value, cc: CallConv) {
     unsafe {
         LLVMSetInstructionCallConv(instr, cc as c_uint);
@@ -382,6 +373,7 @@ impl Intrinsic {
 
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
 pub(crate) fn set_value_name(value: &Value, name: &[u8]) {
+    assert!(!name.contains(&0));
     unsafe { LLVMSetValueName2(value, name.as_ptr(), name.len()) };
 }
 

@@ -16,7 +16,7 @@ struct CustomMarkerRef<'a>(PhantomData<(Debug, Clone, Copy)>);
 //~| ERROR
 
 impl<'a> Reborrow for CustomMarker<'a> {}
-impl<'a> CoerceShared<CustomMarkerRef<'a>> for CustomMarker<'a> {}
+impl<'a: 'b, 'b> CoerceShared<CustomMarkerRef<'b>> for CustomMarker<'a> {}
 //~^ ERROR
 
 fn method<'a>(_a: CustomMarkerRef<'a>) -> 'a () {

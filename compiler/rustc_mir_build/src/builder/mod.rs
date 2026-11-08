@@ -396,10 +396,6 @@ struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
-rustc_index::newtype_index! {
-    struct ScopeId {}
-}
-
 #[derive(Debug)]
 enum NeedsTemporary {
     /// Use this variant when whatever you are converting with `as_operand`
@@ -837,7 +833,7 @@ fn mir_for_direct_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Body<'tc
     let rvalue = Rvalue::Use(Operand::Constant(Box::new(value)), WithRetag::Yes);
     let statement_kind = StatementKind::Assign(Box::new((Place::return_place(), rvalue)));
     let statement = Statement::new(source_info, statement_kind);
-    let terminator = Some(Terminator { source_info, kind: TerminatorKind::Return });
+    let terminator = Terminator { source_info, kind: TerminatorKind::Return };
     let block = BasicBlockData::new_stmts(vec![statement], terminator, false);
     let basic_blocks = IndexVec::from_elem_n(block, 1);
 

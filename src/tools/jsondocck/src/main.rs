@@ -57,10 +57,6 @@ static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-static DEPRECATED_LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    RegexBuilder::new(r"//\s+@").ignore_whitespace(true).unicode(true).build().unwrap()
-});
-
 fn print_err(msg: &str, lineno: usize) {
     eprintln!("Invalid directive: {} on line {}", msg, lineno)
 }
@@ -72,17 +68,8 @@ fn get_directives(template: &str) -> Result<Vec<Directive>, ()> {
     let file = fs::read_to_string(template).unwrap();
 
     for (lineno, line) in file.split('\n').enumerate() {
+        let Some(cap) = LINE_PATTERN.captures(line) else { continue };
         let lineno = lineno + 1;
-
-        if DEPRECATED_LINE_PATTERN.is_match(line) {
-            print_err("Deprecated directive syntax, replace `// @` with `//@ `", lineno);
-            errors = true;
-            continue;
-        }
-
-        let Some(cap) = LINE_PATTERN.captures(line) else {
-            continue;
-        };
 
         let negated = &cap["negated"] == "!";
 

@@ -23,10 +23,9 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        let AstTarget::Struct(_, _, data) = cx.ast_target else {
-            return;
-        };
-        if let VariantData::Struct { fields, .. } = data
+        if let AstTarget::Struct(_, _, data) | AstTarget::Variant(rustc_ast::Variant { data, .. }) =
+            cx.ast_target
+            && let VariantData::Struct { fields, .. } = data
             && fields.iter().any(|f| f.default_value().is_some())
         {
             cx.emit_err(NonExhaustiveWithDefaultFieldValues {

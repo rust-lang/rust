@@ -1410,6 +1410,8 @@ impl<T> [MaybeUninit<T>] {
             };
         }
 
+        spec_default_zero!(bool); // The default is `false == 0`.
+        spec_default_zero!(char);
         spec_default_zero!(i8);
         spec_default_zero!(u8);
         spec_default_zero!(i16);
@@ -1422,6 +1424,11 @@ impl<T> [MaybeUninit<T>] {
         spec_default_zero!(u128);
         spec_default_zero!(isize);
         spec_default_zero!(usize);
+        // +0.0 has binary representation of all-zeros:
+        spec_default_zero!(f16);
+        spec_default_zero!(f32);
+        spec_default_zero!(f64);
+        spec_default_zero!(f128);
 
         T::write_default(self)
     }

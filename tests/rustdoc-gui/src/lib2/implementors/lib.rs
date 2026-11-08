@@ -8,12 +8,18 @@ pub trait Whatever {
 
 pub struct Struct;
 pub struct Struct2;
+pub struct Struct3;
 
 impl Whatever for Struct {
     type Foo = u8;
 }
 
 impl !Whatever for Struct2 {}
+
+/// fooo
+///
+/// bar
+impl !Whatever for Struct3 {}
 
 impl http::HttpTrait for Struct {}
 
