@@ -6,7 +6,7 @@
 pub(super) enum Stability {
     Stable,
     Unstable(()),
-    InternalOnly { reason: &'static str, hard_error: bool },
+    InternalOnly { reason: &'static str, target_modifier: bool, hard_error: bool },
 }
 use Stability::*;
 
@@ -18,9 +18,9 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
     (
         "atomics-32",
-        // Not implied by any CPU model or other feature.
         Stability::InternalOnly {
             reason: "unsound because it changes the ABI of atomic operations",
+            target_modifier: true,
             hard_error: false,
         },
         &[],
@@ -108,8 +108,11 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // We forbid directly toggling just `fp-armv8`; it must be toggled with `neon`.
     (
         "fp-armv8",
-        // Pinned down by [`Target::abi_required_features`] when needed.
-        Stability::InternalOnly { reason: "Rust ties `fp-armv8` to `neon`", hard_error: false },
+        Stability::InternalOnly {
+            reason: "unsound because it changes the ABI of float types",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     // FEAT_FP8
@@ -176,8 +179,13 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdm", Stable, &["neon"]),
     (
         "reserve-x18",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
-        InternalOnly { reason: "use `-Zfixed-x18` compiler flag instead", hard_error: false },
+        InternalOnly {
+            reason: "use `-Zfixed-x18` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
+            hard_error: false,
+        },
         &[],
     ),
     // FEAT_SB
@@ -355,27 +363,33 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdseed", Stable, &[]),
     (
         "retpoline-external-thunk",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
         Stability::InternalOnly {
             reason: "use `-Zretpoline-external-thunk` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
             hard_error: false,
         },
         &[],
     ),
     (
         "retpoline-indirect-branches",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
         Stability::InternalOnly {
             reason: "use `-Zretpoline` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
             hard_error: false,
         },
         &[],
     ),
     (
         "retpoline-indirect-calls",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
         Stability::InternalOnly {
             reason: "use `-Zretpoline` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
             hard_error: false,
         },
         &[],
@@ -387,8 +401,11 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sm4", Stable, &["avx2"]),
     (
         "soft-float",
-        // Pinned down by [`Target::abi_required_features`].
-        Stability::InternalOnly { reason: "use a soft-float target instead", hard_error: false },
+        Stability::InternalOnly {
+            reason: "use a soft-float target instead",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("sse", Stable, &[]),
@@ -450,8 +467,11 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
     (
         "hard-float",
-        // Pinned down by [`Target::abi_required_features`].
-        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        InternalOnly {
+            reason: "unsupported ABI-configuration feature",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("msync", Unstable(sym::powerpc_target_feature), &[]),
@@ -465,8 +485,11 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     (
         "spe",
-        // Pinned down by [`Target::abi_required_features`].
-        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        InternalOnly {
+            reason: "unsupported ABI-configuration feature",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("vsx", Unstable(sym::powerpc_target_feature), &["altivec"]),
@@ -531,9 +554,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("f", Stable, &["zicsr"]),
     (
         "forced-atomics",
-        // Not implied by any CPU model or other feature.
         Stability::InternalOnly {
             reason: "unsound because it changes the ABI of atomic operations",
+            target_modifier: true,
             hard_error: false,
         },
         &[],
@@ -802,10 +825,13 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("miscellaneous-extensions-3", Stable, &[]),
     ("miscellaneous-extensions-4", Stable, &[]),
     ("nnp-assist", Stable, &["vector"]),
-    // Pinned down by [`Target::abi_required_features`].
     (
         "soft-float",
-        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        InternalOnly {
+            reason: "unsupported ABI-configuration feature",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
@@ -824,7 +850,11 @@ const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
     (
         "soft-float",
-        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        InternalOnly {
+            reason: "unsupported ABI-configuration feature",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("v8plus", Unstable(sym::sparc_target_feature), &[]),
@@ -865,8 +895,12 @@ static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("spmx", Unstable(sym::avr_target_feature), &[]),
     (
         "sram",
-        // Pinned down by [`Target::abi_required_features`].
-        InternalOnly { reason: "devices that have no SRAM are unsupported", hard_error: false },
+        InternalOnly {
+            reason: "devices that have no SRAM are unsupported",
+            // Always required by [`Target::abi_required_features`].
+            target_modifier: false,
+            hard_error: false,
+        },
         &[],
     ),
     ("tinyencoding", Unstable(sym::avr_target_feature), &[]),
@@ -880,9 +914,10 @@ const XTENSA_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("interrupt", Unstable(sym::xtensa_target_feature), &["exception"]),
     (
         "windowed",
-        // Pinned down by [`Target::abi_required_features`].
         InternalOnly {
             reason: "windowed changes the Xtensa calling convention",
+            // Always required by [`Target::abi_required_features`].
+            target_modifier: false,
             hard_error: false,
         },
         &["exception"],
