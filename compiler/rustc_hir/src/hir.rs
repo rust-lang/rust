@@ -33,7 +33,7 @@ use rustc_span::{
 use rustc_target::asm;
 use tracing::debug;
 
-use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
+use crate::def::{CtorKind, CtorOf, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 use crate::intravisit::FnKind;
 use crate::lints::DelayedLints;
@@ -2364,7 +2364,13 @@ impl Expr<'_> {
             ExprKind::Path(qpath) => {
                 match qpath {
                     QPath::Resolved(_, Path { res: Res::Def(def_kind, _), .. }) => match def_kind {
-                        DefKind::Const | DefKind::ConstParam | DefKind::AssocConst => true,
+                        DefKind::Const
+                        | DefKind::ConstParam
+                        | DefKind::AssocConst
+                        | DefKind::Fn
+                        | DefKind::AssocFn
+                        | DefKind::Ctor(_, CtorKind::Fn)
+                        | DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => true,
 
                         DefKind::Mod
                         | DefKind::Struct
@@ -2377,10 +2383,8 @@ impl Expr<'_> {
                         | DefKind::TraitAlias
                         | DefKind::AssocTy
                         | DefKind::TyParam
-                        | DefKind::Fn
                         | DefKind::Static { .. }
-                        | DefKind::Ctor(..)
-                        | DefKind::AssocFn
+                        | DefKind::Ctor(CtorOf::Variant, CtorKind::Const)
                         | DefKind::Macro(_)
                         | DefKind::ExternCrate
                         | DefKind::Use

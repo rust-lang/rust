@@ -108,9 +108,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             | DefKind::ConstParam
                             | DefKind::Fn
                             | DefKind::AssocFn
-                            | DefKind::Ctor(_, CtorKind::Fn),
+                            | DefKind::Ctor(_, CtorKind::Fn)
+                            | DefKind::Ctor(CtorOf::Struct, CtorKind::Const),
                             _,
-                        ) = res
+                        )
+                        | Res::SelfCtor(_) = res
                         {
                             return None;
                         }
