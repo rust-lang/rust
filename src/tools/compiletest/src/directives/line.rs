@@ -1,6 +1,8 @@
 use std::fmt;
 
-use crate::directives::Location;
+use camino::Utf8Path;
+
+use crate::directives::{LineNumber, Location};
 use crate::{error, help};
 
 /// If the given line begins with the appropriate comment prefix for a directive,
@@ -100,6 +102,13 @@ pub(crate) struct DirectiveLine<'a> {
 }
 
 impl<'ln> DirectiveLine<'ln> {
+    // FIXME: Get rid of synthetic directives.
+    //        See also <https://github.com/rust-lang/rust/pull/165651#discussion_r4541102589>.
+    pub(crate) fn synthetic(name: &'static str, file_path: &'ln Utf8Path) -> Self {
+        let location = Location { file_path, line_number: LineNumber::ZERO };
+        Self { location, revision: None, raw_directive: name, name }
+    }
+
     pub(crate) fn applies_to_test_revision(&self, test_revision: Option<&str>) -> bool {
         self.revision.is_none() || self.revision == test_revision
     }
