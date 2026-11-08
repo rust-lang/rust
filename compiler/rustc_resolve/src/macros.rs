@@ -694,7 +694,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 if kind == MacroKind::Attr
                     && let [tool, _second, ..] = path.segments.as_slice()
-                    && self.registered_attr_tool_decls.contains_key(&IdentKey::new(tool.ident))
+                    && self
+                        .registered_attr_tool_decls
+                        .contains_key(&IdentKey::with_root_ctxt(tool.ident.name))
                 {
                     self.dcx().emit_err(diagnostics::ToolAttrAmbiguity {
                         path_span: path.span,

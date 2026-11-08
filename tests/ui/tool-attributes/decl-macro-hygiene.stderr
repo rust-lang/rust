@@ -1,0 +1,15 @@
+error: attribute macro `my_tool::x` is ambiguous
+  --> $DIR/decl-macro-hygiene.rs:10:7
+   |
+LL | pub macro bar() {
+LL |     #[my_tool::x]
+   |       ^^^^^^^^^^
+...
+LL | bar!();
+   | ------ in this macro invocation
+   |
+   = note: ambiguous because of a name conflict with a tool namespace
+   = note: `my_tool` could refer to a tool namespace
+
+error: aborting due to 1 previous error
+
