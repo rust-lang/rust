@@ -90,3 +90,9 @@ pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<
     target_os = "windows"
 )))]
 pub use imp::output;
+
+pub fn status(cmd: &mut Command) -> crate::io::Result<ExitStatus> {
+    let (mut process, mut pipes) = cmd.spawn(Stdio::Inherit, true)?;
+    drop(pipes.stdin.take());
+    process.wait()
+}
