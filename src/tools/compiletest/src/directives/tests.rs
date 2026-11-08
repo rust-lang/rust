@@ -5,7 +5,7 @@ use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
-use crate::directives::line::{DirectiveLine, Error, ErrorKind};
+use crate::directives::line::{DirectiveLine, DirectivePayload, Error, ErrorKind};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, EarlyValidationError,
     EarlyValidationErrorKind, Edition, EditionRange, FileDirectives, KNOWN_DIRECTIVE_NAMES_SET,
@@ -656,7 +656,29 @@ fn test_miropt_mode_forbidden_revisions() {
 }
 
 #[test]
-fn test_ok_directive() {
+fn test_empty_directive() {
+    let line = "//@";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: None, name: "", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_non_alphanumeric_directive_name() {
+    let line = "//@ #&$?+)^";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: None, name: "#&$?+)^", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_key_value_directive() {
     let line = "//@ aux-build: file.rs";
 
     let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
@@ -665,20 +687,132 @@ fn test_ok_directive() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "aux-build",
-            raw_directive: "aux-build: file.rs",
+            payload: Some(DirectivePayload::Value(" file.rs")),
             ..
         }))
     );
 }
 
 #[test]
-fn indented_directive() {
+fn test_valueless_directive() {
+    let line = "//@ only-unix";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: None, name: "only-unix", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_ok_conditional_directive() {
+    let line = "//@[revision] directive";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: Some("revision"),
+            name: "directive",
+            payload: None,
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_indented_directive() {
     let line = "  //@ key: value";
 
     let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
         line_directive(location, line),
-        Some(Ok(DirectiveLine { revision: None, name: "key", raw_directive: "key: value", .. }))
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value(" value")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_directive_padded_colon() {
+    let line = "//@ key :value";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Remark(":value")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_key_value_directive_trailing_whitespace() {
+    let line = "//@ key: value  \t ";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value(" value  \t ")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_valueless_directive_with_trailing_whitespace() {
+    let line = "//@ key   \t ";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Remark("  \t ")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_directive_empty_value_0() {
+    let line = "//@ key:";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value("")),
+            ..
+        }))
+    );
+}
+
+#[test]
+fn test_directive_empty_value_1() {
+    let line = "//@ key:   \t ";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value("   \t ")),
+            ..
+        }))
     );
 }
 
@@ -1030,8 +1164,8 @@ fn test_known_directive_check_no_error() {
     assert_matches!(
         result.as_deref(),
         Ok([
-            DirectiveLine { revision: None, raw_directive: "ignore-wasm", name: "ignore-wasm", .. },
-            DirectiveLine { revision: None, raw_directive: "check-pass", name: "check-pass", .. },
+            DirectiveLine { revision: None, name: "ignore-wasm", payload: None, .. },
+            DirectiveLine { revision: None, name: "check-pass", payload: None, .. },
         ])
     );
 }
@@ -1044,9 +1178,7 @@ fn test_error_annotation_no_error() {
     );
     assert_matches!(
         result.as_deref(),
-        Ok(
-            [DirectiveLine { revision: None, raw_directive: "check-pass", name: "check-pass", .. },]
-        )
+        Ok([DirectiveLine { revision: None, name: "check-pass", payload: None, .. },])
     );
 }
 
@@ -1117,8 +1249,8 @@ fn test_not_trailing_directive() {
         result.as_deref(),
         Ok([DirectiveLine {
             revision: None,
-            raw_directive: "revisions: incremental",
             name: "revisions",
+            payload: Some(DirectivePayload::Value(" incremental")),
             ..
         }])
     );
