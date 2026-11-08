@@ -118,24 +118,6 @@ impl<'ln> DirectiveLine<'ln> {
         self.revision.is_none() || self.revision == test_revision
     }
 
-    /// If this directive uses `name: value` syntax, returns the part after
-    /// the colon character.
-    pub(crate) fn value_after_colon(&self) -> Option<&'ln str> {
-        match self.payload {
-            Some(DirectivePayload::Value(value)) => Some(value),
-            _ => None,
-        }
-    }
-
-    /// If this directive uses `name remark` syntax, returns the part after
-    /// the separating space.
-    pub(crate) fn remark_after_space(&self) -> Option<&'ln str> {
-        match self.payload {
-            Some(DirectivePayload::Remark(remark)) => Some(remark),
-            _ => None,
-        }
-    }
-
     /// Display the name & payload of the directive.
     pub(crate) fn display(&self) -> impl fmt::Display {
         fmt::from_fn(|f| {
@@ -151,6 +133,7 @@ impl<'ln> DirectiveLine<'ln> {
     }
 }
 
+#[derive(Clone, Copy)]
 #[cfg_attr(test, derive(Debug))]
 pub(crate) enum DirectivePayload<'a> {
     Value(&'a str),

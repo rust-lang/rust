@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::common::{
     Config, KNOWN_CRATE_TYPES, KNOWN_TARGET_HAS_ATOMIC_WIDTHS, Sanitizer, query_rustc_output,
 };
+use crate::directives::line::DirectivePayload;
 use crate::directives::{DirectiveLine, IgnoreDecision, KNOWN_DIRECTIVE_NAMES_SET};
 
 pub(super) fn handle_needs(
@@ -17,7 +18,7 @@ pub(super) fn handle_needs(
     }
 
     if name == "needs-target-has-atomic" {
-        let Some(rest) = ln.value_after_colon() else {
+        let Some(DirectivePayload::Value(rest)) = ln.payload else {
             return IgnoreDecision::Error {
                 message: "expected `needs-target-has-atomic` to have a comma-separated list of atomic widths".to_string(),
             };
@@ -59,7 +60,7 @@ pub(super) fn handle_needs(
 
     // FIXME(jieyouxu): share multi-value directive logic with `needs-target-has-atomic` above.
     if name == "needs-crate-type" {
-        let Some(rest) = ln.value_after_colon() else {
+        let Some(DirectivePayload::Value(rest)) = ln.payload else {
             return IgnoreDecision::Error {
                 message:
                     "expected `needs-crate-type` to have a comma-separated list of crate types"
@@ -111,7 +112,7 @@ pub(super) fn handle_needs(
             IgnoreDecision::Continue
         } else {
             IgnoreDecision::Ignore {
-                reason: if let Some(comment) = ln.remark_after_space() {
+                reason: if let Some(DirectivePayload::Remark(comment)) = ln.payload {
                     format!("{} ({})", need.ignore_reason, comment.trim())
                 } else {
                     need.ignore_reason.into()
