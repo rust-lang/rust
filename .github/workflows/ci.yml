@@ -21,6 +21,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 defaults:
   run:
@@ -269,11 +270,48 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
+      # We assume roles in two hops here. AssumeRoleWithWebIdentity, the first
+      # hop, does not support setting a property available as a [global AWS context key].
+      #
+      # The second hop, a normal AssumeRole call, supports setting arbitrary
+      # tags. The first hop only has permission to perform this second hop.
+      #
+      # We use the second role assumption to set the `sha` tag to the current
+      # Git commit, which is used in the matching AWS IAM policy to enforce
+      # that we can only write to S3 keys including that SHA. Note that the
+      # attacker-controlled code (this file) sets that tag's value, and
+      # currently there's no enforcement that it is the *right* value. We hope
+      # to improve on this in the future, but the right claim is not currently
+      # available natively in AWS ([supported claims]).
+      #
+      # [global AWS context key]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html
+      # [supported claims]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html#condition-keys-wif
+      - name: assume intermediate artifact role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::890664054962:role/rustc-ci--rust-lang--rust--github
+          aws-region: us-west-1
+          aws-profile: artifacts-src
+        # Should match condition on upload step
+        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
+
+      - name: assume final artifact role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        env:
+          AWS_PROFILE: artifacts-src
+        with:
+          role-to-assume: arn:aws:iam::890664054962:role/rustc-ci--rust-lang--rust--github-with-sha
+          custom-tags: '{"sha": "${{ github.sha }}"}'
+          role-chaining: true
+          aws-region: us-west-1
+          aws-profile: artifacts
+        # Should match condition on upload step
+        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
+
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY }}
+          AWS_PROFILE: artifacts
         # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
         # builders *should* have the AWS credentials available. Still, explicitly
         # adding the condition is helpful as this way CI will not silently skip
