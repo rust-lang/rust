@@ -390,20 +390,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let (op, op_len) = self.project_to_simd(&args[0])?;
 
-                let scalar = |f: Double| {
-                    self.float_to_float_or_int(
-                        &ImmTy::from_scalar(
-                            Scalar::from_f64(f),
-                            self.layout_of(self.tcx.types.f64)?,
-                        ),
+                // Compute starting value and reduction MIR op
+                let from_int = |i: i32| {
+                    self.int_to_int_or_float(
+                        &ImmTy::from_int(i, self.layout_of(self.tcx.types.i32)?),
                         dest.layout,
                     )
                 };
                 let (init, mir_op) = match intrinsic_name {
-                    sym::simd_reduce_add_algebraic => (scalar(-Double::ZERO)?, BinOp::Add),
-                    sym::simd_reduce_mul_algebraic => {
-                        (scalar(Double::from_u128(1).value)?, BinOp::Mul)
-                    }
+                    sym::simd_reduce_add_algebraic => (from_int(0)?, BinOp::Add),
+                    sym::simd_reduce_mul_algebraic => (from_int(1)?, BinOp::Mul),
                     _ => unreachable!(),
                 };
 

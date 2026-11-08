@@ -2941,7 +2941,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         vector_reduce_fadd_algebraic,
         false,
         add,
-        -0.0
+        0.0
     );
     arith_red!(
         simd_reduce_mul_algebraic: vector_reduce_mul,
