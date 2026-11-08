@@ -4,7 +4,7 @@ use core::clone::{CloneToUninit, Share, UseCloned};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
@@ -17,6 +17,8 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::sync::atomic::{self, Atomic};
 use core::{borrow, fmt, hint, intrinsics};
 
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc;
 use crate::alloc::{
     AllocError, Allocator, AllocatorClone, AllocatorNightly, Global, Layout, StaticAllocator,
 };
@@ -289,6 +291,13 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
 unsafe impl<T: ?Sized> CloneFromCell for Arc<T> {}
 
+impl<T: ?Sized> Arc<T> {
+    unsafe fn from_ptr(ptr: *mut T) -> Self {
+        // SAFETY: Upheld by caller.
+        unsafe { Self::from_ptr_in(ptr, Global) }
+    }
+}
+
 impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[inline]
     fn into_inner_with_allocator(this: Self) -> (RcValuePointer<T>, A) {
@@ -300,6 +309,12 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[inline]
     unsafe fn from_inner_in(ptr: RcValuePointer<T>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
+    }
+
+    #[inline]
+    unsafe fn from_ptr_in(ptr: *mut T, alloc: A) -> Self {
+        // SAFETY: Upheld by caller.
+        unsafe { Self::from_raw_in(ptr, alloc) }
     }
 
     /// # Safety
@@ -384,6 +399,16 @@ const _: () = {
     assert!(size_of::<ArcHeader>() - mem::offset_of!(ArcHeader, strong) == size_of::<usize>() * 2);
     assert!(size_of::<ArcHeader>() - mem::offset_of!(ArcHeader, weak) == size_of::<usize>());
 };
+
+/// Calculate layout for `ArcInner<T>` using the inner value's layout
+#[inline]
+fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
+    // Calculate layout using the given value layout.
+    // Previously, layout was calculated on the expression
+    // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
+    // reference (see #54908).
+    Layout::new::<ArcHeader>().extend(layout).unwrap_or_else(|_| panic!("capacity overflow")).0
+}
 
 /// Writes initial header for newly created `Arc` value. The initial weak count of 1 used for tracking
 /// all strong counts.
@@ -514,7 +539,14 @@ impl<T> Arc<T> {
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
-        Self::new_uninit_in(Global)
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate(layout),
+                <*mut u8>::cast,
+            ))
+        }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -540,7 +572,14 @@ impl<T> Arc<T> {
     #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
-        Self::new_zeroed_in(Global)
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate_zeroed(layout),
+                <*mut u8>::cast,
+            ))
+        }
     }
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
@@ -600,7 +639,14 @@ impl<T> Arc<T> {
     /// ```
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
-        Self::try_new_uninit_in(Global)
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate(layout),
+                <*mut u8>::cast,
+            )?))
+        }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -626,7 +672,14 @@ impl<T> Arc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
-        Self::try_new_zeroed_in(Global)
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate_zeroed(layout),
+                <*mut u8>::cast,
+            )?))
+        }
     }
 }
 
@@ -684,11 +737,17 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     #[inline]
     pub fn new_uninit_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
-        let ptr = ArcHeader::allocate_uninit_for_type(&alloc);
-
-        // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have exclusive
-        // access to it.
-        unsafe { Arc::init_from_parts(ptr, alloc) }
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Arc::from_ptr_in(
+                Arc::allocate_for_layout(
+                    Layout::new::<T>(),
+                    |layout| alloc.allocate(layout),
+                    <*mut u8>::cast,
+                ),
+                alloc,
+            )
+        }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -716,11 +775,17 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     #[inline]
     pub fn new_zeroed_in(alloc: A) -> Arc<mem::MaybeUninit<T>, A> {
-        let ptr = ArcHeader::allocate_zeroed_for_type(&alloc);
-
-        // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have exclusive
-        // access to it.
-        unsafe { Arc::init_from_parts(ptr, alloc) }
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Arc::from_ptr_in(
+                Arc::allocate_for_layout(
+                    Layout::new::<T>(),
+                    |layout| alloc.allocate_zeroed(layout),
+                    <*mut u8>::cast,
+                ),
+                alloc,
+            )
+        }
     }
 
     /// Constructs a new `Arc<T, A>` in the given allocator while giving you a `Weak<T, A>` to the allocation,
@@ -885,11 +950,17 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     #[inline]
     pub fn try_new_uninit_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
-        ArcHeader::try_allocate_uninit_for_type(&alloc).map(|ptr| {
-            // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have
-            // exclusive access to it.
-            unsafe { Arc::init_from_parts(ptr, alloc) }
-        })
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Ok(Arc::from_ptr_in(
+                Arc::try_allocate_for_layout(
+                    Layout::new::<T>(),
+                    |layout| alloc.allocate(layout),
+                    <*mut u8>::cast,
+                )?,
+                alloc,
+            ))
+        }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -918,11 +989,17 @@ impl<T, A: Allocator> Arc<T, A> {
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     #[inline]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Arc<mem::MaybeUninit<T>, A>, AllocError> {
-        ArcHeader::try_allocate_zeroed_for_type(&alloc).map(|ptr| {
-            // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have
-            // exclusive access to it.
-            unsafe { Arc::init_from_parts(ptr, alloc) }
-        })
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Ok(Arc::from_ptr_in(
+                Arc::try_allocate_for_layout(
+                    Layout::new::<T>(),
+                    |layout| alloc.allocate_zeroed(layout),
+                    <*mut u8>::cast,
+                )?,
+                alloc,
+            ))
+        }
     }
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
@@ -1257,7 +1334,14 @@ impl<T> Arc<[T]> {
     #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
-        Self::new_zeroed_slice_in(len, Global)
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::array::<T>(len).unwrap(),
+                |layout| Global.allocate_zeroed(layout),
+                |mem| mem.cast::<MaybeUninit<T>>().cast_slice(len),
+            ))
+        }
     }
 }
 
@@ -1323,11 +1407,17 @@ impl<T, A: Allocator> Arc<[T], A> {
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
     #[inline]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Arc<[mem::MaybeUninit<T>], A> {
-        let ptr = ArcHeader::allocate_zeroed_slice(&alloc, len);
-
-        // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have
-        // exclusive access to it.
-        unsafe { Arc::init_from_parts(ptr, alloc) }
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            Arc::from_ptr_in(
+                Arc::allocate_for_layout(
+                    Layout::array::<T>(len).unwrap(),
+                    |layout| alloc.allocate_zeroed(layout),
+                    |mem| mem.cast::<MaybeUninit<T>>().cast_slice(len),
+                ),
+                alloc,
+            )
+        }
     }
 
     /// Converts the reference-counted slice into a reference-counted array.
@@ -2152,6 +2242,72 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[stable(feature = "ptr_eq", since = "1.17.0")]
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         ptr::addr_eq(this.ptr.as_ptr(), other.ptr.as_ptr())
+    }
+}
+
+impl<T: ?Sized> Arc<T> {
+    /// Allocates an `ArcInner<T>` with sufficient space for
+    /// a possibly-unsized inner value where the value has the layout provided.
+    ///
+    /// The function `mem_to_arcinner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn allocate_for_layout(
+        value_layout: Layout,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
+        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut T,
+    ) -> *mut T {
+        let layout = arcinner_layout_for_value_layout(value_layout);
+
+        let ptr = allocate(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout));
+
+        // ignore-tidy-undocumented-unsafe
+        unsafe { Self::initialize_arcinner(ptr, layout, mem_to_arcinner) }
+    }
+
+    /// Allocates an `ArcInner<T>` with sufficient space for
+    /// a possibly-unsized inner value where the value has the layout provided,
+    /// returning an error if allocation fails.
+    ///
+    /// The function `mem_to_arcinner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
+    unsafe fn try_allocate_for_layout(
+        value_layout: Layout,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
+        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut T,
+    ) -> Result<*mut T, AllocError> {
+        let layout = arcinner_layout_for_value_layout(value_layout);
+
+        let ptr = allocate(layout)?;
+
+        // ignore-tidy-undocumented-unsafe
+        let inner = unsafe { Self::initialize_arcinner(ptr, layout, mem_to_arcinner) };
+
+        Ok(inner)
+    }
+
+    unsafe fn initialize_arcinner(
+        ptr: NonNull<[u8]>,
+        layout: Layout,
+        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut T,
+    ) -> *mut T {
+        // ignore-tidy-undocumented-unsafe
+        let value_offset = unsafe {
+            let align_m1 = intrinsics::unchecked_sub(layout.align(), 1);
+
+            intrinsics::unchecked_add(ArcHeader::SIZE, align_m1) & !align_m1
+        };
+
+        let inner =
+            // ignore-tidy-undocumented-unsafe
+            mem_to_arcinner(unsafe { ptr.as_non_null_ptr().as_ptr().byte_add(value_offset) });
+
+        // ignore-tidy-undocumented-unsafe
+        unsafe {
+            write_arc_header(RcValuePointer::new(NonNull::new_unchecked(inner)).erase());
+        }
+
+        inner
     }
 }
 
@@ -4020,16 +4176,19 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
     /// clone of it.
     #[inline(always)]
     fn new(arc: &Arc<T, A>, alloc: A) -> UniqueArcUninit<T, A> {
-        let ptr =
-            // SAFETY: `Arc<T, A>` proves that `T` is small enough to store inside a reference
-            // counted allocation.
-            unsafe { ArcHeader::allocate_uninit_for_value_unchecked(&alloc, Arc::as_ref(arc)) };
+        let for_value = &**arc;
+        let layout = Layout::for_value(for_value);
+        // ignore-tidy-undocumented-unsafe
+        let ptr = unsafe {
+            Arc::allocate_for_layout(
+                layout,
+                |layout_for_arcinner| alloc.allocate(layout_for_arcinner),
+                |mem| mem.with_metadata_of(for_value),
+            )
+        };
 
-        // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have exclusive
-        // access to it.
-        unsafe { write_arc_header(ptr.erase()) };
-
-        Self { ptr, alloc }
+        // ignore-tidy-undocumented-unsafe
+        Self { ptr: RcValuePointer::new(unsafe { NonNull::new_unchecked(ptr) }), alloc }
     }
 
     /// Returns the pointer to be written into to initialize the [`Arc`].
