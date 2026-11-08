@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, TyAndLayout,
 };
@@ -42,7 +44,7 @@ where
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Flavor {
-    General { regparam: Option<u32> },
+    General { regparam: Option<NonZeroU32> },
     Fastcall,
     Vectorcall,
 }
@@ -258,7 +260,8 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     let mut free_regs = match opts.flavor {
         _ if fn_abi.c_variadic => 0,
         Flavor::Fastcall | Flavor::Vectorcall => 2,
-        Flavor::General { regparam } => u64::from(regparam.unwrap_or(0)),
+        Flavor::General { regparam: None } => 0,
+        Flavor::General { regparam: Some(n) } => u64::from(n.get()),
     };
 
     if free_regs == 0 {
