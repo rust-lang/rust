@@ -229,15 +229,11 @@ where
         classify_arg(cx, arg);
     }
 
-    fill_inregs(cx, fn_abi, opts, false);
+    fill_inregs(cx, fn_abi, opts);
 }
 
-pub(crate) fn fill_inregs<'a, Ty, C>(
-    cx: &C,
-    fn_abi: &mut FnAbi<'a, Ty>,
-    opts: X86Options,
-    rust_abi: bool,
-) where
+pub(crate) fn fill_inregs<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, opts: X86Options)
+where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
     // Mark arguments as InReg like clang does it,
@@ -265,13 +261,6 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     };
 
     if free_regs == 0 {
-        return;
-    }
-
-    // For types generating PassMode::Cast, InRegs will not be set.
-    // Maybe, this is a FIXME
-    let has_casts = fn_abi.args.iter().any(|arg| matches!(arg.mode, PassMode::Cast { .. }));
-    if has_casts && rust_abi {
         return;
     }
 
