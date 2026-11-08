@@ -3,7 +3,6 @@
 //@ run-pass
 //@ needs-unwind
 //@ only-linux
-//@ ignore-backends: gcc
 
 #![feature(alloc_error_hook)]
 

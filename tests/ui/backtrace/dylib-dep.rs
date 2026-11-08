@@ -13,7 +13,6 @@
 //@ ignore-watchos needs the `.dSYM` files to be moved to the device
 //@ ignore-visionos needs the `.dSYM` files to be moved to the device
 //@ needs-unwind
-//@ ignore-backends: gcc
 //@ compile-flags: -g -Copt-level=0 -Cstrip=none -Cforce-frame-pointers=yes
 //@ ignore-wasm Requires custom symbolization code
 //@ aux-crate: dylib_dep_helper=dylib-dep-helper.rs

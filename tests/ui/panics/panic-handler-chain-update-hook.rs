@@ -1,7 +1,6 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
-//@ ignore-backends: gcc
 
 #![feature(panic_update_hook)]
 

@@ -11,7 +11,6 @@
 
 // check-fail
 
-//@ ignore-backends: gcc
 //@ add-minicore
 // Don't inherit the target-cpu above for minicore, to avoid errors when building that.
 //@ minicore-compile-flags: -Ctarget-cpu=generic
