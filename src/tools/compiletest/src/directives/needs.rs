@@ -113,7 +113,7 @@ pub(super) fn handle_needs(
         } else {
             IgnoreDecision::Ignore {
                 reason: if let Some(DirectivePayload::Remark(comment)) = ln.payload {
-                    format!("{} ({})", need.ignore_reason, comment.trim())
+                    format!("{} ({})", need.ignore_reason, comment)
                 } else {
                     need.ignore_reason.into()
                 },

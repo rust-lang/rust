@@ -13,7 +13,7 @@ pub(crate) fn line_directive<'a>(
 ) -> Option<Result<DirectiveLine<'a>, Error<'a>>> {
     let error = |kind| Some(Err(Error { kind, location }));
 
-    let comment = line.trim_start().strip_prefix("//")?;
+    let comment = line.trim().strip_prefix("//")?;
     let trimmed_comment = comment.trim_start();
 
     let (leading_revision, trimmed_comment) = trimmed_comment
@@ -51,21 +51,33 @@ pub(crate) fn line_directive<'a>(
         }
     }
 
-    let mut kind = None;
     let (name, payload) = directive
-        .split_once(|char| {
-            kind = Some(match char {
-                ':' => DirectivePayload::Value,
-                char if char.is_whitespace() => DirectivePayload::Remark,
-                _ => return false,
-            });
-            true
-        })
-        .map(|(name, payload)| (name, Some(kind.unwrap()(payload))))
+        .find(|char: char| char == SEPARATOR || char.is_whitespace())
+        .map(|index| (&directive[..index], Some(directive[index..].trim_start())))
         .unwrap_or((directive, None));
+
+    if name.is_empty() {
+        return error(ErrorKind::MissingName);
+    }
+
+    let payload = if let Some(payload) = payload {
+        if let Some(value) = payload.strip_prefix(SEPARATOR) {
+            let value = value.trim_start();
+            if value.is_empty() {
+                return error(ErrorKind::MissingValue);
+            }
+            Some(DirectivePayload::Value(value))
+        } else {
+            Some(DirectivePayload::Remark(payload))
+        }
+    } else {
+        None
+    };
 
     Some(Ok(DirectiveLine { location, revision, name, payload }))
 }
+
+const SEPARATOR: char = ':';
 
 /// The broken-down contents of a test directive.
 ///
@@ -74,12 +86,12 @@ pub(crate) fn line_directive<'a>(
 /// ```text
 /// //@ compile-flags: -O
 ///     ^^^^^^^^^^^^^     name
-///                   ^^^ payload (Value)
+///                    ^^ payload (Value)
 ///
 /// //@ [foo] compile-flags: -O
 ///      ^^^                    revision
 ///           ^^^^^^^^^^^^^     name
-///                         ^^^ payload (Value)
+///                          ^^ payload (Value)
 ///
 /// //@ only-unix because SIGPIPE is a unix thing
 ///     ^^^^^^^^^                                 name
@@ -101,12 +113,10 @@ pub(crate) struct DirectiveLine<'a> {
     /// Name of the directive.
     pub(crate) name: &'a str,
 
-    /// The payload of the directive.
+    /// The non-empty whitespace-trimmed payload of the directive.
     ///
-    /// If the payload was separated using a colon (`:`) it will get represented as a
-    /// [`DirectivePayload::Value`]. If the payload was separated using a space, it will be
-    /// represented as a [`DirectivePayload::Remark`]. If the directive doesn't contain either colon
-    /// or space, the payload will be `None`.
+    /// If the payload was separated using a colon (`:`), it's a [`DirectivePayload::Value`].
+    /// If the payload was separated using whitespace, it's a [`DirectivePayload::Remark`].
     pub(crate) payload: Option<DirectivePayload<'a>>,
 }
 
@@ -128,7 +138,7 @@ impl<'ln> DirectiveLine<'ln> {
             f.write_str(self.name)?;
             if let Some(payload) = &self.payload {
                 match payload {
-                    DirectivePayload::Value(value) => write!(f, ":{value}"),
+                    DirectivePayload::Value(value) => write!(f, ": {value}"),
                     DirectivePayload::Remark(remark) => write!(f, " {remark}"),
                 }?;
             }
@@ -156,6 +166,8 @@ pub(crate) enum ErrorKind<'a> {
     WhitespaceBeforeAtSign,
     UnclosedRevisionCondition,
     CommaInRevisionCondition { revision: &'a str, directive: &'a str },
+    MissingValue,
+    MissingName,
 }
 
 impl Error<'_> {
@@ -192,6 +204,13 @@ impl Error<'_> {
 
                 help!("consider splitting the directive like\n{suggestion}");
             }
+            ErrorKind::MissingValue => {
+                title("a value is missing following the `:`");
+
+                help!("consider removing the colon if you didn't mean to specify any value");
+                help!("consider providing a value after the `:` if you meant to provide one");
+            }
+            ErrorKind::MissingName => title("a directive name is missing"),
         }
 
         panic!("fatal error")
