@@ -329,9 +329,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn os_unfair_lock_lock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
             // Trying to lock a perma-locked lock. On macOS this would block or abort depending
             // on whether the current thread is considered to be the one holding this lock. We
             // don't know who is considered to be holding the lock so we don't know what to do.
@@ -342,16 +342,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mutex_ref = mutex_ref.clone();
 
         if let Some(owner) = mutex_ref.owner() {
-            if owner == this.active_thread() {
+            if owner == ecx.active_thread() {
                 // Matching the current macOS implementation: abort on reentrant locking.
                 throw_machine_stop!(TerminationInfo::Abort(
                     "attempted to lock an os_unfair_lock that is already locked by the current thread".to_owned()
                 ));
             }
 
-            this.mutex_enqueue_and_block(mutex_ref, None);
+            ecx.mutex_enqueue_and_block(mutex_ref, None);
         } else {
-            this.mutex_lock(&mutex_ref)?;
+            ecx.mutex_lock(&mutex_ref)?;
         }
 
         interp_ok(())
@@ -362,22 +362,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         lock_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
             // Trying to lock a perma-locked lock. That behaves the same no matter who the owner is
             // so we can implement the real behavior here.
-            this.write_scalar(Scalar::from_bool(false), dest)?;
+            ecx.write_scalar(Scalar::from_bool(false), dest)?;
             return interp_ok(());
         };
         let mutex_ref = mutex_ref.clone();
 
         if mutex_ref.owner().is_some() {
             // Contrary to the blocking lock function, this does not check for reentrancy.
-            this.write_scalar(Scalar::from_bool(false), dest)?;
+            ecx.write_scalar(Scalar::from_bool(false), dest)?;
         } else {
-            this.mutex_lock(&mutex_ref)?;
-            this.write_scalar(Scalar::from_bool(true), dest)?;
+            ecx.mutex_lock(&mutex_ref)?;
+            ecx.write_scalar(Scalar::from_bool(true), dest)?;
         }
 
         interp_ok(())
@@ -436,9 +436,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn os_unfair_lock_assert_not_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
             // We don't know who the owner is so we cannot proceed.
             throw_unsup_format!(
                 "attempted to assert the owner of an os_unfair_lock that was copied while being locked"
@@ -446,7 +446,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let mutex_ref = mutex_ref.clone();
 
-        if mutex_ref.owner().is_some_and(|o| o == this.active_thread()) {
+        if mutex_ref.owner().is_some_and(|o| o == ecx.active_thread()) {
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_not_owner on an os_unfair_lock owned by the current thread".to_owned()
             ));
@@ -456,8 +456,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reset to zero so that it can be moved and initialized again for the next phase.
         if mutex_ref.owner().is_none() {
             let lock_place =
-                this.project_field(&this.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
-            this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
+                ecx.project_field(&ecx.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
+            ecx.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
 
         interp_ok(())
@@ -468,9 +468,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         value: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let value = this.read_target_isize(value)?;
+        let value = ecx.read_target_isize(value)?;
 
         let Ok(value) = u64::try_from(value) else {
             throw_machine_stop!(TerminationInfo::Abort(
@@ -479,13 +479,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // Create an allocation to hold the semaphore "state" (mostly meta state for us).
-        let alloc =
-            this.allocate(dispatch_semaphore_layout(this), MiriMemoryKind::Runtime.into())?;
+        let alloc = ecx.allocate(dispatch_semaphore_layout(ecx), MiriMemoryKind::Runtime.into())?;
         // Initialize semaphore.
         let data = MacOsSemaphore { semaphore: SemaphoreRef::new(value), init_value: value };
-        this.insert_meta(&alloc, Box::new(data))?;
+        ecx.insert_meta(&alloc, Box::new(data))?;
 
-        this.write_pointer(alloc.ptr(), dest)?;
+        ecx.write_pointer(alloc.ptr(), dest)?;
         interp_ok(())
     }
 
@@ -536,27 +535,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         sem_ptr: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let sem_ptr = this.read_pointer(sem_ptr)?;
+        let sem_ptr = ecx.read_pointer(sem_ptr)?;
 
-        let data = this.dispatch_semaphore_get_data(sem_ptr)?.clone();
-        let woke_thread = this.semaphore_increment(&data.semaphore)?;
+        let data = ecx.dispatch_semaphore_get_data(sem_ptr)?.clone();
+        let woke_thread = ecx.semaphore_increment(&data.semaphore)?;
 
         // The `dispatch_semaphore_signal` docs do not discuss the return value,
         // but the Swift-level docs say:
         // > This function returns non-zero if a thread is woken. Otherwise, zero is returned.
 
-        this.write_int(woke_thread, dest)?;
+        ecx.write_int(woke_thread, dest)?;
         interp_ok(())
     }
 
     fn dispatch_release(&mut self, sem_ptr: &OpTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let sem_ptr = this.read_pointer(sem_ptr)?;
+        let sem_ptr = ecx.read_pointer(sem_ptr)?;
 
-        let data = this.dispatch_semaphore_get_data(sem_ptr)?.clone();
+        let data = ecx.dispatch_semaphore_get_data(sem_ptr)?.clone();
         // macOS aborts if the final value is below the initial value.
         if data.semaphore.value() < data.init_value {
             throw_machine_stop!(TerminationInfo::Abort(
@@ -565,8 +564,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Freeing the memory will also free the meta-object in `AllocExtra`.
-        let layout = dispatch_semaphore_layout(this);
-        this.deallocate_ptr(
+        let layout = dispatch_semaphore_layout(ecx);
+        ecx.deallocate_ptr(
             sem_ptr,
             Some((layout.size, layout.align)),
             MiriMemoryKind::Runtime.into(),
@@ -581,10 +580,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         delta: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let when = this.read_scalar(when)?.to_u64()?;
-        let delta = this.read_scalar(delta)?.to_i64()?;
+        let when = ecx.read_scalar(when)?.to_u64()?;
+        let delta = ecx.read_scalar(delta)?.to_i64()?;
 
         if when != DISPATCH_TIME_NOW {
             throw_unsup_format!(
@@ -596,13 +595,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // `delta` is in nanoseconds. Uses the monotone clock.
-        let deadline = this.machine.monotonic_clock.now().add_lossy(Duration::from_nanos(delta));
+        let deadline = ecx.machine.monotonic_clock.now().add_lossy(Duration::from_nanos(delta));
         // Convert back to absolute nanoseconds for return value.
-        let duration = deadline.duration_since(this.machine.monotonic_clock.epoch());
+        let duration = deadline.duration_since(ecx.machine.monotonic_clock.epoch());
         let Ok(nanos) = u64::try_from(duration.as_nanos()) else {
             throw_unsup_format!("dispatch_time with too big `delta` is not supported");
         };
-        this.write_int(nanos, dest)?;
+        ecx.write_int(nanos, dest)?;
         interp_ok(())
     }
 }
