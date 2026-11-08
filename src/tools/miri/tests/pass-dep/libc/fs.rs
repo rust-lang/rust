@@ -110,6 +110,7 @@ fn main() {
     test_lseek::<libc::off64_t>(libc::lseek64);
     test_readlink();
     test_linkat();
+    test_short_fs_operations();
 }
 
 #[cfg(target_os = "linux")]
@@ -1162,7 +1163,7 @@ fn test_fsync(fsync: unsafe extern "C" fn(fd: libc::c_int) -> libc::c_int) {
 
 #[cfg(target_os = "linux")]
 fn test_copy_file_range() {
-    use std::io::{Seek, SeekFrom};
+    use std::io::{self, Seek, SeekFrom};
 
     let copy = |fd_in: i32, fd_out: i32, len: usize| {
         errno_result(unsafe {
@@ -1179,6 +1180,23 @@ fn test_copy_file_range() {
             len,
             0,
         ))
+        .map(|n| isize::try_from(n).unwrap())
+    };
+    // copy until we have copied `len` bytes or hit EOF
+    let copy_repeat = |copy: fn(i32, i32, usize) -> io::Result<isize>,
+                       fd_in: i32,
+                       fd_out: i32,
+                       len: usize|
+     -> io::Result<usize> {
+        let mut copied = 0;
+        while copied < len {
+            let n = copy(fd_in, fd_out, len - copied)?;
+            if n == 0 {
+                break;
+            }
+            copied += n as usize;
+        }
+        Ok(copied)
     };
 
     let src_path =
@@ -1191,11 +1209,9 @@ fn test_copy_file_range() {
     src.seek(SeekFrom::Start(7)).unwrap();
     dst.write_all(b"Hi ").unwrap();
     // Asking for more bytes than are left copies up to the end of the input.
-    assert_eq!(copy(src.as_raw_fd(), dst.as_raw_fd(), 100).unwrap(), 7);
+    assert_eq!(copy_repeat(copy, src.as_raw_fd(), dst.as_raw_fd(), 100).unwrap(), 7);
     assert_eq!(src.stream_position().unwrap(), 14);
     assert_eq!(dst.stream_position().unwrap(), 10);
-    // At the end of the input, nothing is copied.
-    assert_eq!(copy(src.as_raw_fd(), dst.as_raw_fd(), 100).unwrap(), 0);
     assert_eq!(fs::read(&dst_path).unwrap(), b"Hi World!\n");
 
     // Same file, overlapping ranges.
@@ -1206,8 +1222,7 @@ fn test_copy_file_range() {
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
     // Same file, non-overlapping ranges.
     dst.seek(SeekFrom::Current(5)).unwrap();
-    let res = copy_syscall(dst2.as_raw_fd(), dst.as_raw_fd(), 3).unwrap();
-    assert_eq!(res, 3);
+    assert_eq!(copy_repeat(copy_syscall, dst2.as_raw_fd(), dst.as_raw_fd(), 3).unwrap(), 3);
     assert_eq!(fs::read(&dst_path).unwrap(), b"Hi WoHi !\n");
     drop(dst2);
 
@@ -2411,4 +2426,56 @@ fn test_linkat() {
     // Cleanup
     fs::remove_file(&source).unwrap();
     fs::remove_file(&link).unwrap();
+}
+
+fn test_short_fs_operations() {
+    if !cfg!(miri) {
+        // This test is not expected to work natively.
+        return;
+    }
+
+    let path = utils::prepare_with_content("miri_test_libc_short_fs_ops.txt", &[0u8; 100]);
+
+    let file = fs::OpenOptions::new().read(true).write(true).open(&path).unwrap();
+    let mut buf = [0u8; 32];
+
+    // Ensure we sometimes do incomplete writes.
+    utils::check_nondet(|| unsafe {
+        errno_check(libc::lseek(file.as_raw_fd(), 0, libc::SEEK_SET));
+        let num =
+            errno_result(libc::write(file.as_raw_fd(), buf.as_ptr().cast(), buf.len())).unwrap();
+        num as usize == buf.len()
+    });
+    // Ensure we sometimes do incomplete reads.
+    utils::check_nondet(|| unsafe {
+        errno_check(libc::lseek(file.as_raw_fd(), 0, libc::SEEK_SET));
+        let num =
+            errno_result(libc::read(file.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len())).unwrap();
+        num as usize == buf.len()
+    });
+
+    #[cfg(target_os = "linux")]
+    {
+        // copy_file_range can also go short.
+        let path2 = utils::prepare_with_content("miri_test_libc_short_fs_ops2.txt", &[]);
+        let file2 = fs::OpenOptions::new().write(true).open(&path2).unwrap();
+        utils::check_nondet(|| unsafe {
+            errno_check(libc::lseek(file.as_raw_fd(), 0, libc::SEEK_SET));
+            let len = 32;
+            let num = errno_result(libc::copy_file_range(
+                file.as_raw_fd(),
+                ptr::null_mut(),
+                file2.as_raw_fd(),
+                ptr::null_mut(),
+                len,
+                /* flags */ 0,
+            ))
+            .unwrap();
+            num as usize == len
+        });
+        fs::remove_file(&path2).unwrap();
+    }
+
+    // Clean up
+    fs::remove_file(&path).unwrap();
 }

@@ -8,7 +8,7 @@ use rand::RngExt;
 use rustc_abi::{Align, Size};
 use rustc_target::spec::Os;
 
-use crate::shims::files::{DynFileDescriptionRef, FdNum, FileDescription};
+use crate::shims::files::{BIG_ACCESS, DynFileDescriptionRef, FdNum, FileDescription};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::shims::unix::*;
@@ -703,7 +703,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let len = if ecx.machine.short_fd_operations
             && fd.short_fd_operations()
             && len >= 2
-            && ecx.machine.rng.get_mut().random()
+            && let rng = ecx.machine.rng.get_mut()
+            // Big accesses are shortened with a chance of 75%.
+            && (rng.random() || (len >= BIG_ACCESS && rng.random()))
         {
             len / 2 // since `len` is at least 2, the result is still at least 1
         } else {
@@ -755,7 +757,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let len = if ecx.machine.short_fd_operations
             && fd.short_fd_operations()
             && len >= 2
-            && ecx.machine.rng.get_mut().random()
+            && let rng = ecx.machine.rng.get_mut()
+            // Big accesses are shortened with a chance of 75%.
+            && (rng.random() || (len >= BIG_ACCESS && rng.random()))
         {
             len / 2
         } else {

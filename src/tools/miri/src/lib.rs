@@ -23,6 +23,7 @@
 #![feature(io_error_inprogress)]
 #![feature(io_error_input_output_error)]
 #![feature(io_error_too_many_open_files)]
+#![feature(seek_stream_len)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(pointer_is_aligned_to)]

@@ -19,6 +19,10 @@ pub type FdNum = i32;
 /// The maximum number of open FDs.
 pub const FD_LIMIT: FdNum = 524288; // default hard limit on Debian
 
+/// Accesses this large have a higher chance of being shortened.
+/// We use twice the usual page size, which means the shortened access is at least a page.
+pub const BIG_ACCESS: u64 = 8 * 1024;
+
 /// A unique id for file descriptions. While we could use the address, considering that
 /// is definitely unique, the address would expose interpreter internal state when used
 /// for sorting things. So instead we generate a unique id per file description which is the same

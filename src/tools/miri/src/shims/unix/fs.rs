@@ -7,19 +7,21 @@ use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
 
+use rand::RngExt;
 use rustc_abi::Size;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
-use crate::shims::FdId;
 use crate::shims::files::{
-    DirHandle, DynFileDescriptionRef, EvalContextExt as _, FdNum, FileHandle, open_file_or_dir,
+    BIG_ACCESS, DirHandle, DynFileDescriptionRef, EvalContextExt as _, FdNum, FileHandle,
+    open_file_or_dir,
 };
 use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
+use crate::shims::{FdId, FileDescription};
 use crate::*;
 
 /// An open directory stream (`DIR`), tracked by DirTable.
@@ -2267,6 +2269,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         }
         assert!(ecx.machine.communicate(), "isolation should have prevented even opening a file");
+
+        // Non-deterministically decide to further reduce the length, simulating a partial copy (but
+        // never to 0, that would indicate EOF).
+        let len = if ecx.machine.short_fd_operations
+            && (file_in.short_fd_operations() || file_out.short_fd_operations())
+            && len >= 2
+            && let rng = ecx.machine.rng.get_mut()
+            // Big accesses are shortened with a chance of 75%.
+            && (rng.random() || (len >= BIG_ACCESS && rng.random()))
+        {
+            // Also cap length to remaining input length as otherwise halving it does nothing.
+            let mut input = &file_in.file;
+            let remaining_bytes =
+                try { input.stream_len()?.saturating_sub(input.stream_position()?).clamp_to(2..) };
+            let len = len.clamp_to(..=remaining_bytes.unwrap_or(u64::MAX));
+            len / 2 // since `len` is at least 2, the result is still at least 1
+        } else {
+            len
+        };
 
         let copy = || -> io::Result<u64> {
             let (mut input, mut output) = (&file_in.file, &file_out.file);
