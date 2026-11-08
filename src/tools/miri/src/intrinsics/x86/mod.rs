@@ -31,7 +31,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
         match unprefixed_name {
@@ -41,20 +41,20 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
-                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != Arch::X86_64 {
+                if unprefixed_name.ends_with("64") && ecx.tcx.sess.target.arch != Arch::X86_64 {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
-                let [cb_in, a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [cb_in, a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 let op = if unprefixed_name.starts_with("add") {
                     mir::BinOp::AddWithOverflow
                 } else {
                     mir::BinOp::SubWithOverflow
                 };
 
-                let (sum, cb_out) = carrying_add(this, cb_in, a, b, op)?;
-                this.write_scalar(cb_out, &this.project_field(dest, FieldIdx::ZERO)?)?;
-                this.write_immediate(*sum, &this.project_field(dest, FieldIdx::ONE)?)?;
+                let (sum, cb_out) = carrying_add(ecx, cb_in, a, b, op)?;
+                ecx.write_scalar(cb_out, &ecx.project_field(dest, FieldIdx::ZERO)?)?;
+                ecx.write_immediate(*sum, &ecx.project_field(dest, FieldIdx::ONE)?)?;
             }
 
             // Used to implement the `_mm_pause` function.
@@ -63,87 +63,87 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the instruction behaves like a no-op, so it is always safe to call the
             // intrinsic.
             "sse2.pause" => {
-                let [] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
-                if this.tcx.sess.internal_target_features.contains(&Symbol::intern("sse2")) {
-                    this.yield_active_thread();
+                if ecx.tcx.sess.internal_target_features.contains(&Symbol::intern("sse2")) {
+                    ecx.yield_active_thread();
                 }
             }
 
             "pclmulqdq" | "pclmulqdq.256" | "pclmulqdq.512" => {
                 let mut len = 2; // in units of 64bits
-                this.expect_target_feature_for_intrinsic(link_name, "pclmulqdq")?;
+                ecx.expect_target_feature_for_intrinsic(link_name, "pclmulqdq")?;
                 if unprefixed_name.ends_with(".256") {
-                    this.expect_target_feature_for_intrinsic(link_name, "vpclmulqdq")?;
+                    ecx.expect_target_feature_for_intrinsic(link_name, "vpclmulqdq")?;
                     len = 4;
                 } else if unprefixed_name.ends_with(".512") {
-                    this.expect_target_feature_for_intrinsic(link_name, "vpclmulqdq")?;
-                    this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                    ecx.expect_target_feature_for_intrinsic(link_name, "vpclmulqdq")?;
+                    ecx.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
                     len = 8;
                 }
 
-                let [left, right, imm] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right, imm] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pclmulqdq(this, left, right, imm, dest, len)?;
+                pclmulqdq(ecx, left, right, imm, dest, len)?;
             }
 
             name if name.starts_with("bmi.") => {
-                return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(this, link_name, args, dest);
+                return bmi::EvalContextExt::emulate_x86_bmi_intrinsic(ecx, link_name, args, dest);
             }
             // The GFNI extension does not get its own namespace.
             // Check for instruction names instead.
             name if name.starts_with("vgf2p8affine") || name.starts_with("vgf2p8mulb") => {
                 return gfni::EvalContextExt::emulate_x86_gfni_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("sha") => {
-                return sha::EvalContextExt::emulate_x86_sha_intrinsic(this, link_name, args, dest);
+                return sha::EvalContextExt::emulate_x86_sha_intrinsic(ecx, link_name, args, dest);
             }
             name if name.starts_with("sse.") => {
-                return sse::EvalContextExt::emulate_x86_sse_intrinsic(this, link_name, args, dest);
+                return sse::EvalContextExt::emulate_x86_sse_intrinsic(ecx, link_name, args, dest);
             }
             name if name.starts_with("sse2.") => {
                 return sse2::EvalContextExt::emulate_x86_sse2_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse3.") => {
                 return sse3::EvalContextExt::emulate_x86_sse3_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("ssse3.") => {
                 return ssse3::EvalContextExt::emulate_x86_ssse3_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse41.") => {
                 return sse41::EvalContextExt::emulate_x86_sse41_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("sse42.") => {
                 return sse42::EvalContextExt::emulate_x86_sse42_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("aesni.") => {
                 return aesni::EvalContextExt::emulate_x86_aesni_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("avx.") => {
-                return avx::EvalContextExt::emulate_x86_avx_intrinsic(this, link_name, args, dest);
+                return avx::EvalContextExt::emulate_x86_avx_intrinsic(ecx, link_name, args, dest);
             }
             name if name.starts_with("avx2.") => {
                 return avx2::EvalContextExt::emulate_x86_avx2_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
             name if name.starts_with("avx512.") => {
                 return avx512::EvalContextExt::emulate_x86_avx512_intrinsic(
-                    this, link_name, args, dest,
+                    ecx, link_name, args, dest,
                 );
             }
 
