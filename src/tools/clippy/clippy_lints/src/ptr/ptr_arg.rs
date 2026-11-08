@@ -200,19 +200,19 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
     fn_sig: ty::FnSig<'tcx>,
     params: &'tcx [Param<'tcx>],
 ) -> impl Iterator<Item = PtrArg<'tcx>> + 'cx {
-    iter::zip(fn_sig.inputs(), params)
+    iter::zip(fn_sig.inputs(), params.iter().map(|p| p.ty))
         .enumerate()
-        .filter_map(move |(i, (ty, param))| {
+        .filter_map(move |(i, (ty, hir_ty))| {
             if let ty::Ref(_, ty, mutability) = *ty.kind()
                 && let  ty::Adt(adt, args) = *ty.kind()
-                && let TyKind::Ref(lt, inner_ty, _) = param.ty.kind
+                && let TyKind::Ref(lt, inner_ty, _) = hir_ty.kind
                 && let TyKind::Path(QPath::Resolved(None, path)) = inner_ty.kind
                 // Check that the name as typed matches the actual name of the type.
                 // e.g. `fn foo(_: &Foo)` shouldn't trigger the lint when `Foo` is an alias for `Vec`
                 && let [.., name] = path.segments
                 && cx.tcx.item_name(adt.did()) == name.ident.name
             {
-                let emission_id = params.get(i).map_or(param.ty.hir_id, |param| param.hir_id);
+                let emission_id = params.get(i).map_or(hir_ty.hir_id, |param| param.hir_id);
                 let (method_renames, deref_ty) = match cx.tcx.get_diagnostic_name(adt.did()) {
                     Some(sym::Vec) => (
                         [(sym::clone, ".to_owned()")].as_slice(),
@@ -270,11 +270,11 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 cx,
                                 PTR_ARG,
                                 emission_id,
-                                param.ty.span,
+                                hir_ty.span,
                                 "using a reference to `Cow` is not recommended",
                                 |diag| {
                                     diag.span_suggestion(
-                                        param.ty.span,
+                                        hir_ty.span,
                                         "change this to",
                                         match ty.span().get_text(cx) {
                                             Some(s) => format!("&{}{s}", mutability.prefix_str()),
@@ -292,7 +292,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 return Some(PtrArg {
                     idx: i,
                     emission_id,
-                    span: param.ty.span,
+                    span: hir_ty.span,
                     ty_name: name.ident.name,
                     method_renames,
                     ref_prefix: RefPrefix { lt: *lt, mutability },

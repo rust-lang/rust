@@ -42,8 +42,8 @@ pub(super) fn check_filter_or_flat_map(
                 .is_diag_item(cx, sym::result_ok_method),
             // Detect `|x| x.ok()`
             ExprKind::Closure(&Closure { fn_decl, body, .. }) => {
-                let value = cx.tcx.hir_body(body).value;
                 if let [param] = fn_decl.inputs
+                    && let value = cx.tcx.hir_body(body).value
                     && let ExprKind::MethodCall(method, receiver, [], _) = value.kind
                 {
                     method.ident.name == sym::ok

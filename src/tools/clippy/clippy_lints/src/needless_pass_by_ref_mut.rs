@@ -105,9 +105,9 @@ fn check_closures<'tcx>(
         }
         ctx.prev_bind = None;
         ctx.prev_move_to_closure.clear();
-        if let Node::Expr(Expr { kind: ExprKind::Closure(closure), .. }) = cx
-            .tcx
-            .hir_node_by_def_id(id)
+
+        if let Node::Expr(expr) = cx.tcx.hir_node_by_def_id(id)
+            && let ExprKind::Closure(closure) = expr.kind
         {
             euv::ExprUseVisitor::for_clippy(cx, id, &mut *ctx)
                 .consume_body(closure.fn_decl, cx.tcx.hir_body(closure.body))

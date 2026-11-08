@@ -208,8 +208,7 @@ fn param_certainty(cx: &LateContext<'_>, param: &Param<'_>) -> Certainty {
     let Some(fn_decl) = cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(owner_did)) else {
         return Certainty::Uncertain;
     };
-    let inputs = fn_decl.inputs;
-    inputs
+    fn_decl.inputs
         .iter()
         .find(|p| p.hir_id == param.hir_id)
         .map_or(Certainty::Uncertain, |p| type_certainty(cx, p.ty).clear_def_id())

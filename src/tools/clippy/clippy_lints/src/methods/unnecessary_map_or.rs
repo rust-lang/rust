@@ -155,11 +155,11 @@ pub(super) fn check<'tcx>(
 
     let (sugg, method, applicability): (_, Cow<'_, _>, _) = if typeck.expr_adjustments(recv).is_empty()
             && let ExprKind::Closure(map_closure) = map.kind
+            && let [param] = map_closure.fn_decl.inputs
+            && let PatKind::Binding(_, hir_id, _, _) = param.pat.kind
             && let closure_body = cx.tcx.hir_body(map_closure.body)
             && let closure_body_value = closure_body.value.peel_blocks()
             && let ExprKind::Binary(op, l, r) = closure_body_value.kind
-            && let [param] = map_closure.fn_decl.inputs
-            && let PatKind::Binding(_, hir_id, _, _) = param.pat.kind
             // checking that map_or is one of the following:
             // .map_or(false, |x| x == y)
             // .map_or(false, |x| y == x) - swapped comparison

@@ -8,7 +8,7 @@ use rustc_ast::LitKind;
 use rustc_ast::ast::RangeLimits;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, Closure, Expr, ExprKind, FnDecl};
+use rustc_hir::{Closure, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, std_or_core};
 use rustc_span::{Span, SyntaxContext};
 
@@ -70,20 +70,17 @@ pub(super) fn check(
     if let Some(range) = higher::Range::hir(cx, receiver)
         && let ExprKind::Closure(Closure { fn_decl: decl@FnDecl { inputs: [param], .. }, body, .. }) = arg.kind
         && let body_hir = cx.tcx.hir_body(*body)
-        && let Body {
-            value: body_expr,
-        } = body_hir
         && !usage::BindingUsageFinder::are_params_used(cx, decl, body_hir)
         && let ctxt = ex.span.ctxt()
         && let Some(count) = extract_count_with_applicability(cx, range, &mut applicability, ctxt)
         && let Some(exec_context) = std_or_core(cx)
     {
-        let (method_to_use_name, new_span, use_take) = if eager_or_lazy::switch_to_eager_eval(cx, body_expr) {
+        let (method_to_use_name, new_span, use_take) = if eager_or_lazy::switch_to_eager_eval(cx, body_hir.value) {
             if msrv.meets(cx, msrvs::REPEAT_N) {
-                let (body_snippet, _) = snippet_with_context(cx, body_expr.span, ctxt, "..", &mut applicability);
+                let (body_snippet, _) = snippet_with_context(cx, body_hir.value.span, ctxt, "..", &mut applicability);
                 ("repeat_n", (arg.span, format!("{body_snippet}, {count}")), false)
             } else {
-                let (body_snippet, _) = snippet_with_context(cx, body_expr.span, ctxt, "..", &mut applicability);
+                let (body_snippet, _) = snippet_with_context(cx, body_hir.value.span, ctxt, "..", &mut applicability);
                 ("repeat", (arg.span, body_snippet.to_string()), true)
             }
         } else if msrv.meets(cx, msrvs::REPEAT_WITH) {

@@ -124,18 +124,18 @@ fn check_fold_with_op(
     replacement: Replacement,
 ) -> bool {
     if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = acc.kind
-        // Extract the body of the closure passed to fold
+        // Extract the names of the two arguments to the closure passed to fold
+        && let [param_a, param_b] = fn_decl.inputs
+        && let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(param_a.pat).kind
+        && let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(param_b.pat).kind
+
+        // Extract the body of the closure
         && let closure_body = cx.tcx.hir_body(body)
         && let closure_expr = peel_blocks(closure_body.value)
 
         // Check if the closure body is of the form `acc <op> some_expr(x)`
         && let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind
         && bin_op.node == op
-
-        // Extract the names of the two arguments to the closure
-        && let [param_a, param_b] = fn_decl.inputs
-        && let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(param_a.pat).kind
-        && let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(param_b.pat).kind
 
         && let Some(triggered_expr_span) = get_triggered_expr_span(
             left_expr,
@@ -334,7 +334,6 @@ fn check_option_fold<'tcx>(
         }
         && cx.typeck_results().expr_ty(option_expr).is_diag_item(cx, sym::Option)
         && let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = acc.kind
-        && let closure_body = cx.tcx.hir_body(body)
         && let [param_acc, param_item] = fn_decl.inputs
         // The suggestion rewrites source spans, so bail out when any part
         // comes from a different syntax context.
@@ -353,7 +352,7 @@ fn check_option_fold<'tcx>(
         let mut acc_uses: Vec<Span> = Vec::new();
         let mut acc_uses_ok = true;
         if let Some(acc_id) = acc_id {
-            for_each_expr(cx.tcx, closure_body.value, |sub_expr| {
+            for_each_expr(cx.tcx, cx.tcx.hir_body(body).value, |sub_expr| {
                 if sub_expr.res_local_id() == Some(acc_id) {
                     if sub_expr.span.ctxt() == ctxt {
                         acc_uses.push(sub_expr.span);

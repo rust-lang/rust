@@ -25,10 +25,10 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             || ((fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Option)
                 || fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Result))
                 && msrv.meets(cx, msrvs::OPTION_RESULT_INSPECT)))
-        && let body = cx.tcx.hir_body(c.body)
         && let [param] = c.fn_decl.inputs
         && let PatKind::Binding(BindingMode(ByRef::No, Mutability::Not), arg_id, _, None) = param.pat.kind
         && let arg_ty = typeck.node_type(arg_id)
+        && let body = cx.tcx.hir_body(c.body)
         && let ExprKind::Block(block, _) = body.value.kind
         && let Some(final_expr) = block.expr
         && !block.stmts.is_empty()
