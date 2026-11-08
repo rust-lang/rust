@@ -158,15 +158,15 @@ impl Error<'_> {
     pub(crate) fn raise_fatal(self) -> ! {
         let Self { kind, file_path, line_number } = self;
 
-        let error = |message| error!("malformed directive: {message} at {file_path}:{line_number}");
+        let title = |message| error!("malformed directive: {message} at {file_path}:{line_number}");
 
         match kind {
             ErrorKind::LeadingRevisionCondition { revision, context } => {
-                error("found revision condition before `@` instead of after");
+                title("found revision condition before `@` instead of after");
                 help!("rewrite the start of the line to `//@[{revision}] ` (from `{context}`)");
             }
             ErrorKind::WhitespaceBeforeAtSign => {
-                error("found whitespace between `//` and `@`");
+                title("found whitespace between `//` and `@`");
                 help!("if you meant to write a directive remove the whitespace to form `//@`");
                 help!(
                     "if you meant to literally write `@` in a code comment add `\\` before `@` or \
@@ -174,10 +174,10 @@ impl Error<'_> {
                 );
             }
             ErrorKind::UnclosedRevisionCondition => {
-                error("revision condition is missing a closing bracket `]`");
+                title("revision condition is missing a closing bracket `]`");
             }
             ErrorKind::CommaInRevisionCondition { revision, directive } => {
-                error(
+                title(
                     "found commas in revision condition but multiple revisions aren't supported yet",
                 );
 
