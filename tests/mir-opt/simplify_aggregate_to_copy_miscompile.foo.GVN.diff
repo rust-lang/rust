@@ -8,9 +8,8 @@
       let mut _3: &std::option::Option<i32>;
       let mut _4: isize;
       let mut _6: !;
-      let mut _7: std::option::Option<i32>;
-      let mut _8: i32;
-      let mut _9: !;
+      let mut _7: i32;
+      let mut _8: !;
       scope 1 {
           debug col => _5;
           let _5: i32;
@@ -32,24 +31,19 @@
       bb2: {
           StorageLive(_5);
           _5 = copy (((*_2) as Some).0: i32);
+          (*_1) = const Option::<i32>::None;
           StorageLive(_7);
--         _7 = Option::<i32>::None;
--         (*_1) = move _7;
-+         _7 = const Option::<i32>::None;
-+         (*_1) = const Option::<i32>::None;
-          StorageDead(_7);
-          StorageLive(_8);
-          _8 = copy _5;
--         _0 = Option::<i32>::Some(move _8);
+          _7 = copy _5;
+-         _0 = Option::<i32>::Some(move _7);
 +         _0 = Option::<i32>::Some(copy _5);
-          StorageDead(_8);
+          StorageDead(_7);
           StorageDead(_5);
           StorageDead(_2);
           return;
       }
   
       bb3: {
-          StorageLive(_9);
+          StorageLive(_8);
           unreachable;
       }
 + }

@@ -351,6 +351,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
 
             ExprKind::RawBorrow { .. }
             | ExprKind::Adt { .. }
+            | ExprKind::UnitEnum { .. }
             | ExprKind::Array { .. }
             | ExprKind::Binary { .. }
             | ExprKind::Block { .. }

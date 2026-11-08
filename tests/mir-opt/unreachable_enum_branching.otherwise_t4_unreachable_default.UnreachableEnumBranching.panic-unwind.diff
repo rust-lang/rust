@@ -13,7 +13,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = Test4::C;
+          _2 = const Test4::C;
           _3 = discriminant(_2);
 -         switchInt(move _3) -> [0: bb4, 1: bb3, 2: bb2, otherwise: bb1];
 +         switchInt(move _3) -> [0: bb4, 1: bb3, 2: bb2, 3: bb1, otherwise: bb6];

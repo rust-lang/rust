@@ -33,7 +33,7 @@ use rustc_span::{
 use rustc_target::asm;
 use tracing::debug;
 
-use crate::def::{CtorKind, CtorOf, DefKind, MacroKinds, PerNS, Res};
+use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 use crate::intravisit::FnKind;
 use crate::lints::DelayedLints;
@@ -2369,8 +2369,7 @@ impl Expr<'_> {
                         | DefKind::AssocConst
                         | DefKind::Fn
                         | DefKind::AssocFn
-                        | DefKind::Ctor(_, CtorKind::Fn)
-                        | DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => true,
+                        | DefKind::Ctor(..) => true,
 
                         DefKind::Mod
                         | DefKind::Struct
@@ -2384,7 +2383,6 @@ impl Expr<'_> {
                         | DefKind::AssocTy
                         | DefKind::TyParam
                         | DefKind::Static { .. }
-                        | DefKind::Ctor(CtorOf::Variant, CtorKind::Const)
                         | DefKind::Macro(_)
                         | DefKind::ExternCrate
                         | DefKind::Use

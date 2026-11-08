@@ -21,7 +21,6 @@ use rustc_hir::{
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_infer::traits::ImplSource;
 use rustc_middle::middle::privacy::Level;
-use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
@@ -4170,9 +4169,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
                 let sm = tcx.sess.source_map();
-                if matches!(is_constable, IsConstable::Fn | IsConstable::Ctor)
-                    && let Ok(_) = sm.span_to_snippet(elt_span)
-                {
+                if is_constable && let Ok(_) = sm.span_to_snippet(elt_span) {
                     err.multipart_suggestion(
                         "create an inline `const` block",
                         vec![

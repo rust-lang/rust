@@ -1515,18 +1515,15 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
                 debug!("convert_path_expr: user_ty={:?}", user_ty);
                 let ty = self.typeck_results.node_type(expr.hir_id);
-                match ty.kind() {
-                    // A unit struct/variant which is used as a value.
-                    // We return a completely different ExprKind here to account for this special case.
-                    ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
-                        adt_def: *adt_def,
-                        variant_index: adt_def.variant_index_with_ctor_id(def_id),
-                        args: *args,
-                        user_ty,
-                        fields: Box::new([]),
-                        base: AdtExprBase::None,
-                    })),
-                    _ => bug!("unexpected ty: {:?}", ty),
+                let Some(adt_def) = ty.ty_adt_def() else {
+                    bug!("unexpected ty: {:?}", ty);
+                };
+
+                // A unit variant which is used as a value.
+                // We return a completely different ExprKind here to account for this special case.
+                ExprKind::UnitEnum {
+                    variant_index: adt_def.variant_index_with_ctor_id(def_id),
+                    user_ty,
                 }
             }
 

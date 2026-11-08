@@ -11,19 +11,19 @@
       }
   
       bb1: {
-          (*_1) = Option2::<i32>::None2;
-          _0 = Option2::<i32>::None1;
+          (*_1) = const Option2::<i32>::None2;
+          _0 = const Option2::<i32>::None1;
           goto -> bb5;
       }
   
       bb2: {
-          (*_1) = Option2::<i32>::None2;
-          _0 = Option2::<i32>::None2;
+          (*_1) = const Option2::<i32>::None2;
+          _0 = const Option2::<i32>::None2;
           goto -> bb5;
       }
   
       bb3: {
-          (*_1) = Option2::<i32>::None2;
+          (*_1) = const Option2::<i32>::None2;
           _0 = copy (*_1);
           goto -> bb5;
       }

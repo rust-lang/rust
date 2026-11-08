@@ -483,6 +483,11 @@ pub enum ExprKind<'tcx> {
     },
     /// An ADT constructor, e.g. `Foo {x: 1, y: 2}`.
     Adt(Box<AdtExpr<'tcx>>),
+    /// An enum variant unit constructor, e.g. `Option::<T>::None`.
+    UnitEnum {
+        variant_index: VariantIdx,
+        user_ty: UserTy<'tcx>,
+    },
     /// A type ascription on a place.
     PlaceTypeAscription {
         source: ExprId,

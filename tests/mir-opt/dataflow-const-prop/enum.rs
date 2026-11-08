@@ -136,7 +136,7 @@ fn multiple(x: bool, i: u8) {
         // CHECK: [[e]] = Option::<u8>::Some(move {{_.*}});
         Some(i)
     } else {
-        // CHECK: [[e]] = Option::<u8>::None;
+        // CHECK: [[e]] = const Option::<u8>::None;
         None
     };
     // The dataflow state must have:

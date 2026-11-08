@@ -100,7 +100,7 @@
 -         _43 = const true;
 -         _3 = {coroutine@$DIR/async_fn.rs:106:13: 106:18 (#0)};
 -         StorageLive(_4);
--         _4 = Option::<Never>::None;
+-         _4 = const Option::<Never>::None;
 -         PlaceMention(_4);
 -         _5 = discriminant(_4);
 -         switchInt(move _5) -> [0: bb3, 1: bb2, otherwise: bb1];
@@ -677,7 +677,7 @@
 +         (((*_46) as variant#4).2: bool) = const true;
 +         (((*_46) as variant#4).0: {async block@$DIR/async_fn.rs:106:13: 106:18}) = {coroutine@$DIR/async_fn.rs:106:13: 106:18 (#0)};
 +         StorageLive(_4);
-+         _4 = Option::<Never>::None;
++         _4 = const Option::<Never>::None;
 +         PlaceMention(_4);
 +         _5 = discriminant(_4);
 +         switchInt(move _5) -> [0: bb3, 1: bb2, otherwise: bb1];

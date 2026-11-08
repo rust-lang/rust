@@ -24,7 +24,7 @@ fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     // CHECK:     switchInt(move _8) -> [0: bb6, 1: bb5, otherwise: bb1];
     // CHECK: bb5: {
     // CHECK:     {{_.*}} = copy (([[controlflow]] as Break).0: usize);
-    // CHECK:     _0 = Option::<i32>::None;
+    // CHECK:     _0 = const Option::<i32>::None;
     // CHECK:     goto -> bb7;
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = copy (([[controlflow]] as Continue).0: i32);
@@ -119,7 +119,7 @@ enum DFA {
 fn dfa() {
     // CHECK-LABEL: fn dfa(
     // CHECK: bb0: {
-    // CHECK:     {{_.*}} = DFA::A;
+    // CHECK:     {{_.*}} = const DFA::A;
     // CHECK:     goto -> bb1;
     // CHECK: bb1: {
     // CHECK:     switchInt({{.*}}) -> [0: bb6, 1: bb5, 2: bb4, 3: bb3, otherwise: bb2];
@@ -128,13 +128,13 @@ fn dfa() {
     // CHECK: bb3: {
     // CHECK:     return;
     // CHECK: bb4: {
-    // CHECK:     {{_.*}} = DFA::D;
+    // CHECK:     {{_.*}} = const DFA::D;
     // CHECK:     goto -> bb1;
     // CHECK: bb5: {
-    // CHECK:     {{_.*}} = DFA::C;
+    // CHECK:     {{_.*}} = const DFA::C;
     // CHECK:     goto -> bb1;
     // CHECK: bb6: {
-    // CHECK:     {{_.*}} = DFA::B;
+    // CHECK:     {{_.*}} = const DFA::B;
     // CHECK:     goto -> bb1;
     let mut state = DFA::A;
     loop {
@@ -160,10 +160,10 @@ fn custom_discr(x: bool) -> u8 {
     // CHECK: bb0: {
     // CHECK:     switchInt({{.*}}) -> [0: bb2, otherwise: bb1];
     // CHECK: bb1: {
-    // CHECK:     {{_.*}} = CustomDiscr::A;
+    // CHECK:     {{_.*}} = const CustomDiscr::A;
     // CHECK:     goto -> bb7;
     // CHECK: bb2: {
-    // CHECK:     {{_.*}} = CustomDiscr::B;
+    // CHECK:     {{_.*}} = const CustomDiscr::B;
     // CHECK:     goto -> bb8;
     // CHECK: bb3: {
     // CHECK:     switchInt(move _4) -> [35: bb5, otherwise: bb4];

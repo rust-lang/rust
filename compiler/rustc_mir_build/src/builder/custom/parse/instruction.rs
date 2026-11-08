@@ -393,6 +393,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ZstLiteral { .. }
+            | ExprKind::UnitEnum { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. } => {
                 Ok(Operand::Constant(Box::new(
