@@ -1344,11 +1344,12 @@ impl PathBuf {
         let buf = self.inner.as_encoded_bytes();
         let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
-        // in the special case of `C:` on Windows, do *not* add a separator
         let self_comps = self.components();
+        let self_prefix_len = self_comps.prefix_len();
 
-        if self_comps.prefix_len() > 0
-            && self_comps.prefix_len() == self_comps.path.len()
+        // in the special case of `C:` on Windows, do *not* add a separator
+        if self_prefix_len > 0
+            && self_prefix_len == self_comps.path.len()
             && self_comps.prefix.unwrap().is_drive()
         {
             need_sep = false
@@ -1411,8 +1412,7 @@ impl PathBuf {
 
         // `path` has a root but no prefix, e.g., `\windows` (Windows only)
         } else if path_comps.has_root() {
-            let prefix_len = self.components().prefix_remaining();
-            self.inner.truncate(prefix_len);
+            self.inner.truncate(self_prefix_len);
 
         // `path` is a pure relative path
         } else if need_sep {
