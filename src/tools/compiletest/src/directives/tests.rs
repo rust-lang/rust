@@ -5,7 +5,7 @@ use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
-use crate::directives::line::{DirectiveLine, Error, ErrorKind};
+use crate::directives::line::{DirectiveLine, DirectivePayload, Error, ErrorKind};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
     FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, NameValidationError,
@@ -666,7 +666,7 @@ fn test_ok_directive() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "aux-build",
-            raw_directive: "aux-build: file.rs",
+            payload: Some(DirectivePayload::Value(" file.rs")),
             ..
         }))
     );
@@ -679,7 +679,12 @@ fn indented_directive() {
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(
         result,
-        Some(Ok(DirectiveLine { revision: None, name: "key", raw_directive: "key: value", .. }))
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value(" value")),
+            ..
+        }))
     );
 }
 
@@ -1019,8 +1024,8 @@ fn test_known_directive_check_no_error() {
     assert_matches!(
         result.as_deref(),
         Ok([
-            DirectiveLine { revision: None, raw_directive: "ignore-wasm", name: "ignore-wasm", .. },
-            DirectiveLine { revision: None, raw_directive: "check-pass", name: "check-pass", .. },
+            DirectiveLine { revision: None, name: "ignore-wasm", payload: None, .. },
+            DirectiveLine { revision: None, name: "check-pass", payload: None, .. },
         ])
     );
 }
@@ -1033,9 +1038,7 @@ fn test_error_annotation_no_error() {
     );
     assert_matches!(
         result.as_deref(),
-        Ok(
-            [DirectiveLine { revision: None, raw_directive: "check-pass", name: "check-pass", .. },]
-        )
+        Ok([DirectiveLine { revision: None, name: "check-pass", payload: None, .. },])
     );
 }
 
@@ -1106,8 +1109,8 @@ fn test_not_trailing_directive() {
         result.as_deref(),
         Ok([DirectiveLine {
             revision: None,
-            raw_directive: "revisions: incremental",
             name: "revisions",
+            payload: Some(DirectivePayload::Value(" incremental")),
             ..
         },])
     );
