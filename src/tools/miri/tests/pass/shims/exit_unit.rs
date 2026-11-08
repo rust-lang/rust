@@ -7,5 +7,7 @@ unsafe extern "C" {
 }
 
 fn main() {
-    unsafe { exit(0); }
+    unsafe {
+        exit(0);
+    }
 }
