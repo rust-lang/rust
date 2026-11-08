@@ -469,17 +469,19 @@ pub(crate) fn validate_name<'a>(
         // If it looks like the user tried to put two directives on the same line
         // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
         // second "directive" would actually be ignored with no effect.
-        let trailing_directive = directive_line
-            .remark_after_space()
-            .map(|remark| remark.trim_start().split(' ').next().unwrap())
-            .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
-
-        if let Some(trailing_directive) = trailing_directive {
-            return Err(Error {
-                kind: ErrorKind::TrailingDirective { leading_directive: name, trailing_directive },
-                file_path: file_directives.path,
-                line_number: *line_number,
-            });
+        if let Some(remark) = directive_line.remark_after_space() {
+            let remark = remark.trim_start();
+            let token = remark.split([':', ' ']).next().unwrap();
+            if KNOWN_DIRECTIVE_NAMES_SET.contains(token) {
+                return Err(Error {
+                    kind: ErrorKind::TrailingDirective {
+                        leading_directive: name,
+                        trailing_directive: remark,
+                    },
+                    file_path: file_directives.path,
+                    line_number: *line_number,
+                });
+            }
         }
     }
 
