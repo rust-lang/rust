@@ -144,6 +144,11 @@ mod std_path {
     //~^ ERROR struct `Path` is private [E0603]
 }
 
+mod std_multi {
+    use std::{fs::Path, io};
+    //~^ ERROR struct `Path` is private [E0603]
+}
+
 macro_rules! define_use {
     () => {
         use crate::b::{A, Z};

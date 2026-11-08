@@ -1330,6 +1330,32 @@ pub(crate) enum ImportIdent {
         ident: Ident,
         path: String,
     },
+    #[multipart_suggestion(
+        "import `{$ident}` through the re-export",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ExtractThroughReExport {
+        #[suggestion_part(code = "{use_stmt}")]
+        insert_span: Span,
+        #[suggestion_part(code = "")]
+        removal_span: Span,
+        ident: Ident,
+        use_stmt: String,
+    },
+    #[multipart_suggestion(
+        "import `{$ident}` directly",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ExtractDirectly {
+        #[suggestion_part(code = "{use_stmt}")]
+        insert_span: Span,
+        #[suggestion_part(code = "")]
+        removal_span: Span,
+        ident: Ident,
+        use_stmt: String,
+    },
 }
 
 #[derive(Subdiagnostic)]

@@ -125,6 +125,13 @@ pub(crate) struct ImportSuggestion {
     pub is_stable: bool,
 }
 
+/// Diagnostic suggestion target: in-place replacement or grouped import extraction.
+#[derive(Copy, Clone, Debug)]
+enum SuggTarget {
+    Replace(Span),
+    Extract { use_span: Span, removal_span: Span },
+}
+
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
 /// everything after `<` (`"impl<T> Iterator for A<T> {}" -> "impl"`) and
 /// everything after the first whitespace (`"impl Iterator for A" -> "impl"`).
@@ -2953,26 +2960,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             err.subdiagnostic(note);
         }
-        // The suggestion replaces `sugg_span` with a path reaching the failing ident.
-        // That's valid only when:
-        // 1) the failing ident is the imported leaf, otherwise trailing segments get dropped, and
-        // 2) for grouped imports, the failing item is the only item in the root use-tree.
-        //
-        // See issue #156060 and #157453.
         let is_leaf = !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
-        let sugg_span = match nested {
-            None => Some(dedup_span),
-            Some(NestedImportRemoval::ReplaceRoot(root_span)) => {
-                // Replacing the root with a path drops renames (`A as Renamed`) and globs (`m::*`).
-                let is_renamed_or_glob = dedup_span.hi() != ident.span.hi();
-                (!is_renamed_or_glob && root_span.can_be_used_for_suggestions())
-                    .then_some(root_span)
+        // Modifying grouped imports drops renames (`A as Renamed`) and globs (`m::*`).
+        let is_renamed_or_glob = dedup_span.hi() != ident.span.hi();
+        // The suggestion replaces the root tree for non-grouped or single-item imports,
+        // or extracts the failing item into its own `use` statement for multi-item groups.
+        let sugg_target = match nested {
+            None => Some(SuggTarget::Replace(dedup_span)),
+            Some(_) if is_renamed_or_glob => None,
+            Some(NestedImportRemoval::ReplaceRoot(root_span))
+                if root_span.can_be_used_for_suggestions() =>
+            {
+                Some(SuggTarget::Replace(root_span))
             }
-            Some(NestedImportRemoval::Remove(_)) => None,
+            Some(NestedImportRemoval::Remove { removal_span, use_span: Some(use_span) })
+                if use_span.can_be_used_for_suggestions()
+                    && removal_span.can_be_used_for_suggestions() =>
+            {
+                Some(SuggTarget::Extract { use_span, removal_span })
+            }
+            Some(_) => None,
         };
         if !shown_candidates
             && is_leaf
-            && let Some(sugg_span) = sugg_span
+            && let Some(sugg_target) = sugg_target
         {
             // We prioritize shorter paths, non-core imports and direct imports over the
             // alternatives.
@@ -2986,10 +2997,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // The suggested path may use a different name than the private alias.
                 let ident = *sugg.last().expect("at least one segment");
                 let path = join_path_idents(sugg);
-                let sugg = if reexport {
-                    diagnostics::ImportIdent::ThroughReExport { span: sugg_span, ident, path }
-                } else {
-                    diagnostics::ImportIdent::Directly { span: sugg_span, ident, path }
+                let sugg = match sugg_target {
+                    SuggTarget::Replace(span) => {
+                        if reexport {
+                            diagnostics::ImportIdent::ThroughReExport { span, ident, path }
+                        } else {
+                            diagnostics::ImportIdent::Directly { span, ident, path }
+                        }
+                    }
+                    SuggTarget::Extract { use_span, removal_span } => {
+                        let indent = self
+                            .tcx
+                            .sess
+                            .source_map()
+                            .indentation_before(use_span)
+                            .unwrap_or_default();
+                        let use_stmt = format!("use {path};\n{indent}");
+                        let insert_span = use_span.shrink_to_lo();
+                        if reexport {
+                            diagnostics::ImportIdent::ExtractThroughReExport {
+                                insert_span,
+                                removal_span,
+                                ident,
+                                use_stmt,
+                            }
+                        } else {
+                            diagnostics::ImportIdent::ExtractDirectly {
+                                insert_span,
+                                removal_span,
+                                ident,
+                                use_stmt,
+                            }
+                        }
+                    }
                 };
                 err.subdiagnostic(sugg);
                 break;

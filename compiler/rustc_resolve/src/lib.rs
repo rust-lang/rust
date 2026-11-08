@@ -1085,8 +1085,9 @@ pub(crate) enum NestedImportRemoval {
     /// The root use-tree imports only this item (e.g. `use a::{B};`, `use a::{b::{C}};`),
     /// so it can be replaced in-place by a path.
     ReplaceRoot(Span),
-    /// Span removing the item and an adjacent comma (trailing if first item, preceding otherwise).
-    Remove(Span),
+    /// Span removing the item and an adjacent comma, plus optional span of the top-level
+    /// `use` statement if suitable for extraction.
+    Remove { removal_span: Span, use_span: Option<Span> },
 }
 
 #[derive(Debug)]

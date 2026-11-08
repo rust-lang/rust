@@ -778,15 +778,17 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
+                let can_extract = item.attrs.is_empty()
+                    && matches!(item.vis.kind, ast::VisibilityKind::Inherited);
+                let use_span = can_extract.then_some(item.span);
                 for (pos, tree) in items.iter().enumerate() {
                     let id = tree.id;
                     let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
                     let item_nested = if items.len() > 1 {
-                        Some(NestedImportRemoval::Remove(nested_item_removal_span(
-                            items,
-                            pos,
-                            pos > 0,
-                        )))
+                        Some(NestedImportRemoval::Remove {
+                            removal_span: nested_item_removal_span(items, pos, pos > 0),
+                            use_span,
+                        })
                     } else {
                         nested.or(Some(NestedImportRemoval::ReplaceRoot(root_span)))
                     };
