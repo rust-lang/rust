@@ -91,20 +91,23 @@ fn main() {
     test_statx();
     #[cfg(target_os = "linux")]
     test_statx_on_empty_path();
+
+    test_pread::<libc::off_t>(libc::pread);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_pread::<libc::off64_t>(libc::pread64);
     test_readv();
     test_readv_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
     test_preadv();
-    test_pread::<libc::off_t>(libc::pread);
+
+    test_pwrite::<libc::off_t>(libc::pwrite);
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    test_pread::<libc::off64_t>(libc::pread64);
+    test_pwrite::<libc::off64_t>(libc::pwrite64);
     test_writev();
     test_writev_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
     test_pwritev();
-    test_pwrite::<libc::off_t>(libc::pwrite);
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    test_pwrite::<libc::off64_t>(libc::pwrite64);
+
     test_lseek::<libc::off_t>(libc::lseek);
     #[cfg(any(target_os = "linux", target_os = "android"))]
     test_lseek::<libc::off64_t>(libc::lseek64);
@@ -2446,11 +2449,50 @@ fn test_short_fs_operations() {
             errno_result(libc::write(file.as_raw_fd(), buf.as_ptr().cast(), buf.len())).unwrap();
         num as usize == buf.len()
     });
+    utils::check_nondet(|| unsafe {
+        let num = errno_result(libc::pwrite(file.as_raw_fd(), buf.as_ptr().cast(), buf.len(), 0))
+            .unwrap();
+        num as usize == buf.len()
+    });
+    utils::check_nondet(|| unsafe {
+        errno_check(libc::lseek(file.as_raw_fd(), 0, libc::SEEK_SET));
+        let iov = [libc::iovec { iov_base: buf.as_mut_ptr().cast(), iov_len: buf.len() }];
+        let num =
+            errno_result(libc::writev(file.as_raw_fd(), iov.as_ptr(), iov.len() as i32)).unwrap();
+        num as usize == buf.len()
+    });
+    #[cfg(not(target_os = "solaris"))]
+    utils::check_nondet(|| unsafe {
+        let iov = [libc::iovec { iov_base: buf.as_mut_ptr().cast(), iov_len: buf.len() }];
+        let num = errno_result(libc::pwritev(file.as_raw_fd(), iov.as_ptr(), iov.len() as i32, 0))
+            .unwrap();
+        num as usize == buf.len()
+    });
     // Ensure we sometimes do incomplete reads.
     utils::check_nondet(|| unsafe {
         errno_check(libc::lseek(file.as_raw_fd(), 0, libc::SEEK_SET));
         let num =
             errno_result(libc::read(file.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len())).unwrap();
+        num as usize == buf.len()
+    });
+    utils::check_nondet(|| unsafe {
+        let num =
+            errno_result(libc::pread(file.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len(), 0))
+                .unwrap();
+        num as usize == buf.len()
+    });
+    utils::check_nondet(|| unsafe {
+        errno_check(libc::lseek(file.as_raw_fd(), 0, libc::SEEK_SET));
+        let iov = [libc::iovec { iov_base: buf.as_mut_ptr().cast(), iov_len: buf.len() }];
+        let num =
+            errno_result(libc::readv(file.as_raw_fd(), iov.as_ptr(), iov.len() as i32)).unwrap();
+        num as usize == buf.len()
+    });
+    #[cfg(not(target_os = "solaris"))]
+    utils::check_nondet(|| unsafe {
+        let iov = [libc::iovec { iov_base: buf.as_mut_ptr().cast(), iov_len: buf.len() }];
+        let num = errno_result(libc::preadv(file.as_raw_fd(), iov.as_ptr(), iov.len() as i32, 0))
+            .unwrap();
         num as usize == buf.len()
     });
 
