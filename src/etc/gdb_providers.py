@@ -219,20 +219,53 @@ class StdVecDequeProvider(printer_base):
         return "array"
 
 
+_USIZE_PTR_TYPE = None
+
+
+def _get_usize_ptr_type():
+    global _USIZE_PTR_TYPE
+
+    if _USIZE_PTR_TYPE is None:
+        architecture = gdb.selected_inferior().architecture()
+        u8_ptr_type = gdb.lookup_type("u8").pointer()
+        ptr_size = u8_ptr_type.sizeof
+        _USIZE_PTR_TYPE = architecture.integer_type(8 * ptr_size).pointer()
+
+    return _USIZE_PTR_TYPE
+
+
 class StdRcProvider(printer_base):
     def __init__(self, valobj, is_atomic=False):
         self._valobj = valobj
         self._is_atomic = is_atomic
-        self._ptr = unwrap_non_null_or_wrapper(valobj["ptr"])
-        self._value = self._ptr["data" if is_atomic else "value"]
-        # FIXME(shua): the debuginfo template type should be 'str' not 'u8'
-        if self._ptr.type.target().name == "alloc::rc::RcInner<str>":
-            length = self._valobj["ptr"]["pointer"]["length"]
-            u8_ptr_ty = gdb.Type.pointer(gdb.lookup_type("u8"))
-            ptr = self._value.address.reinterpret_cast(u8_ptr_ty)
-            self._value = ptr.lazy_string(encoding="utf-8", length=length)
-        self._strong = unwrap_scalar_wrappers(self._ptr["strong"])
-        self._weak = unwrap_scalar_wrappers(self._ptr["weak"]) - 1
+
+        if is_atomic:
+            self._ptr = unwrap_non_null_or_wrapper(valobj["ptr"])
+            self._value = self._ptr["data"]
+            # FIXME(shua): the debuginfo template type should be 'str' not 'u8'
+            if self._ptr.type.target().name == "alloc::rc::RcInner<str>":
+                length = self._valobj["ptr"]["pointer"]["length"]
+                u8_ptr_ty = gdb.Type.pointer(gdb.lookup_type("u8"))
+                ptr = self._value.address.reinterpret_cast(u8_ptr_ty)
+                self._value = ptr.lazy_string(encoding="utf-8", length=length)
+            self._strong = unwrap_scalar_wrappers(self._ptr["strong"])
+            self._weak = unwrap_scalar_wrappers(self._ptr["weak"]) - 1
+        else:
+            self._ptr = unwrap_non_null_or_wrapper(valobj["ptr"]["ptr"])
+
+            if self._ptr.type.name == "*const str":
+                self._value = self._ptr["data_ptr"].lazy_string(
+                    encoding="utf-8", length=self._ptr["length"]
+                )
+            else:
+                self._value = self._ptr.dereference()
+
+            usize_ptr_type = _get_usize_ptr_type()
+            weak_ptr = self._ptr.reinterpret_cast(usize_ptr_type) - 1
+            strong_ptr = weak_ptr - 1
+
+            self._strong = strong_ptr.dereference()
+            self._weak = weak_ptr.dereference() - 1
 
     def to_string(self):
         if self._is_atomic:
