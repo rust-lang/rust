@@ -51,14 +51,14 @@ impl FileDescription for EventFd {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         // We're treating the buffer as a `u64`.
         let ty = ecx.machine.layouts.u64;
         // Check the size of slice, and return error only if the size of the slice < 8.
-        if len < ty.size.bytes_usize() {
+        if len < ty.size.bytes() {
             return finish.call(ecx, Err(ErrorKind::InvalidInput.into()));
         }
 
@@ -84,15 +84,15 @@ impl FileDescription for EventFd {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         // We're treating the buffer as a `u64`.
         let ty = ecx.machine.layouts.u64;
         // Check the size of slice, and return error if the size is wrong. The docs say we only
         // error when the size is too small, but Linux seems to also error when the size is too big.
-        if len != ty.layout.size.bytes_usize() {
+        if len != ty.layout.size.bytes() {
             return finish.call(ecx, Err(ErrorKind::InvalidInput.into()));
         }
 
@@ -194,7 +194,7 @@ fn eventfd_write<'tcx>(
     buf_place: MPlaceTy<'tcx>,
     eventfd: FileDescriptionRef<EventFd>,
     ecx: &mut MiriInterpCx<'tcx>,
-    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
 ) -> InterpResult<'tcx> {
     // Figure out which value we should add.
     let num = ecx.read_scalar(&buf_place)?.to_u64()?;
@@ -231,7 +231,7 @@ fn eventfd_write<'tcx>(
             ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
             // Return how many bytes we consumed from the user-provided buffer.
-            return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
+            return finish.call(ecx, Ok(buf_place.layout.size.bytes()));
         }
         None | Some(u64::MAX) => {
             // We can't update the state, so we have to block.
@@ -248,7 +248,7 @@ fn eventfd_write<'tcx>(
                     @capture<'tcx> {
                         num: u64,
                         buf_place: MPlaceTy<'tcx>,
-                        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                         eventfd: FileDescriptionRef<EventFd>,
                     }
                     |ecx, unblock: UnblockKind| {
@@ -268,7 +268,7 @@ fn eventfd_read<'tcx>(
     buf_place: MPlaceTy<'tcx>,
     eventfd: FileDescriptionRef<EventFd>,
     ecx: &mut MiriInterpCx<'tcx>,
-    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
 ) -> InterpResult<'tcx> {
     // Set counter to 0, get old value.
     let counter = eventfd.counter.replace(0);
@@ -287,7 +287,7 @@ fn eventfd_read<'tcx>(
             callback!(
                 @capture<'tcx> {
                     buf_place: MPlaceTy<'tcx>,
-                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                     eventfd: FileDescriptionRef<EventFd>,
                 }
                 |ecx, unblock: UnblockKind| {
@@ -319,7 +319,7 @@ fn eventfd_read<'tcx>(
         ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
         // Tell userspace how many bytes we put into the buffer.
-        return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
+        return finish.call(ecx, Ok(buf_place.layout.size.bytes()));
     }
     interp_ok(())
 }

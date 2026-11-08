@@ -1,5 +1,5 @@
 use std::cell::{Cell, RefCell, RefMut};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -159,9 +159,9 @@ impl FileDescription for TcpSocket {
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         self.recv(
             communicate_allowed,
@@ -172,8 +172,8 @@ impl FileDescription for TcpSocket {
             ecx,
             callback!(
                 @capture<'tcx> {
-                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                } |this, result: Result<(usize, Option<SocketAddr>), IoError>| {
+                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+                } |this, result: Result<(u64, Option<SocketAddr>), IoError>| {
                     finish.call(this, result.map(|(bytes, _)| bytes))
                 }
             ),
@@ -184,9 +184,9 @@ impl FileDescription for TcpSocket {
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         self.send(
             communicate_allowed,
@@ -597,13 +597,13 @@ impl UnixSocketFileDescription for TcpSocket {
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_non_block: bool,
         // For stream-based sockets `send` and `sendto` are equivalent and
         // we can thus ignore the destination address.
         _dest_addr: Option<SocketAddr>,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
@@ -620,9 +620,9 @@ impl UnixSocketFileDescription for TcpSocket {
                     socket: FileDescriptionRef<TcpSocket>,
                     deadline: Option<Deadline>,
                     ptr: Pointer,
-                    len: usize,
+                    len: u64,
                     is_non_block: bool,
-                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                 } |ecx, result: Result<(), ()>| {
                     if result.is_err() {
                         return finish.call(ecx, Err(LibcError("ENOTCONN")))
@@ -647,11 +647,11 @@ impl UnixSocketFileDescription for TcpSocket {
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_peek: bool,
         is_non_block: bool,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
+        finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "cannot have `TcpSocket` with isolation enabled!");
 
@@ -660,8 +660,8 @@ impl UnixSocketFileDescription for TcpSocket {
 
         let finish = callback!(
             @capture<'tcx> {
-                finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
-            } |this, result: Result<usize, IoError>| {
+                finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
+            } |this, result: Result<u64, IoError>| {
                 // The source address of the data isn't available for stream-based sockets.
                 finish.call(this, result.map(|bytes| (bytes, None)))
             }
@@ -676,10 +676,10 @@ impl UnixSocketFileDescription for TcpSocket {
                     socket: FileDescriptionRef<TcpSocket>,
                     deadline: Option<Deadline>,
                     ptr: Pointer,
-                    len: usize,
+                    len: u64,
                     is_peek: bool,
                     is_non_block: bool,
-                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                 } |ecx, result: Result<(), ()>| {
                     if result.is_err() {
                         return finish.call(ecx, Err(LibcError("ENOTCONN")))
@@ -1078,8 +1078,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         socket: FileDescriptionRef<TcpSocket>,
         deadline: Option<Deadline>,
         buffer_ptr: Pointer,
-        length: usize,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        length: u64,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // Since the callback holds a strong reference to the socket, the file description
@@ -1093,8 +1093,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 socket: FileDescriptionRef<TcpSocket>,
                 deadline: Option<Deadline>,
                 buffer_ptr: Pointer,
-                length: usize,
-                finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                length: u64,
+                finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
             } |ecx, kind: UnblockKind| {
                 // Remove the blocking I/O interest for unblocking this thread.
                 ecx.machine.blocking_io.remove_blocked_thread(socket.id(), ecx.machine.threads.active_thread());
@@ -1124,8 +1124,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: &FileDescriptionRef<TcpSocket>,
         buffer_ptr: Pointer,
-        length: usize,
-    ) -> InterpResult<'tcx, Result<usize, IoError>> {
+        length: u64,
+    ) -> InterpResult<'tcx, Result<u64, IoError>> {
         let this = self.eval_context_mut();
 
         let mut state = socket.state.borrow_mut();
@@ -1134,7 +1134,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // This is a *non-blocking* write.
-        let result = this.write_to_host(stream, length, buffer_ptr)?;
+        let result = this.write_to_host(buffer_ptr, length, |buf| stream.write(buf))?;
 
         drop(state);
 
@@ -1210,9 +1210,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         socket: FileDescriptionRef<TcpSocket>,
         deadline: Option<Deadline>,
         buffer_ptr: Pointer,
-        length: usize,
+        length: u64,
         should_peek: bool,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // Since the callback holds a strong reference to the socket, the file description
@@ -1226,9 +1226,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 socket: FileDescriptionRef<TcpSocket>,
                 deadline: Option<Deadline>,
                 buffer_ptr: Pointer,
-                length: usize,
+                length: u64,
                 should_peek: bool,
-                finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
             } |ecx, kind: UnblockKind| {
                 // Remove the blocking I/O interest for unblocking this thread.
                 ecx.machine.blocking_io.remove_blocked_thread(socket.id(), ecx.machine.threads.active_thread());
@@ -1258,9 +1258,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: &FileDescriptionRef<TcpSocket>,
         buffer_ptr: Pointer,
-        length: usize,
+        length: u64,
         should_peek: bool,
-    ) -> InterpResult<'tcx, Result<usize, IoError>> {
+    ) -> InterpResult<'tcx, Result<u64, IoError>> {
         let this = self.eval_context_mut();
 
         let mut state = socket.state.borrow_mut();
@@ -1269,13 +1269,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // This is a *non-blocking* read/peek.
-        let result = this.read_from_host(
-            |buf| {
-                if should_peek { stream.peek(buf) } else { stream.read(buf) }
-            },
-            length,
-            buffer_ptr,
-        )?;
+        let result = this.read_from_host(buffer_ptr, length, |buf| {
+            if should_peek { stream.peek(buf) } else { stream.read(buf) }
+        })?;
 
         drop(state);
 

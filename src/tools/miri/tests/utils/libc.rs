@@ -43,25 +43,29 @@ pub unsafe fn read_exact_generic(
     assert!(count > 0);
     let mut read_so_far = 0;
     while read_so_far < count {
-        let res = read(buf.add(read_so_far), count - read_so_far);
-        if res < 0 {
-            if let RetryAfter(duration) = retry {
-                if errno() == libc::EAGAIN {
-                    // Emulate blocking behavior by sleeping a bit and then trying again.
-                    std::thread::sleep(duration);
-                    continue;
+        match errno_result(read(buf.add(read_so_far), count - read_so_far)) {
+            Err(err) => {
+                if let RetryAfter(duration) = retry {
+                    if err.raw_os_error().unwrap() == libc::EAGAIN {
+                        // Emulate blocking behavior by sleeping a bit and then trying again.
+                        std::thread::sleep(duration);
+                        continue;
+                    }
                 }
+                return Err(err);
             }
-            return Err(io::Error::last_os_error());
+            Ok(res) => {
+                if res == 0 {
+                    // We expected more data but got EOF.
+                    panic!(
+                        "could not fill buffer with {count} bytes: EOF received after {read_so_far} bytes"
+                    );
+                }
+                read_so_far += res as libc::size_t;
+            }
         }
-        if res == 0 {
-            // We expected more data but got EOF.
-            panic!(
-                "could not fill buffer with {count} bytes: EOF received after {read_so_far} bytes"
-            );
-        }
-        read_so_far += res as libc::size_t;
     }
+    assert!(read_so_far == count);
     Ok(())
 }
 
@@ -119,20 +123,24 @@ pub unsafe fn write_all_generic(
     assert!(count > 0);
     let mut written_so_far = 0;
     while written_so_far < count {
-        let res = write(buf.add(written_so_far), count - written_so_far);
-        if res < 0 {
-            if let RetryAfter(duration) = retry {
-                if errno() == libc::EAGAIN {
-                    // Emulate blocking behavior by sleeping a bit and then trying again.
-                    std::thread::sleep(duration);
-                    continue;
+        match errno_result(write(buf.add(written_so_far), count - written_so_far)) {
+            Err(err) => {
+                if let RetryAfter(duration) = retry {
+                    if err.raw_os_error().unwrap() == libc::EAGAIN {
+                        // Emulate blocking behavior by sleeping a bit and then trying again.
+                        std::thread::sleep(duration);
+                        continue;
+                    }
                 }
+                return Err(err);
             }
-            return Err(io::Error::last_os_error());
+            Ok(res) => {
+                // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
+                written_so_far += res as libc::size_t;
+            }
         }
-        // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
-        written_so_far += res as libc::size_t;
     }
+    assert!(written_so_far == count);
     return Ok(());
 }
 
