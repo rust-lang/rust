@@ -928,7 +928,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn repeat_bits(self, len: u32) -> Self {
-            assert_ne!(len, 0, "length of bit pattern must be at least 1");
+            assert!(len > 0, "length of bit pattern must be at least 1");
 
             if len >= Self::BITS {
                 return self;
