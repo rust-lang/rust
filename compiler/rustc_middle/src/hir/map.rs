@@ -309,6 +309,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    // FIXME: Rename this since it doesn't operate on bodies anymore
     pub fn hir_body_param_idents(self, decl: &FnDecl<'_>) -> impl Iterator<Item = Option<Ident>> {
         decl.inputs.iter().map(|param| match param.pat.kind {
             PatKind::Binding(_, _, ident, _) => Some(ident),

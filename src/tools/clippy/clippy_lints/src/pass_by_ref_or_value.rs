@@ -140,11 +140,10 @@ impl PassByRefOrValue {
             ControlFlow::Continue(())
         });
 
-        for (index, (input, ty)) in iter::zip(
+        for (input, ty) in iter::zip(
             decl.inputs,
             fn_sig.skip_binder().inputs().iter().map(|&ty| fn_sig.rebind(ty)),
         )
-        .enumerate()
         {
             // All spans generated from a proc-macro invocation are the same...
             match span {
@@ -185,7 +184,7 @@ impl PassByRefOrValue {
                         {
                             continue;
                         }
-                        let value_type = if decl.inputs.get(index).is_some_and(is_self) {
+                        let value_type = if is_self(input) {
                             "self".into()
                         } else {
                             snippet(cx, decl_ty.span, "_").into()
@@ -206,12 +205,10 @@ impl PassByRefOrValue {
                 },
 
                 ty::Adt(_, _) | ty::Array(_, _) | ty::Tuple(_) => {
-                    // if function has a body and parameter is annotated with mut, ignore
-                    if let Some(param) = decl.inputs.get(index) {
-                        match param.pat.kind {
-                            PatKind::Binding(BindingMode::NONE, _, _, _) => {},
-                            _ => continue,
-                        }
+                    // if the parameter is annotated with mut, ignore
+                    match input.pat.kind {
+                        PatKind::Binding(BindingMode::NONE, _, _, _) => {},
+                        _ => continue,
                     }
                     let ty = cx.tcx.instantiate_bound_regions_with_erased(ty);
 

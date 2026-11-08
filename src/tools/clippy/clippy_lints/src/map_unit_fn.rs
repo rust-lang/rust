@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
-use clippy_utils::{iter_input_pats, method_chain_args};
+use clippy_utils::{method_chain_args};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
@@ -161,18 +161,16 @@ fn reduce_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<
     }
 }
 
-fn unit_closure<'a, 'b>(
-    cx: &LateContext<'a>,
-    expr: &hir::Expr<'b>,
-) -> Option<(&'b hir::Param<'b>, &'a hir::Expr<'a>)> {
+fn unit_closure<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = expr.kind
+        && let [binding] = fn_decl.inputs
         && let body = cx.tcx.hir_body(body)
-        && let body_expr = &body.value
-        && fn_decl.inputs.len() == 1
-        && is_unit_expression(cx, body_expr)
-        && let Some(binding) = iter_input_pats(fn_decl).next()
+        && is_unit_expression(cx, body.value)
     {
-        return Some((binding, body_expr));
+        return Some((binding, body.value));
     }
     None
 }
@@ -198,11 +196,11 @@ fn suggestion_msg(function_type: &str, article: &str, map_type: &str) -> String 
     )
 }
 
-fn lint_map_unit_fn(
-    cx: &LateContext<'_>,
-    stmt: &hir::Stmt<'_>,
-    expr: &hir::Expr<'_>,
-    map_args: (&hir::Expr<'_>, &[hir::Expr<'_>]),
+fn lint_map_unit_fn<'tcx>(
+    cx: &LateContext<'tcx>,
+    stmt: &'tcx hir::Stmt<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    map_args: (&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>]),
 ) {
     let var_arg = &map_args.0;
 
@@ -260,8 +258,8 @@ fn lint_map_unit_fn(
     }
 }
 
-impl LateLintPass<'_> for MapUnit {
-    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MapUnit {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
         if let hir::StmtKind::Semi(expr) = stmt.kind
             && !stmt.span.from_expansion()
             && let Some(arglists) = method_chain_args(expr, &[sym::map])

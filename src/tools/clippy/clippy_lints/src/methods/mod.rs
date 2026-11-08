@@ -165,7 +165,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
-use clippy_utils::{contains_return, iter_input_pats, peel_blocks, sym};
+use clippy_utils::{contains_return, peel_blocks, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{self as hir, Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
@@ -5368,7 +5368,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if let hir::ImplItemKind::Fn(ref sig, _id) = impl_item.kind {
+        if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
             let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let item = cx.tcx.hir_expect_item(parent);
             let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
@@ -5382,7 +5382,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if sig.decl.implicit_self().has_implicit_self()
                 && !(self.avoid_breaking_exported_api
                     && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id))
-                && let Some(first_arg) = iter_input_pats(sig.decl).next()
+                && let Some(first_arg) = sig.decl.inputs.into_iter().next()
                 && let Some(first_arg_ty) = first_arg_ty_opt
             {
                 wrong_self_convention::check(
@@ -5489,9 +5489,9 @@ impl Methods {
                         ),
                         Some((sym::chars, recv, _, _, _))
                             if let ExprKind::Closure(arg) = arg.kind
-                                && let body = cx.tcx.hir_body(arg.body)
                                 && let [param] = arg.fn_decl.inputs =>
                         {
+                            let body = cx.tcx.hir_body(arg.body);
                             string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), self.msrv);
                         },
                         Some((sym::map, _, [map_arg], _, map_call_span)) => {

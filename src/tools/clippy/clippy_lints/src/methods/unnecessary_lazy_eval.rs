@@ -141,7 +141,10 @@ pub(super) fn check_map_or_else<'tcx>(
         let mut applicability = if fn_decl
             .inputs
             .iter()
-            .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
+            .all(|param|
+                matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild)
+                    && matches!(param.ty.kind, hir::TyKind::Infer(()))
+            )
             && matches!(
                 fn_decl.output,
                 FnRetTy::DefaultReturn(_)
@@ -150,10 +153,6 @@ pub(super) fn check_map_or_else<'tcx>(
                         ..
                     })
             )
-            && fn_decl
-                .inputs
-                .iter()
-                .all(|param| matches!(param.ty.kind, hir::TyKind::Infer(())))
         {
             Applicability::MachineApplicable
         } else {

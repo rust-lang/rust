@@ -88,8 +88,8 @@ fn check_into_iter(
         && SpanlessEq::new(cx).eq_expr(parent_expr_span.ctxt(), left_expr, struct_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = target_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
-        && let filter_body = cx.tcx.hir_body(closure.body)
         && let [filter_params] = closure.fn_decl.inputs
+        && let filter_body = cx.tcx.hir_body(closure.body)
     {
         if match_map_type(cx, left_expr) {
             if let hir::PatKind::Tuple([key_pat, value_pat], _) = filter_params.pat.kind
@@ -135,8 +135,8 @@ fn check_iter(
         && SpanlessEq::new(cx).eq_expr(parent_expr_span.ctxt(), left_expr, struct_expr)
         && let hir::ExprKind::MethodCall(_, _, [closure_expr], _) = filter_expr.kind
         && let hir::ExprKind::Closure(closure) = closure_expr.kind
-        && let filter_body = cx.tcx.hir_body(closure.body)
         && let [filter_params] = closure.fn_decl.inputs
+        && let filter_body = cx.tcx.hir_body(closure.body)
     {
         match filter_params.pat.kind {
             // hir::PatKind::Binding(_, _, _, None) => {

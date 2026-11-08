@@ -1580,10 +1580,6 @@ pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
     false
 }
 
-pub fn iter_input_pats<'tcx>(decl: &FnDecl<'tcx>) -> impl Iterator<Item = &'tcx Param<'tcx>> {
-    decl.inputs.into_iter()
-}
-
 /// Checks if a given expression is a match expression expanded from the `?`
 /// operator or the `try` macro.
 pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {

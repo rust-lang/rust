@@ -122,7 +122,7 @@ pub struct BindingUsageFinder<'a, 'tcx> {
     binding_ids: Vec<HirId>,
 }
 impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
-    /// Checks whether the parameter bindings of the given [`Body`](hir::Body) are used within it.
+    /// Checks whether the parameter bindings of the given [`hir::FnDecl`](hir::FnDecl) are used within the corresponding [`hir::Body`](hir::Body).
     pub fn are_params_used(cx: &'a LateContext<'tcx>, decl: &hir::FnDecl<'_>, body: &'tcx hir::Body<'tcx>) -> bool {
         let mut finder = BindingUsageFinder {
             cx,
