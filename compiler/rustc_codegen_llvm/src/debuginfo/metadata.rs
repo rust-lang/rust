@@ -1482,12 +1482,33 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
             let generics = cx.tcx.generics_of(def.did());
             let names = get_parameter_names(cx, generics);
             let template_params: SmallVec<_> = iter::zip(args, names)
-                .filter_map(|(kind, name)| {
+                .enumerate()
+                .filter_map(|(i, (kind, name))| {
                     kind.as_type().map(|ty| {
                         let actual_type = cx
                             .tcx
                             .normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty));
                         let actual_type_di_node = type_di_node(cx, actual_type);
+
+                        // PDB has no way to represent generic parameters. To get around that, we
+                        // create a typedef of the resolved generic type, scoped to the parent
+                        // struct. This leaves it accessible via LLDB's `SBType.FindDirectNestedType`
+                        if cpp_like_debuginfo(cx.tcx) {
+                            let generic_name = format!("__rustc_generic_arg_{i}");
+                            unsafe {
+                                llvm::LLVMDIBuilderCreateTypedef(
+                                    DIB(cx),
+                                    actual_type_di_node,
+                                    generic_name.as_ptr(),
+                                    generic_name.len(),
+                                    unknown_file_metadata(cx),
+                                    0,
+                                    None,
+                                    cx.align_of(actual_type).bits() as u32,
+                                );
+                            };
+                        }
+
                         Some(cx.create_template_type_parameter(name.as_str(), actual_type_di_node))
                     })
                 })
