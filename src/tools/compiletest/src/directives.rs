@@ -466,16 +466,18 @@ pub(crate) fn do_early_directives_check<'a>(
         // If it looks like the user tried to put two directives on the same line
         // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
         // second "directive" would actually be ignored with no effect.
-        let trailing_directive = line
-            .remark_after_space()
-            .map(|remark| remark.trim_start().split(' ').next().unwrap())
-            .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
-
-        if let Some(trailing_directive) = trailing_directive {
-            return Err(Error {
-                kind: ErrorKind::TrailingDirective { leading_directive: name, trailing_directive },
-                location,
-            });
+        if let Some(remark) = line.remark_after_space() {
+            let remark = remark.trim_start();
+            let token = remark.split(|c: char| c == ':' || c.is_whitespace()).next().unwrap();
+            if KNOWN_DIRECTIVE_NAMES_SET.contains(token) {
+                return Err(Error {
+                    kind: ErrorKind::TrailingDirective {
+                        leading_directive: name,
+                        trailing_directive: remark,
+                    },
+                    location,
+                });
+            }
         }
     }
 

@@ -1086,8 +1086,7 @@ fn test_trailing_directive_with_comment() {
         Err(EarlyValidationError {
             kind: EarlyValidationErrorKind::TrailingDirective {
                 leading_directive: "only-x86",
-                // FIXME(fmease): This should also contain "with comment".
-                trailing_directive: "only-arm",
+                trailing_directive: "only-arm with comment",
             },
             ..
         })
@@ -1096,17 +1095,17 @@ fn test_trailing_directive_with_comment() {
 
 #[test]
 fn test_trailing_directive_with_colon() {
-    // FIXME(fmease): We should reject this, too!
     let result =
         parse_and_early_validate_directives(Utf8Path::new("a.rs"), "//@ check-pass edition: 2015");
     assert_matches!(
-        result.as_deref(),
-        Ok([DirectiveLine {
-            revision: None,
-            raw_directive: "check-pass edition: 2015",
-            name: "check-pass",
+        result,
+        Err(EarlyValidationError {
+            kind: EarlyValidationErrorKind::TrailingDirective {
+                leading_directive: "check-pass",
+                trailing_directive: "edition: 2015",
+            },
             ..
-        }])
+        })
     );
 }
 
