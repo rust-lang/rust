@@ -12,10 +12,10 @@ use rustc_target::spec::Os;
 
 use super::fd::EvalContextExt as _;
 use crate::concurrency::VClock;
+use crate::concurrency::scheduler::DelayedCallbacks;
 use crate::shims::files::{
     EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
-use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
@@ -59,9 +59,8 @@ struct VirtualSocket {
     is_nonblock: Cell<bool>,
     /// Differentiate between different virtual socket fd types.
     fd_type: VirtualSocketType,
-    /// We need to update the peer_fd readiness when we get dropped, so we keep a reference
-    /// to the readiness update queue
-    delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    /// We need to unblock threads and update the peer_fd readiness when we get dropped.
+    delayed_callbacks: Rc<DelayedCallbacks>,
     /// State for being watched by epoll.
     watched: ReadinessWatched,
 }
@@ -86,16 +85,32 @@ impl VirtualSocket {
 
 impl Drop for VirtualSocket {
     fn drop(&mut self) {
+        // Blocked threads hold a reference, so when we get closed there cannot be blocked threads.
+        assert!(self.blocked_read_tid.get_mut().is_empty());
+        assert!(self.blocked_write_tid.get_mut().is_empty());
+
         if let Some(peer_fd) = self.peer_fd().upgrade() {
             // If the current readbuf is non-empty when the file description is closed,
-            // notify the peer that data lost has happened in current file description.
+            // notify the peer that data loss has happened in current file description.
             if let Some(readbuf) = &self.readbuf {
                 if !readbuf.borrow().buf.is_empty() {
                     peer_fd.peer_lost_data.set(true);
                 }
             }
-            // Notify peer fd that close has happened, since that can unblock reads and writes.
-            self.delayed_readiness_updates.add(peer_fd);
+            // At the next opportunity, update our readiness and unblock the threads of our peer FD.
+            self.delayed_callbacks.add(Box::new(move |ecx| {
+                // Unblock all threads that are currently blocked on peer_fd (reads AND writes).
+                let waiting_readers = std::mem::take(&mut *peer_fd.blocked_read_tid.borrow_mut());
+                let waiting_writers = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
+                // FIXME: We can randomize the order of unblocking.
+                for thread_id in waiting_readers.into_iter().chain(waiting_writers) {
+                    ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
+                }
+
+                ecx.update_fd_readiness(peer_fd, ReadinessUpdateFlags::DEFAULT)?;
+
+                interp_ok(())
+            }));
         }
     }
 }
@@ -586,7 +601,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
@@ -597,7 +612,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
 
@@ -665,7 +680,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeRead,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
@@ -676,7 +691,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeWrite,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
 

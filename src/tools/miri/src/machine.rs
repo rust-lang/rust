@@ -36,6 +36,7 @@ use rustc_target::spec::{Arch, Os};
 
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
+use crate::concurrency::scheduler::DelayedCallbacks;
 use crate::concurrency::{
     AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
 };
@@ -554,7 +555,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) dirs: shims::DirTable,
 
     /// Managing file descriptors whose readiness needs to be updated.
-    pub(crate) delayed_readiness_updates: Rc<shims::DelayedReadinessUpdates>,
+    pub(crate) delayed_callbacks: Rc<DelayedCallbacks>,
 
     /// This machine's monotone clock.
     pub(crate) monotonic_clock: MonotonicClock,
@@ -787,7 +788,7 @@ impl<'tcx> MiriMachine<'tcx> {
             isolated_op: config.isolated_op,
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
-            delayed_readiness_updates: Rc::new(shims::DelayedReadinessUpdates::default()),
+            delayed_callbacks: Rc::new(DelayedCallbacks::default()),
             dirs: Default::default(),
             layouts,
             threads,
@@ -1042,7 +1043,7 @@ impl VisitProvenance for MiriMachine<'_> {
             alloc_addresses,
             fds,
             blocking_io:_,
-            delayed_readiness_updates: _,
+            delayed_callbacks: _,
             tcx: _,
             isolated_op: _,
             validation: _,
