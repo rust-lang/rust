@@ -133,11 +133,11 @@ impl ArgAttributesExt for ArgAttributes {
 }
 
 pub(crate) trait LlvmType {
-    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> Type<'ll>;
 }
 
 impl LlvmType for Reg {
-    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> Type<'ll> {
         match self.kind {
             RegKind::Integer => cx.type_ix(self.size.bits()),
             RegKind::Float => match self.size.bits() {
@@ -180,7 +180,7 @@ impl LlvmType for Reg {
 }
 
 impl LlvmType for CastTarget {
-    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> Type<'ll> {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
         let rest_count = if self.rest.total == Size::ZERO {
             0
@@ -344,8 +344,8 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 }
 
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
+    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
 
     /// Apply attributes to a function declaration/definition.
@@ -361,7 +361,7 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
         let args =
@@ -448,7 +448,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         cx.type_ptr_ext(cx.data_layout().instruction_address_space)
     }
 
