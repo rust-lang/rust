@@ -1181,15 +1181,15 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
         if byte == b'\\' || byte == b'"' {
             asm.push(b'\\');
             asm.push(byte);
-        } else if byte < 0x20 || byte >= 0x80 {
+        } else if (0x20..0x80).contains(&byte) {
+            asm.push(byte);
+        } else {
             // Avoid non UTF-8 inline assembly. Use octal escape sequence, because it is fixed
             // width, while hex escapes will consume following characters.
             asm.push(b'\\');
             asm.push(b'0' + ((byte >> 6) & 0x7));
             asm.push(b'0' + ((byte >> 3) & 0x7));
             asm.push(b'0' + ((byte >> 0) & 0x7));
-        } else {
-            asm.push(byte);
         }
     }
     asm.extend_from_slice(b"\"\n");

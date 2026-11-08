@@ -95,7 +95,7 @@ unsafe fn configure_llvm(sess: &EarlySession) {
     let sess_args = tg_opts.chain(cg_opts);
 
     let user_specified_args: FxHashSet<_> =
-        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
+        sess_args.clone().map(llvm_arg_to_arg_name).filter(|s| !s.is_empty()).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true
@@ -337,7 +337,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
         sess,
         |feature| {
             to_llvm_features(&sess.target, feature)
-                .map(|f| SmallVec::<[&str; 2]>::from_iter(f.into_iter()))
+                .map(SmallVec::<[&str; 2]>::from_iter)
                 .unwrap_or_default()
         },
         |feature| {

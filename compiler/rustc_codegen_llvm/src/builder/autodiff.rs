@@ -110,7 +110,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
         if let rustc_abi::BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } =
             layout.backend_repr()
         {
-            new_activities.push(da[i].clone());
+            new_activities.push(da[i]);
             new_positions.push(i + 1 - del_activities);
         }
     }

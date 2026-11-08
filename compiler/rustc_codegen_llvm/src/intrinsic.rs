@@ -2143,10 +2143,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(splat);
     }
 
-    let supports_scalable = match name {
-        sym::simd_cast | sym::simd_select => true,
-        _ => false,
-    };
+    let supports_scalable = matches!(name, sym::simd_cast | sym::simd_select);
 
     // Every intrinsic below takes a SIMD vector as its first argument. Some intrinsics also accept
     // scalable vectors. `require_simd_or_scalable` is used regardless as it'll do the right thing
