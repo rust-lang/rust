@@ -5,6 +5,7 @@ LL | /// [aloha]
    |      ^^^^^ no item named `aloha` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[aloha]: https://...`
 note: the lint level is defined here
   --> $DIR/pub-export-lint.rs:1:9
    |
