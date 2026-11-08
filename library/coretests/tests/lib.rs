@@ -133,6 +133,7 @@
 #![feature(u8_split_ascii_whitespace)]
 #![feature(uint_carryless_mul)]
 #![feature(uint_gather_scatter_bits)]
+#![feature(uint_repeat_bits)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
 // tidy-alphabetical-end

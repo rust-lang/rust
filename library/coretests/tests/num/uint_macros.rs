@@ -241,6 +241,16 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: _1.reverse_bits(), _1);
             }
 
+            fn test_repeat_bits() {
+                assert_eq_const_safe!($T: B.repeat_bits(1), _1);
+                assert_eq_const_safe!($T: B.repeat_bits(2), _1 / 3);
+                assert_eq_const_safe!($T: A.repeat_bits(4), !(_1 / 5));
+                assert_eq_const_safe!($T: _0.repeat_bits(5), _0);
+                assert_eq_const_safe!($T: _1.repeat_bits(6), _1);
+                assert_eq_const_safe!($T: C.repeat_bits($T::BITS), C);
+                assert_eq_const_safe!($T: C.repeat_bits($T::BITS + 1), C);
+            }
+
             fn test_le() {
                 assert_eq_const_safe!($T: $T::from_le(A.to_le()), A);
                 assert_eq_const_safe!($T: $T::from_le(B.to_le()), B);
@@ -302,6 +312,12 @@ macro_rules! uint_module {
                 assert_eq!(<$T>::funnel_shr(0, A, i), A >> i);
                 assert_eq!(<$T>::funnel_shr(A, A, i), A.rotate_right(i));
             }
+        }
+
+        #[test]
+        #[should_panic = "length of bit pattern must be at least 1"]
+        fn test_repeat_bits_panic() {
+            let _ = A.repeat_bits(0);
         }
 
         #[test]
