@@ -74,7 +74,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
             bundles.push(funclet_bundle);
         }
 
-        let call = unsafe {
+        unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
                 self.llbuilder(),
                 llty,
@@ -85,8 +85,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
                 bundles.len() as c_uint,
                 c"".as_ptr(),
             )
-        };
-        call
+        }
     }
 }
 

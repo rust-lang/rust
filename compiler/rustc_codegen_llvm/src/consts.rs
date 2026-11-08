@@ -302,10 +302,9 @@ impl<'ll> CodegenCx<'ll, '_> {
         let gv = match kind {
             Some(kind) if !self.tcx.sess.fewer_names() => {
                 let name = self.generate_local_symbol_name(kind);
-                let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
+                self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", name);
-                });
-                gv
+                })
             }
             _ => self.define_global("", self.val_ty(cv)).unwrap_or_else(|| {
                 bug!("anonymous global symbol is already defined");

@@ -1499,17 +1499,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(
-        llty,
-        None,
-        None,
-        llfn,
-        ReturnSlot::Direct,
-        &[try_func, data, catch_func],
-        None,
-        None,
-    );
-    ret
+    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
 }
 
 // WASM's definition of the `rust_try` function.
@@ -1600,17 +1590,7 @@ fn codegen_wasm_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(
-        llty,
-        None,
-        None,
-        llfn,
-        ReturnSlot::Direct,
-        &[try_func, data, catch_func],
-        None,
-        None,
-    );
-    ret
+    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
 }
 
 // Definition of the standard `try` function for Rust using the GNU-like model
@@ -1685,17 +1665,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(
-        llty,
-        None,
-        None,
-        llfn,
-        ReturnSlot::Direct,
-        &[try_func, data, catch_func],
-        None,
-        None,
-    );
-    ret
+    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
 }
 
 // Helper function to give a Block to a closure to codegen a shim function.
