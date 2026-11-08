@@ -927,6 +927,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn repeat_bits(self, len: u32) -> Self {
             assert!(len > 0, "length of bit pattern must be at least 1");
 
