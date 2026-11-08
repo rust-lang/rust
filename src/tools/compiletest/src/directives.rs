@@ -444,28 +444,23 @@ impl TestProps {
     }
 }
 
-pub(crate) fn do_early_directives_check(
+pub(crate) fn do_early_directives_check<'a>(
     mode: TestMode,
-    file_directives: &FileDirectives<'_>,
-) -> Result<(), String> {
-    for line in &file_directives.lines {
-        let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(line.name)
+    file_directives: &FileDirectives<'a>,
+) -> Result<(), EarlyValidationError<'a>> {
+    use EarlyValidationError as Error;
+    use EarlyValidationErrorKind as ErrorKind;
+
+    for line @ &DirectiveLine { location, name, .. } in &file_directives.lines {
+        let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(name)
             || match mode {
-                TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&line.name),
-                TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&line.name),
+                TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&name),
+                TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&name),
                 _ => false,
             };
 
         if !is_known_directive {
-            // FIXME(Zalathar): Consider emitting specialized error/help messages for
-            // bogus directive names that are similar to real ones, e.g.:
-            // - *`compiler-flags` => `compile-flags`
-            // - *`compile-fail` => `check-fail` or `build-fail`
-            return Err(format!(
-                "ERROR: unknown compiletest directive `{}` at {}",
-                line.display(),
-                line.location,
-            ));
+            return Err(Error { kind: ErrorKind::UnknownDirective { name }, location });
         }
 
         // If it looks like the user tried to put two directives on the same line
@@ -476,16 +471,54 @@ pub(crate) fn do_early_directives_check(
             .map(|remark| remark.trim_start().split(' ').next().unwrap())
             .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
 
-        if let Some(trailing_directive) = &trailing_directive {
-            return Err(format!(
-                "ERROR: detected trailing compiletest directive `{trailing_directive}` at {}\n\
-                HELP: put the directive on its own line: `//@ {trailing_directive}`",
-                line.location,
-            ));
+        if let Some(trailing_directive) = trailing_directive {
+            return Err(Error {
+                kind: ErrorKind::TrailingDirective { leading_directive: name, trailing_directive },
+                location,
+            });
         }
     }
 
     Ok(())
+}
+
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct EarlyValidationError<'a> {
+    kind: EarlyValidationErrorKind<'a>,
+    location: Location<'a>,
+}
+
+#[cfg_attr(test, derive(Debug))]
+enum EarlyValidationErrorKind<'a> {
+    UnknownDirective { name: &'a str },
+    TrailingDirective { leading_directive: &'a str, trailing_directive: &'a str },
+}
+
+impl EarlyValidationError<'_> {
+    // FIXME: Just report the error, poison the context and keep going.
+    pub(crate) fn raise_fatal(self) -> ! {
+        let title = |message| crate::error!("{message} at {}", self.location);
+
+        match self.kind {
+            EarlyValidationErrorKind::UnknownDirective { name } => {
+                title(format!("unknown directive `{name}`"));
+                // FIXME: Look for typo'ed names / suggest directives with a similar name. E.g,
+                // - *`compiler-flags` => `compile-flags`
+                // - *`compile-fail` => `check-fail` or `build-fail`
+            }
+            EarlyValidationErrorKind::TrailingDirective {
+                leading_directive,
+                trailing_directive,
+            } => {
+                title(format!(
+                    "directive `{leading_directive}` is followed by another directive (`{trailing_directive}`) on the same line"
+                ));
+                help!("put the directive on its own line: `//@ {trailing_directive}`");
+            }
+        }
+
+        panic!("fatal error")
+    }
 }
 
 fn iter_directives(
