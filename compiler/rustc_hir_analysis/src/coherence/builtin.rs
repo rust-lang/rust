@@ -507,6 +507,7 @@ pub(crate) fn reborrow_info<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     // We've found some data fields. They must all be either be Copy or Reborrow.
     for mut field in data_fields {
+        field.ty.error_reported()?;
         field.ty = ocx
             .deeply_normalize(
                 &traits::ObligationCause::misc(field.span, impl_did),
