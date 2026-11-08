@@ -1357,9 +1357,9 @@ impl PathBuf {
 
         let path_comps = path.components();
 
-        let need_clear = if cfg!(target_os = "cygwin") {
-            // If path is absolute and its prefix is none, it is like `/foo`,
-            // and will be handled below.
+        let need_clear = if cfg!(any(target_os = "windows", target_os = "cygwin")) {
+            // Windows/Cygwin: If path is absolute and its prefix is none, it is like `\foo`
+            // (Windows) or `/foo` (Cygwin), and will be handled below.
             path_comps.prefix.is_some()
         } else {
             // On Unix: prefix is always None.
