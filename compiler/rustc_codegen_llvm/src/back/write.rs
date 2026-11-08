@@ -669,7 +669,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         }
 
         // Create the new parameter list, with ptr as the first argument
-        let mut new_param_types = Vec::with_capacity(old_param_count as usize + 1);
+        let mut new_param_types = Vec::with_capacity(old_param_count + 1);
         new_param_types.push(cx.type_ptr());
 
         // This relies on undocumented LLVM knowledge that scalars must be passed as i64
@@ -1043,14 +1043,12 @@ pub(crate) fn codegen(
                 output_ptr: *mut c_char,
                 output_len: size_t,
             ) -> size_t {
-                let input =
-                    unsafe { slice::from_raw_parts(input_ptr as *const u8, input_len as usize) };
+                let input = unsafe { slice::from_raw_parts(input_ptr as *const u8, input_len) };
 
                 let Ok(input) = str::from_utf8(input) else { return 0 };
 
-                let output = unsafe {
-                    slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
-                };
+                let output =
+                    unsafe { slice::from_raw_parts_mut(output_ptr as *mut u8, output_len) };
                 let mut cursor = io::Cursor::new(output);
 
                 let Ok(demangled) = rustc_demangle::try_demangle(input) else { return 0 };

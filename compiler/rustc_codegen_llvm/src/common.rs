@@ -291,7 +291,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_i64(&self, i: i64) -> Value<'ll> {
-        self.const_int(self.type_i64(), i as i64)
+        self.const_int(self.type_i64(), i)
     }
 
     fn const_int(&self, t: Type<'ll>, i: i64) -> Value<'ll> {

@@ -2298,7 +2298,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Check that the indices are in-bounds.
         let indices = args[2].immediate();
         for i in 0..n {
-            let val = bx.const_get_elt(indices, i as u64);
+            let val = bx.const_get_elt(indices, i);
             let idx = bx
                 .const_to_opt_u128(val, true)
                 .unwrap_or_else(|| bug!("typeck should have already ensured that these are const"));
@@ -2390,7 +2390,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 }),
             };
             let i1 = bx.type_i1();
-            let i1xn = bx.type_scalable_vector(i1, m_len as u64);
+            let i1xn = bx.type_scalable_vector(i1, m_len);
             bx.trunc(args[0].immediate(), i1xn)
         } else {
             let in_elem_bitwidth = require_int_or_uint_ty!(
@@ -3340,7 +3340,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     in_elem
                 }),
             },
-            in_len as u64,
+            in_len,
         );
         let llvm_intrinsic = match name {
             sym::simd_bswap => "llvm.bswap",
@@ -3427,7 +3427,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             if signed { 's' } else { 'u' },
             if is_add { "add" } else { "sub" },
         );
-        let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
+        let vec_ty = bx.cx.type_vector(elem_ty, in_len);
 
         return Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
     }

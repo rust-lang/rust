@@ -163,7 +163,7 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     let global_dupnoneedv = cx.declare_global("enzyme_dupnoneedv", cx.type_ptr());
 
     while activity_pos < inputs.len() {
-        let diff_activity = inputs[activity_pos as usize];
+        let diff_activity = inputs[activity_pos];
         // Duplicated arguments received a shadow argument, into which enzyme will write the
         // gradient.
         let (activity, duplicated): (Value<'ll>, bool) = match diff_activity {
