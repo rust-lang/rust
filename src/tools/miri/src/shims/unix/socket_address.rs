@@ -21,7 +21,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let hints_ptr = this.read_pointer(hints)?;
         let res_mplace = this.deref_pointer(res)?;
 
-        if node_ptr == Pointer::null() {
+        if this.ptr_is_null(node_ptr)? {
             // We cannot get an address without the `node` part because
             // the [`ToSocketAddrs`] trait requires an address.
             throw_unsup_format!(
@@ -30,7 +30,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let mut port = 0;
-        if service_ptr != Pointer::null() {
+        if !this.ptr_is_null(service_ptr)? {
             // The C-string at `service_ptr` is either a port number or a name of a
             // well-known service.
             let service_c_str = this.read_c_str(service_ptr)?;
@@ -54,7 +54,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("getaddrinfo: node is not a valid UTF-8 string")
         };
 
-        if hints_ptr == Pointer::null() {
+        if this.ptr_is_null(hints_ptr)? {
             // The standard library only supports getting TCP address information. The
             // empty hints pointer would allow any socket type so we cannot support it.
             throw_unsup_format!(
@@ -500,7 +500,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn free_address_infos(&mut self, address_ptr: Pointer) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        if address_ptr == Pointer::null() {
+        if this.ptr_is_null(address_ptr)? {
             // We're at the end of the linked list.
             return interp_ok(());
         }
