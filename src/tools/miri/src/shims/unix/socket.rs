@@ -78,11 +78,11 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         _is_peek: bool,
         _is_non_block: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot receive from {}", self.name());
     }
@@ -97,11 +97,11 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         _is_non_block: bool,
         _dest_addr: Option<SocketAddr>,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot send to {}", self.name());
     }
@@ -503,9 +503,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socket = this.read_scalar(socket)?.to_i32()?;
         let buffer_ptr = this.read_pointer(buffer)?;
-        let size_layout = this.libc_ty_layout("size_t");
-        let length: usize =
-            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
+        let length = this.read_target_usize(length)?;
         let mut flags = this.read_scalar(flags)?.to_i32()?;
 
         let dest_addr = match dest_addr {
@@ -584,10 +582,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
-                } |ecx, result: Result<usize, IoError>| {
+                } |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(bytes_sent) =>
-                            ecx.write_scalar(Scalar::from_target_usize(bytes_sent.try_into().unwrap(), ecx), &dest),
+                            ecx.write_scalar(Scalar::from_target_isize(bytes_sent.try_into().unwrap(), ecx), &dest),
                         Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                     }
                 }
@@ -609,9 +607,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socket = this.read_scalar(socket)?.to_i32()?;
         let buffer_ptr = this.read_pointer(buffer)?;
-        let size_layout = this.libc_ty_layout("size_t");
-        let length: usize =
-            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
+        let length = this.read_target_usize(length)?;
         let mut flags = this.read_scalar(flags)?.to_i32()?;
 
         let dest_addr = match dest_addr {
@@ -684,7 +680,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @capture<'tcx> {
                     dest_addr: Option<(Pointer, MPlaceTy<'tcx>)>,
                     dest: MPlaceTy<'tcx>,
-                } |ecx, result: Result<(usize, Option<SocketAddr>), IoError>| {
+                } |ecx, result: Result<(u64, Option<SocketAddr>), IoError>| {
                     let (bytes_received, mut origin_addr_opt) = match result {
                         Ok(data) => data,
                         Err(e) => return ecx.set_errno_and_return_neg1(e, &dest)
@@ -703,7 +699,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         ecx.write_socket_address(origin_addr_opt.as_ref(), addr_ptr, &addr_len_mplace)?;
                     }
 
-                    ecx.write_scalar(Scalar::from_target_usize(bytes_received.try_into().unwrap(), ecx), &dest)
+                    ecx.write_scalar(Scalar::from_target_isize(bytes_received.try_into().unwrap(), ecx), &dest)
 
                 }
             ),

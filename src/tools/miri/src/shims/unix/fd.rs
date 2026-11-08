@@ -30,11 +30,11 @@ pub trait UnixFileDescription: FileDescription {
     fn pread<'tcx>(
         &self,
         _communicate_allowed: bool,
-        _offset: u64,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
+        _offset: u64,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot pread from {}", self.name());
     }
@@ -47,10 +47,10 @@ pub trait UnixFileDescription: FileDescription {
         &self,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         _offset: u64,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot pwrite to {}", self.name());
     }
@@ -384,23 +384,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Check that the *entire* buffer is actually valid memory.
         ecx.check_ptr_access(buf, Size::from_bytes(count), CheckInAllocMsg::MemoryAccess)?;
 
-        // We cap the number of read bytes to the largest value that we are able to fit in both the
-        // host's and target's `isize`. This saves us from having to handle overflows later.
-        let count = count
-            .min(u64::try_from(ecx.target_isize_max()).unwrap())
-            .min(u64::try_from(isize::MAX).unwrap());
-        let count = usize::try_from(count).unwrap(); // now it fits in a `usize`
+        // POSIX says that if count does not fit isize, behavior is implementation-defined.
+        // We simply cap the count to that number.
+        let count = count.clamp_to(..=u64::try_from(ecx.target_isize_max()).unwrap());
 
         // Get the FD.
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
             trace!("read: FD not found");
             return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
-
-        trace!("read: FD mapped to {fd:?}");
-        // We want to read at most `count` bytes. We are sure that `count` is not negative
-        // because it was a target's `usize`. Also we are sure that it's smaller than
-        // `usize::MAX` because it is bounded by the host's `isize`.
 
         let dest = dest.clone();
         ecx.read_from_fd(
@@ -410,15 +402,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             offset,
             callback!(
                 @capture<'tcx> {
-                    count: usize,
+                    count: u64,
                     dest: MPlaceTy<'tcx>,
                 }
-                |ecx, result: Result<usize, IoError>| {
+                |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(read_size) => {
                             assert!(read_size <= count);
                             // This must fit since `count` fits.
-                            ecx.write_int(u64::try_from(read_size).unwrap(), &dest)
+                            ecx.write_int(i64::try_from(read_size).unwrap(), &dest)
                         }
                         Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                 }}
@@ -441,12 +433,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Check that the *entire* buffer is actually valid memory.
         ecx.check_ptr_access(buf, Size::from_bytes(count), CheckInAllocMsg::MemoryAccess)?;
 
-        // We cap the number of written bytes to the largest value that we are able to fit in both the
-        // host's and target's `isize`. This saves us from having to handle overflows later.
-        let count = count
-            .min(u64::try_from(ecx.target_isize_max()).unwrap())
-            .min(u64::try_from(isize::MAX).unwrap());
-        let count = usize::try_from(count).unwrap(); // now it fits in a `usize`
+        // POSIX says that if count does not fit isize, behavior is implementation-defined.
+        // We simply cap the count to that number.
+        let count = count.clamp_to(..=u64::try_from(ecx.target_isize_max()).unwrap());
 
         // We temporarily dup the FD to be able to retain mutable access to `ecx`.
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
@@ -461,15 +450,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             offset,
             callback!(
                 @capture<'tcx> {
-                    count: usize,
+                    count: u64,
                     dest: MPlaceTy<'tcx>,
                 }
-                |ecx, result: Result<usize, IoError>| {
+                |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(write_size) => {
                             assert!(write_size <= count);
                             // This must fit since `count` fits.
-                            ecx.write_int(u64::try_from(write_size).unwrap(), &dest)
+                            ecx.write_int(i64::try_from(write_size).unwrap(), &dest)
                         }
                         Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
 
@@ -520,6 +509,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some((buffers, total_bytes)) = ecx.read_iovec_array(&iov, iovcnt)? else {
             return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         };
+        // `read_iovec_array` also ensures that the total length fits in a target isize.
 
         // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
         let tmp_ptr: Pointer = ecx
@@ -535,24 +525,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ecx.read_from_fd(
             fd,
             tmp_ptr,
-            usize::try_from(total_bytes).unwrap(),
+            total_bytes,
             offset,
             callback!(
                 @capture<'tcx> {
                     tmp_ptr: Pointer,
                     buffers: Vec<(Pointer, u64)>,
                     dest: MPlaceTy<'tcx>
-                } |ecx, result: Result<usize, IoError>| {
+                } |ecx, result: Result<u64, IoError>| {
                     let bytes_read = match result {
-                        Ok(size) => {
-                            ecx.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), ecx), &dest)?;
-                            u64::try_from(size).unwrap()
-                        },
+                        Ok(size) => size,
                         Err(e) => {
                             ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
                             return ecx.set_errno_and_return_neg1(e, &dest)
                         }
                     };
+                    ecx.write_scalar(Scalar::from_target_isize(bytes_read.try_into().unwrap(), ecx), &dest)?;
                     let mut remaining_bytes = bytes_read;
 
                     // Split the bytes from the temporary buffer into the buffers provided in `iov`.
@@ -628,6 +616,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some((buffers, total_bytes)) = ecx.read_iovec_array(&iov, iovcnt)? else {
             return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         };
+        // `read_iovec_array` also ensures that the total length fits in a target isize.
 
         // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
         let tmp_ptr: Pointer = ecx
@@ -665,14 +654,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ecx.write_to_fd(
             fd,
             tmp_ptr,
-            usize::try_from(total_bytes).unwrap(),
+            total_bytes,
             offset,
             callback!(
                 @capture<'tcx> {
                     tmp_ptr: Pointer,
                     dest: MPlaceTy<'tcx>,
                 }
-                |ecx, result: Result<usize, IoError>| {
+                |ecx, result: Result<u64, IoError>| {
                     ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
                     match result {
                         Ok(size) => ecx.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), ecx), &dest),
@@ -695,9 +684,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         fd: DynFileDescriptionRef,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         offset: Option<i128>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 
@@ -727,7 +716,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Ok(offset) = u64::try_from(offset) else {
                     return finish.call(ecx, Err(LibcError("EINVAL")));
                 };
-                fd.as_unix().pread(ecx.machine.communicate(), offset, ptr, len, ecx, finish)?
+                fd.as_unix().pread(ecx.machine.communicate(), ptr, len, offset, ecx, finish)?
             }
         };
         interp_ok(())
@@ -743,9 +732,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         fd: DynFileDescriptionRef,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         offset: Option<i128>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 

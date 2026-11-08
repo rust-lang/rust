@@ -14,7 +14,9 @@ use rustc_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
 use crate::shims::FdId;
-use crate::shims::files::{DirHandle, DynFileDescriptionRef, FdNum, FileHandle, open_file_or_dir};
+use crate::shims::files::{
+    DirHandle, DynFileDescriptionRef, EvalContextExt as _, FdNum, FileHandle, open_file_or_dir,
+};
 use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
@@ -70,41 +72,29 @@ impl UnixFileDescription for FileHandle {
     fn pread<'tcx>(
         &self,
         communicate_allowed: bool,
-        offset: u64,
         ptr: Pointer,
-        len: usize,
+        len: u64,
+        offset: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         if !self.readable {
             return finish.call(ecx, Err(LibcError("EBADF")));
         }
 
-        let mut bytes = vec![0; len];
+        let file = &mut &self.file;
         // Emulates pread using seek + read + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
-        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
-        let file = &mut &self.file;
-        let mut f = || {
+        let result = ecx.read_from_host(ptr, len, |buf| {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
-            let res = file.read(&mut bytes);
+            let res = file.read(buf);
             // Attempt to restore cursor position even if the read has failed
             file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
             res
-        };
-        let result = match f() {
-            Ok(read_size) => {
-                // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                // Crucially, if fewer than `bytes.len()` bytes were read, only write
-                // that much into the output buffer!
-                ecx.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
-                Ok(read_size)
-            }
-            Err(e) => Err(IoError::HostError(e)),
-        };
+        })?;
         finish.call(ecx, result)
     }
 
@@ -112,32 +102,29 @@ impl UnixFileDescription for FileHandle {
         &self,
         communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         offset: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         if !self.writable {
             return finish.call(ecx, Err(LibcError("EBADF")));
         }
 
+        let file = &mut &self.file;
         // Emulates pwrite using seek + write + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
-        // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
-        let file = &mut &self.file;
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        let mut f = || {
+        let result = ecx.write_to_host(ptr, len, |buf| {
             let cursor_pos = file.stream_position()?;
             file.seek(SeekFrom::Start(offset))?;
-            let res = file.write(bytes);
+            let res = file.write(buf);
             // Attempt to restore cursor position even if the write has failed
             file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
             res
-        };
-        let result = f();
-        finish.call(ecx, result.map_err(IoError::HostError))
+        })?;
+        finish.call(ecx, result)
     }
 
     fn flock<'tcx>(

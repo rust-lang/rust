@@ -4,7 +4,7 @@
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
-use std::io::{self, ErrorKind, Read};
+use std::io::{self, ErrorKind, Read, Write};
 use std::net::SocketAddr;
 use std::rc::Rc;
 
@@ -23,7 +23,7 @@ use crate::*;
 /// The maximum capacity of the socketpair buffer in bytes.
 /// This number is arbitrary as the value can always
 /// be configured in the real system.
-const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 0x34000;
+const MAX_SOCKETPAIR_BUFFER_CAPACITY: u64 = 0x34000;
 
 #[derive(Debug, PartialEq)]
 enum VirtualSocketType {
@@ -123,9 +123,9 @@ impl FileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         ecx.virtual_socket_read(self, ptr, len, /* is_non_block */ false, finish)
     }
@@ -134,9 +134,9 @@ impl FileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         ecx.virtual_socket_write(self, ptr, len, /* is_non_block */ false, finish)
     }
@@ -176,7 +176,7 @@ impl FileDescription for VirtualSocket {
         // Check if is writable.
         if let Some(peer_fd) = self.peer_fd().upgrade() {
             if let Some(writebuf) = &peer_fd.readbuf {
-                let data_size = writebuf.borrow().buf.len();
+                let data_size = writebuf.borrow().buf.len().to_u64();
                 let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
                 if available_space != 0 {
                     readiness.writable = true;
@@ -272,13 +272,13 @@ impl UnixSocketFileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_non_block: bool,
         // For stream-based sockets `send` and `sendto` are equivalent and
         // we can thus ignore the destination address.
         _dest_addr: Option<SocketAddr>,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         ecx.virtual_socket_write(self, ptr, len, is_non_block, finish)
     }
@@ -287,11 +287,11 @@ impl UnixSocketFileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_peek: bool,
         is_non_block: bool,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
+        finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         if is_peek {
             throw_unsup_format!("socketpair: virtual sockets don't support peeking")
@@ -299,8 +299,8 @@ impl UnixSocketFileDescription for VirtualSocket {
 
         let finish = callback!(
             @capture<'tcx> {
-                finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
-            } |this, result: Result<usize, IoError>| {
+                finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
+            } |this, result: Result<u64, IoError>| {
                 // The source address of the data isn't available for stream-based sockets.
                 finish.call(this, result.map(|bytes| (bytes, None)))
             }
@@ -320,9 +320,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_non_block: bool,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -346,7 +346,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Let's see if we can write.
         let available_space =
-            MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
+            MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len().to_u64());
         if available_space == 0 {
             if socket.is_nonblock.get() || is_non_block {
                 // Non-blocking socketpair with a full buffer.
@@ -360,9 +360,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         @capture<'tcx> {
                             socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
-                            len: usize,
+                            len: u64,
                             is_non_block: bool,
-                            finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                            finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                         }
                         |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
@@ -381,7 +381,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Do full write / partial write based on the space available.
             let write_size = len.min(available_space);
             let actual_write_size =
-                this.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
+                this.write_to_host(ptr, write_size, |buf| writebuf.buf.write(buf))?.unwrap();
             assert_eq!(actual_write_size, write_size);
 
             // Need to stop accessing peer_fd so that it can be notified.
@@ -413,9 +413,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_non_block: bool,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -451,9 +451,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         @capture<'tcx> {
                             socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
-                            len: usize,
+                            len: u64,
                             is_non_block: bool,
-                            finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                            finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                         }
                         |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
@@ -472,7 +472,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Do full read / partial read based on the space available.
             // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-            let read_size = this.read_from_host(|buf| readbuf.buf.read(buf), len, ptr)?.unwrap();
+            let read_size = this.read_from_host(ptr, len, |buf| readbuf.buf.read(buf))?.unwrap();
             let readbuf_now_empty = readbuf.buf.is_empty();
 
             // Need to drop before others can access the readbuf again.
