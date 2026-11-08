@@ -393,7 +393,7 @@ fn oneshot_multi_thread_send_close_stress() {
 fn oneshot_multi_thread_recv_close_stress() {
     for _ in 0..stress_factor() {
         let (tx, rx) = channel::<i32>();
-        thread::spawn(move || {
+        let t1 = thread::spawn(move || {
             let res = thread::spawn(move || {
                 rx.recv().unwrap();
             })
@@ -405,6 +405,7 @@ fn oneshot_multi_thread_recv_close_stress() {
                 drop(tx);
             });
         });
+        t1.join().unwrap();
     }
 }
 
@@ -412,10 +413,11 @@ fn oneshot_multi_thread_recv_close_stress() {
 fn oneshot_multi_thread_send_recv_stress() {
     for _ in 0..stress_factor() {
         let (tx, rx) = channel::<Box<isize>>();
-        let _t = thread::spawn(move || {
+        let t = thread::spawn(move || {
             tx.send(Box::new(10)).unwrap();
         });
         assert!(*rx.recv().unwrap() == 10);
+        t.join().unwrap();
     }
 }
 
