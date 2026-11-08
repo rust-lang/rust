@@ -1,0 +1,54 @@
+error: expected parameter name, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces.rs:3:24
+   |
+LL | fn auto_traits(_: &dyn {Send + Sync}) {}
+   |                        ^ expected parameter name
+
+error: expected one of `!`, `(`, `)`, `,`, `?`, `[`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces.rs:3:24
+   |
+LL | fn auto_traits(_: &dyn {Send + Sync}) {}
+   |                       -^ expected one of 13 possible tokens
+   |                       |
+   |                       help: missing `,`
+
+error: expected parameter name, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces.rs:8:25
+   |
+LL | fn single_bound(_: &dyn {Send}) {}
+   |                         ^ expected parameter name
+
+error: expected one of `!`, `(`, `)`, `,`, `?`, `[`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces.rs:8:25
+   |
+LL | fn single_bound(_: &dyn {Send}) {}
+   |                        -^ expected one of 13 possible tokens
+   |                        |
+   |                        help: missing `,`
+
+error: expected one of `!`, `(`, `,`, `:`, `=`, `>`, `?`, `[`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces.rs:13:29
+   |
+LL | fn with_lifetime(_: Box<dyn {Send + 'static}>) {}
+   |                             ^ expected one of 15 possible tokens
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | fn with_lifetime(_: Box<dyn> {Send + 'static}>) {}
+   |                            +
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/dyn-trait-bounds-in-braces.rs:3:20
+   |
+LL | fn auto_traits(_: &dyn {Send + Sync}) {}
+   |                    ^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/dyn-trait-bounds-in-braces.rs:8:21
+   |
+LL | fn single_bound(_: &dyn {Send}) {}
+   |                     ^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0224`.
