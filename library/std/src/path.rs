@@ -1397,14 +1397,7 @@ impl PathBuf {
                     res.push(MAIN_SEPARATOR_STR);
                 }
                 res.push(c.as_os_str());
-
-                need_sep = match c {
-                    Component::RootDir => false,
-                    Component::Prefix(prefix) => {
-                        !prefix.parsed.is_drive() && prefix.parsed.len() > 0
-                    }
-                    _ => true,
-                }
+                need_sep = c != Component::RootDir;
             }
 
             self.inner = res;
