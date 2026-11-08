@@ -784,6 +784,14 @@ impl<'tcx> RegionInferenceContextInner<'tcx> {
             path[best_choice].category =
                 ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
             best_choice
+        } else if let ConstraintCategory::ClosureUpvar(field) = path[best_choice].category
+            && path
+                .iter()
+                .any(|p| matches!(p.category, ConstraintCategory::Return(ReturnConstraint::Normal)))
+        {
+            path[best_choice].category =
+                ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+            best_choice
         } else {
             best_choice
         };

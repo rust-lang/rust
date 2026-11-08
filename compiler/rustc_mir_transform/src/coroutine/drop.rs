@@ -2,7 +2,8 @@
 
 use super::*;
 
-// Fix return Poll<Rv>::Pending statement into Poll<()>::Pending for async drop function
+// Fix return `CoroutineState<Yv, Rv>::Yielded(..)` statement into
+// `CoroutineState<(), ()>::Yielded(const ())` for async drop function.
 struct FixReturnPendingVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
@@ -22,28 +23,15 @@ impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
             return;
         }
 
-        // Converting `_0 = Poll::<Rv>::Pending` to `_0 = Poll::<()>::Pending`
-        if let Rvalue::Aggregate(kind, _) = rvalue
-            && let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind
+        // Converting `_0 = CoroutineState::<Yv, Rv>::Yielded(v)`
+        // to `_0 = CoroutineState::<(), ()>::Yielded(v)`
+        if let Rvalue::Aggregate(kind, value_args) = rvalue
+            && let AggregateKind::Adt(_, _, ref mut generic_args, _, _) = **kind
         {
-            *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
-        } else if let Rvalue::Use(Operand::Constant(constant), _) = rvalue {
-            if let Some(async_gen_pending_def_id) = self.tcx.lang_items().async_gen_pending()
-                && let Const::Unevaluated(unevaluated, _) = constant.const_
-                && unevaluated.def == async_gen_pending_def_id
-            {
-                let poll_def_id = self.tcx.lang_items().poll().unwrap();
-                *rvalue = Rvalue::Aggregate(
-                    Box::new(AggregateKind::Adt(
-                        poll_def_id,
-                        VariantIdx::from_u32(1),
-                        self.tcx.mk_args(&[self.tcx.types.unit.into()]),
-                        None,
-                        None,
-                    )),
-                    IndexVec::new(),
-                );
-            }
+            *generic_args =
+                self.tcx.mk_args(&[self.tcx.types.unit.into(), self.tcx.types.unit.into()]);
+            value_args[FieldIdx::ZERO] =
+                Operand::zero_sized_constant(self.tcx.types.unit, rustc_span::DUMMY_SP);
         }
     }
 }
@@ -309,10 +297,11 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
         }
     }
 
-    // Replace the return variable: Poll<RetT> to Poll<()>
-    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, body.span));
-    let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
-    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
+    // Replace the return variable: CoroutineState<(), RetT> to CoroutineState<(), ()>
+    let state_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::CoroutineState, body.span));
+    let state_args = tcx.mk_args(&[tcx.types.unit.into(), tcx.types.unit.into()]);
+    let state_enum = Ty::new_adt(tcx, state_adt_ref, state_args);
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(state_enum, source_info);
 
     match transform.coroutine_kind {
         // Iterator::next doesn't accept a pinned argument,
@@ -340,10 +329,6 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);
 
-    if transform.coroutine_kind.is_async_desugaring() {
-        transform_async_context(tcx, &mut body);
-    }
-
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_async", &body) {
         dumper.dump_mir(&body);
     }
@@ -352,11 +337,10 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
 }
 
 // Create async drop shim proxy function for future_drop_poll
-// It is just { call coroutine_drop(); return Poll::Ready(); }
+// It is just { call coroutine_drop(); return CoroutineState::Complete(()); }
 pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    coroutine_kind: CoroutineKind,
 ) -> Body<'tcx> {
     let mut body = body.clone();
     // Take the coroutine info out of the body, since the drop shim is
@@ -371,15 +355,23 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
 
     let source_info = SourceInfo::outermost(body.span);
 
-    // Replace the return variable: Poll<RetT> to Poll<()>
-    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, body.span));
-    let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
-    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
+    // Replace the return variable: CoroutineState<(), RetT> to CoroutineState<(), ()>
+    let state_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::CoroutineState, body.span));
+    let state_args = tcx.mk_args(&[tcx.types.unit.into(), tcx.types.unit.into()]);
+    let state_enum = Ty::new_adt(tcx, state_adt_ref, state_args);
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(state_enum, source_info);
+
+    // Ensure the second argument is `ResumeTy`
+    let resume_ty_def_id = tcx.require_lang_item(LangItem::ResumeTy, body.span);
+    body.local_decls[Local::arg(1)] = LocalDecl::with_source_info(
+        Ty::new_adt(tcx, tcx.adt_def(resume_ty_def_id), ty::GenericArgs::empty()),
+        source_info,
+    );
 
     // call coroutine_drop()
     let call_bb = body.basic_blocks_mut().push(BasicBlockData::new(None, false));
 
-    // return Poll::Ready()
+    // return CoroutineState::Complete(())
     let ret_bb = insert_poll_ready_block(tcx, &mut body);
 
     let kind = TerminatorKind::Drop {
@@ -395,10 +387,6 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);
-
-    if coroutine_kind.is_async_desugaring() {
-        transform_async_context(tcx, &mut body);
-    }
 
     if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_proxy_async", &body) {
         dumper.dump_mir(&body);

@@ -8,7 +8,6 @@ use std::iter;
 
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_hir as hir;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
@@ -324,29 +323,11 @@ fn transform_closure_like<'tcx>(
                 tcx.instantiate_bound_regions_with_erased(closure_args.sig()).inputs()[0];
             (trait_id, None, Some(tuple_args))
         }
-        ty::Coroutine(_, args) => match tcx.coroutine_kind(instance.def_id()).unwrap_or_else(|| {
-            bug!("transform_closure_like: couldn't get coroutine kind of `{:?}`", instance.def_id())
-        }) {
-            hir::CoroutineKind::Coroutine(..) => (
-                tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
-                Some(tcx.require_lang_item(LangItem::CoroutineResume, DUMMY_SP)),
-                Some(args.as_coroutine().resume_ty()),
-            ),
-            hir::CoroutineKind::Desugared(desugaring, _) => {
-                let (trait_lang_item, call_method_lang_item) = match desugaring {
-                    hir::CoroutineDesugaring::Async => (LangItem::Future, LangItem::FuturePoll),
-                    hir::CoroutineDesugaring::AsyncGen => {
-                        (LangItem::AsyncIterator, LangItem::AsyncIteratorPollNext)
-                    }
-                    hir::CoroutineDesugaring::Gen => (LangItem::Iterator, LangItem::IteratorNext),
-                };
-                (
-                    tcx.require_lang_item(trait_lang_item, DUMMY_SP),
-                    Some(tcx.require_lang_item(call_method_lang_item, DUMMY_SP)),
-                    None,
-                )
-            }
-        },
+        ty::Coroutine(_, args) => (
+            tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
+            Some(tcx.require_lang_item(LangItem::CoroutineResume, DUMMY_SP)),
+            Some(args.as_coroutine().resume_ty()),
+        ),
         ty::CoroutineClosure(_, args) => (
             tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP),
             None,

@@ -782,8 +782,19 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let err = FnMutError {
             span: *span,
             ty_err: match output_ty.kind() {
-                ty::Coroutine(def, ..) if self.infcx.tcx.coroutine_is_async(*def) => {
-                    FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
+                ty::Adt(def, args)
+                    if let Some((did, _)) =
+                        self.infcx.tcx.try_unwrap_desugared_coroutine(output_ty) =>
+                {
+                    let coroutine_kind = self.infcx.tcx.coroutine_kind(did).unwrap();
+                    FnMutReturnTypeErr::ReturnAsyncBlock { span: *span, coroutine_kind }
+                }
+                ty::Coroutine(def, ..) => {
+                    let coroutine_kind = self.infcx.tcx.coroutine_kind(*def).unwrap();
+                    FnMutReturnTypeErr::ReturnAsyncBlock {
+                        span: *span,
+                        coroutine_kind: hir::CoroutineKind::Coroutine(coroutine_kind.movability()),
+                    }
                 }
                 _ if output_ty.contains_closure() => {
                     FnMutReturnTypeErr::ReturnClosure { span: *span }

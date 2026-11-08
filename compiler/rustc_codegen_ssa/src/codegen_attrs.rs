@@ -14,7 +14,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_span::{Span, bug};
+use rustc_span::{DesugaringKind, Span, bug};
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -353,12 +353,16 @@ fn is_desugared_body_coroutine(tcx: TyCtxt<'_>, did: LocalDefId) -> bool {
 /// Whether `did` is an `async fn`, `gen fn`, `async gen fn`, or `async` closure, i.e. its body
 /// does nothing but construct a [desugared body coroutine](is_desugared_body_coroutine).
 fn constructs_desugared_body_coroutine(tcx: TyCtxt<'_>, did: LocalDefId) -> bool {
-    tcx.hir_maybe_body_owned_by(did).is_some_and(|body| {
-        matches!(
-            body.value.kind,
-            hir::ExprKind::Closure(closure) if is_desugared_body_coroutine(tcx, closure.def_id)
-        )
-    })
+    if let Some(body) = tcx.hir_maybe_body_owned_by(did)
+        && body.value.span.is_desugaring(DesugaringKind::Async)
+        && let hir::ExprKind::Call(_, [closure]) = body.value.kind
+        && let hir::ExprKind::Closure(closure) = closure.kind
+        && is_desugared_body_coroutine(tcx, closure.def_id)
+    {
+        true
+    } else {
+        false
+    }
 }
 
 /// Applies overrides for codegen fn attrs. These often have a specific reason why they're necessary.

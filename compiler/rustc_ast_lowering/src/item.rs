@@ -1339,18 +1339,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         // FIXME(contracts): Support contracts on async fn.
         self.lower_body(|this| {
-            let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
-                decl,
-                |this| this.lower_block_expr(body),
-                fn_decl_span,
-                body.span,
-                coroutine_marker,
-                hir::CoroutineSource::Fn,
-            );
+            let (parameters, expr, coroutine_hir_id) = this
+                .lower_coroutine_body_with_moved_arguments(
+                    decl,
+                    |this| this.lower_block_expr(body),
+                    fn_decl_span,
+                    body.span,
+                    coroutine_marker,
+                    hir::CoroutineSource::Fn,
+                );
 
             // FIXME(async_fn_track_caller): Can this be moved above?
-            let hir_id = expr.hir_id;
-            this.maybe_forward_track_caller(fn_id, hir_id);
+            this.maybe_forward_track_caller(fn_id, coroutine_hir_id);
 
             (parameters, expr)
         })
@@ -1368,7 +1368,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_span: Span,
         coroutine_marker: CoroutineMarker,
         coroutine_source: hir::CoroutineSource,
-    ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>) {
+    ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>, HirId) {
         let mut parameters: Vec<hir::Param<'_>> = Vec::new();
         let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
 
@@ -1534,6 +1534,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             CoroutineKind::AsyncGen => hir::CoroutineDesugaring::AsyncGen,
         };
         let closure_id = coroutine_marker.closure_id;
+        let closure_hir_id = self.lower_node_id(closure_id);
 
         let coroutine_expr = self.make_desugared_coroutine_expr(
             // The default capture mode here is by-ref. Later on during upvar analysis,
@@ -1542,6 +1543,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // all async closures would default to `FnOnce` as their calling mode.
             CaptureBy::Ref,
             closure_id,
+            closure_hir_id,
             None,
             fn_decl_span,
             body_span,
@@ -1550,13 +1552,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             mkbody,
         );
 
-        let expr = hir::Expr {
-            hir_id: self.lower_node_id(closure_id),
-            kind: coroutine_expr,
-            span: self.lower_span(body_span),
-        };
-
-        (self.arena.alloc_from_iter(parameters), expr)
+        (self.arena.alloc_from_iter(parameters), coroutine_expr, closure_hir_id)
     }
 
     fn lower_method_sig(

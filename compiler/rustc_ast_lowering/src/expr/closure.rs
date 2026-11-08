@@ -317,16 +317,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Transform `async |x: u8| -> X { ... }` into
             // `|x: u8| || -> X { ... }`.
             let body_id = this.lower_body(|this| {
-                let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
-                    &inner_decl,
-                    |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
-                    fn_decl_span,
-                    body.span,
-                    coroutine_marker,
-                    hir::CoroutineSource::Closure,
-                );
+                let (parameters, expr, coroutine_hir_id) = this
+                    .lower_coroutine_body_with_moved_arguments(
+                        &inner_decl,
+                        |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
+                        fn_decl_span,
+                        body.span,
+                        coroutine_marker,
+                        hir::CoroutineSource::Closure,
+                    );
 
-                this.maybe_forward_track_caller(closure_hir_id, expr.hir_id);
+                this.maybe_forward_track_caller(closure_hir_id, coroutine_hir_id);
 
                 (parameters, expr)
             });
