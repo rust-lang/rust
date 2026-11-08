@@ -5,12 +5,12 @@ use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
-use crate::directives::line::{DirectiveLine, DirectivePayload, Error, ErrorKind};
+use crate::directives::line::{DirectiveLine, DirectivePayload, Error, ErrorKind, line_directive};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, EarlyValidationError,
     EarlyValidationErrorKind, Edition, EditionRange, FileDirectives, KNOWN_DIRECTIVE_NAMES_SET,
-    LineNumber, Location, extract_llvm_version, extract_version_range, line_directive,
-    parse_edition, parse_normalize_rule,
+    LineNumber, Location, extract_llvm_version, extract_version_range, parse_edition,
+    parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 

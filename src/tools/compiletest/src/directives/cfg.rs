@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock};
 
 use crate::common::{CompareMode, Config};
+use crate::directives::line::DirectivePayload;
 use crate::directives::{DirectiveLine, IgnoreDecision};
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
@@ -98,10 +99,12 @@ fn parse_cfg_name_directive<'a>(
     // FIXME(Zalathar): This currently allows either a space or a colon, and
     // treats any "value" after a colon as though it were a remark.
     // We should instead forbid the colon syntax for these directives.
-    let comment = line
-        .remark_after_space()
-        .or_else(|| line.value_after_colon())
-        .map(|c| c.trim().trim_start_matches('-').trim());
+    let comment = match line.payload {
+        Some(DirectivePayload::Value(comment) | DirectivePayload::Remark(comment)) => {
+            Some(comment.trim().trim_start_matches('-').trim())
+        }
+        _ => None,
+    };
 
     if let Some(cond) = conditions.conds.get(name) {
         ParsedNameDirective {
