@@ -16,7 +16,7 @@ use crate::directives::directive_names::{
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
-use crate::directives::line::DirectiveLine;
+use crate::directives::line::{DirectiveLine, DirectivePayload};
 use crate::directives::needs::PreparedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
@@ -29,8 +29,7 @@ mod cfg;
 mod directive_names;
 mod file;
 mod handlers;
-mod line;
-pub(crate) use line::line_directive;
+pub(crate) mod line;
 mod line_number;
 pub(crate) use line_number::LineNumber;
 mod needs;
@@ -469,7 +468,7 @@ pub(crate) fn validate_name<'a>(
         // If it looks like the user tried to put two directives on the same line
         // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
         // second "directive" would actually be ignored with no effect.
-        if let Some(remark) = directive_line.remark_after_space() {
+        if let Some(line::DirectivePayload::Remark(remark)) = directive_line.payload {
             let remark = remark.trim_start();
             let token = remark.split([':', ' ']).next().unwrap();
             if KNOWN_DIRECTIVE_NAMES_SET.contains(token) {
@@ -623,7 +622,7 @@ impl Config {
     fn parse_pp_exact(&self, line: &DirectiveLine<'_>) -> Option<Utf8PathBuf> {
         // Unusually, `//@ pp-exact` can be used with or without a colon, so to avoid a panic
         // in the parse method we need to make sure there is a colon before calling it.
-        if line.value_after_colon().is_some()
+        if let Some(DirectivePayload::Value(_)) = line.payload
             && let Some(s) = self.parse_name_value_directive(line, "pp-exact")
         {
             Some(Utf8PathBuf::from(&s))
@@ -645,8 +644,11 @@ impl Config {
             _ => return None,
         };
 
-        let Some((regex, replacement)) = line.value_after_colon().and_then(parse_normalize_rule)
-        else {
+        let rule = match line.payload {
+            Some(DirectivePayload::Value(rule)) => parse_normalize_rule(rule),
+            _ => None,
+        };
+        let Some((regex, replacement)) = rule else {
             error!("couldn't parse custom normalization rule: `{}`", line.display());
             help!("expected syntax is: `{name}: \"REGEX\" -> \"REPLACEMENT\"`");
             panic!("invalid normalization rule detected");
@@ -655,16 +657,18 @@ impl Config {
     }
 
     fn parse_name_directive(&self, line: &DirectiveLine<'_>, directive: &str) -> bool {
-        if line.name != directive {
+        let &DirectiveLine { file_path, line_number, name, payload, .. } = line;
+
+        if name != directive {
             return false;
         }
 
-        if line.value_after_colon().is_some() {
-            let &DirectiveLine { file_path, line_number, .. } = line;
+        if let Some(DirectivePayload::Value(_)) = payload {
             panic!(
                 "{file_path}:{line_number}: directive `{directive}` must not be followed by a colon"
             );
         }
+
         true
     }
 
@@ -673,15 +677,18 @@ impl Config {
         line: &DirectiveLine<'_>,
         directive: &str,
     ) -> Option<String> {
-        let &DirectiveLine { file_path, line_number, .. } = line;
+        let &DirectiveLine { file_path, line_number, payload, .. } = line;
 
         if line.name != directive {
             return None;
         };
 
-        let value = line.value_after_colon().unwrap_or_else(|| {
-            panic!("{file_path}:{line_number}: directive `{directive}` must be followed by a colon and value");
-        });
+        let Some(DirectivePayload::Value(value)) = payload else {
+            panic!(
+                "{file_path}:{line_number}: \
+                directive `{directive}` must be followed by a colon and value"
+            );
+        };
         debug!("{}: {}", directive, value);
         let value = expand_variables(value.to_owned(), self);
 
@@ -1038,8 +1045,9 @@ fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
     if let Some(actual_version) = config.cdb_version {
         if line.name == "min-cdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
+            let rest = rest.trim();
             let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
                 panic!("couldn't parse version range: {:?}", rest);
             });
@@ -1071,8 +1079,9 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
     if let Some(actual_version) = config.gdb_version {
         if line.name == "min-gdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
+            let rest = rest.trim();
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
                     panic!("couldn't parse version range: {:?}", rest);
@@ -1089,8 +1098,9 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
                 };
             }
         } else if line.name == "ignore-gdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
+            let rest = rest.trim();
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
                     panic!("couldn't parse version range: {:?}", rest);
@@ -1132,9 +1142,10 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
     if let Some(actual_version) = &config.lldb_version {
         match (line.name, actual_version) {
             ("min-apple-lldb-version", LldbVersion::Apple(vers)) => {
-                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
+                let rest = rest.trim();
 
                 let LldbVersion::Apple(min_vers) = LldbVersion::apple_from_str(rest) else {
                     unreachable!()
@@ -1150,9 +1161,10 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
                 }
             }
             ("min-llvm-lldb-version", LldbVersion::Llvm(vers)) => {
-                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
+                let rest = rest.trim();
 
                 let LldbVersion::Llvm(min_vers) = LldbVersion::llvm_from_str(rest) else {
                     unreachable!()
