@@ -308,7 +308,7 @@ pub trait Machine<'tcx>: Sized {
     }
 
     /// Generate a non-deterministic index iterator.
-    fn nondet_index_iterator(
+    fn unordered_float_reduction_iter(
         _ecx: &mut InterpCx<'tcx, Self>,
         len: u64,
     ) -> impl Iterator<Item = u64> + use<'tcx, Self> {

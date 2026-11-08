@@ -408,7 +408,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 let mut res = init;
-                for i in M::nondet_index_iterator(self, op_len) {
+                for i in M::unordered_float_reduction_iter(self, op_len) {
                     let op = self.read_immediate(&self.project_index(&op, i)?)?;
                     res = self.binary_op(mir_op, &res, &op)?;
                     if dest.layout.ty.is_floating_point() {

@@ -1436,7 +1436,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn nondet_index_iterator(ecx: &mut InterpCx<'tcx, Self>, len: u64) -> impl Iterator<Item = u64> + use<'tcx> {
+    fn unordered_float_reduction_iter(ecx: &mut InterpCx<'tcx, Self>, len: u64) -> impl Iterator<Item = u64> + use<'tcx> {
         let mut indices = (0..len).collect::<Vec<u64>>();
         if ecx.machine.float_nondet {
             indices.shuffle(&mut ecx.machine.rng.borrow_mut());
