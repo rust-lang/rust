@@ -443,22 +443,38 @@ impl TestProps {
     }
 }
 
-pub(crate) fn do_early_directives_check(
+pub(crate) fn validate_name(
     mode: TestMode,
     file_directives: &FileDirectives<'_>,
 ) -> Result<(), String> {
     let testfile = file_directives.path;
 
-    for directive_line @ DirectiveLine { line_number, .. } in &file_directives.lines {
-        let CheckDirectiveResult { is_known_directive, trailing_directive } =
-            check_directive(directive_line, mode);
+    for directive_line @ DirectiveLine { name, line_number, .. } in &file_directives.lines {
+        let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(name)
+            || match mode {
+                TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(name),
+                TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(name),
+                _ => false,
+            };
 
         if !is_known_directive {
+            // FIXME(Zalathar): Consider emitting specialized error/help messages for
+            // bogus directive names that are similar to real ones, e.g.:
+            // - *`compiler-flags` => `compile-flags`
+            // - *`compile-fail` => `check-fail` or `build-fail`
             return Err(format!(
                 "ERROR: unknown compiletest directive `{directive}` at {testfile}:{line_number}",
                 directive = directive_line.display(),
             ));
         }
+
+        // If it looks like the user tried to put two directives on the same line
+        // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
+        // second "directive" would actually be ignored with no effect.
+        let trailing_directive = directive_line
+            .remark_after_space()
+            .map(|remark| remark.trim_start().split(' ').next().unwrap())
+            .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
 
         if let Some(trailing_directive) = &trailing_directive {
             return Err(format!(
@@ -469,40 +485,6 @@ pub(crate) fn do_early_directives_check(
     }
 
     Ok(())
-}
-
-pub(crate) struct CheckDirectiveResult<'ln> {
-    is_known_directive: bool,
-    trailing_directive: Option<&'ln str>,
-}
-
-fn check_directive<'a>(
-    directive_ln: &DirectiveLine<'a>,
-    mode: TestMode,
-) -> CheckDirectiveResult<'a> {
-    let &DirectiveLine { name: directive_name, .. } = directive_ln;
-
-    let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
-        || match mode {
-            TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
-            TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
-            _ => false,
-        };
-
-    // If it looks like the user tried to put two directives on the same line
-    // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
-    // second "directive" would actually be ignored with no effect.
-    let trailing_directive = directive_ln
-        .remark_after_space()
-        .map(|remark| remark.trim_start().split(' ').next().unwrap())
-        .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
-
-    // FIXME(Zalathar): Consider emitting specialized error/help messages for
-    // bogus directive names that are similar to real ones, e.g.:
-    // - *`compiler-flags` => `compile-flags`
-    // - *`compile-fail` => `check-fail` or `build-fail`
-
-    CheckDirectiveResult { is_known_directive, trailing_directive }
 }
 
 fn iter_directives(
