@@ -2214,11 +2214,40 @@ fn indexing_code_suggestion(
         return None;
     }
 
+    let source_map = tcx.sess.source_map();
+
     let (span, from_expansion) =
         source_span_for_markdown_range(tcx, dox, &range, &diag_info.item.attrs.doc_strings)?;
 
-    if from_expansion || tcx.sess.source_map().span_to_snippet(span).ok()?.as_str() != code {
+    // The replacement must cover exactly the recognized expression.
+    let snippet = source_map.span_to_snippet(span).ok()?;
+    if snippet.as_str() != code {
         return None;
+    }
+
+    if from_expansion {
+        // Do not suggest editing a dependency's macro definition.
+        if span.in_external_macro(source_map) || source_map.is_imported(span) {
+            return None;
+        }
+
+        // Expanded docs may be assembled from tokens rather than a source literal.
+        // Only accept an exact, unescaped string literal.
+        let in_plain_doc_literal = diag_info.item.attrs.doc_strings.iter().any(|fragment| {
+            if let rustc_ast::token::DocFragmentKind::Raw(value_span) = fragment.kind
+                && value_span.contains(span)
+                && let Ok(literal) = source_map.span_to_snippet(value_span)
+                && let Some(contents) = literal.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+            {
+                !contents.contains(['\\', '"']) && contents == fragment.doc.as_str()
+            } else {
+                false
+            }
+        });
+
+        if !in_plain_doc_literal {
+            return None;
+        }
     }
 
     Some((span, format!("`{code}`")))

@@ -22,9 +22,10 @@ LL | /// See [DefinitelyMissingType].
    |          ^^^^^^^^^^^^^^^^^^^^^ no item named `DefinitelyMissingType` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[DefinitelyMissingType]: https://...`
 
 error: unresolved link to `0`
-  --> $DIR/code-snippet-backticks-issue-132788.rs:18:16
+  --> $DIR/code-snippet-backticks-issue-132788.rs:19:16
    |
 LL | /// Access arr[0].
    |                ^ no item named `0` in scope
@@ -36,7 +37,7 @@ LL + /// Access `arr[0]`.
    |
 
 error: unresolved link to `idx`
-  --> $DIR/code-snippet-backticks-issue-132788.rs:24:22
+  --> $DIR/code-snippet-backticks-issue-132788.rs:25:22
    |
 LL | /// Access state.arr[idx].
    |                      ^^^ no item named `idx` in scope
@@ -48,7 +49,7 @@ LL + /// Access `state.arr[idx]`.
    |
 
 error: unresolved link to `idx`
-  --> $DIR/code-snippet-backticks-issue-132788.rs:29:24
+  --> $DIR/code-snippet-backticks-issue-132788.rs:30:24
    |
 LL | /// Access module::ARR[idx].
    |                        ^^^ no item named `idx` in scope
@@ -60,12 +61,13 @@ LL + /// Access `module::ARR[idx]`.
    |
 
 error: unresolved link to `idx`
-  --> $DIR/code-snippet-backticks-issue-132788.rs:35:24
+  --> $DIR/code-snippet-backticks-issue-132788.rs:36:24
    |
 LL | /// Access state:::arr[idx].
    |                        ^^^ no item named `idx` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[idx]: https://...`
 
 error: aborting due to 6 previous errors
 

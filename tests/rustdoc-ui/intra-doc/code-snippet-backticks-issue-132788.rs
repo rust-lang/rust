@@ -12,6 +12,7 @@ pub struct AlreadyFormattedIndexing;
 /// See [DefinitelyMissingType].
 //~^ ERROR unresolved link to `DefinitelyMissingType`
 //~| HELP to escape `[` and `]` characters
+//~| HELP if you intended to link to external documentation
 pub struct OrdinaryBrokenLink;
 
 
@@ -35,4 +36,5 @@ pub struct QualifiedPathIndexing;
 /// Access state:::arr[idx].
 //~^ ERROR unresolved link to `idx`
 //~| HELP to escape `[` and `]` characters
+//~| HELP if you intended to link to external documentation
 pub struct MalformedReceiver;
