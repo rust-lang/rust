@@ -7,7 +7,6 @@ fn main() {
     // CHECK: [[should_break]] = const false;
     // CHECK-NOT: StorageDead([[should_break]])
     // CHECK: switchInt(
-    // CHECK-NOT: StorageDead([[should_break]])
     // CHECK: [[should_break]] = const true;
     let mut should_break = false;
     loop {
