@@ -63,16 +63,6 @@ impl<C> Header<C> {
     }
 
     #[inline]
-    pub(super) fn try_allocate_zeroed_for_type<A, T>(
-        alloc: &A,
-    ) -> Result<RcValuePointer<T>, AllocError>
-    where
-        A: Allocator,
-    {
-        Ok(try_allocate_zeroed(alloc, RcLayout::new::<Self, T>())?.unerase())
-    }
-
-    #[inline]
     pub(super) fn try_allocate_from_cloning<A, T>(
         alloc: &A,
         value: &T,
@@ -105,25 +95,6 @@ impl<C> Header<C> {
         allocate_uninit(alloc, RcLayout::new::<Self, T>()).unerase()
     }
 
-    /// # Safety
-    ///
-    /// Caller must ensure that `T` is small enough to store inside a reference counted allocation
-    /// with header of type `Self`.
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    pub(super) unsafe fn allocate_uninit_for_value_unchecked<A, T>(
-        alloc: &A,
-        value: &T,
-    ) -> RcValuePointer<T>
-    where
-        A: Allocator,
-        T: ?Sized,
-    {
-        // SAFETY: Caller guarantees we are safe to calculate the allocation layout.
-        allocate_uninit(alloc, unsafe { RcLayout::from_value_unchecked::<Self, T>(value) })
-            .unerase_with(ptr::metadata(value))
-    }
-
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub(super) fn allocate_uninit_slice<A, T>(alloc: &A, length: usize) -> RcValuePointer<[T]>
@@ -131,24 +102,6 @@ impl<C> Header<C> {
         A: Allocator,
     {
         allocate_uninit(alloc, RcLayout::new_array::<Self, T>(length)).unerase_with(length)
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    pub(super) fn allocate_zeroed_for_type<A, T>(alloc: &A) -> RcValuePointer<T>
-    where
-        A: Allocator,
-    {
-        allocate_zeroed(alloc, RcLayout::new::<Self, T>()).unerase()
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    #[inline]
-    pub(super) fn allocate_zeroed_slice<A, T>(alloc: &A, length: usize) -> RcValuePointer<[T]>
-    where
-        A: Allocator,
-    {
-        allocate_zeroed(alloc, RcLayout::new_array::<Self, T>(length)).unerase_with(length)
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -384,25 +337,6 @@ where
     }))
 }
 
-/// Tries to allocate zeroed memory for a reference-counted allocation using allocator
-/// `alloc` and layout `rc_layout`. Returns a pointer to the value location.
-#[inline]
-fn try_allocate_zeroed<A>(
-    alloc: &A,
-    rc_layout: RcLayout,
-) -> Result<ErasedRcValuePointer, AllocError>
-where
-    A: Allocator,
-{
-    let allocation_ptr = alloc.allocate_zeroed(rc_layout.layout())?;
-
-    // SAFETY: `allocation_ptr` is allocated with `rc_layout`, so we can safely acquire a pointer to
-    // the value.
-    Ok(ErasedRcValuePointer::new(unsafe {
-        allocation_ptr.cast().byte_add(rc_layout.value_offset())
-    }))
-}
-
 /// Tries to allocate a reference-counted memory chunk for storing a value according to `rc_layout`,
 /// then initializes the value with `f`. If `f` panics, the allocated memory will be deallocated.
 #[inline(always)]
@@ -436,21 +370,6 @@ where
     A: Allocator,
 {
     match try_allocate_uninit(alloc, rc_layout) {
-        Ok(result) => result,
-        Err(_) => alloc::handle_alloc_error(rc_layout.layout()),
-    }
-}
-
-/// Allocates zeroed memory for a reference-counted allocation using allocator `alloc` and
-/// layout `rc_layout`. Returns a pointer to the value location. If the allocation fails, panic will
-/// be triggered by calling `alloc::handle_alloc_error`.
-#[cfg(not(no_global_oom_handling))]
-#[inline]
-fn allocate_zeroed<A>(alloc: &A, rc_layout: RcLayout) -> ErasedRcValuePointer
-where
-    A: Allocator,
-{
-    match try_allocate_zeroed(alloc, rc_layout) {
         Ok(result) => result,
         Err(_) => alloc::handle_alloc_error(rc_layout.layout()),
     }
