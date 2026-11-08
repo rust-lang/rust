@@ -808,6 +808,8 @@ impl<BorrowType: marker::BorrowType, K, V>
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Returns the leaf edge corresponding to the first point at which the
     /// given bound is true.
+    ///
+    /// This method assumes that your search starts from the root node.
     pub(super) fn lower_bound<Q: ?Sized>(
         self,
         mut bound: SearchBound<&Q>,
@@ -829,8 +831,85 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         }
     }
 
+    /// Returns the leaf edge corresponding to the first point at which the
+    /// given bound is true.
+    pub(super) fn lower_bound_from_node<Q: ?Sized>(
+        self,
+        mut bound: SearchBound<&Q>,
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
+    where
+        Q: Ord,
+        K: Borrow<Q>,
+    {
+        let mut node = self;
+        let mut go_down = false;
+        loop {
+            let max_edge_idx = node.len();
+            let (edge, new_bound) = node.find_lower_bound_edge(bound);
+            // find_lower_bound_edge found a key with the exact match to the bound,
+            // we want to go down from here
+            if matches!(new_bound, SearchBound::AllExcluded)
+                || matches!(new_bound, SearchBound::AllIncluded)
+            {
+                go_down = true;
+            }
+            match edge.force() {
+                Leaf(edge) => {
+                    let edge_idx = edge.idx();
+                    if !go_down && (edge_idx == 0 || edge_idx == max_edge_idx) {
+                        match edge.into_node().ascend() {
+                            Ok(parent_node) => {
+                                node = parent_node.into_node().forget_type();
+                                bound = new_bound;
+                                continue;
+                            }
+                            // SAFETY: NodeRef::ascend gives us back the original `NodeRef` when there's no
+                            // parent node; that means we're at root node, where we should just return the
+                            // edge directly instead of going up to find a node that fits the SearchBound
+                            Err(current) => return unsafe { Handle::new_edge(current, edge_idx) },
+                        }
+                    }
+                    return edge;
+                }
+                Internal(edge) => {
+                    let edge_idx = edge.idx();
+                    // When we're at an internal node, we can be sure of a couple things:
+                    //      - when our edge_idx is not 0 or at the end of the node
+                    //        we can ascertain that we want to descend down this edge
+                    //        because we can find a KV pair that fits the search bound
+                    //      - otherwise, we may need to go up in case there exists a separate
+                    //        subtree that fits the search bound
+                    if !go_down && (edge_idx == 0 || edge_idx == max_edge_idx) {
+                        match edge.into_node().ascend() {
+                            Ok(parent_node) => {
+                                node = parent_node.into_node().forget_type();
+                                bound = new_bound;
+                            }
+                            Err(current) => {
+                                // SAFETY: NodeRef::ascend gives us back the original `NodeRef` when there's no
+                                // parent node; that means we're at root node, which is an internal node, we
+                                // should descend from this node directly instead of going up to find a node that
+                                // fits the SearchBound
+                                node = unsafe { Handle::new_edge(current, edge_idx) }.descend();
+                                bound = new_bound;
+                                go_down = true;
+                            }
+                        }
+                        continue;
+                    }
+
+                    node = edge.descend();
+                    bound = new_bound;
+                    go_down = true;
+                }
+            }
+        }
+    }
+
     /// Returns the leaf edge corresponding to the last point at which the
     /// given bound is true.
+    ///
+    /// This method assumes that your search starts from the root node.
     pub(super) fn upper_bound<Q: ?Sized>(
         self,
         mut bound: SearchBound<&Q>,
@@ -847,6 +926,81 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
                 Internal(edge) => {
                     node = edge.descend();
                     bound = new_bound;
+                }
+            }
+        }
+    }
+
+    /// Returns the leaf edge corresponding to the first point at which the
+    /// given bound is true.
+    pub(super) fn upper_bound_from_node<Q: ?Sized>(
+        self,
+        mut bound: SearchBound<&Q>,
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
+    where
+        Q: Ord,
+        K: Borrow<Q>,
+    {
+        let mut node = self;
+        let mut go_down = false;
+        loop {
+            let max_edge_idx = node.len();
+            let (edge, new_bound) = node.find_upper_bound_edge(bound);
+            // find_upper_bound_edge found a key with the exact match to the bound,
+            // we want to go down from here
+            if matches!(new_bound, SearchBound::AllExcluded)
+                || matches!(new_bound, SearchBound::AllIncluded)
+            {
+                go_down = true;
+            }
+            match edge.force() {
+                Leaf(edge) => {
+                    let edge_idx = edge.idx();
+                    if !go_down && (edge_idx == 0 || edge_idx == max_edge_idx) {
+                        match edge.into_node().ascend() {
+                            Ok(parent_node) => {
+                                node = parent_node.into_node().forget_type();
+                                bound = new_bound;
+                                continue;
+                            }
+                            // SAFETY: NodeRef::ascend gives us back the original `NodeRef` when there's no
+                            // parent node; that means we're at root node, where we should just return the
+                            // edge directly instead of going up to find a node that fits the SearchBound
+                            Err(current) => return unsafe { Handle::new_edge(current, edge_idx) },
+                        }
+                    }
+                    return edge;
+                }
+                Internal(edge) => {
+                    let edge_idx = edge.idx();
+                    // When we're at an internal node, we can be sure of a couple things:
+                    //      - when our edge_idx is not 0 or at the end of the node
+                    //        we can ascertain that we want to descend down this edge
+                    //        because we can find a KV pair that fits the search bound
+                    //      - otherwise, we may need to go up in case there exists a separate
+                    //        subtree that fits the search bound
+                    if !go_down && (edge_idx == 0 || edge_idx == max_edge_idx) {
+                        match edge.into_node().ascend() {
+                            Ok(parent_node) => {
+                                node = parent_node.into_node().forget_type();
+                                bound = new_bound;
+                            }
+                            Err(current) => {
+                                // SAFETY: NodeRef::ascend gives us back the original `NodeRef` when there's no
+                                // parent node; that means we're at root node, which is an internal node, we
+                                // should descend from this node directly instead of going up to find a node that
+                                // fits the SearchBound
+                                node = unsafe { Handle::new_edge(current, edge_idx) }.descend();
+                                bound = new_bound;
+                                go_down = true;
+                            }
+                        }
+                        continue;
+                    }
+
+                    node = edge.descend();
+                    bound = new_bound;
+                    go_down = true;
                 }
             }
         }
