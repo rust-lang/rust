@@ -1354,13 +1354,15 @@ impl PathBuf {
             need_sep = false
         }
 
+        let path_comps = path.components();
+
         let need_clear = if cfg!(target_os = "cygwin") {
             // If path is absolute and its prefix is none, it is like `/foo`,
             // and will be handled below.
-            path.prefix().is_some()
+            path_comps.prefix.is_some()
         } else {
             // On Unix: prefix is always None.
-            path.is_absolute() || path.prefix().is_some()
+            path.is_absolute() || path_comps.prefix.is_some()
         };
 
         // absolute `path` replaces `self`
@@ -1370,7 +1372,7 @@ impl PathBuf {
         // verbatim paths need . and .. removed
         } else if self_comps.prefix_verbatim() && !path.inner.is_empty() {
             let mut buf: Vec<_> = self_comps.collect();
-            for c in path.components() {
+            for c in path_comps {
                 match c {
                     Component::RootDir => {
                         buf.truncate(1);
@@ -1408,7 +1410,7 @@ impl PathBuf {
             return;
 
         // `path` has a root but no prefix, e.g., `\windows` (Windows only)
-        } else if path.has_root() {
+        } else if path_comps.has_root() {
             let prefix_len = self.components().prefix_remaining();
             self.inner.truncate(prefix_len);
 
