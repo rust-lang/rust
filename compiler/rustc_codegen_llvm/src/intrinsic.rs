@@ -2865,7 +2865,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     macro_rules! arith_red {
-        ($name:ident : $integer_reduce:ident, $float_reduce:ident, $ordered:expr, $op:ident,
+        ($name:ident : $integer_reduce:ident, $float_reduce:ident, $ordered:expr, $int:expr, $op:ident,
          $identity:expr) => {
             if name == sym::$name {
                 require!(
@@ -2873,7 +2873,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
-                    ty::Int(_) | ty::Uint(_) => {
+                    ty::Int(_) | ty::Uint(_) if $int => {
                         let r = bx.$integer_reduce(args[0].immediate());
                         if $ordered {
                             // if overflow occurs, the result is the
@@ -2920,12 +2920,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
     }
 
-    arith_red!(simd_reduce_add_ordered: vector_reduce_add, vector_reduce_fadd, true, add, -0.0);
-    arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, true, mul, 1.0);
+    arith_red!(simd_reduce_add_ordered: vector_reduce_add, vector_reduce_fadd, true, true, add, -0.0);
+    arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, true, true, mul, 1.0);
     arith_red!(
         simd_reduce_add_unordered: vector_reduce_add,
         vector_reduce_fadd_reassoc,
         false,
+        true,
         add,
         -0.0
     );
@@ -2933,6 +2934,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_reduce_mul_unordered: vector_reduce_mul,
         vector_reduce_fmul_reassoc,
         false,
+        true,
         mul,
         1.0
     );
@@ -2940,12 +2942,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_reduce_add_algebraic: vector_reduce_add,
         vector_reduce_fadd_algebraic,
         false,
+        false,
         add,
         0.0
     );
     arith_red!(
         simd_reduce_mul_algebraic: vector_reduce_mul,
         vector_reduce_fmul_algebraic,
+        false,
         false,
         mul,
         1.0

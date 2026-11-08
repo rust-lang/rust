@@ -388,6 +388,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::simd_reduce_add_algebraic | sym::simd_reduce_mul_algebraic => {
                 use mir::BinOp;
 
+                if !dest.layout.ty.is_floating_point() {
+                    span_bug!(self.cur_span(), "algebraic reduction requires a float vector");
+                }
+
                 let (op, op_len) = self.project_to_simd(&args[0])?;
 
                 // Compute starting value and reduction MIR op
@@ -407,9 +411,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 for i in M::unordered_float_reduction_iter(self, op_len) {
                     let op = self.read_immediate(&self.project_index(&op, i)?)?;
                     res = self.binary_op(mir_op, &res, &op)?;
-                    if dest.layout.ty.is_floating_point() {
-                        res = M::apply_float_nondet(self, res)?;
-                    }
+                    res = M::apply_float_nondet(self, res)?;
                 }
                 self.write_immediate(*res, &dest)?;
             }

@@ -668,7 +668,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_add_unordered | sym::simd_reduce_add_algebraic => {
+        sym::simd_reduce_add_unordered => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             // FIXME there must be no acc param for integer vectors
@@ -685,6 +685,26 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 } else {
                     fx.bcx.ins().iadd(a, b)
                 }
+            });
+        }
+
+        sym::simd_reduce_add_algebraic => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            if !v.layout().ty.simd_size_and_type(fx.tcx).1.is_floating_point() {
+                fx.tcx.dcx().span_err(span, "algebraic reduction requires a float vector");
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, _lane_ty, a, b| {
+                codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                    fx.bcx.ins().fadd(a, b)
+                })
             });
         }
 
@@ -709,7 +729,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_mul_unordered | sym::simd_reduce_mul_algebraic => {
+        sym::simd_reduce_mul_unordered => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             // FIXME there must be no acc param for integer vectors
@@ -726,6 +746,26 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 } else {
                     fx.bcx.ins().imul(a, b)
                 }
+            });
+        }
+
+        sym::simd_reduce_mul_algebraic => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            if !v.layout().ty.simd_size_and_type(fx.tcx).1.is_floating_point() {
+                fx.tcx.dcx().span_err(span, "algebraic reduction requires a float vector");
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, _lane_ty, a, b| {
+                codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                    fx.bcx.ins().fmul(a, b)
+                })
             });
         }
 

@@ -505,7 +505,7 @@ pub unsafe fn simd_reduce_add_unordered<T, U>(x: T) -> U;
 
 /// Adds elements within a vector, allowing optimizations based on algebraic rules.
 ///
-/// `T` must be a vector of integers or floats.
+/// `T` must be a vector of floats.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -535,7 +535,7 @@ pub unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
 
 /// Multiplies elements within a vector, allowing optimizations based on algebraic rules.
 ///
-/// `T` must be a vector of integers or floats.
+/// `T` must be a vector of floats.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
