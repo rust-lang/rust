@@ -211,6 +211,7 @@ diagnostics![AnyDiagnostic<'db> ->
     YieldOutsideCoroutine,
     ReturnOutsideFunction,
     MatchInheritedImmRefWithMutRefPat,
+    UnresolvedAssociatedType,
 ];
 
 #[derive(Debug)]
@@ -737,6 +738,11 @@ pub enum InvalidPatPathResKind {
 pub struct InvalidPatPathRes {
     pub pat: InFile<ExprOrPatPtr>,
     pub kind: InvalidPatPathResKind,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedAssociatedType {
+    pub segment: InFile<AstPtr<ast::PathSegment>>,
 }
 
 pub(crate) struct DiagnosticsCollector<'a, 'db> {
@@ -2081,6 +2087,11 @@ impl<'db> AnyDiagnostic<'db> {
                 let segment = hir_segment_to_ast_segment(&path.value, segment)?;
                 let segment = path.with_value(AstPtr::new(&segment));
                 GenericDefaultRefersToSelf { segment }.into()
+            }
+            PathLoweringDiagnostic::UnresolvedAssociatedType { segment } => {
+                let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+                let segment = path.with_value(AstPtr::new(&segment));
+                UnresolvedAssociatedType { segment }.into()
             }
         })
     }
