@@ -77,8 +77,6 @@ jobs:
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        # /tmp is a small tmpfs, and rustdoc keeps every compiled doctest there until the run ends.
-        echo "TMPDIR=$RUNNER_TEMP" >> $GITHUB_ENV
 
     - name: Prepare
       if: ${{ matrix.run_cargo_tests }}
@@ -112,6 +110,12 @@ jobs:
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.sh prepare
+
+    - name: Check out rust-lang/rust
+      if: ${{ contains(matrix.commands, '-rustc') }}
+      uses: ./.github/actions/checkout-rust
+      with:
+        path: rust/compiler/rustc_codegen_gcc
 
     - name: Run tests
       run: |
@@ -253,6 +257,11 @@ jobs:
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.sh prepare
+
+    - name: Check out rust-lang/rust
+      uses: ./.github/actions/checkout-rust
+      with:
+        path: rust/compiler/rustc_codegen_gcc
 
     - name: Run tests
       run: |

@@ -10,9 +10,9 @@ use boml::Toml;
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    create_dir, get_sysroot_dir, get_toolchain, git_clone, git_clone_root_dir, remove_file,
-    run_command, run_command_with_env, run_command_with_output, run_command_with_output_and_env,
-    run_command_with_output_and_env_no_err, rustc_version_info, split_args, walk_dir,
+    create_dir, get_sysroot_dir, get_toolchain, git_clone_root_dir, remove_file, run_command,
+    run_command_with_env, run_command_with_output, run_command_with_output_and_env,
+    run_command_with_output_and_env_no_err, setup_rustc_folder, split_args, walk_dir,
 };
 
 /// Exit code of `y.sh test` when the tests ran and reported failures, as opposed to the build
@@ -72,24 +72,16 @@ fn get_number_after_arg(
 }
 
 fn show_usage() {
-    println!(
-        r#"
-`test` command help:
-
-    --features [arg]       : Add a new feature [arg]
-    --use-system-gcc       : Use system installed libgccjit
-    --build-only           : Only build rustc_codegen_gcc then exits
-    --nb-parts             : Used to split rustc_tests (for CI needs)
-    --current-part         : Used with `--nb-parts`, allows you to specify which parts to test"#
-    );
-    ConfigInfo::show_usage();
-    for (option, (doc, _)) in get_runners() {
-        // FIXME: Instead of using the hard-coded `23` value, better to compute it instead.
-        let needed_spaces = 23_usize.saturating_sub(option.len());
-        let spaces: String = std::iter::repeat_n(' ', needed_spaces).collect();
-        println!("    {option}{spaces}: {doc}");
-    }
-    println!("    --help                 : Show this help");
+    println!("`test` command help:\n");
+    let mut options = vec![
+        ("--use-system-gcc", "Use system installed libgccjit"),
+        ("--build-only", "Only build rustc_codegen_gcc then exits"),
+        ("--nb-parts", "Used to split rustc_tests (for CI needs)"),
+        ("--current-part", "Used with `--nb-parts`, allows you to specify which parts to test"),
+    ];
+    options.extend(ConfigInfo::usage());
+    options.extend(get_runners().into_iter().map(|(option, (doc, _))| (option, doc)));
+    crate::utils::show_help_with_indent(options, true);
 }
 
 #[derive(Default, Debug)]
@@ -549,33 +541,16 @@ fn get_llvm_filecheck(env: &Env) -> Result<String, String> {
 }
 
 fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
+    let rust_dir = setup_rustc_folder(env)?;
+
     let toolchain = format!(
         "+{channel}-{host}",
         channel = get_toolchain()?, // May also include date
         host = args.config_info.host_triple
     );
-    let rust_dir_path = Path::new(crate::BUILD_DIR).join("rust");
-    // If the repository was already cloned, command will fail, so doesn't matter.
-    let _ = git_clone("https://github.com/rust-lang/rust.git", Some(&rust_dir_path), false);
-    let rust_dir: Option<&Path> = Some(&rust_dir_path);
-    run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
-    run_command_with_output_and_env(&[&"git", &"fetch"], rust_dir, Some(env))?;
-    let rustc_commit = match rustc_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
-        Some(commit_hash) => commit_hash,
-        None => return Err("Couldn't retrieve rustc commit hash".to_string()),
-    };
-    if rustc_commit != "unknown" {
-        run_command_with_output_and_env(
-            &[&"git", &"checkout", &rustc_commit],
-            rust_dir,
-            Some(env),
-        )?;
-    } else {
-        run_command_with_output_and_env(&[&"git", &"checkout"], rust_dir, Some(env))?;
-    }
 
     let cargo = String::from_utf8(
-        run_command_with_env(&[&"rustup", &"which", &"cargo"], rust_dir, Some(env))?.stdout,
+        run_command_with_env(&[&"rustup", &"which", &"cargo"], Some(&rust_dir), Some(env))?.stdout,
     )
     .map_err(|error| format!("Failed to retrieve cargo path: {error:?}"))
     .and_then(|cargo| {
@@ -583,8 +558,12 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         if cargo.is_empty() { Err("`cargo` path is empty".to_string()) } else { Ok(cargo) }
     })?;
     let rustc = String::from_utf8(
-        run_command_with_env(&[&"rustup", &toolchain, &"which", &"rustc"], rust_dir, Some(env))?
-            .stdout,
+        run_command_with_env(
+            &[&"rustup", &toolchain, &"which", &"rustc"],
+            Some(&rust_dir),
+            Some(env),
+        )?
+        .stdout,
     )
     .map_err(|error| format!("Failed to retrieve rustc path: {error:?}"))
     .and_then(|rustc| {
@@ -600,7 +579,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
             String::new()
         }
     };
-    let file_path = rust_dir_path.join("config.toml");
+    let file_path = rust_dir.join("config.toml");
     std::fs::write(
         &file_path,
         format!(
@@ -629,7 +608,7 @@ download-ci-llvm = false
         ),
     )
     .map_err(|error| format!("Failed to write into `{}`: {:?}", file_path.display(), error))?;
-    Ok(rust_dir_path)
+    Ok(rust_dir)
 }
 
 fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {

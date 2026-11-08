@@ -3,42 +3,10 @@ use std::path::Path;
 
 use crate::utils::{get_sysroot_dir, remove_file, run_command};
 
-#[derive(Default)]
-enum CleanArg {
-    /// `clean all`
-    All,
-    /// `clean ui-tests`
-    UiTests,
-    /// `clean --help`
-    #[default]
-    Help,
-}
-
-impl CleanArg {
-    fn new() -> Result<Self, String> {
-        // We skip the binary and the "clean" option.
-        if let Some(arg) = std::env::args().nth(2) {
-            return match arg.as_str() {
-                "all" => Ok(Self::All),
-                "ui-tests" => Ok(Self::UiTests),
-                "--help" => Ok(Self::Help),
-                a => Err(format!("Unknown argument `{a}`")),
-            };
-        }
-        Ok(Self::default())
-    }
-}
-
-fn usage() {
-    println!(
-        r#"
-`clean` command help:
-
-    all                      : Clean all data
-    ui-tests                 : Clean ui tests
-    --help                   : Show this help
-"#
-    )
+commands_decl! {
+    CleanArg => "clean",
+    All: "all" => "Clean all data",
+    UiTests: "ui-tests" => "Clean ui tests",
 }
 
 fn clean_all() -> Result<(), String> {
@@ -78,10 +46,10 @@ fn clean_ui_tests() -> Result<(), String> {
 }
 
 pub fn run() -> Result<(), String> {
-    match CleanArg::new()? {
+    // We skip the binary and the "clean" option.
+    match CleanArg::from(std::env::args().nth(2).as_deref()) {
         CleanArg::All => clean_all()?,
         CleanArg::UiTests => clean_ui_tests()?,
-        CleanArg::Help => usage(),
     }
     Ok(())
 }

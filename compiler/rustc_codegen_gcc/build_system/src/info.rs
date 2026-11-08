@@ -1,21 +1,44 @@
+use std::collections::HashMap;
+
 use crate::config::ConfigInfo;
+use crate::utils::{run_command_with_env, setup_rustc_folder};
+
+sub_command_decl! {
+    Info => "info",
+    show_gcc_path: bool = "--show-gcc-path" => "Display the path where gcc will be located",
+    llvm_commit: bool = "--llvm-commit" => "Display the LLVM submodule commit rustc is using",
+    + config: ConfigInfo
+}
+
+fn show_llvm_commit() -> Result<(), String> {
+    let env: HashMap<String, String> = std::env::vars().collect();
+    let rust_dir_path = setup_rustc_folder(&env)?;
+
+    let commit = String::from_utf8(
+        run_command_with_env(
+            &[&"git", &"rev-parse", &"HEAD:src/llvm-project"],
+            Some(&rust_dir_path),
+            None,
+        )?
+        .stdout,
+    )
+    .map_err(|error| format!("Invalid `git rev-parse HEAD:src/llvm-project` output: {error:?}"))?;
+    println!("LLVM commit: {commit}");
+    Ok(())
+}
 
 pub fn run() -> Result<(), String> {
-    let mut config = ConfigInfo::default();
+    let Some(mut info) = Info::new()? else { return Ok(()) };
+    info.config.no_download = true;
 
-    // We skip binary name and the `info` command.
-    let mut args = std::env::args().skip(2);
-    while let Some(arg) = args.next() {
-        if arg == "--help" {
-            println!("Display the path where the libgccjit will be located");
-            return Ok(());
+    if info.show_gcc_path {
+        info.config.setup_gcc_path()?;
+        if let Some(gcc_path) = info.config.gcc_path {
+            println!("GCC path: {gcc_path}");
         }
-        config.parse_argument(&arg, &mut args)?;
     }
-    config.no_download = true;
-    config.setup_gcc_path()?;
-    if let Some(gcc_path) = config.gcc_path {
-        println!("{gcc_path}");
+    if info.llvm_commit {
+        show_llvm_commit()?;
     }
     Ok(())
 }

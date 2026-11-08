@@ -20,7 +20,7 @@ use crate::base;
 use crate::context::CodegenCx;
 #[cfg(feature = "master")]
 use crate::gcc_util::to_gcc_aarch64_extension;
-use crate::gcc_util::to_gcc_features;
+use crate::gcc_util::{to_gcc_features, to_gcc_target_attribute_feature};
 
 /// Checks if the function `instance` is recursively inline.
 /// Returns `false` if a functions is guaranteed to be non-recursive, and `true` if it *might* be recursive.
@@ -192,20 +192,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     }
     let target_features = function_features
         .iter()
-        .filter_map(|feature| {
-            // FIXME(antoyo): support soft-float.
-            if feature.contains("soft-float") {
-                return None;
-            }
-
-            if feature.starts_with('-') {
-                Some(format!("no{}", feature))
-            } else if let Some(stripped) = feature.strip_prefix('+') {
-                Some(stripped.to_string())
-            } else {
-                Some(feature.to_string())
-            }
-        })
+        .filter_map(|feature| to_gcc_target_attribute_feature(feature))
         .collect::<Vec<_>>()
         .join(",");
     if !target_features.is_empty() {
