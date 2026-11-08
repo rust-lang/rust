@@ -8,8 +8,9 @@ use crate::common::{Config, Debugger, TestMode};
 use crate::directives::line::{DirectiveLine, Error, ErrorKind};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
-    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
-    extract_version_range, line_directive, parse_edition, parse_normalize_rule,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, NameValidationError,
+    NameValidationErrorKind, extract_llvm_version, extract_version_range, line_directive,
+    parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 
@@ -985,9 +986,13 @@ fn threads_support() {
     }
 }
 
-fn parse_directives_and_validate_names(path: &Utf8Path, file_contents: &str) -> Result<(), ()> {
+fn parse_directives_and_validate_names<'a>(
+    path: &'a Utf8Path,
+    file_contents: &'a str,
+) -> Result<Vec<DirectiveLine<'a>>, NameValidationError<'a>> {
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
-    directives::validate_name(TestMode::Ui, &file_directives).map_err(drop)
+    directives::validate_name(TestMode::Ui, &file_directives)?;
+    Ok(file_directives.lines)
 }
 
 #[test]
@@ -996,7 +1001,13 @@ fn test_unknown_directive_check() {
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/unknown_directive.rs"),
     );
-    assert!(result.is_err());
+    assert_matches!(
+        result,
+        Err(NameValidationError {
+            kind: NameValidationErrorKind::UnknownDirective { name: "needs-headpat" },
+            ..
+        })
+    );
 }
 
 #[test]
@@ -1005,7 +1016,13 @@ fn test_known_directive_check_no_error() {
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/known_directive.rs"),
     );
-    assert!(result.is_ok());
+    assert_matches!(
+        result.as_deref(),
+        Ok([
+            DirectiveLine { revision: None, raw_directive: "ignore-wasm", name: "ignore-wasm", .. },
+            DirectiveLine { revision: None, raw_directive: "check-pass", name: "check-pass", .. },
+        ])
+    );
 }
 
 #[test]
@@ -1014,7 +1031,12 @@ fn test_error_annotation_no_error() {
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/error_annotation.rs"),
     );
-    assert!(result.is_ok());
+    assert_matches!(
+        result.as_deref(),
+        Ok(
+            [DirectiveLine { revision: None, raw_directive: "check-pass", name: "check-pass", .. },]
+        )
+    );
 }
 
 #[test]
@@ -1023,14 +1045,23 @@ fn test_non_rs_unknown_directive_not_checked() {
         Utf8Path::new("a.Makefile"),
         include_str!("./test-auxillary/not_rs.Makefile"),
     );
-    assert!(result.is_ok());
+    assert_matches!(result.as_deref(), Ok([]));
 }
 
 #[test]
 fn test_trailing_directive() {
     let result =
         parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
-    assert!(result.is_err());
+    assert_matches!(
+        result,
+        Err(NameValidationError {
+            kind: NameValidationErrorKind::TrailingDirective {
+                leading_directive: "only-x86",
+                trailing_directive: "only-arm",
+            },
+            ..
+        })
+    );
 }
 
 #[test]
@@ -1039,14 +1070,48 @@ fn test_trailing_directive_with_comment() {
         Utf8Path::new("a.rs"),
         "//@ only-x86   only-arm with comment",
     );
-    assert!(result.is_err());
+    assert_matches!(
+        result,
+        Err(NameValidationError {
+            kind: NameValidationErrorKind::TrailingDirective {
+                leading_directive: "only-x86",
+                // FIXME(fmease): This should also contain "with comment".
+                trailing_directive: "only-arm",
+            },
+            ..
+        })
+    );
+}
+
+#[test]
+fn test_trailing_directive_with_colon() {
+    // FIXME(fmease): We should reject this, too!
+    let result =
+        parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ check-pass edition: 2015");
+    assert_matches!(
+        result.as_deref(),
+        Ok([DirectiveLine {
+            revision: None,
+            raw_directive: "check-pass edition: 2015",
+            name: "check-pass",
+            ..
+        },])
+    );
 }
 
 #[test]
 fn test_not_trailing_directive() {
     let result =
         parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ revisions: incremental");
-    assert!(result.is_ok());
+    assert_matches!(
+        result.as_deref(),
+        Ok([DirectiveLine {
+            revision: None,
+            raw_directive: "revisions: incremental",
+            name: "revisions",
+            ..
+        },])
+    );
 }
 
 #[test]

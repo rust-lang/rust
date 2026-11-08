@@ -443,11 +443,12 @@ impl TestProps {
     }
 }
 
-pub(crate) fn validate_name(
+pub(crate) fn validate_name<'a>(
     mode: TestMode,
-    file_directives: &FileDirectives<'_>,
-) -> Result<(), String> {
-    let testfile = file_directives.path;
+    file_directives: &FileDirectives<'a>,
+) -> Result<(), NameValidationError<'a>> {
+    use NameValidationError as Error;
+    use NameValidationErrorKind as ErrorKind;
 
     for directive_line @ DirectiveLine { name, line_number, .. } in &file_directives.lines {
         let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(name)
@@ -458,14 +459,11 @@ pub(crate) fn validate_name(
             };
 
         if !is_known_directive {
-            // FIXME(Zalathar): Consider emitting specialized error/help messages for
-            // bogus directive names that are similar to real ones, e.g.:
-            // - *`compiler-flags` => `compile-flags`
-            // - *`compile-fail` => `check-fail` or `build-fail`
-            return Err(format!(
-                "ERROR: unknown compiletest directive `{directive}` at {testfile}:{line_number}",
-                directive = directive_line.display(),
-            ));
+            return Err(Error {
+                kind: ErrorKind::UnknownDirective { name },
+                file_path: file_directives.path,
+                line_number: *line_number,
+            });
         }
 
         // If it looks like the user tried to put two directives on the same line
@@ -476,15 +474,58 @@ pub(crate) fn validate_name(
             .map(|remark| remark.trim_start().split(' ').next().unwrap())
             .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
 
-        if let Some(trailing_directive) = &trailing_directive {
-            return Err(format!(
-                "ERROR: detected trailing compiletest directive `{trailing_directive}` at {testfile}:{line_number}\n\
-                HELP: put the directive on its own line: `//@ {trailing_directive}`"
-            ));
+        if let Some(trailing_directive) = trailing_directive {
+            return Err(Error {
+                kind: ErrorKind::TrailingDirective { leading_directive: name, trailing_directive },
+                file_path: file_directives.path,
+                line_number: *line_number,
+            });
         }
     }
 
     Ok(())
+}
+
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct NameValidationError<'a> {
+    kind: NameValidationErrorKind<'a>,
+    file_path: &'a Utf8Path,
+    line_number: LineNumber,
+}
+
+#[cfg_attr(test, derive(Debug))]
+enum NameValidationErrorKind<'a> {
+    UnknownDirective { name: &'a str },
+    TrailingDirective { leading_directive: &'a str, trailing_directive: &'a str },
+}
+
+impl NameValidationError<'_> {
+    // FIXME: Just report the error, poison the context and keep going.
+    pub(crate) fn raise_fatal(self) -> ! {
+        let Self { kind, file_path, line_number } = self;
+
+        let title = |message| crate::error!("{message} at {file_path}:{line_number}");
+
+        match kind {
+            NameValidationErrorKind::UnknownDirective { name } => {
+                title(format!("unknown directive `{name}`"));
+                // FIXME: Look for typo'ed names / suggest directives with a similar name. E.g,
+                // - *`compiler-flags` => `compile-flags`
+                // - *`compile-fail` => `check-fail` or `build-fail`
+            }
+            NameValidationErrorKind::TrailingDirective {
+                leading_directive,
+                trailing_directive,
+            } => {
+                title(format!(
+                    "directive `{leading_directive}` is followed by another directive (`{trailing_directive}`) on the same line"
+                ));
+                crate::help!("put the directive on its own line: `//@ {trailing_directive}`");
+            }
+        }
+
+        panic!("fatal error")
+    }
 }
 
 fn iter_directives(
