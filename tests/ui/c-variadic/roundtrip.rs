@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 #![feature(
     const_c_variadic,
     c_variadic_va_arg_safe,

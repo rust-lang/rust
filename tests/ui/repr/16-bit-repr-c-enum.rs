@@ -6,7 +6,6 @@
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
-//@ ignore-backends: gcc
 #![feature(no_core, intrinsics, staged_api, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]

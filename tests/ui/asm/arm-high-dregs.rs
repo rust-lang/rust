@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ only-arm
 //@ only-eabihf
-//@ ignore-backends: gcc
 //@ revisions: baseline target-cpu
 //@ [baseline] check-fail
 //@ [target-cpu] check-pass
