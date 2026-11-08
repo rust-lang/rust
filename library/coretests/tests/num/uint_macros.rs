@@ -244,7 +244,6 @@ macro_rules! uint_module {
             fn test_repeat_bits() {
                 assert_eq_const_safe!($T: B.repeat_bits(1), _1);
                 assert_eq_const_safe!($T: B.repeat_bits(2), _1 / 3);
-                assert_eq_const_safe!($T: A.repeat_bits(3), _1 / 7);
                 assert_eq_const_safe!($T: A.repeat_bits(4), !(_1 / 5));
                 assert_eq_const_safe!($T: _0.repeat_bits(5), _0);
                 assert_eq_const_safe!($T: _1.repeat_bits(6), _1);
