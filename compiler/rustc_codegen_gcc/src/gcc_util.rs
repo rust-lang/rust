@@ -340,6 +340,7 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     let target_cpu = target_cpu(sess);
     if target_cpu != "generic" {
         context.add_command_line_option(format!("-march={}", target_cpu));
+        context.add_driver_option(format!("-march={}", target_cpu));
     }
 
     if sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections) {
