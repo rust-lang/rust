@@ -32,8 +32,8 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::transmute::{Answer, Reason};
 use rustc_middle::ty::{
-    self, ConstKind, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    self, ConstKind, GenericArgKind, GenericParamDefKind, IsSuggestable, TraitRef, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, bug, span_bug, sym};
@@ -3746,6 +3746,69 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ),
                 given_args,
             );
+            if let ty::Closure(..) = given_ty.kind() {
+                err.note("clsoure");
+            }
+            if let ty::FnPtr(sig, _) = expected_ty.kind() {
+                self.check_closure_lifetime_mismatch(
+                    err,
+                    trait_pred.def_id(),
+                    sig.inputs_and_output().skip_binder(),
+                    trait_pred.skip_binder().trait_ref.args,
+                );
+            }
+        }
+    }
+
+    /// When the mismatched trait is an Fn-trait and the self type is a closure with
+    /// unannotated parameters, suggest adding explicit type annotations.
+    ///
+    /// This turns the confusing lifetime-generality error into an actionable hint, e.g.:
+    ///
+    /// ```text
+    /// |buf|  →  |buf: &mut [u8]|
+    /// ```
+    pub fn check_closure_lifetime_mismatch(
+        &self,
+        err: &mut Diag<'_>,
+        trait_def_id: DefId,
+        expected_input_tys: &[Ty<'tcx>],
+        actual_args: ty::GenericArgs<'tcx>,
+    ) {
+        if !self.tcx.is_fn_trait(trait_def_id) {
+            return;
+        }
+        let actual_self_ty = self.deeply_resolve_ignoring_regions(
+            ty::TraitRef::new_from_args(self.tcx, trait_def_id, actual_args).self_ty(),
+        );
+        let ty::Closure(closure_def_id, _) = *actual_self_ty.kind() else { return };
+        let Some(local_def_id) = closure_def_id.as_local() else { return };
+        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
+            self.tcx.hir_node_by_def_id(local_def_id)
+        else {
+            return;
+        };
+        let body = self.tcx.hir_body(closure.body);
+        let suggestions: Vec<_> = body
+            .params
+            .iter()
+            .zip(expected_input_tys)
+            .filter_map(|(param, ty)| {
+                // ty_span == pat.span means no explicit type annotation was written.
+                if param.ty_span == param.pat.span && ty.is_suggestable(self.tcx, false) {
+                    Some((param.pat.span.shrink_to_hi(), format!(": {ty}")))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if !suggestions.is_empty() {
+            let msg = if suggestions.len() == 1 {
+                "consider adding an explicit type annotation to the closure's argument"
+            } else {
+                "consider adding explicit type annotations to the closure's arguments"
+            };
+            err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
         }
     }
 

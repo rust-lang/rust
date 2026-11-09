@@ -25,6 +25,10 @@ note: required by a bound in `baz`
    |
 LL | fn baz<T: Foo>(_: T) {}
    |           ^^^ required by this bound in `baz`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     baz(|_: &()| ());
+   |           +++++
 
 error[E0277]: the trait bound `{closure@$DIR/closure-mismatch.rs:16:9: 16:12}: Foo` is not satisfied
   --> $DIR/closure-mismatch.rs:16:9
@@ -53,6 +57,10 @@ note: required by a bound in `baz`
    |
 LL | fn baz<T: Foo>(_: T) {}
    |           ^^^ required by this bound in `baz`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     baz(|x: &()| ());
+   |           +++++
 
 error: aborting due to 2 previous errors
 

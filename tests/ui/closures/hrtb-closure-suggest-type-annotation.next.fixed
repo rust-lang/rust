@@ -1,4 +1,6 @@
 //@ run-rustfix
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
 // When a closure is passed where a higher-ranked `FnOnce` is expected, but the closure
 // parameter has no explicit type annotation, the compiler should suggest adding one.
 // See <https://github.com/rust-lang/rust/issues/141461>.
@@ -31,8 +33,9 @@ where
     };
 
     inner(buf, outer_closure)
-    //~^ ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
+    //[old]~^ ERROR: implementation of `FnOnce` is not general enough
+    //[old]~| ERROR: implementation of `FnOnce` is not general enough
+    //[next]~^^^ ERROR: expected `FnOnce(&mut [u8])` signature, found `{closure
 }
 
 fn main() {
