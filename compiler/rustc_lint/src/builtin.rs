@@ -878,25 +878,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
-            hir::ItemKind::Const(ident, generics, ..) => {
-                if find_attr!(attrs, NoMangle(..)) {
-                    let suggestion =
-                        if generics.params.is_empty() && generics.where_clause_span.is_empty() {
-                            // account for "pub const" (#45562)
-                            Some(it.span.until(ident.span))
-                        } else {
-                            None
-                        };
-
-                    // Const items do not refer to a particular location in memory, and therefore
-                    // don't have anything to attach a symbol to
-                    cx.emit_span_lint(
-                        NO_MANGLE_CONST_ITEMS,
-                        it.span,
-                        diagnostics::BuiltinConstNoMangle { suggestion },
-                    );
-                }
-            }
             _ => {}
         }
     }

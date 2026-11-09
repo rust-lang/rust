@@ -17,7 +17,6 @@ use crate::diagnostics::{
     TrackCallerOnLangItem,
 };
 use crate::target_checking::AllowedResult;
-use crate::target_checking::Policy::AllowSilent;
 
 pub(crate) struct OptimizeParser;
 
@@ -438,10 +437,9 @@ impl NoArgsAttributeParser for NoMangleParser {
         Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
-        Warn(Target::ForeignMod),   // #164789: regressions in `holochain-wasmer`, `cosnmic-space`
+        Warn(Target::ForeignMod), // #164789: regressions in `holochain-wasmer`, `cosnmic-space`
         Warn(Target::ForeignStatic), // #164789: regressions in `rust-cpp`
-        Warn(Target::ForeignFn),    // #164789: regressions in `sapp-linux`
+        Warn(Target::ForeignFn),  // #164789: regressions in `sapp-linux`
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
