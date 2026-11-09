@@ -188,6 +188,10 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             // to the correct position (basic block idx)
             assert_eq!(inserted_bb, bb);
         }
+        // check that declarations, definitions and block_map counts match
+        assert_eq!(self.block_decls.len(), self.body.basic_blocks.len());
+        // +1 because block_map doesn't contain the entry block
+        assert_eq!(self.block_decls.len(), self.block_map.len() + 1);
 
         Ok(())
     }
