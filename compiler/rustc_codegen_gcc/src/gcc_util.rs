@@ -340,6 +340,10 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     let target_cpu = target_cpu(sess);
     if target_cpu != "generic" {
         context.add_command_line_option(format!("-march={}", target_cpu));
+        // NOTE: we use both add_command_line_option and add_driver_option because the former
+        // only reaches the compiler, while the driver is what runs the assembler: without
+        // -march there, it assembles for the CPU GCC was configured for (e.g. 68020 for
+        // m68k-linux) and can emit instructions the target CPU lacks (e.g. bra.l on a 68000).
         context.add_driver_option(format!("-march={}", target_cpu));
     }
 
