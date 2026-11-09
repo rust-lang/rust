@@ -93,6 +93,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     exclude_traits: &[],
     enable_auto_await: true,
     enable_auto_iter: true,
+    enable_auto_dyn: true,
     ra_fixture: RaFixtureConfig::default(),
 };
 
@@ -279,20 +280,6 @@ pub(crate) fn check_with_base_items(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
-    fn concat_fixture(prefix: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
-        let mut buf = String::with_capacity(prefix.len() + ra_fixture.len());
-        for line in ra_fixture.split_inclusive('\n') {
-            if line.trim().is_empty() || line.starts_with("//-") {
-                buf.push_str(line);
-                continue;
-            }
-            let rest = &ra_fixture[buf.len()..];
-            buf.push_str(prefix);
-            buf.push_str(rest);
-            break;
-        }
-        buf
-    }
     check(&concat_fixture(BASE_ITEMS_FIXTURE, ra_fixture), expect)
 }
 
@@ -339,6 +326,21 @@ pub(crate) fn get_all_items(
         );
     });
     res
+}
+
+fn concat_fixture(prefix: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
+    let mut buf = String::with_capacity(prefix.len() + ra_fixture.len());
+    for line in ra_fixture.split_inclusive('\n') {
+        if line.trim().is_empty() || line.starts_with("//-") {
+            buf.push_str(line);
+            continue;
+        }
+        let rest = &ra_fixture[buf.len()..];
+        buf.push_str(prefix);
+        buf.push_str(rest);
+        break;
+    }
+    buf
 }
 
 #[test]

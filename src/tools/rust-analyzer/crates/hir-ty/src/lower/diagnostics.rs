@@ -82,6 +82,9 @@ pub enum PathLoweringDiagnostic {
         /// Index of the `Self` segment.
         segment: u32,
     },
+    UnresolvedAssociatedType {
+        segment: u32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
