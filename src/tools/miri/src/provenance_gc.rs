@@ -263,12 +263,12 @@ fn remove_unreachable_allocs<'tcx>(ecx: &mut MiriInterpCx<'tcx>, allocs: FxHashS
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn run_provenance_gc(&mut self) {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // We collect all tags and AllocId from every part of the interpreter.
         let mut tags = FxHashSet::default();
         let mut alloc_ids = FxHashSet::default();
-        this.visit_provenance(&mut |id, tag| {
+        ecx.visit_provenance(&mut |id, tag| {
             if let Some(id) = id {
                 alloc_ids.insert(id);
             }
@@ -278,7 +278,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         });
 
         // Based on this, clean up the interpreter state.
-        remove_unreachable_tags(this, tags);
-        remove_unreachable_allocs(this, alloc_ids);
+        remove_unreachable_tags(ecx, tags);
+        remove_unreachable_allocs(ecx, alloc_ids);
     }
 }
