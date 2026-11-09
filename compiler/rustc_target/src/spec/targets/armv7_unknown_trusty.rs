@@ -34,6 +34,7 @@ pub(crate) fn target() -> Target {
             panic_strategy: PanicStrategy::Abort,
             position_independent_executables: true,
             static_position_independent_executables: true,
+            singlethread: true,
 
             ..Default::default()
         },

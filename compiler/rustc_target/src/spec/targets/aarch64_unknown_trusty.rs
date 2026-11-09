@@ -31,6 +31,8 @@ pub(crate) fn target() -> Target {
             link_self_contained: LinkSelfContainedDefault::InferredForMusl,
             relro_level: RelroLevel::Full,
             mcount: "\u{1}_mcount".into(),
+            singlethread: true,
+
             ..Default::default()
         },
     }

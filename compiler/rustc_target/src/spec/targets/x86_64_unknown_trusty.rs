@@ -33,6 +33,8 @@ pub(crate) fn target() -> Target {
             relro_level: RelroLevel::Full,
             stack_probes: StackProbeType::Inline,
             mcount: "\u{1}_mcount".into(),
+            singlethread: true,
+
             ..Default::default()
         },
     }
