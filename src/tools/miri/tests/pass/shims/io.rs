@@ -12,7 +12,8 @@ fn main() {
     let raw_os_error = if cfg!(unix) {
         22 // EINVAL (on most Unixes, anyway)
     } else if cfg!(windows) {
-        87 // ERROR_INVALID_PARAMETER
+        // FACILITY_NT_BIT hits an extra codepath in std
+        87 | 268435456 // ERROR_INVALID_PARAMETER | FACILITY_NT_BIT
     } else {
         panic!("unsupported OS")
     };

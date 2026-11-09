@@ -1,3 +1,5 @@
+#![cfg(not(all(windows, skip_unsupported_miri_tests)))] // Miri has no net support on Windows
+
 use super::*;
 use crate::collections::HashMap;
 
