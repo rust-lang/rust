@@ -31,7 +31,9 @@ use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, AdtKind, ConstKind, FieldInfo, GenericArgs, Ty, TypeVisitableExt, Unnormalized,
+};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{Ident, Span, Spanned, Symbol, bug, kw, span_bug, sym};
@@ -45,9 +47,9 @@ use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, DelegationInvalidAdtForReturnWrapping,
-    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
-    NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind, StructExprNonExhaustive,
-    YieldExprOutsideOfCoroutine,
+    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FieldNotPartOfView,
+    FunctionalRecordUpdateOnNonStruct, NakedAsmOutsideNakedFn, NoFieldOnVariant,
+    ReturnLikeStatementKind, StructExprNonExhaustive, YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -2335,6 +2337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 field,
                 &autoderef,
                 deref_base_ty,
+                base_ty,
             ) {
                 ControlFlow::Continue(private_candidate_) => {
                     private_candidate = private_candidate.xor(private_candidate_);
@@ -2462,9 +2465,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         autoderef: &Autoderef<'_, 'tcx>,
         deref_base_ty: Ty<'tcx>,
+        base_ty: Ty<'tcx>,
     ) -> ControlFlow<Ty<'tcx>, Option<(Vec<Adjustment<'tcx>>, DefId)>> {
         let (field_ty, field_idx) = match deref_base_ty.kind() {
-            ty::Adt(base_def, args) if !base_def.is_enum() => {
+            ty::Adt(base_def, args) | ty::View(base_def, args, _) if !base_def.is_enum() => {
                 debug!("struct named {:?}", deref_base_ty);
                 // we don't care to report errors for a struct if the struct itself is tainted
                 if let Err(guar) = base_def.non_enum_variant().has_errors() {
@@ -2504,8 +2508,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (field_ty, FieldIdx::from_usize(index))
             }
+
             _ => return ControlFlow::Continue(None),
         };
+
+        if let ty::View(_, _, fields) = deref_base_ty.kind() {
+            // check that the field we are accessing is part of the view
+            let tuple_elems = match fields.kind() {
+                ty::Tuple(fields) => fields,
+                // FIXME(scrabsha): can we still have inferred views?
+                _ => bug!("malformed view type viewed field set"),
+            };
+            let extract_frt = |ty: Ty<'tcx>| -> FieldInfo<_> {
+                match ty.kind() {
+                    ty::Adt(base_def_, args_)
+                        if let Some(frt) =
+                            base_def_.field_representing_type_info(self.tcx(), *args_) =>
+                    {
+                        // sanity check: view types on enums are not a thing.
+                        debug_assert!(frt.variant.is_none());
+                        frt
+                    }
+
+                    _ => bug!("malformed view type viewed field set"),
+                }
+            };
+
+            let mut field_idxs = tuple_elems.iter().map(extract_frt).map(|field| field.field_idx);
+            if field_idxs.all(|viewed_idx| viewed_idx != field_idx) {
+                let fields = tuple_elems.iter().map(extract_frt).map(|frt| frt.name).collect();
+                let guar = self.tcx.dcx().emit_err(FieldNotPartOfView {
+                    field: field.name,
+                    span: field.span,
+                    fields,
+                    note: base.span,
+                    ty: base_ty,
+                });
+                return ControlFlow::Break(Ty::new_error(self.tcx, guar));
+            }
+        }
 
         let adjustments = self.adjust_steps(autoderef);
         self.apply_adjustments(base, adjustments);
