@@ -732,7 +732,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         len: u64,
         read_cb: impl FnOnce(&mut [u8]) -> io::Result<usize>,
     ) -> InterpResult<'tcx, Result<u64, IoError>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         let len = usize::saturating_cast_from(len);
         let mut bytes = vec![0; len];
@@ -742,7 +742,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // If reading to `bytes` did not fail, we write those bytes to the buffer.
                 // Crucially, if fewer than `bytes.len()` bytes were read, only write
                 // that much into the output buffer!
-                this.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
+                ecx.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
                 interp_ok(Ok(read_size.to_u64()))
             }
             Err(e) => interp_ok(Err(IoError::HostError(e))),
@@ -756,10 +756,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         len: u64,
         write_cb: impl FnOnce(&[u8]) -> io::Result<usize>,
     ) -> InterpResult<'tcx, Result<u64, IoError>> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         let len = usize::saturating_cast_from(len);
-        let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         let result = write_cb(bytes);
         interp_ok(result.map_err(IoError::HostError).map(|written_size| written_size.to_u64()))
     }
