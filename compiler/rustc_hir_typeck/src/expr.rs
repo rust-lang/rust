@@ -33,7 +33,9 @@ use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, AdtKind, ConstKind, FieldInfo, GenericArgs, Ty, TypeVisitableExt, Unnormalized,
+};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
@@ -48,10 +50,10 @@ use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, DelegationInvalidAdtForReturnWrapping,
-    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
-    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind,
-    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
-    YieldExprOutsideOfCoroutine,
+    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FieldNotPartOfView,
+    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn,
+    NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
+    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -2844,6 +2846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 field,
                 &autoderef,
                 deref_base_ty,
+                base_ty,
             ) {
                 ControlFlow::Continue(private_candidate_) => {
                     private_candidate = private_candidate.xor(private_candidate_);
@@ -2971,6 +2974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         autoderef: &Autoderef<'_, 'tcx>,
         deref_base_ty: Ty<'tcx>,
+        base_ty: Ty<'tcx>,
     ) -> ControlFlow<Ty<'tcx>, Option<(Vec<Adjustment<'tcx>>, DefId)>> {
         let (field_ty, field_idx) = match deref_base_ty.kind() {
             ty::Adt(base_def, args) if !base_def.is_enum() => {
@@ -3012,6 +3016,65 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 (field_ty, FieldIdx::from_usize(index))
+            }
+            ty::View(base_def, args, fields) => {
+                debug!("viewed struct named {base_def:?}");
+                // we don't care to report errors for a struct if the struct itself is tainted
+                if let Err(guar) = base_def.non_enum_variant().has_errors() {
+                    return ControlFlow::Break(Ty::new_error(self.tcx(), guar));
+                }
+
+                let (ident, def_scope) =
+                    self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
+
+                let Some((idx, field_def)) = self.find_adt_field(*base_def, ident) else {
+                    return ControlFlow::Continue(None);
+                };
+
+                // check that the field we are accessing is part of the view
+                let tuple_elems = match fields.kind() {
+                    ty::Tuple(fields) => fields,
+                    // FIXME(scrabsha): can we still have inferred views?
+                    _ => bug!("malformed view type viewed field set"),
+                };
+                let extract_frt = |ty: Ty<'tcx>| -> FieldInfo<_> {
+                    match ty.kind() {
+                        ty::Adt(base_def_, args_)
+                            if let Some(frt) =
+                                base_def_.field_representing_type_info(self.tcx(), *args_) =>
+                        {
+                            // sanity check: view types on enums are not a thing.
+                            debug_assert!(frt.variant.is_none());
+                            frt
+                        }
+
+                        _ => bug!("malformed view type viewed field set"),
+                    }
+                };
+
+                let mut field_idxs =
+                    tuple_elems.iter().map(extract_frt).map(|field| field.field_idx);
+                if field_idxs.all(|viewed_idx| viewed_idx != idx) {
+                    let fields = tuple_elems.iter().map(extract_frt).map(|frt| frt.name).collect();
+                    let guar = self.tcx.dcx().emit_err(FieldNotPartOfView {
+                        field: ident.name,
+                        span: ident.span,
+                        fields,
+                        note: base.span,
+                        ty: base_ty,
+                    });
+                    return ControlFlow::Break(Ty::new_error(self.tcx, guar));
+                }
+
+                if !field_def.vis.is_accessible_from(def_scope, self.tcx) {
+                    // The field is not accessible, fall through to error reporting.
+                    let adjustments = self.adjust_steps(&autoderef);
+                    return ControlFlow::Continue(Some((adjustments, base_def.did())));
+                }
+
+                self.tcx.check_stability(field_def.did, Some(expr.hir_id), expr.span, None);
+
+                (self.field_ty(expr.span, field_def, *args), idx)
             }
             _ => return ControlFlow::Continue(None),
         };
