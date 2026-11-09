@@ -1,3 +1,4 @@
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{
     CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, UsedBy, find_attr,
 };
@@ -389,8 +390,8 @@ impl NoArgsAttributeParser for TrackCallerParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        match cx.target {
-            Target::Fn => {
+        match cx.ast_target {
+            AstTarget::Fn(f) => {
                 // `#[track_caller]` is not valid on weak lang items because they are called via
                 // `extern` declarations and `#[track_caller]` would alter their ABI.
                 if let Some(item) = find_attr!(cx.parsed_attrs, Lang(item) => item)
@@ -402,13 +403,24 @@ impl NoArgsAttributeParser for TrackCallerParser {
                         sig_span: cx.target_span,
                     });
                 }
+
+                if f.sig.header.coroutine_marker.is_some() && !cx.features().async_fn_track_caller()
+                {
+                    feature_err(
+                        cx.sess(),
+                        sym::async_fn_track_caller,
+                        attr_span,
+                        "`#[track_caller]` on async functions is unstable",
+                    )
+                    .emit();
+                }
             }
-            Target::Closure if !cx.features().closure_track_caller() => {
+            AstTarget::Closure(_) if !cx.features().closure_track_caller() => {
                 feature_err(
                     cx.sess(),
                     sym::closure_track_caller,
                     attr_span,
-                    "`#[track_caller]` on closures is currently unstable",
+                    "`#[track_caller]` on closures is unstable",
                 )
                 .emit();
             }
