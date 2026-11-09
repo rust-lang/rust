@@ -1,7 +1,6 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
 use std::convert::identity;
-use std::slice;
 
 use rustc_ast::SyntheticAttr::CfgAttrTrace;
 use rustc_ast::token::Delimiter;
@@ -12,40 +11,13 @@ use rustc_ast::{
 };
 use rustc_attr_ir::AttrPath;
 use rustc_errors::{Applicability, Diagnostic, PResult};
-use rustc_feature::BUILTIN_ATTRIBUTE_SET;
 use rustc_lint_defs::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_parse::parse_in;
 use rustc_session::diagnostics::report_lit_error;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::{AttributeParser, AttributeTemplate, diagnostics as errors, template};
-
-pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    use ast::SyntheticAttr::*;
-    match &attr.kind {
-        AttrKind::Normal(_) => {}
-        AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_))
-        | AttrKind::DocComment(..)
-        | AttrKind::Generated(..) => return,
-    }
-
-    // Parsed attributes are validated during attribute parsing
-    if AttributeParser::is_parsed_attribute(&attr.path()) {
-        return;
-    }
-
-    let attr_item = attr.get_normal_item();
-    if let AttrArgs::Eq { .. } = attr_item.args {
-        // All key-value attributes are restricted to meta-item syntax.
-        match parse_meta(psess, attr) {
-            Ok(_) => {}
-            Err(err) => {
-                err.emit();
-            }
-        }
-    }
-}
+use crate::{AttributeTemplate, diagnostics as errors};
 
 pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
     let item = attr.get_normal_item();
