@@ -44,6 +44,15 @@ def get_cpus():
         return 1
 
 
+def reduce_prio():
+    try:
+        # Chosen by two fair dice rolls.
+        # Guaranteed to uphold system responsiveness.
+        os.nice(16)
+    except Exception:
+        pass
+
+
 def eprint(*args, **kwargs):
     kwargs["file"] = sys.stderr
     print(*args, **kwargs)
@@ -1416,6 +1425,7 @@ def bootstrap(args):
 
 def main():
     """Entry point for the bootstrap process"""
+    reduce_prio()
     start_time = time()
 
     # x.py help <cmd> ...
