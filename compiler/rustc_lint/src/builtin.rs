@@ -28,8 +28,7 @@ use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin};
+use rustc_hir::{self as hir, ImplItemImplKind, PatKind, PredicateOrigin};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
@@ -54,10 +53,9 @@ use crate::diagnostics::{
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
     BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
     BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
-    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinTypeAliasBounds, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
+    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -1070,29 +1068,7 @@ declare_lint_pass!(
     UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
 );
 
-impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'_>,
-        fn_kind: HirFnKind<'_>,
-        _: &'tcx FnDecl<'_>,
-        _: &'tcx Body<'_>,
-        span: Span,
-        def_id: LocalDefId,
-    ) {
-        if fn_kind.asyncness().is_async()
-            && !cx.tcx.features().async_fn_track_caller()
-            // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr_span) = find_attr!(cx.tcx, def_id, TrackCaller(span) => *span)
-        {
-            cx.emit_span_lint(
-                UNGATED_ASYNC_FN_TRACK_CALLER,
-                attr_span,
-                BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
-            );
-        }
-    }
-}
+impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {}
 
 declare_lint! {
     /// The `unreachable_pub` lint triggers for `pub` items not reachable from other crates - that
