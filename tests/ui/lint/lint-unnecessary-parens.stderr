@@ -427,7 +427,7 @@ error: unnecessary parentheses around pattern
   --> $DIR/lint-unnecessary-parens.rs:192:8
    |
 LL |     let( mut _a) = 3;
-   |        ^^      ^
+   |        ^       ^
    |
 help: remove these parentheses
    |
@@ -463,7 +463,7 @@ error: unnecessary parentheses around pattern
   --> $DIR/lint-unnecessary-parens.rs:196:8
    |
 LL |     let( _a) = 3;
-   |        ^^  ^
+   |        ^   ^
    |
 help: remove these parentheses
    |
