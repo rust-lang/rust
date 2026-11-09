@@ -67,7 +67,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 512 seems to be a reasonable default. The value is not critical, in
             // the sense that getpwuid_r takes and checks the buffer length.
             ("_SC_GETPW_R_SIZE_MAX", |_ecx| 512),
-            // Never hand out FDs at or above `FD_LIMIT`.
+            // We only hand out FDs in `0..FD_LIMIT`, making `FD_LIMIT` the max
+            // number of open FDs.
             ("_SC_OPEN_MAX", |_ecx| FD_LIMIT.into()),
             // Our hard-coded hostname is just 4 bytes so we don't need anything big here.
             ("_SC_HOST_NAME_MAX", |_ecx| 255),
