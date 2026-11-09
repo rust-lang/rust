@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, pattern_types, pattern_type_macro)]
+#![feature(rustc_attrs, pattern_types)]
 #![allow(unused_attributes)]
 
 #[repr(transparent)]
