@@ -447,3 +447,12 @@ fn test_minimal_thread_stack() {
     assert_eq!(before, 0);
     assert_eq!(COUNT.load(Ordering::Relaxed), 1);
 }
+
+// Test that a stack size too large to round up to the page size is an error.
+#[cfg(unix)]
+#[cfg_attr(miri, ignore)] // Miri ignores the requested stack size
+#[test]
+fn test_huge_thread_stack() {
+    let builder = thread::Builder::new().stack_size(usize::MAX);
+    assert!(builder.spawn(|| {}).is_err());
+}
