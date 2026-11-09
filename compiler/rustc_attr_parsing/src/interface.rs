@@ -24,6 +24,7 @@ use crate::diagnostics::ParsedDescription;
 use crate::generated::GeneratedAttrState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::synthetic::SyntheticAttrState;
+use crate::validate_attr::parse_meta;
 use crate::{AttributeTemplate, ShouldEmit, diagnostics};
 
 pub struct EmitAttribute(
@@ -360,7 +361,8 @@ impl<'sess> AttributeParser<'sess> {
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
                     let inner_span = lower_span(n.item.span);
 
-                    if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
+                    let accepter = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice());
+                    if let Some(accept) = accepter {
                         self.check_attribute_safety(
                             &attr_path,
                             inner_span,
@@ -493,6 +495,18 @@ impl<'sess> AttributeParser<'sess> {
 
                         attributes.push(attr);
                     };
+
+                    if accepter.is_none()
+                        && let rustc_ast::AttrArgs::Eq { .. } = n.item.args
+                    {
+                        // All key-value attributes are restricted to meta-item syntax.
+                        match parse_meta(&self.sess.psess, &attr) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                err.emit();
+                            }
+                        }
+                    }
                 }
             }
         }
