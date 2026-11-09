@@ -449,7 +449,7 @@ fn test_minimal_thread_stack() {
 }
 
 // Test that a stack size too large to round up to the page size is an error.
-#[cfg(unix)]
+#[cfg(all(unix, not(any(target_os = "espidf", target_os = "nuttx"))))]
 #[cfg_attr(miri, ignore)] // Miri ignores the requested stack size
 #[test]
 fn test_huge_thread_stack() {
