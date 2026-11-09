@@ -169,7 +169,11 @@ impl f16 {
         EXPONENT_MASK = 0x7c00,
         MANTISSA_MASK = 0x03ff,
         exponent_bias = 15,
+        lower_than_min = 1.0e-7_f16,
+        base = #[unstable(feature = "f16", issue = "116909")],
         assoc_int_consts = #[unstable(feature = "f16", issue = "116909")],
+        is_subnormal = #[unstable(feature = "f16", issue = "116909")],
+        unstable_const = #[rustc_const_unstable(feature = "f16", issue = "116909")],
         feature = f16,
         has_reliable_cfg = target_has_reliable_f16,
         has_reliable_math_cfg = target_has_reliable_f16_math,
@@ -178,19 +182,24 @@ impl f16 {
     /// Returns `true` if this value is NaN.
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
-    /// let nan = f16::NAN;
-    /// let f = 7.0_f16;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let nan = ", stringify!($SelfT), "::NAN;")]
+    #[doc = concat!("let f = 7.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(nan.is_nan());
     /// assert!(!f.is_nan());
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "116909")]
+    #[$base]
+    $(#[$const_float_classify])?
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
         self != self
@@ -200,50 +209,62 @@ impl f16 {
     /// `false` otherwise.
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
-    /// let f = 7.0f16;
-    /// let inf = f16::INFINITY;
-    /// let neg_inf = f16::NEG_INFINITY;
-    /// let nan = f16::NAN;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0", stringify!($SelfT), ";")]
+    #[doc = concat!("let inf = ", stringify!($SelfT), "::INFINITY;")]
+    #[doc = concat!("let neg_inf = ", stringify!($SelfT), "::NEG_INFINITY;")]
+    #[doc = concat!("let nan = ", stringify!($SelfT), "::NAN;")]
     ///
     /// assert!(!f.is_infinite());
     /// assert!(!nan.is_infinite());
     ///
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "116909")]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_infinite(self) -> bool {
-        (self == f16::INFINITY) | (self == f16::NEG_INFINITY)
+        // Getting clever with transmutation can affect results on 32-bit x86 without SSE2 due
+        // to unsound miscompilations: see https://github.com/rust-lang/rust/issues/114479
+        (self == Self::INFINITY) | (self == Self::NEG_INFINITY)
     }
 
     /// Returns `true` if this number is neither infinite nor NaN.
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
-    /// let f = 7.0f16;
-    /// let inf: f16 = f16::INFINITY;
-    /// let neg_inf: f16 = f16::NEG_INFINITY;
-    /// let nan: f16 = f16::NAN;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0", stringify!($SelfT), ";")]
+    #[doc = concat!("let inf = ", stringify!($SelfT), "::INFINITY;")]
+    #[doc = concat!("let neg_inf = ", stringify!($SelfT), "::NEG_INFINITY;")]
+    #[doc = concat!("let nan = ", stringify!($SelfT), "::NAN;")]
     ///
     /// assert!(f.is_finite());
     ///
     /// assert!(!nan.is_finite());
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[$base]
+    $(#[$const_float_classify])?
+    $(#[$unstable_const])?
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
@@ -253,28 +274,34 @@ impl f16 {
     /// Returns `true` if the number is [subnormal].
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
-    /// let min = f16::MIN_POSITIVE; // 6.1035e-5
-    /// let max = f16::MAX;
-    /// let lower_than_min = 1.0e-7_f16;
-    /// let zero = 0.0_f16;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let min = ", stringify!($SelfT), "::MIN_POSITIVE; // ", stringify!($MIN_POSITIVE))]
+    #[doc = concat!("let max = ", stringify!($SelfT), "::MAX;")]
+    #[doc = concat!("let lower_than_min = ", stringify!($lower_than_min), ";")]
+    #[doc = concat!("let zero = 0.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(!min.is_subnormal());
     /// assert!(!max.is_subnormal());
     ///
     /// assert!(!zero.is_subnormal());
-    /// assert!(!f16::NAN.is_subnormal());
-    /// assert!(!f16::INFINITY.is_subnormal());
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::NAN.is_subnormal());")]
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::INFINITY.is_subnormal());")]
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(lower_than_min.is_subnormal());
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    ///
+    /// [subnormal]: https://en.wikipedia.org/wiki/Subnormal_number
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "116909")]
+    #[$is_subnormal]
+    $(#[$const_float_classify])?
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
     }
@@ -282,28 +309,34 @@ impl f16 {
     /// Returns `true` if the number is neither zero, infinite, [subnormal], or NaN.
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
-    /// let min = f16::MIN_POSITIVE; // 6.1035e-5
-    /// let max = f16::MAX;
-    /// let lower_than_min = 1.0e-7_f16;
-    /// let zero = 0.0_f16;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let min = ", stringify!($SelfT), "::MIN_POSITIVE; // ", stringify!($MIN_POSITIVE))]
+    #[doc = concat!("let max = ", stringify!($SelfT), "::MAX;")]
+    #[doc = concat!("let lower_than_min = ", stringify!($lower_than_min), ";")]
+    #[doc = concat!("let zero = 0.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(min.is_normal());
     /// assert!(max.is_normal());
     ///
     /// assert!(!zero.is_normal());
-    /// assert!(!f16::NAN.is_normal());
-    /// assert!(!f16::INFINITY.is_normal());
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::NAN.is_normal());")]
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::INFINITY.is_normal());")]
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(!lower_than_min.is_normal());
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    ///
+    /// [subnormal]: https://en.wikipedia.org/wiki/Subnormal_number
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "116909")]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
     }
@@ -313,24 +346,33 @@ impl f16 {
     /// predicate instead.
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
     /// use std::num::FpCategory;
     ///
-    /// let num = 12.4_f16;
-    /// let inf = f16::INFINITY;
+    #[doc = concat!("let num = 12.4_", stringify!($SelfT), ";")]
+    #[doc = concat!("let inf = ", stringify!($SelfT), "::INFINITY;")]
     ///
     /// assert_eq!(num.classify(), FpCategory::Normal);
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    #[inline]
-    #[unstable(feature = "f16", issue = "116909")]
+    #[$base]
+    $(#[$const_float_classify])?
     #[must_use]
     pub const fn classify(self) -> FpCategory {
-        let b = self.to_bits();
-        match (b & Self::MANTISSA_MASK, b & Self::EXPONENT_MASK) {
+        // We used to have complicated logic here that avoids the simple bit-based tests to work
+        // around buggy codegen on x87 targets for `f32` and `f64` (see
+        // https://github.com/rust-lang/rust/issues/114479). However, some LLVM versions later,
+        // none of our tests is able to find any difference between the complicated and the
+        // naive version, so now we are back to the naive version.
+        let bits = self.to_bits();
+        match (bits & Self::MANTISSA_MASK, bits & Self::EXPONENT_MASK) {
             (0, Self::EXPONENT_MASK) => FpCategory::Infinite,
             (_, Self::EXPONENT_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
@@ -350,19 +392,24 @@ impl f16 {
     /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
-    /// let f = 7.0_f16;
-    /// let g = -7.0_f16;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0_", stringify!($SelfT), ";")]
+    #[doc = concat!("let g = -7.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "116909")]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
     }
@@ -378,24 +425,28 @@ impl f16 {
     /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    ///
-    /// let f = 7.0_f16;
-    /// let g = -7.0_f16;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0_", stringify!($SelfT), ";")]
+    #[doc = concat!("let g = -7.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
-    /// # }
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "f16", issue = "116909")]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
-        // SAFETY: This is just transmuting to get the sign bit, it's fine.
-        (self.to_bits() & (1 << 15)) != 0
+        (self.to_bits() & Self::SIGN_MASK) != 0
     }
 
     /// Returns the least number greater than `self`.

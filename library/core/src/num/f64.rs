@@ -423,22 +423,34 @@ impl f64 {
         EXPONENT_MASK = 0x7ff0_0000_0000_0000,
         MANTISSA_MASK = 0x000f_ffff_ffff_ffff,
         exponent_bias = 1023,
+        lower_than_min = 1.0e-308_f64,
+        base = #[stable(feature = "rust1", since = "1.0.0")],
         assoc_int_consts = #[stable(feature = "assoc_int_consts", since = "1.43.0")],
+        is_subnormal = #[stable(feature = "is_subnormal", since = "1.53.0")],
+        const_float_classify = #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")],
     }
 
     /// Returns `true` if this value is NaN.
     ///
     /// ```
-    /// let nan = f64::NAN;
-    /// let f = 7.0_f64;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let nan = ", stringify!($SelfT), "::NAN;")]
+    #[doc = concat!("let f = 7.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(nan.is_nan());
     /// assert!(!f.is_nan());
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
+    #[must_use]
+    #[$base]
+    $(#[$const_float_classify])?
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
         self != self
@@ -448,46 +460,62 @@ impl f64 {
     /// `false` otherwise.
     ///
     /// ```
-    /// let f = 7.0f64;
-    /// let inf = f64::INFINITY;
-    /// let neg_inf = f64::NEG_INFINITY;
-    /// let nan = f64::NAN;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0", stringify!($SelfT), ";")]
+    #[doc = concat!("let inf = ", stringify!($SelfT), "::INFINITY;")]
+    #[doc = concat!("let neg_inf = ", stringify!($SelfT), "::NEG_INFINITY;")]
+    #[doc = concat!("let nan = ", stringify!($SelfT), "::NAN;")]
     ///
     /// assert!(!f.is_infinite());
     /// assert!(!nan.is_infinite());
     ///
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
+    #[must_use]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_infinite(self) -> bool {
-        // Getting clever with transmutation can result in incorrect answers on some FPUs
-        // FIXME: alter the Rust <-> Rust calling convention to prevent this problem.
-        // See https://github.com/rust-lang/rust/issues/72327
-        (self == f64::INFINITY) | (self == f64::NEG_INFINITY)
+        // Getting clever with transmutation can affect results on 32-bit x86 without SSE2 due
+        // to unsound miscompilations: see https://github.com/rust-lang/rust/issues/114479
+        (self == Self::INFINITY) | (self == Self::NEG_INFINITY)
     }
 
     /// Returns `true` if this number is neither infinite nor NaN.
     ///
     /// ```
-    /// let f = 7.0f64;
-    /// let inf: f64 = f64::INFINITY;
-    /// let neg_inf: f64 = f64::NEG_INFINITY;
-    /// let nan: f64 = f64::NAN;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0", stringify!($SelfT), ";")]
+    #[doc = concat!("let inf = ", stringify!($SelfT), "::INFINITY;")]
+    #[doc = concat!("let neg_inf = ", stringify!($SelfT), "::NEG_INFINITY;")]
+    #[doc = concat!("let nan = ", stringify!($SelfT), "::NAN;")]
     ///
     /// assert!(f.is_finite());
     ///
     /// assert!(!nan.is_finite());
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
+    #[must_use]
+    #[$base]
+    $(#[$const_float_classify])?
+    $(#[$unstable_const])?
     pub const fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
@@ -497,52 +525,69 @@ impl f64 {
     /// Returns `true` if the number is [subnormal].
     ///
     /// ```
-    /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308_f64
-    /// let max = f64::MAX;
-    /// let lower_than_min = 1.0e-308_f64;
-    /// let zero = 0.0_f64;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let min = ", stringify!($SelfT), "::MIN_POSITIVE; // ", stringify!($MIN_POSITIVE))]
+    #[doc = concat!("let max = ", stringify!($SelfT), "::MAX;")]
+    #[doc = concat!("let lower_than_min = ", stringify!($lower_than_min), ";")]
+    #[doc = concat!("let zero = 0.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(!min.is_subnormal());
     /// assert!(!max.is_subnormal());
     ///
     /// assert!(!zero.is_subnormal());
-    /// assert!(!f64::NAN.is_subnormal());
-    /// assert!(!f64::INFINITY.is_subnormal());
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::NAN.is_subnormal());")]
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::INFINITY.is_subnormal());")]
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(lower_than_min.is_subnormal());
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-    #[must_use]
-    #[stable(feature = "is_subnormal", since = "1.53.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    ///
+    /// [subnormal]: https://en.wikipedia.org/wiki/Subnormal_number
     #[inline]
+    #[must_use]
+    #[$is_subnormal]
+    $(#[$const_float_classify])?
     pub const fn is_subnormal(self) -> bool {
         matches!(self.classify(), FpCategory::Subnormal)
     }
 
-    /// Returns `true` if the number is neither zero, infinite,
-    /// [subnormal], or NaN.
+    /// Returns `true` if the number is neither zero, infinite, [subnormal], or NaN.
     ///
     /// ```
-    /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
-    /// let max = f64::MAX;
-    /// let lower_than_min = 1.0e-308_f64;
-    /// let zero = 0.0f64;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let min = ", stringify!($SelfT), "::MIN_POSITIVE; // ", stringify!($MIN_POSITIVE))]
+    #[doc = concat!("let max = ", stringify!($SelfT), "::MAX;")]
+    #[doc = concat!("let lower_than_min = ", stringify!($lower_than_min), ";")]
+    #[doc = concat!("let zero = 0.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(min.is_normal());
     /// assert!(max.is_normal());
     ///
     /// assert!(!zero.is_normal());
-    /// assert!(!f64::NAN.is_normal());
-    /// assert!(!f64::INFINITY.is_normal());
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::NAN.is_normal());")]
+    #[doc = concat!("assert!(!", stringify!($SelfT), "::INFINITY.is_normal());")]
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(!lower_than_min.is_normal());
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    ///
+    /// [subnormal]: https://en.wikipedia.org/wiki/Subnormal_number
     #[inline]
+    #[must_use]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_normal(self) -> bool {
         matches!(self.classify(), FpCategory::Normal)
     }
@@ -552,25 +597,33 @@ impl f64 {
     /// predicate instead.
     ///
     /// ```
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
     /// use std::num::FpCategory;
     ///
-    /// let num = 12.4_f64;
-    /// let inf = f64::INFINITY;
+    #[doc = concat!("let num = 12.4_", stringify!($SelfT), ";")]
+    #[doc = concat!("let inf = ", stringify!($SelfT), "::INFINITY;")]
     ///
     /// assert_eq!(num.classify(), FpCategory::Normal);
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
+    #[$base]
+    $(#[$const_float_classify])?
     #[must_use]
     pub const fn classify(self) -> FpCategory {
         // We used to have complicated logic here that avoids the simple bit-based tests to work
-        // around buggy codegen for x87 targets (see
-        // https://github.com/rust-lang/rust/issues/114479). However, some LLVM versions later, none
-        // of our tests is able to find any difference between the complicated and the naive
-        // version, so now we are back to the naive version.
-        let b = self.to_bits();
-        match (b & Self::MANTISSA_MASK, b & Self::EXPONENT_MASK) {
+        // around buggy codegen on x87 targets for `f32` and `f64` (see
+        // https://github.com/rust-lang/rust/issues/114479). However, some LLVM versions later,
+        // none of our tests is able to find any difference between the complicated and the
+        // naive version, so now we are back to the naive version.
+        let bits = self.to_bits();
+        match (bits & Self::MANTISSA_MASK, bits & Self::EXPONENT_MASK) {
             (0, Self::EXPONENT_MASK) => FpCategory::Infinite,
             (_, Self::EXPONENT_MASK) => FpCategory::Nan,
             (0, 0) => FpCategory::Zero,
@@ -590,16 +643,24 @@ impl f64 {
     /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
-    /// let f = 7.0_f64;
-    /// let g = -7.0_f64;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0_", stringify!($SelfT), ";")]
+    #[doc = concat!("let g = -7.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
+    #[must_use]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_sign_positive(self) -> bool {
         !self.is_sign_negative()
     }
@@ -615,20 +676,28 @@ impl f64 {
     /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
-    /// let f = 7.0_f64;
-    /// let g = -7.0_f64;
+    $(#[doc = concat!("#![feature(", stringify!($feature), ")]")])?
+    $(#[doc = concat!("# #[cfg(", stringify!($has_reliable_cfg), ")] {")])?
+    $(${ignore($feature)}
+        ///
+    )?
+    #[doc = concat!("let f = 7.0_", stringify!($SelfT), ";")]
+    #[doc = concat!("let g = -7.0_", stringify!($SelfT), ";")]
     ///
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
+    $(${ignore($has_reliable_cfg)}
+        /// # }
+    )?
     /// ```
-    #[must_use]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
+    #[must_use]
+    #[$base]
+    $(#[$const_float_classify])?
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
-        self.to_bits() & Self::SIGN_MASK != 0
+        (self.to_bits() & Self::SIGN_MASK) != 0
     }
 
     /// Returns the least number greater than `self`.
