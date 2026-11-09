@@ -54,6 +54,14 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
         }
     }
 
+    // MSVC 2015+ passes the first 3 vector arguments in [XYZ]MM0-2
+    // See https://reviews.llvm.org/D72114 for Clang behavior
+    let mut remaining_xmm_registers = match opts.flavor {
+        Flavor::General { regparam: Some(_) } => 0,
+        Flavor::General { regparam: None } | Flavor::Fastcall => 3,
+        Flavor::Vectorcall => 6,
+    };
+
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() || !arg.layout.is_sized() {
             continue;
@@ -63,9 +71,6 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
             arg.make_indirect();
             continue;
         }
-
-        // FIXME: MSVC 2015+ will pass the first 3 vector arguments in [XYZ]MM0-2
-        // See https://reviews.llvm.org/D72114 for Clang behavior
 
         let align_4 = Align::from_bytes(4).unwrap();
 
@@ -90,6 +95,19 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
             // The rules can be found in `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`.
             let byval_align = align_4;
             arg.pass_by_stack_offset(Some(byval_align));
+        } else if opts.flavor == Flavor::Vectorcall
+            && let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
+            && let Primitive::Float(Float::F32 | Float::F64) = scalar.primitive()
+        {
+            if remaining_xmm_registers > 0 {
+                remaining_xmm_registers -= 1;
+            }
+        } else if let BackendRepr::SimdVector { .. } = arg.layout.backend_repr {
+            if remaining_xmm_registers > 0 {
+                remaining_xmm_registers -= 1;
+            } else {
+                arg.make_indirect();
+            }
         } else {
             arg.extend_integer_width_to(32);
         }

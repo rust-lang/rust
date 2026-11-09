@@ -217,8 +217,8 @@ extern "vectorcall" fn zst_array_vectorcall(_: [u8; 0]) {}
 #[target_feature(enable = "sse2")]
 extern "C" fn four_vectors(_: i32x4, _: i32x4, _: i32x4, _: i32x4) {}
 
-/// FIXME: on msvc we should pass the 4th argument indirectly, but currently don't.
-/// When we do, the total count should remain 64.
+/// With win32 the 4th argument is passed indirectly, but the count still uses the
+/// original 16-byte type size.
 // CHECK-LABEL: _four_vectors_stdcall@64:
 #[unsafe(no_mangle)]
 #[target_feature(enable = "sse2")]

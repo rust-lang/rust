@@ -5,7 +5,7 @@ use rustc_abi::{
 };
 
 use crate::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, PassMode, TyAbiInterface,
+    ArgAbi, ArgAttribute, ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode, TyAbiInterface,
 };
 use crate::spec::{HasTargetSpec, RustcAbi};
 
@@ -266,6 +266,14 @@ where
 
     for arg in fn_abi.args.iter_mut() {
         let attrs = match arg.mode {
+            PassMode::Indirect { ref mut attrs, address_space: _, mode: IndirectMode::Pointer } => {
+                if free_regs > 0 {
+                    free_regs -= 1;
+                    attrs.set(ArgAttribute::InReg);
+                }
+
+                continue;
+            }
             PassMode::Ignore | PassMode::Indirect { attrs: _, address_space: _, mode: _ } => {
                 continue;
             }
