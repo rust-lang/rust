@@ -488,6 +488,17 @@ pub trait Interner:
         trait_ref: TraitRef<Self>,
         f: impl FnMut(Self::ImplId) -> R,
     ) -> R;
+
+    fn for_each_candidate_impl<R: VisitorResult>(
+        self,
+        trait_ref: TraitRef<Self>,
+        f: impl FnMut(Self::ImplId) -> R,
+    ) -> R {
+        // `for_each_candidate_impl` is allowed to look at fewer impls, but by default it looks at
+        // all the "relevant" ones.
+        self.for_each_relevant_impl(trait_ref, f)
+    }
+
     fn for_each_blanket_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,

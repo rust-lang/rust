@@ -2,14 +2,15 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter;
 use std::marker::PhantomData;
+use std::ops::ControlFlow;
 
 use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 use crate::inherent::*;
-use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Const, Interner};
+use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _};
+use crate::{self as ty, Const, Interner, TypeVisitor, UintTy, ValTreeKind};
 
 /// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -79,6 +80,9 @@ pub enum TreatParams {
 /// The idea is to get something simple that we can use to quickly decide if two types could unify,
 /// for example during method lookup. If this function returns `Some(x)` it can only unify with
 /// types for which this method returns either `Some(x)` as well or `None`.
+///
+/// See also `is_exact_match_ty` for the accompanying "exact-match" concept which is further used
+/// to optimize handling of certain generic ADT cases.
 ///
 /// A special case here are parameters and projections, which are only injective
 /// if they are treated as placeholders.
@@ -157,6 +161,99 @@ impl<DefId> SimplifiedType<DefId> {
             | SimplifiedType::Coroutine(d)
             | SimplifiedType::CoroutineWitness(d) => Some(d),
             _ => None,
+        }
+    }
+}
+
+/// Returns the trait impl's self ty, if it is exact-match.
+pub fn trait_impl_exact_match_self_ty<I: Interner>(cx: I, impl_def_id: I::ImplId) -> Option<I::Ty> {
+    let self_ty = cx.impl_trait_ref(impl_def_id).skip_binder().self_ty();
+    is_exact_match_ty::<I>(self_ty).then_some(self_ty)
+}
+
+/// The following types are "exact-match":
+/// - Scalar types: `bool`, `char`, integers, floats, `str`, and `!`.
+/// - Certain aggregate types (ADTs, tuples, arrays, slices) that satisfy the following:
+///   - Any type parameters must themselves be exact-match types.
+///   - Any const parameters must be trivial `usize` leaf consts.
+///   - No region parameters are allowed.
+///
+/// The crucial thing that follows is that we can trivially test if two exact-match `Ty`s unify via
+/// equality: they unify iff they are equal. This property is used to optimize candidate selection,
+/// most notably in cases where a single generic ADT is instantiated many times. E.g. `bitmaps` has
+/// a type `BitsImpl<N>` that is instantiated over 1024 distinct values of `N`, all of which impl a
+/// single trait `Bits`.
+///
+/// This function is conservative and may produce false negatives. This is ok because the
+/// exact-match property is only used for optimization purposes. There is a traversal budget to
+/// ensure pathological type nesting doesn't hurt performance.
+pub fn is_exact_match_ty<I: Interner>(ty: I::Ty) -> bool {
+    !ty.has_regions() && ty.visit_with(&mut ExactMatchTyVisitor { remaining: 64 }).is_continue()
+}
+
+struct ExactMatchTyVisitor {
+    /// How many more ty/const checks are we willing to do?
+    remaining: usize,
+}
+
+impl<I: Interner> TypeVisitor<I> for ExactMatchTyVisitor {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+        if self.remaining == 0 {
+            return ControlFlow::Break(());
+        }
+        self.remaining -= 1;
+
+        match ty.kind() {
+            // Builtin scalar types are exact-match.
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
+                ControlFlow::Continue(())
+            }
+
+            // These aggregates types are exact-match if the types/consts within are exact-match.
+            ty::Adt(..) | ty::Tuple(_) | ty::Array(..) | ty::Slice(..) => ty.super_visit_with(self),
+
+            // These are categorized as not exact-match. Some of them probably could be, but it
+            // hasn't been necessary.
+            ty::Pat(..)
+            | ty::RawPtr(..)
+            | ty::Dynamic(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
+            | ty::Placeholder(..)
+            | ty::Param(_)
+            | ty::Alias(..)
+            | ty::Foreign(_)
+            | ty::Error(_)
+            | ty::Bound(..)
+            | ty::Infer(_) => ControlFlow::Break(()),
+        }
+    }
+
+    fn visit_const(&mut self, ct: Const<I>) -> Self::Result {
+        if self.remaining == 0 {
+            return ControlFlow::Break(());
+        }
+        self.remaining -= 1;
+
+        // Only trivial `usize` consts are accepted. This specificity is annoying but necessary
+        // because it's possible for consts with different types but equal values (e.g. `5usize`
+        // and `5u64`) to unify. `usize` is the type that shows up in various real-world crates
+        // such as `bitmaps` and `typenum`.
+        if let ty::ConstKind::Value(val) = ct.kind()
+            && let ty::Uint(UintTy::Usize) = val.ty().kind()
+            && let ValTreeKind::Leaf(_) = val.valtree().kind()
+        {
+            ControlFlow::Continue(())
+        } else {
+            ControlFlow::Break(())
         }
     }
 }

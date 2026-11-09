@@ -133,21 +133,47 @@ impl<'tcx> TraitDef {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Iterate over every impl that could possibly match the self type `self_ty`.
-    ///
-    /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn for_each_relevant_impl<R: VisitorResult>(
+    fn for_each_relevant_impl_inner<R: VisitorResult>(
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
+        do_exact_match_filtering: bool,
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
+        const EXACT_MATCH_THRESHOLD: usize = 16;
+
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
-                for &impl_def_id in impls_for_type {
-                    try_visit!(f(impl_def_id))
+                if do_exact_match_filtering
+                    && impls_for_type.len() >= EXACT_MATCH_THRESHOLD
+                    && fast_reject::is_exact_match_ty::<Self>(self_ty)
+                {
+                    // Optimized visiting: we have a lot of impls and `self_ty` is an exact-match
+                    // type. Determine which trait impl self tys are also exact-match. For those
+                    // that are, we can do fast matching with `Ty` equality to decide if we can
+                    // skip.
+                    let exact_match_self_tys =
+                        tcx.trait_impl_exact_match_self_tys((trait_def_id, simp));
+                    assert_eq!(impls_for_type.len(), exact_match_self_tys.len());
+                    for (&impl_def_id, &exact_match_self_ty) in
+                        iter::zip(impls_for_type, exact_match_self_tys)
+                    {
+                        if let Some(exact_match_self_ty) = exact_match_self_ty
+                            && exact_match_self_ty != self_ty
+                        {
+                            // Both self tys are exact-match and they are not equal, which means
+                            // they cannot unify and can be excluded from consideration.
+                        } else {
+                            try_visit!(f(impl_def_id))
+                        }
+                    }
+                } else {
+                    // Normal visiting.
+                    for &impl_def_id in impls_for_type {
+                        try_visit!(f(impl_def_id))
+                    }
                 }
             }
 
@@ -274,6 +300,32 @@ impl<'tcx> TyCtxt<'tcx> {
         self.for_each_blanket_impl(trait_def_id, f)
     }
 
+    /// Iterate over every impl that could possibly match the self type `self_ty`.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn for_each_relevant_impl<R: VisitorResult>(
+        self,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        f: impl FnMut(DefId) -> R,
+    ) -> R {
+        self.for_each_relevant_impl_inner(trait_def_id, self_ty, false, f)
+    }
+
+    /// Iterate over every impl that could be a candidate, taking advantage of the exact-match
+    /// property to skip uninteresting cases. Useful for candidate assembly, but not for auto-trait
+    /// existence checks, for example.
+    ///
+    /// `trait_def_id` MUST BE the `DefId` of a trait.
+    pub fn for_each_candidate_impl<R: VisitorResult>(
+        self,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        f: impl FnMut(DefId) -> R,
+    ) -> R {
+        self.for_each_relevant_impl_inner(trait_def_id, self_ty, true, f)
+    }
+
     /// `trait_def_id` MUST BE the `DefId` of a trait.
     pub fn non_blanket_impls_for_ty(
         self,
@@ -341,6 +393,22 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
     }
 
     impls
+}
+
+pub(super) fn trait_impl_exact_match_self_tys_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (trait_id, simp): (DefId, SimplifiedType),
+) -> &'tcx [Option<Ty<'tcx>>] {
+    // Get the non-blanket impls of the trait that match `simp`, and for each one, wrap it in
+    // `Some` if it is exact-match or `None` otherwise.
+    match tcx.trait_impls_of(trait_id).non_blanket_impls().get(&simp) {
+        None => bug!("query should only be called when non-blanket impls are present"),
+        Some(non_blanket_impls) => tcx.arena.alloc_from_iter(
+            non_blanket_impls
+                .iter()
+                .map(|&trait_impl| fast_reject::trait_impl_exact_match_self_ty(tcx, trait_impl)),
+        ),
+    }
 }
 
 /// Query provider for `incoherent_impls`.
