@@ -46,7 +46,7 @@ use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 use crate::diagnostics::{
-    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
+    BuiltinAnonymousParams, BuiltinDerefNullptr, BuiltinDoubleNegations,
     BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatterns,
     BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
     BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
@@ -891,25 +891,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     .or_else(|| find_attr!(attrs, NoMangle(span) => *span))
                 {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
-                }
-            }
-            hir::ItemKind::Const(ident, generics, ..) => {
-                if find_attr!(attrs, NoMangle(..)) {
-                    let suggestion =
-                        if generics.params.is_empty() && generics.where_clause_span.is_empty() {
-                            // account for "pub const" (#45562)
-                            Some(it.span.until(ident.span))
-                        } else {
-                            None
-                        };
-
-                    // Const items do not refer to a particular location in memory, and therefore
-                    // don't have anything to attach a symbol to
-                    cx.emit_span_lint(
-                        NO_MANGLE_CONST_ITEMS,
-                        it.span,
-                        BuiltinConstNoMangle { suggestion },
-                    );
                 }
             }
             _ => {}
