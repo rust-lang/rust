@@ -78,7 +78,6 @@ pub(crate) fn generate_is_empty_from_len(
         |builder| {
             let place = crate::utils::cover_edit_range(ctx.source_file().syntax(), range);
             let indent = IndentLevel::from_element(place.start());
-            let unsafe_kw = if fn_node.unsafe_token().is_some() { "unsafe " } else { "" };
             let const_kw = if fn_node.const_token().is_some() { "const " } else { "" };
             let vis = fn_node.visibility().map_or(String::new(), |it| format!("{it} "));
 
@@ -86,7 +85,7 @@ pub(crate) fn generate_is_empty_from_len(
                 r#"
 
 #[must_use]
-{vis}{const_kw}{unsafe_kw}fn is_empty(&self) -> bool {{
+{vis}{const_kw}fn is_empty(&self) -> bool {{
     self.len() == 0
 }}"#
             );
