@@ -109,21 +109,26 @@ impl Proxy {
             wake_pending: Condvar::new(),
             helper: OnceLock::new(),
         });
-        let proxy_ = Arc::clone(&proxy);
+        // Use weak reference as if we will clone `Arc` then `Proxy` will never be
+        // dropped as helper thread will have a strong reference to it, this may
+        // result in not all tokens returned to the job server, see #165506.
+        let weak_proxy = Arc::downgrade(&proxy);
         let helper = proxy
             .client
             .clone()
             .into_helper_thread(move |token| {
                 // Reminder: this callback runs when the helper acquires a token.
-                if let Ok(token) = token {
-                    let mut data = proxy_.data.lock();
+                if let Ok(token) = token
+                    && let Some(proxy) = weak_proxy.upgrade()
+                {
+                    let mut data = proxy.data.lock();
                     if data.pending > 0 {
                         // The token is still needed, give it to one of the waiting threads.
                         token.drop_without_releasing();
                         assert!(data.used > 0);
                         data.used += 1;
                         data.pending -= 1;
-                        proxy_.wake_pending.notify_one();
+                        proxy.wake_pending.notify_one();
                     } else {
                         // The token is no longer needed, release it by dropping.
                         drop(data);

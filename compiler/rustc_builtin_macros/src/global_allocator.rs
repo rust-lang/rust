@@ -96,7 +96,7 @@ impl AllocFnFactory<'_, '_> {
         let method = self.cx.expr_path(method);
         let allocator = self.cx.path_ident(self.ty_span, self.global);
         let allocator = self.cx.expr_path(allocator);
-        let allocator = self.cx.expr_addr_of(self.ty_span, allocator);
+        let allocator = self.cx.expr_ref(self.ty_span, allocator);
         args.insert(0, allocator);
 
         self.cx.expr_call(self.ty_span, method, args)

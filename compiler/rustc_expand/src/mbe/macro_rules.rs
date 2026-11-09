@@ -635,15 +635,14 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
     let parser = parser_from_cx(psess, arg.clone(), T::recovery());
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new();
+    // Take a snapshot of the state of pre-expansion gating at this point.
+    // This is used so that if a matcher is not `Success(..)`ful,
+    // then the spans which became gated when parsing the unsuccessful matcher
+    // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
+    let gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
     for (i, rule) in rules.iter().enumerate() {
         let MacroRule::Func { lhs, .. } = rule else { continue };
         let _tracing_span = trace_span!("Matching arm", %i);
-
-        // Take a snapshot of the state of pre-expansion gating at this point.
-        // This is used so that if a matcher is not `Success(..)`ful,
-        // then the spans which became gated when parsing the unsuccessful matcher
-        // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
-        let mut gated_spans_snapshot = mem::take(&mut *psess.gated_spans.spans.borrow_mut());
 
         track.prepare(WhichMatcher::FOR_FUNC, lhs);
         let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
@@ -674,11 +673,10 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
             }
         }
 
-        // The matcher was not `Success(..)`ful.
-        // Restore to the state before snapshotting and maybe try again.
-        mem::swap(&mut gated_spans_snapshot, &mut psess.gated_spans.spans.borrow_mut());
+        psess.gated_spans.spans.borrow_mut().clear();
     }
 
+    *psess.gated_spans.spans.borrow_mut() = gated_spans_snapshot;
     Err(CanRetry::Yes)
 }
 

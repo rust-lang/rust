@@ -1,8 +1,8 @@
 error: the constant `W` is not of type `usize`
-  --> $DIR/transmute-fail.rs:16:42
+  --> $DIR/transmute-fail.rs:16:53
    |
 LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
-   |        ------------- `W` defined here    ^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |        ------------- `W` defined here               ^ array length expected `usize`, found `bool`
    |
    = note: the length of array `[[u32; H]; W]` must be type `usize`
 
