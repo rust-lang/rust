@@ -30,39 +30,18 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
         | AttrKind::Generated(..) => return,
     }
 
-    let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_SET.get(&name));
+    // Parsed attributes are validated during attribute parsing
+    if AttributeParser::is_parsed_attribute(&attr.path()) {
+        return;
+    }
 
-    // Check input tokens for built-in and key-value attributes.
-    if let Some(name) = builtin_attr_info {
-        if AttributeParser::is_parsed_attribute(slice::from_ref(name)) {
-            return;
-        }
+    let attr_item = attr.get_normal_item();
+    if let AttrArgs::Eq { .. } = attr_item.args {
+        // All key-value attributes are restricted to meta-item syntax.
         match parse_meta(psess, attr) {
-            // Don't check safety again, we just did that
-            Ok(meta) => {
-                // FIXME The only unparsed builtin attributes that are left are the lint attributes, so we can hardcode the template here
-                let lint_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
-                assert!(lint_attrs.contains(name));
-
-                let template = template!(
-                    List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
-                    "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
-                );
-                check_builtin_meta_item(psess, &meta, attr.style, *name, template, false)
-            }
+            Ok(_) => {}
             Err(err) => {
                 err.emit();
-            }
-        }
-    } else {
-        let attr_item = attr.get_normal_item();
-        if let AttrArgs::Eq { .. } = attr_item.args {
-            // All key-value attributes are restricted to meta-item syntax.
-            match parse_meta(psess, attr) {
-                Ok(_) => {}
-                Err(err) => {
-                    err.emit();
-                }
             }
         }
     }
