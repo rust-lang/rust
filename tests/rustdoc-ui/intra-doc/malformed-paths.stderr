@@ -25,6 +25,7 @@ LL | //! [Type&content]
    |      ^^^^^^^^^^^^ no item named `Type&content` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[Type&content]: https://...`
 
 error: unresolved link to `Type::field%extra`
   --> $DIR/malformed-paths.rs:14:7

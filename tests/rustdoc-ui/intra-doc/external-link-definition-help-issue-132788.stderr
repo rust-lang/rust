@@ -1,0 +1,24 @@
+error: unresolved link to `ForeignWidget`
+  --> $DIR/external-link-definition-help-issue-132788.rs:5:19
+   |
+LL | /// Compare with [ForeignWidget].
+   |                   ^^^^^^^^^^^^^ no item named `ForeignWidget` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[ForeignWidget]: https://...`
+note: the lint level is defined here
+  --> $DIR/external-link-definition-help-issue-132788.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `ForeignWidget`
+  --> $DIR/external-link-definition-help-issue-132788.rs:18:39
+   |
+LL | /// Compare with [the foreign widget](ForeignWidget).
+   |                                       ^^^^^^^^^^^^^ no item named `ForeignWidget` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: aborting due to 2 previous errors
+

@@ -5,6 +5,7 @@ LL | /// this is not a link to [`example.com`]
    |                             ^^^^^^^^^^^ no item named `example.com` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[`example.com`]: https://...`
 note: the lint level is defined here
   --> $DIR/bad-intra-doc.rs:2:9
    |
@@ -26,6 +27,7 @@ LL | /// classic broken intra-doc link: [`Bar`]
    |                                      ^^^ no item named `Bar` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[`Bar`]: https://...`
 
 error: aborting due to 3 previous errors
 
