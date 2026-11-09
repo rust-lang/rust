@@ -27,12 +27,17 @@ use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 
 trait ArgAttributesExt {
-    fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
-    fn apply_attrs_to_callsite(
+    fn apply_attrs_to_llfn<'ll>(
         &self,
         idx: AttributePlace,
-        cx: &CodegenCx<'_, '_>,
-        callsite: &Value,
+        cx: &CodegenCx<'ll, '_>,
+        llfn: Value<'ll>,
+    );
+    fn apply_attrs_to_callsite<'ll>(
+        &self,
+        idx: AttributePlace,
+        cx: &CodegenCx<'ll, '_>,
+        callsite: Value<'ll>,
     );
 }
 
@@ -116,16 +121,21 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
 }
 
 impl ArgAttributesExt for ArgAttributes {
-    fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value) {
+    fn apply_attrs_to_llfn<'ll>(
+        &self,
+        idx: AttributePlace,
+        cx: &CodegenCx<'ll, '_>,
+        llfn: Value<'ll>,
+    ) {
         let attrs = get_attrs(self, cx);
         attributes::apply_to_llfn(llfn, idx, &attrs);
     }
 
-    fn apply_attrs_to_callsite(
+    fn apply_attrs_to_callsite<'ll>(
         &self,
         idx: AttributePlace,
-        cx: &CodegenCx<'_, '_>,
-        callsite: &Value,
+        cx: &CodegenCx<'ll, '_>,
+        callsite: Value<'ll>,
     ) {
         let attrs = get_attrs(self, cx);
         attributes::apply_to_callsite(callsite, idx, &attrs);
@@ -236,14 +246,14 @@ trait ArgAbiExt<'ll, 'tcx> {
     fn store(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
-        val: &'ll Value,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        val: Value<'ll>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     );
     fn store_fn_arg(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     );
 }
 
@@ -255,8 +265,8 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn store(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
-        val: &'ll Value,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        val: Value<'ll>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     ) {
         match &self.mode {
             PassMode::Ignore => {}
@@ -310,7 +320,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     ) {
         let mut next = || {
             let val = llvm::get_param(bx.llfn(), *idx as c_uint);
@@ -347,8 +357,8 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn store_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-        val: &'ll Value,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        val: Value<'ll>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     ) {
         arg_abi.store(self, val, dst)
     }
@@ -363,12 +373,12 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     fn apply_attrs_llfn(
         &self,
         cx: &CodegenCx<'ll, 'tcx>,
-        llfn: &'ll Value,
+        llfn: Value<'ll>,
         instance: Option<ty::Instance<'tcx>>,
     );
 
     /// Apply attributes to a function call.
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: Value<'ll>);
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
@@ -470,7 +480,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn apply_attrs_llfn(
         &self,
         cx: &CodegenCx<'ll, 'tcx>,
-        llfn: &'ll Value,
+        llfn: Value<'ll>,
         instance: Option<ty::Instance<'tcx>>,
     ) {
         let mut func_attrs = SmallVec::<[_; 3]>::new();
@@ -648,7 +658,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: Value<'ll>) {
         let mut func_attrs = SmallVec::<[_; 2]>::new();
         if self.ret.layout.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(bx.cx.llcx));
@@ -659,7 +669,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         attributes::apply_to_callsite(callsite, llvm::AttributePlace::Function, &{ func_attrs });
 
         let mut i = 0;
-        let mut apply = |cx: &CodegenCx<'_, '_>, attrs: &ArgAttributes| {
+        let mut apply = |cx: &CodegenCx<'ll, '_>, attrs: &ArgAttributes| {
             attrs.apply_attrs_to_callsite(llvm::AttributePlace::Argument(i), cx, callsite);
             i += 1;
             i - 1

@@ -26,23 +26,27 @@ use crate::llvm::{
 };
 use crate::{attributes, llvm_util};
 
-pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
+pub(crate) fn apply_to_llfn<'ll>(llfn: Value<'ll>, idx: AttributePlace, attrs: &[&'ll Attribute]) {
     if !attrs.is_empty() {
         llvm::AddFunctionAttributes(llfn, idx, attrs);
     }
 }
 
-pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
+pub(crate) fn apply_to_callsite<'ll>(
+    callsite: Value<'ll>,
+    idx: AttributePlace,
+    attrs: &[&'ll Attribute],
+) {
     if !attrs.is_empty() {
         llvm::AddCallSiteAttributes(callsite, idx, attrs);
     }
 }
 
-pub(crate) fn has_string_attr(llfn: &Value, name: &str) -> bool {
+pub(crate) fn has_string_attr<'ll>(llfn: Value<'ll>, name: &str) -> bool {
     llvm::HasStringAttribute(llfn, name)
 }
 
-pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
+pub(crate) fn remove_string_attr_from_llfn<'ll>(llfn: Value<'ll>, name: &str) {
     llvm::RemoveStringAttrFromFn(llfn, name);
 }
 
@@ -503,7 +507,7 @@ fn create_alloc_family_attr<'ll>(llcx: llvm::Context<'ll>) -> &'ll llvm::Attribu
 pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
-    llfn: &'ll Value,
+    llfn: Value<'ll>,
     codegen_fn_attrs: &CodegenFnAttrs,
     instance: Option<ty::Instance<'tcx>>,
     sanitizer_ignorelist: Option<&SanitizerIgnoreList>,
