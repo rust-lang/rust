@@ -476,7 +476,9 @@
 
 # Run the build with low priority, by setting the process group's "nice" value
 # to +10 on Unix platforms, and by using a "low priority" job object on Windows.
-#build.low-priority = false
+# Note that this will only slow the build down if there are other CPU-intensive
+# jobs competing for CPU time on the same system.
+#build.low-priority = true
 
 # Arguments passed to the `./configure` script, used during distcheck. You
 # probably won't fill this in but rather it's filled in by the `./configure`
