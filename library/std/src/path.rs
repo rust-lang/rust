@@ -1345,11 +1345,11 @@ impl PathBuf {
         let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
         // in the special case of `C:` on Windows, do *not* add a separator
-        let comps = self.components();
+        let self_comps = self.components();
 
-        if comps.prefix_len() > 0
-            && comps.prefix_len() == comps.path.len()
-            && comps.prefix.unwrap().is_drive()
+        if self_comps.prefix_len() > 0
+            && self_comps.prefix_len() == self_comps.path.len()
+            && self_comps.prefix.unwrap().is_drive()
         {
             need_sep = false
         }
@@ -1368,8 +1368,8 @@ impl PathBuf {
             self.inner.clear();
 
         // verbatim paths need . and .. removed
-        } else if comps.prefix_verbatim() && !path.inner.is_empty() {
-            let mut buf: Vec<_> = comps.collect();
+        } else if self_comps.prefix_verbatim() && !path.inner.is_empty() {
+            let mut buf: Vec<_> = self_comps.collect();
             for c in path.components() {
                 match c {
                     Component::RootDir => {
