@@ -2273,6 +2273,7 @@ unsafe extern "C" {
         kind: DebugEmissionKind,
         DWOId: u64,
         SplitDebugInlining: bool,
+        DebugInfoForProfiling: bool,
         DebugNameTableKind: DebugNameTableKind,
     ) -> &'a DIDescriptor;
 
