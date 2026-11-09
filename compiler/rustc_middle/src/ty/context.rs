@@ -137,306 +137,11 @@ impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 
-/// The type tables share an arena but intern each `TyKind` variant separately.
-pub(super) struct TyKindInterners<'tcx> {
-    arena: &'tcx WorkerLocal<Arena<'tcx>>,
-    // `narrow` is for variants that have a few distinct values or are
-    // infrequently used.
-    narrow: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    adt: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    foreign: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    array: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    slice: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    raw_ptr: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    ref_: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    fn_def: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    fn_ptr: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    unsafe_binder: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    dynamic: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    closure: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    coroutine_closure: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    coroutine: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    tuple: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    alias: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    param: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    bound: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    placeholder: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-}
-
-impl<'tcx> TyKindInterners<'tcx> {
-    fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> Self {
-        Self {
-            arena,
-            narrow: InternedSet::default(),
-            adt: InternedSet::default(),
-            foreign: InternedSet::default(),
-            array: InternedSet::default(),
-            slice: InternedSet::default(),
-            raw_ptr: InternedSet::default(),
-            ref_: InternedSet::default(),
-            fn_def: InternedSet::default(),
-            fn_ptr: InternedSet::default(),
-            unsafe_binder: InternedSet::default(),
-            dynamic: InternedSet::default(),
-            closure: InternedSet::default(),
-            coroutine_closure: InternedSet::default(),
-            coroutine: InternedSet::default(),
-            tuple: InternedSet::default(),
-            alias: InternedSet::default(),
-            param: InternedSet::default(),
-            bound: InternedSet::default(),
-            placeholder: InternedSet::default(),
-        }
-    }
-
-    /// Selects the unique interner for a type's variant.
-    fn interner(&self, kind: &TyKind<'_>) -> &InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>> {
-        match kind {
-            Bool | Char | CoroutineWitness(..) | Error(..) | Int(..) | Uint(..) | Float(..)
-            | Never | Pat(..) | Infer(..) | Str => &self.narrow,
-
-            Adt(..) => &self.adt,
-            Foreign(..) => &self.foreign,
-            Array(..) => &self.array,
-            Slice(..) => &self.slice,
-            RawPtr(..) => &self.raw_ptr,
-            Ref(..) => &self.ref_,
-            FnDef(..) => &self.fn_def,
-            FnPtr(..) => &self.fn_ptr,
-            UnsafeBinder(..) => &self.unsafe_binder,
-            Dynamic(..) => &self.dynamic,
-            Closure(..) => &self.closure,
-            Coroutine(..) => &self.coroutine,
-            Tuple(..) => &self.tuple,
-            Alias(..) => &self.alias,
-            Param(..) => &self.param,
-            Bound(..) => &self.bound,
-            Placeholder(..) => &self.placeholder,
-            CoroutineClosure(..) => &self.coroutine_closure,
-        }
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>> {
-        [
-            &self.narrow,
-            &self.adt,
-            &self.foreign,
-            &self.array,
-            &self.slice,
-            &self.raw_ptr,
-            &self.ref_,
-            &self.fn_def,
-            &self.fn_ptr,
-            &self.unsafe_binder,
-            &self.dynamic,
-            &self.closure,
-            &self.coroutine_closure,
-            &self.coroutine,
-            &self.tuple,
-            &self.alias,
-            &self.param,
-            &self.bound,
-            &self.placeholder,
-        ]
-        .into_iter()
-    }
-
-    #[inline(always)]
-    fn intern(
-        &self,
-        set: &InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-        kind: ty::TyKind<'tcx>,
-        create_flags: impl FnOnce() -> FlagComputation<TyCtxt<'tcx>>,
-    ) -> Ty<'tcx> {
-        Ty(Interned::new_unchecked(
-            set.intern(kind, |_| {
-                let flags = create_flags();
-                InternedInSet(self.arena.alloc(WithCachedTypeInfo {
-                    internee: kind,
-                    flags: flags.flags,
-                    outer_exclusive_binder: flags.outer_exclusive_binder,
-                }))
-            })
-            .0,
-        ))
-    }
-
-    #[inline(never)]
-    fn intern_with_empty_flags(&self, kind: ty::TyKind<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.narrow, kind, || FlagComputation::for_empty_flags())
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_pat(&self, base: Ty<'tcx>, pat: Pattern<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.narrow, Pat(base, pat), || FlagComputation::for_pat(base, pat))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_coroutine_witness(
-        &self,
-        def_id: DefId,
-        args: ty::GenericArgs<'tcx>,
-    ) -> Ty<'tcx> {
-        self.intern(&self.narrow, ty::CoroutineWitness(def_id, args), || {
-            FlagComputation::for_args(args)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_infer(&self, infer: ty::InferTy) -> Ty<'tcx> {
-        self.intern(&self.narrow, Infer(infer), || FlagComputation::for_infer(infer))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_error(&self, error: rustc_errors::ErrorGuaranteed) -> Ty<'tcx> {
-        self.intern(&self.narrow, Error(error), || {
-            FlagComputation::for_flags(ty::TypeFlags::HAS_NON_REGION_ERROR)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_adt(&self, def: AdtDef<'tcx>, args: ty::GenericArgs<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.adt, Adt(def, args), || FlagComputation::for_args(args))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_foreign(&self, def_id: DefId) -> Ty<'tcx> {
-        self.intern(&self.foreign, Foreign(def_id), || FlagComputation::for_empty_flags())
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_array(&self, element: Ty<'tcx>, len: Const<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.array, Array(element, len), || FlagComputation::for_array(element, len))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_slice(&self, element: Ty<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.slice, Slice(element), || FlagComputation::for_ty(element))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_raw_ptr(
-        &self,
-        pointee: Ty<'tcx>,
-        mutability: hir::Mutability,
-    ) -> Ty<'tcx> {
-        self.intern(&self.raw_ptr, RawPtr(pointee, mutability), || FlagComputation::for_ty(pointee))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_ref(
-        &self,
-        region: Region<'tcx>,
-        pointee: Ty<'tcx>,
-        mutability: hir::Mutability,
-    ) -> Ty<'tcx> {
-        self.intern(&self.ref_, Ref(region, pointee, mutability), || {
-            FlagComputation::for_ref(region, pointee)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_fn_def(
-        &self,
-        def_id: DefId,
-        args: Binder<'tcx, ty::GenericArgs<'tcx>>,
-    ) -> Ty<'tcx> {
-        self.intern(&self.fn_def, FnDef(def_id, args), || FlagComputation::for_fn_def(args))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_fn_ptr(
-        &self,
-        sig_tys: Binder<'tcx, ty::FnSigTys<TyCtxt<'tcx>>>,
-        header: ty::FnHeader<TyCtxt<'tcx>>,
-    ) -> Ty<'tcx> {
-        self.intern(&self.fn_ptr, FnPtr(sig_tys, header), || FlagComputation::for_fn_ptr(sig_tys))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_unsafe_binder(
-        &self,
-        bound_ty: ty::UnsafeBinderInner<TyCtxt<'tcx>>,
-    ) -> Ty<'tcx> {
-        self.intern(&self.unsafe_binder, UnsafeBinder(bound_ty), || {
-            FlagComputation::for_unsafe_binder(bound_ty)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_dynamic(
-        &self,
-        predicates: &'tcx List<PolyExistentialPredicate<'tcx>>,
-        region: Region<'tcx>,
-    ) -> Ty<'tcx> {
-        self.intern(&self.dynamic, Dynamic(predicates, region), || {
-            FlagComputation::for_dynamic(predicates, region)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_closure(&self, def_id: DefId, args: ty::GenericArgs<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.closure, Closure(def_id, args), || FlagComputation::for_args(args))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_coroutine_closure(
-        &self,
-        def_id: DefId,
-        args: ty::GenericArgs<'tcx>,
-    ) -> Ty<'tcx> {
-        self.intern(&self.coroutine_closure, CoroutineClosure(def_id, args), || {
-            FlagComputation::for_args(args)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_coroutine(&self, def_id: DefId, args: ty::GenericArgs<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.coroutine, Coroutine(def_id, args), || {
-            FlagComputation::for_coroutine(args)
-        })
-    }
-    #[inline(never)]
-    pub(super) fn intern_tuple(&self, types: &'tcx List<Ty<'tcx>>) -> Ty<'tcx> {
-        self.intern(&self.tuple, Tuple(types), || FlagComputation::for_tys(types))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_alias(&self, is_rigid: ty::IsRigid, alias: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.alias, Alias(is_rigid, alias), || {
-            FlagComputation::for_alias(is_rigid, alias)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_param(&self, param: ty::ParamTy) -> Ty<'tcx> {
-        self.intern(&self.param, Param(param), || {
-            FlagComputation::for_flags(ty::TypeFlags::HAS_TY_PARAM)
-        })
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_bound(
-        &self,
-        index: ty::BoundVarIndexKind,
-        bound_ty: ty::BoundTy<'tcx>,
-    ) -> Ty<'tcx> {
-        self.intern(&self.bound, Bound(index, bound_ty), || FlagComputation::for_bound(index))
-    }
-
-    #[inline(never)]
-    pub(super) fn intern_placeholder(&self, placeholder: ty::PlaceholderType<'tcx>) -> Ty<'tcx> {
-        self.intern(&self.placeholder, Placeholder(placeholder), || {
-            FlagComputation::for_flags(ty::TypeFlags::HAS_TY_PLACEHOLDER)
-        })
-    }
-}
-
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc. are allocated from.
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
-    pub(super) types: TyKindInterners<'tcx>,
 
+    type_: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
     // Specifically use a speedy hash algorithm for these hash sets, since
     // they're accessed quite often.
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
@@ -477,7 +182,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             // local perf runs. To get the interner sizes, insert `eprintln` printing the size of
             // the interner in functions like `intern_ty`. Bigger benchmarks tend to give more
             // accurate ratios, so use something like `x perf eprintln --includes cargo`.
-            types: TyKindInterners::new(arena),
+            type_: InternedSet::with_capacity(N * 16),
             const_lists: InternedSet::with_capacity(N * 4),
             args: InternedSet::with_capacity(N * 4),
             type_lists: InternedSet::with_capacity(N * 4),
@@ -557,6 +262,183 @@ impl<'tcx> CtxtInterners<'tcx> {
                 })
                 .0
         }
+    }
+
+    #[inline(always)]
+    fn intern(
+        &self,
+        kind: ty::TyKind<'tcx>,
+        create_flags: impl FnOnce() -> FlagComputation<TyCtxt<'tcx>>,
+    ) -> Ty<'tcx> {
+        Ty(Interned::new_unchecked(
+            self.type_
+                .intern(kind, |_| {
+                    let flags = create_flags();
+                    InternedInSet(self.arena.alloc(WithCachedTypeInfo {
+                        internee: kind,
+                        flags: flags.flags,
+                        outer_exclusive_binder: flags.outer_exclusive_binder,
+                    }))
+                })
+                .0,
+        ))
+    }
+
+    #[inline(never)]
+    fn intern_with_empty_flags(&self, kind: ty::TyKind<'tcx>) -> Ty<'tcx> {
+        self.intern(kind, || FlagComputation::for_empty_flags())
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_pat(&self, base: Ty<'tcx>, pat: Pattern<'tcx>) -> Ty<'tcx> {
+        self.intern(Pat(base, pat), || FlagComputation::for_pat(base, pat))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_coroutine_witness(
+        &self,
+        def_id: DefId,
+        args: ty::GenericArgs<'tcx>,
+    ) -> Ty<'tcx> {
+        self.intern(ty::CoroutineWitness(def_id, args), || FlagComputation::for_args(args))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_infer(&self, infer: ty::InferTy) -> Ty<'tcx> {
+        self.intern(Infer(infer), || FlagComputation::for_infer(infer))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_error(&self, error: rustc_errors::ErrorGuaranteed) -> Ty<'tcx> {
+        self.intern(Error(error), || {
+            FlagComputation::for_flags(ty::TypeFlags::HAS_NON_REGION_ERROR)
+        })
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_adt(&self, def: AdtDef<'tcx>, args: ty::GenericArgs<'tcx>) -> Ty<'tcx> {
+        self.intern(Adt(def, args), || FlagComputation::for_args(args))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_foreign(&self, def_id: DefId) -> Ty<'tcx> {
+        self.intern(Foreign(def_id), || FlagComputation::for_empty_flags())
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_array(&self, element: Ty<'tcx>, len: Const<'tcx>) -> Ty<'tcx> {
+        self.intern(Array(element, len), || FlagComputation::for_array(element, len))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_slice(&self, element: Ty<'tcx>) -> Ty<'tcx> {
+        self.intern(Slice(element), || FlagComputation::for_ty(element))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_raw_ptr(
+        &self,
+        pointee: Ty<'tcx>,
+        mutability: hir::Mutability,
+    ) -> Ty<'tcx> {
+        self.intern(RawPtr(pointee, mutability), || FlagComputation::for_ty(pointee))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_ref(
+        &self,
+        region: Region<'tcx>,
+        pointee: Ty<'tcx>,
+        mutability: hir::Mutability,
+    ) -> Ty<'tcx> {
+        self.intern(Ref(region, pointee, mutability), || FlagComputation::for_ref(region, pointee))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_fn_def(
+        &self,
+        def_id: DefId,
+        args: Binder<'tcx, ty::GenericArgs<'tcx>>,
+    ) -> Ty<'tcx> {
+        self.intern(FnDef(def_id, args), || FlagComputation::for_fn_def(args))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_fn_ptr(
+        &self,
+        sig_tys: Binder<'tcx, ty::FnSigTys<TyCtxt<'tcx>>>,
+        header: ty::FnHeader<TyCtxt<'tcx>>,
+    ) -> Ty<'tcx> {
+        self.intern(FnPtr(sig_tys, header), || FlagComputation::for_fn_ptr(sig_tys))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_unsafe_binder(
+        &self,
+        bound_ty: ty::UnsafeBinderInner<TyCtxt<'tcx>>,
+    ) -> Ty<'tcx> {
+        self.intern(UnsafeBinder(bound_ty), || FlagComputation::for_unsafe_binder(bound_ty))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_dynamic(
+        &self,
+        predicates: &'tcx List<PolyExistentialPredicate<'tcx>>,
+        region: Region<'tcx>,
+    ) -> Ty<'tcx> {
+        self.intern(Dynamic(predicates, region), || {
+            FlagComputation::for_dynamic(predicates, region)
+        })
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_closure(&self, def_id: DefId, args: ty::GenericArgs<'tcx>) -> Ty<'tcx> {
+        self.intern(Closure(def_id, args), || FlagComputation::for_args(args))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_coroutine_closure(
+        &self,
+        def_id: DefId,
+        args: ty::GenericArgs<'tcx>,
+    ) -> Ty<'tcx> {
+        self.intern(CoroutineClosure(def_id, args), || FlagComputation::for_args(args))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_coroutine(&self, def_id: DefId, args: ty::GenericArgs<'tcx>) -> Ty<'tcx> {
+        self.intern(Coroutine(def_id, args), || FlagComputation::for_coroutine(args))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_tuple(&self, types: &'tcx List<Ty<'tcx>>) -> Ty<'tcx> {
+        self.intern(Tuple(types), || FlagComputation::for_tys(types))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_alias(&self, is_rigid: ty::IsRigid, alias: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+        self.intern(Alias(is_rigid, alias), || FlagComputation::for_alias(is_rigid, alias))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_param(&self, param: ty::ParamTy) -> Ty<'tcx> {
+        self.intern(Param(param), || FlagComputation::for_flags(ty::TypeFlags::HAS_TY_PARAM))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_bound(
+        &self,
+        index: ty::BoundVarIndexKind,
+        bound_ty: ty::BoundTy<'tcx>,
+    ) -> Ty<'tcx> {
+        self.intern(Bound(index, bound_ty), || FlagComputation::for_bound(index))
+    }
+
+    #[inline(never)]
+    pub(super) fn intern_placeholder(&self, placeholder: ty::PlaceholderType<'tcx>) -> Ty<'tcx> {
+        self.intern(Placeholder(placeholder), || {
+            FlagComputation::for_flags(ty::TypeFlags::HAS_TY_PLACEHOLDER)
+        })
     }
 }
 
@@ -696,7 +578,7 @@ pub struct CommonConsts<'tcx> {
 }
 
 impl<'tcx> CommonTypes<'tcx> {
-    fn new(interners: &TyKindInterners<'tcx>) -> CommonTypes<'tcx> {
+    fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         let mk = |ty| interners.intern_with_empty_flags(ty);
 
         let infer_ty_vars = (0..NUM_PREINTERNED_INFER_TY_VARS)
@@ -1268,7 +1150,7 @@ impl<'tcx> TyCtxt<'tcx> {
             sess.dcx().emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners.types);
+        let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
 
@@ -2047,23 +1929,7 @@ macro_rules! nop_list_lift {
     };
 }
 
-impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for Ty<'a> {
-    type Lifted = Ty<'tcx>;
-
-    #[track_caller]
-    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
-        assert!(
-            tcx.interners
-                .types
-                .interner(self.kind())
-                .contains_pointer_to(&InternedInSet(&*self.0.0))
-        );
-        // SAFETY: we just checked that `self` is interned and therefore is valid for the
-        // entire lifetime of the `TyCtxt`.
-        unsafe { mem::transmute(self) }
-    }
-}
-
+nop_lift! { type_; Ty<'a> => Ty<'tcx> }
 nop_lift! { pat; Pattern<'a> => Pattern<'tcx> }
 nop_lift! { const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx> }
 nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
@@ -2134,7 +2000,7 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-                for shard in tcx.interners.types.iter().flat_map(|interner| interner.lock_shards()) {
+                for shard in tcx.interners.type_.lock_shards()  {
                     // It seems that ordering doesn't affect anything here.
                     #[allow(rustc::potential_query_instability)]
                     let types = shard.iter();
@@ -2703,45 +2569,41 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
         match st {
-            ty::Bool => self.interners.types.intern_with_empty_flags(ty::Bool),
-            ty::Char => self.interners.types.intern_with_empty_flags(ty::Char),
-            ty::Int(int) => self.interners.types.intern_with_empty_flags(ty::Int(int)),
-            ty::Uint(uint) => self.interners.types.intern_with_empty_flags(ty::Uint(uint)),
-            ty::Float(float) => self.interners.types.intern_with_empty_flags(ty::Float(float)),
-            ty::Adt(def, args) => self.interners.types.intern_adt(def, args),
-            ty::Foreign(def_id) => self.interners.types.intern_foreign(def_id),
-            ty::Str => self.interners.types.intern_with_empty_flags(ty::Str),
-            ty::Array(element, len) => self.interners.types.intern_array(element, len),
-            ty::Pat(base, pat) => self.interners.types.intern_pat(base, pat),
-            ty::Slice(element) => self.interners.types.intern_slice(element),
-            ty::RawPtr(pointee, mutability) => {
-                self.interners.types.intern_raw_ptr(pointee, mutability)
-            }
+            ty::Bool => self.interners.intern_with_empty_flags(ty::Bool),
+            ty::Char => self.interners.intern_with_empty_flags(ty::Char),
+            ty::Int(int) => self.interners.intern_with_empty_flags(ty::Int(int)),
+            ty::Uint(uint) => self.interners.intern_with_empty_flags(ty::Uint(uint)),
+            ty::Float(float) => self.interners.intern_with_empty_flags(ty::Float(float)),
+            ty::Adt(def, args) => self.interners.intern_adt(def, args),
+            ty::Foreign(def_id) => self.interners.intern_foreign(def_id),
+            ty::Str => self.interners.intern_with_empty_flags(ty::Str),
+            ty::Array(element, len) => self.interners.intern_array(element, len),
+            ty::Pat(base, pat) => self.interners.intern_pat(base, pat),
+            ty::Slice(element) => self.interners.intern_slice(element),
+            ty::RawPtr(pointee, mutability) => self.interners.intern_raw_ptr(pointee, mutability),
             ty::Ref(region, pointee, mutability) => {
-                self.interners.types.intern_ref(region, pointee, mutability)
+                self.interners.intern_ref(region, pointee, mutability)
             }
-            ty::FnDef(def_id, args) => self.interners.types.intern_fn_def(def_id, args),
-            ty::FnPtr(sig_tys, header) => self.interners.types.intern_fn_ptr(sig_tys, header),
-            ty::UnsafeBinder(bound_ty) => self.interners.types.intern_unsafe_binder(bound_ty),
-            ty::Dynamic(predicates, region) => {
-                self.interners.types.intern_dynamic(predicates, region)
-            }
-            ty::Closure(def_id, args) => self.interners.types.intern_closure(def_id, args),
+            ty::FnDef(def_id, args) => self.interners.intern_fn_def(def_id, args),
+            ty::FnPtr(sig_tys, header) => self.interners.intern_fn_ptr(sig_tys, header),
+            ty::UnsafeBinder(bound_ty) => self.interners.intern_unsafe_binder(bound_ty),
+            ty::Dynamic(predicates, region) => self.interners.intern_dynamic(predicates, region),
+            ty::Closure(def_id, args) => self.interners.intern_closure(def_id, args),
             ty::CoroutineClosure(def_id, args) => {
-                self.interners.types.intern_coroutine_closure(def_id, args)
+                self.interners.intern_coroutine_closure(def_id, args)
             }
-            ty::Coroutine(def_id, args) => self.interners.types.intern_coroutine(def_id, args),
+            ty::Coroutine(def_id, args) => self.interners.intern_coroutine(def_id, args),
             ty::CoroutineWitness(def_id, args) => {
-                self.interners.types.intern_coroutine_witness(def_id, args)
+                self.interners.intern_coroutine_witness(def_id, args)
             }
-            ty::Never => self.interners.types.intern_with_empty_flags(ty::Never),
-            ty::Tuple(types) => self.interners.types.intern_tuple(types),
-            ty::Alias(is_rigid, alias) => self.interners.types.intern_alias(is_rigid, alias),
-            ty::Param(param) => self.interners.types.intern_param(param),
-            ty::Bound(index, bound_ty) => self.interners.types.intern_bound(index, bound_ty),
-            ty::Placeholder(placeholder) => self.interners.types.intern_placeholder(placeholder),
-            ty::Infer(infer) => self.interners.types.intern_infer(infer),
-            ty::Error(error) => self.interners.types.intern_error(error),
+            ty::Never => self.interners.intern_with_empty_flags(ty::Never),
+            ty::Tuple(types) => self.interners.intern_tuple(types),
+            ty::Alias(is_rigid, alias) => self.interners.intern_alias(is_rigid, alias),
+            ty::Param(param) => self.interners.intern_param(param),
+            ty::Bound(index, bound_ty) => self.interners.intern_bound(index, bound_ty),
+            ty::Placeholder(placeholder) => self.interners.intern_placeholder(placeholder),
+            ty::Infer(infer) => self.interners.intern_infer(infer),
+            ty::Error(error) => self.interners.intern_error(error),
         }
     }
 
