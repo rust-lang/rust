@@ -314,14 +314,14 @@ def register_providers_compatibility():
     register(
         classify_hashmap,
         SizeSummaryProvider,
-        r"^(std::collections::([a-z_]+::)+)HashMap<.+>$",
+        r"^((std::collections::([a-z_]+::)+)|(hashbrown::map::))HashMap<.+>$",
     )
 
     # HashSet
     register(
         classify_hashset,
         SizeSummaryProvider,
-        r"^(std::collections::([a-z_]+::)+)HashSet<.+>$",
+        r"^((std::collections::([a-z_]+::)+)|(hashbrown::set::))HashSet<.+>$",
     )
 
     # Rc

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Dict, Generator, List, Optional
 from lldb import (
     SBData,
     SBError,
+    SBValue,
     eBasicTypeChar32,
     eBasicTypeDouble,
     eBasicTypeFloat,
@@ -409,7 +410,7 @@ def read_string(
     try:
         data = process.ReadMemory(address, length, error)
         if error.Success():
-            output = f"\"{data.decode('utf-8', 'replace')}\""
+            output = f'"{data.decode("utf-8", "replace")}"'
             if truncated > 0:
                 output += f" <summary truncated by {truncated} bytes>"
 
@@ -1380,6 +1381,7 @@ class StdHashMapSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, show_values: bool = True):
         self.valobj = valobj
         self.show_values = show_values
+        self.is_std = not valobj.GetType().GetName().startswith("hashbrown::")
         self.update()
 
     def num_children(self) -> int:
@@ -1457,12 +1459,21 @@ class StdHashMapSyntheticProvider:
 
     def table(self) -> SBValue:
         if self.show_values:
-            hashbrown_hashmap = self.valobj.GetChildMemberWithName("base")
+            if self.is_std:
+                hashbrown_hashmap = self.valobj.GetChildMemberWithName(
+                    "base"
+                ).GetNonSyntheticValue()
+            else:
+                hashbrown_hashmap = self.valobj
         else:
             # BACKCOMPAT: rust 1.47
             # HashSet wraps either std HashMap or hashbrown::HashSet, which both
             # wrap hashbrown::HashMap, so either way we "unwrap" twice.
-            hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
+            if self.is_std:
+                hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
+            else:
+                hashbrown_hashmap = self.valobj.GetChildAtIndex(0)
+
         return hashbrown_hashmap.GetChildMemberWithName("table")
 
     def has_children(self) -> bool:

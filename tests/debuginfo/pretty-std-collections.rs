@@ -63,6 +63,13 @@
 //@ lldb-command:v hash_set
 //@ lldb-check:[...] size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
 
+// Ensure hashbrown hashmap also has synthetic
+//@ lldb-command:script hashbrown = lldb.frame.var("hash_map").GetNonSyntheticValue().GetChildMemberWithName("base")
+//@ lldb-command:script hashbrown.GetTypeName()
+//@ lldb-check:'hashbrown::map::HashMap[...]
+//@ lldb-command:script print(hashbrown.GetTypeSynthetic())
+//@ lldb-check:Python class lldb_lookup.classify_hashmap
+
 #![allow(unused_variables)]
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
