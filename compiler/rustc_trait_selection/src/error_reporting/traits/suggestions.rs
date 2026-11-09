@@ -3896,6 +3896,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
             }
         };
+
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -4743,7 +4744,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                     }
                     _ => {
-                        err.note(msg);
+                        // If the `parent_trait_pred` is about `CoerceUnsized`, it's generated
+                        // internally by the next solver and should not be reported as a note
+                        // because the user won't know what we're talking about.
+                        if !tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
+                            err.note(msg);
+                        }
                     }
                 };
 
