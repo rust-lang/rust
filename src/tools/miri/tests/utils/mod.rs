@@ -61,7 +61,7 @@ pub fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Debug>(
 
 /// Check that the operation is non-deterministic
 #[track_caller]
-pub fn check_nondet<T: PartialEq + std::fmt::Debug>(f: impl Fn() -> T) {
+pub fn check_nondet<T: PartialEq + std::fmt::Debug>(mut f: impl FnMut() -> T) {
     // We test some rather unlikely events with this, such as two global allocations getting the
     // same "salt" (1/32 chance). So give this *many* shots before we consider the test to have
     // failed.

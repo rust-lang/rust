@@ -282,7 +282,8 @@ fn test_getsockopt_truncate() {
         assert_eq!(&truncated_timeout, slice::from_raw_parts(timeout_ptr, 5));
     }
 
-    let mut option_value = std::mem::MaybeUninit::<libc::timeval>::zeroed();
+    // The buffer must be at least as large as the length we claim.
+    let mut option_value = std::mem::MaybeUninit::<[libc::timeval; 2]>::zeroed();
     // The actual length is smaller than this.
     let mut long_option_len = (size_of::<libc::timeval>() + 2) as libc::socklen_t;
 
@@ -299,7 +300,7 @@ fn test_getsockopt_truncate() {
     // Ensure that the size was shortened to the actual length.
     assert_eq!(long_option_len, size_of::<libc::timeval>() as libc::socklen_t);
     // The returned timeout should be the same value as we just set.
-    let untruncated_timeout = unsafe { option_value.assume_init() };
+    let untruncated_timeout = unsafe { option_value.assume_init() }[0];
     assert_eq!(untruncated_timeout.tv_sec, new_timeout.tv_sec);
     assert_eq!(untruncated_timeout.tv_usec, new_timeout.tv_usec);
 }

@@ -2,6 +2,8 @@
 //! the current thread blocks/yields. It also manages timeouts and runs an async event loop
 //! to deal with host I/O. In GenMC mode, it handles delegating schedule control to GenMC.
 
+use std::cell::RefCell;
+use std::fmt;
 use std::sync::atomic::Ordering;
 use std::task::Poll;
 use std::time::Duration;
@@ -11,7 +13,6 @@ use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_index::Idx;
 use rustc_span::DUMMY_SP;
 
-use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -23,6 +24,38 @@ enum SchedulingAction {
     /// If the duration is [`None`], we sleep indefinitely. This is
     /// only allowed when isolation is disabled and there are threads waiting for I/O!
     SleepAndWaitForIo(Option<Duration>),
+}
+
+/// When we need to perform an operation but don't have an `ecx` around to run it immediately, we
+/// can register a callback here and it will be invoked on the next scheduler call.
+#[derive(Default)]
+pub struct DelayedCallbacks {
+    callbacks: RefCell<Vec<DelayedCallback>>,
+}
+
+pub type DelayedCallback = Box<dyn for<'tcx> FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx>>;
+
+impl fmt::Debug for DelayedCallbacks {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DelayedCallbacks").field("callbacks", &"_").finish()
+    }
+}
+
+impl DelayedCallbacks {
+    /// Register a callback to be invoked the next time the current thread yields/blocks.
+    pub fn add(&self, callback: DelayedCallback) {
+        self.callbacks.borrow_mut().push(callback);
+    }
+
+    fn process<'tcx>(ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx> {
+        loop {
+            // Avoid keeping the RefCell open over the callback.
+            let Some(callback) = ecx.machine.delayed_callbacks.callbacks.borrow_mut().pop() else {
+                return interp_ok(());
+            };
+            (callback)(ecx)?;
+        }
+    }
 }
 
 impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
@@ -89,10 +122,8 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         // The active thread yielded or got terminated. Let's see if there are any I/O events
         // or timeouts to take care of.
 
-        // There may be delayed readiness updates we have to process. We only care about this
-        // if it may unblock other threads, or if someone calls `epoll_wait`, and for the latter
-        // case there is another call in `ReadinessWatcher::get_ready_interests`.
-        DelayedReadinessUpdates::process(ecx)?;
+        // There may be delayed callbacks we have to process, which may unblock more threads.
+        DelayedCallbacks::process(ecx)?;
 
         if ecx.machine.communicate() {
             // When isolation is disabled we need to check for events for threads

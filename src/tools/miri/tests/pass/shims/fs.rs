@@ -26,15 +26,10 @@ use std::os::windows::fs::{symlink_dir, symlink_file};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
-use utils::check_nondet;
 
 fn main() {
     test_path_conversion();
     test_file();
-    // Partial reads/writes are apparently not a thing on Windows.
-    if cfg!(not(windows)) {
-        test_file_partial_reads_writes();
-    }
     test_file_create_new();
     test_metadata();
     test_seek();
@@ -181,32 +176,6 @@ fn test_file() {
             eprintln!("hello stderr");
         }
     }
-}
-
-fn test_file_partial_reads_writes() {
-    if !cfg!(miri) {
-        // This test is not expected to work natively.
-        return;
-    }
-
-    let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
-    let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
-
-    // Ensure we sometimes do incomplete writes.
-    check_nondet(|| {
-        let mut file = File::create(&path1).unwrap();
-        file.write(&[0; 4]).unwrap() == 4
-    });
-    // Ensure we sometimes do incomplete reads.
-    check_nondet(|| {
-        let mut file = File::open(&path2).unwrap();
-        let mut buf = [0; 4];
-        file.read(&mut buf).unwrap() == 4
-    });
-
-    // Clean up
-    remove_file(&path1).unwrap();
-    remove_file(&path2).unwrap();
 }
 
 fn test_file_clone() {
@@ -395,6 +364,22 @@ fn test_file_set_times() {
     let metadata = file.metadata().unwrap();
     assert_eq!(metadata.accessed().unwrap(), accessed);
     assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    // 32-bit FreeBSD cannot represent timestamps beyond 2038.
+    if !cfg!(all(target_os = "freebsd", target_pointer_width = "32")) {
+        // On 32-bit glibc, std needs the weak `__futimens64` symbol for dates past 2038.
+        let future_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(3_000_000_000);
+        file.set_times(FileTimes::new().set_modified(future_modified)).unwrap();
+        let metadata = file.metadata().unwrap();
+        assert_eq!(metadata.accessed().unwrap(), accessed);
+        assert_eq!(metadata.modified().unwrap(), future_modified);
+
+        let future_accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(3_000_000_001);
+        file.set_times(FileTimes::new().set_accessed(future_accessed)).unwrap();
+        let metadata = file.metadata().unwrap();
+        assert_eq!(metadata.accessed().unwrap(), future_accessed);
+        assert_eq!(metadata.modified().unwrap(), future_modified);
+    }
 
     remove_file(&path).unwrap();
 }

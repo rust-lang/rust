@@ -46,17 +46,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Unblocking this thread in the current execution will cause a panic.
     /// Miri does not provide GenMC with the annotations to determine when to unblock the thread, so it should never be unblocked.
     fn handle_user_assume_block(&mut self) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         debug!(
             "GenMC: block thread {:?} due to failing assume statement.",
-            this.machine.threads.active_thread()
+            ecx.machine.threads.active_thread()
         );
-        assert!(this.machine.threads.active_thread_ref().is_enabled());
+        assert!(ecx.machine.threads.active_thread_ref().is_enabled());
         // Block the thread on the GenMC side.
-        let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
-        genmc_ctx.handle_assume_block(&this.machine, AssumeType::User)?;
+        let genmc_ctx = ecx.machine.data_race.as_genmc_ref().unwrap();
+        genmc_ctx.handle_assume_block(&ecx.machine, AssumeType::User)?;
         // Block the thread on the Miri side.
-        this.block_thread(
+        ecx.block_thread(
             BlockReason::Genmc,
             None,
             callback!(
@@ -72,8 +72,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn intercept_mutex_lock(&mut self, mutex: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         debug!("GenMC: handling Mutex::lock()");
-        let this = self.eval_context_mut();
-        let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
+        let ecx = self.eval_context_mut();
+        let genmc_ctx = ecx.machine.data_race.as_genmc_ref().unwrap();
 
         let size = mutex.layout.size.bytes();
         assert!(
@@ -81,7 +81,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "Mutex is larger than maximal size of a memory access supported by GenMC ({size} > {MAX_ACCESS_SIZE})"
         );
         let result = genmc_ctx.genmc.borrow_mut().pin_mut().handle_mutex_lock(
-            genmc_ctx.active_thread_genmc_tid(&this.machine),
+            genmc_ctx.active_thread_genmc_tid(&ecx.machine),
             mutex.ptr().addr().bytes(),
             size,
         );
@@ -90,7 +90,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 debug!("GenMC: Mutex::lock: Reset");
                 // GenMC informed us to reset and try the lock again later.
                 // We block the current thread until GenMC schedules it again.
-                this.block_thread(
+                ecx.block_thread(
                     crate::BlockReason::Genmc,
                     None,
                     crate::callback!(
@@ -114,7 +114,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "GenMC: Mutex::lock failed to acquire the Mutex, permanently blocking thread."
                 );
                 // NOTE: `handle_mutex_lock` already blocked the current thread on the GenMC side.
-                this.block_thread(
+                ecx.block_thread(
                     crate::BlockReason::Genmc,
                     None,
                     crate::callback!(
@@ -138,15 +138,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &crate::PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         debug!("GenMC: handling Mutex::try_lock()");
-        let this = self.eval_context_mut();
-        let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
+        let ecx = self.eval_context_mut();
+        let genmc_ctx = ecx.machine.data_race.as_genmc_ref().unwrap();
         let size = mutex.layout.size.bytes();
         assert!(
             size <= MAX_ACCESS_SIZE,
             "Mutex is larger than maximal size of a memory access supported by GenMC ({size} > {MAX_ACCESS_SIZE})"
         );
         let result = genmc_ctx.genmc.borrow_mut().pin_mut().handle_mutex_try_lock(
-            genmc_ctx.active_thread_genmc_tid(&this.machine),
+            genmc_ctx.active_thread_genmc_tid(&ecx.machine),
             mutex.ptr().addr().bytes(),
             size,
         );
@@ -157,17 +157,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         debug!("GenMC: Mutex::try_lock(): acquired: {is_acquired}");
         // Write the return value of try_lock, i.e., whether we acquired the mutex.
-        this.write_scalar(Scalar::from_bool(is_acquired), dest)?;
+        ecx.write_scalar(Scalar::from_bool(is_acquired), dest)?;
         // NOTE: We don't write anything back to Miri's memory where the Mutex is located, that state is handled only by GenMC.
         interp_ok(())
     }
 
     fn intercept_mutex_unlock(&self, mutex: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         debug!("GenMC: handling Mutex::unlock()");
-        let this = self.eval_context_ref();
-        let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
+        let ecx = self.eval_context_ref();
+        let genmc_ctx = ecx.machine.data_race.as_genmc_ref().unwrap();
         let result = genmc_ctx.genmc.borrow_mut().pin_mut().handle_mutex_unlock(
-            genmc_ctx.active_thread_genmc_tid(&this.machine),
+            genmc_ctx.active_thread_genmc_tid(&ecx.machine),
             mutex.ptr().addr().bytes(),
             mutex.layout.size.bytes(),
         );
@@ -187,25 +187,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[rustc_const_eval::interpret::FnArg<'tcx, crate::Provenance>],
         dest: &crate::PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, bool> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         assert!(
-            this.machine.data_race.as_genmc_ref().is_some(),
+            ecx.machine.data_race.as_genmc_ref().is_some(),
             "This function should only be called in GenMC mode."
         );
 
         // NOTE: When adding new intercepted functions here, they must also be added to `fn get_function_kind` in `concurrency/genmc/scheduling.rs`.
-        if this.tcx.is_diagnostic_item(sym::sys_mutex_lock, instance.def_id()) {
+        if ecx.tcx.is_diagnostic_item(sym::sys_mutex_lock, instance.def_id()) {
             let [mutex] = get_fn_args(instance, args)?;
-            let mutex = this.deref_pointer(&mutex)?;
-            this.intercept_mutex_lock(mutex)?;
-        } else if this.tcx.is_diagnostic_item(sym::sys_mutex_try_lock, instance.def_id()) {
+            let mutex = ecx.deref_pointer(&mutex)?;
+            ecx.intercept_mutex_lock(mutex)?;
+        } else if ecx.tcx.is_diagnostic_item(sym::sys_mutex_try_lock, instance.def_id()) {
             let [mutex] = get_fn_args(instance, args)?;
-            let mutex = this.deref_pointer(&mutex)?;
-            this.intercept_mutex_try_lock(mutex, dest)?;
-        } else if this.tcx.is_diagnostic_item(sym::sys_mutex_unlock, instance.def_id()) {
+            let mutex = ecx.deref_pointer(&mutex)?;
+            ecx.intercept_mutex_try_lock(mutex, dest)?;
+        } else if ecx.tcx.is_diagnostic_item(sym::sys_mutex_unlock, instance.def_id()) {
             let [mutex] = get_fn_args(instance, args)?;
-            let mutex = this.deref_pointer(&mutex)?;
-            this.intercept_mutex_unlock(mutex)?;
+            let mutex = ecx.deref_pointer(&mutex)?;
+            ecx.intercept_mutex_unlock(mutex)?;
         } else {
             // Nothing to intercept.
             return interp_ok(false);
@@ -216,12 +216,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Handle an `assume` statement. This will tell GenMC to block the current thread if the `condition` is false.
     /// Returns `true` if the current thread should be blocked in Miri too.
     fn handle_genmc_verifier_assume(&mut self, condition: &OpTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let condition_bool = this.read_scalar(condition)?.to_bool()?;
+        let ecx = self.eval_context_mut();
+        let condition_bool = ecx.read_scalar(condition)?.to_bool()?;
         debug!("GenMC: handle_genmc_verifier_assume, condition: {condition:?} = {condition_bool}");
         if condition_bool {
             return interp_ok(());
         }
-        this.handle_user_assume_block()
+        ecx.handle_user_assume_block()
     }
 }

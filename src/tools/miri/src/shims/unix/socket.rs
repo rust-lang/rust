@@ -78,11 +78,11 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         _is_peek: bool,
         _is_non_block: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot receive from {}", self.name());
     }
@@ -97,11 +97,11 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         _ptr: Pointer,
-        _len: usize,
+        _len: u64,
         _is_non_block: bool,
         _dest_addr: Option<SocketAddr>,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot send to {}", self.name());
     }
@@ -431,7 +431,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Err(e) => return ecx.set_errno_and_return_neg1(e, &dest),
                     };
 
-                    if address_ptr != Pointer::null() {
+                    if !ecx.ptr_is_null(address_ptr)? {
                         // We only attempt a write if the address pointer is not a null pointer.
                         // If the address pointer is a null pointer the user isn't interested in the
                         // address and we don't need to write anything.
@@ -503,9 +503,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socket = this.read_scalar(socket)?.to_i32()?;
         let buffer_ptr = this.read_pointer(buffer)?;
-        let size_layout = this.libc_ty_layout("size_t");
-        let length: usize =
-            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
+        let length = this.read_target_usize(length)?;
         let mut flags = this.read_scalar(flags)?.to_i32()?;
 
         let dest_addr = match dest_addr {
@@ -517,7 +515,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // POSIX says the destination is entirely ignored for TCP sockets, but that does not
                 // match reality, so we eagerly read the destination when one is given.
-                if dest_addr_ptr == Pointer::null() || dest_addr_len_int == 0 {
+                if this.ptr_is_null(dest_addr_ptr)? || dest_addr_len_int == 0 {
                     // If the address pointer is a nullptr or the address length is zero we ignore
                     // the destination address. BSDs return EINVAL when the address length is zero
                     // and the address pointer is an invalid pointer; that is so far away from what
@@ -584,10 +582,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
-                } |ecx, result: Result<usize, IoError>| {
+                } |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(bytes_sent) =>
-                            ecx.write_scalar(Scalar::from_target_usize(bytes_sent.try_into().unwrap(), ecx), &dest),
+                            ecx.write_scalar(Scalar::from_target_isize(bytes_sent.try_into().unwrap(), ecx), &dest),
                         Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
                     }
                 }
@@ -609,9 +607,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socket = this.read_scalar(socket)?.to_i32()?;
         let buffer_ptr = this.read_pointer(buffer)?;
-        let size_layout = this.libc_ty_layout("size_t");
-        let length: usize =
-            this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
+        let length = this.read_target_usize(length)?;
         let mut flags = this.read_scalar(flags)?.to_i32()?;
 
         let dest_addr = match dest_addr {
@@ -684,14 +680,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @capture<'tcx> {
                     dest_addr: Option<(Pointer, MPlaceTy<'tcx>)>,
                     dest: MPlaceTy<'tcx>,
-                } |ecx, result: Result<(usize, Option<SocketAddr>), IoError>| {
+                } |ecx, result: Result<(u64, Option<SocketAddr>), IoError>| {
                     let (bytes_received, mut origin_addr_opt) = match result {
                         Ok(data) => data,
                         Err(e) => return ecx.set_errno_and_return_neg1(e, &dest)
                     };
 
                     if let Some((addr_ptr, addr_len_mplace)) = dest_addr  {
-                        if addr_ptr == Pointer::null() {
+                        if ecx.ptr_is_null(addr_ptr)? {
                             // When the `addr_ptr` is a null pointer the caller is not interested in
                             // the socket address.
                             origin_addr_opt = None;
@@ -703,7 +699,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         ecx.write_socket_address(origin_addr_opt.as_ref(), addr_ptr, &addr_len_mplace)?;
                     }
 
-                    ecx.write_scalar(Scalar::from_target_usize(bytes_received.try_into().unwrap(), ecx), &dest)
+                    ecx.write_scalar(Scalar::from_target_isize(bytes_received.try_into().unwrap(), ecx), &dest)
 
                 }
             ),
@@ -727,6 +723,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let socklen_layout = this.libc_ty_layout("socklen_t");
         let option_len: u64 =
             this.read_scalar(option_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
+
+        // Check that the buffer has (at least) the given size.
+        this.check_ptr_access(
+            option_value_ptr,
+            Size::from_bytes(option_len),
+            CheckInAllocMsg::MemoryAccess,
+        )?;
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
@@ -774,7 +777,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        if option_value_ptr == Pointer::null() || option_len_ptr == Pointer::null() {
+        if this.ptr_is_null(option_value_ptr)? || this.ptr_is_null(option_len_ptr)? {
             // This socket option returns a value and thus we need to return EFAULT
             // when either the value or the length pointers are null pointers.
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
@@ -787,6 +790,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .to_int(socklen_layout.size)?
             .try_into()
             .unwrap();
+
+        // Check that the buffer has (at least) the given size.
+        this.check_ptr_access(
+            option_value_ptr,
+            Size::from_bytes(option_len),
+            CheckInAllocMsg::MemoryAccess,
+        )?;
 
         // `socket.getsockopt` returns a temporary buffer as `option_value_ptr` might not point
         // to a large enough buffer, in which case we have to truncate.

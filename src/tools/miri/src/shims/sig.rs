@@ -277,20 +277,20 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Ensure the given symbol is not exported by the program.
     fn check_shim_symbol_clash(&self, link_name: Symbol) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_ref();
-        if let Some(instance) = this.lookup_exported_symbol(link_name)? {
+        let ecx = self.eval_context_ref();
+        if let Some(instance) = ecx.lookup_exported_symbol(link_name)? {
             // If compiler-builtins is providing the symbol, then don't treat it as a clash.
             // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
             // performance. Note that this means we won't catch any undefined behavior in
             // compiler-builtins when running other crates, but Miri can still be run on
             // compiler-builtins itself (or any crate that uses it as a normal dependency)
-            if this.tcx.is_compiler_builtins(instance.def_id().krate) {
+            if ecx.tcx.is_compiler_builtins(instance.def_id().krate) {
                 return interp_ok(());
             }
 
             throw_machine_stop!(TerminationInfo::SymbolShimClashing {
                 link_name,
-                span: this.tcx.def_span(instance.def_id()),
+                span: ecx.tcx.def_span(instance.def_id()),
             })
         }
         interp_ok(())
@@ -304,20 +304,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We take these as a tuple so that this takes less space on the caller side.
         (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &[OpTy<'tcx>]),
     ) -> InterpResult<'tcx, [OpTy<'tcx>; N]> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         // Compute callee ABI.
-        let shim_sig = shim_sig(this);
+        let shim_sig = shim_sig(ecx);
         assert!(!shim_sig.c_variadic);
-        let callee_fn_abi = shim_sig.as_abi(this);
+        let callee_fn_abi = shim_sig.as_abi(ecx);
 
         // Check everything.
-        check_shim_abi(this, link_name, callee_fn_abi, caller_fn_abi)?;
-        this.check_shim_symbol_clash(link_name)?;
+        check_shim_abi(ecx, link_name, callee_fn_abi, caller_fn_abi)?;
+        ecx.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.
         let transmuted = std::array::try_from_fn(|i| {
-            caller_args[i].transmute(callee_fn_abi.args[i].layout, this)
+            caller_args[i].transmute(callee_fn_abi.args[i].layout, ecx)
         })?;
         interp_ok(transmuted)
     }
@@ -331,22 +331,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We take these as a tuple so that this takes less space on the caller side.
         (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &'a [OpTy<'tcx>]),
     ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         // Compute callee ABI.
-        let shim_sig = shim_sig(this);
+        let shim_sig = shim_sig(ecx);
         assert!(shim_sig.c_variadic);
-        let callee_fn_abi = shim_sig.as_abi(this);
+        let callee_fn_abi = shim_sig.as_abi(ecx);
 
         // Check everything.
-        check_shim_abi(this, link_name, callee_fn_abi, caller_fn_abi)?;
-        this.check_shim_symbol_clash(link_name)?;
+        check_shim_abi(ecx, link_name, callee_fn_abi, caller_fn_abi)?;
+        ecx.check_shim_symbol_clash(link_name)?;
 
         // Return transmuted arguments.
         if let Some((fixed, var)) = caller_args.split_first_chunk::<N>() {
-            let transmuted = std::array::try_from_fn(|i| {
-                fixed[i].transmute(callee_fn_abi.args[i].layout, this)
-            })?;
+            let transmuted =
+                std::array::try_from_fn(|i| fixed[i].transmute(callee_fn_abi.args[i].layout, ecx))?;
             return interp_ok((transmuted, Varargs { args: var, already_gone: N }));
         }
         unreachable!()
@@ -361,8 +360,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         varargs: Varargs<'tcx, 'a>,
         fn_name: &str,
     ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
-        let this = self.eval_context_ref();
-        let tys = tys(this);
+        let ecx = self.eval_context_ref();
+        let tys = tys(ecx);
 
         let Some((now, tail)) = varargs.args.split_first_chunk::<N>() else {
             throw_ub_format!(
@@ -375,7 +374,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         for (n, (caller_gave, callee_expected)) in now.iter().zip(tys).enumerate() {
             // Check ABI compatibility.
             let compatible =
-                this.validate_c_variadic_compatible_ty(caller_gave.layout.ty, callee_expected)?;
+                ecx.validate_c_variadic_compatible_ty(caller_gave.layout.ty, callee_expected)?;
             match compatible {
                 VarArgCompatible::Compatible => {}
                 VarArgCompatible::Incompatible => {
@@ -389,7 +388,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 VarArgCompatible::CastIntTo { source_is_signed } => {
                     // Check that the value can be represented in the target type.
                     let size = caller_gave.layout.size;
-                    let scalar = this.read_scalar(caller_gave)?;
+                    let scalar = ecx.read_scalar(caller_gave)?;
                     if scalar.to_int(size)? < 0 {
                         throw_ub_format!(
                             "incorrect c-variadic argument type for `{fn_name}`: \
@@ -408,8 +407,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let transmuted = std::array::try_from_fn(|i| {
-            let layout = this.layout_of(tys[i])?;
-            now[i].transmute(layout, this)
+            let layout = ecx.layout_of(tys[i])?;
+            now[i].transmute(layout, ecx)
         })?;
 
         interp_ok((

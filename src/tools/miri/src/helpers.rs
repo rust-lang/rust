@@ -174,17 +174,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Evaluates the scalar at the specified path.
     fn eval_path(&self, path: &[&str]) -> MPlaceTy<'tcx> {
-        let this = self.eval_context_ref();
-        let instance = resolve_path(*this.tcx, path, Namespace::ValueNS);
+        let ecx = self.eval_context_ref();
+        let instance = resolve_path(*ecx.tcx, path, Namespace::ValueNS);
         // We don't give a span -- this isn't actually used directly by the program anyway.
-        this.eval_global(instance).unwrap_or_else(|err| {
+        ecx.eval_global(instance).unwrap_or_else(|err| {
             panic!("failed to evaluate required Rust item: {path:?}\n{err:?}")
         })
     }
     fn eval_path_scalar(&self, path: &[&str]) -> Scalar {
-        let this = self.eval_context_ref();
-        let val = this.eval_path(path);
-        this.read_scalar(&val)
+        let ecx = self.eval_context_ref();
+        let val = ecx.eval_path(path);
+        ecx.read_scalar(&val)
             .unwrap_or_else(|err| panic!("failed to read required Rust item: {path:?}\n{err:?}"))
     }
 
@@ -261,19 +261,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
-        let this = self.eval_context_ref();
-        if this.tcx.sess.target.os == Os::Windows {
+        let ecx = self.eval_context_ref();
+        if ecx.tcx.sess.target.os == Os::Windows {
             panic!(
                 "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
             );
         }
-        path_ty_layout(this, &["libc", name])
+        path_ty_layout(ecx, &["libc", name])
     }
 
     /// Helper function to get the `TyAndLayout` of a `windows` type
     fn windows_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
-        let this = self.eval_context_ref();
-        path_ty_layout(this, &["std", "sys", "pal", "windows", "c", name])
+        let ecx = self.eval_context_ref();
+        path_ty_layout(ecx, &["std", "sys", "pal", "windows", "c", name])
     }
 
     /// Project to the given *named* field (which must be a struct or union type).
@@ -282,11 +282,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         base: &P,
         name: &str,
     ) -> InterpResult<'tcx, Option<P>> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         let adt = base.layout().ty.ty_adt_def().unwrap();
         for (idx, field) in adt.non_enum_variant().fields.iter_enumerated() {
             if field.name.as_str() == name {
-                return interp_ok(Some(this.project_field(base, idx)?));
+                return interp_ok(Some(ecx.project_field(base, idx)?));
             }
         }
         interp_ok(None)
@@ -311,9 +311,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         base: &P,
         idx: u64,
     ) -> InterpResult<'tcx, P> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         let offset = base.layout().size * idx; // `Size` multiplication
-        base.offset(offset, base.layout(), this)
+        base.offset(offset, base.layout(), ecx)
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -344,11 +344,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         values: &[i128],
         dest: &impl Writeable<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
             let idx = FieldIdx::from_usize(idx);
-            let field = this.project_field(dest, idx)?;
-            this.write_int(val, &field)?;
+            let field = ecx.project_field(dest, idx)?;
+            ecx.write_int(val, &field)?;
         }
         interp_ok(())
     }
@@ -359,10 +359,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         values: &[(&str, i128)],
         dest: &impl Writeable<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         for &(name, val) in values.iter() {
-            let field = this.project_field_named(dest, name)?;
-            this.write_int(val, &field)?;
+            let field = ecx.project_field_named(dest, name)?;
+            ecx.write_int(val, &field)?;
         }
         interp_ok(())
     }
@@ -382,20 +382,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if len == 0 {
             return interp_ok(());
         }
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         let mut data = vec![0; usize::try_from(len).unwrap()];
 
-        if this.machine.communicate() {
+        if ecx.machine.communicate() {
             // Fill the buffer using the host's rng.
             getrandom::fill(&mut data)
                 .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
         } else {
-            let rng = this.machine.rng.get_mut();
+            let rng = ecx.machine.rng.get_mut();
             rng.fill_bytes(&mut data);
         }
 
-        this.write_bytes_ptr(ptr, data.iter().copied())
+        ecx.write_bytes_ptr(ptr, data.iter().copied())
     }
 
     /// Call a function: Push the stack frame and pass the arguments.
@@ -411,31 +411,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: Option<&MPlaceTy<'tcx>>,
         cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Get MIR.
-        let mir = this.load_mir(f.def, None)?;
+        let mir = ecx.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
-            None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),
+            None => MPlaceTy::fake_alloc_zst(ecx.machine.layouts.unit),
         };
 
-        let with_caller_location = f.def.requires_caller_location(*this.tcx);
+        let with_caller_location = f.def.requires_caller_location(*ecx.tcx);
 
         // Construct a function pointer type representing the caller perspective.
-        let sig = this.tcx.mk_fn_sig(
+        let sig = ecx.tcx.mk_fn_sig(
             args.iter()
                 .map(|a| a.layout.ty)
-                .chain(with_caller_location.then(|| this.tcx.caller_location_ty())),
+                .chain(with_caller_location.then(|| ecx.tcx.caller_location_ty())),
             dest.layout.ty,
             // FIXME(splat): Do we need to set splatted here?
             // (Currently this also ignores c_variadic)
             FnSigKind::default().set_abi(caller_abi).set_safety(rustc_hir::Safety::Safe),
         );
-        let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
+        let caller_fn_abi = ecx.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 
         // This will also show proper errors if there is any ABI mismatch.
-        this.init_stack_frame(
+        ecx.init_stack_frame(
             f,
             mir,
             caller_fn_abi,
@@ -455,11 +455,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: Option<&MPlaceTy<'tcx>>,
         span: Span,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        assert!(this.active_thread_stack().is_empty());
-        assert!(this.active_thread_ref().origin_span.is_dummy());
-        this.active_thread_mut().origin_span = span;
-        this.call_function(f, caller_abi, args, dest, ReturnContinuation::Stop { cleanup: true })
+        let ecx = self.eval_context_mut();
+        assert!(ecx.active_thread_stack().is_empty());
+        assert!(ecx.active_thread_ref().origin_span.is_dummy());
+        ecx.active_thread_mut().origin_span = span;
+        ecx.call_function(f, caller_abi, args, dest, ReturnContinuation::Stop { cleanup: true })
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
@@ -624,7 +624,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function used inside the shims of foreign functions which reject the op
     /// when isolation is enabled. It is used to print a warning/backtrace about the rejection.
     fn reject_in_isolation(&self, op_name: &str, reject_with: RejectOpWith) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
@@ -635,7 +635,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
                     emitted_warnings.insert(op_name.to_owned());
-                    this.tcx
+                    ecx.tcx
                         .dcx()
                         .warn(format!("{op_name} was made to return an error due to isolation"));
                 }
@@ -643,7 +643,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 interp_ok(())
             }
             RejectOpWith::Warning => {
-                this.emit_diagnostic(NonHaltingDiagnostic::RejectedIsolatedOp(op_name.to_string()));
+                ecx.emit_diagnostic(NonHaltingDiagnostic::RejectedIsolatedOp(op_name.to_string()));
                 interp_ok(())
             }
             RejectOpWith::NoWarning => interp_ok(()), // no warning
@@ -696,11 +696,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         'tcx: 'a,
     {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         let (ptr, len) = slice.to_scalar_pair();
-        let ptr = ptr.to_pointer(this);
-        let len = len.to_target_usize(this)?;
-        let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        let ptr = ptr.to_pointer(ecx);
+        let len = len.to_target_usize(ecx)?;
+        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         interp_ok(bytes)
     }
 
@@ -709,7 +709,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         'tcx: 'a,
     {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         let size1 = Size::from_bytes(1);
 
         // Step 1: determine the length.
@@ -717,7 +717,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.get_ptr_alloc(ptr.wrapping_offset(len, this), size1)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = ecx.get_ptr_alloc(ptr.wrapping_offset(len, ecx), size1)?.unwrap(); // not a ZST, so we will get a result
             let byte = alloc.read_integer(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
@@ -727,7 +727,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Step 2: get the bytes.
-        this.read_bytes_ptr_strip_provenance(ptr, len)
+        ecx.read_bytes_ptr_strip_provenance(ptr, len)
     }
 
     /// Helper function to write a sequence of bytes with an added null-terminator, which is what
@@ -767,21 +767,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         assert_ne!(size, Size::ZERO);
 
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
-        this.check_ptr_align(ptr, align)?;
+        ecx.check_ptr_align(ptr, align)?;
 
         let mut wchars = Vec::new();
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.get_ptr_alloc(ptr, size)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = ecx.get_ptr_alloc(ptr, size)?.unwrap(); // not a ZST, so we will get a result
             let wchar_int = alloc.read_integer(alloc_range(Size::ZERO, size))?.to_bits(size)?;
             if wchar_int == 0 {
                 break;
             } else {
                 wchars.push(wchar_int.try_into().unwrap());
-                ptr = ptr.wrapping_offset(size, this);
+                ptr = ptr.wrapping_offset(size, ecx);
             }
         }
 
@@ -815,9 +815,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Store the UTF-16 string.
         let size2 = Size::from_bytes(2);
-        let this = self.eval_context_mut();
-        this.check_ptr_align(ptr, Align::from_bytes(2).unwrap())?;
-        let mut alloc = this.get_ptr_alloc_mut(ptr, size2 * string_length)?.unwrap(); // not a ZST, so we will get a result
+        let ecx = self.eval_context_mut();
+        ecx.check_ptr_align(ptr, Align::from_bytes(2).unwrap())?;
+        let mut alloc = ecx.get_ptr_alloc_mut(ptr, size2 * string_length)?.unwrap(); // not a ZST, so we will get a result
         for (offset, wchar) in wide_str.iter().copied().chain(iter::once(0x0000)).enumerate() {
             let offset = u64::try_from(offset).unwrap();
             alloc.write_scalar(alloc_range(size2 * offset, size2), Scalar::from_u16(wchar))?;
@@ -828,19 +828,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Read a sequence of wchar_t until the first null terminator.
     /// Always returns a `Vec<u32>` no matter the size of `wchar_t`.
     fn read_wchar_t_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u32>> {
-        let this = self.eval_context_ref();
-        let wchar_t = if this.tcx.sess.target.os == Os::Windows {
+        let ecx = self.eval_context_ref();
+        let wchar_t = if ecx.tcx.sess.target.os == Os::Windows {
             // We don't have libc on Windows so we have to hard-code the type ourselves.
-            this.machine.layouts.u16
+            ecx.machine.layouts.u16
         } else {
-            this.libc_ty_layout("wchar_t")
+            ecx.libc_ty_layout("wchar_t")
         };
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align)
     }
 
     fn frame_in_std(&self) -> bool {
-        let this = self.eval_context_ref();
-        let frame = this.frame();
+        let ecx = self.eval_context_ref();
+        let frame = ecx.frame();
         // Make an attempt to get at the instance of the function this is inlined from.
         let instance: Option<_> = try {
             let scope = frame.current_source_info()?.scope;
@@ -854,35 +854,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // the same crate as `start_fn`, but that would not work for running std tests in Miri, so
         // we'd need some more hacks anyway. So we just check the name of the crate. If someone
         // calls their crate `std` then we'll just let them keep the pieces.
-        let frame_crate = this.tcx.def_path(instance.def_id()).krate;
-        let crate_name = this.tcx.crate_name(frame_crate);
+        let frame_crate = ecx.tcx.def_path(instance.def_id()).krate;
+        let crate_name = ecx.tcx.crate_name(frame_crate);
         let crate_name = crate_name.as_str();
         crate_name == "std"
     }
 
     /// Mark a machine allocation that was just created as immutable.
     fn mark_immutable(&mut self, mplace: &MPlaceTy<'tcx>) {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // This got just allocated, so there definitely is a pointer here.
         let provenance = mplace.ptr().into_pointer_or_addr().unwrap().provenance;
-        this.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
+        ecx.alloc_mark_immutable(provenance.get_alloc_id().unwrap()).unwrap();
     }
 
     /// Returns an integer type that is twice wide as `ty`
     fn get_twice_wide_int_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         match ty.kind() {
             // Unsigned
-            ty::Uint(UintTy::U8) => this.tcx.types.u16,
-            ty::Uint(UintTy::U16) => this.tcx.types.u32,
-            ty::Uint(UintTy::U32) => this.tcx.types.u64,
-            ty::Uint(UintTy::U64) => this.tcx.types.u128,
+            ty::Uint(UintTy::U8) => ecx.tcx.types.u16,
+            ty::Uint(UintTy::U16) => ecx.tcx.types.u32,
+            ty::Uint(UintTy::U32) => ecx.tcx.types.u64,
+            ty::Uint(UintTy::U64) => ecx.tcx.types.u128,
             // Signed
-            ty::Int(IntTy::I8) => this.tcx.types.i16,
-            ty::Int(IntTy::I16) => this.tcx.types.i32,
-            ty::Int(IntTy::I32) => this.tcx.types.i64,
-            ty::Int(IntTy::I64) => this.tcx.types.i128,
-            _ => span_bug!(this.cur_span(), "unexpected type: {ty:?}"),
+            ty::Int(IntTy::I8) => ecx.tcx.types.i16,
+            ty::Int(IntTy::I16) => ecx.tcx.types.i32,
+            ty::Int(IntTy::I32) => ecx.tcx.types.i64,
+            ty::Int(IntTy::I64) => ecx.tcx.types.i128,
+            _ => span_bug!(ecx.cur_span(), "unexpected type: {ty:?}"),
         }
     }
 
@@ -895,8 +895,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         intrinsic: Symbol,
         target_feature: &str,
     ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_ref();
-        if !this.tcx.sess.internal_target_features.contains(&Symbol::intern(target_feature)) {
+        let ecx = self.eval_context_ref();
+        if !ecx.tcx.sess.internal_target_features.contains(&Symbol::intern(target_feature)) {
             throw_ub_format!(
                 "attempted to call intrinsic `{intrinsic}` that requires missing target feature {target_feature}"
             );
@@ -910,8 +910,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &self,
         include_name: impl Fn(&str) -> bool,
     ) -> InterpResult<'tcx, Vec<(ImmTy<'tcx>, Span)>> {
-        let this = self.eval_context_ref();
-        let tcx = this.tcx.tcx;
+        let ecx = self.eval_context_ref();
+        let tcx = ecx.tcx.tcx;
 
         let mut array = vec![];
 
@@ -928,19 +928,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
                 let span = tcx.def_span(def_id);
-                let const_val = this.eval_global(instance).unwrap_or_else(|err| {
+                let const_val = ecx.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
                         "failed to evaluate static in required link_section: {def_id:?}\n{err:?}"
                     )
                 });
                 match const_val.layout.ty.kind() {
                     ty::FnPtr(..) => {
-                        array.push((this.read_immediate(&const_val)?, span));
+                        array.push((ecx.read_immediate(&const_val)?, span));
                     }
                     ty::Array(elem_ty, _) if matches!(elem_ty.kind(), ty::FnPtr(..)) => {
-                        let mut elems = this.project_array_fields(&const_val)?;
-                        while let Some((_idx, elem)) = elems.next(this)? {
-                            array.push((this.read_immediate(&elem)?, span));
+                        let mut elems = ecx.project_array_fields(&const_val)?;
+                        while let Some((_idx, elem)) = elems.next(ecx)? {
+                            array.push((ecx.read_immediate(&elem)?, span));
                         }
                     }
                     _ =>
@@ -959,9 +959,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         'tcx: 'a,
     {
-        let this = self.eval_context_mut();
-        let tcx = *this.tcx;
-        this.machine
+        let ecx = self.eval_context_mut();
+        let tcx = *ecx.tcx;
+        ecx.machine
             .mangle_internal_symbol_cache
             .entry(name)
             .or_insert_with(|| mangle_internal_symbol(tcx, name))

@@ -649,12 +649,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     io_status_info: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                |ecx, result: Result<usize, IoError>| {
+                |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(read_size) => {
-                            assert!(read_size <= count.try_into().unwrap());
+                            assert!(read_size <= count.into());
                             // This must fit since `count` fits.
-                            ecx.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
+                            ecx.write_int(read_size, &io_status_info)?;
                             ecx.write_int(0, &io_status)?;
                             ecx.write_int(0, &dest)
                         }
@@ -667,7 +667,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }}
             )
         };
-        desc.write(ecx.machine.communicate(), buf, count.try_into().unwrap(), ecx, finish)?;
+        desc.write(ecx.machine.communicate(), buf, count.into(), ecx, finish)?;
 
         // Return status is written to `dest` and `io_status_block` on callback completion.
         interp_ok(())
@@ -749,12 +749,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     io_status_info: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                |ecx, result: Result<usize, IoError>| {
+                |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(read_size) => {
-                            assert!(read_size <= count.try_into().unwrap());
+                            assert!(read_size <= count.into());
                             // This must fit since `count` fits.
-                            ecx.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
+                            ecx.write_int(read_size, &io_status_info)?;
                             ecx.write_int(0, &io_status)?;
                             ecx.write_int(0, &dest)
                         }
@@ -767,7 +767,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }}
             )
         };
-        desc.read(ecx.machine.communicate(), buf, count.try_into().unwrap(), ecx, finish)?;
+        desc.read(ecx.machine.communicate(), buf, count.into(), ecx, finish)?;
 
         // See NtWriteFile for commentary on this
         interp_ok(())
