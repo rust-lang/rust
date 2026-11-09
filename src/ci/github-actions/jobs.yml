@@ -422,6 +422,15 @@ auto:
     <<: *job-linux-4c
 
   - name: test-x86_64-gnu-aux
+    env:
+      DOCKER_SCRIPT: x86_64-gnu-aux.sh
+    <<: *job-linux-4c
+
+  - name: test-x86_64-gnu-aux-sync
+    env:
+      RUST_TEST_THREADS: "1"
+      IMAGE: test-x86_64-gnu-aux
+      DOCKER_SCRIPT: x86_64-gnu-aux-sync.sh
     <<: *job-linux-4c
 
   - name: test-x86_64-gnu-debug

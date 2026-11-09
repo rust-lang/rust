@@ -2,28 +2,35 @@ FROM ghcr.io/rust-lang/ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  ninja-build \
-  file \
-  curl \
-  ca-certificates \
-  python3 \
-  git \
-  cmake \
-  libssl-dev \
-  sudo \
-  xz-utils \
-  pkg-config \
-  libgl1-mesa-dev \
-  llvm-dev \
-  libfreetype6-dev \
-  libexpat1-dev \
-  tidy \
-  && rm -rf /var/lib/apt/lists/*
+    g++ \
+    make \
+    ninja-build \
+    file \
+    curl \
+    ca-certificates \
+    python3 \
+    git \
+    cmake \
+    libssl-dev \
+    sudo \
+    xz-utils \
+    pkg-config \
+    libgl1-mesa-dev \
+    llvm-dev \
+    libfreetype6-dev \
+    libexpat1-dev \
+    tidy \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
+
 RUN sh /scripts/sccache.sh
+
+COPY scripts/x86_64-gnu-aux.sh /scripts/
+COPY scripts/x86_64-gnu-aux-sync.sh /scripts/
+
+RUN chmod +x scripts/x86_64-gnu-aux.sh
+RUN chmod +x scripts/x86_64-gnu-aux-sync.sh
 
 # Miri is just too slow with full assertions
 ENV NO_DEBUG_ASSERTIONS=1
@@ -31,4 +38,5 @@ ENV NO_OVERFLOW_CHECKS=1
 
 ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu"
 ENV RUST_CHECK_TARGET="check-aux"
-ENV RUST_TEST_THREADS="1" 
+
+ENV SCRIPT="Must specify DOCKER_SCRIPT for this image"
