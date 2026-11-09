@@ -393,6 +393,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Let { .. }
             | ExprKind::Deref { .. }
             | ExprKind::Index { .. }
+            | ExprKind::ByUse { .. }
             | ExprKind::VarRef { .. }
             | ExprKind::UpvarRef { .. }
             | ExprKind::Break { .. }
@@ -419,14 +420,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         LocalInfo::Boring,
                         NeedsTemporary::No,
                     )
-                );
-                block.and(Rvalue::Use(operand, WithRetag::Yes))
-            }
-
-            ExprKind::ByUse { expr, span: _ } => {
-                let operand = unpack!(
-                    block =
-                        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 block.and(Rvalue::Use(operand, WithRetag::Yes))
             }
