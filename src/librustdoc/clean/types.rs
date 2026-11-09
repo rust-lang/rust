@@ -1498,10 +1498,13 @@ impl Type {
         // to use type unification.
         // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
         // regress.
+        //
+        // Extra note: we want to call `impl_may_apply_to_type_alias` only on `DefId` where
+        // `type_of` would work, otherwise it'll panic (so not primitives and `dyn` for example).
+        // Hence why we use `.real_def_id()` and not `.def_id()`.
         if self_cleared.is_type_alias() || other_cleared.is_type_alias() {
-            let cache = cx.cache();
-            if let Some(self_def_id) = self_cleared.def_id(&cache)
-                && let Some(other_def_id) = other_cleared.def_id(&cache)
+            if let Some(self_def_id) = self_cleared.real_def_id()
+                && let Some(other_def_id) = other_cleared.real_def_id()
             {
                 return impl_may_apply_to_type_alias(cx.tcx(), self_def_id, other_def_id);
             }
@@ -1620,6 +1623,30 @@ impl Type {
 
     pub(crate) fn is_unit(&self) -> bool {
         matches!(self, Type::Tuple(v) if v.is_empty())
+    }
+
+    /// Only returns "real" `DefId`s. ie that exists without the rustdoc's `Cache`.
+    pub(crate) fn real_def_id(&self) -> Option<DefId> {
+        match self {
+            Type::Path { path } => Some(path.def_id()),
+            BorrowedRef { type_: Generic(..), .. } => None,
+            BorrowedRef { type_, .. } => type_.real_def_id(),
+            QPath(QPathData { self_type, .. }) => self_type.real_def_id(),
+            DynTrait(..)
+            | Primitive(..)
+            | Tuple(..)
+            | BareFunction(..)
+            | Slice(..)
+            | Array(..)
+            | Type::Pat(..)
+            | Type::FieldOf(..)
+            | RawPointer(..)
+            | Generic(_)
+            | SelfTy
+            | Infer
+            | ImplTrait(_)
+            | UnsafeBinder(_) => None,
+        }
     }
 
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
