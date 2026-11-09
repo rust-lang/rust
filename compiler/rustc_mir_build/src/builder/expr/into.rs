@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::{DUMMY_SP, Spanned, span_bug, sym};
+use rustc_span::{Spanned, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -521,10 +521,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 success.unit()
             }
             ExprKind::ByUse { expr, span } => {
-                let place = unpack!(block = this.as_place(block, expr));
+                let place = unpack!(block = this.as_read_only_place(block, expr));
                 let ty = place.ty(&this.local_decls, this.tcx).ty;
 
-                if this.tcx.type_is_copy_modulo_regions(this.infcx.typing_env(this.param_env), ty) {
+                if this.infcx.type_is_copy_modulo_regions(this.param_env, ty) {
                     this.cfg.push_assign(
                         block,
                         source_info,
@@ -552,7 +552,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         TerminatorKind::Call {
                             func,
-                            args: [Spanned { node: Operand::Move(ref_place), span: DUMMY_SP }]
+                            args: [Spanned { node: Operand::Move(ref_place), span: expr_span }]
                                 .into(),
                             destination,
                             target: Some(success),
