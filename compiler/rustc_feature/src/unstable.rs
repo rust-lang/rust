@@ -309,7 +309,7 @@ declare_features! (
     /// Allows using the `#[fundamental]` attribute.
     (unstable, fundamental, "1.0.0", Some(29635)),
     /// Allows internal syntax.
-    (internal, internal_syntax, "CURRENT_RUSTC_VERSION", Some(110680)),
+    (internal, internal_syntax, "1.101.0", Some(110680)),
     /// Allows using `#[link_name="llvm.*"]`.
     (internal, link_llvm_intrinsics, "1.0.0", Some(29602)),
     /// Allows using the `#[linkage = ".."]` attribute.
@@ -550,17 +550,17 @@ declare_features! (
     /// Traits for function pointers and items
     (unstable, fn_static, "1.100.0", Some(148768)),
     /// Allows using forced keywords `k#fn`.
-    (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
+    (unstable, forced_keywords, "1.101.0", Some(153839)),
     /// The `Forget` autotrait.
-    (incomplete, forget_trait, "CURRENT_RUSTC_VERSION", Some(165370)),
+    (incomplete, forget_trait, "1.101.0", Some(165370)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
     /// Allow function args to be const generics
-    (incomplete, function_arg_const_generics, "CURRENT_RUSTC_VERSION", Some(163261)),
+    (incomplete, function_arg_const_generics, "1.101.0", Some(163261)),
     /// Allows using ADTs in directly represented generic const args.
-    (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
+    (incomplete, gca_adts, "1.101.0", Some(163420)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
     (incomplete, gca_const_items, "1.95.0", Some(151972)),
     /// Allows directly represented gca_const_items without the `gca!` macro.
@@ -634,7 +634,7 @@ declare_features! (
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows explicitly marking type aliases as unchecked / opting type aliases
     /// out of being checked even if `checked_type_aliases` is enabled or they're a TAIT.
-    (unstable, marked_unchecked_type_aliases, "CURRENT_RUSTC_VERSION", Some(112792)),
+    (unstable, marked_unchecked_type_aliases, "1.101.0", Some(112792)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows additional const parameter types, such as [u8; 10] or user defined types.
@@ -649,9 +649,9 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// The `movdir64b` target feature on x86.
-    (unstable, movdir64b_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
+    (unstable, movdir64b_target_feature, "1.101.0", Some(163741)),
     /// The `movdiri` target feature on x86.
-    (unstable, movdiri_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
+    (unstable, movdiri_target_feature, "1.101.0", Some(163741)),
     /// Allows `move(expr)` in closures.
     (incomplete, move_expr, "1.97.0", Some(155050)),
     /// The `movrs` target feature on x86.
