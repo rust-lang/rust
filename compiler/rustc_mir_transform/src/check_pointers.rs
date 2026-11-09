@@ -88,34 +88,56 @@ pub(crate) fn check_pointers<'tcx, F>(
 
             for (local, ty, context) in finder.into_found_pointers() {
                 debug!("Inserting check for {:?}", ty);
-                let new_block = split_block(basic_blocks, location);
 
-                // Invoke `on_finding` which appends to `local_decls` and the
-                // blocks statements. It returns information about the assert
-                // we're performing in the Terminator.
-                let block_data = &mut basic_blocks[block];
-                let pointer_check = on_finding(
-                    tcx,
-                    local,
-                    ty,
-                    context,
-                    local_decls,
-                    &mut block_data.statements,
-                    source_info,
-                );
-                block_data.terminator = Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Assert {
-                        cond: pointer_check.cond,
-                        expected: true,
-                        target: new_block,
-                        msg: pointer_check.assert_kind,
-                        // This calls a panic function associated with the pointer check, which
-                        // is #[rustc_nounwind]. We never want to insert an unwind into unsafe
-                        // code, because unwinding could make a failing UB check turn into much
-                        // worse UB when we start unwinding.
-                        unwind: UnwindAction::Unreachable,
-                    },
+                let mut insert_check = |block_data: &mut BasicBlockData<'tcx>, new_block_idx| {
+                    // Invoke `on_finding` which appends to `local_decls` and the
+                    // blocks statements. It returns information about the assert
+                    // we're performing in the Terminator.
+                    let pointer_check = on_finding(
+                        tcx,
+                        local,
+                        ty,
+                        context,
+                        local_decls,
+                        &mut block_data.statements,
+                        source_info,
+                    );
+                    let new_terminator = Terminator {
+                        source_info,
+                        kind: TerminatorKind::Assert {
+                            cond: pointer_check.cond,
+                            expected: true,
+                            // new_block_idx will contain the rest of the original block
+                            target: new_block_idx,
+                            msg: pointer_check.assert_kind,
+                            // This calls a panic function associated with the pointer check, which
+                            // is #[rustc_nounwind]. We never want to insert an unwind into unsafe
+                            // code, because unwinding could make a failing UB check turn into much
+                            // worse UB when we start unwinding.
+                            unwind: UnwindAction::Unreachable,
+                        },
+                    };
+
+                    // Terminate the split block with the new terminator
+                    // and return the original terminator
+                    std::mem::replace(block_data.terminator_mut(), new_terminator)
+                };
+
+                basic_blocks.push_with(|new_block_idx, basic_blocks| {
+                    let block_data = &mut basic_blocks[location.block];
+
+                    // Drain every statement after this one
+                    let remaining_stmts = block_data.statements.split_off(location.statement_index);
+
+                    // insert the check (push statements and replace old terminator)
+                    let old_terminator = insert_check(block_data, new_block_idx);
+
+                    // move the rest to a new block
+                    BasicBlockData::new_stmts(
+                        remaining_stmts,
+                        old_terminator,
+                        block_data.is_cleanup,
+                    )
                 });
             }
         }
@@ -226,20 +248,4 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
 
         self.super_place(place, context, location);
     }
-}
-
-fn split_block(
-    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
-    location: Location,
-) -> BasicBlock {
-    let block_data = &mut basic_blocks[location.block];
-
-    // Drain every statement after this one and move the current terminator to a new basic block.
-    let new_block = BasicBlockData::maybe_unterminated_stmts(
-        block_data.statements.split_off(location.statement_index),
-        block_data.terminator.take(),
-        block_data.is_cleanup,
-    );
-
-    basic_blocks.push(new_block)
 }
