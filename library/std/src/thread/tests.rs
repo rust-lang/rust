@@ -449,8 +449,10 @@ fn test_minimal_thread_stack() {
 }
 
 // Test that a stack size too large to round up to the page size is an error.
+// The cfg mirrors the one around the rounding in the unix `Thread::new`.
 #[cfg(all(unix, not(any(target_os = "espidf", target_os = "nuttx"))))]
-#[cfg_attr(miri, ignore)] // Miri ignores the requested stack size
+// FIXME(https://github.com/rust-lang/miri/issues/5594): Miri ignores the requested stack size.
+#[cfg_attr(miri, ignore)]
 #[test]
 fn test_huge_thread_stack() {
     let builder = thread::Builder::new().stack_size(usize::MAX);
