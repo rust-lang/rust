@@ -19,7 +19,7 @@ warning: unnecessary braces around function argument
   --> $DIR/try-block-unused-delims.rs:17:13
    |
 LL |     consume({ try {} });
-   |             ^^      ^^
+   |             ^        ^
    |
 note: the lint level is defined here
   --> $DIR/try-block-unused-delims.rs:9:24
