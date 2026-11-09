@@ -4,7 +4,7 @@ error[E0364]: `JuniorGrade` is private, and cannot be re-exported
 LL |     pub use self::Lieutenant::{JuniorGrade, Full};
    |                                ^^^^^^^^^^^
    |
-note: consider marking `JuniorGrade` as `pub` in the imported variant
+note: consider marking `JuniorGrade` as `pub` in the imported enum
   --> $DIR/issue-46209-private-enum-variant-reexport.rs:25:9
    |
 LL |     enum Lieutenant {
@@ -17,7 +17,7 @@ error[E0364]: `Full` is private, and cannot be re-exported
 LL |     pub use self::Lieutenant::{JuniorGrade, Full};
    |                                             ^^^^
    |
-note: consider marking `Full` as `pub` in the imported variant
+note: consider marking `Full` as `pub` in the imported enum
   --> $DIR/issue-46209-private-enum-variant-reexport.rs:26:9
    |
 LL |     enum Lieutenant {

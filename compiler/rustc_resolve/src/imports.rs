@@ -1733,10 +1733,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             span.push_span_context(
                                 self.def_span(self.tcx().parent(parent)).shrink_to_lo(),
                             );
+                            self.tcx().def_descr(self.tcx().parent(parent))
                         } else if CRATE_DEF_ID.to_def_id() != parent {
                             span.push_span_context(self.def_span(parent).shrink_to_lo());
+                            self.tcx().def_descr(parent)
+                        } else {
+                            self.tcx().def_descr(parent)
                         }
-                        self.tcx().def_descr(parent)
                     } else {
                         // unreachable, but provide fallback just in case
                         debug_assert!(false, "we have a DefId in {decl:?} with no parent?");
