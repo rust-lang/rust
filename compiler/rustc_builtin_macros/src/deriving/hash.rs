@@ -6,7 +6,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::deriving::{call_discriminant_value, path_std};
 
-pub(crate) fn expand_deriving_hash(
+pub(crate) fn expand_derive_hash(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -38,12 +38,12 @@ pub(crate) fn expand_deriving_hash(
             name: sym::hash,
             generics,
             explicit_self: true,
-            nonself_args: smallvec![(cx.ty_ref(span, arg, None, Mutability::Mut), sym::state)],
+            nonself_args: smallvec![(sym::state, cx.ty_ref(span, arg, None, Mutability::Mut))],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(hash_substructure),
+            body: Box::new(hash_body),
         }],
         is_const,
         ..
@@ -52,29 +52,26 @@ pub(crate) fn expand_deriving_hash(
     hash_trait_def.expand(cx, item, push);
 }
 
-fn hash_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+fn hash_body(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let call_hash = |span, expr| {
-        let strs = cx.std_path(span, &[sym::hash, sym::Hash, sym::hash]);
-        let hash_path = cx.expr_path(strs);
-        let expr = cx.expr_call(span, hash_path, thin_vec![expr, cx.expr_name(span, sym::state)]);
+        let path = cx.expr_path(cx.std_path(span, &[sym::hash, sym::Hash, sym::hash]));
+        let expr = cx.expr_call(span, path, thin_vec![expr, cx.expr_name(span, sym::state)]);
         cx.stmt_expr(expr)
     };
 
-    let (stmts, match_expr) = match substr {
+    match substr {
         Struct(_, fields) | EnumMatching(.., fields) => {
             let stmts =
                 fields.into_iter().map(|field| call_hash(field.span, field.self_expr)).collect();
-            (stmts, None)
+            BlockOrExpr::new_stmts(stmts)
         }
         EnumDiscr(match_expr) => {
             let stmts = thin_vec![call_hash(
                 span,
-                cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower))
+                cx.expr_ref(span, call_discriminant_value(cx, span, kw::SelfLower))
             )];
-            (stmts, match_expr)
+            BlockOrExpr::new_mixed(stmts, match_expr)
         }
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Hash)`"),
-    };
-
-    BlockOrExpr::new_mixed(stmts, match_expr)
+    }
 }
