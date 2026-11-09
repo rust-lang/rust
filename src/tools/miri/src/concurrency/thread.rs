@@ -668,6 +668,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
+    /// Returns whether a thread stack of this size could be reserved.
+    fn thread_stack_size_ok(&self, stack_size: u64) -> bool {
+        let ecx = self.eval_context_ref();
+        if ecx.pointer_size().bits() == 32 {
+            // Reject stacks occupying nearly the entire address space
+            // Leave two pages below 4 GiB so adding a one-page guard does not overflow a 32-bit size_t.
+            let limit = (1u64 << 32) - 2 * ecx.machine.page_size;
+            return stack_size < limit;
+        }
+        // Approximate the user address space on 64-bit targets using 47 address bits.
+        let addr_bits = (ecx.pointer_size().bits() - 1).clamp_to(..=47);
+        stack_size <= (1u64 << addr_bits)
+    }
+
     /// Start a regular (non-main) thread.
     #[inline]
     fn start_regular_thread(
