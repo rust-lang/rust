@@ -41,7 +41,7 @@ macro_rules! panic {
 #[allow_internal_unstable(panic_internals)]
 #[rustc_diagnostic_opaque]
 macro_rules! assert_eq {
-    ($left:expr, $right:expr $(,)?) => {{
+    ($left:expr, $right:expr $(,)?) => {
         if let (left_val, right_val) = (&$left, &$right) && !(*left_val == *right_val) {
             let kind = $crate::panicking::AssertKind::Eq;
             // The reborrows below are intentional. Without them, the stack slot for the
@@ -49,8 +49,8 @@ macro_rules! assert_eq {
             // noticeable slow down.
             $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
         }
-    }};
-    ($left:expr, $right:expr, $($arg:tt)+) => {{
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => {
         if let (left_val, right_val) = (&$left, &$right) && !(*left_val == *right_val) {
             let kind = $crate::panicking::AssertKind::Eq;
             // The reborrows below are intentional. Without them, the stack slot for the
@@ -58,7 +58,7 @@ macro_rules! assert_eq {
             // noticeable slow down.
             $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
         }
-    }};
+    };
 }
 
 /// Asserts that two expressions are not equal to each other (using [`PartialEq`]).
@@ -90,7 +90,7 @@ macro_rules! assert_eq {
 #[allow_internal_unstable(panic_internals)]
 #[rustc_diagnostic_opaque]
 macro_rules! assert_ne {
-    ($left:expr, $right:expr $(,)?) => {{
+    ($left:expr, $right:expr $(,)?) => {
         if let (left_val, right_val) = (&$left, &$right) && *left_val == *right_val {
             let kind = $crate::panicking::AssertKind::Ne;
             // The reborrows below are intentional. Without them, the stack slot for the
@@ -98,8 +98,8 @@ macro_rules! assert_ne {
             // noticeable slow down.
             $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
         }
-    }};
-    ($left:expr, $right:expr, $($arg:tt)+) => {{
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => {
         if let (left_val, right_val) = (&$left, &$right) && *left_val == *right_val {
             let kind = $crate::panicking::AssertKind::Ne;
             // The reborrows below are intentional. Without them, the stack slot for the
@@ -107,7 +107,7 @@ macro_rules! assert_ne {
             // noticeable slow down.
             $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
         }
-    }};
+    };
 }
 
 /// Asserts that an expression matches the provided pattern.
