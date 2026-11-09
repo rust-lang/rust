@@ -1,0 +1,14 @@
+error: expected one of `:`, `@`, or `|`, found keyword `k#self`
+  --> $DIR/param-without-type.rs:6:10
+   |
+LL | fn foo(S k#self) {}
+   |          ^^^^^^ expected one of `:`, `@`, or `|`
+
+error: expected one of `:`, `@`, or `|`, found `k#not_a_keyword`
+  --> $DIR/param-without-type.rs:9:10
+   |
+LL | fn bar(S k#not_a_keyword) {}
+   |          ^^^^^^^^^^^^^^^ expected one of `:`, `@`, or `|`
+
+error: aborting due to 2 previous errors
+
