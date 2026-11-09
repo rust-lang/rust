@@ -1,22 +1,18 @@
 //! Infers from a function's MIR body whether an unwind can leave its frame.
 //!
-//! `ty::layout::fn_can_unwind` only consults the ABI and the attributes, so it treats every
-//! plain Rust function as able to unwind. This walks the body instead: a call to a callee
-//! proven not to unwind cannot unwind, nor can a drop of a type whose glue is proven not to.
-//! The answer is a fixpoint over the call graph, and a cycle yields no proof.
+//! `ty::layout::fn_can_unwind` only consults the ABI and the attributes, so it treats every plain
+//! Rust function as able to unwind. This walks the body instead: a call to a callee proven not to
+//! unwind cannot unwind, nor can a drop of a type whose glue is proven not to. The answer is a
+//! fixpoint over the call graph; a cycle yields no proof, except a call back into the body being
+//! analyzed (see `Subject`). `false` means "no proof was found", not "this function unwinds".
 //!
-//! `false` means "no proof was found", not "this function unwinds".
-//!
-//! The answer comes from `optimized_mir`, so it must agree with what codegen emits; anything
-//! changing a body afterwards invalidates it, as for `deduce_param_attrs`.
-//!
-//! `cannot_unwind_instance` asks the same question of one monomorphization, where a generic
-//! parameter is concrete.
+//! The answer comes from `optimized_mir`, so anything changing a body afterwards invalidates it,
+//! as for `deduce_param_attrs`.
 
 use rustc_abi::ExternAbi;
 use rustc_ast::InlineAsmOptions;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -27,6 +23,7 @@ use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, layout};
 use rustc_session::config::OptLevel;
+use rustc_span::DUMMY_SP;
 
 pub(super) fn provide(providers: &mut Providers) {
     providers.cannot_unwind = cannot_unwind;
@@ -34,61 +31,69 @@ pub(super) fn provide(providers: &mut Providers) {
     providers.cannot_unwind_instance = cannot_unwind_instance;
 }
 
-/// The same question about one monomorphization of the body.
-fn cannot_unwind_instance<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> bool {
-    if tcx.sess.opts.optimize == OptLevel::No {
+/// Whether the answer can reach codegen at all: only optimized builds read it, and under
+/// `panic=abort` `fn_can_unwind` already says "cannot unwind" for every Rust-ABI item.
+fn should_analyze(tcx: TyCtxt<'_>) -> bool {
+    tcx.sess.opts.optimize != OptLevel::No && tcx.sess.panic_strategy().unwinds()
+}
+
+/// The ABI a definition is called with, if it is function-like.
+fn body_abi(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ExternAbi> {
+    match tcx.def_kind(def_id) {
+        DefKind::Fn | DefKind::AssocFn => Some(tcx.fn_sig(def_id).skip_binder().abi()),
+        // A closure or coroutine has no `fn_sig`; both are called as `extern "Rust"`, as is a
+        // tuple constructor.
+        DefKind::Closure | DefKind::SyntheticCoroutineBody | DefKind::Ctor(_, CtorKind::Fn) => {
+            Some(ExternAbi::Rust)
+        }
+        // Nothing else is called.
+        _ => None,
+    }
+}
+
+/// Whether the MIR body is what codegen emits for `def_id`: a comptime function never reaches
+/// codegen, an intrinsic and the drop-glue lang items are generated rather than read from the
+/// placeholder body, and a naked function's body is a single `asm!` block that can jump anywhere.
+fn body_is_emitted(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    if let hir::Constness::Const { always: true } = tcx.constness(def_id) {
         return false;
     }
+    tcx.intrinsic(def_id).is_none()
+        && !tcx.is_lang_item(def_id, LangItem::DropGlue)
+        && !tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
+        && !tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED)
+}
 
-    // Under `panic=abort` `fn_can_unwind` already answers "cannot unwind" without a body.
-    if !tcx.sess.panic_strategy().unwinds() {
+/// The ABI of the declaration a shim is built from, if it is one that can be called.
+fn shim_abi<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Option<ExternAbi> {
+    match tcx.def_kind(shim.def_id()) {
+        DefKind::Fn | DefKind::AssocFn => Some(tcx.fn_sig(shim.def_id()).skip_binder().abi()),
+        // A shim built from something other than a function has no signature to ask about.
+        _ => None,
+    }
+}
+
+/// The same question about one monomorphization of the body.
+fn cannot_unwind_instance<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> bool {
+    if !should_analyze(tcx) {
         return false;
     }
 
     match instance.def {
         ty::InstanceKind::Item(def_id) => {
-            match tcx.def_kind(def_id) {
-                // A closure is always `extern "Rust"`.
-                DefKind::Closure => {}
-                DefKind::Fn | DefKind::AssocFn => {
-                    if !tcx.fn_sig(def_id).skip_binder().abi().is_rustic_abi() {
-                        return false;
-                    }
-                }
-                // A tuple constructor is always `extern "Rust"`.
-                DefKind::Ctor(_, CtorKind::Fn) => {}
-                // Not a function; codegen emits no body for it.
-                _ => return false,
-            }
-            // Comptime functions never reach codegen.
-            if let hir::Constness::Const { always: true } = tcx.constness(def_id) {
+            if !body_abi(tcx, def_id).is_some_and(ExternAbi::is_rustic_abi) {
                 return false;
             }
             // No MIR: a foreign item was answered when its own crate was compiled.
             if !tcx.is_mir_available(def_id) {
                 return tcx.cannot_unwind(def_id);
             }
-            // The emitted code need not be the MIR body (see `cannot_unwind`).
-            if tcx.intrinsic(def_id).is_some() {
-                return false;
-            }
-            // Empty placeholder bodies in `core` (see `cannot_unwind`).
-            if tcx.is_lang_item(def_id, LangItem::DropGlue)
-                || tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
-            {
-                return false;
-            }
-            // A naked function's body is a single `asm!` block that can jump anywhere.
-            if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
+            if !body_is_emitted(tcx, def_id) {
                 return false;
             }
         }
         ty::InstanceKind::Shim(shim) => {
-            let abi = match tcx.def_kind(shim.def_id()) {
-                DefKind::Fn | DefKind::AssocFn => tcx.fn_sig(shim.def_id()).skip_binder().abi(),
-                _ => return false,
-            };
-            if !abi.is_rustic_abi() {
+            if !shim_abi(tcx, shim).is_some_and(ExternAbi::is_rustic_abi) {
                 return false;
             }
         }
@@ -105,9 +110,8 @@ fn cannot_unwind_instance<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>)
 
     let mut analyzer = Analyzer {
         tcx,
-        instance: Some(instance),
+        subject: Subject::Instance(instance),
         typing_env: ty::TypingEnv::fully_monomorphized(),
-        drop_glue_in_progress: FxHashSet::default(),
         drop_glue_cache: FxHashMap::default(),
     };
     analyzer.body_cannot_unwind(body)
@@ -115,27 +119,15 @@ fn cannot_unwind_instance<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>)
 
 /// The same analysis, on a body the compiler writes for itself.
 ///
-/// Drop glue is the case that matters: the most common call target with no `DefId` behind it.
-/// Every crate that instantiates a shim generates the same body, so the answer needs no
-/// metadata, unlike `cannot_unwind`.
+/// Drop glue is the case that matters, and every crate instantiates a shim with the same body, so
+/// unlike `cannot_unwind` the answer needs no metadata.
 fn cannot_unwind_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> bool {
-    if tcx.sess.opts.optimize == OptLevel::No {
+    if !should_analyze(tcx) {
         return false;
     }
 
-    // Under abort `fn_can_unwind` already answers "cannot unwind" for every Rust-ABI function
-    // and shim without looking at any body, and the unwind edges are gone anyway.
-    if !tcx.sess.panic_strategy().unwinds() {
-        return false;
-    }
-
-    // As for items, only Rust-like ABIs leave the claim to us. A shim built from something
-    // other than a function has no signature to ask about.
-    let abi = match tcx.def_kind(shim.def_id()) {
-        DefKind::Fn | DefKind::AssocFn => tcx.fn_sig(shim.def_id()).skip_binder().abi(),
-        _ => return false,
-    };
-    if !abi.is_rustic_abi() {
+    // As for items, only Rust-like ABIs leave the claim to us.
+    if !shim_abi(tcx, shim).is_some_and(ExternAbi::is_rustic_abi) {
         return false;
     }
 
@@ -146,24 +138,15 @@ fn cannot_unwind_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> bool
 
     let mut analyzer = Analyzer {
         tcx,
-        instance: None,
+        subject: Subject::Shim(shim),
         typing_env: body.typing_env(tcx),
-        drop_glue_in_progress: FxHashSet::default(),
         drop_glue_cache: FxHashMap::default(),
     };
     analyzer.body_cannot_unwind(body)
 }
 
 fn cannot_unwind<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
-    // The answer only reaches the backend in optimized builds, and only there can it remove
-    // anything.
-    if tcx.sess.opts.optimize == OptLevel::No {
-        return false;
-    }
-
-    // Under `panic=abort` `fn_can_unwind` already answers "cannot unwind" for every non-foreign
-    // Rust function without looking at a body, and every unwind edge is already gone.
-    if !tcx.sess.panic_strategy().unwinds() {
+    if !should_analyze(tcx) {
         return false;
     }
 
@@ -172,40 +155,14 @@ fn cannot_unwind<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
         return false;
     }
 
-    // Comptime functions never reach codegen.
-    if let hir::Constness::Const { always: true } = tcx.constness(def_id) {
-        return false;
-    }
-
-    // The emitted code for an intrinsic need not be its MIR body: a backend-implemented one
-    // gets a placeholder body of `unreachable`, which would prove anything.
-    if tcx.intrinsic(def_id.to_def_id()).is_some() {
-        return false;
-    }
-
-    // `drop_glue` and `async_drop_in_place` carry empty placeholder bodies in `core`; the
-    // compiler substitutes generated glue for them. The placeholder would prove anything.
-    if tcx.is_lang_item(def_id.to_def_id(), LangItem::DropGlue)
-        || tcx.is_lang_item(def_id.to_def_id(), LangItem::AsyncDropInPlace)
-    {
-        return false;
-    }
-
     // Only Rust-like ABIs are in scope. An ABI such as `C-unwind` describes the interface, not
     // the body: callers through that boundary are entitled to unwind out of it whatever this
     // body does.
-    let abi = match tcx.def_kind(def_id) {
-        // A closure or coroutine has no `fn_sig` of its own, but is always `extern "Rust"`.
-        DefKind::Closure => ExternAbi::Rust,
-        DefKind::Fn | DefKind::AssocFn => tcx.fn_sig(def_id).skip_binder().abi(),
-        _ => return false,
-    };
-    if !abi.is_rustic_abi() {
+    if !body_abi(tcx, def_id.to_def_id()).is_some_and(ExternAbi::is_rustic_abi) {
         return false;
     }
 
-    // A naked function's body is a single `asm!` block that can jump anywhere.
-    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
+    if !body_is_emitted(tcx, def_id.to_def_id()) {
         return false;
     }
 
@@ -216,9 +173,8 @@ fn cannot_unwind<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
 
     let mut analyzer = Analyzer {
         tcx,
-        instance: None,
+        subject: Subject::Item(def_id.to_def_id()),
         typing_env: body.typing_env(tcx),
-        drop_glue_in_progress: FxHashSet::default(),
         drop_glue_cache: FxHashMap::default(),
     };
     analyzer.body_cannot_unwind(body)
@@ -226,16 +182,38 @@ fn cannot_unwind<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
 
 struct Analyzer<'tcx> {
     tcx: TyCtxt<'tcx>,
-    /// The monomorphization being analysed, if any.
-    instance: Option<ty::Instance<'tcx>>,
+    /// The body this analysis started from.
+    subject: Subject<'tcx>,
     /// The environment the body's types are read in.
     typing_env: ty::TypingEnv<'tcx>,
-    /// Types whose drop glue is currently being analysed, to break recursive types. Meeting one
-    /// again means "no proof".
-    drop_glue_in_progress: FxHashSet<Ty<'tcx>>,
     /// Answers already computed for a type's drop glue. Without this the work is exponential in
     /// the nesting depth.
     drop_glue_cache: FxHashMap<Ty<'tcx>, bool>,
+}
+
+/// The one body whose frame the question is about.
+///
+/// A call back into this body counts as unable to unwind: the walk sees every other operation, so
+/// an unwind leaving the frame was let out by one of those. The assumption is not memoized, and a
+/// cycle through any other body yields no proof.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Subject<'tcx> {
+    /// A function's own definition, before monomorphization.
+    Item(DefId),
+    /// One monomorphization.
+    Instance(ty::Instance<'tcx>),
+    /// A body the compiler writes for itself.
+    Shim(ty::ShimKind<'tcx>),
+}
+
+impl<'tcx> Subject<'tcx> {
+    /// The monomorphization being analyzed, if this is one.
+    fn instance(self) -> Option<ty::Instance<'tcx>> {
+        match self {
+            Subject::Instance(instance) => Some(instance),
+            Subject::Item(_) | Subject::Shim(_) => None,
+        }
+    }
 }
 
 /// The one body a `FnDef` in a call resolves to.
@@ -288,8 +266,7 @@ impl<'tcx> Analyzer<'tcx> {
                         return false;
                     }
                 }
-                // `Unreachable` is written from the declaration's answer, not the body's, so it is
-                // not a proof.
+                // Written from the declaration's answer, not the body's, so it is no proof.
                 UnwindAction::Unreachable => return false,
             }
         }
@@ -302,19 +279,18 @@ impl<'tcx> Analyzer<'tcx> {
     /// The fixpoint is over both normal and unwind edges because a cleanup chain can do real
     /// work (a `drop`, say) between the block that started the unwind and the `resume`.
     fn compute_escape(&mut self, body: &Body<'tcx>) -> DenseBitSet<BasicBlock> {
+        // The answer only grows, so a block needs re-examining exactly when a successor starts
+        // escaping.
         let mut escapes = DenseBitSet::new_empty(body.basic_blocks.len());
-        loop {
-            let mut changed = false;
-            for (bb, block) in body.basic_blocks.iter_enumerated() {
-                if !escapes.contains(bb) && self.block_escapes(body, block, &escapes) {
-                    escapes.insert(bb);
-                    changed = true;
-                }
+        let mut worklist: Vec<BasicBlock> = body.basic_blocks.indices().collect();
+        while let Some(bb) = worklist.pop() {
+            if escapes.contains(bb) || !self.block_escapes(body, &body.basic_blocks[bb], &escapes) {
+                continue;
             }
-            if !changed {
-                return escapes;
-            }
+            escapes.insert(bb);
+            worklist.extend(body.basic_blocks.predecessors()[bb].iter().copied());
         }
+        escapes
     }
 
     fn block_escapes(
@@ -326,19 +302,14 @@ impl<'tcx> Analyzer<'tcx> {
         use TerminatorKind::*;
 
         let terminator = block.terminator();
-        match &terminator.kind {
+        // Normal control flow: if it leads somewhere that escapes, so does this.
+        let normal_escapes = match &terminator.kind {
             UnwindResume => return true,
-            // These stop the unwind: `Terminate` aborts, and the rest cannot be reached by an
-            // unwind at all.
+            // `Terminate` aborts, and no unwind can arrive at the rest.
             UnwindTerminate(_) | CoroutineDrop | Return | Unreachable => return false,
             // A tail call has no unwind edge of its own (see `body_cannot_unwind`), so the block
             // escapes exactly when the callee can unwind.
             TailCall { func, .. } => return self.callee_can_unwind(body, func),
-            _ => {}
-        }
-
-        // Normal control flow inside the block: if it leads somewhere that escapes, so does this.
-        let normal_escapes = match &terminator.kind {
             Goto { target, .. } => escapes.contains(*target),
             SwitchInt { targets, .. } => targets.all_targets().iter().any(|t| escapes.contains(*t)),
             Call { target, .. } => target.is_some_and(|t| escapes.contains(t)),
@@ -354,12 +325,6 @@ impl<'tcx> Analyzer<'tcx> {
             }
             FalseUnwind { real_target, .. } => escapes.contains(*real_target),
             InlineAsm { targets, .. } => targets.iter().any(|t| escapes.contains(*t)),
-            UnwindResume
-            | UnwindTerminate(_)
-            | CoroutineDrop
-            | Return
-            | Unreachable
-            | TailCall { .. } => unreachable!("handled above"),
         };
         if normal_escapes {
             return true;
@@ -374,8 +339,7 @@ impl<'tcx> Analyzer<'tcx> {
         };
         match unwind {
             UnwindAction::Continue => true,
-            // See `body_cannot_unwind`: `Unreachable` is not a proof, so an unwind arriving here
-            // keeps going.
+            // As in `body_cannot_unwind`, `Unreachable` is no proof, so the unwind keeps going.
             UnwindAction::Unreachable => true,
             UnwindAction::Terminate(_) => false,
             UnwindAction::Cleanup(target) => escapes.contains(*target),
@@ -406,12 +370,8 @@ impl<'tcx> Analyzer<'tcx> {
     fn callee_can_unwind(&mut self, body: &Body<'tcx>, func: &Operand<'tcx>) -> bool {
         let ty = func.ty(&body.local_decls, self.tcx);
         let ty = self.concretize(ty);
-        let (def_id, args) = match *ty.kind() {
-            // An indirect call could go anywhere.
-            ty::FnPtr(..) => return true,
-            ty::FnDef(def_id, args) => (def_id, args),
-            _ => return true,
-        };
+        // An indirect call could go anywhere, and nothing else is called.
+        let ty::FnDef(def_id, args) = *ty.kind() else { return true };
         let abi = ty.fn_sig(self.tcx).abi();
 
         // The trait solver assumes monomorphization, so a callee that still mentions a parameter
@@ -420,9 +380,15 @@ impl<'tcx> Analyzer<'tcx> {
             args.no_bound_vars().filter(|args| !args.has_non_region_param() && !args.has_aliases());
 
         let resolved = args.and_then(|args| self.resolved_instance(def_id, args));
+        let callee = self.resolved_callee(def_id, resolved);
+
+        // A call back into this body asks the question already being answered; see `Subject`.
+        if self.is_self_call(resolved, callee) {
+            return false;
+        }
 
         // Inside a monomorphization this names the one body codegen emits.
-        if self.instance.is_some()
+        if matches!(self.subject, Subject::Instance(_))
             && let Some(instance) = resolved
             && !matches!(instance.def, ty::InstanceKind::Virtual(..))
         {
@@ -430,7 +396,6 @@ impl<'tcx> Analyzer<'tcx> {
                 && !self.tcx.cannot_unwind_instance(instance);
         }
 
-        let callee = self.resolved_callee(def_id, resolved);
         match callee {
             // One body is known: ask the same question codegen asks about it.
             Some(Callee::Item(callee)) => {
@@ -447,13 +412,31 @@ impl<'tcx> Analyzer<'tcx> {
         }
     }
 
+    /// Whether this call names the body the analysis started from. See `Subject`.
+    fn is_self_call(
+        &self,
+        resolved: Option<ty::Instance<'tcx>>,
+        callee: Option<Callee<'tcx>>,
+    ) -> bool {
+        match self.subject {
+            Subject::Instance(subject) => resolved == Some(subject),
+            Subject::Item(subject) => {
+                matches!(callee, Some(Callee::Item(callee)) if callee == subject)
+            }
+            Subject::Shim(subject) => {
+                matches!(callee, Some(Callee::Shim(shim)) if shim == subject)
+            }
+        }
+    }
+
     /// The instance `try_resolve` names for a direct call through this `FnDef`.
     fn resolved_instance(
         &self,
         def_id: DefId,
         args: ty::GenericArgs<'tcx>,
     ) -> Option<ty::Instance<'tcx>> {
-        // `try_resolve` asserts on the kinds it answers for.
+        // `try_resolve` asserts on the kinds it accepts, so keep the set to the ones a call can
+        // name.
         if !matches!(
             self.tcx.def_kind(def_id),
             DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Ctor(_, CtorKind::Fn)
@@ -463,13 +446,8 @@ impl<'tcx> Analyzer<'tcx> {
         ty::Instance::try_resolve(self.tcx, self.typing_env, def_id, args).ok().flatten()
     }
 
-    /// The body codegen will emit for a direct call through this `FnDef`, if there is exactly
-    /// one and it can be named.
-    ///
-    /// The `DefId` behind a `FnDef` is the declaration, and for two kinds of declaration that is
-    /// not the body that runs: a trait method, where `Self` picks the impl, and a lang item the
-    /// compiler substitutes wholesale (`drop_glue`, `async_drop_in_place`, whose empty
-    /// placeholder bodies must never be read).
+    /// The body codegen will emit for a direct call through this `FnDef`, if exactly one can be
+    /// named.
     fn resolved_callee(
         &self,
         def_id: DefId,
@@ -503,23 +481,17 @@ impl<'tcx> Analyzer<'tcx> {
             return true;
         }
 
-        // A type whose glue is already being analysed is recursive; give up on proving it.
-        if self.drop_glue_in_progress.contains(&ty) {
-            return true;
-        }
+        // A recursive type is cut by the query's cycle handler, which answers "no proof", so only
+        // completed answers are cached.
         if let Some(&cannot_unwind) = self.drop_glue_cache.get(&ty) {
             return !cannot_unwind;
         }
 
-        self.drop_glue_in_progress.insert(ty);
-        // `Instance::resolve_drop_glue` panics on failure, which is fine at monomorphization
-        // time but not here; "no instance" means "no proof".
         let Some(glue) = self.resolve_drop_glue(ty) else {
-            self.drop_glue_in_progress.remove(&ty);
             self.drop_glue_cache.insert(ty, false);
             return true;
         };
-        let cannot_unwind = match (self.instance.is_some(), glue.def) {
+        let cannot_unwind = match (self.subject.instance().is_some(), glue.def) {
             // Within a monomorphization the glue is one instance, whose own body may drop
             // further types.
             (true, _) => self.tcx.cannot_unwind_instance(glue),
@@ -527,15 +499,14 @@ impl<'tcx> Analyzer<'tcx> {
             (false, ty::InstanceKind::Shim(shim)) => self.tcx.cannot_unwind_shim(shim),
             (false, _) => false,
         };
-        self.drop_glue_in_progress.remove(&ty);
         self.drop_glue_cache.insert(ty, cannot_unwind);
 
         !cannot_unwind
     }
 
-    /// The concrete form of `ty` in the monomorphization being analysed, or `ty` itself outside one.
+    /// The concrete form of `ty` inside the monomorphization, or `ty` itself outside one.
     fn concretize(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let Some(instance) = self.instance else { return ty };
+        let Some(instance) = self.subject.instance() else { return ty };
         // The round trip would only erase regions, which nothing below reads.
         if !ty.has_non_region_param() && !ty.has_aliases() {
             return ty;
@@ -549,12 +520,9 @@ impl<'tcx> Analyzer<'tcx> {
 
     /// The drop glue instance for `ty`, or `None` if it does not resolve.
     ///
-    /// This is `Instance::resolve_drop_glue` without the panic, which asserts it is being called
-    /// on a monomorphic type.
+    /// `Instance::resolve_drop_glue` panics instead, as it asserts a monomorphic type.
     fn resolve_drop_glue(&self, ty: Ty<'tcx>) -> Option<ty::Instance<'tcx>> {
-        let def_id = self
-            .tcx
-            .require_lang_item(rustc_attr_ir::lang_items::LangItem::DropGlue, rustc_span::DUMMY_SP);
+        let def_id = self.tcx.require_lang_item(LangItem::DropGlue, DUMMY_SP);
         let args = self.tcx.mk_args(&[ty.into()]);
         match ty::Instance::try_resolve(
             self.tcx,
