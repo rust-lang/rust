@@ -28,9 +28,9 @@ use crate::lifetime_syntax::LifetimeSyntaxCategories;
 #[diag("{$lint_level}({$lint_name}) incompatible with previous forbid", code = E0453)]
 pub(crate) struct OverruledAttribute<'a> {
     #[primary_span]
-    pub span: Span,
+    pub span: Option<Span>,
     #[label("overruled by previous forbid")]
-    pub overruled: Span,
+    pub overruled: Option<Span>,
     pub lint_level: &'a str,
     pub lint_name: LintName,
     #[subdiagnostic]

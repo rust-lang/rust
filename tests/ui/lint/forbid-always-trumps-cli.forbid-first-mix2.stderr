@@ -1,10 +1,7 @@
-error: unused variable: `x`
-  --> $DIR/forbid-always-trumps-cli.rs:15:9
+error[E0453]: allow(unused) incompatible with previous forbid
    |
-LL |     let x = 1;
-   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
-   |
-   = note: requested on the command line with `-F unused-variables`
+   = note: `forbid` lint level was set on command line (`-F unused_variables`)
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0453`.

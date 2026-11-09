@@ -10,8 +10,11 @@
 //@[allow-first-mix1] compile-flags: -A unused_variables -F unused
 //@[forbid-first-mix2] compile-flags: -F unused_variables -A unused
 //@[allow-first-mix2] compile-flags: -A unused -F unused_variables
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
+
+//[forbid-first-group,forbid-first-lint,forbid-first-mix1,forbid-first-mix2]~? ERROR incompatible with previous forbid
 
 fn main() {
     let x = 1;
-    //~^ ERROR unused variable: `x`
+    //[allow-first-group,allow-first-lint,allow-first-mix1,allow-first-mix2]~^ ERROR unused variable: `x`
 }
