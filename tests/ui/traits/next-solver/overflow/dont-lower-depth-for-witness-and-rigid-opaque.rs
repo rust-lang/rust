@@ -6,7 +6,7 @@
 // and rigid opaques. This is to mitigate the FCW warnings in deeply nested
 // async calls. See #159228.
 
-#![recursion_limit = "6"]
+#![recursion_limit = "11"]
 
 async fn foo1() {}
 

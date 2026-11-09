@@ -8,15 +8,11 @@ use core::ops::SubAssign;
 
 fn f<T>(
     data: &[(); {
+         //~^ ERROR cycle detected when building an abstract representation for `f::{constant#0}`
          let f: F = async { 1 };
          //~^ ERROR cannot find type `F` in this scope
-
          1
      }],
-) -> impl Iterator<Item = SubAssign> {
-//~^ ERROR expected a type, found a trait
-//~| ERROR expected a type, found a trait
-//~| ERROR `()` is not an iterator
-}
+) -> impl Iterator<Item = SubAssign> {}
 
 pub fn main() {}

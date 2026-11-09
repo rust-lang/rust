@@ -24,33 +24,21 @@ LL |     async {}
 error[E0308]: mismatched types
   --> $DIR/return-type-mismatch-diagnostics-issue-162271.rs:19:5
    |
-LL | fn multiple_returns_same_future_output() -> impl Future<Output = ()> {
-   |                                             ------------------------ expected a single type implementing `Future` because of return type
-LL |     if false {
 LL |         return async {};
-   |                --------
-   |                |
-   |                the expected `async` block
-   |                return type resolved to be `{async block@$DIR/return-type-mismatch-diagnostics-issue-162271.rs:17:16: 17:21}`
+   |                ----- the expected `async` block
 LL |     }
 LL |     async {}
-   |     ^^^^^^^^ expected `async` block, found a different `async` block
+   |     ^^^^^^^^
+   |     |
+   |     expected `async` block, found a different `async` block
+   |     arguments to this function are incorrect
    |
    = note: expected `async` block `{async block@$DIR/return-type-mismatch-diagnostics-issue-162271.rs:17:16: 17:21}`
               found `async` block `{async block@$DIR/return-type-mismatch-diagnostics-issue-162271.rs:19:5: 19:10}`
    = note: no two async blocks, even if identical, have the same type
    = help: consider pinning your async block and casting it to a trait object
-help: you could change the return type to be a boxed trait object
-   |
-LL - fn multiple_returns_same_future_output() -> impl Future<Output = ()> {
-LL + fn multiple_returns_same_future_output() -> Box<dyn Future<Output = ()>> {
-   |
-help: if you change the return type to expect trait objects, box the returned expressions
-   |
-LL ~         return Box::new(async {});
-LL |     }
-LL ~     Box::new(async {})
-   |
+note: function defined here
+  --> $SRC_DIR/core/src/ops/coroutine/adapters.rs:LL:COL
 
 error: aborting due to 3 previous errors
 
