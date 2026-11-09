@@ -1,7 +1,6 @@
 //! Attributes producing expressions in invalid locations
 
 //@ proc-macro: attr-stmt-expr.rs
-//@ ignore-backends: gcc
 
 #![feature(proc_macro_hygiene)]
 #![feature(stmt_expr_attributes)]

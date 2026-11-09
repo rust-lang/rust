@@ -4,7 +4,6 @@
 //@ exec-env:RUST_BACKTRACE=0
 //@ needs-threads
 //@ needs-unwind
-//@ ignore-backends: gcc
 use std::thread;
 const PANIC_MESSAGE: &str = "oops oh no woe is me";
 

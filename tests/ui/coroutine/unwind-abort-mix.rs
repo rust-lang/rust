@@ -6,7 +6,6 @@
 //@ aux-build:unwind-aux.rs
 //@ compile-flags: -Cpanic=abort
 //@ needs-unwind
-//@ ignore-backends: gcc
 extern crate unwind_aux;
 
 pub fn main() {
