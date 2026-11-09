@@ -330,13 +330,6 @@ pub(crate) enum BuiltinUnusedDocCommentSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("const items should never be `#[no_mangle]`")]
-pub(crate) struct BuiltinConstNoMangle {
-    #[suggestion("try a static value", code = "pub static ", applicability = "machine-applicable")]
-    pub suggestion: Option<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell"
 )]

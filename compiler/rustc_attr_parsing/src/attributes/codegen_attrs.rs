@@ -17,7 +17,6 @@ use crate::diagnostics::{
     TrackCallerOnLangItem,
 };
 use crate::target_checking::AllowedResult;
-use crate::target_checking::Policy::AllowSilent;
 
 pub(crate) struct OptimizeParser;
 
@@ -442,7 +441,7 @@ impl NoArgsAttributeParser for NoMangleParser {
         Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
+        Error(Target::Const),
         Error(Target::Closure),
         Error(Target::Param),
     ]);
