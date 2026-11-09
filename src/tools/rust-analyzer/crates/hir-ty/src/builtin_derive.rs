@@ -365,7 +365,10 @@ fn extend_assoc_type_bounds<'db>(
         type Result = ();
 
         fn visit_ty(&mut self, t: Ty<'db>) -> Self::Result {
-            if let TyKind::Alias(AliasTy { kind: AliasTyKind::Projection { .. }, .. }) = t.kind() {
+            if let TyKind::Alias(alias @ AliasTy { kind: AliasTyKind::Projection { .. }, .. }) =
+                t.kind()
+                && let TyKind::Param(_) = alias.self_ty().kind()
+            {
                 self.assoc_type_bounds.push(
                     TraitRef::new_from_args(
                         self.interner,

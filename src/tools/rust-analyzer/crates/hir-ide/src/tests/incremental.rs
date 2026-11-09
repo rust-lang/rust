@@ -46,6 +46,8 @@ fn foo() -> i32 {
                 "trait_environment_query",
                 "lang_items",
                 "crate_lang_items",
+                "UnstableFeatures::query_",
+                "crate_extern_prelude",
                 "GenericPredicates::query_with_diagnostics_",
                 "fn_sig_for_fn",
                 "ExprScopes::body_expr_scopes_",
@@ -135,6 +137,8 @@ fn baz() -> i32 {
                 "trait_environment_query",
                 "lang_items",
                 "crate_lang_items",
+                "UnstableFeatures::query_",
+                "crate_extern_prelude",
                 "GenericPredicates::query_with_diagnostics_",
                 "fn_sig_for_fn",
                 "ExprScopes::body_expr_scopes_",
@@ -253,6 +257,8 @@ $0",
                 "TraitImpls < 'db >::for_crate_",
                 "lang_items",
                 "crate_lang_items",
+                "UnstableFeatures::query_",
+                "crate_extern_prelude",
             ]
         "#]],
     );
@@ -289,7 +295,7 @@ pub struct NewStruct {
                 "real_span_map",
                 "crate_local_def_map",
                 "TraitImpls < 'db >::for_crate_",
-                "crate_lang_items",
+                "UnstableFeatures::query_",
             ]
         "#]],
     );
@@ -328,6 +334,8 @@ $0",
                 "TraitImpls < 'db >::for_crate_",
                 "lang_items",
                 "crate_lang_items",
+                "UnstableFeatures::query_",
+                "crate_extern_prelude",
             ]
         "#]],
     );
@@ -365,7 +373,7 @@ pub enum SomeEnum {
                 "real_span_map",
                 "crate_local_def_map",
                 "TraitImpls < 'db >::for_crate_",
-                "crate_lang_items",
+                "UnstableFeatures::query_",
             ]
         "#]],
     );
@@ -404,6 +412,8 @@ $0",
                 "TraitImpls < 'db >::for_crate_",
                 "lang_items",
                 "crate_lang_items",
+                "UnstableFeatures::query_",
+                "crate_extern_prelude",
             ]
         "#]],
     );
@@ -438,7 +448,7 @@ fn bar() -> f32 {
                 "real_span_map",
                 "crate_local_def_map",
                 "TraitImpls < 'db >::for_crate_",
-                "crate_lang_items",
+                "UnstableFeatures::query_",
             ]
         "#]],
     );
@@ -481,6 +491,8 @@ $0",
                 "TraitImpls < 'db >::for_crate_",
                 "lang_items",
                 "crate_lang_items",
+                "UnstableFeatures::query_",
+                "crate_extern_prelude",
             ]
         "#]],
     );
@@ -523,7 +535,7 @@ impl SomeStruct {
                 "real_span_map",
                 "crate_local_def_map",
                 "TraitImpls < 'db >::for_crate_",
-                "crate_lang_items",
+                "UnstableFeatures::query_",
             ]
         "#]],
     );
@@ -597,6 +609,8 @@ fn main() {
                 "trait_environment_query",
                 "lang_items",
                 "crate_lang_items",
+                "UnstableFeatures::query_",
+                "crate_extern_prelude",
                 "GenericPredicates::query_with_diagnostics_",
                 "GenericPredicates::query_with_diagnostics_",
                 "fn_sig_for_fn",
@@ -689,7 +703,7 @@ fn main() {
                 "FunctionSignature::of_",
                 "Body::with_source_map_",
                 "Body::of_",
-                "crate_lang_items",
+                "UnstableFeatures::query_",
                 "GenericPredicates::query_with_diagnostics_",
                 "GenericPredicates::query_with_diagnostics_",
                 "fn_sig_for_fn",

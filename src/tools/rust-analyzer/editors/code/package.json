@@ -1336,6 +1336,16 @@
             {
                 "title": "Completion",
                 "properties": {
+                    "rust-analyzer.completion.autoDyn.enable": {
+                        "markdownDescription": "Complete traits with `dyn` prefixed to them when completing in a type position.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Completion",
+                "properties": {
                     "rust-analyzer.completion.autoIter.enable": {
                         "markdownDescription": "Show method call completions with `iter()` or `into_iter()` prefixed to them when\ncompleting on a type that has them.",
                         "default": true,
@@ -2401,8 +2411,18 @@
                 "properties": {
                     "rust-analyzer.inlayHints.implicitDrops.enable": {
                         "markdownDescription": "Show implicit drop hints.",
-                        "default": false,
-                        "type": "boolean"
+                        "default": "never",
+                        "type": "string",
+                        "enum": [
+                            "always",
+                            "never",
+                            "with_drop_glue"
+                        ],
+                        "enumDescriptions": [
+                            "Always show drop hints.",
+                            "Never show drop hints.",
+                            "Only show drop hints for values with drop glue."
+                        ]
                     }
                 }
             },
@@ -3371,7 +3391,7 @@
                         "message": 3
                     },
                     {
-                        "regexp": "^[\\s->=]*(.*?):([1-9]\\d*):([1-9]\\d*)\\s*$",
+                        "regexp": "^[\\s->=─╭├▸]*(.*?):([1-9]\\d*):([1-9]\\d*)\\s*$",
                         "file": 1,
                         "line": 2,
                         "column": 3
@@ -3969,13 +3989,6 @@
                 }
             ]
         },
-        "viewsWelcome": [
-            {
-                "view": "explorer",
-                "contents": "Create a new Rust project.\n[Create Rust Project](command:rust-analyzer.newProject)",
-                "when": "workspaceFolderCount == 0"
-            }
-        ],
         "viewsContainers": {
             "activitybar": [
                 {

@@ -27,7 +27,7 @@ pub(crate) fn generate(check: bool) {
 pub(super) enum Stability {
     Stable,
     Unstable(()),
-    InternalOnly { reason: &'static str, hard_error: bool },
+    InternalOnly { reason: &'static str, target_modifier: bool, hard_error: bool },
 }
 use Stability::*;
 
