@@ -16,6 +16,22 @@ pub struct PrintRequest {
     pub kind: PrintKind,
     pub out: OutFileName,
     pub arg: Option<String>,
+    pub format: PrintOutputFormat,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum PrintOutputFormat {
+    Default,
+    Json,
+}
+
+impl PrintOutputFormat {
+    pub fn try_parse(kind: &str) -> Option<PrintOutputFormat> {
+        match kind {
+            "json" => Some(PrintOutputFormat::Json),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -241,6 +257,7 @@ pub fn collect_print_requests(
             kind: PrintKind::TargetCPUs,
             out: OutFileName::Stdout,
             arg: None,
+            format: PrintOutputFormat::Default,
         });
         cg.target_cpu = None;
     };
@@ -249,6 +266,7 @@ pub fn collect_print_requests(
             kind: PrintKind::TargetFeatures,
             out: OutFileName::Stdout,
             arg: None,
+            format: PrintOutputFormat::Default,
         });
         cg.target_feature = String::new();
     }
@@ -262,29 +280,29 @@ pub fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
-        let (kind, arg) = if let Some(mnemonic) = req.strip_prefix("backend-has-mnemonic") {
+        let (kind, arg, format) = if let Some(rest) = req.strip_prefix("backend-has-mnemonic") {
             check_print_request_stability(early_dcx, unstable_opts, PrintKind::BackendHasMnemonic);
-            // BackendHasMnemonic requires a mnemonic argument
-            if let Some(mnemonic) = mnemonic.strip_prefix(':')
-                && !mnemonic.is_empty()
-            {
-                (PrintKind::BackendHasMnemonic, Some(mnemonic.to_string()))
-            } else {
-                early_dcx.early_fatal(
-                    "expected mnemonic name after `--print=backend-has-mnemonic:`, \
-                    for example: `--print=backend-has-mnemonic:RET`",
-                );
+            // BackendHasMnemonic requires a mnemonic argument.
+            let Some(rest) = rest.strip_prefix(':') else {
+                missing_mnemonic_fatal(early_dcx);
+            };
+            let (mnemonic, format) = split_print_format(early_dcx, rest);
+            if mnemonic.is_empty() {
+                missing_mnemonic_fatal(early_dcx);
             }
-        } else if let Some(print_kind) = PrintKind::from_str(req)
-            && allowed.contains(&print_kind.category())
-        {
-            check_print_request_stability(early_dcx, unstable_opts, print_kind);
-            (print_kind, None)
+            (PrintKind::BackendHasMnemonic, Some(mnemonic.to_string()), format)
         } else {
-            let is_nightly = nightly_options::match_is_nightly_build(matches);
-            emit_unknown_print_request_help(early_dcx, req, is_nightly, allowed)
+            let (name, format) = split_print_format(early_dcx, req);
+            if let Some(print_kind) = PrintKind::from_str(name)
+                && allowed.contains(&print_kind.category())
+            {
+                check_print_request_stability(early_dcx, unstable_opts, print_kind);
+                (print_kind, None, format)
+            } else {
+                let is_nightly = nightly_options::match_is_nightly_build(matches);
+                emit_unknown_print_request_help(early_dcx, name, is_nightly, allowed)
+            }
         };
-
         let out = out.unwrap_or(OutFileName::Stdout);
         if let OutFileName::Real(path) = &out {
             if !printed_paths.insert(path.clone()) {
@@ -295,10 +313,42 @@ pub fn collect_print_requests(
             }
         }
 
-        PrintRequest { kind, out, arg }
+        if format != PrintOutputFormat::Default && !unstable_opts.unstable_options {
+            early_dcx.early_fatal(
+                "using output format specifiers requires `-Z unstable-options` to be present",
+            )
+        }
+
+        PrintRequest { kind, out, arg, format }
     }));
 
     prints
+}
+
+fn parse_output_format_kind(early_dcx: &EarlyDiagCtxt, text: &str) -> PrintOutputFormat {
+    match PrintOutputFormat::try_parse(text) {
+        Some(format) => format,
+        None => early_dcx.early_fatal(format!("unsupported output format in --print: {text}")),
+    }
+}
+
+fn split_print_format<'a>(
+    early_dcx: &EarlyDiagCtxt,
+    text: &'a str,
+) -> (&'a str, PrintOutputFormat) {
+    match text.split_once(':') {
+        None => (text, PrintOutputFormat::Default),
+        Some((_, "")) => early_dcx.early_fatal(
+            "output format in --print is empty. remove the colon or provide a valid output format",
+        ),
+        Some((prefix, format_text)) => (prefix, parse_output_format_kind(early_dcx, format_text)),
+    }
+}
+
+fn missing_mnemonic_fatal(early_dcx: &EarlyDiagCtxt) -> ! {
+    early_dcx.early_fatal(
+        "expected mnemonic name after `--print=backend-has-mnemonic:`, for example: `--print=backend-has-mnemonic:RET`",
+    )
 }
 
 fn check_print_request_stability(
