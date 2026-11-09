@@ -1897,6 +1897,25 @@ fn fchmod_works() {
 }
 
 #[test]
+#[cfg(windows)]
+fn fchmod_clears_readonly_only_attribute() {
+    use crate::os::windows::fs::PermissionsExt;
+    const FILE_ATTRIBUTE_READONLY: u32 = 0x1;
+
+    let tmpdir = tmpdir();
+    let path = tmpdir.join("in.txt");
+
+    let file = check!(File::create(&path));
+    check!(file.set_permissions(fs::Permissions::from_file_attributes(FILE_ATTRIBUTE_READONLY)));
+    let mut p = check!(fs::metadata(&path)).permissions();
+    assert_eq!(p.file_attributes(), FILE_ATTRIBUTE_READONLY);
+
+    p.set_readonly(false);
+    check!(file.set_permissions(p));
+    assert!(!check!(fs::metadata(&path)).permissions().readonly());
+}
+
+#[test]
 fn fchmodat_works() {
     let tmpdir = tmpdir();
     let file = tmpdir.join("in.txt");
