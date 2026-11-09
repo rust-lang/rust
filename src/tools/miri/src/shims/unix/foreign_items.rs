@@ -16,6 +16,7 @@ use self::shims::unix::netbsd::foreign_items as netbsd;
 use self::shims::unix::solarish::foreign_items as solarish;
 use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::cpu_affinity::EvalContextExt as _;
+use crate::shims::files::FD_LIMIT;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
@@ -66,11 +67,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 512 seems to be a reasonable default. The value is not critical, in
             // the sense that getpwuid_r takes and checks the buffer length.
             ("_SC_GETPW_R_SIZE_MAX", |_ecx| 512),
-            // Miri doesn't have a fixed limit on FDs, but we may be limited in terms of how
-            // many *host* FDs we can open. Just use some arbitrary, pretty big value;
-            // this can be adjusted if it causes problems.
-            // The spec imposes a minimum of `_POSIX_OPEN_MAX` (20).
-            ("_SC_OPEN_MAX", |_ecx| 2_i32.pow(16).into()),
+            // We only hand out FDs in `0..FD_LIMIT`, making `FD_LIMIT` the max
+            // number of open FDs.
+            ("_SC_OPEN_MAX", |_ecx| FD_LIMIT.into()),
             // Our hard-coded hostname is just 4 bytes so we don't need anything big here.
             ("_SC_HOST_NAME_MAX", |_ecx| 255),
         ];

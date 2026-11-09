@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rustc_target::spec::Os;
 
-use crate::shims::files::FdNum;
+use crate::shims::files::{FD_LIMIT, FdNum};
 use crate::*;
 
 /// An interest into a file descriptor together with its
@@ -32,8 +32,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let ecx = self.eval_context_mut();
 
-        let nfds: u64 = ecx.read_scalar(nfds)?.to_int(nfds.layout.size)?.try_into().unwrap();
+        let nfds: u64 = ecx.read_scalar(nfds)?.to_uint(nfds.layout.size)?.try_into().unwrap();
         let timeout = ecx.read_scalar(timeout)?.to_i32()?;
+
+        // Return `EINVAL`` if `nfds` is greater than `FD_LIMIT`.
+        if nfds > u64::try_from(FD_LIMIT).unwrap() {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        }
         let fds_arr = ecx.deref_pointer(fds)?;
 
         // The provided interests indexed by the file descriptor they're for.
