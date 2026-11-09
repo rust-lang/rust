@@ -2179,10 +2179,11 @@ pub(crate) struct UnusedDuplicate {
 }
 
 #[derive(Diagnostic)]
-pub(crate) enum MacroExport {
-    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
-    #[note("declarative macros follow the same exporting rules as regular items")]
-    OnDeclMacro,
+#[diag("`#[macro_export]` is not allowed on declarative macro definitions")]
+#[note("declarative macros follow the same exporting rules as regular items")]
+pub(crate) struct MacroExportOnDeclMacro {
+    #[primary_span]
+    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
