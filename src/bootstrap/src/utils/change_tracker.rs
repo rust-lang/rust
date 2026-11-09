@@ -686,4 +686,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "A new option `llvm.tpde` has been added to control whether the TPDE pass plugin should be built as an experimental alternative LLVM backend.",
     },
+    ChangeInfo {
+        change_id: 165707,
+        severity: ChangeSeverity::Info,
+        summary: "`low-priority` is now enabled by default, which is optimal for the overwhelming majority of situations; see PR description for more details. You may want to revise wrapper scripts if you did not previously know this option existed.",
+    },
 ];
