@@ -1963,7 +1963,7 @@ fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
     msg: impl Into<DiagMessage> + Display,
-    DiagnosticInfo { item, ori_link: _, dox, link_range, .. }: &DiagnosticInfo<'_>,
+    DiagnosticInfo { item, dox, link_range, .. }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diag<'_>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
