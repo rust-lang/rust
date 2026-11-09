@@ -1,0 +1,78 @@
+error[E0277]: values of type `T` may not be movable
+  --> $DIR/cant_move_non_move.rs:46:12
+   |
+LL |     other2(x);
+   |     ------ ^ the trait `Move` is not implemented for `T`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: the trait bound `T: Move` is not satisfied
+note: required by a bound in `other2`
+  --> $DIR/cant_move_non_move.rs:38:11
+   |
+LL | fn other2<T>(f: T) {}
+   |           ^ required by this bound in `other2`
+help: consider borrowing here
+   |
+LL |     other2(&x);
+   |            +
+LL |     other2(&mut x);
+   |            ++++
+
+error[E0277]: values of type `Foo` may not be movable
+  --> $DIR/cant_move_non_move.rs:17:12
+   |
+LL |     return x;
+   |            ^ may not be movable
+   |
+help: the nightly-only, unstable trait `Move` is not implemented for `Foo`
+  --> $DIR/cant_move_non_move.rs:5:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+
+error[E0277]: values of type `Foo` may not be movable
+  --> $DIR/cant_move_non_move.rs:23:13
+   |
+LL |     let y = x;
+   |             ^ may not be movable
+   |
+help: the nightly-only, unstable trait `Move` is not implemented for `Foo`
+  --> $DIR/cant_move_non_move.rs:5:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+
+error[E0277]: values of type `Foo` may not be movable
+  --> $DIR/cant_move_non_move.rs:27:12
+   |
+LL |     other1(x);
+   |            ^ may not be movable
+   |
+help: the nightly-only, unstable trait `Move` is not implemented for `Foo`
+  --> $DIR/cant_move_non_move.rs:5:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+
+error[E0277]: values of type `Foo` may not be movable
+  --> $DIR/cant_move_non_move.rs:27:5
+   |
+LL |     other1(x);
+   |     ^^^^^^ may not be movable
+   |
+help: the nightly-only, unstable trait `Move` is not implemented for `Foo`
+  --> $DIR/cant_move_non_move.rs:5:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+
+error[E0277]: values of type `T` may not be movable
+  --> $DIR/cant_move_non_move.rs:41:13
+   |
+LL |     let y = x;
+   |             ^ may not be movable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
