@@ -30,7 +30,7 @@ project, please read this guide before reporting fuzzer-generated bugs!
 - Don't report lots of bugs that use internal features, including but not
   limited to `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
 - Don't seed your fuzzer with inputs that are known to crash rustc (details below).
-- You do not need to report minor bugs you already traced beyond rustc. It can go upstream.
+- You do not need to report minor bugs you already traced to LLVM. It can go upstream.
 
 ### Discussion
 
