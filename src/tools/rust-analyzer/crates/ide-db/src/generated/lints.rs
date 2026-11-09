@@ -741,6 +741,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "let_underscore_drop_guard",
+        description: r##"non-binding let on a `DropGuard`"##,
+        default_severity: Severity::Error,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "let_underscore_lock",
         description: r##"non-binding let on a synchronization lock"##,
         default_severity: Severity::Error,
@@ -4363,22 +4370,6 @@ The tracking issue for this feature is: [#128405]
         deny_since: None,
     },
     Lint {
-        label: "builtin_syntax",
-        description: r##"# `builtin_syntax`
-
-Allows builtin # foo() syntax
-
-The tracking issue for this feature is: [#110680]
-
-[#110680]: https://github.com/rust-lang/rust/issues/110680
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "byte_str",
         description: r##"# `byte_str`
 
@@ -4868,7 +4859,7 @@ The tracking issue for this feature is: [#29594]
         label: "cfg_ub_checks",
         description: r##"# `cfg_ub_checks`
 
-Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.
+Allows the use of `#[cfg(ub_checks)]` to check if UB checks are enabled.
 
 The tracking issue for this feature is: [#123499]
 
@@ -5523,22 +5514,6 @@ Allows defining and calling c-variadic functions in const contexts.
 The tracking issue for this feature is: [#151787]
 
 [#151787]: https://github.com/rust-lang/rust/issues/151787
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "const_carrying_mul_add",
-        description: r##"# `const_carrying_mul_add`
-
-
-
-The tracking issue for this feature is: [#152015]
-
-[#152015]: https://github.com/rust-lang/rust/issues/152015
 
 ------------------------
 "##,
@@ -7853,6 +7828,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "discriminant_ord",
+        description: r##"# `discriminant_ord`
+
+
+
+The tracking issue for this feature is: [#165438]
+
+[#165438]: https://github.com/rust-lang/rust/issues/165438
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "disjoint_bitor",
         description: r##"# `disjoint_bitor`
 
@@ -8087,6 +8078,22 @@ Add the methods `from_days` and `from_weeks` to `Duration`.
         deny_since: None,
     },
     Lint {
+        label: "duration_display_seconds",
+        description: r##"# `duration_display_seconds`
+
+
+
+The tracking issue for this feature is: [#165108]
+
+[#165108]: https://github.com/rust-lang/rust/issues/165108
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "duration_integer_division",
         description: r##"# `duration_integer_division`
 
@@ -8281,6 +8288,20 @@ The tracking issue for this feature is: [#90172]
 The tracking issue for this feature is: [#60784]
 
 [#60784]: https://github.com/rust-lang/rust/issues/60784
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "error_type_id_internal",
+        description: r##"# `error_type_id_internal`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -9133,6 +9154,22 @@ Allows using forced keywords `k#fn`.
 The tracking issue for this feature is: [#153839]
 
 [#153839]: https://github.com/rust-lang/rust/issues/153839
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "forget_trait",
+        description: r##"# `forget_trait`
+
+The `Forget` autotrait.
+
+The tracking issue for this feature is: [#165370]
+
+[#165370]: https://github.com/rust-lang/rust/issues/165370
 
 ------------------------
 "##,
@@ -10114,6 +10151,22 @@ The tracking issue for this feature is: [#63292]
         deny_since: None,
     },
     Lint {
+        label: "get_set_bit",
+        description: r##"# `get_set_bit`
+
+
+
+The tracking issue for this feature is: [#147702]
+
+[#147702]: https://github.com/rust-lang/rust/issues/147702
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "gethostname",
         description: r##"# `gethostname`
 
@@ -10152,22 +10205,6 @@ The tracking issue for this feature is: [#125119]
 
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "gpu_launch_sized_workgroup_mem",
-        description: r##"# `gpu_launch_sized_workgroup_mem`
-
-
-
-The tracking issue for this feature is: [#131513]
-
-[#131513]: https://github.com/rust-lang/rust/issues/131513
 
 ------------------------
 "##,
@@ -10604,6 +10641,22 @@ The tracking issue for this feature is: [#154330]
         description: r##"# `internal_output_capture`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "internal_syntax",
+        description: r##"# `internal_syntax`
+
+Allows internal syntax.
+
+The tracking issue for this feature is: [#110680]
+
+[#110680]: https://github.com/rust-lang/rust/issues/110680
 
 ------------------------
 "##,
@@ -12332,6 +12385,22 @@ The tracking issue for this feature is: [#137976]
 The tracking issue for this feature is: [#126840]
 
 [#126840]: https://github.com/rust-lang/rust/issues/126840
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "mpsc_channel_len",
+        description: r##"# `mpsc_channel_len`
+
+
+
+The tracking issue for this feature is: [#165247]
+
+[#165247]: https://github.com/rust-lang/rust/issues/165247
 
 ------------------------
 "##,
@@ -14622,6 +14691,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "retain_unstable",
+        description: r##"# `retain_unstable`
+
+
+
+The tracking issue for this feature is: [#164152]
+
+[#164152]: https://github.com/rust-lang/rust/issues/164152
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "return_address",
         description: r##"# `return_address`
 
@@ -15856,6 +15941,22 @@ The tracking issue for this feature is: [#77998]
         deny_since: None,
     },
     Lint {
+        label: "str_split_at_unchecked",
+        description: r##"# `str_split_at_unchecked`
+
+
+
+The tracking issue for this feature is: [#165545]
+
+[#165545]: https://github.com/rust-lang/rust/issues/165545
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "str_split_inclusive_remainder",
         description: r##"# `str_split_inclusive_remainder`
 
@@ -17055,6 +17156,22 @@ The tracking issue for this feature is: [#153978]
 The tracking issue for this feature is: [#48043]
 
 [#48043]: https://github.com/rust-lang/rust/issues/48043
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "try_send_error_into_inner",
+        description: r##"# `try_send_error_into_inner`
+
+
+
+The tracking issue for this feature is: [#165102]
+
+[#165102]: https://github.com/rust-lang/rust/issues/165102
 
 ------------------------
 "##,

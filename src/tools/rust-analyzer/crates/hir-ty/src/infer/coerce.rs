@@ -1107,35 +1107,20 @@ impl<'db> InferenceContext<'db> {
             }
         }
 
-        match coerce.commit_if_ok(|coerce| coerce.coerce(prev_ty, new_ty)) {
-            Err(_) => {
-                // Avoid giving strange errors on failed attempts.
-                if let Some(e) = first_error {
-                    Err(e)
-                } else {
-                    Err(self
-                        .table
-                        .commit_if_ok(|table| {
-                            table
-                                .infer_ctxt
-                                .at(&ObligationCause::new(new), table.param_env)
-                                .lub(prev_ty, new_ty)
-                        })
-                        .unwrap_err())
-                }
-            }
-            Ok(ok) => {
-                let (adjustments, target) = self.table.register_infer_ok(ok);
-                for &expr in exprs {
-                    self.write_expr_adj(expr, adjustments.as_slice().into());
-                }
-                debug!(
-                    "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
-                    prev_ty, new_ty, target
-                );
-                Ok(target)
-            }
+        let ok = coerce
+            .commit_if_ok(|coerce| coerce.coerce(prev_ty, new_ty))
+            // Avoid giving strange errors on failed attempts.
+            .map_err(|e| first_error.unwrap_or(e))?;
+
+        let (adjustments, target) = self.table.register_infer_ok(ok);
+        for &expr in exprs {
+            self.write_expr_adj(expr, adjustments.as_slice().into());
         }
+        debug!(
+            "coercion::try_find_coercion_lub: was able to coerce previous type {:?} to new type {:?} ({:?})",
+            prev_ty, new_ty, target
+        );
+        Ok(target)
     }
 }
 

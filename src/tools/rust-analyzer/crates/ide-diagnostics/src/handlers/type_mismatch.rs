@@ -2109,4 +2109,33 @@ impl<const F: fn() -> ()> Wrapper<{
         "#,
         );
     }
+
+    #[test]
+    fn issue_23528() {
+        check_diagnostics(
+            r#"
+//- minicore: derive, clone
+pub struct Marker;
+
+trait AssocTrait {
+    type AssocItem;
+}
+
+struct Foo<T>(T);
+
+impl<T> AssocTrait for Foo<T> {
+    type AssocItem = T;
+}
+
+
+#[derive(Clone)]
+pub struct Holder(&'static <Foo<Marker> as AssocTrait>::AssocItem);
+
+
+pub fn clone_holder(holder: &Holder) -> Holder {
+    holder.clone()
+}
+"#,
+        );
+    }
 }

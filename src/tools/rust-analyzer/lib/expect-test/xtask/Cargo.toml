@@ -1,0 +1,9 @@
+[package]
+name = "xtask"
+version = "0.0.0"
+publish = false
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+xaction = "0.2.1"

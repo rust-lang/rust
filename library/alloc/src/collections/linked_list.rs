@@ -557,6 +557,26 @@ impl<T, A: Allocator> LinkedList<T, A> {
     pub const fn new_in(alloc: A) -> Self {
         LinkedList { head: None, tail: None, len: 0, alloc, marker: PhantomData }
     }
+
+    /// Returns a reference to the underlying allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_ext)]
+    ///
+    /// use std::alloc::System;
+    /// use std::collections::LinkedList;
+    ///
+    /// let list: LinkedList<i32, System> = LinkedList::new_in(System);
+    /// let _alloc: &System = list.allocator();
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    pub const fn allocator(&self) -> &A {
+        &self.alloc
+    }
+
     /// Provides a forward iterator.
     ///
     /// # Examples
