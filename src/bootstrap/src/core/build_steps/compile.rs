@@ -2360,11 +2360,11 @@ impl CommandLineStep for Assemble {
         let stamp = build_stamp::librustc_stamp(builder, build_compiler, target_compiler.host);
 
         // Match by crate name, as cross builds also have a copy of each proc-macro built for the
-        // target (`-Zdual-proc-macros`), with a different hash and possibly without the `lib`
-        // prefix (e.g. `libfoo-*.so` on a Linux build host and `foo-*.dll` on a Windows host).
-        fn crate_name(filename: &str) -> Option<&str> {
+        // target (`-Zdual-proc-macros`), with a different hash and the dylib prefix of that target
+        // (e.g. `libfoo-*.so` on a Linux build host and `foo-*.dll` on a Windows host).
+        fn crate_name(filename: &str, target: TargetSelection) -> Option<&str> {
             let name = filename.split_once('-')?.0;
-            Some(name.strip_prefix("lib").unwrap_or(name))
+            if target.is_windows() { Some(name) } else { name.strip_prefix("lib") }
         }
 
         let proc_macros = builder
@@ -2372,7 +2372,8 @@ impl CommandLineStep for Assemble {
             .into_iter()
             .filter_map(|(path, dependency_type)| {
                 if dependency_type == DependencyType::Host {
-                    crate_name(path.file_name().unwrap().to_str().unwrap()).map(str::to_owned)
+                    crate_name(path.file_name().unwrap().to_str().unwrap(), build_compiler.host)
+                        .map(str::to_owned)
                 } else {
                     None
                 }
@@ -2387,7 +2388,7 @@ impl CommandLineStep for Assemble {
             let filename = f.file_name().into_string().unwrap();
 
             let is_proc_macro =
-                crate_name(&filename).is_some_and(|name| proc_macros.contains(name));
+                crate_name(&filename, host).is_some_and(|name| proc_macros.contains(name));
             let is_dylib_or_debug = is_dylib(&f.path()) || is_debug_info(&filename);
 
             // `rustc_driver` statically links to stdlib, so do not copy the libstd dynamic library file
