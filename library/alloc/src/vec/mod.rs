@@ -4010,6 +4010,18 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     vec![elem; n]
 }
 
+// This function is required because it ensures the `vec_from_elem` diagnostic
+// item is emitted, which is consumed by Clippy to detect calls to
+// `vec![elem; n]`. We cannot add the item to `Vec::repeat` because then we
+// would end up confusing Clippy.
+#[doc(hidden)]
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "liballoc_internals", issue = "none")]
+#[rustc_diagnostic_item = "vec_from_elem"]
+pub fn from_elem_global<T: Clone>(elem: T, n: usize) -> Vec<T> {
+    Vec::repeat(elem, n)
+}
+
 #[cfg(not(no_global_oom_handling))]
 trait ExtendFromWithinSpec {
     /// # Safety
