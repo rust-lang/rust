@@ -62,10 +62,10 @@ Stabilized APIs
 - [`impl<T: Allocator, A: Allocator> Allocator for Box<T, A>`](https://doc.rust-lang.org/stable/std/alloc/trait.Allocator.html#impl-Allocator-for-Box%3CT,+A%3E)
 - [`impl<A: Allocator> Allocator for &mut A`](https://doc.rust-lang.org/stable/std/alloc/trait.Allocator.html#impl-Allocator-for-%26mut+A)
 - [`impl<T: Allocator, A: Allocator> Allocator for Arc<T, A>`](https://doc.rust-lang.org/stable/std/alloc/trait.Allocator.html#impl-Allocator-for-Arc%3CT,+A%3E)
-- [`impl<T: Allocator, A: Allocator> Allocator for Rc<T, A>`](https://doc.rust-lang.org/beta/std/alloc/trait.Allocator.html#impl-Allocator-for-Rc%3CT,+A%3E)
+- [`impl<T: Allocator, A: Allocator> Allocator for Rc<T, A>`](https://doc.rust-lang.org/stable/std/alloc/trait.Allocator.html#impl-Allocator-for-Rc%3CT,+A%3E)
 - [`Box::new_in`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.new_in)
 - [`Box::from_raw_in`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.from_raw_in)
-- [`Box::from_non_null_in`](https://doc.rust-lang.org/beta/std/boxed/struct.Box.html#method.from_non_null_in)
+- [`Box::from_non_null_in`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.from_non_null_in)
 - [`Box::into_raw_with_allocator`](https://doc.rust-lang.org/std/std/boxed/struct.Box.html#method.into_raw_with_allocator)
 - [`Box::into_non_null_with_allocator`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.into_non_null_with_allocator)
 - [`Box::allocator`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.allocator)
@@ -79,14 +79,14 @@ Stabilized APIs
 - [`Child::main_thread_handle`](https://doc.rust-lang.org/stable/std/os/windows/process/trait.ChildExt.html#tymethod.main_thread_handle)
 - [`impl Default for std::sync::Once`](https://doc.rust-lang.org/stable/std/sync/struct.Once.html#impl-Default-for-Once)
 - [`bool::toggle`](https://doc.rust-lang.org/stable/std/primitive.bool.html#method.toggle)
-- [`Box::take`](https://doc.rust-lang.org/beta/std/boxed/struct.Box.html#method.take)
+- [`Box::take`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.take)
 - [`Box::map`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.map)
 - [`Rc::map`](https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.map)
 - [`Arc::map`](https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.map)
 - [`impl AsRef<T> for !`](https://doc.rust-lang.org/stable/std/primitive.never.html#impl-AsRef<T>-for-!)
 - [`impl AsMut<T> for !`](https://doc.rust-lang.org/stable/std/primitive.never.html#impl-AsMut<T>-for-!)
 - [`core::mem::DropGuard`](https://doc.rust-lang.org/stable/core/mem/struct.DropGuard.html)
-- [`std::mem::conjure_zst`](https://doc.rust-lang.org/stable/std/mem/fn.conjure_zst.html)
+- [`core::mem::conjure_zst`](https://doc.rust-lang.org/stable/core/mem/fn.conjure_zst.html)
 - [`UnsafeCell::replace`](https://doc.rust-lang.org/stable/std/cell/struct.UnsafeCell.html#method.replace)
 - [`UnsafeCell::as_ref_unchecked`](https://doc.rust-lang.org/stable/std/cell/struct.UnsafeCell.html#method.as_ref_unchecked)
 - [`UnsafeCell::as_mut_unchecked`](https://doc.rust-lang.org/stable/std/cell/struct.UnsafeCell.html#method.as_mut_unchecked)
@@ -102,10 +102,10 @@ Stabilized APIs
 
 Cargo
 -----
-- Introduced Cargo's own linting system: some Cargo warnings are now emitted as lints that users can control in the `[lints.cargo]` table. This includes a new built-in unused dependency check via the `cargo::unused_dependencies` lint. [docs](https://doc.rust-lang.org/nightly/cargo/reference/lints.html) [#17298](https://github.com/rust-lang/cargo/pull/17298)
-- Introduced minimum publish age configurations, also known as dependency cooldowns. When the relevant config is set, the resolver ignores versions published more recently than that, unless they are already in `Cargo.lock`. ([RFC 3923](https://rust-lang.github.io/rfcs/3923-cargo-min-publish-age.html)) [docs](https://doc.rust-lang.org/nightly/cargo/reference/resolver.html#publish-age) [#17335](https://github.com/rust-lang/cargo/pull/17335)
+- Introduced Cargo's own linting system: some Cargo warnings are now emitted as lints that users can control in the `[lints.cargo]` table. This includes a new built-in unused dependency check via the `cargo::unused_dependencies` lint. [docs](https://doc.rust-lang.org/stable/cargo/reference/lints.html) [#17298](https://github.com/rust-lang/cargo/pull/17298)
+- Introduced minimum publish age configurations, also known as dependency cooldowns. When the relevant config is set, the resolver ignores versions published more recently than that, unless they are already in `Cargo.lock`. ([RFC 3923](https://rust-lang.github.io/rfcs/3923-cargo-min-publish-age.html)) [docs](https://doc.rust-lang.org/stable/cargo/reference/resolver.html#publish-age) [#17335](https://github.com/rust-lang/cargo/pull/17335)
 - cargo-install: now uses the existing lockfile in the `.crate` tarball by default. `--locked` in cargo install becomes a no-op. [#17388](https://github.com/rust-lang/cargo/pull/17388)
-- Cargo now uses a new directory layout for intermediate build artifacts. Tools that inspect the build directory may need to use [Cargo’s JSON messages](https://doc.rust-lang.org/nightly/cargo/reference/external-tools.html#json-messages) to locate build artifacts instead of relying on the build directory layout. The layout is not a stable interface and is subject to change. ([build cache doc](https://doc.rust-lang.org/nightly/cargo/reference/build-cache.html)) [#17354](https://github.com/rust-lang/cargo/pull/17354)
+- Cargo now uses a new directory layout for intermediate build artifacts. Tools that inspect the build directory may need to use [Cargo’s JSON messages](https://doc.rust-lang.org/stable/cargo/reference/external-tools.html#json-messages) to locate build artifacts instead of relying on the build directory layout. The layout is not a stable interface and is subject to change. ([build cache doc](https://doc.rust-lang.org/stable/cargo/reference/build-cache.html)) [#17354](https://github.com/rust-lang/cargo/pull/17354)
 
 Rustdoc
 -----
