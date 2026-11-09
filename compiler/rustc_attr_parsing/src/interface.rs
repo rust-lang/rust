@@ -3,9 +3,8 @@ use std::convert::identity;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
+use rustc_ast::{self as ast, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -600,18 +599,23 @@ impl<'sess> AttributeParser<'sess> {
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
             ast::AttrArgs::Eq { eq_span, expr } => {
-                // In valid code the value always ends up as a single literal. Otherwise, a dummy
-                // literal suffices because the error is handled elsewhere.
+                // We perform error handling elsewhere, not here, so we only delay bugs.
+
+                if let Err(diag) =
+                    crate::validate_attr::check_attrs_on_rhs_expr(&self.sess.psess, expr)
+                {
+                    diag.delay_as_bug();
+                }
+
                 let lit = if let ast::ExprKind::Lit(token_lit) = expr.kind
                     && let Ok(lit) =
                         ast::MetaItemLit::from_token_lit(token_lit, lower_span(expr.span))
                 {
                     lit
                 } else {
-                    let guar = self.dcx().span_delayed_bug(
-                        args.span().unwrap_or(DUMMY_SP),
-                        "expr in place where literal is expected (builtin attr parsing)",
-                    );
+                    let span = args.span().unwrap_or(DUMMY_SP);
+                    let guar =
+                        self.dcx().span_delayed_bug(span, "non-literal expr in key-value attr");
                     ast::MetaItemLit {
                         symbol: sym::dummy,
                         suffix: None,

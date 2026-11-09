@@ -1932,6 +1932,19 @@ pub(crate) struct SuffixedLiteralInAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "{$count ->
+    [one] this attribute is
+    *[other] these attributes are
+    } not allowed in this context"
+)]
+pub(crate) struct AttributeInInvalidContext {
+    #[primary_span]
+    pub attrs: Vec<Span>,
+    pub count: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag("link name must not be empty", code = E0454)]
 pub(crate) struct EmptyLinkName {
     #[primary_span]
