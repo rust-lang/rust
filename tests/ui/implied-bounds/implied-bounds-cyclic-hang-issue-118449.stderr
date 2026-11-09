@@ -1,0 +1,8 @@
+error: overflow computing implied lifetime bounds for `Visitor`
+  --> $DIR/implied-bounds-cyclic-hang-issue-118449.rs:7:1
+   |
+LL | struct Visitor<'a, Type>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
