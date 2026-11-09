@@ -1,6 +1,5 @@
 //@ run-pass
 //@ only-windows
-//@ ignore-backends: gcc
 // GetLastError doesn't seem to work with stack switching
 
 #[cfg(windows)]

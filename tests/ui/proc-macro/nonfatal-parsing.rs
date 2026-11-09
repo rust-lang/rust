@@ -2,7 +2,6 @@
 //@ needs-unwind
 //@ edition: 2024
 //@ dont-require-annotations: ERROR
-//@ ignore-backends: gcc
 // FIXME: should be a run-pass test once invalidly parsed tokens no longer result in diagnostics
 
 extern crate proc_macro;

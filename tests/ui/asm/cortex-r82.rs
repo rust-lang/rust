@@ -4,7 +4,6 @@
 //@ compile-flags: --target aarch64v8r-unknown-none -C target-cpu=cortex-r82
 //@ needs-llvm-components: aarch64
 //@ build-pass
-//@ ignore-backends: gcc
 
 #![deny(dead_code)]
 #![feature(no_core)]

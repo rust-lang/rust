@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
-//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, lang_items, abi_swift)]
 
