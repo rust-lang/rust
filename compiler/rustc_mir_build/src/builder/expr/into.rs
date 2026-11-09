@@ -521,47 +521,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 success.unit()
             }
             ExprKind::ByUse { expr, span } => {
-                let place = unpack!(block = this.as_read_only_place(block, expr));
-                let ty = place.ty(&this.local_decls, this.tcx).ty;
+                if this.use_expr_must_clone(expr) {
+                    let place = unpack!(block = this.as_read_only_place(block, expr));
+                    let ty = place.ty(&this.local_decls, this.tcx).ty;
 
-                if this.infcx.type_is_copy_modulo_regions(this.param_env, ty) {
-                    this.cfg.push_assign(
-                        block,
-                        source_info,
-                        destination,
-                        Rvalue::Use(Operand::Copy(place), WithRetag::Yes),
-                    );
-                    block.unit()
-                } else {
-                    // Convert `expr.use` to a call like `Clone::clone(&expr)`
-                    let success = this.cfg.start_new_block();
-                    let clone_trait = this.tcx.require_lang_item(LangItem::Clone, span);
-                    let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
-                    let func =
-                        Operand::function_handle(this.tcx, clone_fn, &[ty.into()], expr_span);
-                    let ref_ty = Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, ty);
-                    let ref_place = this.temp(ref_ty, span);
-                    this.cfg.push_assign(
-                        block,
-                        source_info,
-                        ref_place,
-                        Rvalue::Ref(this.tcx.lifetimes.re_erased, BorrowKind::Shared, place),
-                    );
-                    this.cfg.terminate(
-                        block,
-                        source_info,
-                        TerminatorKind::Call {
-                            func,
-                            args: [Spanned { node: Operand::Move(ref_place), span: expr_span }]
-                                .into(),
+                    if this.infcx.type_is_copy_modulo_regions(this.param_env, ty) {
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
                             destination,
-                            target: Some(success),
-                            unwind: UnwindAction::Terminate(UnwindTerminateReason::Abi),
-                            call_source: CallSource::Use,
-                            fn_span: expr_span,
-                        },
-                    );
-                    success.unit()
+                            Rvalue::Use(Operand::Copy(place), WithRetag::Yes),
+                        );
+                        block.unit()
+                    } else {
+                        // Convert `expr.use` to a call like `Clone::clone(&expr)`
+                        let success = this.cfg.start_new_block();
+                        let clone_trait = this.tcx.require_lang_item(LangItem::Clone, span);
+                        let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
+                        let func =
+                            Operand::function_handle(this.tcx, clone_fn, &[ty.into()], expr_span);
+                        let ref_ty = Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, ty);
+                        let ref_place = this.temp(ref_ty, span);
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            ref_place,
+                            Rvalue::Ref(this.tcx.lifetimes.re_erased, BorrowKind::Shared, place),
+                        );
+                        this.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::Call {
+                                func,
+                                args: [Spanned { node: Operand::Move(ref_place), span: expr_span }]
+                                    .into(),
+                                destination,
+                                target: Some(success),
+                                unwind: UnwindAction::Terminate(UnwindTerminateReason::Abi),
+                                call_source: CallSource::Use,
+                                fn_span: expr_span,
+                            },
+                        );
+                        success.unit()
+                    }
+                } else {
+                    this.expr_into_dest(destination, block, expr)
                 }
             }
             ExprKind::ValueExpr { source } => this.expr_into_dest(destination, block, source),
