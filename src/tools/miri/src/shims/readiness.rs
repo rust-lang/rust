@@ -455,7 +455,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         fd: DynFileDescriptionRef,
         flags: ReadinessUpdateFlags,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let fd_id = fd.id();
         let watched = fd.readiness_watched().unwrap();
 
@@ -463,7 +463,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // We capture a vector clock even if there is nobody watching, since someone might get
             // interested in the future and then synchronize with this event.
             // FIXME: currently we do this even if the readiness did not change!
-            this.release_clock(|clock| {
+            ecx.release_clock(|clock| {
                 watched.ready_clock.borrow_mut().join(clock);
             })?;
         }
@@ -479,7 +479,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         let active_readiness = fd.readiness();
         for watcher in watchers {
-            this.update_readiness(
+            ecx.update_readiness(
                 &watcher,
                 active_readiness,
                 flags.contains(ReadinessUpdateFlags::FORCE_EDGE),
@@ -515,7 +515,7 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             &mut dyn FnMut(ReadinessInterestKey, &mut ReadinessInterest) -> InterpResult<'tcx>,
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let mut ready = watcher.ready.borrow_mut();
         for_each_interest(&mut |key, interest| {
             let new_readiness = interest.relevant & active;
@@ -544,7 +544,7 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             && let Some(thread_id) = watcher.queue.borrow_mut().pop_front()
         {
             drop(ready);
-            this.unblock_thread(thread_id, BlockReason::Readiness)?;
+            ecx.unblock_thread(thread_id, BlockReason::Readiness)?;
             ready = watcher.ready.borrow_mut();
         }
         interp_ok(())
