@@ -18,7 +18,7 @@ use rustc_proc_macro::{Delimiter, Level};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
+use rustc_span::{BytePos, FileName, Pos, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
@@ -121,6 +121,32 @@ impl ToInternal<tk::IdentKind> for IdentKind {
             IdentKind::Raw => tk::IdentKind::Raw,
             IdentKind::ForcedKeyword => tk::IdentKind::ForcedKeyword,
         }
+    }
+}
+
+impl FromInternal<(Symbol, tk::IdentKind)> for (Symbol, IdentKind) {
+    fn from_internal((sym, kind): (Symbol, tk::IdentKind)) -> Self {
+        match sym {
+            sym::RawCrate => (kw::Crate, IdentKind::Raw),
+            sym::RawSelfLower => (kw::SelfLower, IdentKind::Raw),
+            sym::RawSelfUpper => (kw::SelfUpper, IdentKind::Raw),
+            sym::RawSuper => (kw::Super, IdentKind::Raw),
+            sym => (sym, IdentKind::from_internal(kind)),
+        }
+    }
+}
+
+impl ToInternal<(Symbol, tk::IdentKind)> for (Symbol, IdentKind) {
+    fn to_internal(self) -> (Symbol, tk::IdentKind) {
+        let (sym, kind) = self;
+        let sym = match (sym, kind) {
+            (kw::Crate, IdentKind::Raw) => sym::RawCrate,
+            (kw::SelfLower, IdentKind::Raw) => sym::RawSelfLower,
+            (kw::SelfUpper, IdentKind::Raw) => sym::RawSelfUpper,
+            (kw::Super, IdentKind::Raw) => sym::RawSuper,
+            (sym, _) => sym,
+        };
+        (sym, kind.to_internal())
     }
 }
 
@@ -249,16 +275,14 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                 tk::Question => op("?"),
                 tk::SingleQuote => op("'"),
 
-                tk::Ident(sym, kind) => trees.push(TokenTree::Ident(Ident {
-                    sym,
-                    kind: IdentKind::from_internal(kind),
-                    span,
-                })),
-                tk::NtIdent(ident, kind) => trees.push(TokenTree::Ident(Ident {
-                    sym: ident.name,
-                    kind: IdentKind::from_internal(kind),
-                    span: ident.span,
-                })),
+                tk::Ident(sym, kind) => {
+                    let (sym, kind) = <(Symbol, IdentKind)>::from_internal((sym, kind));
+                    trees.push(TokenTree::Ident(Ident { sym, kind, span }));
+                }
+                tk::NtIdent(ident, kind) => {
+                    let (sym, kind) = <(Symbol, IdentKind)>::from_internal((ident.name, kind));
+                    trees.push(TokenTree::Ident(Ident { sym, kind, span: ident.span }));
+                }
 
                 tk::Lifetime(name, kind) => {
                     let ident = rustc_span::Ident::new(name, span).without_first_quote();
@@ -386,11 +410,9 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 )]
             }
             TokenTree::Ident(Ident { sym, kind, span }) => {
+                let (sym, kind) = (sym, kind).to_internal();
                 rustc.psess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(
-                    tk::Ident(sym, kind.to_internal()),
-                    span
-                )]
+                smallvec![tokenstream::TokenTree::token_alone(tk::Ident(sym, kind), span)]
             }
             TokenTree::Literal(self::Literal { kind: LitKind::Integer, symbol, suffix, span })
                 if let Some(symbol) = symbol.as_str().strip_prefix('-') =>

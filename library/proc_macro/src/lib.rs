@@ -1202,9 +1202,9 @@ impl Ident {
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
-    /// The `string` argument be a valid identifier permitted by the language
-    /// (including keywords, e.g. `fn`). Keywords which are usable in path segments
-    /// (e.g. `self`, `super`) are not supported, and will cause a panic.
+    /// The `string` argument must be a valid identifier permitted by the language
+    /// (including keywords, e.g. `fn`). This function panics on invalid input,
+    /// including `_` or `$crate`.
     #[stable(feature = "proc_macro_raw_ident", since = "1.47.0")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
         Ident(bridge::Ident {
