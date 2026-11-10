@@ -173,14 +173,6 @@ unsafe extern "llvm-intrinsic" {
     fn __lsx_vbitsel_v(a: __v16u8, b: __v16u8, c: __v16u8) -> __v16u8;
     #[link_name = "llvm.loongarch.lsx.vbitseli.b"]
     fn __lsx_vbitseli_b(a: __v16u8, b: __v16u8, c: u32) -> __v16u8;
-    #[link_name = "llvm.loongarch.lsx.vclo.b"]
-    fn __lsx_vclo_b(a: __v16i8) -> __v16i8;
-    #[link_name = "llvm.loongarch.lsx.vclo.h"]
-    fn __lsx_vclo_h(a: __v8i16) -> __v8i16;
-    #[link_name = "llvm.loongarch.lsx.vclo.w"]
-    fn __lsx_vclo_w(a: __v4i32) -> __v4i32;
-    #[link_name = "llvm.loongarch.lsx.vclo.d"]
-    fn __lsx_vclo_d(a: __v2i64) -> __v2i64;
     #[link_name = "llvm.loongarch.lsx.vfcvt.h.s"]
     fn __lsx_vfcvt_h_s(a: __v4f32, b: __v4f32) -> __v8i16;
     #[link_name = "llvm.loongarch.lsx.vfcvt.s.d"]
@@ -1461,34 +1453,6 @@ pub fn lsx_vbitsel_v(a: m128i, b: m128i, c: m128i) -> m128i {
 pub fn lsx_vbitseli_b<const IMM8: u32>(a: m128i, b: m128i) -> m128i {
     static_assert_uimm_bits!(IMM8, 8);
     unsafe { transmute(__lsx_vbitseli_b(transmute(a), transmute(b), IMM8)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
-pub fn lsx_vclo_b(a: m128i) -> m128i {
-    unsafe { transmute(__lsx_vclo_b(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
-pub fn lsx_vclo_h(a: m128i) -> m128i {
-    unsafe { transmute(__lsx_vclo_h(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
-pub fn lsx_vclo_w(a: m128i) -> m128i {
-    unsafe { transmute(__lsx_vclo_w(transmute(a))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
-pub fn lsx_vclo_d(a: m128i) -> m128i {
-    unsafe { transmute(__lsx_vclo_d(transmute(a))) }
 }
 
 #[inline]
