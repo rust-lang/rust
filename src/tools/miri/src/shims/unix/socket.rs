@@ -720,9 +720,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let level = this.read_scalar(level)?.to_i32()?;
         let option_name = this.read_scalar(option_name)?.to_i32()?;
         let option_value_ptr = this.read_pointer(option_value)?;
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        let option_len: u64 =
-            this.read_scalar(option_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
+        let Some(option_len) = this.read_socklen(option_len)? else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        };
 
         // Check that the buffer has (at least) the given size.
         this.check_ptr_access(
@@ -785,11 +785,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let socklen_layout = this.libc_ty_layout("socklen_t");
         let option_len_ptr_mplace = this.ptr_to_mplace(option_len_ptr, socklen_layout);
-        let option_len: usize = this
-            .read_scalar(&option_len_ptr_mplace)?
-            .to_int(socklen_layout.size)?
-            .try_into()
-            .unwrap();
+        let Some(option_len) = this.read_socklen(&option_len_ptr_mplace)? else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        };
 
         // Check that the buffer has (at least) the given size.
         this.check_ptr_access(

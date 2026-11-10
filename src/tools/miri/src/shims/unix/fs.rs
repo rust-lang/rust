@@ -1182,14 +1182,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ("stx_mask", mask.into()),
                 ("stx_mode", metadata.mode.into()),
                 ("stx_blksize", metadata.blksize.unwrap_or(0).into()),
-                ("stx_attributes", 0),
                 ("stx_nlink", metadata.nlink.unwrap_or(0).into()),
                 ("stx_uid", metadata.uid.unwrap_or(0).into()),
                 ("stx_gid", metadata.gid.unwrap_or(0).into()),
                 ("stx_ino", metadata.ino.unwrap_or(0).into()),
                 ("stx_size", metadata.size.into()),
                 ("stx_blocks", metadata.blocks.unwrap_or(0).into()),
+                // These fields do not seem to have a bit in `mask`, they are "always present",
+                // so we make sure they get initialized.
                 ("stx_attributes_mask", 0),
+                ("stx_attributes", 0),
                 ("stx_rdev_major", 0),
                 ("stx_rdev_minor", 0),
                 ("stx_dev_major", 0),
@@ -1229,6 +1231,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ],
             &this.project_field_named(&statxbuf, "stx_mtime")?,
         )?;
+
+        // The remaining fields have a mask bit associated with them, a bit that we do not
+        // set. Therefore we also do not initialize them.
 
         interp_ok(Scalar::from_i32(0))
     }

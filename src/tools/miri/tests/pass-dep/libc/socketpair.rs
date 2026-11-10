@@ -241,7 +241,7 @@ fn test_write_unblocked_by_other_socket_close() {
     write_all(fds[0], &arr1).unwrap();
 
     let thread1 = thread::spawn(move || {
-        // The write below will be blocked because the buffer is already full.
+        // This write belo will be blocked because the buffer is already full.
         write_all(fds[0], b"abc").unwrap_err()
     });
     let thread2 = thread::spawn(move || {
@@ -262,7 +262,7 @@ fn test_read_unblocked_by_other_socket_close() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
 
     let thread1 = thread::spawn(move || {
-        // The write below will be blocked because the buffer is already full.
+        // This read will be blocked because the buffer is empty.
         read_to_end(fds[0]).unwrap()
     });
     let thread2 = thread::spawn(move || {

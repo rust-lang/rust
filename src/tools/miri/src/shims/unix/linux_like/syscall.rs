@@ -39,7 +39,6 @@ pub fn syscall<'tcx>(
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
     let sys_copy_file_range = ecx.eval_libc("SYS_copy_file_range").to_target_usize(ecx)?;
-    let sys_splice = ecx.eval_libc("SYS_splice").to_target_usize(ecx)?;
 
     // FIXME: Do these all have direct tests (#3179)?
     match ecx.read_target_usize(&op)? {
@@ -96,12 +95,10 @@ pub fn syscall<'tcx>(
             )?;
             ecx.linux_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags, dest)?;
         }
-        num if num == sys_splice => {
-            // Force std to use a fallback path.
+        _ => {
+            // ENOSYS for unknown syscalls. That matches us returning null for all
+            // unknown weak symbols.
             ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
-        }
-        num => {
-            throw_unsup_format!("syscall: unsupported syscall number {num}");
         }
     };
 
