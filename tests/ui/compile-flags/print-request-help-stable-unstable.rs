@@ -2,7 +2,6 @@
 //!
 //! Issue: <https://github.com/rust-lang/rust/issues/138698>
 
-//@ ignore-backends: gcc
 //@ compile-flags: --print xxx
 //
 //@ revisions: stable nightly

@@ -1,4 +1,3 @@
-//@ ignore-backends: gcc
 //@ edition: 2021
 //@ known-bug: #108309
 

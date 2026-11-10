@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 #[repr(transparent)]
 struct S(i32);
 
