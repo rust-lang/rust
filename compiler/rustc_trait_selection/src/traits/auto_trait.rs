@@ -251,6 +251,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let full_user_env = ty::ParamEnv::new(
             tcx,
+            // FIXME(jdonszelmann): if this ends up being a perf problem for rustdoc (calling
+            // all_clauses here) we could instead add a method to the caller_bounds iterator
+            // that does "extending", which adds bounds to a paramenv, without decompressing
+            // existing bounds.
             orig_env.caller_bounds().all_clauses(tcx).iter().chain(field_clauses),
         );
 
