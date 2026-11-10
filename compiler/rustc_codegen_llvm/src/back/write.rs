@@ -116,7 +116,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
-    target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(tcx.dcx(), config)
+    target_machine_factory(tcx.sess, tcx.sess.opts.optimize)(tcx.dcx(), config)
 }
 
 // `s` and `z` are the same codegen level; what tells LLVM that they are size builds is the
