@@ -144,7 +144,7 @@ impl<'tcx> PlaceTy<'tcx> {
             }
         } else {
             match self_ty.kind() {
-                ty::Adt(adt_def, args) if !adt_def.is_enum() => {
+                ty::Adt(adt_def, args) | ty::View(adt_def, args, _) if !adt_def.is_enum() => {
                     adt_def.non_enum_variant().fields[f].ty(tcx, *args)
                 }
                 ty::Closure(_, args) => Unnormalized::dummy(
