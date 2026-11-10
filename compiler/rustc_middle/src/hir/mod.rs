@@ -289,6 +289,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     | ExprKind::InlineAsm(_)
                     | ExprKind::Struct(_, _, _)
                     | ExprKind::Repeat(_, _)
+                    | ExprKind::RepeatUse(_, _)
                     | ExprKind::Yield(_, _) => true,
 
                     // These expressions have no (direct) sub-exprs.

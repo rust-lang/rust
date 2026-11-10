@@ -1,0 +1,22 @@
+// MIR for `repeat_never_val` after built
+
+fn repeat_never_val() -> [Foo; 0] {
+    let mut _0: [Foo; 0];
+    let mut _1: Foo;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = Foo(const 42_u16);
+        drop(_1) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        _0 = [];
+        StorageDead(_1);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

@@ -1320,6 +1320,7 @@ symbols! {
         may_unwind,
         maybe_dangling,
         maybe_uninit,
+        maybe_uninit_array_assume_init,
         maybe_uninit_uninit,
         maybe_uninit_zeroed,
         mem,

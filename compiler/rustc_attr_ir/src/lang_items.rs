@@ -370,6 +370,8 @@ language_item_table! {
     BikeshedGuaranteedNoDrop, sym::bikeshed_guaranteed_no_drop, bikeshed_guaranteed_no_drop, Target::Trait, GenericRequirement::Exact(0);
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union,          GenericRequirement::None;
+    MaybeUninitUninit,       sym::maybe_uninit_uninit, maybe_uninit_uninit,        Target::AssocConst(AssocCtxt::Impl { of_trait: false }), GenericRequirement::Exact(1);
+    MaybeUninitArrayAssumeInit, sym::maybe_uninit_array_assume_init, maybe_uninit_array_assume_init, Target::Method(MethodKind::Inherent), GenericRequirement::Exact(2);
 
     Termination,             sym::termination,         termination,                Target::Trait,          GenericRequirement::None;
 

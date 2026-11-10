@@ -174,7 +174,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
             ExprKind::Unary(UnOp::Not, e) => (Pat::Str("!"), expr_search_pat_inner(tcx, e, outer_span).1),
             ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat_inner(tcx, e, outer_span).1),
             ExprKind::Lit(lit) => lit_search_pat(&lit.node),
-            ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
+            ExprKind::Array(_) | ExprKind::Repeat(..) | ExprKind::RepeatUse(..) => (Pat::Str("["), Pat::Str("]")),
             ExprKind::Call(e, []) | ExprKind::MethodCall(_, e, [], _) => {
                 (expr_search_pat_inner(tcx, e, outer_span).0, Pat::Str("("))
             },

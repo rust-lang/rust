@@ -353,7 +353,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                 },
                 _ => (),
             }
-        } else if let ExprKind::Repeat(..) | ExprKind::Array(..) = seqexpr.kind {
+        } else if let ExprKind::Repeat(..) | ExprKind::RepeatUse(..) | ExprKind::Array(..) = seqexpr.kind {
             if index_used_directly {
                 self.unnamed_indexed_directly = true;
             } else {

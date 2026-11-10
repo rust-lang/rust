@@ -316,16 +316,16 @@ body:
                                                                             value:
                                                                                 Expr {
                                                                                     ty: usize
-                                                                                    temp_scope_id: 27
+                                                                                    temp_scope_id: 30
                                                                                     span: $DIR/thir-tree-array-index.rs:8:25: 8:26 (#0)
                                                                                     kind: 
                                                                                         Scope {
-                                                                                            region_scope: Node(27)
-                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).27)
+                                                                                            region_scope: Node(30)
+                                                                                            hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).30)
                                                                                             value:
                                                                                                 Expr {
                                                                                                     ty: usize
-                                                                                                    temp_scope_id: 27
+                                                                                                    temp_scope_id: 30
                                                                                                     span: $DIR/thir-tree-array-index.rs:8:25: 8:26 (#0)
                                                                                                     kind: 
                                                                                                         VarRef {
@@ -1134,16 +1134,16 @@ params: [
 body:
     Expr {
         ty: usize
-        temp_scope_id: 30
+        temp_scope_id: 28
         span: $DIR/thir-tree-array-index.rs:8:28: 8:29 (#0)
         kind: 
             Scope {
-                region_scope: Node(30)
-                hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).30)
+                region_scope: Node(28)
+                hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).28)
                 value:
                     Expr {
                         ty: usize
-                        temp_scope_id: 30
+                        temp_scope_id: 28
                         span: $DIR/thir-tree-array-index.rs:8:28: 8:29 (#0)
                         kind: 
                             Literal( lit: Spanned { node: Int(Pu128(5), Unsuffixed), span: $DIR/thir-tree-array-index.rs:8:28: 8:29 (#0) }, neg: false)

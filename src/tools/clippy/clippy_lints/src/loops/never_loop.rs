@@ -303,6 +303,7 @@ fn never_loop_expr<'tcx>(
         | ExprKind::Field(e, _)
         | ExprKind::AddrOf(_, _, e)
         | ExprKind::Repeat(e, _)
+        | ExprKind::RepeatUse(e, _)
         | ExprKind::DropTemps(e)
         | ExprKind::UnsafeBinderCast(_, e, _) => never_loop_expr(cx, e, local_labels, main_loop_id),
         ExprKind::Let(let_expr) => never_loop_expr(cx, let_expr.init, local_labels, main_loop_id),
@@ -545,6 +546,7 @@ fn find_non_obvious_spans<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> 
                 | ExprKind::OffsetOf(..)
                 | ExprKind::Struct(..)
                 | ExprKind::Repeat(..)
+                | ExprKind::RepeatUse(..)
                 | ExprKind::Yield(..)
                 | ExprKind::UnsafeBinderCast(..)
                 | ExprKind::Err(..) => {

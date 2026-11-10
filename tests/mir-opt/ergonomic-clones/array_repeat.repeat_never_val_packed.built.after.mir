@@ -1,0 +1,30 @@
+// MIR for `repeat_never_val_packed` after built
+
+fn repeat_never_val_packed() -> [Foo; 0] {
+    let mut _0: [Foo; 0];
+    let mut _1: Foo;
+    let mut _2: Packed;
+    let mut _3: Foo;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = Foo(const 42_u16);
+        _2 = Packed(move _3);
+        StorageDead(_3);
+        _1 = move (_2.0: Foo);
+        drop(_1) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        _0 = [];
+        StorageDead(_1);
+        StorageDead(_2);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

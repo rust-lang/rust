@@ -1,0 +1,64 @@
+// MIR for `repeat_never_packed` after built
+
+fn repeat_never_packed() -> [Foo; 0] {
+    let mut _0: [Foo; 0];
+    let _1: Packed;
+    let mut _2: Foo;
+    let mut _3: [std::mem::MaybeUninit<Foo>; 0];
+    let mut _4: *mut Foo;
+    let mut _5: *const Foo;
+    let mut _6: Foo;
+    let mut _7: usize;
+    let mut _8: &Foo;
+    let mut _9: bool;
+    let mut _10: ();
+    scope 1 {
+        debug packed => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = Foo(const 42_u16);
+        _1 = Packed(move _2);
+        StorageDead(_2);
+        FakeRead(ForLet(None), _1);
+        _3 = [const std::mem::MaybeUninit::<Foo>::UNINIT; 0];
+        _4 = &raw mut (_1.0: Foo);
+        _5 = copy _4 as *const Foo (PointerCoercion(MutToConstPointer, Implicit));
+        _6 = read_unaligned::<Foo>(move _5) -> [return: bb2, unwind unreachable];
+    }
+
+    bb1: {
+        _10 = write_unaligned::<Foo>(move _4, move _6) -> [return: bb6, unwind unreachable];
+    }
+
+    bb2: {
+        _7 = const 0_usize;
+        _8 = &_6;
+        goto -> bb5;
+    }
+
+    bb3: {
+        ((_3[_7].1: std::mem::ManuallyDrop<Foo>).0: Foo) = <Foo as Clone>::clone(copy _8) -> [return: bb4, unwind terminate(abi)];
+    }
+
+    bb4: {
+        _7 = AddUnchecked(copy _7, const 1_usize);
+        goto -> bb5;
+    }
+
+    bb5: {
+        _9 = Eq(copy _7, const 0_usize);
+        switchInt(move _9) -> [0: bb3, otherwise: bb1];
+    }
+
+    bb6: {
+        _0 = MaybeUninit::<Foo>::array_assume_init::<0>(move _3) -> [return: bb7, unwind unreachable];
+    }
+
+    bb7: {
+        StorageDead(_1);
+        return;
+    }
+}

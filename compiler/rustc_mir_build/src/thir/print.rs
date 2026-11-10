@@ -485,6 +485,13 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            RepeatUse { value, count } => {
+                print_indented!(self, "RepeatUse {", depth_lvl);
+                print_indented!(self, format!("count: {:?}", count), depth_lvl + 1);
+                print_indented!(self, "value:", depth_lvl + 1);
+                self.print_expr(*value, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
             Array { fields } => {
                 print_indented!(self, "Array {", depth_lvl);
                 print_indented!(self, "fields: [", depth_lvl + 1);

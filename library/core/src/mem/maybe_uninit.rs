@@ -430,6 +430,11 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
+    /// Equivalent to [`MaybeUninit::uninit()`].
+    #[unstable(feature = "maybe_uninit_uninit", issue = "none")]
+    #[lang = "maybe_uninit_uninit"]
+    pub const UNINIT: Self = MaybeUninit { uninit: () };
+
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
     /// filled with `0` bytes. It depends on `T` whether that already makes for
     /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
@@ -1045,6 +1050,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_array_assume_init", issue = "96097")]
     #[inline(always)]
     #[track_caller]
+    #[lang = "maybe_uninit_array_assume_init"]
     pub const unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
         // SAFETY:
         // * The caller guarantees that all elements of the array are initialized

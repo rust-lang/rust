@@ -434,7 +434,9 @@ impl<'tcx> NonCopyConst<'tcx> {
                 ExprKind::Tup(exprs) | ExprKind::Array(exprs) => exprs
                     .iter()
                     .all(|e| self.is_init_expr_freeze(tcx, typing_env, typeck, gen_args, e)),
-                ExprKind::Repeat(e, _) => self.is_init_expr_freeze(tcx, typing_env, typeck, gen_args, e),
+                ExprKind::Repeat(e, _) | ExprKind::RepeatUse(e, _) => {
+                    self.is_init_expr_freeze(tcx, typing_env, typeck, gen_args, e)
+                },
                 _ => true,
             },
         }
@@ -695,7 +697,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                         }
                     },
                     // Just assume the index expression doesn't panic here.
-                    ExprKind::Repeat(field, _) => field,
+                    ExprKind::Repeat(field, _) | ExprKind::RepeatUse(field, _) => field,
                     _ => return self.is_non_freeze_expr_borrowed(tcx, typing_env, typeck, use_expr),
                 },
                 ExprKind::AddrOf(..)

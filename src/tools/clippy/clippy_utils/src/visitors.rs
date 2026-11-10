@@ -393,6 +393,7 @@ fn is_const_evaluatable_helper<'tcx>(tcx: TyCtxt<'tcx>, typeck: &'tcx TypeckResu
         | ExprKind::Lit(_)
         | ExprKind::Match(..)
         | ExprKind::Repeat(..)
+        | ExprKind::RepeatUse(..)
         | ExprKind::Struct(..)
         | ExprKind::Tup(_)
         | ExprKind::Type(..)
@@ -771,6 +772,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::Block(..)
             | ExprKind::Loop(..)
             | ExprKind::Repeat(..)
+            | ExprKind::RepeatUse(..)
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(_)
             | ExprKind::Closure { .. }

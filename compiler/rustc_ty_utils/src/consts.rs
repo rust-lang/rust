@@ -153,7 +153,7 @@ fn recurse_build<'tcx>(
         ExprKind::RawBorrow { .. } | ExprKind::Deref { .. } => maybe_supported_error(
             GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
         )?,
-        ExprKind::Repeat { .. } | ExprKind::Array { .. } => {
+        ExprKind::Repeat { .. } | ExprKind::RepeatUse { .. } | ExprKind::Array { .. } => {
             maybe_supported_error(GenericConstantTooComplexSub::ArrayNotSupported(node.span))?
         }
         ExprKind::NeverToAny { .. } => {
@@ -271,7 +271,8 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
                 args.has_non_region_param()
             }
             thir::ExprKind::ConstParam { .. } => true,
-            thir::ExprKind::Repeat { value, count } => {
+            thir::ExprKind::Repeat { value, count }
+            | thir::ExprKind::RepeatUse { value, count } => {
                 self.visit_expr(&self.thir()[value]);
                 count.has_non_region_param()
             }
