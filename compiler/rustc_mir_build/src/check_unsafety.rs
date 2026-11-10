@@ -371,6 +371,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::WrapUnsafeBinder { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
+            | ExprKind::RepeatUse { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::ThreadLocalRef { .. }
             | ExprKind::Tuple { .. }

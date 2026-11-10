@@ -1,0 +1,18 @@
+error[E0597]: `unit` does not live long enough
+  --> $DIR/array-repeat-fail.rs:18:23
+   |
+LL |     let unit = ();
+   |         ---- binding `unit` declared here
+...
+LL |         let foo = Foo(&unit);
+   |                       ^^^^^ borrowed value does not live long enough
+LL |
+LL |         let _arr: [Foo<'static>; 17] = [foo.use; 17];
+   |                   ------------------ type annotation requires that `unit` is borrowed for `'static`
+...
+LL | }
+   | - `unit` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

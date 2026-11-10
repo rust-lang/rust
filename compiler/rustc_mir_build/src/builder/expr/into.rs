@@ -586,6 +586,396 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.expr_into_dest(destination, block, expr)
                 }
             }
+            ExprKind::RepeatUse { value, count } => {
+                let count_as_target_usize = count.try_to_target_usize(this.tcx);
+                let use_expr_must_clone = this.use_expr_must_clone(value);
+                // Needs to match `build_zero_repeat()`
+                let const_for_zero_repeat = this.check_constness(&this.thir[value].kind);
+                let value_ty = this.thir[value].ty;
+                let ty_is_copy = this.tcx.type_is_copy_modulo_regions(this.typing_env(), value_ty);
+
+                if const_for_zero_repeat
+                    || ty_is_copy
+                    || (matches!(count_as_target_usize, Some(0 | 1)) && !use_expr_must_clone)
+                {
+                    // handle in `as_rvalue`
+                    let rvalue = unpack!(block = this.as_local_rvalue(block, expr_id));
+                    this.cfg.push_assign(block, source_info, destination, rvalue);
+                    block.unit()
+                } else {
+                    // Type definitions
+                    let value_ty_generic_args = this.tcx.mk_args(&[value_ty.into()]);
+                    let manuallydrop_value_ty = Ty::new_adt(
+                        this.tcx,
+                        this.tcx
+                            .adt_def(this.tcx.require_lang_item(LangItem::ManuallyDrop, expr_span)),
+                        value_ty_generic_args,
+                    );
+                    let maybeuninit_value_ty = Ty::new_adt(
+                        this.tcx,
+                        this.tcx
+                            .adt_def(this.tcx.require_lang_item(LangItem::MaybeUninit, expr_span)),
+                        value_ty_generic_args,
+                    );
+                    let maybeuninit_array_ty =
+                        Ty::new_array_with_const_len(this.tcx, maybeuninit_value_ty, count);
+
+                    // We perform the following steps:
+                    // 1. Make an uninit array of MaybeUninit<`value_ty`>, with length `count`
+                    // 2. Initialize each element of the array with `.use`
+                    // 3. `transmute()` into our target
+
+                    // We want to clone `count` times if `place_expr_for_use`,
+                    // but only `count` - 1 times otherwise.
+
+                    // Create an array of uninit `MaybeUninit`s.
+
+                    let uninit_array_temp = this.temp(maybeuninit_array_ty, expr_span);
+
+                    // get the `DefId` of `MaybeUninit::UNINIT`
+                    let maybeuninit_uninit_def_id =
+                        this.tcx.require_lang_item(LangItem::MaybeUninitUninit, expr_span);
+                    let maybeuninit_const = Const::Unevaluated(
+                        UnevaluatedConst {
+                            def: maybeuninit_uninit_def_id,
+                            args: this.tcx.mk_args(&[value_ty.into()]),
+                            promoted: None,
+                        },
+                        maybeuninit_value_ty,
+                    );
+                    this.cfg.push_assign(
+                        block,
+                        source_info,
+                        uninit_array_temp,
+                        Rvalue::Repeat(
+                            Operand::Constant(Box::new(ConstOperand {
+                                span: expr_span,
+                                user_ty: None,
+                                const_: maybeuninit_const,
+                            })),
+                            count,
+                        ),
+                    );
+
+                    // post loop block
+                    let mut end_block = this.cfg.start_new_block();
+
+                    // If `const_for_zero_repeat`, we evaluate `value` only if `count` is non-zero,
+                    // and only after performing that check.
+                    // Otherwise, we always evaluate it.
+
+                    // special handling for zero-length repeat
+                    let (value_place, mut block) = if const_for_zero_repeat || !use_expr_must_clone
+                    {
+                        let continue_block = this.cfg.start_new_block();
+                        let return_early_block = this.cfg.start_new_block();
+
+                        let (continue_post_init_block, value_place) = if const_for_zero_repeat {
+                            // Don't evaluate `value` at all if len == 0
+                            this.cfg.goto(return_early_block, source_info, end_block);
+
+                            // Otherwise, evaluate it in `continue_block`
+                            let BlockAnd(continue_post_init_block, value_place) =
+                                this.as_read_only_place(continue_block, value);
+                            (continue_post_init_block, value_place)
+                        } else {
+                            // Always evaluate `value`,
+                            // and drop it on the return-early path.
+
+                            // Evaluate `value` in `block`
+                            let value_place =
+                                unpack!(block = this.as_read_only_place(block, value));
+
+                            // Drop the value, in the `count` == 0 early-return block
+                            this.cfg.terminate(
+                                return_early_block,
+                                source_info,
+                                TerminatorKind::Drop {
+                                    place: value_place,
+                                    target: end_block,
+                                    unwind: UnwindAction::Continue,
+                                    replace: false,
+                                    drop: None,
+                                },
+                            );
+                            this.diverge_from(return_early_block);
+
+                            (continue_block, value_place)
+                        };
+
+                        // if `count` == 0, return early
+                        let condition_temp = this.temp(this.tcx.types.bool, expr_span);
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            condition_temp,
+                            Rvalue::BinaryOp(
+                                BinOp::Eq,
+                                Box::new((
+                                    Operand::Constant(Box::new(ConstOperand {
+                                        span: expr_span,
+                                        user_ty: None,
+                                        const_: Const::Ty(this.tcx.types.usize, count),
+                                    })),
+                                    Operand::Constant(Box::new(ConstOperand {
+                                        span: expr_span,
+                                        user_ty: None,
+                                        const_: Const::from_usize(this.tcx, 0),
+                                    })),
+                                )),
+                            ),
+                        );
+                        this.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::if_(
+                                Operand::Move(condition_temp),
+                                return_early_block,
+                                continue_block,
+                            ),
+                        );
+
+                        (value_place, continue_post_init_block)
+                    } else {
+                        // We clone `count` times, so no need to special case `count` == 0
+                        let value_place = unpack!(block = this.as_read_only_place(block, value));
+
+                        (value_place, block)
+                    };
+
+                    // If `place_expr_for_use`, we clone `N` times, once for each element of the array.
+                    // Otherwise, we move the expression result into the first array element,
+                    // and clone that for the remaining ones.
+
+                    let (value_place, mut_ptr_place) = if use_expr_must_clone {
+                        unpack!(
+                            block = this.make_aligned_copy_of_place(block, value_place, expr_span)
+                        )
+                    } else {
+                        // move the value into the first element of the array.
+
+                        // local for the zero index
+                        let zero_local =
+                            this.local_decls.push(LocalDecl::new(this.tcx.types.usize, expr_span));
+                        let zero = Place::from(zero_local);
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            zero,
+                            Rvalue::Use(
+                                Operand::Constant(Box::new(ConstOperand {
+                                    span: expr_span,
+                                    user_ty: None,
+                                    const_: Const::from_usize(this.tcx, 0),
+                                })),
+                                WithRetag::Yes,
+                            ),
+                        );
+
+                        let array_elem_place = uninit_array_temp.project_deeper(
+                            &[
+                                PlaceElem::Index(zero_local),
+                                PlaceElem::Field(FieldIdx::ONE, manuallydrop_value_ty),
+                                PlaceElem::Field(FieldIdx::ZERO, value_ty),
+                            ],
+                            this.tcx,
+                        );
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            array_elem_place,
+                            Rvalue::Use(Operand::Move(value_place), WithRetag::Yes),
+                        );
+
+                        (array_elem_place, None)
+                    };
+
+                    // Now, initialize each entry in a loop.
+
+                    // Create a loop counter
+                    let counter_start = if use_expr_must_clone { 0 } else { 1 };
+                    let counter_local =
+                        this.local_decls.push(LocalDecl::new(this.tcx.types.usize, expr_span));
+                    let counter = Place::from(counter_local);
+                    this.cfg.push_assign(
+                        block,
+                        source_info,
+                        counter,
+                        Rvalue::Use(
+                            Operand::Constant(Box::new(ConstOperand {
+                                span: expr_span,
+                                user_ty: None,
+                                const_: Const::from_usize(this.tcx, counter_start),
+                            })),
+                            WithRetag::Yes,
+                        ),
+                    );
+
+                    // Take a shared reference to the value
+                    let borrow_temp = this.temp(
+                        Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, value_ty),
+                        expr_span,
+                    );
+
+                    if use_expr_must_clone {
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            borrow_temp,
+                            Rvalue::Ref(
+                                this.tcx.lifetimes.re_erased,
+                                BorrowKind::Shared,
+                                value_place,
+                            ),
+                        );
+                    } else {
+                        // We need to launder via a raw pointer
+                        // so that indexing into adjacent array elements
+                        // doesn't invalidate the borrow
+                        let rawborrow_temp =
+                            this.temp(Ty::new_imm_ptr(this.tcx, value_ty), expr_span);
+
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            rawborrow_temp,
+                            Rvalue::RawPtr(RawPtrKind::Const, value_place),
+                        );
+
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            borrow_temp,
+                            Rvalue::Ref(
+                                this.tcx.lifetimes.re_erased,
+                                BorrowKind::Shared,
+                                rawborrow_temp.project_deeper(&[PlaceElem::Deref], this.tcx),
+                            ),
+                        );
+                    };
+
+                    // loop body block - `.use`s an element
+                    let use_block = this.cfg.start_new_block();
+
+                    // counter increment block
+                    let counter_increment_block = this.cfg.start_new_block();
+
+                    // loop condition block
+                    let condition_block = this.cfg.start_new_block();
+                    this.cfg.goto(block, source_info, condition_block);
+                    let condition_temp = this.temp(this.tcx.types.bool, expr_span);
+                    this.cfg.push_assign(
+                        condition_block,
+                        source_info,
+                        condition_temp,
+                        Rvalue::BinaryOp(
+                            BinOp::Eq,
+                            Box::new((
+                                Operand::Copy(counter),
+                                Operand::Constant(Box::new(ConstOperand {
+                                    span: expr_span,
+                                    user_ty: None,
+                                    const_: Const::Ty(this.tcx.types.usize, count),
+                                })),
+                            )),
+                        ),
+                    );
+                    this.cfg.terminate(
+                        condition_block,
+                        source_info,
+                        TerminatorKind::if_(Operand::Move(condition_temp), end_block, use_block),
+                    );
+
+                    // loop body block contents
+                    let clone_trait = this.tcx.require_lang_item(LangItem::Clone, expr_span);
+                    let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
+                    let func =
+                        Operand::function_handle(this.tcx, clone_fn, &[value_ty.into()], expr_span);
+                    let array_elem_place = uninit_array_temp.project_deeper(
+                        &[
+                            PlaceElem::Index(counter_local),
+                            PlaceElem::Field(FieldIdx::ONE, manuallydrop_value_ty),
+                            PlaceElem::Field(FieldIdx::ZERO, value_ty),
+                        ],
+                        this.tcx,
+                    );
+                    this.cfg.terminate(
+                        use_block,
+                        source_info,
+                        TerminatorKind::Call {
+                            func,
+                            args: [Spanned { node: Operand::Copy(borrow_temp), span: expr_span }]
+                                .into(),
+                            destination: array_elem_place,
+                            target: Some(counter_increment_block),
+                            unwind: UnwindAction::Terminate(UnwindTerminateReason::Abi),
+                            call_source: CallSource::Use,
+                            fn_span: expr_span,
+                        },
+                    );
+
+                    // counter increment block contents
+                    this.cfg.push_assign(
+                        counter_increment_block,
+                        source_info,
+                        counter,
+                        Rvalue::BinaryOp(
+                            BinOp::AddUnchecked,
+                            Box::new((
+                                Operand::Copy(counter),
+                                Operand::Constant(Box::new(ConstOperand {
+                                    span: expr_span,
+                                    user_ty: None,
+                                    const_: Const::from_usize(this.tcx, 1),
+                                })),
+                            )),
+                        ),
+                    );
+                    this.cfg.goto(counter_increment_block, source_info, condition_block);
+
+                    // packed place writeback
+                    if let Some(mut_ptr_place) = mut_ptr_place {
+                        unpack!(
+                            end_block = this.write_through_ptr_unaligned(
+                                end_block,
+                                value_place,
+                                Operand::Move(mut_ptr_place),
+                                expr_span
+                            )
+                        );
+                    }
+
+                    // transmute the initialized array
+                    let success: BasicBlock = this.cfg.start_new_block();
+                    let assume_init_fn =
+                        this.tcx.require_lang_item(LangItem::MaybeUninitArrayAssumeInit, expr_span);
+                    let func = Operand::function_handle(
+                        this.tcx,
+                        assume_init_fn,
+                        &[value_ty.into(), count.into()],
+                        expr_span,
+                    );
+                    this.cfg.terminate(
+                        end_block,
+                        source_info,
+                        TerminatorKind::Call {
+                            func,
+                            args: [Spanned {
+                                node: Operand::Move(uninit_array_temp),
+                                span: expr_span,
+                            }]
+                            .into(),
+                            destination,
+                            target: Some(success),
+                            unwind: UnwindAction::Unreachable,
+                            call_source: CallSource::Misc,
+                            fn_span: expr_span,
+                        },
+                    );
+
+                    success.unit()
+                }
+            }
             ExprKind::ValueExpr { source } => this.expr_into_dest(destination, block, source),
             ExprKind::Borrow { arg, borrow_kind } => {
                 // We don't do this in `as_rvalue` because we use `as_place`

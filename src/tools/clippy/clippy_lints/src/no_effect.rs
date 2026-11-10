@@ -233,6 +233,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ExprKind::Index(a, b, _) | ExprKind::Binary(_, a, b) => has_no_effect(cx, a) && has_no_effect(cx, b),
         ExprKind::Array(v) | ExprKind::Tup(v) => v.iter().all(|val| has_no_effect(cx, val)),
         ExprKind::Repeat(inner, _)
+        | ExprKind::RepeatUse(inner, _)
         | ExprKind::Cast(inner, _)
         | ExprKind::Type(inner, _)
         | ExprKind::Unary(_, inner)
@@ -338,6 +339,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         },
         ExprKind::Array(v) | ExprKind::Tup(v) => Some(v.iter().collect()),
         ExprKind::Repeat(inner, _)
+        | ExprKind::RepeatUse(inner, _)
         | ExprKind::Type(inner, _)
         | ExprKind::Unary(_, inner)
         | ExprKind::Field(inner, _)

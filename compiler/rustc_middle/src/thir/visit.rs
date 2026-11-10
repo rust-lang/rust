@@ -115,7 +115,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         }
         Become { value } => visitor.visit_expr(&visitor.thir()[value]),
         ConstBlock { did: _, args: _ } => {}
-        Repeat { value, count: _ } => {
+        Repeat { value, count: _ } | RepeatUse { value, count: _ } => {
             visitor.visit_expr(&visitor.thir()[value]);
         }
         Array { ref fields } | Tuple { ref fields } => {

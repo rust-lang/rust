@@ -6,7 +6,6 @@ use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
@@ -75,6 +74,47 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         )
                     );
                     block.and(Rvalue::Repeat(value_operand, count))
+                }
+            }
+            ExprKind::RepeatUse { value, count } => {
+                let count_as_target_usize = count.try_to_target_usize(this.tcx);
+                let use_expr_must_clone = this.use_expr_must_clone(value);
+                // Needs to match `build_zero_repeat()`
+                let const_for_zero_repeat = this.check_constness(&this.thir[value].kind);
+                let value_ty = this.thir[value].ty;
+                let ty_is_copy = this.tcx.type_is_copy_modulo_regions(this.typing_env(), value_ty);
+
+                if Some(0) == count_as_target_usize
+                    && (const_for_zero_repeat || !use_expr_must_clone || ty_is_copy)
+                {
+                    this.build_zero_repeat(block, value, scope, source_info)
+                } else if const_for_zero_repeat
+                    || (Some(1) == count_as_target_usize && !use_expr_must_clone)
+                    || ty_is_copy
+                {
+                    let value_operand = unpack!(
+                        block = this.as_operand(
+                            block,
+                            scope,
+                            value,
+                            LocalInfo::Boring,
+                            NeedsTemporary::No
+                        )
+                    );
+                    block.and(Rvalue::Repeat(value_operand, count))
+                } else {
+                    // handle in `expr_into_dest`
+                    let operand = unpack!(
+                        block = this.as_operand(
+                            block,
+                            scope,
+                            expr_id,
+                            LocalInfo::Boring,
+                            NeedsTemporary::No,
+                        )
+                    );
+
+                    block.and(Rvalue::Use(operand, WithRetag::Yes))
                 }
             }
             ExprKind::Binary { op, lhs, rhs } => {
@@ -580,27 +620,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => Rvalue::BinaryOp(op, Box::new((lhs, rhs))),
         };
         block.and(rvalue)
-    }
-
-    /// Recursively inspect a THIR expression and probe through unsizing
-    /// operations that can be const-folded today.
-    fn check_constness(&self, mut kind: &'a ExprKind<'tcx>) -> bool {
-        loop {
-            debug!(?kind, "check_constness");
-            match kind {
-                &ExprKind::ValueTypeAscription { source: eid, user_ty: _, user_ty_span: _ }
-                | &ExprKind::ValueExpr { source: eid }
-                | &ExprKind::PointerCoercion {
-                    cast: PointerCoercion::Unsize,
-                    source: eid,
-                    is_from_as_cast: _,
-                }
-                | &ExprKind::Scope { region_scope: _, hir_id: _, value: eid } => {
-                    kind = &self.thir[eid].kind
-                }
-                _ => return matches!(Category::of(&kind), Some(Category::Constant)),
-            }
-        }
     }
 
     fn build_zero_repeat(

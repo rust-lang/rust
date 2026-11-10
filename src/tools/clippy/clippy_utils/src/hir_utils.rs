@@ -610,6 +610,9 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Repeat(le, ll), ExprKind::Repeat(re, rl)) => {
                 self.eq_expr(le, re) && self.eq_const_arg(ll, rl)
             },
+            (ExprKind::RepeatUse(le, ll), ExprKind::RepeatUse(re, rl)) => {
+                self.eq_expr(le, re) && self.eq_const_arg(ll, rl)
+            },
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l.as_ref(), r.as_ref(), |l, r| self.eq_expr(l, r)),
             (ExprKind::Struct(l_path, lf, lo), ExprKind::Struct(r_path, rf, ro)) => {
                 self.eq_qpath(l_path, r_path)
@@ -652,6 +655,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | ExprKind::OffsetOf(..)
                 | ExprKind::Path(..)
                 | ExprKind::Repeat(..)
+                | ExprKind::RepeatUse(..)
                 | ExprKind::Ret(..)
                 | ExprKind::Struct(..)
                 | ExprKind::Tup(..)
@@ -1368,7 +1372,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Path(qpath) => {
                 self.hash_qpath(qpath);
             },
-            ExprKind::Repeat(e, len) => {
+            ExprKind::Repeat(e, len) | ExprKind::RepeatUse(e, len) => {
                 self.hash_expr(e);
                 self.hash_const_arg(len);
             },

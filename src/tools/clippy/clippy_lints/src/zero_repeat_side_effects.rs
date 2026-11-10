@@ -57,7 +57,7 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
         // doesn't seem as confusing as `[f(); 0]`. It would also have false positives when eg.
         // the const item depends on `#[cfg]s` and has different values in different compilation
         // sessions).
-        else if let ExprKind::Repeat(inner_expr, const_arg) = expr.kind
+        else if let ExprKind::Repeat(inner_expr, const_arg) | ExprKind::RepeatUse(inner_expr, const_arg) = expr.kind
             && let ConstArgKind::Anon(anon_const) = const_arg.kind
             && let length_expr = cx.tcx.hir_body(anon_const.body).value
             && !length_expr.span.from_expansion()

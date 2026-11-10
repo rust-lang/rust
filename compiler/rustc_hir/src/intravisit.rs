@@ -842,7 +842,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::ConstBlock(ref const_block) => {
             try_visit!(visitor.visit_inline_const(const_block))
         }
-        ExprKind::Repeat(ref element, ref count) => {
+        ExprKind::Repeat(ref element, ref count) | ExprKind::RepeatUse(ref element, ref count) => {
             try_visit!(visitor.visit_expr(element));
             try_visit!(visitor.visit_const_arg_unambig(count));
         }

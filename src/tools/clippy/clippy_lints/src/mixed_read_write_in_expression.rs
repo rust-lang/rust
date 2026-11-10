@@ -256,6 +256,7 @@ fn check_expr<'tcx>(vis: &mut ReadVisitor<'_, 'tcx>, expr: &'tcx Expr<'_>) -> St
         | ExprKind::Assign(..)
         | ExprKind::Index(..)
         | ExprKind::Repeat(_, _)
+        | ExprKind::RepeatUse(_, _)
         | ExprKind::Struct(_, _, _)
         | ExprKind::AssignOp(_, _, _) => {
             walk_expr(vis, expr);

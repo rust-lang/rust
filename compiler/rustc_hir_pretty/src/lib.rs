@@ -1328,6 +1328,16 @@ impl<'a> State<'a> {
         self.end(ib)
     }
 
+    fn print_expr_repeat_used(&mut self, element: &hir::Expr<'_>, count: &hir::ConstArg<'_>) {
+        let ib = self.ibox(INDENT_UNIT);
+        self.word("[(");
+        self.print_expr(element);
+        self.word_space(").use ;");
+        self.print_const_arg(count);
+        self.word("]");
+        self.end(ib)
+    }
+
     fn print_expr_struct(
         &mut self,
         qpath: &hir::QPath<'_>,
@@ -1583,6 +1593,9 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Repeat(element, ref count) => {
                 self.print_expr_repeat(element, count);
+            }
+            hir::ExprKind::RepeatUse(element, ref count) => {
+                self.print_expr_repeat_used(element, count);
             }
             hir::ExprKind::Struct(qpath, fields, wth) => {
                 self.print_expr_struct(qpath, fields, wth);

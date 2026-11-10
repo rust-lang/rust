@@ -395,7 +395,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
             ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected),
             ExprKind::Repeat(element, ref count) => {
-                self.check_expr_repeat(element, count, expected, expr)
+                self.check_expr_repeat(element, count, expected, expr, false)
+            }
+            ExprKind::RepeatUse(element, ref count) => {
+                self.check_expr_repeat(element, count, expected, expr, true)
             }
             ExprKind::Tup(elts) => self.check_expr_tuple(elts, expected, expr),
             ExprKind::Struct(qpath, fields, ref base_expr) => {
@@ -1651,6 +1654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::Become(..)
                 | ExprKind::ConstBlock(..)
                 | ExprKind::Repeat(..)
+                | ExprKind::RepeatUse(..)
                 | ExprKind::Array(..)
                 | ExprKind::Tup(..)
                 | ExprKind::Struct(..)
@@ -1845,12 +1849,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
+    /// `used` if this is an [`ExprKind::RepeatUse`]
     fn check_expr_repeat(
         &self,
         element: &'tcx hir::Expr<'tcx>,
         count: &'tcx hir::ConstArg<'tcx>,
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
+        used: bool,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let count_span = count.span;
@@ -1918,10 +1924,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        // We defer checking whether the element type is `Copy` as it is possible to have
-        // an inference variable as a repeat count and it seems unlikely that `Copy` would
-        // have inference side effects required for type checking to succeed.
-        self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
+        if used {
+            // FIXME(ergonomic_clones): remove condition once `Copy` implies `UseCloned`
+            if !self.type_is_copy_modulo_regions(self.param_env, element_ty) {
+                self.register_bound(
+                    element_ty,
+                    self.tcx.require_lang_item(LangItem::UseCloned, expr.span),
+                    ObligationCause::new(
+                        element.span,
+                        self.body_def_id,
+                        ObligationCauseCode::UseExpr(expr.span),
+                    ),
+                );
+
+                // `.use`ing a non-`Copy` packed field may require mutable access to said field
+                // FIXME: don't do this if the count is known to be 0
+                if self.is_use_of_packed_field(element) {
+                    self.convert_place_derefs_to_mutable(element);
+                }
+            }
+        } else {
+            // We defer checking whether the element type is `Copy` as it is possible to have
+            // an inference variable as a repeat count and it seems unlikely that `Copy` would
+            // have inference side effects required for type checking to succeed.
+            self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
+        }
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
         self.register_wf_obligation(

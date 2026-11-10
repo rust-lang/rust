@@ -316,7 +316,8 @@ fn extend_err_with_const_context(
         hir::Node::AnonConst(anon)
             if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
                 && let hir::Node::Expr(parent) = tcx.parent_hir_node(parent.hir_id)
-                && let hir::ExprKind::Repeat(_ty, _len) = parent.kind =>
+                && let hir::ExprKind::Repeat(_ty, _len) | hir::ExprKind::RepeatUse(_ty, _len) =
+                    parent.kind =>
         {
             // `[type; len]` in expr context.
             err.note("array length can only be `usize`");
