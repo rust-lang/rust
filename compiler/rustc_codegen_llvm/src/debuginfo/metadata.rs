@@ -1007,6 +1007,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             kind,
             0,
             tcx.sess.opts.unstable_opts.split_dwarf_inlining,
+            tcx.sess.opts.unstable_opts.debuginfo_for_profiling,
             debug_name_table_kind,
         );
 
