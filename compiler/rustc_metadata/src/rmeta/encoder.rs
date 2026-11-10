@@ -771,6 +771,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
 
+        let comptime_files = stat!("comptime-files", || self.encode_comptime_files(tcx));
+
         let root = stat!("crate-root", || {
             let attrs = tcx.hir_krate_attrs();
             self.lazy(CrateRoot {
@@ -829,6 +831,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_hashes,
                 def_path_hash_map,
                 specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+                comptime_files,
             })
         });
 
@@ -2466,6 +2469,24 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ));
         }
         LazyArray::default()
+    }
+
+    fn encode_comptime_files(
+        &mut self,
+        tcx: TyCtxt<'_>,
+    ) -> IndexMap<Symbol, LazyValue<Option<Vec<u8>>>> {
+        let mut comptime_files = IndexMap::default();
+        for &path in tcx.experimental_comptime_list_files(LOCAL_CRATE) {
+            // Must encode None too, as we depend on the keys of the IndexMap to store the list
+            // of files that we export from this crate.
+            if let Ok(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, path)) {
+                comptime_files.insert_full(path, self.lazy(file_data.map(|d| d.to_vec())));
+            } else {
+                bug!("a comptile time file read error should fail crate compilation")
+            }
+        }
+
+        comptime_files
     }
 }
 

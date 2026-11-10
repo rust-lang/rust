@@ -79,6 +79,7 @@ use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
+use crate::comptime::ReadFileError;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
@@ -2851,6 +2852,18 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "calculating all fake doc items" }
+    }
+
+    /// Query the content of a file during const evaluation
+    query experimental_comptime_fetch_file(key: (CrateNum, Symbol)) -> Result<Option<&'tcx [u8]>, ReadFileError<'tcx>> {
+        desc { "fetch file {} from crate {}", key.1, key.0 }
+        separate_provide_extern
+    }
+
+    /// Query list of files available during const evaluation
+    query experimental_comptime_list_files(key: CrateNum) -> &'tcx [Symbol] {
+        desc { "fetch const eval file list from crate {}", key }
+        separate_provide_extern
     }
 
     //-----------------------------------------------------------------------------

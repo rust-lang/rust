@@ -714,10 +714,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         self.read_scalar(op)?.to_target_isize(self)
     }
 
-    /// Turn the wide MPlace into a string (must already be dereferenced!)
-    pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &str> {
+    /// Turn the wide MPlace into a slice of bytes (must already be dereferenced!)
+    pub fn read_bytes(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &[u8]> {
         let len = mplace.len(self)?;
         let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len))?;
+        interp_ok(bytes)
+    }
+
+    /// Turn the wide MPlace into a string (must already be dereferenced!)
+    pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &str> {
+        let bytes = self.read_bytes(mplace)?;
         let s = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
         interp_ok(s)
     }

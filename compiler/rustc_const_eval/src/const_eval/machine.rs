@@ -10,6 +10,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
+use rustc_middle::comptime::ReadFileError;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
@@ -24,10 +25,10 @@ use super::error::*;
 use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
-    RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
-    throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
-    type_implements_dyn_trait,
+    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, Projectable,
+    RangeSet, RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval,
+    interp_ok, throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup,
+    throw_unsup_format, type_implements_dyn_trait,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -596,6 +597,112 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return interp_ok(None);
                 }
+            }
+
+            sym::comptime_fetch_file => {
+                let arg_place = ecx.deref_pointer(&args[0])?;
+                let path = ecx.read_str(&arg_place)?;
+                let path_sym = Symbol::intern(path);
+
+                let krate = ecx
+                    .stack()
+                    .first()
+                    .expect("should have a call frame if we are here")
+                    .instance()
+                    .def_id()
+                    .krate;
+
+                let content_maybe = match ecx
+                    .tcx
+                    .experimental_comptime_fetch_file((krate, path_sym))
+                {
+                    Ok(content) => content,
+                    Err(ReadFileError::IO(err)) => {
+                        let guard = ecx
+                            .tcx
+                            .dcx()
+                            .struct_err("error while reading file in constant evaluation")
+                            .with_span(ecx.cur_span())
+                            .with_span_help(ecx.tcx.span, "while evaluating this constant")
+                            .with_note(format!("filename: {path_sym}"))
+                            .with_note(format!("error: {err}"))
+                            .emit_err();
+                        throw_inval!(AlreadyReported(ReportedErrorInfo::allowed_in_infallible(
+                            guard
+                        )));
+                    }
+                    Err(ReadFileError::NotWhitelisted) => {
+                        let guard = ecx
+                            .tcx
+                            .dcx()
+                            .struct_err("this file cannot be accessed during const-evaluation")
+                            .with_span(ecx.cur_span())
+                            .with_span_help(ecx.tcx.span, "while evaluating this constant")
+                            .with_note(format!("filename: {path_sym}"))
+                            .with_help("pass -Zexperimental-comptime-files=<path> to the compiler to allow reading this file")
+                            .emit_err();
+                        throw_inval!(AlreadyReported(ReportedErrorInfo::allowed_in_infallible(
+                            guard
+                        )));
+                    }
+                };
+
+                let variant_index = if let Some(value) = content_maybe {
+                    let ptr = ecx.allocate_bytes_dedup(value)?;
+
+                    let (variant_idx, variant_place) =
+                        ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_immediate(
+                        Immediate::ScalarPair(
+                            Scalar::from_pointer(ptr, ecx),
+                            Scalar::from_target_usize(value.len() as u64, ecx),
+                        ),
+                        &field_place,
+                    )?;
+
+                    variant_idx
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+
+                ecx.write_discriminant(variant_index, dest)?;
+            }
+
+            sym::comptime_list_files => {
+                let krate = ecx
+                    .stack()
+                    .first()
+                    .expect("should have a call frame if we are here")
+                    .instance()
+                    .def_id()
+                    .krate;
+
+                let filelist = ecx.tcx().experimental_comptime_list_files(krate);
+
+                let element_type =
+                    dest.layout().ty.builtin_deref(false).unwrap().sequence_element_type(ecx.tcx());
+
+                // type and layout of [&str, filelist.len()];
+                let array_ty =
+                    ecx.layout_of(Ty::new_array(ecx.tcx(), element_type, filelist.len() as _))?;
+
+                // actual allocated array
+                let array_place = ecx.allocate(array_ty, interpret::MemoryKind::Stack)?;
+
+                let mut array_iter = ecx.project_array_fields(&array_place)?;
+                while let Some((idx, entry_place)) = array_iter.next(ecx)? {
+                    let file = filelist[idx as usize];
+                    let file_place = ecx.allocate_str_dedup(file.as_str())?;
+                    let imm = file_place.to_ref(ecx);
+                    ecx.write_immediate(imm, &entry_place)?;
+                }
+
+                let array_place = array_place.map_provenance(CtfeProvenance::as_immutable);
+                ecx.write_immediate(
+                    Immediate::new_slice(array_place.ptr(), filelist.len() as _, ecx),
+                    dest,
+                )?;
             }
 
             sym::type_id_vtable => {

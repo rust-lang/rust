@@ -17,6 +17,7 @@ use rustc_index::{Idx, IndexSlice};
 use rustc_span::def_id::ModId;
 use rustc_span::{ErrorGuaranteed, Spanned};
 
+use crate::comptime::ReadFileError;
 use crate::mono::{MonoItem, NormalizationErrorInMono};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, thir, traits};
@@ -212,6 +213,7 @@ impl_erasable_for_types_with_no_type_params! {
     Result<(&'_ Steal<thir::Thir<'_>>, thir::ExprId), ErrorGuaranteed>,
     Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>,
     Result<(), ErrorGuaranteed>,
+    Result<Option<&'_ [u8]>, ReadFileError<'_>>,
     Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed>,
     Result<Option<ty::Instance<'_>>, ErrorGuaranteed>,
     Result<bool, &ty::layout::LayoutError<'_>>,
