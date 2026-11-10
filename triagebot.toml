@@ -27,6 +27,11 @@ cc = ["@notriddle"]
 exclude_titles = ["Rustup"] # exclude syncs from rust-lang/rust
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
+[large-pull-requests]
+threshold = 500 # Pull requests over 500 changed lines should really be split up.
+exclude-files = ["tests"] # We don't want to penalize adding tests
+exclude-titles = ["Rustup"] # These are usually subtree syncs
+
 [review-requested]
 # Those labels are removed when PR author requests a review from an assignee
 remove_labels = ["S-waiting-on-author"]
