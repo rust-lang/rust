@@ -1898,6 +1898,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         self.table_writer().assoc_container(def_id, item.container);
 
+        if let Some(item_name) = item.opt_name() {
+            self.table_writer().opt_item_name(def_id, Some(item_name));
+        }
+
         if let AssocContainer::Trait = item.container
             && item.is_type()
         {
