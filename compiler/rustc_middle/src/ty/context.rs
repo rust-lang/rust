@@ -122,6 +122,10 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
         self.coroutine_clone()
     }
 
+    fn move_trait(self) -> bool {
+        self.move_trait()
+    }
+
     fn feature_bound_holds_in_crate(self, symbol: Symbol) -> bool {
         // We don't consider feature bounds to hold in the crate when `staged_api` feature is
         // enabled, even if it is enabled through `#[feature]`.
@@ -964,8 +968,13 @@ impl<'tcx> TyCtxt<'tcx> {
         including_sized: IncludeSizedImplicitBounds,
     ) -> bool {
         self.is_default_trait(def_id)
-            // NOTE: add move and forget here later
+            // NOTE: add forget here later
+            || self.is_move_trait(def_id)
             || (matches!(including_sized, IncludeSizedImplicitBounds::Yes) && self.is_sizedness_trait(def_id))
+    }
+
+    pub fn is_move_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Move))
     }
 
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
