@@ -8,7 +8,9 @@ use rustc_target::spec::Os;
 
 use crate::shims::files::{EvalContextExt as _, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::socket::{EvalContextExt, UnixSocketFileDescription};
+use crate::shims::unix::socket::{
+    EvalContextExt, UnixSocketFileDescription, socket_action_deadline,
+};
 use crate::*;
 
 #[derive(Debug)]
@@ -284,12 +286,18 @@ impl UnixSocketFileDescription for UdpSocket {
 
         let is_non_block = is_non_block || self.is_non_block.get();
 
-        if !is_non_block {
-            throw_unsup_format!("send: blocking writes are currently unsupported for UDP sockets");
-        }
+        if is_non_block {
+            // We have a non-blocking operation or a non-blocking socket and
+            // thus don't want to block until we can send.
+            let result = ecx.try_non_block_send(&self, ptr, len, dest_addr)?;
+            finish.call(ecx, result)
+        } else {
+            let deadline = socket_action_deadline(ecx, is_non_block, self.write_timeout.get());
 
-        let result = ecx.try_non_block_send(&self, ptr, len, dest_addr)?;
-        finish.call(ecx, result)
+            // The socket is in blocking mode and thus the send call should block
+            // until we can send some bytes into the socket or the timeout exceeded.
+            ecx.block_for_send(self, deadline, ptr, len, dest_addr, finish)
+        }
     }
 
     fn recv<'tcx>(
@@ -437,6 +445,55 @@ impl UnixSocketFileDescription for UdpSocket {
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Block the thread until we can send bytes into the connected socket
+    /// or an error occurred.
+    ///
+    /// This recursively calls itself should the operation still block for some reason.
+    fn block_for_send(
+        &mut self,
+        socket: FileDescriptionRef<UdpSocket>,
+        deadline: Option<Deadline>,
+        buffer_ptr: Pointer,
+        length: u64,
+        dest_addr: Option<SocketAddr>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        // Since the callback holds a strong reference to the socket, the file description
+        // won't be closed as long as some thread is blocked on it. While this reflects
+        // what Linux does, for other Unix systems this might differ from the native behavior.
+        ecx.block_thread_for_io(
+            socket.clone(),
+            BlockingIoInterest::Write,
+            deadline.clone(),
+            callback!(@capture<'tcx> {
+                socket: FileDescriptionRef<UdpSocket>,
+                deadline: Option<Deadline>,
+                buffer_ptr: Pointer,
+                length: u64,
+                dest_addr: Option<SocketAddr>,
+                finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+            } |ecx, kind: UnblockKind| {
+                // Remove the blocking I/O interest for unblocking this thread.
+                ecx.machine.blocking_io.remove_blocked_thread(socket.id(), ecx.machine.threads.active_thread());
+
+                match kind {
+                    UnblockKind::Ready => { /* fall-through to below */ },
+                    // When the write timeout is exceeded EAGAIN/EWOULDBLOCK is returned.
+                    UnblockKind::TimedOut => return finish.call(ecx, Err(LibcError("EWOULDBLOCK")))
+                }
+
+                match ecx.try_non_block_send(&socket, buffer_ptr, length, dest_addr)? {
+                    Err(IoError::HostError(e)) if e.kind() == io::ErrorKind::WouldBlock => {
+                        // We need to block the thread again as it would still block.
+                        ecx.block_for_send(socket, deadline, buffer_ptr, length, dest_addr, finish)
+                    },
+                    result => finish.call(ecx, result)
+                }
+            }),
+        )
+    }
+
     /// Attempt to send bytes to another socket. If `dest_addr` is [`Some`], the data
     /// is sent to the address specified in `dest_addr`. Otherwise, the data is sent
     /// to the default destination address.

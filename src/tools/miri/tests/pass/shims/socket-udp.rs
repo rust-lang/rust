@@ -71,19 +71,8 @@ fn test_sockopt_write_timeout() {
     socket.set_write_timeout(short_write_timeout).unwrap();
     assert_eq!(socket.write_timeout().unwrap(), short_write_timeout);
 
-    /*
-    TODO: Once UDP sockets support writing.
-
-    let fill_buffer = [1u8; 1024];
-    loop {
-        match socket.write_all(&fill_buffer) {
-            Ok(_) => { /* continue to fill up buffer */ }
-            // When we get an EAGAIN/EWOULDBLOCK when writing into a blocking socket,
-            // we know it's because of the write timeout exceeding because the write
-            // buffer is full.
-            Err(err) if err.kind() == ErrorKind::WouldBlock => break,
-            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
-        }
-    }
-    */
+    // We cannot test "filling up" the UDP socket buffer since UDP is unreliable.
+    // This means the kernel can report to us that it sent the entire datagram but
+    // on the receiving end it just gets discarded should the buffer be full without
+    // notifying the sender.
 }
