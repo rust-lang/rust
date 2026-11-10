@@ -47,6 +47,14 @@ fn check(args: Option) {
     // --print={option}
     let stdout = rustc().target(args.target).print(args.option).run().stdout_utf8();
 
+    // --print={option}:json
+    let json_stdout = rustc()
+        .target(args.target)
+        .arg("-Zunstable-options")
+        .print(&format!("{}:json", args.option))
+        .run()
+        .stdout_utf8();
+
     // --print={option}=PATH
     let output = {
         let tmp_path = PathBuf::from(format!("{}.txt", args.option));
@@ -56,8 +64,23 @@ fn check(args: Option) {
         rfs::read_to_string(&tmp_path)
     };
 
+    // --print={option}:json=PATH
+    let json_output = {
+        let tmp_path = PathBuf::from(format!("{}.json", args.option));
+        rustc()
+            .target(args.target)
+            .arg("-Zunstable-options")
+            .print(&format!("{}:json={}", args.option, tmp_path.display()))
+            .run();
+        rfs::read_to_string(&tmp_path)
+    };
+
     check_(&stdout, args.includes);
     check_(&output, args.includes);
 
     assert_eq!(&stdout, &output);
+
+    check_(&json_stdout, args.includes);
+    check_(&json_output, args.includes);
+    assert_eq!(&json_stdout, &json_output);
 }
