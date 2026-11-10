@@ -1144,12 +1144,7 @@ impl<'tcx> ParamEnv<'tcx> {
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(
-                tcx,
-                tcx.reveal_opaque_types_in_bounds(
-                    tcx.mk_clauses_from_iter(self.caller_bounds().all_clauses(tcx).iter()),
-                ),
-            )
+            tcx.reveal_opaque_types_in_bounds(self)
         }
     }
 }

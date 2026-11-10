@@ -10,7 +10,8 @@ use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
 use tracing::{debug, instrument};
 
 use crate::clean::{
-    self, Lifetime, clean_clause_uninterned, clean_generic_param_def, clean_middle_ty, clean_trait_ref_with_constraints, clean_ty_generics_inner, simplify,
+    self, Lifetime, clean_clause_uninterned, clean_generic_param_def, clean_middle_ty,
+    clean_trait_ref_with_constraints, clean_ty_generics_inner, simplify,
 };
 use crate::core::DocContext;
 

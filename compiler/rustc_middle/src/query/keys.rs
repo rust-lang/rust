@@ -290,6 +290,12 @@ impl<'tcx> QueryKey for ty::Clauses<'tcx> {
     }
 }
 
+impl<'tcx> QueryKey for ty::ParamEnv<'tcx> {
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> QueryKey for ty::AliasTyKind<'tcx> {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         let def_id = match self {
