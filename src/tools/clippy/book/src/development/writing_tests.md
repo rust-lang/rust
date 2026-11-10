@@ -110,6 +110,25 @@ As we gradually implement our lint logic, we will keep running this UI test comm
 Clippy will begin outputting information that allows us to check if the output is
 turning into what we want it to be.
 
+### Naming Test Cases
+
+Give each test function a name that says what it checks. If the test comes
+from an issue, put the issue number in a comment above it:
+
+```rust
+// #1XXXX: the receiver is a macro argument, so the suggestion must not cut through `id!(..)`
+fn dont_cut_through_macro_call() {
+    // ...
+}
+```
+
+A name like `fn issue1XXXX()` sends whoever breaks the test off to look up the
+issue before they know what broke. Many existing tests are named that way, but
+new tests and test files should get a descriptive name. The rustc-dev-guide
+has more on [naming tests].
+
+[naming tests]: https://rustc-dev-guide.rust-lang.org/tests/best-practices.html#test-naming
+
 ### Example output
 
 As our `foo_functions` lint is tested, the output would look something like this:
