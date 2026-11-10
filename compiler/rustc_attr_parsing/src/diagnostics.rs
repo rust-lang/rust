@@ -1932,6 +1932,19 @@ pub(crate) struct SuffixedLiteralInAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "{$count ->
+    [one] this attribute is
+    *[other] these attributes are
+    } not allowed in this context"
+)]
+pub(crate) struct AttributeInInvalidContext {
+    #[primary_span]
+    pub attrs: Vec<Span>,
+    pub count: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag("link name must not be empty", code = E0454)]
 pub(crate) struct EmptyLinkName {
     #[primary_span]
@@ -2179,10 +2192,11 @@ pub(crate) struct UnusedDuplicate {
 }
 
 #[derive(Diagnostic)]
-pub(crate) enum MacroExport {
-    #[diag("`#[macro_export]` has no effect on declarative macro definitions")]
-    #[note("declarative macros follow the same exporting rules as regular items")]
-    OnDeclMacro,
+#[diag("`#[macro_export]` is not allowed on declarative macro definitions")]
+#[note("declarative macros follow the same exporting rules as regular items")]
+pub(crate) struct MacroExportOnDeclMacro {
+    #[primary_span]
+    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]

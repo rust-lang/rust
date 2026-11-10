@@ -1174,10 +1174,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn status(&mut self) -> io::Result<ExitStatus> {
-        self.inner
-            .spawn(imp::Stdio::Inherit, true)
-            .map(Child::from_inner)
-            .and_then(|mut p| p.wait())
+        imp::status(&mut self.inner).map(ExitStatus)
     }
 
     /// Returns the path to the program that was given to [`Command::new`].
@@ -1339,8 +1336,8 @@ impl Command {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Command {
     /// Format the program and arguments of a Command for display. Any
-    /// non-utf8 data is lossily converted using the utf8 replacement
-    /// character.
+    /// non-utf8 data is either escaped or lossily converted using the
+    /// [utf8 replacement character].
     ///
     /// The default format approximates a shell invocation of the program along with its
     /// arguments. It does not include most of the other command properties. The output is not guaranteed to work
@@ -1350,6 +1347,7 @@ impl fmt::Debug for Command {
     /// Note that the debug implementation is platform-specific.
     ///
     /// [the alternate syntax]: fmt#sign0
+    /// [utf8 replacement character]: char::REPLACEMENT_CHARACTER
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }

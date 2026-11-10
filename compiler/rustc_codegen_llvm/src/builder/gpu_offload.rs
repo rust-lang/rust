@@ -22,15 +22,15 @@ use crate::llvm::{self, Linkage, Type, TypeKind, Value};
 // LLVM kernel-independent globals required for offloading
 pub(crate) struct OffloadGlobals<'ll> {
     pub launcher_fn: &'ll llvm::Value,
-    pub launcher_ty: &'ll llvm::Type,
+    pub launcher_ty: llvm::Type<'ll>,
 
     pub kernel_args_ty: KernelArgsTy,
 
-    pub offload_entry_ty: &'ll llvm::Type,
+    pub offload_entry_ty: llvm::Type<'ll>,
 
     pub begin_mapper: &'ll llvm::Value,
     pub end_mapper: &'ll llvm::Value,
-    pub mapper_fn_ty: &'ll llvm::Type,
+    pub mapper_fn_ty: llvm::Type<'ll>,
 
     pub ident_t_global: &'ll llvm::Value,
 }
@@ -120,7 +120,7 @@ impl<'ll> OffloadKernelDims<'ll> {
 
 // ; Function Attrs: nounwind
 // declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr) #2
-fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll llvm::Type) {
+fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, llvm::Type<'ll>) {
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
@@ -137,7 +137,7 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll ll
 /// declaration together with its type.
 pub(crate) fn declare_omp_get_num_devices<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (&'ll llvm::Value, &'ll llvm::Type) {
+) -> (&'ll llvm::Value, llvm::Type<'ll>) {
     let ti32 = cx.type_i32();
     let tgt_fn_ty = cx.type_func(&[], ti32);
     let name = "omp_get_num_devices";
@@ -190,7 +190,7 @@ pub(crate) struct TgtOffloadEntry {
 }
 
 impl TgtOffloadEntry {
-    pub(crate) fn new_decl<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll llvm::Type {
+    pub(crate) fn new_decl<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Type<'ll> {
         let offload_entry_ty = cx.type_named_struct("struct.__tgt_offload_entry");
         let tptr = cx.type_ptr();
         let ti64 = cx.type_i64();
@@ -345,7 +345,7 @@ pub(crate) struct OffloadKernelGlobals<'ll> {
 
 fn gen_tgt_data_mappers<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Type) {
+) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, llvm::Type<'ll>) {
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
@@ -512,7 +512,7 @@ pub(crate) fn gen_define_handling<'ll>(
 fn declare_offload_fn<'ll>(
     cx: &CodegenCx<'ll, '_>,
     name: &str,
-    ty: &'ll llvm::Type,
+    ty: llvm::Type<'ll>,
 ) -> &'ll llvm::Value {
     crate::declare::declare_simple_fn(
         cx,
@@ -524,7 +524,7 @@ fn declare_offload_fn<'ll>(
     )
 }
 
-pub(crate) fn scalar_width<'ll>(cx: &SimpleCx<'ll>, ty: &'ll Type) -> u64 {
+pub(crate) fn scalar_width<'ll>(cx: &SimpleCx<'ll>, ty: Type<'ll>) -> u64 {
     if let Some(float) = cx.float_type(ty) {
         float.size().bits()
     } else if let Some(width) = cx.int_width(ty) {
@@ -575,7 +575,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     offload_data: &OffloadKernelGlobals<'ll>,
     args: &[&'ll Value],
-    types: &[&Type],
+    types: &[Type<'ll>],
     metadata: &[OffloadMetadata],
     offload_globals: &OffloadGlobals<'ll>,
     offload_dims: &OffloadKernelDims<'ll>,
@@ -709,7 +709,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         geps: [&'ll Value; 3],
         o_type: &'ll Value,
         fn_to_call: &'ll Value,
-        fn_ty: &'ll Type,
+        fn_ty: Type<'ll>,
         num_args: u64,
         s_ident_t: &'ll Value,
     ) {

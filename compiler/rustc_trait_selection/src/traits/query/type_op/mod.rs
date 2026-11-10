@@ -97,13 +97,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         ),
         NoSolution,
     > {
-        if !infcx.disable_trait_solver_fast_paths()
-            && let Some(result) = QueryTypeOp::try_fast_path(infcx, &query_key)
-        {
-            debug_assert_eq!(result, infcx.deeply_resolve_ignoring_regions(result.clone()));
-            return Ok((result, None, PredicateObligations::new(), Certainty::Proven));
-        }
-
         let mut canonical_var_values = OriginalQueryValues::default();
         let old_param_env = query_key.param_env;
         let canonical_self = infcx.canonicalize_query(query_key, &mut canonical_var_values);
@@ -135,6 +128,14 @@ where
         root_def_id: LocalDefId,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        if !infcx.disable_trait_solver_fast_paths()
+            && let Some(value) = QueryTypeOp::try_fast_path(infcx, &self)
+        {
+            debug_assert_eq!(value, infcx.deeply_resolve_ignoring_regions(value.clone()));
+
+            return Ok(TypeOpOutput { output: value, constraints: None, error_info: None });
+        }
+
         let mut error_info = None;
         let mut region_constraints = QueryRegionConstraints::default();
 

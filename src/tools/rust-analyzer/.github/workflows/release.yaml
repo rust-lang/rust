@@ -42,13 +42,13 @@ jobs:
             # Use a container with glibc 2.28
             container: quay.io/pypa/manylinux_2_28_x86_64
             code-target: linux-x64
-            allocator: system
+            allocator: jemalloc
             pgo: clap-rs/clap@v4.5.36
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
             container: quay.io/pypa/manylinux_2_28_aarch64
             code-target: linux-arm64
-            allocator: system
+            allocator: jemalloc
             pgo: clap-rs/clap@v4.5.36
           - os: ubuntu-latest
             target: arm-unknown-linux-gnueabihf
@@ -56,7 +56,7 @@ jobs:
             # pypa/manylinux only has armv7l and glibc 2.31
             container: debian:10
             code-target: linux-armhf
-            allocator: system
+            allocator: jemalloc
           - os: macos-15
             target: x86_64-apple-darwin
             code-target: darwin-x64
@@ -88,7 +88,8 @@ jobs:
           sed -i -e 's/deb.debian.org/archive.debian.org/g' -e 's/security.debian.org/archive.debian.org/g' -e '/buster-updates/d' /etc/apt/sources.list
           apt-get update
           apt-get dist-upgrade -y
-          apt-get install -y curl gcc gcc-8-arm-linux-gnueabihf
+          apt-get install -y curl gcc gcc-8-arm-linux-gnueabihf make
+          echo "CC=arm-linux-gnueabihf-gcc-8" >> $GITHUB_ENV
 
       - name: Install Node.js toolchain
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -166,7 +167,7 @@ jobs:
 
     steps:
       - name: Install dependencies
-        run: apk add --no-cache git clang lld musl-dev nodejs npm
+        run: apk add --no-cache git clang lld make musl-dev nodejs npm
 
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -174,7 +175,7 @@ jobs:
           fetch-depth: ${{ env.FETCH_DEPTH }}
 
       - name: Dist
-        run: cargo xtask dist --client-patch-version ${{ github.run_number }}
+        run: cargo xtask dist --client-patch-version ${{ github.run_number }} --jemalloc
 
       - run: npm ci
         working-directory: editors/code

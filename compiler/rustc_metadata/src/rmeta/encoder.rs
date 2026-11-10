@@ -1155,7 +1155,9 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// Computing, optimizing and encoding the MIR is a relatively expensive operation.
 /// We want to avoid this work when not required. Therefore:
 /// - we only compute `mir_for_ctfe` on items with const-eval semantics;
-/// - we skip `optimized_mir` for check runs.
+/// - we skip `optimized_mir` for check runs. `reachable_set` is used to determine which of
+///   the generic functions could need their mir downstream. During check runs this should be
+///   `None`, as calculating it is expensive
 /// - we only encode `optimized_mir` that could be generated in other crates, that is, a code that
 ///   is either generic or has inline hint, and is reachable from the other crates (contained
 ///   in reachable set).
@@ -1172,9 +1174,11 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// ```
 fn should_encode_mir(
     tcx: TyCtxt<'_>,
-    reachable_set: &LocalDefIdSet,
+    reachable_set: Option<&LocalDefIdSet>,
     def_id: LocalDefId,
 ) -> (bool, bool) {
+    assert_eq!(reachable_set.is_some(), tcx.sess.opts.output_types.should_codegen());
+
     match tcx.def_kind(def_id) {
         // instance_mir uses mir_for_ctfe rather than optimized_mir for constructors
         DefKind::Ctor(_, _) => (true, false),
@@ -1186,8 +1190,7 @@ fn should_encode_mir(
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
-                || (tcx.sess.opts.output_types.should_codegen()
-                    && reachable_set.contains(&def_id)
+                || (reachable_set.is_some_and(|reachable_set| reachable_set.contains(&def_id))
                     && (tcx.generics_of(def_id).requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // Comptime fns do not have optimized MIR at all.
@@ -1931,7 +1934,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-        let reachable_set = tcx.reachable_set(());
+        // skip reachable_set calculation when not doing codegen. It is only used when checking
+        // whether something could be monomorphized downstream
+        let reachable_set =
+            tcx.sess.opts.output_types.should_codegen().then(|| tcx.reachable_set(()));
 
         let keys_and_jobs = tcx.mir_keys(()).iter().filter_map(|&def_id| {
             let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
@@ -2476,7 +2482,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         if tcx.is_trivial_const(def_id) {
             return;
         }
-        let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
+        let (encode_const, encode_opt) = should_encode_mir(tcx, Some(reachable_set), def_id);
 
         if encode_const {
             tcx.ensure_done().mir_for_ctfe(def_id);

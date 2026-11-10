@@ -332,10 +332,10 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
         let volatile = !options.contains(InlineAsmOptions::PURE);
         let alignstack = !options.contains(InlineAsmOptions::NOSTACK);
-        let output_type = match &output_types[..] {
+        let output_type = match output_types[..] {
             [] => self.type_void(),
             [ty] => ty,
-            tys => self.type_struct(tys),
+            ref tys => self.type_struct(tys),
         };
         let dialect = match asm_arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64
@@ -538,7 +538,7 @@ pub(crate) fn inline_asm_call<'ll>(
     asm: &str,
     cons: &str,
     inputs: &[&'ll Value],
-    output: &'ll llvm::Type,
+    output: llvm::Type<'ll>,
     labels: &[&'ll llvm::BasicBlock],
     volatile: bool,
     alignstack: bool,
@@ -1027,7 +1027,7 @@ fn modifier_to_llvm(
 
 /// Type to use for outputs that are discarded. It doesn't really matter what
 /// the type is, as long as it is valid for the constraint code.
-fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'ll Type {
+fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> Type<'ll> {
     use InlineAsmRegClass::*;
     match reg {
         AArch64(AArch64InlineAsmRegClass::reg) => cx.type_i32(),
@@ -1141,7 +1141,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
 
 /// Helper function to get the LLVM type for a Scalar. Pointers are returned as
 /// the equivalent integer type.
-fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> &'ll Type {
+fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> Type<'ll> {
     let dl = &cx.tcx.data_layout;
     match scalar.primitive() {
         Primitive::Int(Integer::I8, _) => cx.type_i8(),
@@ -1560,7 +1560,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
     instance: Instance<'_>,
-) -> &'ll Type {
+) -> Type<'ll> {
     use InlineAsmRegClass::*;
     match (reg, layout.backend_repr) {
         (AArch64(AArch64InlineAsmRegClass::vreg), BackendRepr::Scalar(s)) => {

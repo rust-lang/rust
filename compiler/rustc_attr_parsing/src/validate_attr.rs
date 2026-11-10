@@ -3,6 +3,7 @@
 use std::convert::identity;
 use std::slice;
 
+use rustc_ast::SyntheticAttr::CfgAttrTrace;
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
@@ -82,6 +83,8 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                 MetaItemKind::List(nmis)
             }
             AttrArgs::Eq { expr, .. } => {
+                check_attrs_on_rhs_expr(psess, expr)?;
+
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
                     let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
 
@@ -138,6 +141,30 @@ fn check_meta_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
+}
+
+pub(crate) fn check_attrs_on_rhs_expr<'sess>(
+    psess: &'sess ParseSess,
+    expr: &ast::Expr,
+) -> PResult<'sess, ()> {
+    // Cfg traces are not real attrs, they're just a marker that cfg expansion has occurred which is
+    // perfectly legal, so don't trigger on them. We only need to worry about `cfg_attr` traces and
+    // not about `cfg` ones because macro expansion would've already bailed out with an error if
+    // there was a `cfg` on an expr.
+    let attrs: Vec<_> = expr
+        .attrs
+        .iter()
+        .filter(|attr| !matches!(attr.kind, AttrKind::Synthetic(CfgAttrTrace(_))))
+        .map(|attr| attr.span)
+        .collect();
+
+    if !attrs.is_empty() {
+        return Err(psess
+            .dcx()
+            .create_err(errors::AttributeInInvalidContext { count: attrs.len(), attrs }));
+    }
+
+    Ok(())
 }
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.

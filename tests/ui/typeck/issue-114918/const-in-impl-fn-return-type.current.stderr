@@ -5,10 +5,10 @@ LL |     fn func<const N: u32>() -> [(); { () }] {
    |                                       ^^ expected `usize`, found `()`
 
 error: the constant `N` is not of type `usize`
-  --> $DIR/const-in-impl-fn-return-type.rs:12:32
+  --> $DIR/const-in-impl-fn-return-type.rs:12:37
    |
 LL |     fn func<const N: u32>() -> [(); N];
-   |             ------------       ^^^^^^^ expected `usize`, found `u32`
+   |             ------------            ^ array length expected `usize`, found `u32`
    |             |
    |             `N` defined here
    |

@@ -142,7 +142,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Array(element_ty, ct) = *adjusted_ty.kind() {
                     self.register_predicate(Obligation::new(
                         self.tcx,
-                        self.cause(base_expr.span, ObligationCauseCode::ArrayLen(adjusted_ty)),
+                        self.cause(
+                            base_expr.span,
+                            ObligationCauseCode::ArrayLen(adjusted_ty, base_expr.span),
+                        ),
                         self.param_env,
                         ty::ClauseKind::ConstArgHasType(ct, self.tcx.types.usize),
                     ));

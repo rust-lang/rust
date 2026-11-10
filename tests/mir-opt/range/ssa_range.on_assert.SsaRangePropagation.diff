@@ -26,7 +26,7 @@
           _5 = copy _1;
           nop;
           StorageLive(_7);
-          _7 = &(*_2);
+          _7 = copy _2;
           _6 = PtrMetadata(copy _2);
           StorageDead(_7);
           _4 = Lt(copy _1, copy _6);

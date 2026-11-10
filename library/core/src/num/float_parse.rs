@@ -146,8 +146,8 @@ impl ParseFloatError {
     #[inline]
     #[rustc_const_unstable(feature = "extended_float_error_kind", issue = "164793")]
     #[unstable(feature = "extended_float_error_kind", issue = "164793")]
-    pub const fn kind(&self) -> &FloatErrorKind {
-        &self.kind
+    pub const fn kind(&self) -> FloatErrorKind {
+        self.kind
     }
 }
 

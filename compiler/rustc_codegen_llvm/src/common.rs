@@ -131,8 +131,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
     type Funclet = Funclet<'ll>;
 
     type Value = &'ll Value;
-    type Type = &'ll Type;
-    type FunctionSignature = &'ll Type;
+    type Type = Type<'ll>;
+    type FunctionSignature = Type<'ll>;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
     type DILocation = &'ll llvm::debuginfo::DILocation;
@@ -140,7 +140,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
-    pub(crate) fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
+    pub(crate) fn const_array(&self, ty: Type<'ll>, elts: &[&'ll Value]) -> &'ll Value {
         let len = u64::try_from(elts.len()).expect("LLVMConstArray2 elements len overflow");
         unsafe { llvm::LLVMConstArray2(ty, elts.as_ptr(), len) }
     }
@@ -164,7 +164,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    pub(crate) fn const_null(&self, t: &'ll Type) -> &'ll Value {
+    pub(crate) fn const_null(&self, t: Type<'ll>) -> &'ll Value {
         unsafe { llvm::LLVMConstNull(t) }
     }
 
@@ -262,15 +262,15 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
-    fn const_null(&self, t: &'ll Type) -> &'ll Value {
+    fn const_null(&self, t: Type<'ll>) -> &'ll Value {
         unsafe { llvm::LLVMConstNull(t) }
     }
 
-    fn const_undef(&self, t: &'ll Type) -> &'ll Value {
+    fn const_undef(&self, t: Type<'ll>) -> &'ll Value {
         unsafe { llvm::LLVMGetUndef(t) }
     }
 
-    fn const_poison(&self, t: &'ll Type) -> &'ll Value {
+    fn const_poison(&self, t: Type<'ll>) -> &'ll Value {
         unsafe { llvm::LLVMGetPoison(t) }
     }
 
@@ -294,7 +294,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         self.const_int(self.type_i64(), i as i64)
     }
 
-    fn const_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
+    fn const_int(&self, t: Type<'ll>, i: i64) -> &'ll Value {
         debug_assert!(
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_int"
@@ -328,7 +328,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.isize_ty, i)
     }
 
-    fn const_uint(&self, t: &'ll Type, i: u64) -> &'ll Value {
+    fn const_uint(&self, t: Type<'ll>, i: u64) -> &'ll Value {
         debug_assert!(
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_uint"
@@ -336,7 +336,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstInt(t, i, FALSE) }
     }
 
-    fn const_uint_big(&self, t: &'ll Type, u: u128) -> &'ll Value {
+    fn const_uint_big(&self, t: Type<'ll>, u: u128) -> &'ll Value {
         debug_assert!(
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_uint_big"
@@ -347,7 +347,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn const_real(&self, t: &'ll Type, val: f64) -> &'ll Value {
+    fn const_real(&self, t: Type<'ll>, val: f64) -> &'ll Value {
         unsafe { llvm::LLVMConstReal(t, val) }
     }
 
@@ -403,7 +403,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         &self,
         cv: Scalar,
         layout: abi::Scalar,
-        llty: &'ll Type,
+        llty: Type<'ll>,
         schema: Option<&PointerAuthSchema>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
@@ -464,7 +464,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
 }
 
 /// Get the [LLVM type][Type] of a [`Value`].
-pub(crate) fn val_ty(v: &Value) -> &Type {
+pub(crate) fn val_ty<'ll>(v: &'ll Value) -> Type<'ll> {
     unsafe { llvm::LLVMTypeOf(v) }
 }
 
@@ -479,7 +479,7 @@ pub(crate) fn null_terminate_bytes_in_context<'ll>(
     unsafe { llvm::LLVMConstStringInContext2(llcx, bytes.as_ptr(), bytes.len(), FALSE) }
 }
 
-pub(crate) fn named_struct<'ll>(ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
+pub(crate) fn named_struct<'ll>(ty: Type<'ll>, elts: &[&'ll Value]) -> &'ll Value {
     let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
     unsafe { llvm::LLVMConstNamedStruct(ty, elts.as_ptr(), len) }
 }

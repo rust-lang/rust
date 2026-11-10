@@ -66,6 +66,7 @@ pub(crate) fn destructure_struct_binding(
 
 enum Target {
     IdentPat(ast::IdentPat),
+    WildcardPat(ast::WildcardPat),
     SelfParam { param: ast::SelfParam, insert_after: SyntaxToken },
 }
 
@@ -73,6 +74,7 @@ impl Target {
     fn ty<'db>(&self, sema: &Semantics<'db, RootDatabase>) -> Option<hir::Type<'db>> {
         match self {
             Target::IdentPat(pat) => sema.type_of_binding_in_pat(pat),
+            Target::WildcardPat(pat) => sema.type_of_pat(&pat.clone().into()).map(|it| it.original),
             Target::SelfParam { param, .. } => sema.type_of_self(param),
         }
     }
@@ -80,7 +82,7 @@ impl Target {
     fn is_ref(&self) -> bool {
         match self {
             Target::IdentPat(ident_pat) => ident_pat.ref_token().is_some(),
-            Target::SelfParam { .. } => false,
+            Target::SelfParam { .. } | Target::WildcardPat(_) => false,
         }
     }
 
@@ -90,16 +92,17 @@ impl Target {
             Target::SelfParam { param, .. } => {
                 param.mut_token().is_some() && param.amp_token().is_none()
             }
+            Target::WildcardPat(_) => false,
         }
     }
 }
 
-impl HasName for Target {}
-
 impl AstNode for Target {
     fn cast(node: SyntaxNode) -> Option<Self> {
         if ast::IdentPat::can_cast(node.kind()) {
-            ast::IdentPat::cast(node).map(Self::IdentPat)
+            ast::IdentPat::cast(node).filter(|it| it.name().is_some()).map(Self::IdentPat)
+        } else if ast::WildcardPat::can_cast(node.kind()) {
+            ast::WildcardPat::cast(node).map(Self::WildcardPat)
         } else {
             let param = ast::SelfParam::cast(node)?;
             let param_list = param.syntax().parent().and_then(ast::ParamList::cast)?;
@@ -110,13 +113,16 @@ impl AstNode for Target {
     }
 
     fn can_cast(kind: syntax::SyntaxKind) -> bool {
-        ast::IdentPat::can_cast(kind) || ast::SelfParam::can_cast(kind)
+        ast::IdentPat::can_cast(kind)
+            || ast::SelfParam::can_cast(kind)
+            || ast::WildcardPat::can_cast(kind)
     }
 
     fn syntax(&self) -> &SyntaxNode {
         match self {
             Target::IdentPat(ident_pat) => ident_pat.syntax(),
             Target::SelfParam { param, .. } => param.syntax(),
+            Target::WildcardPat(wildcard_pat) => wildcard_pat.syntax(),
         }
     }
 }
@@ -135,7 +141,6 @@ fn destructure_struct_binding_impl(
 
 struct StructEditData {
     target: Target,
-    name: ast::Name,
     kind: hir::StructKind,
     struct_def_path: hir::ModPath,
     visible_fields: Vec<hir::Field>,
@@ -155,13 +160,14 @@ impl StructEditData {
                 // If the binding is nested inside a record, we need to wrap the new
                 // destructured pattern in a non-shorthand record field
                 if self.need_record_field_name {
-                    let new_pat =
-                        make.record_pat_field(make.name_ref(&self.name.to_string()), new_pat);
+                    let new_pat = make
+                        .record_pat_field(make.name_ref(&pat.name().unwrap().to_string()), new_pat);
                     editor.replace(pat.syntax(), new_pat.syntax())
                 } else {
                     editor.replace(pat.syntax(), new_pat.syntax())
                 }
             }
+            Target::WildcardPat(pat) => editor.replace(pat.syntax(), new_pat.syntax()),
             Target::SelfParam { insert_after, .. } => {
                 let indent = IndentLevel::from_token(insert_after) + 1;
                 let newline = make.whitespace(&format!("\n{indent}"));
@@ -217,6 +223,7 @@ fn collect_data(target: Target, ctx: &AssistContext<'_, '_>) -> Option<StructEdi
 
     let def = match &target {
         Target::IdentPat(pat) => ctx.sema.to_def(pat),
+        Target::WildcardPat(_) => None,
         Target::SelfParam { param, .. } => ctx.sema.to_def(param),
     };
     let usages = def
@@ -234,7 +241,6 @@ fn collect_data(target: Target, ctx: &AssistContext<'_, '_>) -> Option<StructEdi
     let names_in_scope = get_names_in_scope(ctx, &target, &usages).unwrap_or_default();
 
     Some(StructEditData {
-        name: target.name()?,
         target,
         kind,
         struct_def_path,
@@ -991,6 +997,23 @@ mod tests {
                     bar_2
                 };
             }
+            "#,
+        )
+    }
+
+    #[test]
+    fn wildcard_pat() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn foo(_$0: Foo) {}
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn foo(Foo { bar, baz }: Foo) {}
             "#,
         )
     }

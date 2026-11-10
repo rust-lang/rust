@@ -1,8 +1,8 @@
 error: the constant `N` is not of type `usize`
-  --> $DIR/bad-subst-const-kind.rs:8:26
+  --> $DIR/bad-subst-const-kind.rs:8:31
    |
 LL | impl<const N: u64> Q for [u8; N] {
-   |      ------------        ^^^^^^^ expected `usize`, found `u64`
+   |      ------------             ^ array length expected `usize`, found `u64`
    |      |
    |      `N` defined here
    |

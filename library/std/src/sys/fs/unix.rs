@@ -590,7 +590,6 @@ impl FileAttr {
         all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
         target_os = "vita",
-        target_os = "rtems",
     ))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_mtime as i64, 0)
@@ -600,6 +599,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "hurd",
         target_os = "nuttx",
+        target_os = "rtems",
         all(target_os = "vxworks", not(vxworks_lt_25_09))
     ))]
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -630,7 +630,6 @@ impl FileAttr {
         all(target_os = "vxworks", vxworks_lt_25_09),
         target_os = "espidf",
         target_os = "vita",
-        target_os = "rtems"
     ))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_atime as i64, 0)
@@ -640,6 +639,7 @@ impl FileAttr {
         target_os = "horizon",
         target_os = "hurd",
         target_os = "nuttx",
+        target_os = "rtems",
         all(target_os = "vxworks", not(vxworks_lt_25_09))
     ))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
@@ -802,6 +802,7 @@ impl ReadDir {
                 target_os = "nto",
                 target_os = "qnx",
                 target_os = "vxworks",
+                target_os = "rtems",
                 target_os = "l4re",
             ) => Dir::open(&self.inner.root, &options),
             // Use `dirfd` where possible.

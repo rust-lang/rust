@@ -1,8 +1,8 @@
 error: the constant `B` is not of type `usize`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:14:30
+  --> $DIR/check_const_arg_type_in_free_alias.rs:14:35
    |
 LL | type ArrLen<const B: bool> = [(); B];
-   |             -------------    ^^^^^^^ expected `usize`, found `bool`
+   |             -------------         ^ array length expected `usize`, found `bool`
    |             |
    |             `B` defined here
    |

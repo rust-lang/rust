@@ -1,8 +1,8 @@
-//@ memory-limit: 2G
+//@ memory-limit: 1G
 // Compiler:
 
-// An 8 MiB constant must compile within 2 GiB of address space. A backend that builds one rvalue
-// per byte of a constant needs more than 6 GiB for it and runs out of memory.
+// An 8 MiB constant must compile within 1 GiB of address space. A backend that builds one rvalue
+// per 8 bytes of a constant needs about 1.4 GiB for it and runs out of memory.
 
 #![crate_type = "lib"]
 

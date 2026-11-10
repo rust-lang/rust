@@ -1,11 +1,11 @@
 use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{MacroUseArgs, find_attr};
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::{INVALID_MACRO_EXPORT_ARGUMENTS, UNUSED_ATTRIBUTES};
+use rustc_lint_defs::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 use rustc_structures::CollapseMacroDebuginfo;
 
 use super::prelude::*;
-use crate::diagnostics::{MacroExport, MacroOnlyAttribute};
+use crate::diagnostics::{MacroExportOnDeclMacro, MacroOnlyAttribute};
 
 pub(crate) struct MacroEscapeParser;
 impl NoArgsAttributeParser for MacroEscapeParser {
@@ -188,7 +188,7 @@ impl SingleAttributeParser for MacroExportParser {
         };
 
         if !macro_def.macro_rules {
-            cx.emit_lint(UNUSED_ATTRIBUTES, MacroExport::OnDeclMacro, attr_span);
+            cx.emit_err(MacroExportOnDeclMacro { attr_span });
         }
     }
 }

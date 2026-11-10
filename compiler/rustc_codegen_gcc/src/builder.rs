@@ -839,7 +839,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         #[cfg(feature = "master")]
-        match self.cx.float_type(a_type) {
+        match self.cx.float_type(a_type_unqualified) {
             Some(abi::Float::F16) => {
                 let fmodf = self.context.get_builtin_function("fmodf");
                 let f32_type = self.type_f32();

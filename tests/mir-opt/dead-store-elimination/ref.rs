@@ -23,8 +23,8 @@ pub fn dead_first(v: &Foo) -> &i32 {
     // CHECK: bb0:
     // CHECK: DBG: [[var_a]] = &((*_1).2: i32)
     // CHECK: [[tmp_4:_[0-9]+]] = &((*_1).0: i32)
-    // CHECK: [[tmp_3:_[0-9]+]] = &(*[[tmp_4]])
-    // CHECK: [[var_a]] = move [[tmp_3]]
+    // CHECK: [[tmp_3:_[0-9]+]] = move [[tmp_4]]
+    // CHECK: _0 = copy [[tmp_3]]
     let mut a = &v.c;
     a = &v.a;
     a
