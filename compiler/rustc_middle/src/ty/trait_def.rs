@@ -132,6 +132,8 @@ impl<'tcx> TraitDef {
     }
 }
 
+pub const EXACT_MATCH_THRESHOLD: usize = 16;
+
 impl<'tcx> TyCtxt<'tcx> {
     fn for_each_relevant_impl_inner<R: VisitorResult>(
         self,
@@ -140,8 +142,6 @@ impl<'tcx> TyCtxt<'tcx> {
         do_exact_match_filtering: bool,
         mut f: impl FnMut(DefId) -> R,
     ) -> R {
-        const EXACT_MATCH_THRESHOLD: usize = 16;
-
         let tcx = self;
         let trait_impls = tcx.trait_impls_of(trait_def_id);
         let mut consider_impls_for_simplified_type = |simp| {
