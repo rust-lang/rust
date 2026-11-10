@@ -880,10 +880,28 @@ mod unsafe_encapsulation {
 
     use super::{Align, Repr, ReprMut, ReprRef, ThinReprVec};
 
+    struct PhantomRepr<K, V, M>(PhantomData<Repr<K, V, M>>);
+
+    impl<K, V, M> PhantomRepr<K, V, M> {
+        const NEW: Self = {
+            // Disallow ZSTs. A `ThinVec` of a ZST stores `len + 1` in its `ptr` field, which causes
+            // the LSB of `ptr` to be set if `len` is even. This would break the `ThinMap::TAG`
+            // mechanism that `ThinMap` uses to distinguish whether its `ptr` contains a `ThinVec`
+            // or a `Box<Align<M>>`.
+            assert!(
+                mem::size_of::<Align<(K, V)>>() > 0,
+                "ThinMap does not support zero-sized types",
+            );
+            Self(PhantomData)
+        };
+    }
+
     pub struct ThinMap<K, V, M> {
         // INVARIANT: Holds a transmuted `ThinReprVec` or a `Box<Align<M>>` with its LSB set.
+        // `Align<(K, V)>` is not zero-sized (enforced by `PhantomRepr::NEW`, so `ThinReprVec`'s
+        // pointer always points to an aligned header with LSB == 0).
         ptr: NonNull<()>,
-        _repr: PhantomData<Repr<K, V, M>>,
+        _repr: PhantomRepr<K, V, M>,
     }
 
     // SAFETY: We essentially own `Repr<K, V, M>`.
@@ -976,14 +994,14 @@ mod unsafe_encapsulation {
                 },
             };
             // INVARIANT: We keep it properly.
-            Self { ptr, _repr: PhantomData }
+            Self { ptr, _repr: PhantomRepr::NEW }
         }
 
         #[inline]
         pub const fn new() -> Self {
             // INVARIANT: We keep it properly.
             let ptr = unsafe { mem::transmute::<ThinReprVec<K, V>, NonNull<()>>(ThinVec::new()) };
-            Self { ptr, _repr: PhantomData }
+            Self { ptr, _repr: PhantomRepr::NEW }
         }
     }
 
@@ -991,7 +1009,7 @@ mod unsafe_encapsulation {
         #[inline]
         fn drop(&mut self) {
             // INVARIANT: This is a copy of `self` only to drop it.
-            drop(ThinMap::<K, V, M> { ptr: self.ptr, _repr: PhantomData }.into_repr());
+            drop(ThinMap::<K, V, M> { ptr: self.ptr, _repr: PhantomRepr::NEW }.into_repr());
         }
     }
 }
