@@ -1062,6 +1062,7 @@ impl ErrorKind {
     // couldn't verify.
     #[inline]
     #[allow(dead_code, reason = "only used for packed representation")]
+    #[allow(non_upper_case_globals)]
     const fn from_prim(ek: u32) -> Option<Self> {
         macro_rules! from_prim {
             ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
@@ -1069,8 +1070,9 @@ impl ErrorKind {
                 const _: fn(e: $Enum) = |e: $Enum| match e {
                     $($Enum::$Variant => (),)*
                 };
+                $(const $Variant: u32 = $Enum::$Variant as u32;)*
                 match $prim {
-                    $(v if v == ($Enum::$Variant as _) => Some($Enum::$Variant),)*
+                    $($Variant => Some($Enum::$Variant),)*
                     _ => None,
                 }
             }}
