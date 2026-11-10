@@ -3836,32 +3836,24 @@ const fn dedup_simd_chunk_size<T>() -> Option<usize> {
             if size == 8 { None } else { Some(SIMD_WIDTH) }
         }
 
-        all(target_arch = "aarch64", target_feature = "neon") => {
+        all(target_arch = "aarch64", target_feature = "neon") => Some(SIMD_WIDTH),
+
+        all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse4.1") => {
             Some(SIMD_WIDTH)
         }
 
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "sse4.1"
-        ) => Some(SIMD_WIDTH),
-
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "sse2"
-        ) => {
+        all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2") => {
             // Packed 64-bit integer lane equality is only available on sse4.1
             if size == 8 { None } else { Some(SIMD_WIDTH) }
         }
 
-        all(
-            any(target_arch = "riscv32", target_arch = "riscv64"),
-            target_feature = "v"
-        ) => Some(SIMD_WIDTH),
+        all(any(target_arch = "riscv32", target_arch = "riscv64"), target_feature = "v") => {
+            Some(SIMD_WIDTH)
+        }
 
-        all(
-            any(target_arch = "loongarch32", target_arch = "loongarch64"),
-            target_feature = "lsx"
-        ) => Some(SIMD_WIDTH),
+        all(any(target_arch = "loongarch32", target_arch = "loongarch64"), target_feature = "lsx") => {
+            Some(SIMD_WIDTH)
+        }
 
         _ => None,
     };

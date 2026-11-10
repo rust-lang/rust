@@ -398,10 +398,7 @@ pub impl(self) trait CommandExt {
     /// see the [Remarks][1] section of the `CreateProcessW` documentation.
     ///
     /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw#remarks
-    #[stable(
-        feature = "windows_process_extensions_inherit_handles",
-        since = "1.101.0"
-    )]
+    #[stable(feature = "windows_process_extensions_inherit_handles", since = "1.101.0")]
     fn inherit_handles(&mut self, inherit_handles: bool) -> &mut process::Command;
 }
 
