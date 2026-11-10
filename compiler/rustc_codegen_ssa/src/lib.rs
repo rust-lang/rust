@@ -326,7 +326,6 @@ pub enum CodegenError {
 
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
-    crate::base::provide(&mut providers.queries);
     crate::target_features::provide(&mut providers.queries);
     crate::codegen_attrs::provide(&mut providers.queries);
 }
