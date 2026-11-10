@@ -22,7 +22,7 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{
     BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
 };
@@ -89,12 +89,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn thread_profiler() -> Box<dyn Any> {
         Box::new(TimeTraceProfiler::new())
     }
-    fn target_machine_factory(
-        &self,
-        sess: &Session,
-        optlvl: OptLevel,
-    ) -> TargetMachineFactoryFn<Self> {
-        back::write::target_machine_factory(sess, optlvl)
+    fn target_machine_factory(&self, sess: &Session) -> TargetMachineFactoryFn<Self> {
+        back::write::target_machine_factory(sess, sess.opts.optimize)
     }
     fn optimize_and_codegen_fat_lto(
         sess: &Session,
