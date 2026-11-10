@@ -70,6 +70,10 @@ use crate::{cmp, fmt};
 /// | `&&str`                  | is substring                              |
 /// | `&String`                | is substring                              |
 ///
+/// # Safety
+///
+/// Implementers must uphold the guarantees documented on `into_searcher`.
+///
 /// # Examples
 ///
 /// ```
@@ -96,12 +100,18 @@ use crate::{cmp, fmt};
 /// assert_eq!("abcdef_z".find(|ch| ch > 'd' && ch < 'y'), Some(4));
 /// assert_eq!("abcddd_z".find(|ch| ch > 'd' && ch < 'y'), None);
 /// ```
-pub trait Pattern: Sized {
+pub unsafe trait Pattern: Sized {
     /// Associated searcher for this pattern
     type Searcher<'a>: Searcher<'a>;
 
     /// Constructs the associated searcher from
     /// `self` and the `haystack` to search in.
+    ///
+    /// # Guarantees
+    ///
+    /// - The returned searcher must search the provided `haystack`.
+    ///   In particular, [`Searcher::haystack()`] must return the
+    ///   same string slice passed to this method.
     fn into_searcher(self, haystack: &str) -> Self::Searcher<'_>;
 
     /// Checks whether the pattern matches anywhere in the haystack
@@ -206,12 +216,15 @@ pub enum SearchStep {
 /// It will be implemented by associated `Searcher`
 /// types of the [`Pattern`] trait.
 ///
-/// The trait is marked unsafe because the indices returned by the
-/// [`next()`][Searcher::next] methods are required to lie on valid utf8
-/// boundaries in the haystack. This enables consumers of this trait to
-/// slice the haystack without additional runtime checks.
+/// # Safety
+///
+/// Implementers must ensure that all trait functions abide by the
+/// guarantees documented in the `# Guarantees` sections. The provided
+/// methods automatically satisfy their guarantees.
 pub unsafe trait Searcher<'a> {
     /// Getter for the underlying string to be searched in
+    ///
+    /// # Guarantees
     ///
     /// Will always return the same [`&str`][str].
     fn haystack(&self) -> &'a str;
@@ -225,10 +238,13 @@ pub unsafe trait Searcher<'a> {
     /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack has
     ///   been visited.
     ///
-    /// The stream of [`Match`][SearchStep::Match] and
-    /// [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
-    /// will contain index ranges that are adjacent, non-overlapping,
-    /// covering the whole haystack, and laying on utf8 boundaries.
+    /// # Guarantees
+    ///
+    /// - The stream of [`Match`][SearchStep::Match] and
+    ///  [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
+    ///  will contain index ranges that are adjacent, non-overlapping,
+    ///  covering the whole haystack, and lying on utf8 boundaries. This enables
+    ///  consumers of this trait to slice the haystack without additional runtime checks.
     ///
     /// A [`Match`][SearchStep::Match] result needs to contain the whole matched
     /// pattern, however [`Reject`][SearchStep::Reject] results may be split up
@@ -241,8 +257,15 @@ pub unsafe trait Searcher<'a> {
 
     /// Finds the next [`Match`][SearchStep::Match] result. See [`next()`][Searcher::next].
     ///
+    /// # Guarantees
+    ///
+    /// - Every returned `Some((a, b))` must satisfy `a <= b <= self.haystack().len()`,
+    ///   and both endpoints must lie on UTF-8 character boundaries.
+    /// - Matched ranges must be returned in forward order, without revisiting
+    ///   previously consumed portions of the haystack.
+    ///
     /// Unlike [`next()`][Searcher::next], there is no guarantee that the returned ranges
-    /// of this and [`next_reject`][Searcher::next_reject] will overlap. This will return
+    /// of this and [`next_reject`][Searcher::next_reject] will not overlap. This will return
     /// `(start_match, end_match)`, where start_match is the index of where
     /// the match begins, and end_match is the index after the end of the match.
     #[inline]
@@ -258,6 +281,13 @@ pub unsafe trait Searcher<'a> {
 
     /// Finds the next [`Reject`][SearchStep::Reject] result. See [`next()`][Searcher::next]
     /// and [`next_match()`][Searcher::next_match].
+    ///
+    /// # Guarantees
+    ///
+    /// - Every returned `Some((a, b))` must satisfy `a <= b <= self.haystack().len()`,
+    ///   and both endpoints must lie on UTF-8 character boundaries.
+    /// - Matched ranges must be returned in forward order, without revisiting
+    ///   previously consumed portions of the haystack.
     ///
     /// Unlike [`next()`][Searcher::next], there is no guarantee that the returned ranges
     /// of this and [`next_match`][Searcher::next_match] will overlap.
@@ -285,8 +315,11 @@ pub unsafe trait Searcher<'a> {
 /// The index ranges returned by this trait are not required
 /// to exactly match those of the forward search in reverse.
 ///
-/// For the reason why this trait is marked unsafe, see the
-/// parent trait [`Searcher`].
+/// # Safety
+///
+/// Implementers must ensure that all trait functions abide by the
+/// guarantees documented in the `# Guarantees` sections. The provided
+/// methods automatically satisfy their guarantees.
 pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// Performs the next search step starting from the back.
     ///
@@ -297,10 +330,12 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// - Returns [`Done`][SearchStep::Done] if every byte of the haystack
     ///   has been visited
     ///
-    /// The stream of [`Match`][SearchStep::Match] and
-    /// [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
-    /// will contain index ranges that are adjacent, non-overlapping,
-    /// covering the whole haystack, and laying on utf8 boundaries.
+    /// # Guarantees
+    ///
+    /// - The stream of [`Match`][SearchStep::Match] and
+    ///   [`Reject`][SearchStep::Reject] values up to a [`Done`][SearchStep::Done]
+    ///   will contain index ranges that are adjacent, non-overlapping,
+    ///   covering the whole haystack, and lying on utf8 boundaries.
     ///
     /// A [`Match`][SearchStep::Match] result needs to contain the whole matched
     /// pattern, however [`Reject`][SearchStep::Reject] results may be split up
@@ -311,8 +346,14 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// `[Reject(7, 8), Match(4, 7), Reject(1, 4), Reject(0, 1)]`.
     fn next_back(&mut self) -> SearchStep;
 
-    /// Finds the next [`Match`][SearchStep::Match] result.
-    /// See [`next_back()`][ReverseSearcher::next_back].
+    /// Finds the next [`Match`][SearchStep::Match] result. See [`next_back()`][ReverseSearcher::next_back].
+    ///
+    /// # Guarantees
+    ///
+    /// - Every returned `Some((a, b))` must satisfy `a <= b <= self.haystack().len()`,
+    ///   and both endpoints must lie on UTF-8 character boundaries.
+    /// - Matched ranges must be returned in forward order, without revisiting
+    ///   previously consumed portions of the haystack.
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
         loop {
@@ -324,8 +365,14 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
         }
     }
 
-    /// Finds the next [`Reject`][SearchStep::Reject] result.
-    /// See [`next_back()`][ReverseSearcher::next_back].
+    /// Finds the next [`Reject`][SearchStep::Reject] result. See [`next_back()`][ReverseSearcher::next_back].
+    ///
+    /// # Guarantees
+    ///
+    /// - Every returned `Some((a, b))` must satisfy `a <= b <= self.haystack().len()`,
+    ///   and both endpoints must lie on UTF-8 character boundaries.
+    /// - Matched ranges must be returned in forward order, without revisiting
+    ///   previously consumed portions of the haystack.
     #[inline]
     fn next_reject_back(&mut self) -> Option<(usize, usize)> {
         loop {
@@ -559,7 +606,7 @@ impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 /// ```
 /// assert_eq!("Hello world".find('o'), Some(4));
 /// ```
-impl Pattern for char {
+unsafe impl Pattern for char {
     type Searcher<'a> = CharSearcher<'a>;
 
     #[inline]
@@ -672,7 +719,7 @@ struct MultiCharEqSearcher<'a, C: MultiCharEq> {
     char_indices: super::CharIndices<'a>,
 }
 
-impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
+unsafe impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
     type Searcher<'a> = MultiCharEqSearcher<'a, C>;
 
     #[inline]
@@ -827,7 +874,7 @@ pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
 /// assert_eq!("Hello world".find(['o', 'l']), Some(2));
 /// assert_eq!("Hello world".find(['h', 'w']), Some(6));
 /// ```
-impl<const N: usize> Pattern for [char; N] {
+unsafe impl<const N: usize> Pattern for [char; N] {
     pattern_methods!('a, CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
 }
 
@@ -849,7 +896,7 @@ impl<'a, const N: usize> DoubleEndedSearcher<'a> for CharArraySearcher<'a, N> {}
 /// assert_eq!("Hello world".find(&['o', 'l']), Some(2));
 /// assert_eq!("Hello world".find(&['h', 'w']), Some(6));
 /// ```
-impl<'b, const N: usize> Pattern for &'b [char; N] {
+unsafe impl<'b, const N: usize> Pattern for &'b [char; N] {
     pattern_methods!('a, CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
 }
 
@@ -891,7 +938,7 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 /// assert_eq!("Hello world".find(&['o', 'l'][..]), Some(2));
 /// assert_eq!("Hello world".find(&['h', 'w'][..]), Some(6));
 /// ```
-impl<'b> Pattern for &'b [char] {
+unsafe impl<'b> Pattern for &'b [char] {
     pattern_methods!('a, CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
 }
 
@@ -940,7 +987,7 @@ impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: Fn
 /// assert_eq!("Hello world".find(char::is_uppercase), Some(0));
 /// assert_eq!("Hello world".find(|c| "aeiou".contains(c)), Some(1));
 /// ```
-impl<F> Pattern for F
+unsafe impl<F> Pattern for F
 where
     F: FnMut(char) -> bool,
 {
@@ -952,7 +999,7 @@ where
 /////////////////////////////////////////////////////////////////////////////
 
 /// Delegates to the `&str` impl.
-impl<'b, 'c> Pattern for &'c &'b str {
+unsafe impl<'b, 'c> Pattern for &'c &'b str {
     pattern_methods!('a, StrSearcher<'a, 'b>, |&s| s, |s| s);
 }
 
@@ -970,7 +1017,7 @@ impl<'b, 'c> Pattern for &'c &'b str {
 /// ```
 /// assert_eq!("Hello world".find("world"), Some(6));
 /// ```
-impl<'b> Pattern for &'b str {
+unsafe impl<'b> Pattern for &'b str {
     type Searcher<'a> = StrSearcher<'a, 'b>;
 
     #[inline]
