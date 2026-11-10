@@ -99,15 +99,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &mut [OwnedArg],
         ret: (FfiType, Size),
     ) -> InterpResult<'tcx, (Box<[u8]>, Option<MemEvents>)> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         #[cfg(target_os = "linux")]
-        let alloc = this.machine.allocator.as_ref().unwrap().clone();
+        let alloc = ecx.machine.allocator.as_ref().unwrap().clone();
         #[cfg(not(target_os = "linux"))]
         // Placeholder value.
         let alloc = ();
 
         // Expose InterpCx for use by closure callbacks.
-        this.machine.native_lib_ecx_interchange.set(ptr::from_mut(this).expose_provenance());
+        ecx.machine.native_lib_ecx_interchange.set(ptr::from_mut(ecx).expose_provenance());
 
         let res = trace::Supervisor::do_ffi(&alloc, || {
             use libffi::middle::{Arg, Cif, Ret};
@@ -120,7 +120,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ret.into()
         });
 
-        this.machine.native_lib_ecx_interchange.set(0);
+        ecx.machine.native_lib_ecx_interchange.set(0);
 
         res
     }
@@ -129,9 +129,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// if it exists. The function must be in one of the shared object files specified:
     /// we do *not* return pointers to functions in dependencies of libraries.
     fn get_func_ptr_explicitly_from_lib(&mut self, link_name: Symbol) -> Option<CodePtr> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Try getting the function from one of the shared libraries.
-        for (lib, lib_path) in &this.machine.native_lib {
+        for (lib, lib_path) in &ecx.machine.native_lib {
             let Ok(func): Result<libloading::Symbol<'_, unsafe extern "C" fn()>, _> =
                 (unsafe { lib.get(link_name.as_str().as_bytes()) })
             else {
@@ -179,7 +179,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// ordered sequentially by when the accesses happened, and the sizes are
     /// assumed to be exact.
     fn tracing_apply_accesses(&mut self, events: MemEvents) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         for evt in events.acc_events {
             let evt_rg = evt.get_range();
@@ -188,11 +188,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut rg = evt_rg.addr..evt_rg.end();
             while let Some(curr) = rg.next() {
                 let Some(alloc_id) =
-                    this.alloc_id_from_addr(curr.to_u64(), rg.len().try_into().unwrap())
+                    ecx.alloc_id_from_addr(curr.to_u64(), rg.len().try_into().unwrap())
                 else {
                     throw_ub_format!("Foreign code did an out-of-bounds access!")
                 };
-                let alloc = this.get_alloc_raw(alloc_id)?;
+                let alloc = ecx.get_alloc_raw(alloc_id)?;
                 // The logical and physical address of the allocation coincide, so we can use
                 // this instead of `addr_from_alloc_id`.
                 let alloc_addr = alloc.get_bytes_unchecked_raw().addr();
@@ -211,17 +211,16 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 match evt {
                     AccessEvent::Read(_) => {
                         // If a provenance was read by the foreign code, expose it.
-                        for (_prov_range, prov) in
-                            alloc.provenance().get_range(overlap.into(), this)
+                        for (_prov_range, prov) in alloc.provenance().get_range(overlap.into(), ecx)
                         {
-                            this.expose_provenance(prov)?;
+                            ecx.expose_provenance(prov)?;
                         }
                     }
                     AccessEvent::Write(_, certain) => {
                         // Sometimes we aren't certain if a write happened, in which case we
                         // only initialise that data if the allocation is mutable.
                         if certain || alloc.mutability.is_mut() {
-                            let (alloc, cx) = this.get_alloc_raw_mut(alloc_id)?;
+                            let (alloc, cx) = ecx.get_alloc_raw_mut(alloc_id)?;
                             alloc.process_native_write(
                                 &cx.tcx,
                                 Some(AllocRange {
@@ -339,23 +338,23 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn ffi_ret_to_mem(&mut self, v: Box<[u8]>, dest: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let len = v.len();
-        this.write_bytes_ptr(dest.ptr(), v)?;
+        ecx.write_bytes_ptr(dest.ptr(), v)?;
         if len == 0 {
             return interp_ok(());
         }
         // We have no idea which provenance these bytes have, so we reset it to wildcard.
-        let tcx = this.tcx;
-        let (alloc_id, offset, _) = this.ptr_try_get_alloc_id(dest.ptr(), 0).unwrap();
-        let alloc = this.get_alloc_raw_mut(alloc_id)?.0;
+        let tcx = ecx.tcx;
+        let (alloc_id, offset, _) = ecx.ptr_try_get_alloc_id(dest.ptr(), 0).unwrap();
+        let alloc = ecx.get_alloc_raw_mut(alloc_id)?.0;
         alloc.process_native_write(&tcx, Some(alloc_range(offset, dest.layout.size)));
         // Run the validation that would usually be part of `return`, also to reset
         // any provenance and padding that would not survive the return.
-        if MiriMachine::enforce_validity(this, dest.layout) {
-            this.validate_place(
+        if MiriMachine::enforce_validity(ecx, dest.layout) {
+            ecx.validate_place(
                 &dest.clone().into(),
-                MiriMachine::enforce_validity_recursively(this, dest.layout),
+                MiriMachine::enforce_validity_recursively(ecx, dest.layout),
                 /*reset_provenance_and_padding*/ true,
             )?;
         }
@@ -369,7 +368,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         adt_def: ty::AdtDef<'tcx>,
         args: ty::GenericArgs<'tcx>,
     ) -> Result<FfiType, Ty<'tcx>> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         // TODO: unions, etc.
         if !adt_def.is_struct() {
             return Err(orig_ty);
@@ -381,10 +380,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mut fields = vec![];
         for field in &adt_def.non_enum_variant().fields {
-            let layout = this
-                .layout_of(field.ty(*this.tcx, args).skip_norm_wip())
-                .map_err(|_err| orig_ty)?;
-            fields.push(this.ty_to_ffitype(layout)?);
+            let layout =
+                ecx.layout_of(field.ty(*ecx.tcx, args).skip_norm_wip()).map_err(|_err| orig_ty)?;
+            fields.push(ecx.ty_to_ffitype(layout)?);
         }
 
         Ok(FfiType::structure(fields))

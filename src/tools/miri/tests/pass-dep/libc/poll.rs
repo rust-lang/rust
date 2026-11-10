@@ -29,6 +29,7 @@ fn main() {
     test_poll_negative_fd_interest();
     test_poll_invalid_non_negative_fd_interest();
     test_poll_zero_timeout();
+    test_poll_nfds_too_big();
     test_readiness_event_after_poll_blocked();
     test_poll_race();
 }
@@ -169,6 +170,15 @@ fn test_poll_zero_timeout() {
     // The `poll` should not block; since CI can be slow
     // we just assert that it didn't block for more than 100ms.
     assert!(before.elapsed() < Duration::from_millis(100))
+}
+
+/// Test that `poll` fails with EINVAL when `nfds` is larger than the open file limit.
+/// Miri used to ICE here because it read `nfds` as a signed integer.
+fn test_poll_nfds_too_big() {
+    let err = unsafe {
+        errno_result(libc::poll(std::ptr::null_mut(), libc::nfds_t::MAX, 0)).unwrap_err()
+    };
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 }
 
 /// Before <https://github.com/rust-lang/miri/pull/5172> Miri would ICE when
