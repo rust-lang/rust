@@ -1,0 +1,33 @@
+error: fields `first` and `second` are never read
+  --> $DIR/grouped-diagnostic.rs:6:5
+   |
+LL | struct Struct {
+   |        ------ fields in this struct
+LL |     first: bool,
+   |     ^^^^^
+LL |     second: bool,
+   |     ^^^^^^
+   |
+note: `first` is used in `read_first`, but this is intentionally ignored during dead code analysis
+  --> $DIR/grouped-diagnostic.rs:11:1
+   |
+LL | fn read_first(data: &Struct) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `second` is used in `read_second`, but this is intentionally ignored during dead code analysis
+  --> $DIR/grouped-diagnostic.rs:16:1
+   |
+LL | fn read_second(data: &Struct) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `first` and `second` are used in `read_first_and_second`, but this is intentionally ignored during dead code analysis
+  --> $DIR/grouped-diagnostic.rs:21:1
+   |
+LL | fn read_first_and_second(data: &Struct) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/grouped-diagnostic.rs:2:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
