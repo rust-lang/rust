@@ -1,4 +1,4 @@
-error: relaxed bounds are not permitted in trait alias bounds
+error: relaxed `Sized` bounds are not permitted in trait alias bounds
   --> $DIR/relaxed-bounds.rs:6:16
    |
 LL | trait Alias0 = ?Sized;

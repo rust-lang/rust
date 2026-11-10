@@ -446,22 +446,53 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     }
 }
 
+bitflags::bitflags! {
+    #[derive(Copy, Clone, Debug)]
+    struct AllowedRelaxedBounds: u32 {
+        const SIZED = 1 << 0;
+        const FORGET = 1 << 1;
+        // any other relaxed bound, see `#[feature(more_maybe_bounds)]`
+        const OTHER = 1 << 2;
+    }
+}
+
 /// How relaxed bounds `?Trait` should be treated.
 ///
 /// Relaxed bounds should only be allowed in places where we later
 /// (namely during HIR ty lowering) perform *sized elaboration*.
 #[derive(Debug)]
-enum RelaxedBoundPolicy<'a> {
+struct RelaxedBoundPolicy<'a> {
     /// The `DefId` refers to the trait that is being relaxed.
-    Allowed(&'a mut FxIndexMap<DefId, Span>),
-    Forbidden(RelaxedBoundForbiddenReason),
+    dedup: &'a mut FxIndexMap<DefId, Span>,
+    reason: Option<RelaxedBoundForbiddenReason>,
+    allowed_bounds: AllowedRelaxedBounds,
 }
-impl RelaxedBoundPolicy<'_> {
+
+impl<'a> RelaxedBoundPolicy<'a> {
+    fn allow_all(dedup: &'a mut FxIndexMap<DefId, Span>) -> Self {
+        Self { dedup, reason: None, allowed_bounds: AllowedRelaxedBounds::all() }
+    }
+
+    fn forbidden(
+        dedup: &'a mut FxIndexMap<DefId, Span>,
+        reason: RelaxedBoundForbiddenReason,
+    ) -> Self {
+        Self { dedup, reason: Some(reason), allowed_bounds: AllowedRelaxedBounds::empty() }
+    }
+
+    // FIXME(forget_trait) this will become used when Forget is added.
+    #[allow(unused)]
+    fn allow_some(
+        dedup: &'a mut FxIndexMap<DefId, Span>,
+        reason: RelaxedBoundForbiddenReason,
+        allowed_bounds: AllowedRelaxedBounds,
+    ) -> Self {
+        Self { dedup, reason: Some(reason), allowed_bounds }
+    }
+
     fn reborrow(&mut self) -> RelaxedBoundPolicy<'_> {
-        match self {
-            RelaxedBoundPolicy::Allowed(m) => RelaxedBoundPolicy::Allowed(m),
-            RelaxedBoundPolicy::Forbidden(reason) => RelaxedBoundPolicy::Forbidden(*reason),
-        }
+        let &mut Self { ref mut dedup, reason, allowed_bounds } = self;
+        RelaxedBoundPolicy { dedup, reason, allowed_bounds }
     }
 }
 
@@ -1339,7 +1370,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 } else {
                     let bounds = self.lower_param_bounds(
                         bounds,
-                        RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::AssocTyBounds),
+                        RelaxedBoundPolicy::forbidden(
+                            &mut Default::default(),
+                            RelaxedBoundForbiddenReason::AssocTyBounds,
+                        ),
                         itctx,
                     );
                     hir::AssocItemConstraintKind::Bound { bounds }
@@ -1496,7 +1530,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         span: t.span,
                         parens: ast::Parens::No,
                     },
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::TraitObjectTy),
+                    RelaxedBoundPolicy::forbidden(
+                        &mut Default::default(),
+                        RelaxedBoundForbiddenReason::TraitObjectTy,
+                    ),
                     itctx,
                 );
                 let bounds = this.arena.alloc_from_iter([bound]);
@@ -1623,7 +1660,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             GenericBound::Trait(ty) => {
                                 let trait_ref = this.lower_poly_trait_ref(
                                     ty,
-                                    RelaxedBoundPolicy::Forbidden(
+                                    RelaxedBoundPolicy::forbidden(
+                                        &mut Default::default(),
                                         RelaxedBoundForbiddenReason::TraitObjectTy,
                                     ),
                                     itctx,
@@ -1683,7 +1721,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::InBinding => {
                         hir::TyKind::TraitAscription(self.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                            RelaxedBoundPolicy::allow_all(&mut Default::default()),
                             itctx,
                         ))
                     }
@@ -1845,7 +1883,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_opaque_inner(opaque_ty_node_id, origin, opaque_ty_span, |this| {
             this.lower_param_bounds(
                 bounds,
-                RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                RelaxedBoundPolicy::allow_all(&mut Default::default()),
                 itctx,
             )
         })
@@ -2485,84 +2523,81 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         rbp: RelaxedBoundPolicy<'_>,
     ) {
-        // Even though feature `more_maybe_bounds` enables the user to relax all default bounds
-        // other than `Sized` in a lot more positions (thereby bypassing the given policy), we don't
-        // want to advertise it to the user (via a feature gate error) since it's super internal.
-        //
-        // FIXME(more_maybe_bounds): Moreover, if we actually were to add proper default traits
-        // (like a hypothetical `Move` or `Leak`) we would want to validate the location according
-        // to default trait elaboration in HIR ty lowering (which depends on the specific trait in
-        // question: E.g., `?Sized` & `?Move` most likely won't be allowed in all the same places).
+        let tcx = self.tcx;
 
-        match rbp {
-            RelaxedBoundPolicy::Allowed(dedup_map) => {
-                // `trait_def_id` only returns `None` for errors during resolution.
-                let Some(trait_def_id) = trait_ref.trait_def_id() else { return };
-                let tcx = self.tcx;
-                let err = |s| {
-                    let name = tcx.item_name(trait_def_id);
-                    tcx.dcx()
-                        .struct_span_err(
-                            vec![span, s],
-                            format!("duplicate relaxed `{name}` bounds"),
+        let deny = |trait_name: Option<&str>| {
+            let (context, subject) = match rbp.reason {
+                Some(RelaxedBoundForbiddenReason::TraitObjectTy) => {
+                    ("trait object types", "trait object types")
+                }
+                Some(RelaxedBoundForbiddenReason::SuperTrait) => ("supertrait bounds", "traits"),
+                Some(RelaxedBoundForbiddenReason::TraitAlias) => {
+                    ("trait alias bounds", "trait aliases")
+                }
+                Some(RelaxedBoundForbiddenReason::AssocTyBounds)
+                | Some(RelaxedBoundForbiddenReason::WhereBound)
+                | None => {
+                    self.dcx()
+                        .struct_span_err(span, "this relaxed bound is not permitted here")
+                        .with_note(
+                            "in this context, relaxed bounds are only allowed on \
+                             type parameters defined on the closest item",
                         )
-                        .with_code(E0203)
                         .emit();
-                };
-                dedup_map.entry(trait_def_id).and_modify(|&mut s| err(s)).or_insert(span);
-                return;
+                    return;
+                }
+            };
+
+            let mut diag = self.dcx().struct_span_err(
+                span,
+                format!(
+                    "relaxed {}bounds are not permitted in {context}",
+                    trait_name.map(|i| format!("`{i}` ")).unwrap_or_default()
+                ),
+            );
+            if let Some(name) = trait_name {
+                diag.note(format!(
+                    "{subject} are not implicitly bounded by `{name}`, \
+                     so there is nothing to relax"
+                ));
             }
-            RelaxedBoundPolicy::Forbidden(reason) => {
-                let gate = |context, subject| {
-                    let extended = self.tcx.features().more_maybe_bounds();
-                    let is_sized = trait_ref
-                        .trait_def_id()
-                        .is_some_and(|def_id| self.tcx.is_lang_item(def_id, LangItem::Sized));
+            diag.emit();
+        };
 
-                    if extended && !is_sized {
-                        return;
-                    }
+        // `trait_def_id` only returns `None` for errors during resolution,
+        // and there's no need to re-report those.
+        let Some(trait_def_id) = trait_ref.trait_def_id() else { return };
 
-                    let prefix = if extended { "`Sized` " } else { "" };
-                    let mut diag = self.dcx().struct_span_err(
-                        span,
-                        format!("relaxed {prefix}bounds are not permitted in {context}"),
-                    );
-                    if is_sized {
-                        diag.note(format!(
-                            "{subject} are not implicitly bounded by `Sized`, \
-                             so there is nothing to relax"
-                        ));
-                    }
-                    diag.emit();
-                };
-
-                match reason {
-                    RelaxedBoundForbiddenReason::TraitObjectTy => {
-                        gate("trait object types", "trait object types");
-                        return;
-                    }
-                    RelaxedBoundForbiddenReason::SuperTrait => {
-                        gate("supertrait bounds", "traits");
-                        return;
-                    }
-                    RelaxedBoundForbiddenReason::TraitAlias => {
-                        gate("trait alias bounds", "trait aliases");
-                        return;
-                    }
-                    RelaxedBoundForbiddenReason::AssocTyBounds
-                    | RelaxedBoundForbiddenReason::WhereBound => {}
-                };
+        if self.tcx.is_lang_item(trait_def_id, LangItem::Sized) {
+            if !rbp.allowed_bounds.contains(AllowedRelaxedBounds::SIZED) {
+                return deny(Some("Sized"));
+            }
+        } else if self.tcx.features().more_maybe_bounds()
+            && !rbp.allowed_bounds.contains(AllowedRelaxedBounds::OTHER)
+        {
+            // Even though feature `more_maybe_bounds` enables the user to relax all default bounds
+            // other than `Sized` in a lot more positions (thereby bypassing the given policy), we don't
+            // want to advertise it to the user (via a feature gate error) since it's super internal.
+            match rbp.reason {
+                Some(RelaxedBoundForbiddenReason::TraitObjectTy)
+                | Some(RelaxedBoundForbiddenReason::SuperTrait)
+                | Some(RelaxedBoundForbiddenReason::TraitAlias)
+                | None => {
+                    return;
+                }
+                Some(RelaxedBoundForbiddenReason::AssocTyBounds)
+                | Some(RelaxedBoundForbiddenReason::WhereBound) => return deny(None),
             }
         }
 
-        self.dcx()
-            .struct_span_err(span, "this relaxed bound is not permitted here")
-            .with_note(
-                "in this context, relaxed bounds are only allowed on \
-                 type parameters defined on the closest item",
-            )
-            .emit();
+        let err = |s| {
+            let name = tcx.item_name(trait_def_id);
+            tcx.dcx()
+                .struct_span_err(vec![span, s], format!("duplicate relaxed `{name}` bounds"))
+                .with_code(E0203)
+                .emit();
+        };
+        rbp.dedup.entry(trait_def_id).and_modify(|&mut s| err(s)).or_insert(span);
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -2615,7 +2650,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             bounds,
             /* colon_span */ None,
             span,
-            RelaxedBoundPolicy::Allowed(&mut Default::default()),
+            RelaxedBoundPolicy::allow_all(&mut Default::default()),
             ImplTraitContext::Universal,
             hir::PredicateOrigin::ImplTrait,
         );

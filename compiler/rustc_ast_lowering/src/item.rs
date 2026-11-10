@@ -458,7 +458,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         let bounds = this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait),
+                            RelaxedBoundPolicy::forbidden(
+                                &mut Default::default(),
+                                RelaxedBoundForbiddenReason::SuperTrait,
+                            ),
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         );
                         let items = this.arena.alloc_from_iter(
@@ -488,7 +491,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::TraitAlias),
+                            RelaxedBoundPolicy::forbidden(
+                                &mut Default::default(),
+                                RelaxedBoundForbiddenReason::TraitAlias,
+                            ),
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         )
                     },
@@ -932,7 +938,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::TraitItemKind::Type(
                             this.lower_param_bounds(
                                 bounds,
-                                RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                                RelaxedBoundPolicy::allow_all(&mut Default::default()),
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                             ),
                             ty,
@@ -1793,7 +1799,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &param.bounds,
                 param.colon_span,
                 generics.span,
-                RelaxedBoundPolicy::Allowed(
+                RelaxedBoundPolicy::allow_all(
                     dedup_map.entry(self.local_def_id(param.id)).or_default(),
                 ),
                 itctx,
@@ -1957,15 +1963,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 bounded_ty,
                 bounds,
             }) => {
+                let mut forbidden_dedup_map;
                 let rbp = if bound_generic_params.is_empty()
                     && let Some(res) =
                         self.get_partial_res(bounded_ty.id).and_then(|r| r.full_res())
                     && let Res::Def(DefKind::TyParam, def_id) = res
                     && params.iter().any(|p| def_id == self.local_def_id(p.id).to_def_id())
                 {
-                    RelaxedBoundPolicy::Allowed(dedup_map.entry(def_id.expect_local()).or_default())
+                    RelaxedBoundPolicy::allow_all(
+                        dedup_map.entry(def_id.expect_local()).or_default(),
+                    )
                 } else {
-                    RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::WhereBound)
+                    forbidden_dedup_map = Default::default();
+                    RelaxedBoundPolicy::forbidden(
+                        &mut forbidden_dedup_map,
+                        RelaxedBoundForbiddenReason::WhereBound,
+                    )
                 };
                 hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                     bound_generic_params: self.lower_generic_params(
@@ -1993,7 +2006,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                     bounds: self.lower_param_bounds(
                         bounds,
-                        RelaxedBoundPolicy::Allowed(&mut Default::default()),
+                        RelaxedBoundPolicy::allow_all(&mut Default::default()),
                         ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                     ),
                     in_where_clause: true,
