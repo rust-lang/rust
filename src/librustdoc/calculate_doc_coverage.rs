@@ -1,4 +1,4 @@
-//! Calculates information used for the `--show-coverage` flag.
+//! Calculates information used for the `--coverage` flag.
 //!
 //! More specifically, it counts the number of items with documentation, ones with
 //! "examples" (i.e., non-ignored Rust code blocks) and various totals.
