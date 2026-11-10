@@ -1031,11 +1031,7 @@ impl<'tcx> ParamenvBuilder<'tcx> {
             }
         }
 
-        Self {
-            tcx,
-            compressed_clauses,
-            uncompressed_clauses,
-        }
+        Self { tcx, compressed_clauses, uncompressed_clauses }
     }
 
     fn new(tcx: TyCtxt<'tcx>) -> Self {
@@ -1086,7 +1082,7 @@ impl<'tcx> ParamenvBuilder<'tcx> {
     }
 
     pub fn build(self) -> ParamEnv<'tcx> {
-        ParamEnv {caller_bounds: self.mk_clauses()}
+        ParamEnv { caller_bounds: self.mk_clauses() }
     }
 }
 
@@ -1149,7 +1145,11 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Note: it's more efficient to use [`ParamEnv::builder`](Self::builder) if you want to
     /// add bounds more than once.
     #[inline]
-    pub fn extend(self, tcx: TyCtxt<'tcx>, new_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>) -> Self {
+    pub fn extend(
+        self,
+        tcx: TyCtxt<'tcx>,
+        new_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    ) -> Self {
         let mut builder = self.into_builder(tcx);
         for clause in new_bounds {
             builder.add_clause(clause);

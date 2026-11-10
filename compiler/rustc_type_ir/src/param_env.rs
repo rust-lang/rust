@@ -216,7 +216,9 @@ mod iterator {
                                 && filter
                                     .polarity_filter
                                     .allow_polarity(ClausePolarity::Positive)
-                                && filter.trait_filter.allow_any_compressed_trait_ref(ct.compressed_trait_refs) =>
+                                && filter
+                                    .trait_filter
+                                    .allow_any_compressed_trait_ref(ct.compressed_trait_refs) =>
                         {
                             self.decompression_in_progress = ct.compressed_trait_refs;
                             self.self_ty = Some(ct.self_ty);
@@ -612,10 +614,7 @@ mod trait_filter {
         ) -> Option<I::TraitId>;
         /// returns true if this trait filter *might* allow any
         /// of the traits in `trait_ref` to match.
-        fn allow_any_compressed_trait_ref(
-            &self,
-            trait_ref: CompressedTraitRefs,
-        ) -> bool;
+        fn allow_any_compressed_trait_ref(&self, trait_ref: CompressedTraitRefs) -> bool;
     }
 
     impl<I> TraitFilter<I> for ()
@@ -636,10 +635,7 @@ mod trait_filter {
             Some(cx.require_trait_lang_item(trait_ref.lang_item_from_single_bit()))
         }
 
-        fn allow_any_compressed_trait_ref(
-            &self,
-            _trait_ref: CompressedTraitRefs,
-        ) -> bool {
+        fn allow_any_compressed_trait_ref(&self, _trait_ref: CompressedTraitRefs) -> bool {
             true
         }
     }
@@ -684,10 +680,7 @@ mod trait_filter {
             }
         }
 
-        fn allow_any_compressed_trait_ref(
-            &self,
-            trait_ref: CompressedTraitRefs,
-        ) -> bool {
+        fn allow_any_compressed_trait_ref(&self, trait_ref: CompressedTraitRefs) -> bool {
             if let Some(target) = self.lang_item_compressed {
                 // only if the given `trait_ref` has the bit set that corresponds to `target`, do we
                 // return true. Otherwise we can skip this compressed trait instantly.

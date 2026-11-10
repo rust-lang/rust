@@ -816,7 +816,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         normalize_param_env_or_error(
             tcx,
-            ty::ParamEnv::new(tcx, clauses),
+            clauses,
             ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
         )
     };
