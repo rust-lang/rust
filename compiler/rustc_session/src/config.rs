@@ -1,6 +1,7 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
+use std::borrow::Cow;
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
 };
@@ -2009,11 +2010,18 @@ impl RustcOptGroup {
 
     pub fn apply(&self, options: &mut getopts::Options) {
         let &Self { short_name, long_name, desc, value_hint, .. } = self;
+
+        let desc = if self.is_stable() {
+            Cow::Borrowed(desc)
+        } else {
+            Cow::Owned(format!("{desc} (unstable)"))
+        };
+
         match self.kind {
-            OptionKind::Opt => options.optopt(short_name, long_name, desc, value_hint),
-            OptionKind::Multi => options.optmulti(short_name, long_name, desc, value_hint),
-            OptionKind::Flag => options.optflag(short_name, long_name, desc),
-            OptionKind::FlagMulti => options.optflagmulti(short_name, long_name, desc),
+            OptionKind::Opt => options.optopt(short_name, long_name, &desc, value_hint),
+            OptionKind::Multi => options.optmulti(short_name, long_name, &desc, value_hint),
+            OptionKind::Flag => options.optflag(short_name, long_name, &desc),
+            OptionKind::FlagMulti => options.optflagmulti(short_name, long_name, &desc),
         };
     }
 
@@ -3289,10 +3297,12 @@ pub mod nightly_options {
             if !matches.opt_present(opt.name) {
                 continue;
             }
-            if opt.name != "Z" && !has_z_unstable_option {
+            if opt.name != "Z"
+                && !has_z_unstable_option
+                && unstable_features.allow_unstable_compiler_flag(opt.name)
+            {
                 early_dcx.early_fatal(format!(
-                    "the `-Z unstable-options` flag must also be passed to enable \
-                         the flag `{}`",
+                    "the `-Z unstable-options` flag must also be passed to enable the flag `{}`",
                     opt.name
                 ));
             }
