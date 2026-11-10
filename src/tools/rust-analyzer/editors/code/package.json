@@ -28,7 +28,7 @@
         }
     },
     "engines": {
-        "vscode": "^1.93.0"
+        "vscode": "^1.144.0"
     },
     "enabledApiProposals": [],
     "extensionKind": [
@@ -37,7 +37,7 @@
     "scripts": {
         "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
-        "build-base": "esbuild ./src/main.ts ./src/crate_graph.ts --bundle --outdir=out --external:vscode --format=cjs --platform=node --target=node20",
+        "build-base": "esbuild ./src/main.ts ./src/crate_graph.ts --bundle --outdir=out --external:vscode --format=cjs --platform=node --target=node24",
         "build": "npm run build-base -- --sourcemap",
         "watch": "npm run build-base -- --sourcemap --watch",
         "format": "node --experimental-strip-types node_modules/prettier/bin/prettier.cjs . --write",
@@ -53,6 +53,7 @@
         "d3": "^7.9.0",
         "d3-graphviz": "^5.6.0",
         "jiti": "^2.4.2",
+        "lodash": "^4.18.1",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
@@ -60,17 +61,17 @@
         "@stylistic/eslint-plugin": "^5.10.0",
         "@stylistic/eslint-plugin-js": "^4.1.0",
         "@tsconfig/strictest": "^2.0.5",
-        "@types/lodash": "^4.17.20",
-        "@types/node": "~22.13.4",
-        "@types/vscode": "~1.93.0",
+        "@types/lodash": "^4.17.27",
+        "@types/node": "~24.19.2",
+        "@types/vscode": "~1.144.0",
         "@typescript-eslint/eslint-plugin": "^8.25.0",
         "@typescript-eslint/parser": "^8.25.0",
-        "@vscode/test-electron": "^2.4.1",
-        "@vscode/vsce": "^3.7.1",
+        "@vscode/test-electron": "^3.1.0",
+        "@vscode/vsce": "^4.1.0",
         "esbuild": "^0.25.0",
         "eslint": "^10.2.0",
         "eslint-config-prettier": "^10.1.8",
-        "ovsx": "0.10.10",
+        "ovsx": "^1.4.0",
         "prettier": "^3.8.1",
         "tslib": "^2.8.1",
         "typescript": "^6.0.2",
