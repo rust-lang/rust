@@ -925,13 +925,9 @@ pub fn version_at_macro_invocation(
     }
 }
 
-fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
+fn usage(verbose: bool, nightly_build: bool) {
     let mut options = getopts::Options::new();
-    for option in config::rustc_optgroups()
-        .iter()
-        .filter(|x| verbose || !x.is_verbose_help_only)
-        .filter(|x| include_unstable_options || x.is_stable())
-    {
+    for option in config::rustc_optgroups().iter().filter(|x| verbose || !x.is_verbose_help_only) {
         option.apply(&mut options);
     }
     let message = "Usage: rustc [OPTIONS] INPUT";
@@ -1304,10 +1300,8 @@ pub fn handle_help(matches: &getopts::Matches, args: &[String]) -> bool {
     let zhelp_pos = opt_help_pos("Z");
     let chelp_pos = opt_help_pos("C");
     let print_help = || {
-        // Only show unstable options in --help if we accept unstable options.
-        let unstable_enabled = nightly_options::unstable_options_enabled(&matches);
         let nightly_build = nightly_options::match_is_nightly_build(&matches);
-        usage(matches.opt_present("verbose"), unstable_enabled, nightly_build);
+        usage(matches.opt_present("verbose"), nightly_build);
     };
 
     let mut helps = [

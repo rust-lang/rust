@@ -2,6 +2,19 @@
 use run_make_support::{bare_rustdoc, diff};
 
 fn main() {
+    for bootstrap in ["-1", "1"] {
+        let output = bare_rustdoc().env("RUSTC_BOOTSTRAP", bootstrap).arg("--help").run();
+
+        output.assert_stderr_equals("");
+        let help = output.stdout_utf8();
+
+        let no_run = help.lines().find(|line| line.trim_start().starts_with("--no-run ")).unwrap();
+        assert!(no_run.contains("(unstable)"));
+
+        let help_option = help.lines().find(|line| line.contains("--help ")).unwrap();
+        assert!(!help_option.contains("(unstable)"));
+    }
+
     // Simulate stable restrictions: requesting an unusable opt-in is misleading.
     let output =
         bare_rustdoc().env("RUSTC_BOOTSTRAP", "-1").args(["--no-run", "--help"]).run_fail();

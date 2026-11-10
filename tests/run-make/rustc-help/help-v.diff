@@ -1,4 +1,4 @@
-@@ -65,10 +65,31 @@
+@@ -65,10 +65,42 @@
                          Set a codegen option
      -V, --version       Print version info and exit
      -v, --verbose       Use verbose output
@@ -6,6 +6,7 @@
 +                        Specify where an external rust library is located
 +        --sysroot <PATH>
 +                        Override the system root
++    -Z <FLAG>           Set unstable / perma-unstable options (unstable)
 +        --error-format <human|json|short>
 +                        How errors and other messages are produced
 +        --json <CONFIG> Configure the JSON output of the compiler
@@ -23,6 +24,16 @@
 +        --remap-path-scope <macro,diagnostics,debuginfo,coverage,object,all>
 +                        Defines which scopes of paths should be remapped by
 +                        `--remap-path-prefix`
++    -j, --jobs <N>      Limit on the number of used parallel jobs (unstable)
++        --jobs-frontend <N>
++                        Limit on the number of parallel jobs used by frontend
++                        (unstable)
++        --jobs-backend <N>
++                        Limit on the number of parallel jobs used by backend
++                        (unstable)
++        --jobs-linker <N>
++                        Limit on the number of parallel jobs used by linker
++                        (unstable)
 +    @path               Read newline separated options from `path`
  
  Additional help:
