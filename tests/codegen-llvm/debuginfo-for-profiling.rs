@@ -1,6 +1,7 @@
 // Verify that additional discriminators are emitted for profiling with `-Zdebuginfo-for-profiling`:
 //  - 0 discriminators are emitted without the flag in the test below
 //  - at least 1 discriminator is emitted with the flag in the test below
+//  - the compile unit has `debugInfoForProfiling: true` only with the flag
 //
 //
 //@ add-minicore
@@ -8,6 +9,8 @@
 //@ compile-flags: -Copt-level=2 -Cdebuginfo=line-tables-only
 //@ [DEBUGINFO] compile-flags: -Zdebuginfo-for-profiling
 // DEFAULT-NOT: discriminator
+// DEFAULT-NOT: debugInfoForProfiling
+// DEBUGINFO: !DICompileUnit({{.*}}debugInfoForProfiling: true
 // DEBUGINFO-COUNT-1: discriminator
 
 #![feature(no_core)]
