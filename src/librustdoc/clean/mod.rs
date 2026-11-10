@@ -448,7 +448,13 @@ pub(crate) fn clean_clause<'tcx>(
     clause: ty::Clause<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    let bound_clause = clause.kind();
+    clean_clause_uninterned(clause.kind(), cx)
+}
+
+pub(crate) fn clean_clause_uninterned<'tcx>(
+    bound_clause: ty::Binder<'tcx, ty::ClauseKind<'tcx>>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
     match bound_clause.skip_binder() {
         ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_clause.rebind(pred), cx),
         ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_clause(pred, cx.tcx)),
@@ -465,6 +471,7 @@ pub(crate) fn clean_clause<'tcx>(
         | ty::ClauseKind::UnstableFeature(..)
         // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
         | ty::ClauseKind::HostEffect(_) => None,
+        ty::ClauseKind::CompressedTrait(_) => unreachable!(),
     }
 }
 

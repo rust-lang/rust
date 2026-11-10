@@ -468,6 +468,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
                     unreachable!("unexpected higher ranked `UnstableFeature` goal")
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => unreachable!(),
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
@@ -842,6 +843,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ProcessResult::Unchanged
                     }
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::CompressedTrait(_)) => unreachable!(),
             },
         }
     }

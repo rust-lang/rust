@@ -428,9 +428,8 @@ fn can_switch_ranges<'tcx>(
                 .tcx
                 .param_env(id)
                 .caller_bounds()
-            .all_clauses(cx.tcx)
-            .iter()
-                .into_iter()
+                .all_clauses_interned(cx.tcx)
+                .iter()
                 .any(|c| {
                     if let ClauseKind::Trait(t) = c.kind().skip_binder()
                         && t.polarity == ClausePolarity::Positive

@@ -208,7 +208,7 @@ fn check_collect_into_intoiterator<'tcx>(
                 .tcx
                 .param_env(id)
                 .caller_bounds()
-                .all_clauses(cx.tcx)
+                .all_clauses_interned(cx.tcx)
                 .iter()
                 .filter_map(|c| {
                     if let ClauseKind::Trait(t) = c.kind().skip_binder()

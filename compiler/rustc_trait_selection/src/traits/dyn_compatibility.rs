@@ -276,6 +276,8 @@ fn predicate_references_self<'tcx>(
 
         // FIXME(generic_const_exprs): this can mention `Self`
         ty::ClauseKind::ConstEvaluatable(..) => None,
+
+        ty::ClauseKind::CompressedTrait(..) => unreachable!(),
     }
 }
 
@@ -339,6 +341,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::ClauseKind::ConstEvaluatable(_)
         | ty::ClauseKind::UnstableFeature(_)
         | ty::ClauseKind::HostEffect(..) => false,
+        ty::ClauseKind::CompressedTrait(_) => unreachable!(),
     })
 }
 
@@ -813,7 +816,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         normalize_param_env_or_error(
             tcx,
-            ty::ParamEnv::new(tcx, clauses),
+            clauses,
             ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
         )
     };

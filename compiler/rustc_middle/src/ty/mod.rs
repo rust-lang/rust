@@ -1008,6 +1008,84 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     }
 }
 
+/// Efficiently builds a [`ParamEnv`], compressing trait clauses as it is being built,
+/// and interning only once at the end.
+pub struct ParamenvBuilder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    compressed_clauses: Vec<CompressedTraitClause<TyCtxt<'tcx>>>,
+    uncompressed_clauses: Vec<Clause<'tcx>>,
+}
+
+impl<'tcx> ParamenvBuilder<'tcx> {
+    /// Construct a `ClauseCompressor` from an existing [`ParamEnv`] without decompressing its
+    /// contents. This is useful when adding clauses to an existing environment without
+    /// decompressing and re-interning compressed clauses.
+    fn from_param_env(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
+        let mut compressed_clauses = Vec::new();
+        let mut uncompressed_clauses = Vec::new();
+
+        for clause in param_env.caller_bounds {
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::CompressedTrait(c) => compressed_clauses.push(c),
+                _ => uncompressed_clauses.push(clause),
+            }
+        }
+
+        Self { tcx, compressed_clauses, uncompressed_clauses }
+    }
+
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx, compressed_clauses: Vec::new(), uncompressed_clauses: Vec::new() }
+    }
+
+    pub fn add_clause(&mut self, clause: Clause<'tcx>) {
+        // Try to construct a common clause, if the given clause is one of the common clauses
+        let Some(new_compressed_trait_clause) =
+            CompressedTraitClause::from_clause(self.tcx, clause)
+        else {
+            self.uncompressed_clauses.push(clause);
+            return;
+        };
+
+        // See if this new common clause can be merged into another already existing
+        // common clause so they can be interned together.
+        //
+        // We're *not* using a hashmap here since this list is not expected to grow
+        // larger than a couple of elements. Just iterating is faster.
+        if !self
+            .compressed_clauses
+            .iter_mut()
+            // finishes iteration upon first successful `try_merge`.
+            .any(|existing| existing.try_merge(new_compressed_trait_clause))
+        {
+            self.compressed_clauses.push(new_compressed_trait_clause)
+        }
+    }
+
+    fn mk_clauses(self) -> Clauses<'tcx> {
+        let mut res =
+            Vec::with_capacity(self.uncompressed_clauses.len() + self.compressed_clauses.len());
+
+        res.extend(self.compressed_clauses.into_iter().map(|compressed| -> Clause<'tcx> {
+            assert_ne!(compressed.compressed_trait_refs.bits(), 0);
+            // NOTE: in theory, if there's only one bit set, we could opt not to compress,
+            // since then we also don't need to decompress. The flip side is, that that
+            // it's often cheaper to ask "does ty impl trait" for a compressed clause than for an
+            // arbitrary other clause. Especially if we know in advance that the trait for which
+            // this question is asked is only ever compressed, and we don't have to look through
+            // other clauses.
+            ClauseKind::CompressedTrait(compressed).upcast(self.tcx)
+        }));
+        res.extend(self.uncompressed_clauses);
+
+        self.tcx.mk_clauses(&res)
+    }
+
+    pub fn build(self) -> ParamEnv<'tcx> {
+        ParamEnv { caller_bounds: self.mk_clauses() }
+    }
+}
+
 /// When interacting with the type system we must provide information about the
 /// environment. `ParamEnv` is the type that represents this information. See the
 /// [dev guide chapter][param_env_guide] for more information.
@@ -1051,6 +1129,38 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
+    pub fn builder(tcx: TyCtxt<'tcx>) -> ParamenvBuilder<'tcx> {
+        ParamenvBuilder::new(tcx)
+    }
+
+    /// Turn an existing `ParamEnv` into a builder to add bounds to it efficiently.
+    ///
+    /// There's also [`extend`](Self::extend) for a single addition.
+    #[inline]
+    pub fn into_builder(self, tcx: TyCtxt<'tcx>) -> ParamenvBuilder<'tcx> {
+        ParamenvBuilder::from_param_env(tcx, self)
+    }
+
+    /// Add clauses to an existing `ParamEnv`, without decompressing existing trait bounds.
+    /// Note: it's more efficient to use [`ParamEnv::builder`](Self::builder) if you want to
+    /// add bounds more than once.
+    #[inline]
+    pub fn extend(
+        self,
+        tcx: TyCtxt<'tcx>,
+        new_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    ) -> Self {
+        let mut builder = self.into_builder(tcx);
+        for clause in new_bounds {
+            builder.add_clause(clause);
+        }
+
+        builder.build()
+    }
+
+    /// Get a [`CallerBoundsAccessor`], which allows customizing the desired bounds
+    /// from the `ParamEnv` and iterating over *just* those.
+    #[inline]
     pub fn caller_bounds(
         self,
     ) -> CallerBoundsAccessor<TyCtxt<'tcx>, impl Iterator<Item = ty::Clause<'tcx>>, NoClauses> {
@@ -1068,7 +1178,12 @@ impl<'tcx> ParamEnv<'tcx> {
         tcx: TyCtxt<'tcx>,
         caller_bounds: impl IntoIterator<Item = ty::Clause<'tcx>>,
     ) -> Self {
-        ParamEnv { caller_bounds: tcx.mk_clauses_from_iter(caller_bounds.into_iter()) }
+        let mut builder = Self::builder(tcx);
+        for clause in caller_bounds {
+            builder.add_clause(clause);
+        }
+
+        builder.build()
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1083,12 +1198,7 @@ impl<'tcx> ParamEnv<'tcx> {
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(
-                tcx,
-                tcx.reveal_opaque_types_in_bounds(
-                    tcx.mk_clauses_from_iter(self.caller_bounds().all_clauses(tcx).iter()),
-                ),
-            )
+            tcx.reveal_opaque_types_in_bounds(self)
         }
     }
 }

@@ -161,8 +161,8 @@ pub trait TypeFolder<I: Interner>: Sized {
 
 /// [Fold predicate](TypeFolder::fold_predicate) deliberately doesn't get access
 /// to an actual predicate. This way, we can compress lists of predicates, and hide
-/// this detail to folders. Instead, some type implementing this trait, [`PredicateProxy`]
-/// is passed, with its limited API.
+/// this detail to folders. See [`crate::predicate::CompressedTraitClause`].
+/// Instead, some type implementing this trait, [`PredicateProxy`] is passed, with its limited API.
 ///
 /// Most [`TypeFolder`]s only use `fold_predicate` to inspect type flags.
 pub trait PredicateProxy<I: Interner>:
