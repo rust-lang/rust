@@ -227,16 +227,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         type_: &OpTy<'tcx>,
         protocol: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let domain = this.read_scalar(domain)?.to_i32()?;
-        let mut flags = this.read_scalar(type_)?.to_i32()?;
-        let protocol = this.read_scalar(protocol)?.to_i32()?;
+        let domain = ecx.read_scalar(domain)?.to_i32()?;
+        let mut flags = ecx.read_scalar(type_)?.to_i32()?;
+        let protocol = ecx.read_scalar(protocol)?.to_i32()?;
 
         // Reject if isolation is enabled
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`socket`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            ecx.reject_in_isolation("`socket`", reject_with)?;
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EACCES"));
         }
 
         let mut is_non_block = false;
@@ -244,13 +244,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
         // if there is anything left at the end, that's an unsupported flag.
         if matches!(
-            this.tcx.sess.target.os,
+            ecx.tcx.sess.target.os,
             Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
         ) {
             // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
             // Solaris, and Illumos targets.
-            let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
-            let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
+            let sock_nonblock = ecx.eval_libc_i32("SOCK_NONBLOCK");
+            let sock_cloexec = ecx.eval_libc_i32("SOCK_CLOEXEC");
             if flags & sock_nonblock == sock_nonblock {
                 is_non_block = true;
                 flags &= !sock_nonblock;
@@ -261,9 +261,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
 
-        let family = if domain == this.eval_libc_i32("AF_INET") {
+        let family = if domain == ecx.eval_libc_i32("AF_INET") {
             socket2::Domain::IPV4
-        } else if domain == this.eval_libc_i32("AF_INET6") {
+        } else if domain == ecx.eval_libc_i32("AF_INET6") {
             socket2::Domain::IPV6
         } else {
             throw_unsup_format!(
@@ -273,24 +273,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         };
 
-        let fd_result = if flags == this.eval_libc_i32("SOCK_STREAM") {
-            if ![0, this.eval_libc_i32("IPPROTO_TCP")].contains(&protocol) {
+        let fd_result = if flags == ecx.eval_libc_i32("SOCK_STREAM") {
+            if ![0, ecx.eval_libc_i32("IPPROTO_TCP")].contains(&protocol) {
                 throw_unsup_format!(
                     "socket: socket protocol {protocol} is unsupported for \
                     streaming socket, only IPPROTO_TCP and 0 are allowed"
                 );
             }
 
-            TcpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
-        } else if flags == this.eval_libc_i32("SOCK_DGRAM") {
-            if ![0, this.eval_libc_i32("IPPROTO_UDP")].contains(&protocol) {
+            TcpSocket::new(family, is_non_block, ecx).map(|fd| fd.as_unix())
+        } else if flags == ecx.eval_libc_i32("SOCK_DGRAM") {
+            if ![0, ecx.eval_libc_i32("IPPROTO_UDP")].contains(&protocol) {
                 throw_unsup_format!(
                     "socket: socket protocol {protocol} is unsupported for \
                     datagram socket, only IPPROTO_UDP and 0 are allowed"
                 );
             }
 
-            UdpSocket::new(family, is_non_block, this).map(|fd| fd.as_unix())
+            UdpSocket::new(family, is_non_block, ecx).map(|fd| fd.as_unix())
         } else {
             throw_unsup_format!(
                 "socket: type {:#x} is unsupported, only SOCK_STREAM, \
@@ -300,10 +300,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let fd = match fd_result {
             Ok(fd) => fd,
-            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+            Err(e) => return ecx.set_errno_and_return_neg1_i32(e),
         };
-        let Some(fd_num) = this.machine.fds.insert(fd) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        let Some(fd_num) = ecx.machine.fds.insert(fd) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
         };
         interp_ok(Scalar::from_i32(fd_num))
     }
@@ -314,47 +314,47 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         address: &OpTy<'tcx>,
         address_len: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address = match this.read_socket_address(address, address_len, "bind")? {
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let address = match ecx.read_socket_address(address, address_len, "bind")? {
             Ok(addr) => addr,
-            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+            Err(e) => return ecx.set_errno_and_return_neg1_i32(e),
         };
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        match socket.bind(this.machine.communicate(), address, this)? {
+        match socket.bind(ecx.machine.communicate(), address, ecx)? {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
-            Err(e) => this.set_errno_and_return_neg1_i32(e),
+            Err(e) => ecx.set_errno_and_return_neg1_i32(e),
         }
     }
 
     fn listen(&mut self, socket: &OpTy<'tcx>, backlog: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let backlog = this.read_scalar(backlog)?.to_i32()?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let backlog = ecx.read_scalar(backlog)?.to_i32()?;
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        match socket.listen(this.machine.communicate(), backlog, this)? {
+        match socket.listen(ecx.machine.communicate(), backlog, ecx)? {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
-            Err(e) => this.set_errno_and_return_neg1_i32(e),
+            Err(e) => ecx.set_errno_and_return_neg1_i32(e),
         }
     }
 
@@ -369,21 +369,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Location where the output scalar is written to.
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address_ptr = this.read_pointer(address)?;
-        let address_len_place = this.deref_pointer(address_len)?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let address_ptr = ecx.read_pointer(address)?;
+        let address_len_place = ecx.deref_pointer(address_len)?;
         let mut flags =
-            if let Some(flags) = flags { this.read_scalar(flags)?.to_i32()? } else { 0 };
+            if let Some(flags) = flags { ecx.read_scalar(flags)?.to_i32()? } else { 0 };
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         let mut is_client_sock_nonblock = false;
@@ -391,13 +391,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
         // if there is anything left at the end, that's an unsupported flag.
         if matches!(
-            this.tcx.sess.target.os,
+            ecx.tcx.sess.target.os,
             Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
         ) {
             // SOCK_NONBLOCK and SOCK_CLOEXEC only exist on Linux, Android, FreeBSD,
             // Solaris, and Illumos targets.
-            let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
-            let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");
+            let sock_nonblock = ecx.eval_libc_i32("SOCK_NONBLOCK");
+            let sock_cloexec = ecx.eval_libc_i32("SOCK_CLOEXEC");
             if flags & sock_nonblock == sock_nonblock {
                 is_client_sock_nonblock = true;
                 flags &= !sock_nonblock;
@@ -417,9 +417,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let dest = dest.clone();
         socket.accept(
-            this.machine.communicate(),
+            ecx.machine.communicate(),
             is_client_sock_nonblock,
-            this,
+            ecx,
             callback!(
                 @capture<'tcx> {
                     address_ptr: Pointer,
@@ -456,29 +456,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Location where the output scalar is written to.
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address = match this.read_socket_address(address, address_len, "connect")? {
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let address = match ecx.read_socket_address(address, address_len, "connect")? {
             Ok(address) => address,
-            Err(e) => return this.set_errno_and_return_neg1(e, dest),
+            Err(e) => return ecx.set_errno_and_return_neg1(e, dest),
         };
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         let dest = dest.clone();
 
         socket.connect(
-            this.machine.communicate(),
+            ecx.machine.communicate(),
             address,
-            this,
+            ecx,
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>
@@ -499,32 +499,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Location where the output scalar is written to.
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let buffer_ptr = this.read_pointer(buffer)?;
-        let length = this.read_target_usize(length)?;
-        let mut flags = this.read_scalar(flags)?.to_i32()?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let buffer_ptr = ecx.read_pointer(buffer)?;
+        let length = ecx.read_target_usize(length)?;
+        let mut flags = ecx.read_scalar(flags)?.to_i32()?;
 
         let dest_addr = match dest_addr {
             Some((dest_addr, dest_addr_len)) => {
-                let dest_addr_ptr = this.read_pointer(dest_addr)?;
-                let socklen_layout = this.libc_ty_layout("socklen_t");
+                let dest_addr_ptr = ecx.read_pointer(dest_addr)?;
+                let socklen_layout = ecx.libc_ty_layout("socklen_t");
                 let dest_addr_len_int =
-                    this.read_scalar(dest_addr_len)?.to_uint(socklen_layout.size)?;
+                    ecx.read_scalar(dest_addr_len)?.to_uint(socklen_layout.size)?;
 
                 // POSIX says the destination is entirely ignored for TCP sockets, but that does not
                 // match reality, so we eagerly read the destination when one is given.
-                if this.ptr_is_null(dest_addr_ptr)? || dest_addr_len_int == 0 {
+                if ecx.ptr_is_null(dest_addr_ptr)? || dest_addr_len_int == 0 {
                     // If the address pointer is a nullptr or the address length is zero we ignore
                     // the destination address. BSDs return EINVAL when the address length is zero
                     // and the address pointer is an invalid pointer; that is so far away from what
                     // POSIX documents for TCP sockets that we do not try to emulate it.
                     None
                 } else {
-                    match this.read_socket_address(dest_addr, dest_addr_len, "sendto")? {
+                    match ecx.read_socket_address(dest_addr, dest_addr_len, "sendto")? {
                         Ok(dest_addr) => Some(dest_addr),
-                        Err(e) => return this.set_errno_and_return_neg1(e, dest),
+                        Err(e) => return ecx.set_errno_and_return_neg1(e, dest),
                     }
                 }
             }
@@ -532,12 +532,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         let mut is_non_block = false;
@@ -545,13 +545,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
         // if there is anything left at the end, that's an unsupported flag.
         if matches!(
-            this.tcx.sess.target.os,
+            ecx.tcx.sess.target.os,
             Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
         ) {
             // MSG_NOSIGNAL and MSG_DONTWAIT only exist on Linux, Android, FreeBSD,
             // Solaris, and Illumos targets.
-            let msg_nosignal = this.eval_libc_i32("MSG_NOSIGNAL");
-            let msg_dontwait = this.eval_libc_i32("MSG_DONTWAIT");
+            let msg_nosignal = ecx.eval_libc_i32("MSG_NOSIGNAL");
+            let msg_dontwait = ecx.eval_libc_i32("MSG_DONTWAIT");
             if flags & msg_nosignal == msg_nosignal {
                 // This is only needed to ensure that no EPIPE signal is sent when
                 // trying to send into a stream which is no longer connected.
@@ -573,12 +573,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let dest = dest.clone();
 
         socket.send(
-            this.machine.communicate(),
+            ecx.machine.communicate(),
             buffer_ptr,
             length,
             is_non_block,
             dest_addr,
-            this,
+            ecx,
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
@@ -603,26 +603,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Location where the output scalar is written to.
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let buffer_ptr = this.read_pointer(buffer)?;
-        let length = this.read_target_usize(length)?;
-        let mut flags = this.read_scalar(flags)?.to_i32()?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let buffer_ptr = ecx.read_pointer(buffer)?;
+        let length = ecx.read_target_usize(length)?;
+        let mut flags = ecx.read_scalar(flags)?.to_i32()?;
 
         let dest_addr = match dest_addr {
-            Some((addr, addr_len)) =>
-                Some((this.read_pointer(addr)?, this.deref_pointer(addr_len)?)),
+            Some((addr, addr_len)) => Some((ecx.read_pointer(addr)?, ecx.deref_pointer(addr_len)?)),
             None => None,
         };
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         let mut is_peek = false;
@@ -631,16 +630,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
         // if there is anything left at the end, that's an unsupported flag.
 
-        let msg_peek = this.eval_libc_i32("MSG_PEEK");
+        let msg_peek = ecx.eval_libc_i32("MSG_PEEK");
         if flags & msg_peek == msg_peek {
             is_peek = true;
             flags &= !msg_peek;
         }
 
-        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::FreeBsd | Os::Illumos) {
+        if matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::FreeBsd | Os::Illumos) {
             // MSG_CMSG_CLOEXEC only exists on Linux, Android, FreeBSD,
             // and Illumos targets.
-            let msg_cmsg_cloexec = this.eval_libc_i32("MSG_CMSG_CLOEXEC");
+            let msg_cmsg_cloexec = ecx.eval_libc_i32("MSG_CMSG_CLOEXEC");
             if flags & msg_cmsg_cloexec == msg_cmsg_cloexec {
                 // We don't support `exec` so we can ignore this.
                 flags &= !msg_cmsg_cloexec;
@@ -648,12 +647,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         if matches!(
-            this.tcx.sess.target.os,
+            ecx.tcx.sess.target.os,
             Os::Linux | Os::Android | Os::FreeBsd | Os::Solaris | Os::Illumos
         ) {
             // MSG_DONTWAIT only exists on Linux, Android, FreeBSD,
             // Solaris, and Illumos targets.
-            let msg_dontwait = this.eval_libc_i32("MSG_DONTWAIT");
+            let msg_dontwait = ecx.eval_libc_i32("MSG_DONTWAIT");
             if flags & msg_dontwait == msg_dontwait {
                 flags &= !msg_dontwait;
                 is_non_block = true;
@@ -670,12 +669,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let dest = dest.clone();
 
         socket.recv(
-            this.machine.communicate(),
+            ecx.machine.communicate(),
             buffer_ptr,
             length,
             is_peek,
             is_non_block,
-            this,
+            ecx,
             callback!(
                 @capture<'tcx> {
                     dest_addr: Option<(Pointer, MPlaceTy<'tcx>)>,
@@ -714,36 +713,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         option_value: &OpTy<'tcx>,
         option_len: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let level = this.read_scalar(level)?.to_i32()?;
-        let option_name = this.read_scalar(option_name)?.to_i32()?;
-        let option_value_ptr = this.read_pointer(option_value)?;
-        let Some(option_len) = this.read_socklen(option_len)? else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let level = ecx.read_scalar(level)?.to_i32()?;
+        let option_name = ecx.read_scalar(option_name)?.to_i32()?;
+        let option_value_ptr = ecx.read_pointer(option_value)?;
+        let Some(option_len) = ecx.read_socklen(option_len)? else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
 
         // Check that the buffer has (at least) the given size.
-        this.check_ptr_access(
+        ecx.check_ptr_access(
             option_value_ptr,
             Size::from_bytes(option_len),
             CheckInAllocMsg::MemoryAccess,
         )?;
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        let result = socket.setsockopt(level, option_name, option_value_ptr, option_len, this)?;
+        let result = socket.setsockopt(level, option_name, option_value_ptr, option_len, ecx)?;
         match result {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
-            Err(e) => this.set_errno_and_return_neg1_i32(e),
+            Err(e) => ecx.set_errno_and_return_neg1_i32(e),
         }
     }
 
@@ -755,42 +754,42 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         option_value: &OpTy<'tcx>,
         option_len: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let level = this.read_scalar(level)?.to_i32()?;
-        let option_name = this.read_scalar(option_name)?.to_i32()?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let level = ecx.read_scalar(level)?.to_i32()?;
+        let option_name = ecx.read_scalar(option_name)?.to_i32()?;
         // These two pointers are used to return the value: `len_ptr` initially stores how much space
         // is available. If the actual value fits into that space, it is written to
         // `value_ptr` and `len_ptr` is updated to represent how many bytes
         // were actually written. If the value does not fit, it is silently truncated.
         // Also see <https://pubs.opengroup.org/onlinepubs/9799919799/functions/getsockopt.html>.
-        let option_value_ptr = this.read_pointer(option_value)?;
-        let option_len_ptr = this.read_pointer(option_len)?;
+        let option_value_ptr = ecx.read_pointer(option_value)?;
+        let option_len_ptr = ecx.read_pointer(option_len)?;
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        if this.ptr_is_null(option_value_ptr)? || this.ptr_is_null(option_len_ptr)? {
+        if ecx.ptr_is_null(option_value_ptr)? || ecx.ptr_is_null(option_len_ptr)? {
             // This socket option returns a value and thus we need to return EFAULT
             // when either the value or the length pointers are null pointers.
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
-        let socklen_layout = this.libc_ty_layout("socklen_t");
-        let option_len_ptr_mplace = this.ptr_to_mplace(option_len_ptr, socklen_layout);
-        let Some(option_len) = this.read_socklen(&option_len_ptr_mplace)? else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        let socklen_layout = ecx.libc_ty_layout("socklen_t");
+        let option_len_ptr_mplace = ecx.ptr_to_mplace(option_len_ptr, socklen_layout);
+        let Some(option_len) = ecx.read_socklen(&option_len_ptr_mplace)? else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
 
         // Check that the buffer has (at least) the given size.
-        this.check_ptr_access(
+        ecx.check_ptr_access(
             option_value_ptr,
             Size::from_bytes(option_len),
             CheckInAllocMsg::MemoryAccess,
@@ -798,15 +797,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // `socket.getsockopt` returns a temporary buffer as `option_value_ptr` might not point
         // to a large enough buffer, in which case we have to truncate.
-        let value_mplace = match socket.getsockopt(level, option_name, this)? {
+        let value_mplace = match socket.getsockopt(level, option_name, ecx)? {
             Ok(value_mplace) => value_mplace,
-            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+            Err(e) => return ecx.set_errno_and_return_neg1_i32(e),
         };
 
         // Truncated size of the output value.
         let output_value_len = value_mplace.layout.size.min(Size::from_bytes(option_len));
         // Copy the truncated value into the buffer pointed to by `option_value_ptr`.
-        this.mem_copy(
+        ecx.mem_copy(
             value_mplace.ptr(),
             option_value_ptr,
             // Truncate the value to fit the provided buffer.
@@ -817,11 +816,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
         // Deallocate the value buffer as it was only needed to store the value and
         // copy it into the buffer pointed to by `option_value_ptr`.
-        this.deallocate_ptr(value_mplace.ptr(), None, MemoryKind::Stack)?;
+        ecx.deallocate_ptr(value_mplace.ptr(), None, MemoryKind::Stack)?;
 
         // On output, the length pointer contains the amount of bytes written -- not the size
         // of the value before truncation.
-        this.write_scalar(
+        ecx.write_scalar(
             Scalar::from_uint(output_value_len.bytes(), socklen_layout.size),
             &option_len_ptr_mplace,
         )?;
@@ -835,27 +834,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         address: &OpTy<'tcx>,
         address_len: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address_ptr = this.read_pointer(address)?;
-        let address_len_place = this.deref_pointer(address_len)?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let address_ptr = ecx.read_pointer(address)?;
+        let address_len_place = ecx.deref_pointer(address_len)?;
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        let address = match socket.getsockname(this.machine.communicate(), this)? {
+        let address = match socket.getsockname(ecx.machine.communicate(), ecx)? {
             Ok(address) => address,
-            Err(e) => return this.set_errno_and_return_neg1_i32(e),
+            Err(e) => return ecx.set_errno_and_return_neg1_i32(e),
         };
 
-        this.write_socket_address(Some(&address), address_ptr, &address_len_place)
+        ecx.write_socket_address(Some(&address), address_ptr, &address_len_place)
             .map(|()| Scalar::from_i32(0))
     }
 
@@ -867,26 +866,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Location where the output scalar is written to.
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let address_ptr = this.read_pointer(address)?;
-        let address_len_place = this.deref_pointer(address_len)?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let address_ptr = ecx.read_pointer(address)?;
+        let address_len_place = ecx.deref_pointer(address_len)?;
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("ENOTSOCK"), dest);
         };
 
         let dest = dest.clone();
 
         socket.getpeername(
-            this.machine.communicate(),
-            this,
+            ecx.machine.communicate(),
+            ecx,
             callback!(
                 @capture<'tcx> {
                     address_ptr: Pointer,
@@ -910,35 +909,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn shutdown(&mut self, socket: &OpTy<'tcx>, how: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let socket = this.read_scalar(socket)?.to_i32()?;
-        let how = this.read_scalar(how)?.to_i32()?;
+        let socket = ecx.read_scalar(socket)?.to_i32()?;
+        let how = ecx.read_scalar(how)?.to_i32()?;
 
         // Get the file handle
-        let Some(fd) = this.machine.fds.get(socket) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(fd) = ecx.machine.fds.get(socket) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
 
         let Some(socket) = fd.as_unix().as_socket() else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTSOCK"));
         };
 
-        let is_read_shutdown = how == this.eval_libc_i32("SHUT_RD");
-        let is_write_shutdown = how == this.eval_libc_i32("SHUT_WR");
-        let is_read_write_shutdown = how == this.eval_libc_i32("SHUT_RDWR");
+        let is_read_shutdown = how == ecx.eval_libc_i32("SHUT_RD");
+        let is_write_shutdown = how == ecx.eval_libc_i32("SHUT_WR");
+        let is_read_write_shutdown = how == ecx.eval_libc_i32("SHUT_RDWR");
 
         let how = match () {
             _ if is_read_shutdown => Shutdown::Read,
             _ if is_write_shutdown => Shutdown::Write,
             _ if is_read_write_shutdown => Shutdown::Both,
             // An invalid value was passed to `how`.
-            _ => return this.set_errno_and_return_neg1_i32(LibcError("EINVAL")),
+            _ => return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL")),
         };
 
-        match socket.shutdown(this.machine.communicate(), how, this)? {
+        match socket.shutdown(ecx.machine.communicate(), how, ecx)? {
             Ok(_) => interp_ok(Scalar::from_i32(0)),
-            Err(e) => this.set_errno_and_return_neg1_i32(e),
+            Err(e) => ecx.set_errno_and_return_neg1_i32(e),
         }
     }
 
