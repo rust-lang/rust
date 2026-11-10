@@ -14,7 +14,7 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, CallerBoundsIterator, GenericArgs, GenericParamDefKind, Generics, Ty,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty,
     TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, TypingMode, Unnormalized, Upcast,
 };
@@ -2775,9 +2775,8 @@ fn param_env_with_gat_bounds<'tcx>(
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> ty::ParamEnv<'tcx> {
-    let param_env = tcx.param_env(impl_ty.def_id);
+    let mut param_env = tcx.param_env(impl_ty.def_id).into_builder(tcx);
     let container_id = impl_ty.container_id(tcx);
-    let mut clauses = param_env.caller_bounds().all_clauses(tcx).iter().collect::<Vec<_>>();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking
@@ -2874,7 +2873,7 @@ fn param_env_with_gat_bounds<'tcx>(
                 //
                 // impl<T> X for T where T: X { type Y = <T as X>::Y; }
             }
-            _ => clauses.push(
+            _ => param_env.add_clause(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionClause {
                         projection_term: ty::AliasTerm::new(
@@ -2891,7 +2890,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx, clauses)
+    param_env.build()
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

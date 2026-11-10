@@ -249,7 +249,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             })
             .collect::<Vec<ty::Clause<'tcx>>>();
 
-        let full_user_env = orig_env.extend(field_clauses);
+        let full_user_env = orig_env.extend(tcx, field_clauses);
 
         let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
         let fresh_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip();
@@ -337,7 +337,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         }));
 
         let computed_clauses =
-            param_env;
+            param_env.caller_bounds().all_clauses(infcx.tcx).iter().collect::<Vec<_>>();
         let mut user_computed_clauses: FxIndexSet<_> =
             user_env.caller_bounds().all_clauses(infcx.tcx).iter().collect();
 
@@ -414,7 +414,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let normalized_preds = elaborate(
                 tcx,
-                computed_clauses.extend(tcx, user_computed_clauses),
+                computed_clauses.iter().copied().chain(user_computed_clauses.iter().cloned()),
             );
             new_env = ty::ParamEnv::new(tcx, normalized_preds);
         }
