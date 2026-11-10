@@ -2150,15 +2150,47 @@ impl String {
             "end of range should be a character boundary"
         );
 
-        if replace_with.len() > checked_range.len() {
-            self.reserve(replace_with.len() - checked_range.len());
+        let start = checked_range.start;
+        let end = checked_range.end;
+        let len = self.len();
+        let removed = end - start;
+        let replacement = replace_with.as_bytes();
+        let repl_len = replacement.len();
+
+        // Reserve the room the growing case needs before any raw pointer is taken: nothing
+        // below can then reallocate, so the buffer pointer stays valid for the tail move and
+        // the replacement copy.
+        if repl_len > removed {
+            self.reserve(repl_len - removed);
         }
-        // SAFETY: We ensure that we're not replacing across a char boundary and
-        // that the new contents are valid UTF-8. The only potentially-unsound
-        // unwind from `splice` that would leave the string in an invalid state
-        // would be from an error growing the allocation, which we protect against
-        // by reserving it preemptively.
-        unsafe { self.as_mut_vec() }.splice(checked_range, replace_with.bytes());
+
+        // SAFETY: The range is on char boundaries and the replacement is valid UTF-8, so the
+        // resulting bytes (the unchanged prefix, the replacement, the unchanged suffix) are
+        // valid UTF-8. The tail move below stays inside the allocation: its destination ends
+        // at `len - removed + repl_len`, which is at most `capacity` (for the growing case by
+        // the reserve above, otherwise because `capacity >= len`), and its source ends at
+        // `len`. The replacement write fills `start..start + repl_len`, which is disjoint from
+        // the moved tail and also inside the allocation. `set_len` then includes exactly the
+        // prefix, the replacement and the tail.
+        unsafe {
+            let vec = self.as_mut_vec();
+            let ptr = vec.as_mut_ptr();
+            // Move the unchanged tail to its final place. This is a memmove: in the shrinking
+            // case the destination starts before the source, in the growing case after it, and
+            // the two ranges may overlap.
+            ptr::copy(ptr.add(end), ptr.add(start + repl_len), len - end);
+
+            // SAFETY: `replace_with` is a `&str` that does not alias this `String` (the
+            // signature's `&mut self` and `&str` borrows cannot overlap at a safe call site),
+            // so the replacement and the receiver are different allocations and
+            // `copy_nonoverlapping`'s non-overlap requirement holds. The source is inside the
+            // replacement's `repl_len` bytes, and the destination ends at
+            // `start + repl_len <= cap` (established by the reserve above, or by `cap >= len`
+            // when the replacement is not longer than the removed range).
+            ptr::copy_nonoverlapping(replacement.as_ptr(), ptr.add(start), repl_len);
+
+            vec.set_len(len - removed + repl_len);
+        }
     }
 
     /// Replaces the leftmost occurrence of a pattern with another string, in-place.
