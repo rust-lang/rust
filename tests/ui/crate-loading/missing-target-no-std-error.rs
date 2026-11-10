@@ -5,7 +5,6 @@
 
 //@ compile-flags: --target thumbv7em-none-eabihf
 //@ needs-llvm-components: arm
-//@ ignore-backends: gcc
 #![deny(unsafe_code)]
 #![deny(warnings)]
 #![no_std]

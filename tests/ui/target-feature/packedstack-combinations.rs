@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ revisions: wrong_arch only_packedstack backchain_attr backchain_cli with_softfloat
 //@ compile-flags: -Zpacked-stack --crate-type=rlib
-//@ ignore-backends: gcc
 
 //@ [wrong_arch] compile-flags: --target=x86_64-unknown-linux-gnu
 //@ [wrong_arch] should-fail

@@ -11,7 +11,6 @@
 //@ aux-build:sanitizer_non_default.rs
 //@ compile-flags: --target riscv64gc-unknown-fuchsia
 //@ needs-llvm-components: riscv
-//@ ignore-backends: gcc
 
 //@ revisions: implicit_default explicit_default implicit_mismatch explicit_mismatch
 //@[implicit_default] check-pass
