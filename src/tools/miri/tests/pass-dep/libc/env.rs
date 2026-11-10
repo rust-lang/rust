@@ -90,6 +90,29 @@ fn test_unsetenv() {
     assert_eq!(result, -1);
 }
 
+#[cfg(target_os = "macos")]
+fn test_ns_get_environ() {
+    unsafe {
+        errno_check(libc::setenv(c"MIRI_TEST_NSGETENVIRON".as_ptr(), c"test_value".as_ptr(), 1));
+
+        let environ = libc::_NSGetEnviron();
+        assert!(!environ.is_null());
+        let mut entry = *environ;
+        assert!(!entry.is_null());
+
+        let mut found = false;
+        while !(*entry).is_null() {
+            if CStr::from_ptr(*entry) == c"MIRI_TEST_NSGETENVIRON=test_value" {
+                found = true;
+            }
+            entry = entry.add(1);
+        }
+        assert!(found);
+
+        errno_check(libc::unsetenv(c"MIRI_TEST_NSGETENVIRON".as_ptr()));
+    }
+}
+
 fn test_getcwd() {
     // Filling the buffer with `1` prevents the null terminator check from passing by mistake
     let mut buf = [1u8; libc::PATH_MAX as usize];
@@ -133,6 +156,8 @@ fn main() {
     test_getenv();
     test_setenv();
     test_unsetenv();
+    #[cfg(target_os = "macos")]
+    test_ns_get_environ();
     test_getcwd();
     test_chdir();
 }

@@ -212,7 +212,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ecx.write_scalar(result, dest)?;
             }
             "GetCurrentProcessId" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [] = &ecx.check_shim_sig(
                     shim_sig!(extern "system" fn() -> u32),
                     (link_name, abi, args),
