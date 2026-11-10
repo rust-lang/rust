@@ -94,7 +94,7 @@ impl BorrowedFd<'_> {
 
     /// Converts a `BorrowedFd` into a reference to a file-like type.
     ///
-    #[cfg_attr(all(unix, not(miri)), doc = "```")]
+    #[cfg_attr(unix, doc = "```")]
     #[cfg_attr(not(unix), doc = "```ignore (needs unix)")]
     /// # #![feature(fd_view)]
     /// # use std::fs::File;

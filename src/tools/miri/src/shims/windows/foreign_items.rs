@@ -1214,6 +1214,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We need to return something non-null here to make `compat_fn!` work.
                 ecx.write_int(1, dest)?;
             }
+            "GetModuleHandleW" if ecx.frame_in_std() => {
+                let [_module_name] = &ecx.check_shim_sig(
+                    shim_sig!(extern "system" fn(*_) -> winapi::HMODULE),
+                    (link_name, abi, args),
+                )?;
+                // Returning null works best for `format_error`.
+                ecx.write_int(0, dest)?;
+            }
             "SetConsoleTextAttribute" if ecx.frame_in_std() => {
                 let [_console_output, _attribute] = &ecx.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, u16) -> winapi::BOOL),
