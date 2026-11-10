@@ -126,14 +126,16 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn take_solver_region_constraints(
         &self,
-    ) -> Option<Box<rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>>> {
+    ) -> rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>> {
         assert!(!self.in_snapshot(), "cannot take solver region constraints in a snapshot");
         if !self.tcx.assumptions_on_binders() {
-            return None;
+            return rustc_type_ir::region_constraint::RegionConstraint::new_true();
         }
-        let constraint =
-            self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_solver_data();
-        if constraint.is_true() { None } else { Some(Box::new(constraint.without_spans())) }
+        self.inner
+            .borrow_mut()
+            .unwrap_region_constraints()
+            .take_and_reset_solver_data()
+            .without_spans()
     }
 
     /// Gives temporary access to the region constraint data.

@@ -84,7 +84,7 @@ fn compute_assumptions<'tcx>(
                 type_outlives_constraints,
                 &region_constraints,
                 region_assumptions,
-                None,
+                ty::region_constraint::RegionConstraint::new_true(),
             )
             .constraints,
         );

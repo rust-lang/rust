@@ -82,7 +82,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             });
         }
 
-        if let Some(constraint) = solver_constraints {
+        if !solver_constraints.is_true() {
             let infcx = &self.infcx.infcx;
             let assumptions = Assumptions::new(
                 infcx,
@@ -96,7 +96,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 ty::UniverseIndex::ROOT,
             );
             infcx.destructure_solver_region_constraints(
-                (**constraint).clone().with_spans(self.span),
+                solver_constraints.clone().with_spans(self.span),
                 assumptions,
                 self,
             );
