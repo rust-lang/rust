@@ -479,6 +479,7 @@ pub(crate) fn reborrow_info<'tcx>(
     let reborrow_trait = tcx.require_lang_item(LangItem::Reborrow, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
+    let source = tcx.expand_free_alias_tys(source);
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
     if trait_impl_lifetime_params_count(tcx, impl_did) == 0 {
