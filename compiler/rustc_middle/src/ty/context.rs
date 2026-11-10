@@ -2894,6 +2894,14 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// We cannot fetch MIR for such intrinsics, but for compiler simplicity we still treat them
+    /// as having HIR bodies, causing various code to try to load the MIR for them.
+    /// This function is used to guard against loading such MIR and instead using fallback behaviour
+    /// as appropriate at the call sites.
+    pub fn is_intrinsic_that_must_be_overridden(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        self.intrinsic(def_id).is_some_and(|i| i.must_be_overridden)
+    }
+
     pub fn next_trait_solver_globally(self) -> bool {
         self.sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
             && !self.sess.opts.unstable_opts.higher_ranked_assumptions
