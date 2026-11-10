@@ -689,6 +689,6 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 165707,
         severity: ChangeSeverity::Info,
-        summary: "`low-priority` is now enabled by default, which is optimal for the overwhelming majority of situations; see PR description for more details. You may want to revise wrapper scripts if you did not previously know this option existed.",
+        summary: "`low-priority` is now enabled by default for all subcommands other than `dist`, which is optimal for the overwhelming majority of situations; see `bootstrap.example.toml` for more details.",
     },
 ];

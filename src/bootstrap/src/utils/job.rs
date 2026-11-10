@@ -1,15 +1,57 @@
+#[cfg(all(unix, not(any(target_os = "haiku", target_os = "hermit"))))]
+pub(crate) use self::for_unix::setup;
 #[cfg(windows)]
 pub(crate) use self::for_windows::setup;
+use crate::core::config::flags::Subcommand;
 use crate::core::session::Session;
 
-#[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
-pub(crate) unsafe fn setup(_sess: &Session) {}
+#[allow(unused)]
+fn should_reduce_prio(sess: &Session) -> bool {
+    // See bootstrap.example.toml for details.
+    sess.config.low_priority.unwrap_or(!matches!(sess.cmd, Subcommand::Dist))
+}
 
-#[cfg(all(unix, not(target_os = "haiku")))]
-pub(crate) unsafe fn setup(sess: &Session) {
-    if sess.config.low_priority {
-        unsafe {
-            libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
+#[cfg(any(target_os = "haiku", target_os = "hermit", not(any(unix, windows))))]
+pub(crate) fn setup(_sess: &Session) {}
+
+#[cfg(all(unix, not(any(target_os = "haiku", target_os = "hermit"))))]
+mod for_unix {
+    use std::ffi::c_int;
+    use std::io;
+
+    use libc::id_t;
+
+    fn get_priority(which: c_int, who: id_t) -> io::Result<c_int> {
+        // Genius design: getpriority can return -1 on success if the nice value is literally -1
+
+        // SAFETY: empty safety contract
+        let errno_loc = unsafe { libc::__errno_location() };
+        // SAFETY: errno is thread-local, no data races here
+        unsafe { *errno_loc = 0 };
+        // SAFETY: empty safety contract
+        let nice = unsafe { libc::getpriority(which as _, who) };
+        // SAFETY: as above
+        let new_errno = unsafe { *errno_loc };
+        if new_errno == 0 { Ok(nice) } else { Err(io::Error::from_raw_os_error(new_errno)) }
+    }
+    fn set_priority(which: c_int, who: id_t, prio: c_int) -> io::Result<()> {
+        // SAFETY: empty safety contract
+        if unsafe { libc::setpriority(which as _, who, prio) != -1 } {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
+
+    pub(crate) fn setup(sess: &super::Session) {
+        const TARGET_NICE: c_int = 10;
+        // The processes that spawn the build are all descendants of the
+        // current thread.
+        let (which, who) = (libc::PRIO_PROCESS as _, 0);
+        if super::should_reduce_prio(sess)
+            && let Ok(..TARGET_NICE) = get_priority(which, who)
+        {
+            let _ = set_priority(which, who, TARGET_NICE);
         }
     }
 }
@@ -59,7 +101,7 @@ mod for_windows {
     use windows::Win32::System::Threading::{BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess};
     use windows::core::PCWSTR;
 
-    pub(crate) unsafe fn setup(sess: &super::Session) {
+    pub(crate) fn setup(sess: &super::Session) {
         // SAFETY: pretty much everything below is unsafe
         unsafe {
             // Enable the Windows Error Reporting dialog which msys disables,
@@ -76,7 +118,7 @@ mod for_windows {
             // children will reside in the job by default.
             let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
             info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-            if sess.config.low_priority {
+            if super::should_reduce_prio(sess) {
                 info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PRIORITY_CLASS;
                 info.BasicLimitInformation.PriorityClass = BELOW_NORMAL_PRIORITY_CLASS.0;
             }

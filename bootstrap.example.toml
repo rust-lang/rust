@@ -474,11 +474,18 @@
 # linked or not.
 #build.cargo-native-static = false
 
-# Run the build with low priority, by setting the process group's "nice" value
-# to +10 on Unix platforms, and by using a "low priority" job object on Windows.
-# Note that this will only slow the build down if there are other CPU-intensive
-# jobs competing for CPU time on the same system.
-#build.low-priority = true
+# Run the build with low priority, by setting the process's "nice" value to +10
+# on Unix platforms, and by using a "low priority" job object on Windows.
+# This will improve the responsiveness of foreground tasks and will not slow the
+# build down unless there are competing CPU-saturating jobs, so there is
+# typically no reason to opt out of this behavior. See the discussion in
+# https://github.com/rust-lang/rust/pull/165707 for more details.
+#
+# `./x dist` invocations are exempt by default because they are normally run
+# beneath some other build system that is expected to perform its own priority
+# lowering, so set this to `true` if you want to invoke `./x dist` directly
+# without any wrappers.
+#build.low-priority = if cmd == "dist" { false } else { true }
 
 # Arguments passed to the `./configure` script, used during distcheck. You
 # probably won't fill this in but rather it's filled in by the `./configure`
