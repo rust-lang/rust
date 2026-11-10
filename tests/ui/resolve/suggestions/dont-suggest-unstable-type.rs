@@ -3,7 +3,6 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/149402>.
 //!
 //@ needs-target-std
-//@ ignore-backends: gcc
 
 //@ revisions: stable nightly
 //@[stable] act-as-stable

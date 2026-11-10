@@ -3,7 +3,6 @@
 // ignore-tidy-target-specific-tests
 //@ check-fail
 //@ compile-flags: --target={{src-base}}/codegen/custom-target-invalid-llvm-target.json -Z unstable-options
-//@ ignore-backends: gcc
 
 fn main() {}
 
