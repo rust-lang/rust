@@ -118,7 +118,7 @@ pub use attributes::cfg::{
 pub use attributes::cfg_select::*;
 pub use attributes::util::{is_builtin_attr, parse_version};
 pub use context::ShouldEmit;
-pub use diagnostics::ParsedDescription;
+pub use diagnostics::{ParsedDescription, RenamedLintSuggestion, UnknownLintSuggestion};
 pub use interface::{AttributeParser, EmitAttribute};
 pub use rustc_parse::parser::Recovery;
 pub use template::AttributeTemplate;

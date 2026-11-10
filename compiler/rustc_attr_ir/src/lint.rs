@@ -1,6 +1,6 @@
+use rustc_lint_defs::LintName;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{Span, Symbol, sym};
-use rustc_structures::LintName;
 
 use crate::{HashIgnoredAttrId, PrintAttribute};
 
@@ -45,7 +45,12 @@ impl LintCheckKind {
 /// ```
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct LintCheck {
-    pub lint_name: LintName,
+    /// The full normalized lint name of an existing lint, including the tool name.
+    /// This may not be what the user wrote down, in case of renamed lints the new lint name is here.
+    /// The above implies that `LintStore::find_lints` is guaranteed to find this lint using this symbol.
+    ///
+    /// For example, `single_use_lifetime` is changed to `single_use_lifetimes`.
+    pub lint_name_normalized: LintName,
     pub kind: LintCheckKind,
     pub reason: Option<Symbol>,
     /// Needed by `LintExpectationId` to track fulfilled expectations
@@ -61,5 +66,4 @@ pub struct LintCheck {
     /// #[deny(foo::bar::baz)]
     ///        ^^^^^^^^^^^^^
     pub lint_span: Span,
-    pub tool_span: Option<Span>,
 }
