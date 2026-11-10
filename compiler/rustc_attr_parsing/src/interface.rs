@@ -361,14 +361,20 @@ impl<'sess> AttributeParser<'sess> {
                     let inner_span = lower_span(n.item.span);
 
                     let accepter = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice());
+
+                    self.check_attribute_safety(
+                        &attr_path,
+                        inner_span,
+                        n.item.unsafety,
+                        if let Some(accept) = accepter {
+                            accept.safety
+                        } else {
+                            AttributeSafety::Normal
+                        },
+                        &mut emit_lint,
+                    );
+
                     if let Some(accept) = accepter {
-                        self.check_attribute_safety(
-                            &attr_path,
-                            inner_span,
-                            n.item.unsafety,
-                            accept.safety,
-                            &mut emit_lint,
-                        );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
                         if let [part] = parts.as_slice() {
                             debug_assert!(BUILTIN_ATTRIBUTE_SET.contains(part));
@@ -471,14 +477,6 @@ impl<'sess> AttributeParser<'sess> {
                             style: attr.style,
                             span: attr_span,
                         };
-
-                        self.check_attribute_safety(
-                            &attr_path,
-                            inner_span,
-                            n.item.unsafety,
-                            AttributeSafety::Normal,
-                            &mut emit_lint,
-                        );
 
                         if !matches!(self.should_emit, ShouldEmit::Nothing)
                             && Target::from_ast_target(&ast_target) == Target::Crate
