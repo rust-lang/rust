@@ -64,9 +64,9 @@ dependencies = [
 
 [[package]]
 name = "annotate-snippets"
-version = "0.12.16"
+version = "0.12.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f211a51805bc641f3ad5b7664c77d2547af685cc33b4cd8d31964027a46f13f1"
+checksum = "b2a5b0a5ab8561c603f16c3b78c24a386b1f70e7fc1b1b1e8c15738828e4a176"
 dependencies = [
  "anstyle",
  "memchr",
@@ -680,7 +680,7 @@ dependencies = [
 name = "clippy-dev"
 version = "0.0.1"
 dependencies = [
- "annotate-snippets 0.12.16",
+ "annotate-snippets 0.12.17",
  "anstream 0.6.21",
  "chrono",
  "clap",
@@ -4041,7 +4041,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets 0.12.16",
+ "annotate-snippets 0.12.17",
  "anstream 0.6.21",
  "anstyle",
  "derive_setters",
@@ -5179,7 +5179,7 @@ dependencies = [
 name = "rustfmt-nightly"
 version = "1.12.0"
 dependencies = [
- "annotate-snippets 0.12.16",
+ "annotate-snippets 0.12.17",
  "anyhow",
  "bytecount",
  "cargo_metadata 0.23.1",

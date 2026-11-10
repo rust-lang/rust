@@ -362,6 +362,7 @@ impl Diagnostic {
             .ui_testing(je.ui_testing)
             .ignored_directories_in_source_blocks(je.ignored_directories_in_source_blocks.clone())
             .theme(if je.json_rendered.unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
+            .no_graphics(je.json_rendered.no_graphics)
             .emit_diagnostic(diag);
 
         let buf = Arc::try_unwrap(buf.0).unwrap().into_inner().unwrap();
