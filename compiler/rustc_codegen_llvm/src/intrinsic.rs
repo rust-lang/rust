@@ -748,7 +748,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 assert_matches!(
                     self.layout_of(fn_args.type_at(0)).backend_repr,
                     BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        number_of_vectors: NumScalableVectors(2..=8),
                         ..
                     }
                 );
@@ -769,7 +769,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 assert_matches!(
                     self.layout_of(fn_args.type_at(0)).backend_repr,
                     BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        number_of_vectors: NumScalableVectors(2..=8),
                         ..
                     }
                 );
