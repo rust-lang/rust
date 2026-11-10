@@ -14,9 +14,9 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty,
-    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, TypingMode, Unnormalized, Upcast,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Unnormalized, Upcast,
 };
 use rustc_span::{BytePos, DUMMY_SP, Span, bug, kw, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -238,7 +238,6 @@ fn compare_method_clause_entailment<'tcx>(
 
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     // NOTE(-Zhigher-ranked-assumptions): The `hybrid_preds`
     // should be well-formed. However, using them may result in
     // region errors as we currently don't track placeholder
@@ -253,7 +252,8 @@ fn compare_method_clause_entailment<'tcx>(
     // should be due to missing implied bounds.
     //
     // cc trait-system-refactor-initiative/issues/166.
-    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
+    let param_env =
+        traits::normalize_param_env_or_error(tcx, hybrid_clauses.collect(), normalize_cause);
     debug!(?param_env);
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -494,10 +494,9 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .into_iter()
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
-        param_env,
+        hybrid_clauses.collect(),
         ObligationCause::misc(tcx.def_span(impl_m_def_id), impl_m_def_id),
     );
 
@@ -2372,10 +2371,9 @@ fn compare_const_clause_entailment<'tcx>(
     );
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
 
-    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
-        param_env,
+        hybrid_clauses.collect(),
         ObligationCause::misc(impl_ct_span, impl_ct_def_id),
     );
 
@@ -2530,8 +2528,8 @@ fn compare_type_clause_entailment<'tcx>(
     }
 
     let hybrid_clauses = hybrid_clauses.into_iter().map(Unnormalized::skip_norm_wip);
-    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
-    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
+    let param_env =
+        traits::normalize_param_env_or_error(tcx, hybrid_clauses.collect(), normalize_cause);
     debug!(?param_env);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
