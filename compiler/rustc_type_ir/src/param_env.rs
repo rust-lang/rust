@@ -75,6 +75,28 @@ mod iterator {
         I: Interner,
         Iter: Iterator<Item = I::Clause>,
     {
+        type Item = Binder<I, ClauseKind<I>>;
+
+        #[inline]
+        fn iter(self) -> impl Iterator<Item = Self::Item> {
+            let cx = self.clause_filter.0;
+            self.clauses.flat_map(move |clause| match clause.kind().skip_binder() {
+                // Reconstruct clauses from compressed trait clauses.
+                ClauseKind::CompressedTrait(ct) => {
+                    Either::Left(ct.compressed_trait_refs.iter().map(move |c| {
+                        c.trait_clause_from_single_bit(cx, ct.self_ty).map_bound(ClauseKind::Trait)
+                    }))
+                }
+                _ => Either::Right(iter::once(clause.kind())),
+            })
+        }
+    }
+
+    impl<I, Iter> CallerBoundsIterator<I, Iter> for CallerBoundsAccessor<I, Iter, AllClausesInterned<I>>
+    where
+        I: Interner,
+        Iter: Iterator<Item = I::Clause>,
+    {
         type Item = I::Clause;
 
         #[inline]
@@ -284,6 +306,11 @@ mod clause_filter {
         I: Interner;
     impl<I> ClauseFilter for AllClauses<I> where I: Interner {}
 
+    pub struct AllClausesInterned<I>(pub I)
+    where
+        I: Interner;
+    impl<I> ClauseFilter for AllClausesInterned<I> where I: Interner {}
+
     impl<I, Iter> CallerBoundsAccessor<I, Iter, NoClauses>
     where
         I: Interner,
@@ -314,6 +341,19 @@ mod clause_filter {
                     output: OutputAsTraitClause,
                     cx,
                 },
+                cx: PhantomData,
+            }
+        }
+
+        /// Warning: may be a performance hazzard!
+        #[inline]
+        pub fn all_clauses_interned(
+            self,
+            cx: I,
+        ) -> CallerBoundsAccessor<I, Iter, AllClausesInterned<I>> {
+            CallerBoundsAccessor {
+                clauses: self.clauses,
+                clause_filter: AllClausesInterned(cx),
                 cx: PhantomData,
             }
         }
