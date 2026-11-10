@@ -42,6 +42,7 @@ WORKDIR /build/
 COPY scripts/musl.sh /build/
 COPY scripts/musl-cve-2026-6042.diff /build/
 COPY scripts/musl-cve-2026-40200.diff /build/
+COPY scripts/musl-cve-2026-107891.diff /build/
 RUN CC=gcc CFLAGS="-m32 -Wa,-mrelax-relocations=no" \
     CXX=g++ CXXFLAGS="-m32 -Wa,-mrelax-relocations=no" \
     bash musl.sh i686 --target=i686 && \
