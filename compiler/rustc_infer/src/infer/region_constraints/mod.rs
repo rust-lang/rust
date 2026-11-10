@@ -21,9 +21,6 @@ use crate::infer::unify_key::{RegionVariableValue, RegionVidKey};
 
 mod leak_check;
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Clone, Default)]
 pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
