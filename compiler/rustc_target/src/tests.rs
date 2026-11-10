@@ -1,5 +1,8 @@
+use std::borrow::Cow;
+use std::collections::BTreeMap;
+
 use crate::json::ToJson;
-use crate::spec::Target;
+use crate::spec::{Target, TargetTuple};
 
 #[test]
 fn report_unused_fields() {
@@ -39,4 +42,55 @@ fn custom_arch_propagates_from_json() {
         let serialized = target.to_json();
         assert_eq!(serialized["arch"], "customarch");
     });
+}
+
+fn bpf_target_with_versioned_args(map: BTreeMap<u32, Cow<'static, [Cow<'static, str>]>>) -> Target {
+    let mut t = Target::expect_builtin(&TargetTuple::from_tuple("bpfeb-unknown-none"));
+    t.options.llvm_args_by_version = map;
+    t
+}
+
+#[test]
+fn llvm_args_by_version_empty_map_returns_no_args() {
+    let t = bpf_target_with_versioned_args(BTreeMap::new());
+    assert!(t.llvm_args_for_llvm_version(1).collect::<Vec<_>>().is_empty());
+    assert!(t.llvm_args_for_llvm_version(9999).collect::<Vec<_>>().is_empty());
+}
+
+#[test]
+fn llvm_args_by_version_excludes_entries_above_major() {
+    let t = bpf_target_with_versioned_args(BTreeMap::from([
+        (23u32, Cow::Borrowed(&[Cow::Borrowed("-a")][..])),
+        (24, Cow::Borrowed(&[Cow::Borrowed("-b")][..])),
+    ]));
+    assert!(t.llvm_args_for_llvm_version(22).collect::<Vec<_>>().is_empty());
+    assert_eq!(t.llvm_args_for_llvm_version(23).collect::<Vec<_>>(), &[&Cow::Borrowed("-a")]);
+    assert_eq!(
+        t.llvm_args_for_llvm_version(24).collect::<Vec<_>>(),
+        &[&Cow::Borrowed("-a"), &Cow::Borrowed("-b")]
+    );
+    assert_eq!(
+        t.llvm_args_for_llvm_version(25).collect::<Vec<_>>(),
+        &[&Cow::Borrowed("-a"), &Cow::Borrowed("-b")]
+    );
+}
+
+#[test]
+fn llvm_args_by_version_accumulates_multiple_entries() {
+    let t = bpf_target_with_versioned_args(BTreeMap::from([
+        (23u32, Cow::Borrowed(&[Cow::Borrowed("-a"), Cow::Borrowed("-b")][..])),
+        (24, Cow::Borrowed(&[Cow::Borrowed("-c")][..])),
+    ]));
+    assert_eq!(
+        t.llvm_args_for_llvm_version(23).collect::<Vec<_>>(),
+        &[&Cow::Borrowed("-a"), &Cow::Borrowed("-b")]
+    );
+    assert_eq!(
+        t.llvm_args_for_llvm_version(24).collect::<Vec<_>>(),
+        &[&Cow::Borrowed("-a"), &Cow::Borrowed("-b"), &Cow::Borrowed("-c")]
+    );
+    assert_eq!(
+        t.llvm_args_for_llvm_version(100).collect::<Vec<_>>(),
+        &[&Cow::Borrowed("-a"), &Cow::Borrowed("-b"), &Cow::Borrowed("-c")]
+    );
 }
