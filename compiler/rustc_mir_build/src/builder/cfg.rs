@@ -11,12 +11,20 @@ use tracing::debug;
 use crate::builder::{CFG, CFGBlock, UnterminatedBlockData};
 
 impl<'tcx> CFG<'tcx> {
-    pub(crate) fn block_data(&self, blk: BasicBlock) -> &CFGBlock<'tcx> {
+    fn block_data(&self, blk: BasicBlock) -> &CFGBlock<'tcx> {
         &self.basic_blocks[blk]
     }
 
-    pub(crate) fn block_data_mut(&mut self, blk: BasicBlock) -> &mut CFGBlock<'tcx> {
+    fn block_data_mut(&mut self, blk: BasicBlock) -> &mut CFGBlock<'tcx> {
         &mut self.basic_blocks[blk]
+    }
+
+    pub(crate) fn assert_terminator(&self, bb: BasicBlock) -> &Terminator<'tcx> {
+        self.block_data(bb).as_ref().left().unwrap().terminator()
+    }
+
+    pub(crate) fn assert_terminator_mut(&mut self, bb: BasicBlock) -> &mut Terminator<'tcx> {
+        self.block_data_mut(bb).as_mut().left().unwrap().terminator_mut()
     }
 
     pub(crate) fn statements(&self, blk: BasicBlock) -> &[Statement<'tcx>] {
