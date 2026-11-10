@@ -1,7 +1,7 @@
 //@ check-pass
 //@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
-#![feature(pattern_type_macro, pattern_types)]
+#![feature(pattern_types)]
 mod redeclared_different_signature {
     mod a {
         extern "C" {

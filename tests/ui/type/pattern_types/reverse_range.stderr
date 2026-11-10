@@ -1,5 +1,5 @@
 error[E0080]: evaluation panicked: exclusive range end at minimum value of type
-  --> $DIR/reverse_range.rs:7:36
+  --> $DIR/reverse_range.rs:6:36
    |
 LL | const NONE: pattern_type!(u8 is 1..0) = unsafe { std::mem::transmute(3_u8) };
    |                                    ^ evaluation of `NONE::{constant#1}` failed here

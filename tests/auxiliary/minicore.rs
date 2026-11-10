@@ -23,11 +23,12 @@
     intrinsics,
     lang_items,
     auto_traits,
+    forced_keywords,
     freeze_impls,
     negative_impls,
-    pattern_types,
     rustc_attrs,
     decl_macro,
+    allow_internal_unstable,
     f16,
     f16b,
     cfg_target_has_reliable_f16b,
@@ -494,12 +495,9 @@ pub enum c_void {
     __variant2,
 }
 
-#[rustc_builtin_macro(pattern_type)]
-#[macro_export]
-macro_rules! pattern_type {
-    ($($arg:tt)*) => {
-        /* compiler built-in */
-    };
+#[allow_internal_unstable(internal_syntax)]
+pub macro pattern_type($($arg:tt)*) {
+    k#pattern_type($($arg)*)
 }
 
 #[lang = "Ordering"]
