@@ -90,7 +90,10 @@ pub(crate) fn expand_derive_clone(
             nonself_args: SmallVec::new(),
             has_other_selflike_arg: false,
             ret_ty: cx.ty_self(span),
-            attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
+            attributes: thin_vec![
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
+            ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             body,
         }],

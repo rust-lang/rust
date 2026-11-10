@@ -18,13 +18,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         use rustc_middle::mir::BinOp::*;
 
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
 
         interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
                 assert_eq!(left.layout.backend_repr, right.layout.backend_repr); // types can differ, e.g. fn ptrs with different `for`
-                let size = this.pointer_size();
+                let size = ecx.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
                 let left = match **left {
@@ -46,34 +46,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Ge => left >= right,
                     _ => bug!(),
                 };
-                ImmTy::from_bool(res, *this.tcx)
+                ImmTy::from_bool(res, *ecx.tcx)
             }
 
             // Some more operations are possible with atomics.
             // The RHS must be `usize`.
             Add | Sub | BitOr | BitAnd | BitXor => {
                 assert!(left.layout.ty.is_raw_ptr());
-                assert_eq!(right.layout.ty, this.tcx.types.usize);
-                let ptr = left.to_scalar().to_pointer(this);
+                assert_eq!(right.layout.ty, ecx.tcx.types.usize);
+                let ptr = left.to_scalar().to_pointer(ecx);
                 // We do the actual operation with usize-typed scalars.
-                let left = ImmTy::from_uint(ptr.addr().bytes(), this.machine.layouts.usize);
-                let result = this.binary_op(bin_op, &left, right)?;
+                let left = ImmTy::from_uint(ptr.addr().bytes(), ecx.machine.layouts.usize);
+                let result = ecx.binary_op(bin_op, &left, right)?;
                 // Construct a new pointer with the provenance of `ptr` (the LHS).
                 let result_ptr = Pointer::new(
                     ptr.provenance,
-                    Size::from_bytes(result.to_scalar().to_target_usize(this)?),
+                    Size::from_bytes(result.to_scalar().to_target_usize(ecx)?),
                 );
 
-                ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, this), left.layout)
+                ImmTy::from_scalar(Scalar::from_maybe_pointer(result_ptr, ecx), left.layout)
             }
 
-            _ => span_bug!(this.cur_span(), "Invalid operator on pointers: {:?}", bin_op),
+            _ => span_bug!(ecx.cur_span(), "Invalid operator on pointers: {:?}", bin_op),
         })
     }
 
     fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(&self, inputs: &[F1]) -> F2 {
-        let this = self.eval_context_ref();
-        if !this.machine.float_nondet {
+        let ecx = self.eval_context_ref();
+        if !ecx.machine.float_nondet {
             return F2::NAN;
         }
 
@@ -90,7 +90,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if f.is_nan() { Some(f) } else { None }
         }
 
-        let mut rand = this.machine.rng.borrow_mut();
+        let mut rand = ecx.machine.rng.borrow_mut();
         // Assemble an iterator of possible NaNs: preferred, quieting propagation, unchanged propagation.
         // On some targets there are more possibilities; for now we just generate those options that
         // are possible everywhere.
@@ -117,12 +117,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn equal_float_min_max<F: Float>(&self, a: F, b: F) -> F {
-        let this = self.eval_context_ref();
-        if !this.machine.float_nondet {
+        let ecx = self.eval_context_ref();
+        if !ecx.machine.float_nondet {
             return a;
         }
         // Return one side non-deterministically.
-        let mut rand = this.machine.rng.borrow_mut();
+        let mut rand = ecx.machine.rng.borrow_mut();
         if rand.random() { a } else { b }
     }
 }

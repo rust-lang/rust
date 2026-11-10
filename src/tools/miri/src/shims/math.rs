@@ -15,7 +15,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // math functions (note that there are also intrinsics for some other functions)
         match link_name.as_str() {
@@ -37,13 +37,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "erff"
             | "erfcf"
             => {
-                let [f] = &this.check_shim_sig(
+                let [f] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(f32) -> f32),
                     (link_name, abi, args),
                 )?;
-                let f = this.read_scalar(f)?.to_f32()?;
+                let f = ecx.read_scalar(f)?.to_f32()?;
 
-                let res = math::fixed_float_value(this, link_name.as_str(), &[f]).unwrap_or_else(|| {
+                let res = math::fixed_float_value(ecx, link_name.as_str(), &[f]).unwrap_or_else(|| {
                     // Using host floats (but it's fine, these operations do not have
                     // guaranteed precision).
                     let f_host = f.to_host();
@@ -68,14 +68,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let res = res.to_soft();
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    let res = math::apply_random_float_error_ulp(this, res, 4);
+                    let res = math::apply_random_float_error_ulp(ecx, res, 4);
 
                     // Clamp the result to the guaranteed range of this function according to the C standard,
                     // if any.
                     math::clamp_float_value(link_name.as_str(), res)
                 });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
+                let res = ecx.adjust_nan(res, &[f]);
+                ecx.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "_hypotf"
@@ -83,14 +83,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "atan2f"
             | "fdimf"
             => {
-                let [f1, f2] = &this.check_shim_sig(
+                let [f1, f2] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(f32, f32) -> f32),
                     (link_name, abi, args),
                 )?;
-                let f1 = this.read_scalar(f1)?.to_f32()?;
-                let f2 = this.read_scalar(f2)?.to_f32()?;
+                let f1 = ecx.read_scalar(f1)?.to_f32()?;
+                let f2 = ecx.read_scalar(f2)?.to_f32()?;
 
-                let res = math::fixed_float_value(this, link_name.as_str(), &[f1, f2])
+                let res = math::fixed_float_value(ecx, link_name.as_str(), &[f1, f2])
                     .unwrap_or_else(|| {
                         let res = match link_name.as_str() {
                             // underscore case for windows, here and below
@@ -104,14 +104,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         };
                         // Apply a relative error of 4ULP to introduce some non-determinism
                         // simulating imprecise implementations and optimizations.
-                        let res = math::apply_random_float_error_ulp(this, res, 4);
+                        let res = math::apply_random_float_error_ulp(ecx, res, 4);
 
                         // Clamp the result to the guaranteed range of this function according to the C standard,
                         // if any.
                         math::clamp_float_value(link_name.as_str(), res)
                     });
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
+                let res = ecx.adjust_nan(res, &[f1, f2]);
+                ecx.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "cbrt"
@@ -130,13 +130,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "erf"
             | "erfc"
             => {
-                let [f] = &this.check_shim_sig(
+                let [f] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(f64) -> f64),
                     (link_name, abi, args),
                 )?;
-                let f = this.read_scalar(f)?.to_f64()?;
+                let f = ecx.read_scalar(f)?.to_f64()?;
 
-                let res = math::fixed_float_value(this, link_name.as_str(), &[f]).unwrap_or_else(|| {
+                let res = math::fixed_float_value(ecx, link_name.as_str(), &[f]).unwrap_or_else(|| {
                     // Using host floats (but it's fine, these operations do not have
                     // guaranteed precision).
                     let f_host = f.to_host();
@@ -161,14 +161,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let res = res.to_soft();
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    let res = math::apply_random_float_error_ulp(this, res, 4);
+                    let res = math::apply_random_float_error_ulp(ecx, res, 4);
 
                     // Clamp the result to the guaranteed range of this function according to the C standard,
                     // if any.
                     math::clamp_float_value(link_name.as_str(), res)
                 });
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
+                let res = ecx.adjust_nan(res, &[f]);
+                ecx.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "_hypot"
@@ -176,14 +176,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "atan2"
             | "fdim"
             => {
-                let [f1, f2] = &this.check_shim_sig(
+                let [f1, f2] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(f64, f64) -> f64),
                     (link_name, abi, args),
                 )?;
-                let f1 = this.read_scalar(f1)?.to_f64()?;
-                let f2 = this.read_scalar(f2)?.to_f64()?;
+                let f1 = ecx.read_scalar(f1)?.to_f64()?;
+                let f2 = ecx.read_scalar(f2)?.to_f64()?;
 
-                let res = math::fixed_float_value(this, link_name.as_str(), &[f1, f2]).unwrap_or_else(|| {
+                let res = math::fixed_float_value(ecx, link_name.as_str(), &[f1, f2]).unwrap_or_else(|| {
                     let res = match link_name.as_str() {
                         // underscore case for windows, here and below
                         // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
@@ -196,75 +196,75 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     };
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    let res = math::apply_random_float_error_ulp(this, res, 4);
+                    let res = math::apply_random_float_error_ulp(ecx, res, 4);
 
                     // Clamp the result to the guaranteed range of this function according to the C standard,
                     // if any.
                     math::clamp_float_value(link_name.as_str(), res)
                 });
-                let res = this.adjust_nan(res, &[f1, f2]);
-                this.write_scalar(res, dest)?;
+                let res = ecx.adjust_nan(res, &[f1, f2]);
+                ecx.write_scalar(res, dest)?;
             }
             #[rustfmt::skip]
             | "_ldexp"
             | "ldexp"
             | "scalbn"
             => {
-                let [x, exp] = &this.check_shim_sig(
+                let [x, exp] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(f64, i32) -> f64),
                     (link_name, abi, args),
                 )?;
                 // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
-                let x = this.read_scalar(x)?.to_f64()?;
-                let exp = this.read_scalar(exp)?.to_i32()?;
+                let x = ecx.read_scalar(x)?.to_f64()?;
+                let exp = ecx.read_scalar(exp)?.to_i32()?;
 
                 let res = x.scalbn(exp);
-                let res = this.adjust_nan(res, &[x]);
-                this.write_scalar(res, dest)?;
+                let res = ecx.adjust_nan(res, &[x]);
+                ecx.write_scalar(res, dest)?;
             }
             "lgammaf_r" => {
-                let [x, signp] = &this.check_shim_sig(
+                let [x, signp] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(f32, *i32) -> f32),
                     (link_name, abi, args),
                 )?;
-                let x = this.read_scalar(x)?.to_f32()?;
-                let signp = this.deref_pointer(signp)?;
+                let x = ecx.read_scalar(x)?.to_f32()?;
+                let signp = ecx.deref_pointer(signp)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
-                this.write_int(sign, &signp)?;
+                ecx.write_int(sign, &signp)?;
 
                 let res = res.to_soft();
                 // Apply a relative error of 4ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(this, res, 4);
+                let res = math::apply_random_float_error_ulp(ecx, res, 4);
                 // Clamp the result to the guaranteed range of this function according to the C standard,
                 // if any.
                 let res = math::clamp_float_value(link_name.as_str(), res);
-                let res = this.adjust_nan(res, &[x]);
-                this.write_scalar(res, dest)?;
+                let res = ecx.adjust_nan(res, &[x]);
+                ecx.write_scalar(res, dest)?;
             }
             "lgamma_r" => {
-                let [x, signp] = &this.check_shim_sig(
+                let [x, signp] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(f64, *i32) -> f64),
                     (link_name, abi, args),
                 )?;
-                let x = this.read_scalar(x)?.to_f64()?;
-                let signp = this.deref_pointer(signp)?;
+                let x = ecx.read_scalar(x)?.to_f64()?;
+                let signp = ecx.deref_pointer(signp)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
-                this.write_int(sign, &signp)?;
+                ecx.write_int(sign, &signp)?;
 
                 let res = res.to_soft();
                 // Apply a relative error of 4ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(this, res, 4);
+                let res = math::apply_random_float_error_ulp(ecx, res, 4);
                 // Clamp the result to the guaranteed range of this function according to the C standard,
                 // if any.
                 let res = math::clamp_float_value(link_name.as_str(), res);
-                let res = this.adjust_nan(res, &[x]);
-                this.write_scalar(res, dest)?;
+                let res = ecx.adjust_nan(res, &[x]);
+                ecx.write_scalar(res, dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

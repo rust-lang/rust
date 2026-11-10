@@ -157,7 +157,8 @@ impl Dir {
     fn remove_native(&self, path: &[u16], dir: bool) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
-        let create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
+        let mut create_opt = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE };
+        create_opt |= c::FILE_OPEN_REPARSE_POINT;
         let handle = self.open_file_native(path, &opts, create_opt)?;
         File::from_inner(handle).delete().io_result()
     }
@@ -165,9 +166,8 @@ impl Dir {
     fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16]) -> io::Result<()> {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
-        // FIXME: custom_flags is ignored by `open_file_native`!
-        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-        let handle = self.open_file_native(from, &opts, /* create_opt */ 0)?;
+        let handle =
+            self.open_file_native(from, &opts, /* create_opt */ c::FILE_OPEN_REPARSE_POINT)?;
         // Calculate the layout of the `FILE_RENAME_INFORMATION` we pass to `NtSetInformationFile`
         // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
         const too_long_err: io::Error =

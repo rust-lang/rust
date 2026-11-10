@@ -6,8 +6,10 @@ fn main() {
     assert!(sockfd >= 0);
 
     // The buffer is large enough for the value, but the length claims it is much larger.
+    // Use the largest possible length; Miri used to ICE here because it read `socklen_t`
+    // as a signed integer.
     let mut val: libc::c_int = 0;
-    let mut len: libc::socklen_t = 1024;
+    let mut len = libc::socklen_t::MAX;
     unsafe {
         libc::getsockopt(
             //~^ERROR: memory access failed

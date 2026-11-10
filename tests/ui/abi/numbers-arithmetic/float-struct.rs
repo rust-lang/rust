@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 
 use std::fmt::Debug;
 use std::hint::black_box;

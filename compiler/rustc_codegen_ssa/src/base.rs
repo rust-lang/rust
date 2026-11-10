@@ -11,14 +11,13 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{DebuggerVisualizerType, EiiDecl, EiiImpl, OptimizeAttr, find_attr};
+use rustc_attr_ir::{DebuggerVisualizerType, EiiDecl, EiiImpl, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::{Dependencies, Linkage};
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
@@ -26,7 +25,6 @@ use rustc_middle::middle::lang_items;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, ErrorHandled, Scalar};
 use rustc_middle::mir::{BinOp, ConstValue};
 use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
-use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, UintTy, Unnormalized};
 use rustc_session::config::{self, EntryFnType, JobsMode};
@@ -1215,30 +1213,6 @@ impl CrateInfo {
 
         info
     }
-}
-
-pub(crate) fn provide(providers: &mut Providers) {
-    providers.backend_optimization_level = |tcx, cratenum| {
-        let global = tcx.sess.opts.optimize;
-
-        // Nothing to promote outside a size build. At `-Copt-level=0` the upgrade would populate
-        // the pass manager, and its module-wide passes ignore the `optnone` annotation.
-        if global.objective() != config::OptimizationObjective::Size {
-            return global;
-        }
-
-        // A speed-marked body in a size build needs a speed level, and `-O2` is the lowest one.
-        let for_speed = config::OptLevel::More;
-
-        let defids = tcx.collect_and_partition_mono_items(cratenum).all_mono_items;
-
-        let any_for_speed = defids.items().any(|id| {
-            let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
-            matches!(optimize, OptimizeAttr::Speed)
-        });
-
-        if any_for_speed { for_speed } else { global }
-    };
 }
 
 pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {

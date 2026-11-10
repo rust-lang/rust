@@ -6,7 +6,6 @@
 //@ run-pass
 //@ needs-unwind
 //@ edition:2018
-//@ ignore-backends: gcc
 
 #![allow(unused)]
 

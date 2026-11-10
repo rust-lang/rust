@@ -8,6 +8,5 @@
 //@ compile-flags: --target=thumbv6m-none-eabi
 //@ ignore-arm
 //@ needs-llvm-components: arm
-//@ ignore-backends: gcc
 
 fn main() { }

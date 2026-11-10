@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 
 use std::ffi::VaList;
 

@@ -119,7 +119,6 @@ pub enum IntErrorKind {
     ///
     /// [`Alignment`]: core::mem::Alignment "mem::Alignment"
     #[unstable(feature = "try_from_int_error_kind", issue = "153978")]
-    // Also, #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     NotAPowerOfTwo,
 }
 
