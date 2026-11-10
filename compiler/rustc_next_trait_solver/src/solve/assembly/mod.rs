@@ -177,7 +177,7 @@ where
     fn probe_and_consider_param_env_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: ty::Binder<I, ty::ClauseKind<I>>,
     ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
         // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
         // check whether the candidate is global while considering normalization.
@@ -226,7 +226,7 @@ where
         Self::fast_reject_assumption(ecx, goal, assumption)?;
 
         ecx.probe_trait_candidate(source)
-            .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
+            .enter(|ecx| Self::match_assumption(ecx, goal, assumption.kind(), then))
     }
 
     /// Try to reject the assumption based off of simple heuristics, such as [`ty::ClauseKind`]
@@ -240,13 +240,13 @@ where
     fn non_fast_rejected_caller_bounds(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> impl Iterator<Item = I::Clause>;
+    ) -> impl Iterator<Item = ty::Binder<I, ty::ClauseKind<I>>>;
 
     /// Relate the goal and assumption.
     fn match_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: ty::Binder<I, ty::ClauseKind<I>>,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I>;
 
@@ -1382,7 +1382,7 @@ where
     fn characterize_param_env_assumption(
         &mut self,
         param_env: I::ParamEnv,
-        assumption: I::Clause,
+        assumption: ty::Binder<I, ty::ClauseKind<I>>,
     ) -> Result<(CandidateSource<I>, Certainty), NoSolution> {
         // FIXME: This should be fixed, but it also requires changing the behavior
         // in the old solver which is currently relied on.

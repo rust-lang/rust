@@ -136,7 +136,7 @@ where
     fn non_fast_rejected_caller_bounds(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> impl Iterator<Item = I::Clause> {
+    ) -> impl Iterator<Item = ty::Binder<I, ty::ClauseKind<I>>> {
         goal.param_env
             .caller_bounds()
             .trait_clauses(ecx.cx())
@@ -148,8 +148,8 @@ where
                     trait_clause.skip_binder().trait_ref.args,
                 )
             })
-            .interned()
             .iter()
+            .map(|i| i.map_bound(|x| ty::ClauseKind::Trait(x)))
     }
 
     fn fast_reject_assumption(
@@ -174,10 +174,13 @@ where
     fn match_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: ty::Binder<I, ty::ClauseKind<I>>,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        let trait_clause = assumption.as_trait_clause().unwrap();
+        let trait_clause = assumption.map_bound(|i| match i {
+            ty::ClauseKind::Trait(t) => Some(t),
+            _ => None,
+        }).transpose().unwrap();
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
