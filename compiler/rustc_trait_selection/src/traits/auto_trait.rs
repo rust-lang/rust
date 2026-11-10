@@ -346,6 +346,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             param_env.caller_bounds().all_clauses(infcx.tcx).iter().collect::<Vec<_>>();
         let mut user_computed_clauses: FxIndexSet<_> =
             user_env.caller_bounds().all_clauses(infcx.tcx).iter().collect();
+        let mut prev_user_computed_clauses = None::<FxIndexSet<_>>;
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -417,6 +418,16 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 _ => panic!("Unexpected error for '{ty:?}': {result:?}"),
             };
+
+            // `computed_clauses` doesn't change, only `user_computed_clauses` does.
+            // except not always! If it didn't, we can stop here.
+            if prev_user_computed_clauses
+                .as_ref()
+                .is_some_and(|prev| prev == &user_computed_clauses)
+            {
+                continue;
+            }
+            prev_user_computed_clauses = Some(user_computed_clauses.clone());
 
             let normalized_preds = elaborate(
                 tcx,
