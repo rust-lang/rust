@@ -727,6 +727,8 @@ impl Duration {
     /// The returned value does not include any fractional component
     /// corresponding to units less than a week of the duration.
     ///
+    /// For this method, one week is defined as 7 days, or 604,800 seconds.
+    ///
     /// # Examples
     ///
     /// ```
@@ -749,6 +751,8 @@ impl Duration {
     /// The returned value does not include any fractional component
     /// corresponding to units less than a day of the duration.
     ///
+    /// For this method, one day is defined as 24 hours, or 86,400 seconds.
+    ///
     /// # Examples
     ///
     /// ```
@@ -770,6 +774,8 @@ impl Duration {
     /// The returned value does not include any fractional component
     /// corresponding to units less than an hour of the duration.
     ///
+    /// For this method, one hour is defined as 60 minutes, or 3,600 seconds.
+    ///
     /// # Examples
     ///
     /// ```
@@ -790,6 +796,8 @@ impl Duration {
     ///
     /// The returned value does not include any fractional component
     /// corresponding to units less than a minute of the duration.
+    ///
+    /// For this method, one minute is defined as 60 seconds.
     ///
     /// # Examples
     ///
