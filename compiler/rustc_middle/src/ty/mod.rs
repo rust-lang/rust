@@ -34,6 +34,7 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{self as attr, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::snapshot_vec::VecLike;
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -1016,6 +1017,27 @@ struct ClauseCompressor<'tcx> {
 }
 
 impl<'tcx> ClauseCompressor<'tcx> {
+    /// Construct a `ClauseCompressor` from an existing [`ParamEnv`] without decompressing its
+    /// contents. This is useful when adding clauses to an existing environment without
+    /// decompressing and re-interning compressed clauses.
+    fn from_param_env(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
+        let mut compressed_clauses = Vec::new();
+        let mut uncompressed_clauses = Vec::new();
+
+        for clause in param_env.caller_bounds {
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::CompressedTrait(c) => compressed_clauses.push(c),
+                _ => uncompressed_clauses.push(clause),
+            }
+        }
+
+        Self {
+            tcx,
+            compressed_clauses,
+            uncompressed_clauses,
+        }
+    }
+
     fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, compressed_clauses: Vec::new(), uncompressed_clauses: Vec::new() }
     }
@@ -1104,6 +1126,16 @@ impl<'tcx> ParamEnv<'tcx> {
     #[inline]
     pub fn empty() -> Self {
         Self { caller_bounds: ListWithCachedTypeInfo::empty() }
+    }
+
+    #[inline]
+    pub fn extend(self, tcx: TyCtxt<'tcx>, new_bounds: impl Iterator<Item = ty::Clause<'tcx>>) -> Self {
+        let mut compressor = ClauseCompressor::from_param_env(tcx, self);
+        for clause in new_bounds {
+            compressor.add_clause(clause);
+        }
+
+        ParamEnv { caller_bounds: compressor.mk_clauses() }
     }
 
     #[inline]
