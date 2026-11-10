@@ -986,7 +986,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             Some(Float::F32) => "tisf",
             Some(Float::F64) => "tidf",
             Some(Float::F128) => "titf",
-            None | Some(Float::F16B | Float::PpcF128) => {
+            None | Some(Float::F16B | Float::X87F80 | Float::PpcF128) => {
                 panic!("cannot cast a non-native integer to type {dest_typ:?}")
             }
         };
@@ -1037,7 +1037,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             Some(Float::F16 | Float::F32) => "sfti",
             Some(Float::F64) => "dfti",
             Some(Float::F128) => "tfti",
-            None | Some(Float::F16B | Float::PpcF128) => {
+            None | Some(Float::F16B | Float::X87F80 | Float::PpcF128) => {
                 bug!("cannot cast a {value_type:?} to non-native integer")
             }
         };
