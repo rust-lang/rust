@@ -37,7 +37,7 @@
     "scripts": {
         "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
-        "build-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node --target=node20",
+        "build-base": "esbuild ./src/main.ts ./src/crate_graph.ts --bundle --outdir=out --external:vscode --format=cjs --platform=node --target=node20",
         "build": "npm run build-base -- --sourcemap",
         "watch": "npm run build-base -- --sourcemap --watch",
         "format": "node --experimental-strip-types node_modules/prettier/bin/prettier.cjs . --write",
@@ -49,7 +49,6 @@
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "@hpcc-js/wasm": "^2.22.4",
         "anser": "^2.3.2",
         "d3": "^7.9.0",
         "d3-graphviz": "^5.6.0",
