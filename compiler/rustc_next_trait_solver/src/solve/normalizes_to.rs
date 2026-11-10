@@ -183,11 +183,11 @@ where
     fn non_fast_rejected_caller_bounds(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-    ) -> impl Iterator<Item = I::Clause> {
-        goal.param_env.caller_bounds().non_trait_clauses().iter().filter(move |&assumption| {
+    ) -> impl Iterator<Item = ty::Binder<I, ty::ClauseKind<I>>> {
+        goal.param_env.caller_bounds().non_trait_clauses().iter().filter_map(move |assumption| {
             match Self::fast_reject_assumption(ecx, goal, assumption) {
-                Ok(()) => true,
-                Err(NoSolution) => false,
+                Ok(()) => Some(assumption.kind()),
+                Err(NoSolution) => None,
             }
         })
     }
@@ -218,11 +218,18 @@ where
     fn match_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        assumption: I::Clause,
+        assumption: ty::Binder<I, ty::ClauseKind<I>>,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = ecx.cx();
-        let projection_pred = assumption.as_projection_clause().unwrap();
+        let projection_pred = assumption
+            .map_bound(|i| match i {
+                ty::ClauseKind::Projection(p) => Some(p),
+                _ => None,
+            })
+            .transpose()
+            .unwrap();
+
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
 
