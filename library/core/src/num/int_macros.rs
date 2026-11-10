@@ -507,7 +507,7 @@ macro_rules! int_impl {
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
-        ///                 second least-significant bit becomes second most-significant bit, etc.
+        /// second least-significant bit becomes second most-significant bit, etc.
         ///
         /// # Examples
         ///
