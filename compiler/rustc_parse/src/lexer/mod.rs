@@ -15,7 +15,7 @@ use rustc_lint_defs::builtin::{
 use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, Pos, Span, Symbol, sym};
+use rustc_span::{BytePos, Pos, Span, Symbol, kw, sym};
 use tracing::debug;
 use unicode_properties::emoji::UnicodeEmoji;
 
@@ -232,7 +232,13 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 }
                 rustc_lexer::TokenKind::Ident => self.ident(start),
                 rustc_lexer::TokenKind::RawIdent => {
-                    let sym = nfc_normalize(self.str_from(start + BytePos(2)));
+                    let sym = match nfc_normalize(self.str_from(start + BytePos(2))) {
+                        kw::Crate => sym::RawCrate,
+                        kw::SelfLower => sym::RawSelfLower,
+                        kw::SelfUpper => sym::RawSelfUpper,
+                        kw::Super => sym::RawSuper,
+                        sym => sym,
+                    };
                     let span = self.mk_sp(start, self.pos);
                     self.psess.symbol_gallery.insert(sym, span);
                     if !sym.can_be_raw() {
