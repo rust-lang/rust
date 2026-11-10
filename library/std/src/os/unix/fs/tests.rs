@@ -1,4 +1,9 @@
+use core::assert_matches;
+
 use super::*;
+use crate::byte_str::ByteStr;
+use crate::io::Seek;
+use crate::test_helpers::tmpdir;
 
 #[test]
 fn read_vectored_at() {
@@ -33,19 +38,25 @@ fn write_vectored_at() {
     let msg = b"pwritev is not working!";
     let dir = crate::test_helpers::tmpdir();
 
+    let use_append = write_at_append_should_work();
+
     let filename = dir.join("preadv.txt");
     {
         let mut file = fs::File::create(&filename).unwrap();
         file.write_all(msg).unwrap();
     }
     let expected = {
-        let file = fs::File::options().write(true).open(&filename).unwrap();
+        // Open in append mode to test that positioned writes bypass O_APPEND.
+        let mut file =
+            fs::File::options().write(!use_append).append(use_append).open(&filename).unwrap();
         let buf0 = b"    ";
         let buf1 = b"great  ";
 
         let iovec = [io::IoSlice::new(buf0), io::IoSlice::new(buf1)];
 
+        assert_eq!(file.stream_position().unwrap(), 0);
         let n = file.write_vectored_at(&iovec, 11).unwrap();
+        assert_eq!(file.stream_position().unwrap(), 0);
 
         assert!(n == 4 || n == 11);
 
@@ -53,7 +64,26 @@ fn write_vectored_at() {
     };
 
     let content = fs::read(&filename).unwrap();
-    assert_eq!(&content, expected);
+    assert_eq!(ByteStr::new(&content), ByteStr::new(expected));
+}
+
+#[test]
+fn file_test_append_write_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let use_append = write_at_append_should_work();
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_test_append_write_at.txt");
+    let msg = b"it's not working!";
+    assert_matches!(fs::write(&filename, &msg), Ok(()));
+    let mut f = fs::File::options().write(!use_append).append(use_append).open(&filename).unwrap();
+    assert_matches!(f.stream_position(), Ok(0));
+    assert_matches!(f.write_at(b"   ", 5), Ok(3));
+    assert_matches!(f.stream_position(), Ok(0));
+
+    let content = fs::read(&filename).unwrap();
+    assert_eq!(ByteStr::new(&content), ByteStr::new(b"it's     working!"));
 }
 
 #[test]
@@ -101,4 +131,40 @@ fn test_mkfifo() {
     rx.read_to_string(&mut s).unwrap();
 
     assert_eq!(s, "hello, world!");
+}
+
+/// Returns true if write_at is expected to work on O_APPEND files.
+fn write_at_append_should_work() -> bool {
+    #[cfg(target_os = "linux")]
+    unsafe {
+        use crate::ffi::CStr;
+        use crate::mem;
+
+        // SAFETY: the struct is all chars, so zeroing is fine.
+        let mut buf: libc::utsname = mem::zeroed();
+        if libc::uname(&mut buf) != 0 {
+            panic!("uname failed");
+        }
+
+        // SAFETY: uname promises to return null-terminated strings
+        let release = CStr::from_ptr(buf.release.as_ptr()).to_str().unwrap_or("");
+
+        // RWF_NOAPPEND has been observed to not work properly on GHA runners
+        // at least under  ubuntu 24.04 and 26.04.
+        // Perhaps some virtualization bug.
+        if release.contains("azure") {
+            return false;
+        }
+
+        let mut parts = release.split(".");
+        let major = parts.next().and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+        let minor = parts.next().and_then(|s| s.parse::<u32>().ok()).unwrap_or(0);
+
+        // RWF_NOAPPEND was introduced in 6.9
+        if (major, minor) >= (6, 9) {
+            return true;
+        }
+    }
+
+    true
 }
