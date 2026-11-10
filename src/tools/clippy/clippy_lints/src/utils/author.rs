@@ -706,6 +706,12 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.expr(value);
                 self.const_arg(length);
             },
+            ExprKind::RepeatUse(value, length) => {
+                bind!(self, value, length);
+                kind!("RepeatUse({value}, {length})");
+                self.expr(value);
+                self.const_arg(length);
+            },
             ExprKind::Err(_) => kind!("Err(_)"),
             ExprKind::DropTemps(expr) => {
                 bind!(self, expr);

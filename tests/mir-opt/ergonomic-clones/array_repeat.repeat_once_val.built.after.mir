@@ -1,0 +1,14 @@
+// MIR for `repeat_once_val` after built
+
+fn repeat_once_val() -> [Foo; 1] {
+    let mut _0: [Foo; 1];
+    let mut _1: Foo;
+
+    bb0: {
+        StorageLive(_1);
+        _1 = Foo(const 42_u16);
+        _0 = [move _1; 1];
+        StorageDead(_1);
+        return;
+    }
+}

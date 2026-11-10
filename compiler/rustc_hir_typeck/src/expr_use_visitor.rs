@@ -534,6 +534,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.consume_expr(base)?;
             }
 
+            hir::ExprKind::RepeatUse(base, _) => {
+                self.use_cloned_expr(base)?;
+            }
+
             hir::ExprKind::Closure(closure) => {
                 self.walk_captures(closure)?;
             }
@@ -1358,6 +1362,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | hir::ExprKind::Continue(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Repeat(..)
+            | hir::ExprKind::RepeatUse(..)
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, ..)
