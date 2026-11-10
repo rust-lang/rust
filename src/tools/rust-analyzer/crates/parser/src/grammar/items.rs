@@ -139,6 +139,14 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker, is_in_extern: bool) -> Res
         has_mods = true;
     }
 
+    // test final_assoc_fn
+    // trait Trait {
+    //     final fn f() {}
+    // }
+    if p.eat(T![final]) {
+        has_mods = true;
+    }
+
     // modifiers
     if p.at(T![const]) && p.nth(1) != T!['{'] {
         p.eat(T![const]);
