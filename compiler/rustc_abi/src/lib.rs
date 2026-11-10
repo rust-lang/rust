@@ -1798,12 +1798,12 @@ impl NumScalableVectors {
         NumScalableVectors(1)
     }
 
-    // Returns `NumScalableVectors` for values of two through eight, which are a valid number of
-    // fields for a tuple of scalable vectors to have. `1` is a valid value of `NumScalableVectors`
-    // but not for a tuple which would have a field count.
+    /// Returns `NumScalableVectors` for values of two through eight, which are a valid number of
+    /// fields for a tuple of scalable vectors to have. `1` is a valid value of `NumScalableVectors`
+    /// but not for a tuple which would have a field count.
     pub fn from_field_count(count: usize) -> Option<Self> {
         match count {
-            2..8 => Some(NumScalableVectors(count as u8)),
+            2..=8 => Some(NumScalableVectors(count as u8)),
             _ => None,
         }
     }
