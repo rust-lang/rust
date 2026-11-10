@@ -11,14 +11,12 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// ```rust
     /// #![feature(marked_unchecked_type_aliases)]
     /// #![warn(unmarked_unchecked_type_aliases)]
     ///
     /// type Alias = [(); panic!()];
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///

@@ -3002,19 +3002,9 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[cfg_attr(
-    bootstrap,
-    diagnostic::on_unknown(
-        label = "`{Unresolved}` is not a pre-interned symbol",
-        note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    diagnostic::on_unknown(
-        label = "`{unresolved}` is not a pre-interned symbol",
-        note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
-    )
+#[diagnostic::on_unknown(
+    label = "`{unresolved}` is not a pre-interned symbol",
+    note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
 )]
 pub mod sym {
     use super::Symbol;

@@ -568,8 +568,6 @@ impl FileDescription for FileHandle {
 #[derive(Debug)]
 pub struct DirHandle {
     pub(super) dir: Dir,
-    #[cfg(bootstrap)]
-    pub(super) fallback: std::path::PathBuf,
 }
 
 impl FileDescription for DirHandle {
@@ -583,10 +581,7 @@ impl FileDescription for DirHandle {
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         assert!(communicate_allowed);
 
-        #[cfg(bootstrap)]
-        return interp_ok(Either::Left(self.dir.metadata()));
-        #[cfg(not(bootstrap))]
-        return interp_ok(Either::Left(self.dir.self_metadata()));
+        interp_ok(Either::Left(self.dir.self_metadata()))
     }
 
     fn read<'tcx>(
