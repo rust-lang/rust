@@ -26,6 +26,7 @@ fn test_parse_glibc_version() {
 // logic is correct.
 #[test]
 #[cfg(target_vendor = "apple")]
+#[cfg(not(skip_unsupported_miri_tests))] // macOS conf API is not supported in Miri
 fn test_confstr() {
     for key in [libc::_CS_DARWIN_USER_TEMP_DIR, libc::_CS_PATH] {
         let value_nohint = super::confstr(key, None).unwrap_or_else(|e| {

@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // process spawning is not supported in Miri
+
 use super::{Command, Output, Stdio};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind};

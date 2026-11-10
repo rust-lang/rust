@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // process spawning is not supported in Miri
+
 use super::*;
 use crate::ffi::OsStr;
 use crate::sys::{cvt, cvt_nz};
