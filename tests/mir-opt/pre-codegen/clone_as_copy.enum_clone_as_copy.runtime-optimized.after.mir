@@ -17,7 +17,7 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
             debug __self_0 => _3;
             scope 4 (inlined <NestCopy as Clone>::clone) {
                 debug self => _3;
-                let _4: &AllCopy;
+                let mut _4: &AllCopy;
                 scope 5 (inlined <AllCopy as Clone>::clone) {
                     debug self => _4;
                 }

@@ -90,7 +90,7 @@
       bb5: {
           StorageLive(_12);
           _12 = &(((*_7) as V2).0: i32);
-          _9 = &(*_12);
+          _9 = copy _12;
           StorageDead(_12);
           goto -> bb7;
       }

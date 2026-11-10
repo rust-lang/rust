@@ -9,10 +9,8 @@ mod macros;
 
 pub mod anymap;
 pub mod assert;
-pub mod non_empty_vec;
 pub mod panic_context;
 pub mod process;
-pub mod rand;
 pub mod tempfile;
 pub mod thin_map;
 pub mod thread;

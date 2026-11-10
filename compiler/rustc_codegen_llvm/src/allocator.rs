@@ -111,8 +111,8 @@ fn create_wrapper_function<'ll>(
     cx: &SimpleCx<'ll>,
     from_name: &str,
     to_name: Option<&str>,
-    args: &[&'ll Type],
-    output: Option<&'ll Type>,
+    args: &[Type<'ll>],
+    output: Option<Type<'ll>>,
     no_return: bool,
     attrs: &CodegenFnAttrs,
 ) {

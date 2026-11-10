@@ -39,7 +39,7 @@ pub(crate) fn declare_simple_fn<'ll>(
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
-    ty: &'ll Type,
+    ty: Type<'ll>,
 ) -> &'ll Value {
     debug!("declare_simple_fn(name={:?}, ty={:?})", name, ty);
     let llfn = unsafe { llvm::LLVMGetOrInsertFunction(cx.llmod, name.as_ptr(), name.len(), ty) };
@@ -61,7 +61,7 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
-    ty: &'ll Type,
+    ty: Type<'ll>,
 ) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let llfn = declare_simple_fn(cx, name, callconv, unnamed, visibility, ty);
@@ -91,7 +91,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// return its Value instead.
-    pub(crate) fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn declare_global(&self, name: &str, ty: Type<'ll>) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
         unsafe {
             llvm::LLVMRustGetOrInsertGlobal((**self).borrow().llmod, name.as_ptr(), name.len(), ty)
@@ -105,7 +105,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn declare_global_in_addrspace(
         &self,
         name: &str,
-        ty: &'ll Type,
+        ty: Type<'ll>,
         addr_space: AddressSpace,
     ) -> &'ll Value {
         debug!("declare_global(name={name:?}, addrspace={addr_space:?})");
@@ -133,7 +133,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         name: &str,
         unnamed: llvm::UnnamedAddr,
-        fn_type: &'ll Type,
+        fn_type: Type<'ll>,
     ) -> &'ll Value {
         // Visibility should always be default for declarations, otherwise the linker may report an
         // error.
@@ -152,7 +152,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         name: &str,
         callconv: llvm::CallConv,
         unnamed: llvm::UnnamedAddr,
-        fn_type: &'ll Type,
+        fn_type: Type<'ll>,
     ) -> &'ll Value {
         let visibility = Visibility::from_generic(self.tcx.sess.default_visibility());
         declare_raw_fn(self, name, callconv, unnamed, visibility, fn_type)
@@ -243,7 +243,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// return `None` if the name already has a definition associated with it. In that
     /// case an error should be reported to the user, because it usually happens due
     /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
-    pub(crate) fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
+    pub(crate) fn define_global(&self, name: &str, ty: Type<'ll>) -> Option<&'ll Value> {
         if self.get_defined_value(name).is_some() {
             None
         } else {

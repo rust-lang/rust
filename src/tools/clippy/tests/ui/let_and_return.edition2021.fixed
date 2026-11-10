@@ -190,10 +190,10 @@ mod issue_11335 {
         pub fn inner(&self) -> &T {
             
 
-            (match self {
+            match self {
                 E::A(x) => x,
                 E::B(x) => x,
-            }) as _
+            }
             //~^ let_and_return
         }
     }

@@ -224,7 +224,7 @@ version = "0.0.0"
 dependencies = [
  "arbitrary",
  "cfg",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "oorandom",
  "rustc-hash 2.1.2",
@@ -594,6 +594,14 @@ dependencies = [
 [[package]]
 name = "expect-test"
 version = "1.5.1"
+dependencies = [
+ "dissimilar",
+ "once_cell",
+]
+
+[[package]]
+name = "expect-test"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63af43ff4431e848fb47472a920f14fa71c24de13255a5692e93d4e90302acb0"
 dependencies = [
@@ -805,7 +813,7 @@ dependencies = [
  "base-db",
  "cfg",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir-def",
  "hir-expand",
  "hir-ide",
@@ -841,7 +849,7 @@ dependencies = [
  "cov-mark",
  "drop_bomb",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fst",
  "hir-expand",
  "indexmap",
@@ -850,6 +858,7 @@ dependencies = [
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
+ "ra-ap-rustc_type_ir",
  "rustc-hash 2.1.2",
  "rustc_apfloat",
  "salsa",
@@ -874,7 +883,7 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "itertools 0.15.0",
  "mbe",
@@ -899,7 +908,7 @@ dependencies = [
  "base-db",
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir-def",
  "hir-expand",
  "hir-ty",
@@ -1063,7 +1072,7 @@ dependencies = [
  "cov-mark",
  "dot",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-assists",
  "ide-completion",
@@ -1096,7 +1105,7 @@ version = "0.0.0"
 dependencies = [
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1114,7 +1123,7 @@ version = "0.0.0"
 dependencies = [
  "base-db",
  "cov-mark",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1137,7 +1146,7 @@ dependencies = [
  "cov-mark",
  "crossbeam-channel",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fst",
  "hir",
  "itertools 0.15.0",
@@ -1168,7 +1177,7 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1187,7 +1196,7 @@ name = "ide-ssr"
 version = "0.0.0"
 dependencies = [
  "cov-mark",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1500,7 +1509,7 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "cov-mark",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "parser",
  "ra-ap-rustc_lexer",
@@ -1755,7 +1764,7 @@ version = "0.0.0"
 dependencies = [
  "drop_bomb",
  "edition",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra-ap-rustc_lexer",
  "rustc-literal-escaper",
  "stdx",
@@ -1923,7 +1932,7 @@ dependencies = [
 name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
@@ -1938,7 +1947,7 @@ name = "proc-macro-srv-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "paths",
  "proc-macro-api",
@@ -1994,7 +2003,7 @@ dependencies = [
  "base-db",
  "cargo_metadata",
  "cfg",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "itertools 0.15.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2357,7 +2366,7 @@ dependencies = [
  "dhat",
  "dirs",
  "dissimilar",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gen-lsp-types",
  "hir",
  "hir-def",
@@ -2761,7 +2770,7 @@ name = "syntax"
 version = "0.0.0"
 dependencies = [
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.15.0",
  "parser",
  "ra-ap-rustc_lexer",
@@ -2784,7 +2793,7 @@ dependencies = [
 name = "syntax-bridge"
 version = "0.0.0"
 dependencies = [
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "parser",
  "rustc-hash 2.1.2",
@@ -2920,9 +2929,9 @@ dependencies = [
 
 [[package]]
 name = "tikv-jemalloc-ctl"
-version = "0.5.4"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "619bfed27d807b54f7f776b9430d4f8060e66ee138a28632ca898584d462c31c"
+checksum = "3a184c43b8ab2f41df2733b55556e3f5f632f4aeaa205b1bb018f574b7f5f142"
 dependencies = [
  "libc",
  "paste",
@@ -2931,9 +2940,9 @@ dependencies = [
 
 [[package]]
 name = "tikv-jemalloc-sys"
-version = "0.5.4+5.3.0-patched"
+version = "0.7.1+5.3.1-0-g81034ce1f1373e37dc865038e1bc8eeecf559ce8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9402443cb8fd499b6f327e40565234ff34dbda27460c5b47db0db77443dd85d1"
+checksum = "1a2825c78386b4ae0314074867860ba9577875de945f05992c38815cbec327f0"
 dependencies = [
  "cc",
  "libc",
@@ -2941,9 +2950,9 @@ dependencies = [
 
 [[package]]
 name = "tikv-jemallocator"
-version = "0.5.4"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "965fe0c26be5c56c94e38ba547249074803efd52adfb66de62107d95aab3eaca"
+checksum = "249f09e49ab1609436f34c776e84231bead18d6a955f119f939bdc1d847561bd"
 dependencies = [
  "libc",
  "tikv-jemalloc-sys",

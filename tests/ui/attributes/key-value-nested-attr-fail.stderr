@@ -1,0 +1,71 @@
+error: `cfg` is not supported in this position
+  --> $DIR/key-value-nested-attr-fail.rs:48:10
+   |
+LL | #![doc = #[cfg(false)] "content"]
+   |          ^^^^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:77:9
+   |
+LL | #[doc = #[replace::with("that")] "this"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `cfg` is not supported in this position
+  --> $DIR/key-value-nested-attr-fail.rs:53:27
+   |
+LL | #[clippy::insubstantial = #[cfg(true)] "insignificant"]
+   |                           ^^^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:51:24
+   |
+LL | #[clippy::immaterial = #[allow(dead_code)] "incorporeal"]
+   |                        ^^^^^^^^^^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:59:9
+   |
+LL | #[arg = #[allow(dead_code)] 0]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:17:10
+   |
+LL | #![doc = #[allow(dead_code)] "content"]
+   |          ^^^^^^^^^^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:20:10
+   |
+LL | #![doc = #[repr(C)] "content"]
+   |          ^^^^^^^^^^
+
+error: these attributes are not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:26:5
+   |
+LL |     #[allow(dead_code)]
+   |     ^^^^^^^^^^^^^^^^^^^
+LL |     #[replace::identity]
+LL |     #[repr(C)]
+   |     ^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:35:9
+   |
+LL |         #[allow(dead_code)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:43:9
+   |
+LL |         repr(Rust)
+   |         ^^^^^^^^^^
+
+error: attribute value must be a literal
+  --> $DIR/key-value-nested-attr-fail.rs:65:25
+   |
+LL | #[doc = #[replace::with(2 * 4)] 8]
+   |                         ^^^^^
+
+error: aborting due to 11 previous errors
+

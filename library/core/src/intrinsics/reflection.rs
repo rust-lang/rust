@@ -108,6 +108,16 @@ pub fn type_id_variants(_id: crate::any::TypeId) -> usize;
 #[rustc_comptime]
 pub fn type_id_variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'static str;
 
+/// Returns the reflection attributes given a the variant represented by the base `TypeId` and variant_idx.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::VariantId::reflected_attrs`].
+#[rustc_intrinsic]
+#[rustc_comptime]
+pub fn type_id_variant_reflected_attrs(
+    _base: crate::any::TypeId,
+    _variant_index: usize,
+) -> &'static [&'static str];
+
 /// Returns true when the variant represented by the base `TypeId` and variant_idx is non
 /// exhaustive.
 ///
@@ -173,3 +183,10 @@ pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
 #[rustc_intrinsic]
 #[rustc_comptime]
 pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::FnPtr>;
+
+/// Returns the reflection attributes given a `TypeId` which represents a structure, enumeration, union or `FieldId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::reflected_attrs`].
+#[rustc_intrinsic]
+#[rustc_comptime]
+pub fn type_id_reflected_attrs(_type_id: crate::any::TypeId) -> &'static [&'static str];

@@ -44,7 +44,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
     pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
     pub(crate) fn LLVMRustHasAttributeAtIndex(V: &Value, i: c_uint, Kind: AttributeKind) -> bool;
-    pub(crate) fn LLVMRustGetArrayNumElements(Ty: &Type) -> u64;
+    pub(crate) fn LLVMRustGetArrayNumElements<'ll>(Ty: Type<'ll>) -> u64;
     pub(crate) fn LLVMRustHasFnAttribute(
         F: &Value,
         Name: *const c_uchar, // See "PTR_LEN_STR".

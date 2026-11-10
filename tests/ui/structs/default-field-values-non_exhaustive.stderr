@@ -1,11 +1,12 @@
 error: default variant must be exhaustive
-  --> $DIR/default-field-values-non_exhaustive.rs:23:5
+  --> $DIR/default-field-values-non_exhaustive.rs:22:5
    |
 LL |     #[non_exhaustive]
    |     ----------------- declared `#[non_exhaustive]` here
-...
+LL |
+LL |     #[default]
+   |     ^^^^^^^^^^
 LL |     Variant {
-   |     ^^^^^^^
    |
    = help: consider a manual implementation of `Default`
 

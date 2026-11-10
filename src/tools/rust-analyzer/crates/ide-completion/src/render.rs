@@ -428,9 +428,8 @@ fn render_resolution_path<'db>(
         }
         ScopeDef::ModuleDef(EnumVariant(var)) => {
             let ctx = ctx.clone().import_to_add(import_to_add.clone());
-            if let Some(item) =
-                render_variant_lit(ctx, path_ctx, Some(local_name.clone()), var, None)
-            {
+            let path = local_name.clone().into();
+            if let Some(item) = render_variant_lit(ctx, path_ctx, var, path) {
                 return item;
             }
         }
@@ -476,6 +475,12 @@ fn render_resolution_path<'db>(
         || !config.add_colons_to_module;
     if !allow_module_path && matches!(resolution, ScopeDef::ModuleDef(Module(_))) {
         insert_text = format_smolstr!("{insert_text}::");
+        item.lookup_by(name.clone()).label(insert_text.clone());
+    }
+    let allow_dyn =
+        matches!(&path_ctx.kind, PathKind::Type { location } if location.complete_dyn());
+    if allow_dyn && config.enable_auto_dyn && matches!(resolution, ScopeDef::ModuleDef(Trait(_))) {
+        insert_text = format_smolstr!("dyn {insert_text}");
         item.lookup_by(name.clone()).label(insert_text.clone());
     }
     adds_ret_type_arrow(completion, path_ctx, &mut item, insert_text.into());

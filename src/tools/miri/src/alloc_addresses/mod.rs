@@ -159,7 +159,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     } else {
                         // Non-global allocations are already in memory at this point so
                         // we can just get a pointer to where their data is stored.
-                        ecx.get_alloc_bytes_unchecked_raw(alloc_id)?
+                        ecx.get_alloc_raw(alloc_id)?.get_bytes_unchecked_raw()
                     }
                 }
                 #[cfg(all(feature = "native-lib", unix))]

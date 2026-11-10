@@ -5,6 +5,8 @@
 use base_db::SourceDatabase;
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
+use rustc_hash::FxHashMap;
+use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use stdx::impl_from;
 
 use crate::{
@@ -12,6 +14,7 @@ use crate::{
     ItemContainerId, MacroId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
     nameres::{DefMap, assoc::TraitItems, crate_def_map, crate_local_def_map},
+    unstable_features::UnstableFeatures,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -36,16 +39,16 @@ impl_from!(
 /// Salsa query. This will look for lang items in a specific crate.
 #[salsa::tracked(returns(as_deref))]
 pub fn crate_lang_items(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<LangItems>> {
-    let _p = tracing::info_span!("crate_lang_items_query").entered();
-
-    let mut lang_items = LangItems::default();
-
-    let crate_def_map = crate_def_map(db, krate);
-
-    if !crate_def_map.features().lang_items {
+    if !UnstableFeatures::query(db, krate).lang_items {
+        // First query this, *before* querying the def map, to not create a dependency edge.
         return None;
     }
 
+    let mut lang_items = LangItems::default();
+
+    let _p = tracing::info_span!("crate_lang_items_query", ?krate).entered();
+
+    let crate_def_map = crate_def_map(db, krate);
     for (_, module_data) in crate_def_map.modules() {
         for impl_def in module_data.scope.inherent_impls() {
             lang_items.collect_lang_item(db, impl_def);
@@ -107,14 +110,35 @@ pub fn crate_lang_items(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<Lan
 
     lang_items.resolve_manually(db);
 
-    if lang_items.is_empty() { None } else { Some(Box::new(lang_items)) }
+    if lang_items.is_empty() {
+        None
+    } else {
+        lang_items.shrink_to_fit();
+        Some(Box::new(lang_items))
+    }
+}
+
+// A firewall query, so that changing crate code for non-`feature(lang_items)` crate will not require recomputing
+// the more expensive `lang_items()` query.
+#[salsa::tracked(returns(deref))]
+fn crate_extern_prelude(db: &dyn SourceDatabase, start_crate: Crate) -> Box<[Crate]> {
+    crate_local_def_map(db, start_crate)
+        .local(db)
+        .extern_prelude()
+        .map(|(_, (module, _))| module.krate(db))
+        .filter(|&krate| {
+            // Some crates declares themselves as extern crate like `extern crate self as core`.
+            // Ignore these to prevent cycles.
+            krate != start_crate
+        })
+        .collect()
 }
 
 /// Salsa query. Look for a lang items, starting from the specified crate and recursively
 /// traversing its dependencies.
 #[salsa::tracked(returns(ref))]
 pub fn lang_items(db: &dyn SourceDatabase, start_crate: Crate) -> LangItems {
-    let _p = tracing::info_span!("lang_items_query").entered();
+    let _p = tracing::debug_span!("lang_items_query", ?start_crate).entered();
 
     let mut result = crate_lang_items(db, start_crate).cloned().unwrap_or_default();
 
@@ -125,13 +149,8 @@ pub fn lang_items(db: &dyn SourceDatabase, start_crate: Crate) -> LangItems {
     // while nameres.
     //
     // See https://github.com/rust-lang/rust-analyzer/pull/20475 for details.
-    for (_, (module, _)) in crate_local_def_map(db, start_crate).local(db).extern_prelude() {
-        // Some crates declares themselves as extern crate like `extern crate self as core`.
-        // Ignore these to prevent cycles.
-        let krate = module.krate(db);
-        if krate != start_crate {
-            result.merge_prefer_self(lang_items(db, krate));
-        }
+    for &krate in crate_extern_prelude(db, start_crate) {
+        result.merge_prefer_other(lang_items(db, krate));
     }
 
     result
@@ -142,8 +161,8 @@ impl LangItems {
     where
         T: Into<AttrDefId> + Into<LangItemTarget> + Copy,
     {
-        let _p = tracing::info_span!("collect_lang_item").entered();
         if let Some(lang_item) = AttrFlags::lang_item(db, item.into()) {
+            tracing::trace!("found lang item `{lang_item}`");
             self.assign_lang_item(lang_item, item.into());
         }
     }
@@ -315,6 +334,65 @@ impl LangItems {
             Some(())
         })();
     }
+
+    #[inline]
+    pub fn get_solver_trait(&self, lang_item: SolverTraitLangItem) -> Option<TraitId> {
+        self.solver_trait[lang_item as usize]
+    }
+
+    #[inline]
+    pub fn get_solver_projection(
+        &self,
+        lang_item: SolverProjectionLangItem,
+    ) -> Option<TypeAliasId> {
+        self.solver_projection[lang_item as usize]
+    }
+
+    #[inline]
+    pub fn get_solver_adt(&self, lang_item: SolverAdtLangItem) -> Option<AdtId> {
+        self.solver_adt[lang_item as usize]
+    }
+
+    #[inline]
+    pub fn get_reverse_solver_trait(&self, trait_: TraitId) -> Option<SolverTraitLangItem> {
+        self.reverse_solver_trait.get(&trait_).copied()
+    }
+
+    #[inline]
+    pub fn get_reverse_solver_adt(&self, adt: AdtId) -> Option<SolverAdtLangItem> {
+        self.reverse_solver_adt.get(&adt).copied()
+    }
+
+    #[inline]
+    pub fn get_reverse_solver_projection(
+        &self,
+        projection: TypeAliasId,
+    ) -> Option<SolverProjectionLangItem> {
+        self.reverse_solver_projection.get(&projection).copied()
+    }
+
+    fn shrink_to_fit(&mut self) {
+        let Self { reverse_solver_adt, reverse_solver_projection, reverse_solver_trait, .. } = self;
+        reverse_solver_adt.shrink_to_fit();
+        reverse_solver_projection.shrink_to_fit();
+        reverse_solver_trait.shrink_to_fit();
+    }
+
+    fn assign_solver_trait(&mut self, lang_item: SolverTraitLangItem, def: TraitId) {
+        self.solver_trait[lang_item as usize] = Some(def);
+        self.reverse_solver_trait.insert(def, lang_item);
+    }
+
+    fn assign_solver_projection(&mut self, lang_item: SolverProjectionLangItem, def: TypeAliasId) {
+        self.solver_projection[lang_item as usize] = Some(def);
+        self.reverse_solver_projection.insert(def, lang_item);
+    }
+
+    fn assign_solver_adt(&mut self, lang_item: SolverAdtLangItem, def: impl Into<AdtId>) {
+        let def = def.into();
+        self.solver_adt[lang_item as usize] = Some(def);
+        self.reverse_solver_adt.insert(def, lang_item);
+    }
 }
 
 #[salsa::tracked(returns(as_deref))]
@@ -336,10 +414,99 @@ pub fn crate_notable_traits(db: &dyn SourceDatabase, krate: Crate) -> Option<Box
     if traits.is_empty() { None } else { Some(traits.into_iter().collect()) }
 }
 
+macro_rules! assign_solver {
+    ( $self:ident, $def:ident, $lang_item:ident, TraitId, solver ) => {
+        $self.assign_solver_trait(SolverTraitLangItem::$lang_item, $def);
+    };
+    ( $self:ident, $def:ident, $lang_item:ident, TypeAliasId, solver ) => {
+        $self.assign_solver_projection(SolverProjectionLangItem::$lang_item, $def);
+    };
+    ( $self:ident, $def:ident, $lang_item:ident, StructId, solver ) => {
+        $self.assign_solver_adt(SolverAdtLangItem::$lang_item, $def);
+    };
+    ( $self:ident, $def:ident, $lang_item:ident, EnumId, solver ) => {
+        $self.assign_solver_adt(SolverAdtLangItem::$lang_item, $def);
+    };
+    ( $self:ident, $def:ident, $lang_item:ident, UnionId, solver ) => {
+        $self.assign_solver_adt(SolverAdtLangItem::$lang_item, $def);
+    };
+    ( $self:ident, $def:ident, $lang_item:ident, $ty:ident ) => {};
+}
+
+macro_rules! solver_exhaustiveness_check {
+    (
+        $dollar:tt, $solver_ty:ident, $id_ty:ident,
+        [ $($id_tys:ident),* ]
+
+        $( $lang_item:ident, $target:ident $(, $solver:ident)?; )*
+    ) => {
+        const _: () = {
+            #[expect(unreachable_patterns, dead_code)]
+            fn exhaustiveness_check(lang_item: $solver_ty) {
+                macro_rules! one_variant {
+                    $(
+                        (
+                            $dollar lang_item:ident, $id_tys, solver
+                        ) => {
+                            ($solver_ty::$dollar lang_item, true)
+                        };
+                    )*
+                    ( $dollar($t:tt)* ) => {
+                        (_, false)
+                    };
+                }
+
+                match (lang_item, true) {
+                    $(
+                        one_variant!( $lang_item, $target $(, $solver )? ) => {}
+                    )*
+                }
+            }
+        };
+    };
+}
+
+macro_rules! get_solver_count {
+    (
+        $dollar:tt, $solver_ty:ident,
+        [ $($id_tys:ident),* ]
+
+        $( $lang_item:ident, $target:ident $(, $solver:ident)?; )*
+    ) => {{
+        let mut max_discriminant = 0;
+        macro_rules! one_variant {
+            $(
+                (
+                    $dollar lang_item:ident, $id_tys, solver
+                ) => {
+                    if $solver_ty::$dollar lang_item as usize > max_discriminant {
+                        max_discriminant = $solver_ty::$dollar lang_item as usize;
+                    }
+                };
+            )*
+            ( $dollar($t:tt)* ) => {};
+        }
+        $(
+            one_variant!($lang_item, $target $(, $solver)?);
+        )*
+        max_discriminant + 1
+    }};
+}
+
+fn merge_array_prefer_other<T: Copy, const N: usize>(
+    this: &mut [Option<T>; N],
+    other: &[Option<T>; N],
+) {
+    for (this, other) in std::iter::zip(this, other) {
+        *this = other.or(*this);
+    }
+}
+
 macro_rules! language_item_table {
     (
+        $dollar:tt
         $LangItems:ident =>
-        $( $(#[$attr:meta])* $lang_item:ident, $module:ident :: $name:ident, $target:ident; )*
+        $( $lang_item:ident, $module:ident :: $name:ident, $target:ident $(, $solver:ident)?; )*
 
         @non_lang_core_traits:
 
@@ -353,11 +520,29 @@ macro_rules! language_item_table {
 
         $( $resolve_manually:ident, $resolve_manually_type:ident; )*
     ) => {
+        const SOLVER_TRAITS_LEN: usize = get_solver_count! {
+            $dollar, SolverTraitLangItem,
+            [ TraitId ]
+
+            $( $lang_item, $target $(, $solver)?; )*
+        };
+        const SOLVER_PROJECTIONS_LEN: usize = get_solver_count! {
+            $dollar, SolverProjectionLangItem,
+            [ TypeAliasId ]
+
+            $( $lang_item, $target $(, $solver)?; )*
+        };
+        const SOLVER_ADTS_LEN: usize = get_solver_count! {
+            $dollar, SolverAdtLangItem,
+            [ StructId, EnumId, UnionId ]
+
+            $( $lang_item, $target $(, $solver)?; )*
+        };
+
         #[allow(non_snake_case)] // FIXME: Should we remove this?
-        #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+        #[derive(Default, Clone)]
         pub struct $LangItems {
             $(
-                $(#[$attr])*
                 pub $lang_item: Option<$target>,
             )*
             $(
@@ -369,19 +554,119 @@ macro_rules! language_item_table {
             $(
                 pub $resolve_manually: Option<$resolve_manually_type>,
             )*
+
+            solver_trait: [Option<TraitId>; SOLVER_TRAITS_LEN],
+            solver_adt: [Option<AdtId>; SOLVER_ADTS_LEN],
+            solver_projection: [Option<TypeAliasId>; SOLVER_PROJECTIONS_LEN],
+
+            reverse_solver_trait: FxHashMap<TraitId, SolverTraitLangItem>,
+            reverse_solver_adt: FxHashMap<AdtId, SolverAdtLangItem>,
+            reverse_solver_projection: FxHashMap<TypeAliasId, SolverProjectionLangItem>,
         }
+
+        impl std::fmt::Debug for $LangItems {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let mut debug = f.debug_struct(stringify!($LangItems));
+                let Self {
+                    $( $lang_item, )*
+                    $( $non_lang_trait, )*
+                    $( $non_lang_macro_field, )*
+                    $( $resolve_manually, )*
+
+                    solver_trait: _,
+                    solver_adt: _,
+                    solver_projection: _,
+                    reverse_solver_trait: _,
+                    reverse_solver_adt: _,
+                    reverse_solver_projection: _,
+                } = self;
+                $(
+                    if let Some(it) = $lang_item {
+                        debug.field(stringify!($lang_item), it);
+                    }
+                )*
+                $(
+                    if let Some(it) = $non_lang_trait {
+                        debug.field(stringify!($non_lang_trait), it);
+                    }
+                )*
+                $(
+                    if let Some(it) = $non_lang_macro_field {
+                        debug.field(stringify!($non_lang_macro_field), it);
+                    }
+                )*
+                $(
+                    if let Some(it) = $resolve_manually {
+                        debug.field(stringify!($resolve_manually), it);
+                    }
+                )*
+                debug.finish()
+            }
+        }
+
+        impl PartialEq for $LangItems {
+            fn eq(&self, other: &Self) -> bool {
+                let Self {
+                    $( $lang_item, )*
+                    $( $non_lang_trait, )*
+                    $( $non_lang_macro_field, )*
+                    $( $resolve_manually, )*
+
+                    solver_trait: _,
+                    solver_adt: _,
+                    solver_projection: _,
+                    reverse_solver_trait: _,
+                    reverse_solver_adt: _,
+                    reverse_solver_projection: _,
+                } = *self;
+
+                true
+                    $( && $lang_item == other.$lang_item )*
+                    $( && $non_lang_trait == other.$non_lang_trait )*
+                    $( && $non_lang_macro_field == other.$non_lang_macro_field )*
+                    $( && $resolve_manually == other.$resolve_manually )*
+            }
+        }
+
+        impl Eq for $LangItems {}
 
         impl LangItems {
             fn is_empty(&self) -> bool {
-                $( self.$lang_item.is_none() )&&*
+                let Self {
+                    $( $lang_item, )*
+                    $( $non_lang_trait, )*
+                    $( $non_lang_macro_field, )*
+                    $( $resolve_manually, )*
+
+                    solver_trait: _,
+                    solver_adt: _,
+                    solver_projection: _,
+                    reverse_solver_trait: _,
+                    reverse_solver_adt: _,
+                    reverse_solver_projection: _,
+                } = *self;
+
+                true
+                    $( && $lang_item.is_none() )*
+                    $( && $non_lang_trait.is_none() )*
+                    $( && $non_lang_macro_field.is_none() )*
+                    $( && $resolve_manually.is_none() )*
             }
 
-            /// Merges `self` with `other`, with preference to `self` items.
-            fn merge_prefer_self(&mut self, other: &Self) {
-                $( self.$lang_item = self.$lang_item.or(other.$lang_item); )*
-                $( self.$non_lang_trait = self.$non_lang_trait.or(other.$non_lang_trait); )*
-                $( self.$non_lang_macro_field = self.$non_lang_macro_field.or(other.$non_lang_macro_field); )*
-                $( self.$resolve_manually = self.$resolve_manually.or(other.$resolve_manually); )*
+            /// Merges `self` with `other`, with preference to `other` items.
+            fn merge_prefer_other(&mut self, other: &Self) {
+                $( self.$lang_item = other.$lang_item.or(self.$lang_item); )*
+                $( self.$non_lang_trait = other.$non_lang_trait.or(self.$non_lang_trait); )*
+                $( self.$non_lang_macro_field = other.$non_lang_macro_field.or(self.$non_lang_macro_field); )*
+                $( self.$resolve_manually = other.$resolve_manually.or(self.$resolve_manually); )*
+
+                merge_array_prefer_other(&mut self.solver_trait, &other.solver_trait);
+                merge_array_prefer_other(&mut self.solver_adt, &other.solver_adt);
+                merge_array_prefer_other(&mut self.solver_projection, &other.solver_projection);
+
+                self.reverse_solver_trait.extend(&other.reverse_solver_trait);
+                self.reverse_solver_adt.extend(&other.reverse_solver_adt);
+                self.reverse_solver_projection.extend(&other.reverse_solver_projection);
             }
 
             fn assign_lang_item(&mut self, name: Symbol, target: LangItemTarget) {
@@ -390,6 +675,8 @@ macro_rules! language_item_table {
                         _ if name == $module::$name => {
                             if let LangItemTarget::$target(target) = target {
                                 self.$lang_item = Some(target);
+
+                                assign_solver!(self, target, $lang_item, $target $(, $solver)? );
                             }
                         }
                     )*
@@ -403,11 +690,31 @@ macro_rules! language_item_table {
             }
         }
 
+        solver_exhaustiveness_check! {
+            $dollar, SolverTraitLangItem, TraitId,
+            [ TraitId ]
+
+            $( $lang_item, $target $(, $solver)?; )*
+        }
+
+        solver_exhaustiveness_check! {
+            $dollar, SolverProjectionLangItem, TypeAliasId,
+            [ TypeAliasId ]
+
+            $( $lang_item, $target $(, $solver)?; )*
+        }
+
+        solver_exhaustiveness_check! {
+            $dollar, SolverAdtLangItem, AdtId,
+            [ StructId, EnumId, UnionId ]
+
+            $( $lang_item, $target $(, $solver)?; )*
+        }
+
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         #[allow(non_camel_case_types)]
         pub enum LangItemEnum {
             $(
-                $(#[$attr])*
                 $lang_item,
             )*
             $( $non_lang_trait, )*
@@ -437,40 +744,40 @@ macro_rules! language_item_table {
     }
 }
 
-language_item_table! { LangItems =>
+language_item_table! { $ LangItems =>
 //  Variant name,            Name,                     Target;
-    Sized,                   sym::sized,               TraitId;
-    MetaSized,               sym::meta_sized,          TraitId;
-    PointeeSized,            sym::pointee_sized,       TraitId;
-    Unsize,                  sym::unsize,              TraitId;
-    /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
+    Sized,                   sym::sized,               TraitId,               solver;
+    MetaSized,               sym::meta_sized,          TraitId,               solver;
+    PointeeSized,            sym::pointee_sized,       TraitId,               solver;
+    Unsize,                  sym::unsize,              TraitId,               solver;
+    // Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      TraitId;
-    /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
+    // Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
     StructuralTeq,           sym::structural_teq,      TraitId;
-    Copy,                    sym::copy,                TraitId;
+    Copy,                    sym::copy,                TraitId,               solver;
     UseCloned,               sym::use_cloned,          TraitId;
-    Clone,                   sym::clone,               TraitId;
-    TrivialClone,            sym::trivial_clone,       TraitId;
+    Clone,                   sym::clone,               TraitId,               solver;
+    TrivialClone,            sym::trivial_clone,       TraitId,               solver;
     Sync,                    sym::sync,                TraitId;
-    DiscriminantKind,        sym::discriminant_kind,   TraitId;
-    /// The associated item of the `DiscriminantKind` trait.
+    DiscriminantKind,        sym::discriminant_kind,   TraitId,               solver;
+    // The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   TypeAliasId;
 
-    PointeeTrait,            sym::pointee_trait,       TraitId;
-    Metadata,                sym::metadata_type,       TypeAliasId;
-    DynMetadata,             sym::dyn_metadata,        StructId;
+    PointeeTrait,            sym::pointee_trait,       TraitId,               solver;
+    Metadata,                sym::metadata_type,       TypeAliasId,           solver;
+    DynMetadata,             sym::dyn_metadata,        StructId,              solver;
 
     Freeze,                  sym::freeze,              TraitId;
 
     NonNull,                 sym::non_null,            StructId;
 
-    FnPtrTrait,              sym::fn_ptr_trait,        TraitId;
+    FnPtrTrait,              sym::fn_ptr_trait,        TraitId,               solver;
     FnPtrAsPtr,              sym::fn_ptr_as_ptr,       FunctionId;
     FnPtrFromPtr,            sym::fn_ptr_from_ptr,     FunctionId;
 
-    Drop,                    sym::drop,                TraitId;
-    Destruct,                sym::destruct,            TraitId;
-    BikeshedGuaranteedNoDrop,sym::bikeshed_guaranteed_no_drop, TraitId;
+    Drop,                    sym::drop,                TraitId,               solver;
+    Destruct,                sym::destruct,            TraitId,               solver;
+    BikeshedGuaranteedNoDrop,sym::bikeshed_guaranteed_no_drop, TraitId,       solver;
 
     CoerceUnsized,           sym::coerce_unsized,      TraitId;
     DispatchFromDyn,         sym::dispatch_from_dyn,   TraitId;
@@ -479,7 +786,7 @@ language_item_table! { LangItems =>
 
     // language items relating to transmutability
     TransmuteOpts,           sym::transmute_opts,      StructId;
-    TransmuteTrait,          sym::transmute_trait,     TraitId;
+    TransmuteTrait,          sym::transmute_trait,     TraitId,               solver;
 
     Add,                     sym::add,                 TraitId;
     Sub,                     sym::sub,                 TraitId;
@@ -517,28 +824,28 @@ language_item_table! { LangItems =>
     Receiver,                sym::receiver,            TraitId;
     ReceiverTarget,          sym::receiver_target,     TypeAliasId;
 
-    Fn,                      sym::fn_,                 TraitId;
-    FnMut,                   sym::fn_mut,              TraitId;
-    FnOnce,                  sym::fn_once,             TraitId;
-    AsyncFn,                 sym::async_fn,            TraitId;
-    AsyncFnMut,              sym::async_fn_mut,        TraitId;
-    AsyncFnOnce,             sym::async_fn_once,       TraitId;
-    AsyncFnKindHelper,       sym::async_fn_kind_helper,TraitId;
-    AsyncFnKindUpvars,       sym::async_fn_kind_upvars,TypeAliasId;
+    Fn,                      sym::fn_,                 TraitId,                solver;
+    FnMut,                   sym::fn_mut,              TraitId,                solver;
+    FnOnce,                  sym::fn_once,             TraitId,                solver;
+    AsyncFn,                 sym::async_fn,            TraitId,                solver;
+    AsyncFnMut,              sym::async_fn_mut,        TraitId,                solver;
+    AsyncFnOnce,             sym::async_fn_once,       TraitId,                solver;
+    AsyncFnKindHelper,       sym::async_fn_kind_helper,TraitId,                solver;
+    AsyncFnKindUpvars,       sym::async_fn_kind_upvars,TypeAliasId,            solver;
 
-    CallRefFuture,           sym::call_ref_future,     TypeAliasId;
-    CallOnceFuture,          sym::call_once_future,    TypeAliasId;
-    AsyncFnOnceOutput,       sym::async_fn_once_output, TypeAliasId;
+    CallRefFuture,           sym::call_ref_future,     TypeAliasId,            solver;
+    CallOnceFuture,          sym::call_once_future,    TypeAliasId,            solver;
+    AsyncFnOnceOutput,       sym::async_fn_once_output, TypeAliasId,           solver;
 
     FnOnceOutput,            sym::fn_once_output,      TypeAliasId;
 
-    Future,                  sym::future_trait,        TraitId;
-    AsyncIterator,           sym::async_iterator,      TraitId;
+    Future,                  sym::future_trait,        TraitId,                solver;
+    AsyncIterator,           sym::async_iterator,      TraitId,                solver;
     CoroutineState,          sym::coroutine_state,     EnumId;
-    Coroutine,               sym::coroutine,           TraitId;
-    CoroutineReturn,         sym::coroutine_return,    TypeAliasId;
-    CoroutineYield,          sym::coroutine_yield,     TypeAliasId;
-    Unpin,                   sym::unpin,               TraitId;
+    Coroutine,               sym::coroutine,           TraitId,                solver;
+    CoroutineReturn,         sym::coroutine_return,    TypeAliasId,            solver;
+    CoroutineYield,          sym::coroutine_yield,     TypeAliasId,            solver;
+    Unpin,                   sym::unpin,               TraitId,                solver;
     Pin,                     sym::pin,                 StructId;
 
     AsyncGenReady,           sym::AsyncGenReady,       FunctionId;
@@ -566,7 +873,7 @@ language_item_table! { LangItems =>
     PanicImpl,               sym::panic_impl,          FunctionId;
     PanicCannotUnwind,       sym::panic_cannot_unwind, FunctionId;
     PanicNullPointerDereference, sym::panic_null_pointer_dereference, FunctionId;
-    /// libstd panic entry point. Necessary for const eval to be able to catch it
+    // libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         FunctionId;
 
     // Lang items needed for `format_args!()`.
@@ -595,14 +902,14 @@ language_item_table! { LangItems =>
 
     MaybeUninit,             sym::maybe_uninit,        UnionId;
 
-    /// Align offset for stride != 1; must not panic.
+    // Align offset for stride != 1; must not panic.
     AlignOffset,             sym::align_offset,        FunctionId;
 
     Termination,             sym::termination,         TraitId;
 
     Try,                     sym::Try,                 TraitId;
 
-    Tuple,                   sym::tuple_trait,         TraitId;
+    Tuple,                   sym::tuple_trait,         TraitId,               solver;
 
     SliceLen,                sym::slice_len_fn,        FunctionId;
 
@@ -617,7 +924,7 @@ language_item_table! { LangItems =>
 
     ConstParamTy,            sym::const_param_ty,      TraitId;
 
-    Poll,                    sym::Poll,                EnumId;
+    Poll,                    sym::Poll,                EnumId,                solver;
     PollReady,               sym::Ready,               EnumVariantId;
     PollPending,             sym::Pending,             EnumVariantId;
 
@@ -628,9 +935,9 @@ language_item_table! { LangItems =>
 
     Context,                 sym::Context,             StructId;
     FuturePoll,              sym::poll,                FunctionId;
-    FutureOutput,            sym::future_output,       TypeAliasId;
+    FutureOutput,            sym::future_output,       TypeAliasId,           solver;
 
-    Option,                  sym::Option,              EnumId;
+    Option,                  sym::Option,              EnumId,                solver;
     OptionSome,              sym::Some,                EnumVariantId;
     OptionNone,              sym::None,                EnumVariantId;
 
@@ -643,8 +950,8 @@ language_item_table! { LangItems =>
     IntoFutureIntoFuture,    sym::into_future,         FunctionId;
     IntoIterIntoIter,        sym::into_iter,           FunctionId;
     IteratorNext,            sym::next,                FunctionId;
-    Iterator,                sym::iterator,            TraitId;
-    FusedIterator,           sym::fused_iterator,      TraitId;
+    Iterator,                sym::iterator,            TraitId,               solver;
+    FusedIterator,           sym::fused_iterator,      TraitId,               solver;
 
     PinNewUnchecked,         sym::new_unchecked,       FunctionId;
 
@@ -665,9 +972,9 @@ language_item_table! { LangItems =>
     CStr,                    sym::CStr,                StructId;
     Ordering,                sym::Ordering,            EnumId;
 
-    Field,                   sym::field,               TraitId;
-    FieldBase,               sym::field_base,          TypeAliasId;
-    FieldType,               sym::field_type,          TypeAliasId;
+    Field,                   sym::field,               TraitId,               solver;
+    FieldBase,               sym::field_base,          TypeAliasId,           solver;
+    FieldType,               sym::field_type,          TypeAliasId,           solver;
 
     RangeMin,                sym::RangeMin,            ConstId;
     RangeMax,                sym::RangeMax,            ConstId;

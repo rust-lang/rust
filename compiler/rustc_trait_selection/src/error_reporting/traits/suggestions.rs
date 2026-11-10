@@ -3896,6 +3896,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
             }
         };
+
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -3921,6 +3922,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::AlwaysApplicableImpl
             | ObligationCauseCode::ConstParam(_)
             | ObligationCauseCode::ConstItemTy(_)
+            | ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
             ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
@@ -3943,7 +3945,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
-            ObligationCauseCode::ArrayLen(array_ty) => {
+            ObligationCauseCode::ArrayLen(array_ty, _) => {
                 err.note(format!("the length of array `{array_ty}` must be type `usize`"));
             }
             ObligationCauseCode::TupleElem => {
@@ -4742,7 +4744,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                     }
                     _ => {
-                        err.note(msg);
+                        // If the `parent_trait_pred` is about `CoerceUnsized`, it's generated
+                        // internally by the next solver and should not be reported as a note
+                        // because the user won't know what we're talking about.
+                        if !tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
+                            err.note(msg);
+                        }
                     }
                 };
 
@@ -5972,7 +5979,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///    |     | `Iterator::Item` is `&mut Vec<u8>` here
     ///    |     this expression has type `Vec<Vec<u8>>`
     /// ```
-    fn point_at_chain_in_return_position(
+    pub fn point_at_chain_in_return_position(
         &self,
         body_def_id: LocalDefId,
         expr: &hir::Expr<'_>,

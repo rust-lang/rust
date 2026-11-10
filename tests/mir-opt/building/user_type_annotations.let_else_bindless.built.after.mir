@@ -9,8 +9,7 @@ fn let_else_bindless() -> () {
     let mut _1: !;
     let mut _2: (u32, u64, &char);
     let mut _3: &char;
-    let _4: &char;
-    let _5: char;
+    let _4: char;
     scope 1 {
     }
 
@@ -18,10 +17,8 @@ fn let_else_bindless() -> () {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        StorageLive(_5);
-        _5 = const 'u';
-        _4 = &_5;
-        _3 = &(*_4);
+        _4 = const 'u';
+        _3 = &_4;
         _2 = (const 7_u32, const 12_u64, move _3);
         StorageDead(_3);
         PlaceMention(_2);
@@ -42,17 +39,15 @@ fn let_else_bindless() -> () {
 
     bb4: {
         AscribeUserType(_2, +, UserTypeProjection { base: UserType(1), projs: [] });
-        StorageDead(_4);
         StorageDead(_2);
         _0 = const ();
-        StorageDead(_5);
+        StorageDead(_4);
         return;
     }
 
     bb5: {
-        StorageDead(_4);
         StorageDead(_2);
-        StorageDead(_5);
+        StorageDead(_4);
         goto -> bb1;
     }
 
