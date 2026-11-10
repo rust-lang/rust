@@ -6,7 +6,6 @@
 trait Bound {}
 trait Normalize {
     type Assoc;
-    //~^ ERROR cycle detected when computing layout of `<[Hello] as Normalize>::Assoc` [E0391]
 }
 
 impl<T: Bound> Normalize for T {
@@ -19,6 +18,7 @@ impl<T: Bound> Normalize for [T] {
 
 impl Bound for Hello {}
 enum Hello {
+    //~^ ERROR cycle detected when computing layout of `Hello` [E0391]
     Variant(<[Hello] as Normalize>::Assoc),
 }
 
