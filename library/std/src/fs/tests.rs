@@ -2754,7 +2754,6 @@ fn test_hidden_file_truncation() {
         .open(&path)
         .unwrap();
     file.write("hidden world!".as_bytes()).unwrap();
-    file.flush().unwrap();
     drop(file);
 
     // Create a new file by truncating the existing one.
@@ -3299,7 +3298,6 @@ fn test_dir_write_file() {
     let dir = check!(Dir::open(tmpdir.path()));
     let mut f = check!(dir.open_file_with("foo.txt", &OpenOptions::new().write(true).create(true)));
     check!(f.write(b"bar"));
-    check!(f.flush());
     drop(f);
     let mut f = check!(File::open(tmpdir.join("foo.txt")));
     let mut buf = [0u8; 3];
@@ -3312,7 +3310,6 @@ fn test_dir_remove_file() {
     let tmpdir = tmpdir();
     let mut f = check!(File::create(tmpdir.join("foo.txt")));
     check!(f.write(b"bar"));
-    check!(f.flush());
     drop(f);
     let dir = check!(Dir::open(tmpdir.path()));
 
@@ -3408,7 +3405,6 @@ fn test_dir_open_dir() {
     let mut f =
         check!(dir2.open_file_with("bar.txt", &OpenOptions::new().create(true).write(true)));
     check!(f.write(b"baz"));
-    check!(f.flush());
     drop(f);
     let dir3 = check!(dir1.open_dir("foo"));
     let mut f = check!(dir3.open_file("bar.txt"));
