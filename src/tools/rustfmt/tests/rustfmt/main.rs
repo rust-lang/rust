@@ -135,12 +135,16 @@ fn print_config_writes_to_file() {
     assert_eq!(exit_code, 0);
 }
 
+// Can only run this test on nightly becuase the call to `file!` below
+// will cause the root `rustfmt.toml` to be loaded, which sets nightly-only options.
+#[nightly_only_test]
 #[test]
 fn print_config_merges_override_from_args() {
     let args = &[
         "--print-config",
         "current",
-        ".",
+        // running with `file!` will load the root `rustfmt.toml`
+        file!(),
         "--config=color=Never,edition=2018",
     ];
 
@@ -154,12 +158,16 @@ fn print_config_merges_override_from_args() {
     assert_eq!(exit_code, 0);
 }
 
+// Can only run this test on nightly becuase the call to `file!` below
+// will cause the root `rustfmt.toml` to be loaded, which sets nightly-only options.
+#[nightly_only_test]
 #[test]
 fn print_config_merges_multiple_overrides_from_args() {
     let args = &[
         "--print-config",
         "current",
-        ".",
+        // running with `file!` will load the root `rustfmt.toml`
+        file!(),
         "--config",
         "color=never,edition=2018",
         "--config",
