@@ -111,6 +111,90 @@ fn main() {
     assert!(not_debug.is_empty());
 }
 
+mod issue17935 {
+    use std::collections::BinaryHeap;
+
+    fn binary_heap() {
+        let mut heap = BinaryHeap::new();
+        heap.push(42);
+        assert_eq!(heap.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+        assert_ne!(heap.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+        debug_assert_eq!(heap.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+        debug_assert_ne!(heap.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+
+        // Don't lint: has assert message.
+        assert!(heap.is_empty(), "expected an empty heap");
+    }
+
+    trait ElementExists {
+        const ELEMENT: Self;
+    }
+
+    fn binaryheap_eq<T: ElementExists + Ord + std::fmt::Debug>() {
+        let mut heap = BinaryHeap::new();
+        heap.push(T::ELEMENT);
+        assert_eq!(heap.as_slice(), [] as [T; 0]);
+        //~^ assert_is_empty
+    }
+
+    fn cross_eq<T: Ord + std::fmt::Debug + PartialEq<u8>>(heap: BinaryHeap<T>) {
+        assert_eq!(heap.as_slice(), [] as [T; 0]);
+        //~^ assert_is_empty
+    }
+
+    fn references(heap: &mut BinaryHeap<i32>) {
+        assert_eq!(heap.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+
+        let heap_ref = &*heap;
+        assert_eq!(heap_ref.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+
+        let heap_ref_ref = &heap_ref;
+        assert_ne!(heap_ref_ref.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+
+        let heap = &&heap;
+        assert_ne!(heap.as_slice(), [] as [i32; 0]);
+        //~^ assert_is_empty
+    }
+
+    // Don't lint: these element types do not support the suggestion.
+    fn not_debug() {
+        #[derive(Eq, Ord, PartialEq, PartialOrd)]
+        struct NotDebug;
+
+        let mut not_debug = BinaryHeap::new();
+        not_debug.push(NotDebug);
+        assert!(not_debug.is_empty());
+    }
+
+    fn binaryheap_normal<T: ElementExists + Ord>() {
+        let mut heap = BinaryHeap::new();
+        heap.push(T::ELEMENT);
+        assert!(heap.is_empty());
+    }
+
+    fn opaque(heap: BinaryHeap<impl Ord + std::fmt::Debug>) {
+        assert!(heap.is_empty());
+    }
+
+    fn not_comparable<T: std::fmt::Debug>(heap: BinaryHeap<T>) {
+        assert!(heap.is_empty());
+    }
+
+    const fn const_heap(heap: &BinaryHeap<i32>) {
+        assert!(heap.is_empty());
+        assert!(!heap.is_empty());
+        debug_assert!(heap.is_empty());
+        debug_assert!(!heap.is_empty());
+    }
+}
+
 // TODO: turn into an MSRV aware lint after const traits are stable and `PartialEq` is const stable
 mod issue17930 {
     const NOT_EMPTY: &str = "string";
