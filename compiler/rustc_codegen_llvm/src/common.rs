@@ -59,8 +59,14 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     }
 
     let addr_diversity = match schema.is_address_discriminated {
-        PointerAuthAddressDiscriminator::HardwareAddress(true) => Some(llfn),
+        // Address discrimination blends in the address of the slot holding the pointer, that
+        // feature is unsupported. Treat it as a bug.
+        PointerAuthAddressDiscriminator::HardwareAddress(true) => {
+            bug!("address-discriminated function pointer schemas are not supported")
+        }
         PointerAuthAddressDiscriminator::HardwareAddress(false) => None,
+        // init/fini entries use a synthetic placeholder. If set, the loader will blend in the
+        // run-time address.
         PointerAuthAddressDiscriminator::Synthetic(val) => {
             let llval = cx.const_u64(val);
             let llty = cx.val_ty(llfn);

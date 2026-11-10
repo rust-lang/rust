@@ -375,7 +375,10 @@ disable a feature, where `<name>` is one of:
   an `.init_array` or `.fini_array` section that points to a function of any
   other ABI is rejected
 * `init-fini-address-discrimination` - enable address discrimination for
-  init/fini array entries
+  init/fini array entries (on by default). As in Clang, an entry is signed
+  with address diversity, so the loader blends in the address of the entry.
+  Also as in Clang, this option does not enable `init-fini`, and it sets its
+  bit of the PAuth ABI version even when `init-fini` is disabled
 * `intrinsics` - enable pointer authentication intrinsics
 * `return-addresses` - enable signing and authentication of return addresses
 * `typeinfo-vt-ptr-discrimination` - enable type/address discrimination for
@@ -461,6 +464,7 @@ This target can be tested as normal with `x.py`.
 The following categories are supported (all present in tree):
 * Assembly tests
   * pauth-basic.rs
+  * pauth-init-fini.rs
 * LLVM IR/codegen tests
   * pauth-extern-c.rs
   * pauth-extern-c-direct-indirect-call.rs
@@ -493,6 +497,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   codegen-llvm codegen-units coverage crashes incremental library mir-opt \
   run-make rust_middle ui ui-fulldeps \
   tests/assembly-llvm/pauth-basic.rs \
+  tests/assembly-llvm/pauth-init-fini.rs \
   tests/codegen-llvm/pauth/pauth-attr-cli-flags.rs \
   tests/codegen-llvm/pauth/pauth-attr-special-funcs.rs \
   tests/codegen-llvm/pauth/pauth-extern-c.rs \
