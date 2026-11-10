@@ -131,6 +131,32 @@ pub mod arch {
 
         impl crate::Copy for ppcf128 {}
     }
+
+    #[cfg(target_arch = "x86")]
+    pub mod x86 {
+        // Public in minicore for testing purposes.
+        #[lang = "x87_f80_raw"]
+        pub struct x87_f80_raw {}
+
+        #[lang = "x87_f80"]
+        pub struct x87_f80(x87_f80_raw);
+
+        impl crate::Copy for x87_f80_raw {}
+        impl crate::Copy for x87_f80 {}
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub mod x86_64 {
+        // Public in minicore for testing purposes.
+        #[lang = "x87_f80_raw"]
+        pub struct x87_f80_raw {}
+
+        #[lang = "x87_f80"]
+        pub struct x87_f80(x87_f80_raw);
+
+        impl crate::Copy for x87_f80_raw {}
+        impl crate::Copy for x87_f80 {}
+    }
 }
 
 #[lang = "phantom_data"]
