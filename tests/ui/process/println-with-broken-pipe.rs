@@ -9,7 +9,6 @@
 //@ ignore-tvos no 'head'
 //@ ignore-watchos no 'head'
 //@ ignore-visionos no 'head'
-//@ ignore-backends: gcc
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:CC"
 //@ normalize-stderr: "/rustc(?:-dev)?/[a-z0-9.]+/" -> ""
 //@ compile-flags: -Zon-broken-pipe=error

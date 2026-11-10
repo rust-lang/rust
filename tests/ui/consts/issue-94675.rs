@@ -1,5 +1,3 @@
-//@ ignore-backends: gcc
-
 #![feature(const_trait_impl)]
 
 struct Foo<'a> {

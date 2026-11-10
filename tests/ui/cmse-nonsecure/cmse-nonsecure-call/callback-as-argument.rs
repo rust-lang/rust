@@ -2,7 +2,6 @@
 //@ build-pass
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
-//@ ignore-backends: gcc
 #![feature(abi_cmse_nonsecure_call, cmse_nonsecure_entry, no_core, lang_items, intrinsics)]
 #![no_core]
 

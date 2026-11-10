@@ -1,6 +1,5 @@
 //@ add-minicore
 //@ check-pass
-//@ ignore-backends: gcc
 //
 //@ revisions: linux_gnu linux_musl linux_ohos linux_powerpc
 //@[linux_gnu] compile-flags: --target aarch64-unknown-linux-gnu
