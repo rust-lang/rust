@@ -1,4 +1,4 @@
-use std::io::SeekFrom;
+use std::io::{Seek, SeekFrom};
 use std::time::SystemTime;
 use std::{fs, io};
 
@@ -451,6 +451,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // "length" (called "EOF position") and "capacity" (called "allocation size").
             // Growing the allocation size is largely a performance hint which we can
             // ignore -- it can also be directly queried, but we currently do not support that.
+            // (Linux has something equivalent, `fallocate` with `FALLOC_FL_KEEP_SIZE`, but std does
+            // not expose it so we cannot easily use it.)
             // So we only need to do something if this operation shrinks the allocation size
             // so far that it affects the EOF position.
             let place =
@@ -460,8 +462,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .to_i64()?
                 .try_into()
                 .unwrap();
-            let old_len = match file.file.metadata() {
-                Ok(m) => m.len(),
+            let old_len = match (&file.file).stream_len() {
+                Ok(l) => l,
                 Err(e) => {
                     ecx.set_last_error(e)?;
                     return interp_ok(ecx.eval_windows("c", "FALSE"));
