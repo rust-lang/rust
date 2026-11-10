@@ -1229,7 +1229,7 @@ rustc_queries! {
     }
 
     /// Return dead-code liveness summary for the crate.
-    query live_symbols_and_ignored_derived_traits(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
+    query live_symbols_and_trivial_usage_sites(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }

@@ -1049,7 +1049,6 @@ impl Display for Arguments<'_> {
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
-#[rustc_trivial_field_reads]
 pub trait Debug: PointeeSized {
     #[doc = include_str!("fmt_trait_method_doc.md")]
     ///
