@@ -532,10 +532,32 @@ where
     }
 
     fn consider_builtin_fn_static_trait_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
+        ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        panic!("`FnStatic` does not have an associated type: {:?}", goal);
+        let cx = ecx.cx();
+        let def_id = goal.predicate.alias.expect_projection_ty_def_id();
+        assert!(cx.is_projection_lang_item(def_id, SolverProjectionLangItem::FnStaticFnPtr));
+
+        let self_ty = goal.predicate.self_ty();
+        let sig = match self_ty.kind() {
+            ty::FnDef(..) => self_ty.fn_sig(cx),
+            ty::Closure(_, args) => args.as_closure().sig().map_bound(|sig| {
+                assert!(sig.splatted().is_none());
+                let ty::Tuple(params) = sig.inputs().as_slice()[0].kind() else { panic!() };
+                ty::FnSig {
+                    inputs_and_output: cx
+                        .mk_type_list_from_iter(params.iter().chain([sig.output()])),
+                    fn_sig_kind: ty::FnSigKind::default().set_safety(sig.safety()),
+                }
+            }),
+            _ => return Err(NoSolution.into()),
+        };
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            ecx.instantiate_normalizes_to_term(goal, Ty::new_fn_ptr(cx, sig).into())?;
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_builtin_fn_trait_candidates(

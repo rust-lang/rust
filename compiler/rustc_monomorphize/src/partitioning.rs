@@ -656,6 +656,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FnStaticInstance(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnStaticAsPtr(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
@@ -844,6 +845,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::FnAddrAsPtr(..))
         | InstanceKind::Shim(ShimKind::FnStaticInstance(..))
+        | InstanceKind::Shim(ShimKind::FnStaticAsPtr(..))
         | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Visibility::Hidden,
     };
 

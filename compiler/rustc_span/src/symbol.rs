@@ -1033,6 +1033,8 @@ symbols! {
         fn_ptr_from_ptr,
         fn_ptr_trait,
         fn_static,
+        fn_static_as_fn,
+        fn_static_fn_ptr,
         fn_static_instance,
         forall,
         forbid,

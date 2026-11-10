@@ -807,6 +807,7 @@ bidirectional_lang_item_map! {
     CoroutineYield,
     FieldBase,
     FieldType,
+    FnStaticFnPtr,
     FutureOutput,
     Metadata,
 // tidy-alphabetical-end

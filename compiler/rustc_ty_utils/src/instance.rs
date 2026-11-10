@@ -335,15 +335,20 @@ fn resolve_associated_item<'tcx>(
                     return Ok(None);
                 }
                 match tcx.as_lang_item(trait_item_id) {
-                    Some(LangItem::FnStaticInstance) => {
-                        Some(Instance {
-                            def: ty::InstanceKind::Shim(ty::ShimKind::FnStaticInstance(
-                                trait_item_id,
-                                self_ty,
-                            )),
-                            args: rcvr_args,
-                        })
-                    }
+                    Some(LangItem::FnStaticInstance) => Some(Instance {
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnStaticInstance(
+                            trait_item_id,
+                            self_ty,
+                        )),
+                        args: rcvr_args,
+                    }),
+                    Some(LangItem::FnStaticAsPtr) => Some(Instance {
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnStaticAsPtr(
+                            trait_item_id,
+                            self_ty,
+                        )),
+                        args: rcvr_args,
+                    }),
                     _ => bug!("Unknown item for FnStatic: {:?}", trait_item_id),
                 }
             } else if let Some(target_kind) = tcx.fn_trait_kind_from_def_id(trait_ref.def_id) {
