@@ -858,11 +858,14 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     mut callee_body: Body<'tcx>,
 ) {
     let tcx = inliner.tcx();
-    let terminator = caller_body[callsite.block].terminator.take().unwrap();
-    let TerminatorKind::Call { func, args, destination, unwind, target, .. } = terminator.kind
+    let terminator = caller_body.basic_blocks.as_mut()[callsite.block].terminator.as_mut().unwrap();
+    let TerminatorKind::Call { ref func, ref mut args, destination, unwind, target, .. } =
+        terminator.kind
     else {
         bug!("unexpected terminator kind {:?}", terminator.kind);
     };
+    let args = std::mem::take(args);
+    let func_ty = func.ty(&caller_body.local_decls, tcx);
 
     let return_block = if let Some(block) = target {
         // Prepare a new block for code that should execute when call returns. We don't use
@@ -1010,7 +1013,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // the actually used items. By doing this we can entirely avoid visiting the callee!
     // We need to reconstruct the `required_item` for the callee so that we can find and
     // remove it.
-    let callee_item = MentionedItem::Fn(func.ty(caller_body, tcx));
+    let callee_item = MentionedItem::Fn(func_ty);
     let caller_mentioned_items = caller_body.mentioned_items.as_mut().unwrap();
     if let Some(idx) = caller_mentioned_items.iter().position(|item| item.node == callee_item) {
         // We found the callee, so remove it and add its items instead.
