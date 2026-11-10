@@ -5,7 +5,6 @@
 //@[soft] compile-flags: --target=x86_64-unknown-none --crate-type=lib
 //@[soft] needs-llvm-components: x86
 //@ check-pass
-//@ ignore-backends: gcc
 //@ add-minicore
 #![feature(no_core)]
 #![no_core]

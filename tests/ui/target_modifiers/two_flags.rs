@@ -6,7 +6,6 @@
 //@[two_allowed] compile-flags: -Cunsafe-allow-abi-mismatch=regparm,reg-struct-return
 //@[unknown_allowed] compile-flags: -Cunsafe-allow-abi-mismatch=unknown_flag -Zregparm=2 -Zreg-struct-return=true
 //@[two_allowed] check-pass
-//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

@@ -1,7 +1,6 @@
 //@ edition: 2024
 //@ run-pass
 //@ needs-unwind
-//@ ignore-backends: gcc
 #![feature(gen_blocks)]
 
 fn main() {

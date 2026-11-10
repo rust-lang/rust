@@ -2,7 +2,6 @@
 //@ needs-subprocess
 //@ compile-flags: -Zub-checks=no -Zmir-enable-passes=-CheckNull
 //@ ignore-fuchsia must translate zircon signal to SIGSEGV/SIGBUS, FIXME (#58590)
-//@ ignore-backends: gcc
 
 #![feature(rustc_private)]
 
