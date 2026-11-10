@@ -25,7 +25,6 @@ use rustc_abi::{CVariadicStatus, CanonAbi, ExternAbi, InterruptKind};
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
-use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
 use rustc_feature::Features;
@@ -1402,10 +1401,6 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 }
 
 impl Visitor<'_> for AstValidator<'_> {
-    fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.sess.psess, attr);
-    }
-
     fn visit_ty(&mut self, ty: &Ty) {
         self.visit_ty_common(ty);
         self.walk_ty(ty)
