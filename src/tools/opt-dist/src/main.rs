@@ -142,6 +142,11 @@ enum EnvironmentCmd {
         #[clap(flatten)]
         shared: SharedArgs,
     },
+    /// Perform an optimized build on aarch64 Mac CI, directly inside Github Actions.
+    MacCi {
+        #[clap(flatten)]
+        shared: SharedArgs,
+    },
 }
 
 /// For a fast try build, we want to only build the bare minimum of components to get a
@@ -241,6 +246,41 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .run_tests(true)
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(true)
+                .build()?;
+
+            (env, shared.build_args)
+        }
+
+        EnvironmentCmd::MacCi { shared } => {
+            let target_triple =
+                std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
+
+            let developer_dir =
+                std::env::var("DEVELOPER_DIR").expect("DEVELOPER_DIR environment variable missing");
+            let llvm_binaries_path =
+                Utf8Path::new(&developer_dir).join("Toolchains/XcodeDefault.xctoolchain/usr/");
+
+            // GH Mac runners are currently too slow to optimize tools.
+            let optimize_tools = false;
+
+            let checkout_dir: Utf8PathBuf = std::env::current_dir()?.try_into()?;
+            let env = EnvironmentBuilder::default()
+                .host_tuple(target_triple)
+                .python_binary("python3".to_string())
+                .checkout_dir(checkout_dir.clone())
+                .host_llvm_dir(llvm_binaries_path)
+                .artifact_dir(checkout_dir.join("opt-artifacts"))
+                .build_dir(checkout_dir.join("build"))
+                .shared_llvm(true)
+                .use_bolt(false)
+                .skipped_tests(vec![])
+                .run_tests(false) // tmp
+                .fast_try_build(is_fast_try_build)
+                .build_llvm(true)
+                .optimize_cargo(optimize_tools)
+                .optimize_clippy(optimize_tools)
+                .optimize_cranelift(optimize_tools)
+                .optimize_rustdoc(optimize_tools)
                 .build()?;
 
             (env, shared.build_args)
