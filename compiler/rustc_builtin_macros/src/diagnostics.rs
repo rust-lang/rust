@@ -23,10 +23,6 @@ pub(crate) struct IncompleteInclude;
 pub(crate) struct UnnameableTestItems;
 
 #[derive(Diagnostic)]
-#[diag("duplicated attribute")]
-pub(crate) struct DuplicateMacroAttribute;
-
-#[derive(Diagnostic)]
 #[diag("macro requires a cfg-pattern as an argument")]
 pub(crate) struct RequiresCfgPattern {
     #[primary_span]
