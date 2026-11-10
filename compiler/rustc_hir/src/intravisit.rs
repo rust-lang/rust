@@ -384,6 +384,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_expr(&mut self, ex: &'v Expr<'v>) -> Self::Result {
         walk_expr(self, ex)
     }
+    fn visit_field_project(&mut self, fp: &'v FieldProject<'v>) -> Self::Result {
+        walk_field_project(self, fp)
+    }
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) -> Self::Result {
         walk_expr_field(self, field)
     }
@@ -961,6 +964,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             try_visit!(visitor.visit_ty_unambig(container));
             walk_list!(visitor, visit_ident, fields.iter().copied());
         }
+        ExprKind::RawHandle(ref subexpression) => {
+            try_visit!(visitor.visit_field_project(subexpression));
+        }
         ExprKind::Yield(ref subexpression, _) => {
             try_visit!(visitor.visit_expr(subexpression));
         }
@@ -972,6 +978,22 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::Err(_) => {}
     }
     V::Result::output()
+}
+
+pub fn walk_field_project<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    fp: &'v FieldProject<'v>,
+) -> V::Result {
+    let FieldProject { hir_id, kind, span } = fp;
+    try_visit!(visitor.visit_id(*hir_id));
+    match *kind {
+        FieldProjectKind::Path(ref qpath) => visitor.visit_qpath(qpath, *hir_id, *span),
+        FieldProjectKind::Field(base, ident) => {
+            try_visit!(visitor.visit_field_project(base));
+            visitor.visit_ident(ident)
+        }
+        FieldProjectKind::Deref(base) => visitor.visit_field_project(base),
+    }
 }
 
 pub fn walk_expr_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v ExprField<'v>) -> V::Result {

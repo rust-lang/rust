@@ -23,7 +23,7 @@ use rustc_middle::middle::dead_code::{DeadCodeLivenessSnapshot, DeadCodeLiveness
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
-use rustc_span::{Symbol, bug, kw, span_bug};
+use rustc_span::{Span, Symbol, bug, kw, span_bug};
 use rustc_structures::CrateType;
 
 use crate::diagnostics::{
@@ -235,15 +235,25 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    fn handle_field_access(&mut self, lhs: &hir::Expr<'_>, hir_id: hir::HirId) {
-        match self.typeck_results().expr_ty_adjusted(lhs).kind() {
+    fn handle_field_access(
+        &mut self,
+        lhs_hir_id: hir::HirId,
+        lhs_span: Span,
+        hir_id: hir::HirId,
+        span: Span,
+    ) {
+        let typeck_results = self.typeck_results();
+        let Some(index) = typeck_results.opt_field_index(hir_id) else {
+            self.tcx.dcx().span_delayed_bug(span, "couldn't resolve index for field");
+            return;
+        };
+        match typeck_results.node_ty_adjusted(lhs_hir_id).kind() {
             ty::Adt(def, _) => {
-                let index = self.typeck_results().field_index(hir_id);
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::Tuple(..) => {}
             ty::Error(_) => {}
-            kind => span_bug!(lhs.span, "named field access on non-ADT: {kind:?}"),
+            kind => span_bug!(lhs_span, "named field access on non-ADT: {kind:?}"),
         }
     }
 
@@ -739,11 +749,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprKind::Field(ref lhs, ..) => {
-                if self.typeck_results().opt_field_index(expr.hir_id).is_some() {
-                    self.handle_field_access(lhs, expr.hir_id);
-                } else {
-                    self.tcx.dcx().span_delayed_bug(expr.span, "couldn't resolve index for field");
-                }
+                self.handle_field_access(lhs.hir_id, lhs.span, expr.hir_id, expr.span);
             }
             hir::ExprKind::Struct(qpath, fields, _) => {
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
@@ -766,6 +772,20 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         }
 
         intravisit::walk_expr(self, expr)
+    }
+
+    fn visit_field_project(&mut self, fp: &'tcx hir::FieldProject<'tcx>) -> Self::Result {
+        match fp.kind {
+            hir::FieldProjectKind::Path(ref qpath @ QPath::TypeRelative(..)) => {
+                let res = self.typeck_results().qpath_res(qpath, fp.hir_id);
+                self.handle_res(res);
+            }
+            hir::FieldProjectKind::Path(QPath::Resolved(..)) | hir::FieldProjectKind::Deref(_) => {}
+            hir::FieldProjectKind::Field(base, _) => {
+                self.handle_field_access(base.hir_id, base.span, fp.hir_id, fp.span);
+            }
+        }
+        intravisit::walk_field_project(self, fp)
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> Self::Result {

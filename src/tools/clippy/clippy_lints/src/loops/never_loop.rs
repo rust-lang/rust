@@ -446,6 +446,7 @@ fn never_loop_expr<'tcx>(
             },
         })),
         ExprKind::OffsetOf(_, _)
+        | ExprKind::RawHandle(_)
         | ExprKind::Yield(_, _)
         | ExprKind::Closure { .. }
         | ExprKind::Path(_)
@@ -546,6 +547,7 @@ fn find_non_obvious_spans<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> 
                 | ExprKind::Struct(..)
                 | ExprKind::Repeat(..)
                 | ExprKind::Yield(..)
+                | ExprKind::RawHandle(..)
                 | ExprKind::UnsafeBinderCast(..)
                 | ExprKind::Err(..) => {
                     spans.push(expr.span);

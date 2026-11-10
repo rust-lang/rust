@@ -2266,6 +2266,7 @@ impl Expr<'_> {
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
             | ExprKind::Struct(..)
@@ -2338,6 +2339,7 @@ impl Expr<'_> {
             | ExprKind::Assign(..)
             | ExprKind::InlineAsm(..)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
             | ExprKind::ConstBlock(..)
@@ -2429,6 +2431,7 @@ impl Expr<'_> {
             | ExprKind::Become(_)
             | ExprKind::InlineAsm(_)
             | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
             | ExprKind::Yield(..)
@@ -2486,9 +2489,11 @@ impl Expr<'_> {
 
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
-            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) | ExprKind::Use(..) => {
-                false
-            }
+            ExprKind::Path(_)
+            | ExprKind::Lit(_)
+            | ExprKind::OffsetOf(..)
+            | ExprKind::RawHandle(..)
+            | ExprKind::Use(..) => false,
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
@@ -2655,6 +2660,21 @@ pub fn expr_needs_parens(expr: &Expr<'_>) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, StableHash)]
+pub struct FieldProject<'hir> {
+    #[stable_hash(ignore)]
+    pub hir_id: HirId,
+    pub kind: FieldProjectKind<'hir>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
+pub enum FieldProjectKind<'hir> {
+    Path(QPath<'hir>),
+    Field(&'hir FieldProject<'hir>, Ident),
+    Deref(&'hir FieldProject<'hir>),
+}
+
+#[derive(Debug, Clone, Copy, StableHash)]
 pub enum ExprKind<'hir> {
     /// Allow anonymous constants from an inline `const` block
     ConstBlock(ConstBlock),
@@ -2769,6 +2789,9 @@ pub enum ExprKind<'hir> {
 
     /// Field offset (`offset_of!`)
     OffsetOf(&'hir Ty<'hir>, &'hir [Ident]),
+
+    /// Raw place handle (`raw_handle!`)
+    RawHandle(&'hir FieldProject<'hir>),
 
     /// A struct or struct-like variant literal expression.
     ///
@@ -5050,6 +5073,7 @@ pub enum Node<'hir> {
     ConstBlock(&'hir ConstBlock),
     ConstArg(&'hir ConstArg<'hir>),
     Expr(&'hir Expr<'hir>),
+    FieldProject(&'hir FieldProject<'hir>),
     ExprField(&'hir ExprField<'hir>),
     ConstArgExprField(&'hir ConstArgExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
@@ -5122,6 +5146,7 @@ impl<'hir> Node<'hir> {
             | Node::ConstBlock(..)
             | Node::ConstArg(..)
             | Node::Expr(..)
+            | Node::FieldProject(..)
             | Node::Stmt(..)
             | Node::Block(..)
             | Node::Ctor(..)
@@ -5322,6 +5347,7 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Ty(Ty { kind: TyKind::Path(path), .. })
             | Node::Expr(Expr { kind: ExprKind::Path(path), .. })
+            | Node::FieldProject(FieldProject { kind: FieldProjectKind::Path(path), .. })
             | Node::PatExpr(PatExpr { kind: PatExprKind::Path(path), .. }) => Some(path),
             _ => None,
         }
@@ -5338,6 +5364,7 @@ impl<'hir> Node<'hir> {
         expect_anon_const,    &'hir AnonConst,          Node::AnonConst(n),    n;
         expect_inline_const,  &'hir ConstBlock,         Node::ConstBlock(n),   n;
         expect_expr,          &'hir Expr<'hir>,         Node::Expr(n),         n;
+        expect_field_project, &'hir FieldProject<'hir>, Node::FieldProject(n), n;
         expect_expr_field,    &'hir ExprField<'hir>,    Node::ExprField(n),    n;
         expect_stmt,          &'hir Stmt<'hir>,         Node::Stmt(n),         n;
         expect_path_segment,  &'hir PathSegment<'hir>,  Node::PathSegment(n),  n;
@@ -5370,6 +5397,8 @@ mod size_asserts {
     static_assert_size!(Body<'_>, 24);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
+    static_assert_size!(FieldProject<'_>, 48);
+    static_assert_size!(FieldProjectKind<'_>, 32);
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 88);
     static_assert_size!(ForeignItemKind<'_>, 56);

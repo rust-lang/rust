@@ -429,6 +429,7 @@ pub(crate) fn format_expr(
         | ast::ExprKind::Type(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::OffsetOf(..)
+        | ast::ExprKind::RawHandle(..)
         | ast::ExprKind::UnsafeBinderCast(..)
         | ast::ExprKind::GcaMacro(..) => {
             // These don't normally occur in the AST because macros aren't expanded. However,

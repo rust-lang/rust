@@ -85,6 +85,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             mem::take(&mut self.typeck_results.borrow_mut().used_trait_imports);
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.typeck_results.used_trait_imports = used_trait_imports;
+        wbcx.typeck_results.raw_handle_mutability =
+            mem::take(&mut self.typeck_results.borrow_mut().raw_handle_mutability);
 
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
 
@@ -338,6 +340,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) {
         self.visit_node_id(expr.span, expr.hir_id);
         intravisit::walk_pat_expr(self, expr);
+    }
+
+    fn visit_field_project(&mut self, fp: &'tcx hir::FieldProject<'tcx>) {
+        if let hir::FieldProjectKind::Field(..) = fp.kind {
+            self.visit_field_id(fp.hir_id);
+        }
+        self.visit_node_id(fp.span, fp.hir_id);
+        intravisit::walk_field_project(self, fp);
     }
 
     fn visit_local(&mut self, l: &'tcx hir::LetStmt<'tcx>) {
