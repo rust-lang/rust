@@ -50,7 +50,7 @@ fn switch_stdout_to(file: OwnedHandle) -> OwnedHandle {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // dup/SetStdHandle not supported by Miri
+#[cfg_attr(all(windows, skip_unsupported_miri_tests), ignore)] // SetStdHandle not supported by Miri
 fn switch_stdout() {
     let temp = common::tmpdir();
     let path = temp.join("switch-stdout-output");

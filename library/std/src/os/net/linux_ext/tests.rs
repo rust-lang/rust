@@ -1,4 +1,5 @@
 #[test]
+#[cfg(not(skip_unsupported_miri_tests))] // socket flag not supported by Miri
 fn quickack() {
     use crate::net::tests::LOCALHOST_IP4;
     use crate::net::{TcpListener, TcpStream};
@@ -28,6 +29,7 @@ fn quickack() {
 
 #[test]
 #[cfg(target_os = "linux")]
+#[cfg(not(skip_unsupported_miri_tests))] // socket flag not supported by Miri
 fn deferaccept() {
     use crate::net::tests::LOCALHOST_IP4;
     use crate::net::{TcpListener, TcpStream};
