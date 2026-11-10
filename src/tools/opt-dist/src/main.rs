@@ -295,6 +295,15 @@ fn execute_pipeline(
                 // The profiles are then merged together into a single PGO profile.
                 let mut builder =
                     Bootstrap::build(env).rustc_pgo_instrument(&rustc_profile_dir_root);
+
+                // FIXME: temporary workaround for segfaults on aarch64 MacOS, tracked in
+                // https://github.com/rust-lang/rust/issues/163640. This issue is fixed in upstream cc-rs
+                // already but not present in the rust dependencies yet. Once that is done, we can remove the
+                // overrides below.
+                if env.host_tuple() == "aarch64-apple-darwin" {
+                    builder = builder.workaround_cc_segfaults();
+                }
+
                 if optimize_cargo {
                     builder = builder.with_cargo().cargo_pgo_instrument(&rustc_profile_dir_root)
                 }

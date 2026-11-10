@@ -183,6 +183,27 @@ impl Bootstrap {
         self
     }
 
+    pub fn workaround_cc_segfaults(mut self) -> Self {
+        // The PGO flags passed to rustc are forwarded to the underlying host Clang when building
+        // native dependencies, mixing rustc's LLVM profiling runtime with the host LLVM profiling
+        // runtime. These two versions are currently incompatible, and mixing them is causing the
+        // instrumented compiler to segfault at runtime.
+        //
+        // Until cc-rs is bumped, we stop forwarding the PGO profile generation flag to the
+        // underlying C dependencies. In practice, these CFLAGS/CXXFLAGS are added after cc-rs'
+        // forwarded flags, and prior to opt-dist/bootstrap's, so PGO rustc isn't actually disabled.
+        //
+        // It's highly unlikely these are set on CI or locally, so we only assert they aren't, out
+        // of caution, and don't need to intelligently handle their possible values.
+        assert!(std::env::var_os("CFLAGS_aarch64_apple_darwin").is_none());
+        assert!(std::env::var_os("CXXFLAGS_aarch64_apple_darwin").is_none());
+        self.cmd = self
+            .cmd
+            .env("CFLAGS_aarch64_apple_darwin", "-fno-profile-generate")
+            .env("CXXFLAGS_aarch64_apple_darwin", "-fno-profile-generate");
+        self
+    }
+
     pub fn rustc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
         self.cmd = self
             .cmd
