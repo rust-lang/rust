@@ -132,9 +132,8 @@ pub(crate) fn type_check<'tcx>(
             pre_assumptions.is_empty(),
             "there should be no incoming region assumptions = {pre_assumptions:#?}",
         );
-        if let Some(constraint) = infcx.take_solver_region_constraints() {
-            assert!(constraint.is_true(), "incoming solver constraints: {constraint:?}");
-        }
+        let constraint = infcx.take_solver_region_constraints();
+        assert!(constraint.is_true(), "incoming solver constraints: {constraint:?}");
     }
 
     debug!(?normalized_inputs_and_output);
@@ -174,7 +173,7 @@ pub(crate) fn type_check<'tcx>(
     let polonius_context = typeck.polonius_context;
 
     assert!(
-        infcx.take_solver_region_constraints().is_none(),
+        infcx.take_solver_region_constraints().is_true(),
         "solver constraints remain after MIR type checking",
     );
 

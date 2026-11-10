@@ -216,9 +216,8 @@ impl<'tcx> InferCtxt<'tcx> {
             self.register_region_assumption(assumption);
         }
 
-        if let Some(solver_constraints) = solver_constraints {
-            let constraint =
-                instantiate_value(self.tcx, &result_args, (**solver_constraints).clone());
+        if !solver_constraints.is_true() {
+            let constraint = instantiate_value(self.tcx, &result_args, solver_constraints.clone());
             self.register_solver_region_constraint(constraint.with_spans(cause.span));
         }
 
@@ -350,11 +349,8 @@ impl<'tcx> InferCtxt<'tcx> {
             .assumptions
             .extend(assumptions.iter().map(|&r_c| instantiate_value(self.tcx, &result_args, r_c)));
 
-        if let Some(solver_constraints) = solver_constraints {
-            let constraint =
-                instantiate_value(self.tcx, &result_args, (**solver_constraints).clone());
-            output_query_region_constraints.add_solver_constraints(constraint);
-        }
+        let constraint = instantiate_value(self.tcx, &result_args, solver_constraints.clone());
+        output_query_region_constraints.add_solver_constraints(constraint);
 
         let user_result: R =
             query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
@@ -632,7 +628,7 @@ pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
-    solver_constraints: Option<Box<ty::region_constraint::RegionConstraint<TyCtxt<'tcx>>>>,
+    solver_constraints: ty::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 

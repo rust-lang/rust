@@ -84,7 +84,7 @@ fn compute_assumptions<'tcx>(
                 region_obligations,
                 &region_constraints,
                 region_assumptions,
-                None,
+                ty::region_constraint::RegionConstraint::new_true(),
             )
             .constraints,
         );

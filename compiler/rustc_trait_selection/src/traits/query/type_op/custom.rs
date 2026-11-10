@@ -146,9 +146,8 @@ where
         pre_assumptions.is_empty(),
         "scrape_region_constraints: incoming region assumptions = {pre_assumptions:#?}",
     );
-    if let Some(constraint) = infcx.take_solver_region_constraints() {
-        assert!(constraint.is_true(), "incoming solver constraints: {constraint:?}");
-    }
+    let constraint = infcx.take_solver_region_constraints();
+    assert!(constraint.is_true(), "incoming solver constraints: {constraint:?}");
 
     let value = infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::<E>::new_raw(infcx);

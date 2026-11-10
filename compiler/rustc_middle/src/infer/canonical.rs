@@ -77,15 +77,24 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
     /// Unspanned AoB constraints, canonicalized with the rest of the response.
-    /// The caller attaches its own span when consuming them. `None` avoids
-    /// constructing a trivially true constraint when AoB is disabled.
-    pub solver_constraints: Option<Box<ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>>>,
+    /// The caller attaches its own span when consuming them.
+    pub solver_constraints: ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+}
+
+impl<'tcx> Default for QueryRegionConstraints<'tcx> {
+    fn default() -> Self {
+        Self {
+            constraints: Vec::new(),
+            assumptions: Vec::new(),
+            solver_constraints: ir::region_constraint::RegionConstraint::new_true(),
+        }
+    }
 }
 
 impl<'tcx> QueryRegionConstraints<'tcx> {
@@ -97,30 +106,26 @@ impl<'tcx> QueryRegionConstraints<'tcx> {
     /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
         let QueryRegionConstraints { constraints, assumptions, solver_constraints } = self;
-        constraints.is_empty()
-            && assumptions.is_empty()
-            && solver_constraints.as_ref().is_none_or(|c| c.is_true())
+        constraints.is_empty() && assumptions.is_empty() && solver_constraints.is_true()
     }
 
     pub fn extend(&mut self, other: &Self) {
         let QueryRegionConstraints { constraints, assumptions, solver_constraints } = other;
         self.constraints.extend(constraints.iter().cloned());
         self.assumptions.extend(assumptions.iter().cloned());
-        if let Some(constraint) = solver_constraints {
-            self.add_solver_constraints((**constraint).clone());
-        }
+        self.add_solver_constraints(solver_constraints.clone());
     }
 
     pub fn add_solver_constraints(
         &mut self,
         constraint: ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
     ) {
-        self.solver_constraints = Some(Box::new(match self.solver_constraints.take() {
-            Some(previous) => {
-                ir::region_constraint::RegionConstraint::build_and(*previous, constraint)
-            }
-            None => constraint,
-        }));
+        let previous = std::mem::replace(
+            &mut self.solver_constraints,
+            ir::region_constraint::RegionConstraint::new_true(),
+        );
+        self.solver_constraints =
+            ir::region_constraint::RegionConstraint::build_and(previous, constraint);
     }
 }
 
