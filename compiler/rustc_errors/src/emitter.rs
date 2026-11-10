@@ -33,6 +33,7 @@ use crate::{
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct HumanReadableErrorType {
+    pub no_graphics: bool,
     pub short: bool,
     pub unicode: bool,
 }

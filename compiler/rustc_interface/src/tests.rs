@@ -346,7 +346,7 @@ fn test_search_paths_tracking_hash_different_order() {
     let early_dcx = EarlyDiagCtxt::new(JSON);
     const JSON: ErrorOutputType = ErrorOutputType::Json {
         pretty: false,
-        json_rendered: HumanReadableErrorType { short: false, unicode: false },
+        json_rendered: HumanReadableErrorType { no_graphics: false, short: false, unicode: false },
         color_config: ColorConfig::Never,
     };
 
