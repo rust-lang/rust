@@ -26,8 +26,8 @@ if y {
 - Macro names shall be `snake_case`,
 - Constants (`const`s and immutable `static`s) shall be `SCREAMING_SNAKE_CASE`.
 - When a name is forbidden because it is a reserved word (such as `crate`),
-  either use a raw identifier (`r#crate`) or use a trailing underscore
-  (`crate_`). Don't misspell the word (`krate`).
+  either use a raw identifier (`r#match`) or use a trailing underscore
+  (`match_`). Don't misspell the word (`maatch`).
 
 ### Modules
 
