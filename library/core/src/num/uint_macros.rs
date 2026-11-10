@@ -846,6 +846,11 @@ macro_rules! uint_impl {
 
         /// Returns an integer with the bit locations specified by `mask` packed
         /// contiguously into the least significant bits of the result.
+        ///
+        /// This operation corresponds to the `PEXT` x86 instruction.
+        ///
+        /// # Examples
+        ///
         /// ```
         /// #![feature(uint_gather_scatter_bits)]
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b1011_1100;")]
@@ -864,6 +869,11 @@ macro_rules! uint_impl {
 
         /// Returns an integer with the least significant bits of `self`
         /// distributed to the bit locations specified by `mask`.
+        ///
+        /// This operation corresponds to the `PDEP` x86 instruction.
+        ///
+        /// # Examples
+        ///
         /// ```
         /// #![feature(uint_gather_scatter_bits)]
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b1010_1101;")]
