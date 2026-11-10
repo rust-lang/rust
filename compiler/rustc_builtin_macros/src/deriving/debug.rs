@@ -42,7 +42,10 @@ pub(crate) fn expand_derive_debug(
             nonself_args: smallvec![(sym::f, fmtr)],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
-            attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
+            attributes: thin_vec![
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
+            ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             body: Box::new(|cx, span, substr| debug_body(
                 cx,
