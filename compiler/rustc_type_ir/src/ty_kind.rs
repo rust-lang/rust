@@ -444,21 +444,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Int(i) => write!(f, "{i:?}"),
             Uint(u) => write!(f, "{u:?}"),
             Float(float) => write!(f, "{float:?}"),
-            Adt(d, s) => {
-                write!(f, "{d:?}")?;
-                let mut s = s.iter();
-                let first = s.next();
-                match first {
-                    Some(first) => write!(f, "<{:?}", first)?,
-                    None => return Ok(()),
-                };
-
-                for arg in s {
-                    write!(f, ", {:?}", arg)?;
-                }
-
-                write!(f, ">")
-            }
+            Adt(d, s) => debug_adt::<I>(f, d, s),
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{t:?}; {c:?}]"),
@@ -492,17 +478,41 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
                 }
                 write!(f, ")")
             }
+            ty::View(d, s, fields) => {
+                write!(
+                    f,
+                    "view_type!({}.{{ {fields:?} }})",
+                    fmt::from_fn(|f| debug_adt::<I>(f, d, s))
+                )
+            }
             Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
             TyKind::Error(_) => write!(f, "{{type error}}"),
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
         }
     }
+}
+
+fn debug_adt<I: Interner>(
+    f: &mut fmt::Formatter<'_>,
+    d: &<I as Interner>::AdtDef,
+    s: &<I as Interner>::GenericArgs,
+) -> Result<(), fmt::Error> {
+    write!(f, "{d:?}")?;
+    let mut s = s.iter();
+    let first = s.next();
+    match first {
+        Some(first) => write!(f, "<{:?}", first)?,
+        None => return Ok(()),
+    };
+
+    for arg in s {
+        write!(f, ", {:?}", arg)?;
+    }
+
+    write!(f, ">")
 }
 
 impl<I: Interner> AliasTy<I> {
