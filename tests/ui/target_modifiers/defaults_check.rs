@@ -11,7 +11,6 @@
 //@[error] compile-flags: -Zreg-struct-return=true
 //@[ok] check-pass
 //@[ok_explicit] check-pass
-//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

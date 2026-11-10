@@ -1,7 +1,6 @@
 // Regression test for #140281
 //@ edition: 2021
 //@ proc-macro: unicode-control.rs
-//@ ignore-backends: gcc
 
 extern crate unicode_control;
 use unicode_control::*;

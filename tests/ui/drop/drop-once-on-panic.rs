@@ -3,7 +3,6 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
-//@ ignore-backends: gcc
 
 use std::thread;
 
