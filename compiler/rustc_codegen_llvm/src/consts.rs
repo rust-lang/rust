@@ -9,8 +9,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
-    read_target_uint,
+    Allocation, ConstAllocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
+    Scalar as InterpScalar, read_target_uint,
 };
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
@@ -19,8 +19,8 @@ use rustc_span::{Symbol, bug, span_bug};
 use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
 
-use crate::common::CodegenCx;
-use crate::diagnostics::SymbolAlreadyDefined;
+use crate::common::{CodegenCx, is_ptrauth_signed_fn};
+use crate::diagnostics::{PtrauthUnsignedInitFiniEntry, SymbolAlreadyDefined};
 use crate::llvm::{self, Type, Value, const_ptr_auth};
 use crate::{base, debuginfo};
 
@@ -173,7 +173,40 @@ fn codegen_static_initializer<'ll, 'tcx>(
             }
         })
         .unwrap_or(IsInitOrFini::No);
+    if let IsInitOrFini::Yes = is_in_init_fini {
+        check_init_fini_entries_are_signed(cx, def_id, alloc.inner());
+    }
     Ok((const_alloc_to_llvm(cx, alloc.inner(), IsStatic::Yes, is_in_init_fini), alloc))
+}
+
+/// For pointer authentication the loader authenticates every entry of an init/fini array with the
+/// init/fini schema, but only functions whose ABI is supported (see `is_ptrauth_signed_fn`) can be
+/// signed.
+/// Reject non supported entries instead of emitting entries that fail authentication when the
+/// loader runs them.
+fn check_init_fini_entries_are_signed<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    def_id: DefId,
+    alloc: &Allocation,
+) {
+    if cx.sess().pointer_authentication_init_fini().is_none() {
+        return;
+    }
+    let section = cx.tcx.codegen_fn_attrs(def_id).link_section.map(|s| s.to_string());
+    let mut reported = Vec::new();
+    for &(_, prov) in alloc.provenance().ptrs().iter() {
+        if let GlobalAlloc::Function { instance, .. } = cx.tcx.global_alloc(prov.alloc_id())
+            && !is_ptrauth_signed_fn(cx.tcx, instance)
+            && !reported.contains(&instance)
+        {
+            reported.push(instance);
+            cx.tcx.dcx().emit_err(PtrauthUnsignedInitFiniEntry {
+                span: cx.tcx.def_span(def_id),
+                function: cx.tcx.def_path_str(instance.def_id()),
+                section: section.clone().unwrap_or_default(),
+            });
+        }
+    }
 }
 
 fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: Value<'ll>, mut align: Align) {

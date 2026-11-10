@@ -25,8 +25,19 @@ use crate::llvm::{
     self, BasicBlock, ConstantInt, FALSE, TRUE, ToLlvmBool, Type, TypeKind, Value, const_ptr_auth,
 };
 
+/// Return true if the ABI of an `instance` is supported by pointer authentication (`extern "C"` and
+/// `extern "system"`).
+pub(crate) fn is_ptrauth_signed_fn<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+    let def_id = instance.def_id();
+    matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn)
+        && matches!(
+            tcx.fn_sig(def_id).skip_binder().abi(),
+            ExternAbi::C { .. } | ExternAbi::System { .. }
+        )
+}
+
 pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, '_>,
+    cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     llfn: llvm::Value<'ll>,
     schema: &PointerAuthSchema,
@@ -35,16 +46,10 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
         return llfn;
     }
 
-    // Only free functions or methods
+    if !is_ptrauth_signed_fn(cx.tcx, instance) {
+        return llfn;
+    }
     let def_id = instance.def_id();
-    if !matches!(cx.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-        return llfn;
-    }
-    // Only C ABI
-    let abi = cx.tcx.fn_sig(def_id).skip_binder().abi();
-    if !matches!(abi, ExternAbi::C { .. } | ExternAbi::System { .. }) {
-        return llfn;
-    }
     // Ignore LLVM intrinsics
     if llvm::get_value_name(llfn).starts_with(b"llvm.") {
         return llfn;

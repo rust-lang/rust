@@ -370,7 +370,10 @@ disable a feature, where `<name>` is one of:
 * `function-pointer-type-discrimination` - enable type discrimination for C
   function pointers
 * `indirect-gotos` - enable signing and authentication of indirect goto targets
-* `init-fini` - enable signing of function pointers stored in init/fini arrays
+* `init-fini` - enable signing of function pointers stored in init/fini arrays.
+  Only `extern "C"` and `extern "system"` functions are signed, so a static in
+  an `.init_array` or `.fini_array` section that points to a function of any
+  other ABI is rejected
 * `init-fini-address-discrimination` - enable address discrimination for
   init/fini array entries
 * `intrinsics` - enable pointer authentication intrinsics
@@ -473,6 +476,7 @@ The following categories are supported (all present in tree):
   * enable_pointer_authentication_validation.rs
   * invalid_target_pointer_authentication.rs
   * type_discrimination_not_supported_pointer_authentication.rs
+  * init-fini-unsigned-abi.rs
   * incompatible_pauth.rs
 * Unit tests for siphash function:
   * compiler/rustc_middle/src/ptrauth/llvm_siphash/tests.rs
@@ -502,6 +506,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   tests/ui/pointer_authentication/enable_pointer_authentication_validation.rs \
   tests/ui/pointer_authentication/invalid_target_pointer_authentication.rs \
   tests/ui/pointer_authentication/type_discrimination_not_supported_pointer_authentication.rs \
+  tests/ui/pointer_authentication/init-fini-unsigned-abi.rs \
   tests/ui/target_modifiers/incompatible_pauth.rs
 ```
 
