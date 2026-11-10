@@ -3289,10 +3289,12 @@ pub mod nightly_options {
             if !matches.opt_present(opt.name) {
                 continue;
             }
-            if opt.name != "Z" && !has_z_unstable_option {
+            if opt.name != "Z"
+                && !has_z_unstable_option
+                && unstable_features.allow_unstable_compiler_flag(opt.name)
+            {
                 early_dcx.early_fatal(format!(
-                    "the `-Z unstable-options` flag must also be passed to enable \
-                         the flag `{}`",
+                    "the `-Z unstable-options` flag must also be passed to enable the flag `{}`",
                     opt.name
                 ));
             }
