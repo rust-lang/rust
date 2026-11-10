@@ -215,7 +215,8 @@ mod iterator {
                             if filter.self_type_filter.allow_self_ty(ct.self_ty.type_at(0))
                                 && filter
                                     .polarity_filter
-                                    .allow_polarity(ClausePolarity::Positive) =>
+                                    .allow_polarity(ClausePolarity::Positive)
+                                && filter.trait_filter.allow_any_compressed_trait_ref(ct.compressed_trait_refs) =>
                         {
                             self.decompression_in_progress = ct.compressed_trait_refs;
                             self.self_ty = Some(ct.self_ty);
@@ -602,11 +603,19 @@ mod trait_filter {
         I: Interner,
     {
         fn allow_clause(&self, clause: TraitClause<I>) -> bool;
+        /// Returns the defid of the trait if this filter allows the given `trait_ref`.
+        /// Note that `trait_ref` should have only a single bit set.
         fn allow_compressed_trait_ref_single_bit(
             &self,
             cx: I,
             trait_ref: CompressedTraitRefs,
         ) -> Option<I::TraitId>;
+        /// returns true if this trait filter *might* allow any
+        /// of the traits in `trait_ref` to match.
+        fn allow_any_compressed_trait_ref(
+            &self,
+            trait_ref: CompressedTraitRefs,
+        ) -> bool;
     }
 
     impl<I> TraitFilter<I> for ()
@@ -626,9 +635,15 @@ mod trait_filter {
         ) -> Option<I::TraitId> {
             Some(cx.require_trait_lang_item(trait_ref.lang_item_from_single_bit()))
         }
+
+        fn allow_any_compressed_trait_ref(
+            &self,
+            _trait_ref: CompressedTraitRefs,
+        ) -> bool {
+            true
+        }
     }
 
-    // TODO: use bit operations to test an entire compressed clause against a single filter.
     pub struct TargetTrait<I>
     where
         I: Interner,
@@ -666,6 +681,21 @@ mod trait_filter {
                 // When looking for a normal trait, any compressed clause can never match so we
                 // return false unconditionally.
                 None
+            }
+        }
+
+        fn allow_any_compressed_trait_ref(
+            &self,
+            trait_ref: CompressedTraitRefs,
+        ) -> bool {
+            if let Some(target) = self.lang_item_compressed {
+                // only if the given `trait_ref` has the bit set that corresponds to `target`, do we
+                // return true. Otherwise we can skip this compressed trait instantly.
+                trait_ref.contains(target)
+            } else {
+                // When looking for a normal trait, any compressed clause can never match so we
+                // return false unconditionally.
+                false
             }
         }
     }
