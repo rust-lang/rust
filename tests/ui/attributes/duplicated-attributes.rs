@@ -30,6 +30,13 @@ use test::Bencher;
 //~^ WARNING duplicated attribute
 fn f4(_: &mut Bencher) {}
 
+#[test]
+#[test]
+//~^ WARNING duplicated attribute
+#[test]
+//~^ WARNING duplicated attribute
+fn f5() {}
+
 #[cfg_eval]
 #[cfg_eval]
 //~^ WARNING duplicated attribute

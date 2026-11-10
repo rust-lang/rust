@@ -15,8 +15,20 @@ LL | #[bench]
 warning: duplicated attribute
   --> $DIR/duplicated-attributes.rs:34:1
    |
+LL | #[test]
+   | ^^^^^^^
+
+warning: duplicated attribute
+  --> $DIR/duplicated-attributes.rs:36:1
+   |
+LL | #[test]
+   | ^^^^^^^
+
+warning: duplicated attribute
+  --> $DIR/duplicated-attributes.rs:41:1
+   |
 LL | #[cfg_eval]
    | ^^^^^^^^^^^
 
-warning: 3 warnings emitted
+warning: 5 warnings emitted
 
