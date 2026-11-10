@@ -412,8 +412,8 @@ where
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn pthread_mutexattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        mutexattr_create(this, attr_op)
+        let ecx = self.eval_context_mut();
+        mutexattr_create(ecx, attr_op)
     }
 
     fn pthread_mutexattr_settype(
@@ -421,23 +421,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         attr_op: &OpTy<'tcx>,
         kind_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let kind = this.read_scalar(kind_op)?.to_i32()?;
-        let Some(kind) = mutexattr_translate_kind(this, kind) else {
-            let einval = this.eval_libc_i32("EINVAL");
+        let kind = ecx.read_scalar(kind_op)?.to_i32()?;
+        let Some(kind) = mutexattr_translate_kind(ecx, kind) else {
+            let einval = ecx.eval_libc_i32("EINVAL");
             return interp_ok(Scalar::from_i32(einval));
         };
 
-        let mutexattr = mutexattr_get_data(this, attr_op)?;
+        let mutexattr = mutexattr_get_data(ecx, attr_op)?;
         mutexattr.kind = Some(kind);
 
         interp_ok(Scalar::from_i32(0))
     }
 
     fn pthread_mutexattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        mutexattr_destroy(this, attr_op)
+        let ecx = self.eval_context_mut();
+        mutexattr_destroy(ecx, attr_op)
     }
 
     fn pthread_mutex_init(
@@ -445,17 +445,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         mutex_op: &OpTy<'tcx>,
         attr_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let attr = this.read_pointer(attr_op)?;
-        let kind = if this.ptr_is_null(attr)? {
+        let attr = ecx.read_pointer(attr_op)?;
+        let kind = if ecx.ptr_is_null(attr)? {
             MutexKind::Default
         } else {
-            let mutexattr = mutexattr_get_data(this, attr_op)?;
+            let mutexattr = mutexattr_get_data(ecx, attr_op)?;
             mutexattr.kind.unwrap_or(MutexKind::Default)
         };
 
-        mutex_create(this, mutex_op, kind)?;
+        mutex_create(ecx, mutex_op, kind)?;
 
         interp_ok(())
     }
@@ -465,13 +465,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         mutex_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let mutex = mutex_get_data(this, mutex_op)?.clone();
+        let mutex = mutex_get_data(ecx, mutex_op)?.clone();
 
         let ret = if let Some(owner_thread) = mutex.mutex_ref.owner() {
-            if owner_thread != this.active_thread() {
-                this.mutex_enqueue_and_block(
+            if owner_thread != ecx.active_thread() {
+                ecx.mutex_enqueue_and_block(
                     mutex.mutex_ref,
                     Some((Scalar::from_i32(0), dest.clone())),
                 );
@@ -484,53 +484,53 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             "trying to acquire default mutex already locked by the current thread"
                         ),
                     MutexKind::Normal => throw_machine_stop!(TerminationInfo::LocalDeadlock),
-                    MutexKind::ErrorCheck => this.eval_libc_i32("EDEADLK"),
+                    MutexKind::ErrorCheck => ecx.eval_libc_i32("EDEADLK"),
                     MutexKind::Recursive => {
-                        this.mutex_lock(&mutex.mutex_ref)?;
+                        ecx.mutex_lock(&mutex.mutex_ref)?;
                         0
                     }
                 }
             }
         } else {
             // The mutex is unlocked. Let's lock it.
-            this.mutex_lock(&mutex.mutex_ref)?;
+            ecx.mutex_lock(&mutex.mutex_ref)?;
             0
         };
-        this.write_scalar(Scalar::from_i32(ret), dest)?;
+        ecx.write_scalar(Scalar::from_i32(ret), dest)?;
         interp_ok(())
     }
 
     fn pthread_mutex_trylock(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let mutex = mutex_get_data(this, mutex_op)?.clone();
+        let mutex = mutex_get_data(ecx, mutex_op)?.clone();
 
         interp_ok(Scalar::from_i32(if let Some(owner_thread) = mutex.mutex_ref.owner() {
-            if owner_thread != this.active_thread() {
-                this.eval_libc_i32("EBUSY")
+            if owner_thread != ecx.active_thread() {
+                ecx.eval_libc_i32("EBUSY")
             } else {
                 match mutex.kind {
                     MutexKind::Default | MutexKind::Normal | MutexKind::ErrorCheck =>
-                        this.eval_libc_i32("EBUSY"),
+                        ecx.eval_libc_i32("EBUSY"),
                     MutexKind::Recursive => {
-                        this.mutex_lock(&mutex.mutex_ref)?;
+                        ecx.mutex_lock(&mutex.mutex_ref)?;
                         0
                     }
                 }
             }
         } else {
             // The mutex is unlocked. Let's lock it.
-            this.mutex_lock(&mutex.mutex_ref)?;
+            ecx.mutex_lock(&mutex.mutex_ref)?;
             0
         }))
     }
 
     fn pthread_mutex_unlock(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let mutex = mutex_get_data(this, mutex_op)?.clone();
+        let mutex = mutex_get_data(ecx, mutex_op)?.clone();
 
-        if let Some(_old_locked_count) = this.mutex_unlock(&mutex.mutex_ref)? {
+        if let Some(_old_locked_count) = ecx.mutex_unlock(&mutex.mutex_ref)? {
             // The mutex was locked by the current thread.
             interp_ok(Scalar::from_i32(0))
         } else {
@@ -547,17 +547,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
                     ),
                 MutexKind::ErrorCheck | MutexKind::Recursive =>
-                    interp_ok(Scalar::from_i32(this.eval_libc_i32("EPERM"))),
+                    interp_ok(Scalar::from_i32(ecx.eval_libc_i32("EPERM"))),
             }
         }
     }
 
     fn pthread_mutex_destroy(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Reading the field also has the side-effect that we detect double-`destroy`
         // since we make the field uninit below.
-        let mutex = mutex_get_data(this, mutex_op)?.clone();
+        let mutex = mutex_get_data(ecx, mutex_op)?.clone();
 
         if mutex.mutex_ref.owner().is_some() {
             throw_ub_format!("destroyed a locked mutex");
@@ -565,8 +565,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This write also deletes the interpreter state for this mutex.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let mutex_place = this.deref_pointer(mutex_op)?;
-        this.write_uninit(&mutex_place)?;
+        let mutex_place = ecx.deref_pointer(mutex_op)?;
+        ecx.write_uninit(&mutex_place)?;
 
         interp_ok(())
     }
@@ -576,33 +576,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         rwlock_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+        let rwlock = rwlock_get_data(ecx, rwlock_op)?.clone();
 
         if rwlock.rwlock_ref.is_write_locked() {
-            this.rwlock_enqueue_and_block_reader(
+            ecx.rwlock_enqueue_and_block_reader(
                 rwlock.rwlock_ref,
                 Scalar::from_i32(0),
                 dest.clone(),
             );
         } else {
-            this.rwlock_reader_lock(&rwlock.rwlock_ref)?;
-            this.write_int(0, dest)?;
+            ecx.rwlock_reader_lock(&rwlock.rwlock_ref)?;
+            ecx.write_int(0, dest)?;
         }
 
         interp_ok(())
     }
 
     fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+        let rwlock = rwlock_get_data(ecx, rwlock_op)?.clone();
 
         if rwlock.rwlock_ref.is_write_locked() {
-            interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
+            interp_ok(Scalar::from_i32(ecx.eval_libc_i32("EBUSY")))
         } else {
-            this.rwlock_reader_lock(&rwlock.rwlock_ref)?;
+            ecx.rwlock_reader_lock(&rwlock.rwlock_ref)?;
             interp_ok(Scalar::from_i32(0))
         }
     }
@@ -612,9 +612,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         rwlock_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+        let rwlock = rwlock_get_data(ecx, rwlock_op)?.clone();
 
         if rwlock.rwlock_ref.is_locked() {
             // Note: this will deadlock if the lock is already locked by this
@@ -629,39 +629,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // report the deadlock only when no thread can continue execution,
             // but we could detect that this lock is already locked and report
             // an error.)
-            this.rwlock_enqueue_and_block_writer(
+            ecx.rwlock_enqueue_and_block_writer(
                 rwlock.rwlock_ref,
                 Scalar::from_i32(0),
                 dest.clone(),
             );
         } else {
-            this.rwlock_writer_lock(&rwlock.rwlock_ref)?;
-            this.write_int(0, dest)?;
+            ecx.rwlock_writer_lock(&rwlock.rwlock_ref)?;
+            ecx.write_int(0, dest)?;
         }
 
         interp_ok(())
     }
 
     fn pthread_rwlock_trywrlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+        let rwlock = rwlock_get_data(ecx, rwlock_op)?.clone();
 
         if rwlock.rwlock_ref.is_locked() {
-            interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
+            interp_ok(Scalar::from_i32(ecx.eval_libc_i32("EBUSY")))
         } else {
-            this.rwlock_writer_lock(&rwlock.rwlock_ref)?;
+            ecx.rwlock_writer_lock(&rwlock.rwlock_ref)?;
             interp_ok(Scalar::from_i32(0))
         }
     }
 
     fn pthread_rwlock_unlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+        let rwlock = rwlock_get_data(ecx, rwlock_op)?.clone();
 
-        if this.rwlock_reader_unlock(&rwlock.rwlock_ref)?
-            || this.rwlock_writer_unlock(&rwlock.rwlock_ref)?
+        if ecx.rwlock_reader_unlock(&rwlock.rwlock_ref)?
+            || ecx.rwlock_writer_unlock(&rwlock.rwlock_ref)?
         {
             interp_ok(())
         } else {
@@ -670,11 +670,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn pthread_rwlock_destroy(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Reading the field also has the side-effect that we detect double-`destroy`
         // since we make the field uninit below.
-        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+        let rwlock = rwlock_get_data(ecx, rwlock_op)?.clone();
 
         if rwlock.rwlock_ref.is_locked() {
             throw_ub_format!("destroyed a locked rwlock");
@@ -682,15 +682,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This write also deletes the interpreter state for this rwlock.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let rwlock_place = this.deref_pointer(rwlock_op)?;
-        this.write_uninit(&rwlock_place)?;
+        let rwlock_place = ecx.deref_pointer(rwlock_op)?;
+        ecx.write_uninit(&rwlock_place)?;
 
         interp_ok(())
     }
 
     fn pthread_condattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        condattr_create(this, attr_op)
+        let ecx = self.eval_context_mut();
+        condattr_create(ecx, attr_op)
     }
 
     fn pthread_condattr_setclock(
@@ -698,15 +698,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         attr_op: &OpTy<'tcx>,
         clock_id_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
-        let Some(clock) = this.parse_clockid(clock_id) else {
-            let einval = this.eval_libc_i32("EINVAL");
+        let clock_id = ecx.read_scalar(clock_id_op)?.to_i32()?;
+        let Some(clock) = ecx.parse_clockid(clock_id) else {
+            let einval = ecx.eval_libc_i32("EINVAL");
             return interp_ok(Scalar::from_i32(einval));
         };
 
-        let condattr = condattr_get_data(this, attr_op)?;
+        let condattr = condattr_get_data(ecx, attr_op)?;
         condattr.clock = clock;
 
         interp_ok(Scalar::from_i32(0))
@@ -717,23 +717,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         attr_op: &OpTy<'tcx>,
         clk_id_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let clock_id_dest = this.deref_pointer(clk_id_op)?;
-        let condattr = condattr_get_data(this, attr_op)?;
+        let clock_id_dest = ecx.deref_pointer(clk_id_op)?;
+        let condattr = condattr_get_data(ecx, attr_op)?;
 
         let clock_id = match condattr.clock {
-            TimeoutClock::Monotonic => this.eval_libc_i32("CLOCK_MONOTONIC"),
-            TimeoutClock::RealTime => this.eval_libc_i32("CLOCK_REALTIME"),
+            TimeoutClock::Monotonic => ecx.eval_libc_i32("CLOCK_MONOTONIC"),
+            TimeoutClock::RealTime => ecx.eval_libc_i32("CLOCK_REALTIME"),
         };
-        this.write_int(clock_id, &clock_id_dest)?;
+        ecx.write_int(clock_id, &clock_id_dest)?;
 
         interp_ok(())
     }
 
     fn pthread_condattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        condattr_destroy(this, attr_op)
+        let ecx = self.eval_context_mut();
+        condattr_destroy(ecx, attr_op)
     }
 
     fn pthread_cond_init(
@@ -741,33 +741,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         cond_op: &OpTy<'tcx>,
         attr_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let attr = this.read_pointer(attr_op)?;
+        let attr = ecx.read_pointer(attr_op)?;
         // Default clock if `attr` is null, and on macOS where there is no clock attribute.
-        let clock = if this.ptr_is_null(attr)? {
+        let clock = if ecx.ptr_is_null(attr)? {
             TimeoutClock::RealTime
         } else {
-            let condattr = condattr_get_data(this, attr_op)?;
+            let condattr = condattr_get_data(ecx, attr_op)?;
             condattr.clock
         };
 
-        cond_create(this, cond_op, clock)?;
+        cond_create(ecx, cond_op, clock)?;
 
         interp_ok(())
     }
 
     fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        let condvar = cond_get_data(this, cond_op)?.condvar_ref.clone();
-        this.condvar_signal(&condvar)?;
+        let ecx = self.eval_context_mut();
+        let condvar = cond_get_data(ecx, cond_op)?.condvar_ref.clone();
+        ecx.condvar_signal(&condvar)?;
         interp_ok(())
     }
 
     fn pthread_cond_broadcast(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
-        let condvar = cond_get_data(this, cond_op)?.condvar_ref.clone();
-        while this.condvar_signal(&condvar)? {}
+        let ecx = self.eval_context_mut();
+        let condvar = cond_get_data(ecx, cond_op)?.condvar_ref.clone();
+        while ecx.condvar_signal(&condvar)? {}
         interp_ok(())
     }
 
@@ -777,12 +777,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         mutex_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let data = cond_get_data(this, cond_op)?.clone();
-        let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref.clone();
+        let data = cond_get_data(ecx, cond_op)?.clone();
+        let mutex_ref = mutex_get_data(ecx, mutex_op)?.mutex_ref.clone();
 
-        this.condvar_wait(
+        ecx.condvar_wait(
             data.condvar_ref,
             mutex_ref,
             None, // no timeout
@@ -802,15 +802,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
         macos_relative_np: bool,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let data = cond_get_data(this, cond_op)?.clone();
-        let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref.clone();
+        let data = cond_get_data(ecx, cond_op)?.clone();
+        let mutex_ref = mutex_get_data(ecx, mutex_op)?.mutex_ref.clone();
 
         // Extract the timeout.
-        let Some(duration) = this.read_timespec(&this.deref_pointer(timeout_op)?)? else {
-            let einval = this.eval_libc("EINVAL");
-            this.write_scalar(einval, dest)?;
+        let Some(duration) = ecx.read_timespec(&ecx.deref_pointer(timeout_op)?)? else {
+            let einval = ecx.eval_libc("EINVAL");
+            ecx.write_scalar(einval, dest)?;
             return interp_ok(());
         };
 
@@ -820,18 +820,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             (TimeoutClock::Monotonic, TimeoutStyle::Relative)
         } else {
             if data.clock == TimeoutClock::RealTime {
-                this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
+                ecx.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
             }
 
             (data.clock, TimeoutStyle::Absolute)
         };
 
-        this.condvar_wait(
+        ecx.condvar_wait(
             data.condvar_ref,
             mutex_ref,
-            Some(this.machine.timeout(clock, style, duration)),
+            Some(ecx.machine.timeout(clock, style, duration)),
             Scalar::from_i32(0),
-            this.eval_libc("ETIMEDOUT"), // retval_timeout
+            ecx.eval_libc("ETIMEDOUT"), // retval_timeout
             dest.clone(),
         )?;
 
@@ -839,19 +839,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn pthread_cond_destroy(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Reading the field also has the side-effect that we detect double-`destroy`
         // since we make the field uninit below.
-        let condvar = &cond_get_data(this, cond_op)?.condvar_ref;
+        let condvar = &cond_get_data(ecx, cond_op)?.condvar_ref;
         if !condvar.queue_is_empty() {
             throw_ub_format!("destroying an awaited conditional variable");
         }
 
         // This write also deletes the interpreter state for this condvar.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let cond_place = this.deref_pointer(cond_op)?;
-        this.write_uninit(&cond_place)?;
+        let cond_place = ecx.deref_pointer(cond_op)?;
+        ecx.write_uninit(&cond_place)?;
 
         interp_ok(())
     }
@@ -863,17 +863,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         value_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let pshared = this.read_scalar(pshared_op)?.to_i32()?;
-        let value = this.read_scalar(value_op)?.to_u32()?;
+        let pshared = ecx.read_scalar(pshared_op)?.to_i32()?;
+        let value = ecx.read_scalar(value_op)?.to_u32()?;
 
         // We can ignore `pshared` since memory cannot actually be shared with other processes.
         let _ignore = pshared;
 
-        sem_create(this, sem_op, value)?;
+        sem_create(ecx, sem_op, value)?;
 
-        this.write_int(0, dest)?; // we always succeed
+        ecx.write_int(0, dest)?; // we always succeed
         interp_ok(())
     }
 
@@ -882,11 +882,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         sem_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let data = sem_get_data(this, sem_op)?.clone();
+        let data = sem_get_data(ecx, sem_op)?.clone();
         let dest = dest.clone();
-        this.semaphore_decrement(
+        ecx.semaphore_decrement(
             data.sem_ref,
             /* deadline */ None,
             callback!(
@@ -910,19 +910,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         abs_timeout_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        this.check_no_isolation("`pthread_sem_timedwait`")?;
+        let ecx = self.eval_context_mut();
+        ecx.check_no_isolation("`pthread_sem_timedwait`")?;
 
-        let abs_timeout = this.deref_pointer(abs_timeout_op)?;
+        let abs_timeout = ecx.deref_pointer(abs_timeout_op)?;
 
-        let Some(duration) = this.read_timespec(&abs_timeout)? else {
-            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        let Some(duration) = ecx.read_timespec(&abs_timeout)? else {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         };
         let deadline =
-            this.machine.timeout(TimeoutClock::RealTime, TimeoutStyle::Absolute, duration);
-        let data = sem_get_data(this, sem_op)?.clone();
+            ecx.machine.timeout(TimeoutClock::RealTime, TimeoutStyle::Absolute, duration);
+        let data = sem_get_data(ecx, sem_op)?.clone();
         let dest = dest.clone();
-        this.semaphore_decrement(
+        ecx.semaphore_decrement(
             data.sem_ref,
             Some(deadline),
             callback!(
@@ -948,12 +948,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         sem_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let data = sem_get_data(this, sem_op)?.clone();
-        this.semaphore_increment(&data.sem_ref)?;
+        let data = sem_get_data(ecx, sem_op)?.clone();
+        ecx.semaphore_increment(&data.sem_ref)?;
 
-        this.write_int(0, dest)?; // we always succeed
+        ecx.write_int(0, dest)?; // we always succeed
         interp_ok(())
     }
 
@@ -962,19 +962,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         sem_op: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let data = sem_get_data(this, sem_op)?.clone();
+        let data = sem_get_data(ecx, sem_op)?.clone();
         if !data.sem_ref.queue_is_empty() {
             throw_ub_format!("destroying an awaited semaphore");
         }
 
         // This write also deletes the interpreter state for this semaphore.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let sem_place = this.deref_pointer(sem_op)?;
-        this.write_uninit(&sem_place)?;
+        let sem_place = ecx.deref_pointer(sem_op)?;
+        ecx.write_uninit(&sem_place)?;
 
-        this.write_int(0, dest)?; // we always succeed
+        ecx.write_int(0, dest)?; // we always succeed
         interp_ok(())
     }
 }
