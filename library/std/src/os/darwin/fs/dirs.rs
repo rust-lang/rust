@@ -291,6 +291,7 @@ mod sys {
 
 #[cfg(test)]
 #[cfg(target_vendor = "apple")]
+#[cfg(not(skip_unsupported_miri_tests))] // macOS sysdir APIs are not supported in Miri
 mod tests {
     use super::*;
 

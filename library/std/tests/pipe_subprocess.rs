@@ -1,7 +1,7 @@
 fn main() {
     // No `Command` on Miri, emscripten or L4Re
     #[cfg(all(
-        not(miri),
+        not(skip_unsupported_miri_tests),
         any(unix, windows),
         not(any(target_os = "emscripten", target_os = "l4re"))
     ))]
