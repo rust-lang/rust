@@ -8,7 +8,7 @@ use core::marker::{Destruct, PhantomData};
 use core::mem::{Alignment, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::panic::UnwindSafe;
 use core::ptr::{self, NonNull};
-use core::{cmp, hint};
+use core::{cmp, hint, intrinsics};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
@@ -491,15 +491,12 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
             Err(_) => return Err(AllocError { layout, non_exhaustive: () }.into()),
         };
 
-        // Allocators currently return a `NonNull<[u8]>` whose length
-        // matches the size requested. If that ever changes, the capacity
-        // here should change to `ptr.len() / size_of::<T>()`.
         Ok(Self {
             ptr: ptr.cast(),
-            // SAFETY: We return early if `T` is a ZST, and if `capacity` would
-            // overflow an isize layout creation would have returned early as well.
-            cap: unsafe { Cap::new_unchecked(capacity) },
-            alloc,
+            // SAFETY: We pass the genuine capacities based on the allocation, and know that
+            // at this point ZSTs have been excluded.
+            cap: unsafe { Self::pick_cap(ptr, capacity, elem_layout) },
+            alloc
         })
     }
 
@@ -550,7 +547,7 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
         let ptr = unsafe { self.finish_grow(cap, elem_layout)? };
 
         // SAFETY: `finish_grow` would have failed if `cap > isize::MAX`
-        unsafe { self.set_ptr_and_cap(ptr, cap) };
+        unsafe { self.set_ptr_and_cap(ptr, cap, elem_layout) };
         Ok(())
     }
 
@@ -796,14 +793,31 @@ impl<A: Allocator> RawVecInner<A> {
     }
 
     #[inline]
+    const unsafe fn pick_cap(ptr: NonNull<[u8]>, capacity: usize, elem_layout: Layout) -> Cap {
+        let size = elem_layout.size();
+
+        // SAFETY: We wouldn't be able to allocate something larger than an isize,
+        // and we don't allocate for ZSTs here.
+        unsafe {
+            Cap::new_unchecked(if intrinsics::is_val_statically_known(size) || size.is_power_of_two() {
+                intrinsics::unchecked_div(ptr.len(), elem_layout.size())
+            } else {
+                capacity
+            })
+        }
+    }
+
+    #[inline]
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    const unsafe fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize) {
-        // Allocators currently return a `NonNull<[u8]>` whose length matches
-        // the size requested. If that ever changes, the capacity here should
-        // change to `ptr.len() / size_of::<T>()`.
+    const unsafe fn set_ptr_and_cap(
+        &mut self,
+        ptr: NonNull<[u8]>,
+        cap: usize,
+        elem_layout: Layout,
+    ) {
         self.ptr = ptr.cast();
         // SAFETY: Upheld by caller.
-        self.cap = unsafe { Cap::new_unchecked(cap) };
+        self.cap = unsafe { Self::pick_cap(ptr, cap, elem_layout) };
     }
 
     /// # Safety
@@ -829,7 +843,7 @@ impl<A: Allocator> RawVecInner<A> {
         let ptr = unsafe { self.finish_grow(cap, elem_layout)? };
 
         // SAFETY: `finish_grow` would have failed if `cap > isize::MAX`
-        unsafe { self.set_ptr_and_cap(ptr, cap) };
+        unsafe { self.set_ptr_and_cap(ptr, cap, elem_layout) };
         Ok(())
     }
 
@@ -890,7 +904,7 @@ impl<A: Allocator> RawVecInner<A> {
             };
             // SAFETY: if the allocation is valid, then the capacity is too
             unsafe {
-                self.set_ptr_and_cap(ptr, cap);
+                self.set_ptr_and_cap(ptr, cap, elem_layout);
             }
         }
         Ok(())
