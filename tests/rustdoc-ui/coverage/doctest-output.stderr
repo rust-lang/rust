@@ -1,2 +1,2 @@
-error: `--output-format=doctest` is not supported for the `--show-coverage` option
+error: `--output-format=doctest` is not supported for the `--coverage` option
 

@@ -168,6 +168,7 @@ impl Target {
         forward!(obj_is_bitcode);
         forward_opt!(max_atomic_width);
         forward_opt!(min_atomic_width);
+        forward!(per_cpu_atomic_widths);
         forward!(atomic_cas);
         forward!(panic_strategy);
         forward!(crt_static_allows_dylibs);
@@ -368,6 +369,7 @@ impl ToJson for Target {
         target_option_val!(obj_is_bitcode);
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
+        target_option_val!(per_cpu_atomic_widths);
         target_option_val!(atomic_cas);
         target_option_val!(panic_strategy);
         target_option_val!(crt_static_allows_dylibs);
@@ -590,6 +592,7 @@ struct TargetSpecJson {
     obj_is_bitcode: Option<bool>,
     max_atomic_width: Option<u64>,
     min_atomic_width: Option<u64>,
+    per_cpu_atomic_widths: Option<BTreeMap<StaticCow<str>, (u64, u64)>>,
     atomic_cas: Option<bool>,
     panic_strategy: Option<PanicStrategy>,
     crt_static_allows_dylibs: Option<bool>,
