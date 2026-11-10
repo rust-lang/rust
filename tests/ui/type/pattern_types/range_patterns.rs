@@ -1,6 +1,4 @@
 #![feature(pattern_types, rustc_attrs, const_trait_impl, pattern_type_range_trait)]
-#![feature(pattern_type_macro)]
-#![allow(incomplete_features)]
 
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 

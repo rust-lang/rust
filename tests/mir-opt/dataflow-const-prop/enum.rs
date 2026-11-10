@@ -2,7 +2,7 @@
 //@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
-#![feature(custom_mir, core_intrinsics, rustc_attrs, pattern_types, pattern_type_macro)]
+#![feature(custom_mir, core_intrinsics, rustc_attrs, pattern_types)]
 
 use std::intrinsics::mir::*;
 

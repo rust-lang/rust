@@ -5,9 +5,10 @@
 )]
 
 use crate::cmp::Ordering;
+use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::marker::StructuralPartialEq;
-use crate::{fmt, pattern_type};
+use crate::pat::pattern_type;
 
 macro_rules! define_valid_range_type {
     ($(
