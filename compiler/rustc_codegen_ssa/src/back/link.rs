@@ -33,7 +33,8 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
     self, CFGuard, DebugInfo, InstrumentMcount, JobsMode, LinkerFeaturesCli, LinkerJobs,
-    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    OutFileName, OutputFilenames, OutputType, PrintKind, PrintOutputFormat, PrintRequest,
+    SplitDwarfKind, Strip,
 };
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -904,7 +905,7 @@ fn link_staticlib(
 
     for print in &sess.opts.prints {
         if print.kind == PrintKind::NativeStaticLibs {
-            print_native_static_libs(sess, &print.out, &all_native_libs, &all_rust_dylibs);
+            print_native_static_libs(sess, print, &all_native_libs, &all_rust_dylibs);
         }
     }
 }
@@ -1281,7 +1282,24 @@ fn link_natively(
 
     for print in &sess.opts.prints {
         if print.kind == PrintKind::LinkArgs {
-            let content = format!("{cmd:?}\n");
+            let content = if print.format == PrintOutputFormat::Json {
+                let process_cmd = cmd.command();
+                let args: Vec<String> = std::iter::once(process_cmd.get_program())
+                    .chain(process_cmd.get_args())
+                    .map(|arg| arg.to_string_lossy().into_owned())
+                    .collect();
+
+                serde_json::json!({
+                    "id": print.kind.name(),
+                    "message-type": "print",
+                    "value": args
+                })
+                .to_string()
+                    + "\n"
+            } else {
+                format!("{cmd:?}\n")
+            };
+
             print.out.overwrite(&content, sess);
         }
     }
@@ -2016,7 +2034,7 @@ enum RlibFlavor {
 
 fn print_native_static_libs(
     sess: &Session,
-    out: &OutFileName,
+    print: &PrintRequest,
     all_native_libs: &[NativeLib],
     all_rust_dylibs: &[&Path],
 ) {
@@ -2094,9 +2112,22 @@ fn print_native_static_libs(
         }
     }
 
-    match out {
-        OutFileName::Real(path) => {
-            out.overwrite(&lib_args.join(" "), sess);
+    if print.format == PrintOutputFormat::Json {
+        let content = serde_json::json!({
+            "id": print.kind.name(),
+            "message-type": "print",
+            "value": lib_args
+        })
+        .to_string()
+            + "\n";
+
+        print.out.overwrite(&content, sess);
+        return;
+    }
+
+    match print.out {
+        OutFileName::Real(ref path) => {
+            print.out.overwrite(&lib_args.join(" "), sess);
             sess.dcx().emit_note(diagnostics::StaticLibraryNativeArtifactsToFile { path });
         }
         OutFileName::Stdout => {
