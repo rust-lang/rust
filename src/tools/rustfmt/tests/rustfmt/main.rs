@@ -135,6 +135,7 @@ fn print_config_writes_to_file() {
     assert_eq!(exit_code, 0);
 }
 
+#[rustfmt_only_ci_test]
 #[test]
 fn print_config_merges_override_from_args() {
     let args = &[
@@ -154,6 +155,7 @@ fn print_config_merges_override_from_args() {
     assert_eq!(exit_code, 0);
 }
 
+#[rustfmt_only_ci_test]
 #[test]
 fn print_config_merges_multiple_overrides_from_args() {
     let args = &[

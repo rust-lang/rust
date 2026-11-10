@@ -2351,7 +2351,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v.try_remove(0), Some(1));
     /// assert_eq!(v.try_remove(2), None);
     /// ```
-    #[stable(feature = "vec_try_remove", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_try_remove", since = "1.101.0")]
     #[rustc_confusables("delete", "take", "remove")]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
@@ -3949,7 +3949,7 @@ fn find_first_duplicate<T: PartialEq>(v: &[T], chunk_size: usize) -> Option<usiz
 #[stable(feature = "rust1", since = "1.0.0")]
 // NOTE: the real deprecation version is the same as the stabilization version.
 // I.e. it should never have been used even in version 1.0.
-#[deprecated(since = "CURRENT_RUSTC_VERSION", note = "use the `vec!` macro instead")]
+#[deprecated(since = "1.101.0", note = "use the `vec!` macro instead")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     vec![elem; n]
 }

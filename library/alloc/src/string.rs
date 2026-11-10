@@ -2098,7 +2098,7 @@ impl String {
     /// [`char`]: prim@char
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     pub fn into_chars(self) -> IntoChars {
         IntoChars { bytes: self.into_bytes().into_iter() }
     }
@@ -3610,12 +3610,12 @@ impl fmt::Write for String {
 /// [`into_chars`]: String::into_chars
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 pub struct IntoChars {
     bytes: vec::IntoIter<u8>,
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl fmt::Debug for IntoChars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoChars").field(&self.as_str()).finish()
@@ -3637,7 +3637,7 @@ impl IntoChars {
     /// chars.next();
     /// assert_eq!(chars.as_str(), "");
     /// ```
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -3658,7 +3658,7 @@ impl IntoChars {
     /// assert_eq!(chars.into_string(), "ef");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[inline]
     pub fn into_string(self) -> String {
         // SAFETY: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
@@ -3671,7 +3671,7 @@ impl IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl Iterator for IntoChars {
     type Item = char;
 
@@ -3705,7 +3705,7 @@ impl Iterator for IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl DoubleEndedIterator for IntoChars {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -3722,7 +3722,7 @@ impl DoubleEndedIterator for IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl FusedIterator for IntoChars {}
 
 /// A draining iterator for `String`.
