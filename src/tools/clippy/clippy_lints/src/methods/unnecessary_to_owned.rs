@@ -538,16 +538,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             return false;
                         }
 
-                        let mut trait_clauses = cx.tcx.param_env(callee_def_id).caller_bounds().all_clauses(cx.tcx).iter().filter(|clause| {
-                            if let ClauseKind::Trait(trait_predicate) = clause.kind().skip_binder()
-                                && trait_predicate.trait_ref.self_ty() == param_ty
-                            {
-                                true
-                            } else {
-                                false
-                            }
-                        });
-
+                        let mut trait_clauses = cx.tcx.param_env(callee_def_id).caller_bounds().trait_clases(cx.tcx).self_ty(param_ty).iter();
                         let new_subst = cx
                             .tcx
                             .mk_args_from_iter(call_generic_args.iter().enumerate().map(|(i, t)| {
