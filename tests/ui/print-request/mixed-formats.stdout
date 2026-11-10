@@ -1,0 +1,13 @@
+mixed_formats
+{"id":"crate-name","message-type":"print","value":"mixed_formats"}
+Available relocation models:
+    static
+    pic
+    pie
+    dynamic-no-pic
+    ropi
+    rwpi
+    ropi-rwpi
+    default
+
+{"id":"relocation-models","message-type":"print","value":["static","pic","pie","dynamic-no-pic","ropi","rwpi","ropi-rwpi","default"]}
