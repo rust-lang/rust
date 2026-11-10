@@ -4,7 +4,6 @@
 #![allow(unused_must_use)]
 
 //@ needs-threads
-//@ ignore-backends: gcc
 
 use std::panic;
 use std::thread;

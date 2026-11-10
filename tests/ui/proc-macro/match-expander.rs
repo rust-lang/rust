@@ -1,5 +1,4 @@
 //@ proc-macro: match-expander.rs
-//@ ignore-backends: gcc
 // Ensure that we don't point at macro invocation when providing inference contexts.
 
 #[macro_use]

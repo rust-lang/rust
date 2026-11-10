@@ -34,7 +34,7 @@ LL |
    |
 
 error: prefix `r` is unknown
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
@@ -43,7 +43,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: prefix `c` is unknown
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
@@ -52,7 +52,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unknown start of token: \u{2000}
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |
    |
 
 error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid digit for a base 2 literal
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0768]: no valid digits found for number
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: binary float literal is not supported
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: character constant must be escaped: `'`
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -110,7 +110,7 @@ LL +     nonfatal_parsing::run!(\';
    |
 
 error: character constant must be escaped: `\n`
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -123,7 +123,7 @@ LL +     nonfatal_parsing::run!(\n;
    |
 
 error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -191,7 +191,7 @@ LL | /*a*/ 0b2 //
    |         ^
 
 error: invalid digit for a base 2 literal
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:14:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

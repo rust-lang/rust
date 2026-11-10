@@ -1,6 +1,5 @@
 //@ run-pass
 //@ needs-unwind
-//@ ignore-backends: gcc
 //@ compile-flags: -Copt-level=3
 
 struct Guard;

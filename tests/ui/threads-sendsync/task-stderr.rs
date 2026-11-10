@@ -1,7 +1,6 @@
 //@ run-pass
 //@ needs-threads
 //@ needs-unwind
-//@ ignore-backends: gcc
 
 #![feature(internal_output_capture)]
 

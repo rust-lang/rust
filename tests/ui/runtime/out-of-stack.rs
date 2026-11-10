@@ -12,7 +12,6 @@
 //@ ignore-tvos stack overflow handlers aren't enabled
 //@ ignore-watchos stack overflow handlers aren't enabled
 //@ ignore-visionos stack overflow handlers aren't enabled
-//@ ignore-backends: gcc
 
 #![feature(rustc_private)]
 

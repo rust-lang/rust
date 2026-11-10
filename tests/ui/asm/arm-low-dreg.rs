@@ -2,7 +2,6 @@
 //@ build-pass
 //@ compile-flags: --target=armv7-unknown-linux-gnueabihf
 //@ needs-llvm-components: arm
-//@ ignore-backends: gcc
 #![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]

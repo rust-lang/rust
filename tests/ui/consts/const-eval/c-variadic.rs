@@ -1,6 +1,5 @@
 //@ edition: 2021
 //@ run-pass
-//@ ignore-backends: gcc
 
 #![feature(const_c_variadic)]
 #![feature(const_destruct)]
