@@ -2433,6 +2433,10 @@ pub struct TargetOptions {
     /// Don't use this field; instead use the `.max_atomic_width()` method.
     pub max_atomic_width: Option<u64>,
 
+    /// Don't use this field; instead use the `.min_atomic_width()` and
+    /// `max_atomic_width()` methods.
+    pub per_cpu_atomic_widths: BTreeMap<StaticCow<str>, (u64, u64)>,
+
     /// Whether the target supports atomic CAS operations natively
     pub atomic_cas: bool,
 
@@ -2807,6 +2811,7 @@ impl Default for TargetOptions {
             obj_is_bitcode: false,
             min_atomic_width: None,
             max_atomic_width: None,
+            per_cpu_atomic_widths: BTreeMap::new(),
             atomic_cas: true,
             panic_strategy: PanicStrategy::Unwind,
             crt_static_allows_dylibs: false,
@@ -2881,16 +2886,13 @@ impl Target {
         abi_map.canonize_abi(abi, false).is_mapped()
     }
 
-    /// Minimum integer size in bits that this target can perform atomic
-    /// operations on.
-    pub fn min_atomic_width(&self) -> u64 {
-        self.min_atomic_width.unwrap_or(8)
-    }
-
-    /// Maximum integer size in bits that this target can perform atomic
-    /// operations on.
-    pub fn max_atomic_width(&self) -> u64 {
-        self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
+    /// Minimum and maximum integer size in bits that this target can perform
+    /// atomic operations on.
+    pub fn atomic_widths(&self, cpu: &str) -> (u64, u64) {
+        self.per_cpu_atomic_widths.get(cpu).copied().unwrap_or((
+            self.min_atomic_width.unwrap_or(8),
+            self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into()),
+        ))
     }
 
     /// Test target self-consistency and JSON encoding/decoding roundtrip.
