@@ -844,6 +844,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
             | ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::FnStaticInstance(..))
+            | ty::InstanceKind::Shim(ty::ShimKind::FnStaticAsPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..))
             | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
             | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlueCtor(..))

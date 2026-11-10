@@ -551,6 +551,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                     | InstanceKind::Shim(ShimKind::FnAddrAsPtr(..))
                     | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..))
                     | InstanceKind::Shim(ShimKind::FnStaticInstance(..))
+                    | InstanceKind::Shim(ShimKind::FnStaticAsPtr(..))
                     | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
                     | InstanceKind::Shim(ShimKind::FutureDropPoll(..))
                     | InstanceKind::Shim(ShimKind::AsyncDropGlueCtor(..)) => None,

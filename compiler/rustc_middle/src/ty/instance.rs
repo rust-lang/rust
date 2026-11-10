@@ -196,6 +196,7 @@ pub enum ShimKind<'tcx> {
     FnPtrFromPtr(DefId, Ty<'tcx>),
 
     FnStaticInstance(DefId, Ty<'tcx>),
+    FnStaticAsPtr(DefId, Ty<'tcx>),
 
     /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
     ///
@@ -360,6 +361,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::FnAddrAsPtr(def_id, _)
             | ShimKind::FnPtrFromPtr(def_id, _)
             | ShimKind::FnStaticInstance(def_id, _)
+            | ShimKind::FnStaticAsPtr(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
             | ShimKind::AsyncDropGlueCtor(def_id, _) => def_id,
@@ -383,6 +385,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::Clone(..)
             | ShimKind::FnAddrAsPtr(..)
             | ShimKind::FnStaticInstance(..)
+            | ShimKind::FnStaticAsPtr(..)
             | ShimKind::FnPtrFromPtr(..) => None,
         }
     }
@@ -406,6 +409,7 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::FnAddrAsPtr(..)
             | ShimKind::FnPtrFromPtr(..)
             | ShimKind::FnStaticInstance(..)
+            | ShimKind::FnStaticAsPtr(..)
             | ShimKind::DropGlue(_, Some(_))
             | ShimKind::FutureDropPoll(..)
             | ShimKind::AsyncDropGlue(_, _) => false,

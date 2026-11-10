@@ -37,7 +37,10 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
 
         // This shim does not call any other functions, thus there can be no recursion.
         InstanceKind::Shim(
-            ShimKind::FnAddrAsPtr(..) | ShimKind::FnPtrFromPtr(..) | ShimKind::FnStaticInstance(..),
+            ShimKind::FnAddrAsPtr(..)
+            | ShimKind::FnPtrFromPtr(..)
+            | ShimKind::FnStaticInstance(..)
+            | ShimKind::FnStaticAsPtr(..),
         ) => return false,
 
         // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to

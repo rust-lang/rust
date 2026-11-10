@@ -186,6 +186,8 @@ language_item_table! {
     FnPtrFromPtr,            sym::fn_ptr_from_ptr,     fn_ptr_from_ptr,            Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     Code,                    sym::code,                code,                       Target::ForeignTy,      GenericRequirement::None;
     FnStaticInstance,        sym::fn_static_instance,  fn_static_instance,         Target::AssocConst(AssocCtxt::Trait), GenericRequirement::None;
+    FnStaticFnPtr,           sym::fn_static_fn_ptr,    fn_static_fn_ptr,           Target::AssocTy(AssocCtxt::Trait), GenericRequirement::None;
+    FnStaticAsPtr,           sym::fn_static_as_fn,     fn_static_as_fn,            Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
     Forget,                  sym::forget,              forget_trait,               Target::Trait,          GenericRequirement::None;

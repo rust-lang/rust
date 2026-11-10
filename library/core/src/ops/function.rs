@@ -373,4 +373,14 @@ pub unsafe trait FnStatic: FnAddr {
     #[lang = "fn_static_instance"]
     #[unstable(feature = "fn_static", issue = "148768")]
     const INSTANCE: Self;
+
+    /// The function pointer type.
+    #[unstable(feature = "fn_static", issue = "148768")]
+    #[lang = "fn_static_fn_ptr"]
+    type FnPtr: FnPtr;
+
+    /// Return the function pointer of this function instance.
+    #[unstable(feature = "fn_static", issue = "148768")]
+    #[lang = "fn_static_as_fn"]
+    fn as_fn(self) -> Self::FnPtr;
 }

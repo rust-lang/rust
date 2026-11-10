@@ -403,6 +403,7 @@ impl<'tcx, P: Printer<'tcx> + std::fmt::Write> Print<P> for ty::ShimKind<'tcx> {
             ty::ShimKind::FnAddrAsPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
             ty::ShimKind::FnPtrFromPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
             ty::ShimKind::FnStaticInstance(_, ty) => cx.write_str(&format!("shim({ty})")),
+            ty::ShimKind::FnStaticAsPtr(_, ty) => cx.write_str(&format!("shim({ty})")),
             ty::ShimKind::FutureDropPoll(_, proxy_ty, impl_ty) => {
                 cx.write_str(&format!("dropshim({proxy_ty}-{impl_ty})"))
             }

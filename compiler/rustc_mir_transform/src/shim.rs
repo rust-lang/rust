@@ -131,6 +131,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         ty::ShimKind::FnStaticInstance(def_id, ty) => {
             build_fn_static_instance_shim(tcx, def_id, ty)
         }
+        ty::ShimKind::FnStaticAsPtr(def_id, ty) => build_fn_static_as_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty) => {
             let mut body =
                 async_destructor_ctor::build_future_drop_poll_shim(tcx, def_id, proxy_ty, impl_ty);
@@ -1221,6 +1222,65 @@ fn build_fn_static_instance_shim<'tcx>(
         IndexVec::from_elem_n(block, 1),
         IndexVec::from_elem_n(LocalDecl::new(self_ty, span), 1),
         0,
+        span,
+    )
+}
+
+fn build_fn_static_as_ptr_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    let span = tcx.def_span(def_id);
+    let source_info = SourceInfo::outermost(span);
+
+    let Some(sig) =
+        tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_norm_wip().no_bound_vars()
+    else {
+        span_bug!(span, "FnStatic::as_fn with bound vars for `{self_ty}`");
+    };
+    let mut locals = local_decls_for_sig(&sig, span);
+    locals.push(LocalDecl::with_source_info(self_ty, source_info));
+
+    let (fn_sig, coercion) = match self_ty.kind() {
+        ty::FnDef(..) => {
+            let sig = self_ty.fn_sig(tcx);
+            (sig, ty::adjustment::PointerCoercion::ReifyFnPointer(sig.safety()))
+        }
+        ty::Closure(_, args) => {
+            let closure_sig = args.as_closure().sig();
+            let sig = tcx.signature_unclosure(closure_sig, closure_sig.safety());
+            (sig, ty::adjustment::PointerCoercion::ClosureFnPointer(sig.safety()))
+        }
+        _ => span_bug!(span, "FnStatic::as_fn with non function type `{self_ty}`"),
+    };
+
+    let fn_ptr_ty = Ty::new_fn_ptr(tcx, fn_sig);
+    locals.push(LocalDecl::with_source_info(fn_ptr_ty, source_info));
+
+    let statement = Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Cast(
+                CastKind::PointerCoercion(coercion, CoercionSource::Implicit),
+                Operand::Move(Place::from(Local::arg(0))),
+                fn_ptr_ty,
+            ),
+        ))),
+    );
+
+    let block = BasicBlockData::new_stmts(
+        vec![statement],
+        Terminator { source_info, kind: TerminatorKind::Return },
+        false,
+    );
+
+    new_body(
+        MirSource::from_shim(ty::ShimKind::FnStaticAsPtr(def_id, self_ty)),
+        IndexVec::from_elem_n(block, 1),
+        locals,
+        sig.inputs().len(),
         span,
     )
 }
