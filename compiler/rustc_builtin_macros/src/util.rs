@@ -1,6 +1,6 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
-use rustc_attr_parsing::{AttributeTemplate, validate_attr};
+use rustc_attr_parsing::{AttributeTemplate, UnusedMultiple, validate_attr};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
@@ -26,7 +26,12 @@ pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaI
 
 /// Emit a warning if the item is annotated with the given attribute. This is used to diagnose when
 /// an attribute may have been mistakenly duplicated.
-pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable, name: Symbol) {
+pub(crate) fn warn_on_duplicate_attribute(
+    ecx: &ExtCtxt<'_>,
+    item: &Annotatable,
+    span: Span,
+    name: Symbol,
+) {
     let attrs: &[Attribute] = match item {
         Annotatable::Item(item) => &item.attrs,
         Annotatable::AssocItem(item, _) => &item.attrs,
@@ -46,7 +51,7 @@ pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable,
             DUPLICATE_MACRO_ATTRIBUTES,
             attr.span,
             ecx.current_expansion.lint_node_id,
-            diagnostics::DuplicateMacroAttribute,
+            UnusedMultiple { this: attr.span, other: span, name },
         );
     }
 }
