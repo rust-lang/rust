@@ -6,7 +6,7 @@
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
 //@ normalize-stderr: "╾ALLOC\$ID╼\s+│.*╾.*╼" -> "╾ALLOC$$ID╼ │ ╾─╼"
 
-#![feature(pattern_types, pattern_type_macro)]
+#![feature(pattern_types)]
 #![allow(invalid_value)]
 
 use std::{mem, pat::pattern_type};
