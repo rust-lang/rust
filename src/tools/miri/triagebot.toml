@@ -16,15 +16,11 @@ allow-unauthenticated = [
 # Enables assigning users to issues and PRs.
 [assign]
 warn_non_default_branch = true
-# These are entirely ignored, unfortunately.
 contributing_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#pr-review-process"
 llm_policy_url = "https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#ai-policy"
 [assign.custom_messages]
-auto-assign-someone = "(unused)"
-auto-assign-no-one = """
-Thank you for contributing to Miri! A reviewer will take a look at your PR, typically within a week or two.
-
-Please take a look at our [LLM policy](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#ai-policy) and make sure you understand our [review process](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#pr-review-process).
+auto-assign-no-one-welcome = """
+Welcome, and thank you for contributing to Miri! A reviewer will take a look at your PR, typically within a week or two.
 """
 
 [no-merges]
@@ -52,6 +48,9 @@ new_pr = true
 
 [autolabel."S-waiting-on-author"]
 new_draft = true
+
+# Post a comment when a PR gets un-drafted.
+[undraft-comment]
 
 # Canonicalize issue numbers to avoid closing the wrong issue when upstreaming this subtree.
 [canonicalize-issue-links]
