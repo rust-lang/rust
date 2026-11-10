@@ -1,63 +1,75 @@
 warning: multiple `test` attributes
-  --> $DIR/duplicated-attributes.rs:12:1
+  --> $DIR/duplicated-attributes.rs:13:1
    |
 LL | #[test]
    | ^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/duplicated-attributes.rs:11:1
+  --> $DIR/duplicated-attributes.rs:12:1
    |
 LL | #[test]
    | ^^^^^^^
    = note: `#[warn(duplicate_macro_attributes)]` on by default
 
 warning: multiple `bench` attributes
-  --> $DIR/duplicated-attributes.rs:29:1
+  --> $DIR/duplicated-attributes.rs:30:1
    |
 LL | #[bench]
    | ^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/duplicated-attributes.rs:28:1
+  --> $DIR/duplicated-attributes.rs:29:1
    |
 LL | #[bench]
    | ^^^^^^^^
 
 warning: multiple `test` attributes
-  --> $DIR/duplicated-attributes.rs:34:1
+  --> $DIR/duplicated-attributes.rs:35:1
    |
 LL | #[test]
    | ^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/duplicated-attributes.rs:33:1
+  --> $DIR/duplicated-attributes.rs:34:1
    |
 LL | #[test]
    | ^^^^^^^
 
 warning: multiple `test` attributes
-  --> $DIR/duplicated-attributes.rs:36:1
+  --> $DIR/duplicated-attributes.rs:37:1
    |
 LL | #[test]
    | ^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/duplicated-attributes.rs:34:1
+  --> $DIR/duplicated-attributes.rs:35:1
    |
 LL | #[test]
    | ^^^^^^^
 
-warning: multiple `cfg_eval` attributes
+warning: multiple `test_case` attributes
+  --> $DIR/duplicated-attributes.rs:42:1
+   |
+LL | #[test_case]
+   | ^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
   --> $DIR/duplicated-attributes.rs:41:1
+   |
+LL | #[test_case]
+   | ^^^^^^^^^^^^
+
+warning: multiple `cfg_eval` attributes
+  --> $DIR/duplicated-attributes.rs:47:1
    |
 LL | #[cfg_eval]
    | ^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/duplicated-attributes.rs:40:1
+  --> $DIR/duplicated-attributes.rs:46:1
    |
 LL | #[cfg_eval]
    | ^^^^^^^^^^^
 
-warning: 5 warnings emitted
+warning: 6 warnings emitted
 

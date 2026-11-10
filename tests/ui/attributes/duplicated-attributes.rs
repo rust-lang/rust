@@ -7,6 +7,7 @@
 
 #![feature(test)]
 #![feature(cfg_eval)]
+#![feature(custom_test_frameworks)]
 
 #[test]
 #[test]
@@ -36,6 +37,11 @@ fn f4(_: &mut Bencher) {}
 #[test]
 //~^ WARNING multiple `test` attributes
 fn f5() {}
+
+#[test_case]
+#[test_case]
+//~^ WARNING multiple `test_case` attributes
+struct T;
 
 #[cfg_eval]
 #[cfg_eval]
