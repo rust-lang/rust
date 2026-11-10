@@ -105,7 +105,7 @@ transformations, the passes are run on the _cleaned_ crate.
 
 Here is the list of passes as of <!-- date-check --> March 2023:
 
-- `calculate-doc-coverage` calculates information used for the `--show-coverage`
+- `calculate-doc-coverage` calculates information used for the `--coverage`
   flag.
 
 - `check-doc-test-visibility` runs `doctest` visibility–related `lint`s.
