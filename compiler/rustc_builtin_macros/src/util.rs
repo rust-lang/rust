@@ -1,5 +1,8 @@
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
+use rustc_ast::{
+    self as ast, AttrStyle, Attribute, GenericArg, GenericParam, GenericParamKind, MetaItem, attr,
+    token,
+};
 use rustc_attr_parsing::{AttributeTemplate, UnusedMultiple, validate_attr};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
@@ -260,4 +263,12 @@ pub(crate) fn get_exprs_from_tts(
         }
     }
     ExpandResult::Ready(Ok(es))
+}
+
+pub(crate) fn generic_param_to_arg(cx: &ExtCtxt<'_>, p: &GenericParam, span: Span) -> GenericArg {
+    match p.kind {
+        GenericParamKind::Lifetime => GenericArg::Lifetime(cx.lifetime(span, p.ident)),
+        GenericParamKind::Type { .. } => GenericArg::Type(cx.ty_ident(span, p.ident)),
+        GenericParamKind::Const { .. } => GenericArg::Const(cx.const_ident(span, p.ident)),
+    }
 }

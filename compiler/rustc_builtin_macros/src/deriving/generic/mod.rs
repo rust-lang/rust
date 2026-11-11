@@ -151,9 +151,7 @@ use std::ops::Not;
 
 pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
-use rustc_ast::{
-    EnumDef, Expr, GenericArg, GenericParam, GenericParamKind, Generics, Safety, VariantData,
-};
+use rustc_ast::{EnumDef, Expr, GenericParamKind, Generics, Safety, VariantData};
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ExtCtxt;
@@ -161,6 +159,7 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 pub(crate) use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::util::generic_param_to_arg;
 use crate::{deriving, diagnostics};
 
 pub(crate) struct TraitDef<'a> {
@@ -1033,14 +1032,6 @@ impl<'a> MethodDef<'a> {
         } else {
             BlockOrExpr::new_expr(match_expr)
         }
-    }
-}
-
-pub(crate) fn generic_param_to_arg(cx: &ExtCtxt<'_>, p: &GenericParam, span: Span) -> GenericArg {
-    match p.kind {
-        GenericParamKind::Lifetime => GenericArg::Lifetime(cx.lifetime(span, p.ident)),
-        GenericParamKind::Type { .. } => GenericArg::Type(cx.ty_ident(span, p.ident)),
-        GenericParamKind::Const { .. } => GenericArg::Const(cx.const_ident(span, p.ident)),
     }
 }
 
