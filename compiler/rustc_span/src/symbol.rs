@@ -1729,6 +1729,7 @@ symbols! {
         ref_unwind_safe_trait,
         reference,
         reflect,
+        reflection_placeholder,
         reg,
         reg16,
         reg32,
