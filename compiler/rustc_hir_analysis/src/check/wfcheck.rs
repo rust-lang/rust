@@ -2681,6 +2681,12 @@ fn lint_redundant_lifetimes<'tcx>(
     owner_id: LocalDefId,
     outlives_env: &OutlivesEnvironment<'tcx>,
 ) {
+    // Items produced by external macros (e.g. derived impls) reuse the lifetime spans of the
+    // macro input, so the usual external macro check on the lint span does not catch them.
+    if tcx.def_span(owner_id).in_external_macro(tcx.sess.source_map()) {
+        return;
+    }
+
     let def_kind = tcx.def_kind(owner_id);
     match def_kind {
         DefKind::Struct
