@@ -3,13 +3,13 @@
 //@ check-pass
 //@ edition: 2024
 
-#![feature(async_drop, checked_type_aliases, coerce_unsized, reborrow, unsize)]
+#![feature(async_drop, checked_type_aliases, coerce_unsized, derive_coerce_pointee, dispatch_from_dyn, reborrow, unsize)]
 #![allow(incomplete_features)]
 
 use std::pin::Pin;
 use std::future::AsyncDrop;
-use std::ops::CoerceUnsized;
-use std::marker::{CoerceShared, Reborrow, Unsize};
+use std::ops::{CoerceUnsized, DispatchFromDyn};
+use std::marker::{CoercePointee, CoerceShared, Reborrow, Unsize};
 
 #[derive(Clone)]
 struct CopyLocal;
@@ -54,5 +54,19 @@ type CoerchedShareLocalAlias<'a> = CoercedSharedLocal<'a>;
 
 impl<'a> Reborrow for CoerceSharedMutAlias<'a> {}
 impl<'a> CoerceShared<CoerchedShareLocalAlias<'a>> for CoerceSharedMutAlias<'a> {}
+
+struct DispatchFromDynLocal<T: ?Sized>(*const T);
+type DispatchFromDynLocalAlias<T: ?Sized> = DispatchFromDynLocal<T>;
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<DispatchFromDynLocalAlias<U>> for DispatchFromDynLocalAlias<T> {}
+
+
+type CoercePointeeLocalAlias<T: ?Sized> = *const T;
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+pub struct CoercePointeeLocal<T: ?Sized> {
+    foo: CoercePointeeLocalAlias<T>,
+}
 
 fn main() {}

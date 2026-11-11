@@ -299,11 +299,13 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     let trait_name = "DispatchFromDyn";
 
     let source = trait_ref.self_ty();
+    let source = tcx.expand_free_alias_tys(source);
     let target = {
         assert!(tcx.is_lang_item(trait_ref.def_id, LangItem::DispatchFromDyn));
 
         trait_ref.args.type_at(1)
     };
+    let target = tcx.expand_free_alias_tys(target);
 
     // Check `CoercePointee` impl is WF -- if not, then there's no reason to report
     // redundant errors for `DispatchFromDyn`. This is best effort, though.
