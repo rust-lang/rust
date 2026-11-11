@@ -1,0 +1,58 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |//@ needs-unwind
+   LL|       |
+   LL|       |// Regression test for <https://github.com/rust-lang/rust/issues/164153>.
+   LL|       |//
+   LL|       |// It might so happen that a loop doesn't exit before the coverage is dumped.
+   LL|       |// So, we cannot assume every loop execution eventually takes a normal loop
+   LL|       |// exit. Otherwise we will end up with negative counter values based on the
+   LL|       |// expression evaluation.
+   LL|       |
+   LL|       |use std::hint::black_box;
+   LL|       |
+   LL|      1|fn branch_then_two_match_loop() {
+   LL|      1|    if black_box(false) {
+   LL|      0|        return;
+   LL|      1|    }
+   LL|      1|    let mut count = 0;
+   LL|       |    loop {
+   LL|      3|        let should_return = match step(&mut count) {
+   LL|      3|            Ok(()) => continue,
+   LL|      0|            Err(should_return) => should_return,
+   LL|       |        };
+   LL|      0|        match should_return {
+   LL|  18.4E|            false => continue,
+   LL|      1|            true => return,
+   LL|       |        }
+   LL|       |    }
+   LL|      1|}
+   LL|       |
+   LL|      1|fn inescapable_loop() -> ! {
+   LL|      1|    let mut count = 0;
+   LL|       |    loop {
+   LL|      3|        let _ = step(&mut count);
+   LL|      3|        if black_box(true) {
+   LL|      2|            black_box(1);
+   LL|       |        } else {
+   LL|      0|            black_box(2);
+   LL|       |        }
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |#[inline(never)]
+   LL|       |fn step(count: &mut usize) -> Result<(), bool> {
+   LL|       |    *count += 1;
+   LL|       |    if *count == 3 {
+   LL|       |        panic!("stop loop");
+   LL|       |    }
+   LL|       |    Ok(())
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    assert!(std::panic::catch_unwind(branch_then_two_match_loop).is_err());
+   LL|       |    assert!(std::panic::catch_unwind(inescapable_loop).is_err());
+   LL|       |}
+
