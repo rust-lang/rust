@@ -714,7 +714,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => (
                 false,
-                bx.get_fn_addr(drop_fn, bx.sess().pointer_authentication_functions()),
+                bx.get_fn_addr(drop_fn, bx.sess().pointer_authentication_direct_calls()),
                 bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
                 drop_fn,
             ),
@@ -1138,7 +1138,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             None,
                             Some(bx.get_fn_addr(
                                 instance,
-                                bx.sess().pointer_authentication_functions(),
+                                bx.sess().pointer_authentication_direct_calls(),
                             )),
                         )
                     }
@@ -1465,7 +1465,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_ptr = match (instance, llfn) {
             (Some(instance), None) => {
-                bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions())
+                bx.get_fn_addr(instance, bx.sess().pointer_authentication_direct_calls())
             }
             (_, Some(llfn)) => llfn,
             _ => span_bug!(fn_span, "no instance or llfn for call"),

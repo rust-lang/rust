@@ -1311,6 +1311,10 @@ impl Session {
         self.pointer_auth_config.as_ref().is_some_and(|cfg| cfg.covers_all_abis)
     }
 
+    pub fn pointer_authentication_direct_calls(&self) -> Option<&PointerAuthSchema> {
+        if self.target.is_arm64e_apple() { None } else { self.pointer_authentication_functions() }
+    }
+
     pub fn pointer_authentication_init_fini(&self) -> Option<&PointerAuthSchema> {
         self.pointer_auth_config.as_ref().and_then(|cfg| cfg.init_fini.as_ref())
     }
