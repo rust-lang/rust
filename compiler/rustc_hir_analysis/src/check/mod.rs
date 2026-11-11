@@ -614,7 +614,10 @@ fn suggestion_signature<'tcx>(
             );
             format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
-        ty::AssocKind::Const { name, .. } => {
+        ty::AssocKind::Const { data: ty::AssocConstData::Anonymous } => {
+            panic!("anonymous associated consts shouldn't end up here")
+        }
+        ty::AssocKind::Const { data: ty::AssocConstData::Named(name) } => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity().skip_norm_wip();
             let val = tcx
                 .infer_ctxt()
