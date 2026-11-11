@@ -803,7 +803,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
-                        if tcx.is_lang_item(def.did(), LangItem::PpcF128) {
+                        if tcx.is_lang_item(def.did(), LangItem::PpcF128)
+                            || tcx.is_lang_item(def.did(), LangItem::X87F80)
+                        {
                             return FfiResult::FfiSafe;
                         }
                         if let Some(sym::cstring_type | sym::cstr_type) =
