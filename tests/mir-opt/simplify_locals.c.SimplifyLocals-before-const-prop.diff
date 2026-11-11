@@ -6,6 +6,7 @@
       let _1: [u8; 10];
 -     let mut _2: &[u8];
 -     let mut _3: &[u8; 10];
+-     let _4: &[u8; 10];
       scope 1 {
           debug bytes => _1;
           scope 2 {
@@ -17,9 +18,12 @@
           _1 = [const 0_u8; 10];
 -         StorageLive(_2);
 -         StorageLive(_3);
--         _3 = &_1;
+-         StorageLive(_4);
+-         _4 = &_1;
+-         _3 = &(*_4);
 -         _2 = move _3 as &[u8] (PointerCoercion(Unsize, Implicit));
 -         StorageDead(_3);
+-         StorageDead(_4);
 -         StorageDead(_2);
           _0 = const ();
           StorageDead(_1);
