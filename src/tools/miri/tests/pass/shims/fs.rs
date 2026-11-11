@@ -846,7 +846,16 @@ fn test_directory_handle() {
     assert_eq!(err.kind(), ErrorKind::AlreadyExists);
 
     fs::create_dir(dirname.join("subdir")).unwrap();
-    let _subdir = dir.open_dir("subdir").unwrap();
+    let subdir = dir.open_dir("subdir").unwrap();
+
+    // Delete subdir.
+    // Close the handles first, Windows hosts may refuse to remove things that are still open.
+    drop(file);
+    drop(subdir);
+    dir.remove_file("file.txt").unwrap();
+    assert!(!filename.exists());
+    dir.remove_dir("subdir").unwrap();
+    assert!(!dirname.join("subdir").exists());
 }
 
 fn test_fs_set_permissions() {

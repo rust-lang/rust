@@ -370,6 +370,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = ecx.unlink(path)?;
                 ecx.write_scalar(result, dest)?;
             }
+            "unlinkat" => {
+                let [dirfd, path, flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = ecx.unlinkat(dirfd, path, flags)?;
+                ecx.write_scalar(result, dest)?;
+            }
             "symlink" => {
                 let [target, linkpath] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> i32),

@@ -239,6 +239,60 @@ fn maybe_sync_file(
     }
 }
 
+/// Whether `path` is a symlink to a directory on the host.
+/// If `dir` is given, a relative `path` is resolved relative to that directory.
+#[cfg(windows)]
+fn host_is_symlink_dir(dir: Option<&DirHandle>, path: &Path) -> bool {
+    use std::os::windows::fs::FileTypeExt;
+    let metadata = match dir {
+        Some(dir) => dir.dir.symlink_metadata(path),
+        None => path.symlink_metadata(),
+    };
+    metadata.is_ok_and(|m| m.file_type().is_symlink_dir())
+}
+
+/// Removes the file at `path` on the host, with the semantics of `unlink`.
+/// If `dir` is given, a relative `path` is resolved relative to that directory.
+fn host_remove_file(dir: Option<&DirHandle>, path: &Path) -> io::Result<()> {
+    cfg_select! {
+        unix =>
+            match dir {
+                Some(dir) => dir.dir.remove_file(path),
+                None => fs::remove_file(path),
+            },
+        windows => {{
+            // This should be able to remove symlinks to dirs, but on Windows that requires
+            // `remove_dir`. Our work-around is racy but there's not a lot we can do about that.
+            // FIXME: maybe we can retry based on the error code?
+            let symlink_dir = host_is_symlink_dir(dir, path);
+            match (dir, symlink_dir) {
+                (Some(dir), true) => dir.dir.remove_dir(path),
+                (Some(dir), false) => dir.dir.remove_file(path),
+                (None, true) => fs::remove_dir(path),
+                (None, false) => fs::remove_file(path),
+            }
+        }}
+    }
+}
+
+/// Removes the directory at `path` on the host, with the semantics of `rmdir`.
+/// If `dir` is given, a relative `path` is resolved relative to that directory.
+fn host_remove_dir(dir: Option<&DirHandle>, path: &Path) -> io::Result<()> {
+    #[cfg(windows)]
+    {
+        // This should *not* be able to remove symlinks to dirs, but on Windows it is. Our
+        // work-around is racy (it might change to being a directory symlink after we
+        // checked it), but there's not a lot we can do about that.
+        if host_is_symlink_dir(dir, path) {
+            return Err(ErrorKind::NotADirectory.into());
+        }
+    }
+    match dir {
+        Some(dir) => dir.dir.remove_dir(path),
+        None => fs::remove_dir(path),
+    }
+}
+
 /// The host `FileTimes` that applies the given access and modification time updates.
 fn host_file_times_from_updates(access: TimeUpdate, modified: TimeUpdate) -> FileTimes {
     let mut filetimes = FileTimes::new();
@@ -808,32 +862,65 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn unlink(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+        let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?;
 
         // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`unlink`", reject_with)?;
-            return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            ecx.reject_in_isolation("`unlink`", reject_with)?;
+            return ecx.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = cfg_select! {
-            unix => fs::remove_file(path),
-            windows => {{
-                // This should be able to remove symlinks to dirs, but on Windows that requires
-                // `remove_dir`. Our work-around is racy but there's not a lot we can do about that.
-                // FIXME: maybe we can retry based on the error code?
-                use std::os::windows::fs::FileTypeExt;
-                let metadata = path.symlink_metadata();
-                if metadata.is_ok_and(|m| m.file_type().is_symlink_dir()) {
-                    fs::remove_dir(path)
-                } else {
-                    fs::remove_file(path)
-                }
-            }}
+        let result = host_remove_file(None, &path);
+        interp_ok(Scalar::from_i32(ecx.try_unwrap_io_result(result.map(|()| 0))?))
+    }
+
+    fn unlinkat(
+        &mut self,
+        dirfd_op: &OpTy<'tcx>,
+        path_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+
+        let dirfd = ecx.read_scalar(dirfd_op)?.to_i32()?;
+        let path = ecx.read_path_from_c_str(ecx.read_pointer(path_op)?)?.into_owned();
+        let flags = ecx.read_scalar(flags_op)?.to_i32()?;
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+            ecx.reject_in_isolation("`unlinkat`", reject_with)?;
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EACCES"));
+        }
+
+        // We only support `AT_REMOVEDIR`, which makes this behave like `rmdir`.
+        let remove_dir = if flags == 0 {
+            false
+        } else if flags == ecx.eval_libc_i32("AT_REMOVEDIR") {
+            true
+        } else {
+            throw_unsup_format!("unsupported flags for `unlinkat`: {flags:#x}")
         };
-        interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|()| 0))?))
+
+        let dir = if path.is_absolute() || dirfd == ecx.eval_libc_i32("AT_FDCWD") {
+            None
+        } else {
+            // relative to dirfd, which must be a directory handle
+            let Some(fd) = ecx.machine.fds.get(dirfd) else {
+                return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+            };
+            let Some(dir) = fd.downcast::<DirHandle>() else {
+                return ecx.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
+            };
+            Some(dir)
+        };
+        let result = if remove_dir {
+            host_remove_dir(dir.as_deref(), &path)
+        } else {
+            host_remove_file(dir.as_deref(), &path)
+        };
+        interp_ok(Scalar::from_i32(ecx.try_unwrap_io_result(result.map(|()| 0))?))
     }
 
     fn symlink(
@@ -1369,22 +1456,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        let result = cfg_select! {
-            unix => fs::remove_dir(path),
-            windows => {{
-                // This should *not* be able to remove symlinks to dirs, but on Windows it is. Our
-                // work-around is racy (it might change to being a directory symlink after we
-                // checked it), but there's not a lot we can do about that.
-                use std::os::windows::fs::FileTypeExt;
-                let metadata = path.symlink_metadata();
-                if metadata.is_ok_and(|m| m.file_type().is_symlink_dir()) {
-                    return this.set_errno_and_return_neg1_i32(LibcError("ENOTDIR"));
-                } else {
-                    fs::remove_dir(path)
-                }
-            }}
-        };
-
+        let result = host_remove_dir(None, &path);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result.map(|_| 0i32))?))
     }
 
