@@ -2367,6 +2367,19 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 ty
             }
         }
+        ty::View(def, args, fields) => {
+            let did = def.did();
+            let kind = match def.adt_kind() {
+                AdtKind::Struct => ItemType::Struct,
+                AdtKind::Union => ItemType::Union,
+                AdtKind::Enum => ItemType::Enum,
+            };
+            inline::record_extern_fqn(cx, did, kind);
+            let path =
+                Box::new(clean_middle_path(cx, did, false, ThinVec::new(), bound_ty.rebind(args)));
+            let fields = format!("{fields:?}").into_boxed_str();
+            Type::View(path, fields)
+        }
 
         ty::Closure(..) => panic!("Closure"),
         ty::CoroutineClosure(..) => panic!("CoroutineClosure"),
@@ -2376,9 +2389,6 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Infer(..) => panic!("Infer"),
 
         ty::Error(_) => FatalError.raise(),
-
-        // FIXME(scrabsha)
-        ty::View(..) => unimplemented!(),
     }
 }
 
