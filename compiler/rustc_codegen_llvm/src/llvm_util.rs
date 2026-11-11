@@ -139,6 +139,10 @@ unsafe fn configure_llvm(sess: &EarlySession) {
         // Use non-zero `import-instr-limit` multiplier for cold callsites.
         add("-import-cold-multiplier=0.1", false);
 
+        // Let the ThinLTO thin link propagate function attributes inferred in
+        // other modules; LLVM leaves this step off by default.
+        add("-disable-thinlto-funcattrs=false", false);
+
         if sess.print_llvm_stats() || sess.print_llvm_stats_json().is_some() {
             add("-stats", false);
         }

@@ -35,6 +35,7 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/TargetParser/Host.h"
+#include "llvm/Transforms/IPO/FunctionAttrs.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
@@ -1463,6 +1464,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
            ExportedGUIDs.count(VI.getGUID());
   };
   thinLTOInternalizeAndPromoteInIndex(Ret->Index, isExported, isPrevailing);
+
+  // Propagate function attributes from other modules' summaries, like
+  // `lib/LTO/ThinLTOCodeGenerator.cpp` does. Gated on the
+  // `-disable-thinlto-funcattrs` option, which `configure_llvm` turns on.
+  thinLTOPropagateFunctionAttrs(Ret->Index, isPrevailing);
 
   return Ret.release();
 }
