@@ -156,7 +156,7 @@ impl PassByRefOrValue {
             match *ty.skip_binder().kind() {
                 ty::Ref(lt, ty, Mutability::Not) => {
                     match lt.kind() {
-                        RegionKind::ReBound(BoundVarIndexKind::Bound(index), region)
+                        RegionKind::ReBound(BoundVarIndexKind::Bound(index, region))
                             if index.as_u32() == 0 && output_regions.contains(&region) =>
                         {
                             continue;

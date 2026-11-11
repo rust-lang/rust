@@ -263,7 +263,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         throw_inval!(TooGeneric)
                     }
                     ty::Pat(..) => unreachable!(),
-                    ty::Bound(_, _) => bug!("bound ty during ctfe"),
+                    ty::Bound(_) => bug!("bound ty during ctfe"),
                     ty::Bool
                     | ty::Char
                     | ty::Int(_)

@@ -415,7 +415,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Alias(_, _)
-            | ty::Bound(_, _)
+            | ty::Bound(_)
             | ty::Error(_) => {
                 return t.super_fold_with(self);
             }
@@ -578,7 +578,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
                 CanonicalizeMode::Response { .. } => panic!("param ty in response: {c:?}"),
             },
             // FIXME: See comment above -- we could fold the region separately or something.
-            ty::ConstKind::Bound(_, _)
+            ty::ConstKind::Bound(_)
             | ty::ConstKind::Alias(_, _)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)

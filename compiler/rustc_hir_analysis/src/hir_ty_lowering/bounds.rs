@@ -936,7 +936,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             ty::Param(param) => {
                 self.params.insert(param.index);
             }
-            ty::Bound(ty::BoundVarIndexKind::Bound(db), bt) if *db >= self.depth => {
+            ty::Bound(ty::BoundVarIndexKind::Bound(db, bt)) if *db >= self.depth => {
                 self.vars.insert(match bt.kind {
                     ty::BoundTyKind::Param(def_id) => def_id,
                     ty::BoundTyKind::Anon => {
@@ -959,7 +959,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             ty::ReEarlyParam(param) => {
                 self.params.insert(param.index);
             }
-            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db >= self.depth => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(db, br)) if db >= self.depth => {
                 self.vars.insert(match br.kind {
                     ty::BoundRegionKind::Named(def_id) => def_id,
                     ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => {
@@ -984,7 +984,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'_, 't
             ty::ConstKind::Param(param) => {
                 self.params.insert(param.index);
             }
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(db), _) if db >= self.depth => {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(db, _)) if db >= self.depth => {
                 let guar = self.cx.dcx().delayed_bug("unexpected escaping late-bound const var");
                 return ControlFlow::Break(guar);
             }

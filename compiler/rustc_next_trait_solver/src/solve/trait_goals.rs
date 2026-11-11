@@ -1501,7 +1501,7 @@ where
             | ty::UnsafeBinder(_) => check_impls(),
             ty::Error(_) => None,
 
-            ty::Infer(_) | ty::Alias(ty::IsRigid::No, _) | ty::Bound(_, _) => {
+            ty::Infer(_) | ty::Alias(ty::IsRigid::No, _) | ty::Bound(_) => {
                 panic!("unexpected type `{self_ty:?}`")
             }
         }

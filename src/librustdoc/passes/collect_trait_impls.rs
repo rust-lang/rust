@@ -243,10 +243,13 @@ impl SelfTyHead {
                 if p.name == kw::SelfUpper { Self::Other } else { Self::Generic }
             }
 
-            ty::Bound(_, ref ty) => match ty.kind {
+            ty::Bound(ty::BoundVarIndexKind::Bound(_, ref bt)) => match bt.kind {
                 ty::BoundTyKind::Param(_) => Self::Generic,
                 ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
             },
+            ty::Bound(ty::BoundVarIndexKind::Canonical(_)) => {
+                panic!("unexpected canonical bound type variable")
+            }
 
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 panic!("{bound_ty} should not appear as impl self ty")

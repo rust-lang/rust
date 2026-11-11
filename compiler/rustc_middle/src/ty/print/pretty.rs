@@ -835,15 +835,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Error(_) => write!(self, "{{type error}}")?,
             ty::Param(ref param_ty) => param_ty.print(self)?,
-            ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon => {
-                    rustc_type_ir::debug_bound_var(self, debruijn, bound_ty.var)?
-                }
+            ty::Bound(k @ ty::BoundVarIndexKind::Bound(_, bound_ty)) => match bound_ty.kind {
+                ty::BoundTyKind::Anon => rustc_type_ir::debug_bound_var(self, k)?,
                 ty::BoundTyKind::Param(def_id) => match self.should_print_verbose() {
                     true => write!(self, "{:?}", ty.kind())?,
                     false => write!(self, "{}", self.tcx().item_name(def_id))?,
                 },
             },
+            ty::Bound(k @ ty::BoundVarIndexKind::Canonical(_)) => {
+                rustc_type_ir::debug_bound_var(self, k)?
+            }
             ty::Adt(def, args)
                 if let Some(FieldInfo { base, variant, name, .. }) =
                     def.field_representing_type_info(self.tcx(), args) =>
@@ -1602,9 +1603,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 return self.pretty_print_const_valtree(cv, print_ty);
             }
 
-            ty::ConstKind::Bound(debruijn, bound_var) => {
-                rustc_type_ir::debug_bound_var(self, debruijn, bound_var)?
-            }
+            ty::ConstKind::Bound(kind) => rustc_type_ir::debug_bound_var(self, kind)?,
             ty::ConstKind::Placeholder(placeholder) => write!(self, "{placeholder:?}")?,
             // FIXME(generic_const_exprs):
             // write out some legible representation of an abstract const?
@@ -2616,7 +2615,8 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             ty::ReEarlyParam(ref data) => data.is_named(),
 
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(self.tcx),
-            ty::ReBound(_, ty::BoundRegion { kind: br, .. })
+
+            ty::ReBound(ty::BoundVarIndexKind::Bound(_, ty::BoundRegion { kind: br, .. }))
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
@@ -2632,6 +2632,8 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
                 false
             }
+
+            ty::ReBound(ty::BoundVarIndexKind::Canonical(_)) => false,
 
             ty::ReVar(_) if identify_regions => true,
 
@@ -2690,7 +2692,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     return Ok(());
                 }
             }
-            ty::ReBound(_, ty::BoundRegion { kind: br, .. })
+            ty::ReBound(ty::BoundVarIndexKind::Bound(_, ty::BoundRegion { kind: br, .. }))
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
@@ -2706,6 +2708,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     }
                 }
             }
+            ty::ReBound(ty::BoundVarIndexKind::Canonical(_)) => {}
             ty::ReVar(region_vid) if identify_regions => {
                 write!(self, "{region_vid:?}")?;
                 return Ok(());
@@ -2768,7 +2771,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             // (they were named when that binder was folded) and their index, and must
             // not end up in `region_map`, which callers use to build `for<...>` lists
             // (#102392, #134410).
-            ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db == self.current_index => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(db, br)) if db == self.current_index => {
                 *self.region_map.entry(br).or_insert_with(|| name(br))
             }
             ty::RePlaceholder(ty::PlaceholderRegion {
@@ -2788,7 +2791,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             }
             _ => return r,
         };
-        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn1), br) = region.kind() {
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn1, br)) = region.kind() {
             assert_eq!(debruijn1, ty::INNERMOST);
             ty::Region::new_bound(self.tcx, self.current_index, br)
         } else {

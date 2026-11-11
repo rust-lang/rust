@@ -186,7 +186,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
     for (param, var) in std::iter::zip(&generics.own_params, gat_vars) {
         let existing = match var.kind() {
             ty::GenericArgKind::Lifetime(re) => {
-                let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(ty::INNERMOST, bv)) =
                     re.kind()
                 else {
                     return None;
@@ -194,13 +194,13 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
                 mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
             ty::GenericArgKind::Type(ty) => {
-                let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) = *ty.kind() else {
+                let ty::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST, bv)) = *ty.kind() else {
                     return None;
                 };
                 mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
             ty::GenericArgKind::Const(ct) => {
-                let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST), bv) =
+                let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(ty::INNERMOST, bv)) =
                     ct.kind()
                 else {
                     return None;
@@ -266,7 +266,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             return ty;
         }
 
-        if let ty::Bound(ty::BoundVarIndexKind::Bound(binder), old_bound) = *ty.kind()
+        if let ty::Bound(ty::BoundVarIndexKind::Bound(binder, old_bound)) = *ty.kind()
             && self.binder == binder
         {
             let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
@@ -292,7 +292,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
     }
 
     fn fold_region(&mut self, re: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReBound(ty::BoundVarIndexKind::Bound(binder), old_bound) = re.kind()
+        if let ty::ReBound(ty::BoundVarIndexKind::Bound(binder, old_bound)) = re.kind()
             && self.binder == binder
         {
             let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {
@@ -320,7 +320,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             return ct;
         }
 
-        if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(binder), old_bound) = ct.kind()
+        if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(binder, old_bound)) = ct.kind()
             && self.binder == binder
         {
             let mapped = if let Some(mapped) = self.mapping.get(&old_bound.var) {

@@ -326,13 +326,14 @@ pub enum TyKind<I: Interner> {
     /// It is conventional to render anonymous bound types like `^N` or `^D_N`,
     /// where `N` is the bound variable's anonymous index into the binder, and
     /// `D` is the debruijn index, or totally omitted if the debruijn index is zero.
+    /// Canonical bound vars are rendered as `^c_N`.
     ///
     /// See the `rustc-dev-guide` for more details about
     /// [higher-ranked trait bounds][1] and [canonical queries][2].
     ///
     /// [1]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     /// [2]: https://rustc-dev-guide.rust-lang.org/traits/canonical-queries.html
-    Bound(BoundVarIndexKind, ty::BoundTy<I>),
+    Bound(BoundVarIndexKind<ty::BoundTy<I>>),
 
     /// A placeholder type, used during higher ranked subtyping to instantiate
     /// bound variables.
@@ -419,7 +420,7 @@ impl<I: Interner> TyKind<I> {
             | ty::Infer(_)
             | ty::Alias(ty::IsRigid::No | ty::IsRigid::Yes, _)
             | ty::Param(_)
-            | ty::Bound(_, _)
+            | ty::Bound(_)
             | ty::Placeholder(_) => false,
         }
     }
@@ -484,7 +485,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             }
             Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
-            Bound(d, b) => crate::debug_bound_var(f, *d, b),
+            Bound(kind) => crate::debug_bound_var(f, *kind),
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
             TyKind::Error(_) => write!(f, "{{type error}}"),

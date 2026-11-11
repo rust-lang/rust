@@ -688,7 +688,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Alias(_, _)
                 | ty::Infer(_)
                 | ty::Param(..)
-                | ty::Bound(_, _) => {}
+                | ty::Bound(_) => {}
 
                 // These can't possibly implement `FnPtr` as they are concrete types
                 // and not `FnPtr`
@@ -1361,7 +1361,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)
-            | ty::Bound(_, _)
+            | ty::Bound(_)
             | ty::Error(_)
             | ty::Infer(_)
             | ty::Placeholder(_) => {}

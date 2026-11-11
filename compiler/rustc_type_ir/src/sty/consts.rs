@@ -58,7 +58,7 @@ impl<I: Interner> Const<I> {
 
     #[inline]
     pub fn new_bound(interner: I, debruijn: DebruijnIndex, bound_const: BoundConst<I>) -> Self {
-        Self::new(interner, ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), bound_const))
+        Self::new(interner, ConstKind::Bound(BoundVarIndexKind::Bound(debruijn, bound_const)))
     }
 
     #[inline]
@@ -68,7 +68,7 @@ impl<I: Interner> Const<I> {
 
     #[inline]
     pub fn new_canonical_bound(interner: I, var: BoundVar) -> Self {
-        Self::new(interner, ConstKind::Bound(BoundVarIndexKind::Canonical, BoundConst::new(var)))
+        Self::new(interner, ConstKind::Bound(BoundVarIndexKind::Canonical(var)))
     }
 
     #[inline]

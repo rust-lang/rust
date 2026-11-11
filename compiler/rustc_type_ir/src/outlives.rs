@@ -194,7 +194,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
                 // Trivial
             }
 
-            ty::Bound(_, _) => {
+            ty::Bound(_) => {
                 // FIXME: Bound vars matter here!
             }
 

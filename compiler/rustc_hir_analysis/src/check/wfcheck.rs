@@ -1487,7 +1487,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                 let ct_ty = match ct.kind() {
                     ty::ConstKind::Infer(_)
                     | ty::ConstKind::Placeholder(_)
-                    | ty::ConstKind::Bound(_, _) => unreachable!(),
+                    | ty::ConstKind::Bound(_) => unreachable!(),
                     ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
                     ty::ConstKind::Value(cv) => cv.ty,
                     ty::ConstKind::Alias(_, alias_const) => {

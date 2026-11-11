@@ -33,7 +33,7 @@ pub fn is_const_evaluatable<'tcx>(
     match tcx.expand_abstract_consts(unexpanded_ct).kind() {
         ty::ConstKind::Alias(_, _) | ty::ConstKind::Expr(_) => (),
         ty::ConstKind::Param(_)
-        | ty::ConstKind::Bound(_, _)
+        | ty::ConstKind::Bound(_)
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Value(_)
         | ty::ConstKind::Error(_) => return Ok(()),
