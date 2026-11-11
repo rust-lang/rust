@@ -1,0 +1,11 @@
+error: this argument (513 byte) is passed by value, but might be more efficient if passed by reference (limit: 512 byte)
+  --> tests/ui-toml/large_types_passed_by_value/large_types_passed_by_value.rs:4:11
+   |
+LL | fn f2(_v: [u8; 513]) {}
+   |           ^^^^^^^^^ help: consider passing by reference instead: `&[u8; 513]`
+   |
+   = note: `-D clippy::large-types-passed-by-value` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_types_passed_by_value)]`
+
+error: aborting due to 1 previous error
+

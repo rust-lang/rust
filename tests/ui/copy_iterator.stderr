@@ -1,0 +1,17 @@
+error: you are implementing `Iterator` on a `Copy` type
+  --> tests/ui/copy_iterator.rs:7:1
+   |
+LL | / impl Iterator for Countdown {
+LL | |
+LL | |
+LL | |     type Item = u8;
+...  |
+LL | | }
+   | |_^
+   |
+   = note: consider implementing `IntoIterator` instead
+   = note: `-D clippy::copy-iterator` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::copy_iterator)]`
+
+error: aborting due to 1 previous error
+

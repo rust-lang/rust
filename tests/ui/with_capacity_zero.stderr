@@ -1,0 +1,112 @@
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:18:23
+   |
+LL |     let v: Vec<i32> = Vec::with_capacity(0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::with-capacity-zero` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::with_capacity_zero)]`
+help: use `new()` instead
+   |
+LL -     let v: Vec<i32> = Vec::with_capacity(0);
+LL +     let v: Vec<i32> = Vec::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:20:13
+   |
+LL |     let s = String::with_capacity(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let s = String::with_capacity(0);
+LL +     let s = String::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:22:14
+   |
+LL |     let v2 = std::vec::Vec::<i32>::with_capacity(0);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let v2 = std::vec::Vec::<i32>::with_capacity(0);
+LL +     let v2 = std::vec::Vec::<i32>::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:24:15
+   |
+LL |     let map = HashMap::<i32, i32>::with_capacity(0);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let map = HashMap::<i32, i32>::with_capacity(0);
+LL +     let map = HashMap::<i32, i32>::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:26:15
+   |
+LL |     let set = HashSet::<i32>::with_capacity(0);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let set = HashSet::<i32>::with_capacity(0);
+LL +     let set = HashSet::<i32>::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:28:17
+   |
+LL |     let deque = VecDeque::<i32>::with_capacity(0);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let deque = VecDeque::<i32>::with_capacity(0);
+LL +     let deque = VecDeque::<i32>::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:30:16
+   |
+LL |     let heap = BinaryHeap::<i32>::with_capacity(0);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let heap = BinaryHeap::<i32>::with_capacity(0);
+LL +     let heap = BinaryHeap::<i32>::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:32:16
+   |
+LL |     let path = PathBuf::with_capacity(0);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let path = PathBuf::with_capacity(0);
+LL +     let path = PathBuf::new();
+   |
+
+error: calling `with_capacity(0)` is equivalent to `new()`
+  --> tests/ui/with_capacity_zero.rs:34:18
+   |
+LL |     let os_str = OsString::with_capacity(0);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `new()` instead
+   |
+LL -     let os_str = OsString::with_capacity(0);
+LL +     let os_str = OsString::new();
+   |
+
+error: aborting due to 9 previous errors
+

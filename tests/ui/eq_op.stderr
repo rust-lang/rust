@@ -1,0 +1,181 @@
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:7:13
+   |
+LL |     let _ = 1 == 1;
+   |             ^^^^^^
+   |
+   = note: `-D clippy::eq-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::eq_op)]`
+
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:10:13
+   |
+LL |     let _ = "no" == "no";
+   |             ^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> tests/ui/eq_op.rs:14:13
+   |
+LL |     let _ = false != false;
+   |             ^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `<`
+  --> tests/ui/eq_op.rs:17:13
+   |
+LL |     let _ = 1.5 < 1.5;
+   |             ^^^^^^^^^
+
+error: equal expressions as operands to `>=`
+  --> tests/ui/eq_op.rs:20:13
+   |
+LL |     let _ = 1u64 >= 1u64;
+   |             ^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> tests/ui/eq_op.rs:24:13
+   |
+LL |     let _ = x != x;
+   |             ^^^^^^
+   |
+   = note: if you intended to check if the operand is NaN, use `.is_nan()` instead
+
+error: equal expressions as operands to `&`
+  --> tests/ui/eq_op.rs:28:13
+   |
+LL |     let _ = (1u32 as u64) & (1u32 as u64);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `^`
+  --> tests/ui/eq_op.rs:33:17
+   |
+LL |         let _ = 1 ^ ((((((1))))));
+   |                 ^^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `<`
+  --> tests/ui/eq_op.rs:39:13
+   |
+LL |     let _ = (-(2) < -(2));
+   |             ^^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:42:13
+   |
+LL |     let _ = ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `&`
+  --> tests/ui/eq_op.rs:42:14
+   |
+LL |     let _ = ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
+   |              ^^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `&`
+  --> tests/ui/eq_op.rs:42:35
+   |
+LL |     let _ = ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
+   |                                   ^^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:47:13
+   |
+LL |     let _ = (1 * 2) + (3 * 4) == 1 * 2 + 3 * 4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> tests/ui/eq_op.rs:51:13
+   |
+LL |     let _ = ([1] != [1]);
+   |             ^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> tests/ui/eq_op.rs:54:13
+   |
+LL |     let _ = ((1, 2) != (1, 2));
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:60:13
+   |
+LL |     let _ = 1 + 1 == 2;
+   |             ^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:63:13
+   |
+LL |     let _ = 1 - 1 == 0;
+   |             ^^^^^^^^^^
+
+error: equal expressions as operands to `-`
+  --> tests/ui/eq_op.rs:63:13
+   |
+LL |     let _ = 1 - 1 == 0;
+   |             ^^^^^
+
+error: equal expressions as operands to `-`
+  --> tests/ui/eq_op.rs:67:13
+   |
+LL |     let _ = 1 - 1;
+   |             ^^^^^
+
+error: equal expressions as operands to `/`
+  --> tests/ui/eq_op.rs:70:13
+   |
+LL |     let _ = 1 / 1;
+   |             ^^^^^
+
+error: equal expressions as operands to `&&`
+  --> tests/ui/eq_op.rs:73:13
+   |
+LL |     let _ = true && true;
+   |             ^^^^^^^^^^^^
+
+error: equal expressions as operands to `||`
+  --> tests/ui/eq_op.rs:76:13
+   |
+LL |     let _ = true || true;
+   |             ^^^^^^^^^^^^
+
+error: equal expressions as operands to `&&`
+  --> tests/ui/eq_op.rs:82:13
+   |
+LL |     let _ = a == b && b == a;
+   |             ^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `&&`
+  --> tests/ui/eq_op.rs:85:13
+   |
+LL |     let _ = a != b && b != a;
+   |             ^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `&&`
+  --> tests/ui/eq_op.rs:88:13
+   |
+LL |     let _ = a < b && b > a;
+   |             ^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `&&`
+  --> tests/ui/eq_op.rs:91:13
+   |
+LL |     let _ = a <= b && b >= a;
+   |             ^^^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:95:13
+   |
+LL |     let _ = a == a;
+   |             ^^^^^^
+
+error: equal expressions as operands to `/`
+  --> tests/ui/eq_op.rs:107:20
+   |
+LL |     const D: u32 = A / A;
+   |                    ^^^^^
+
+error: equal expressions as operands to `==`
+  --> tests/ui/eq_op.rs:139:5
+   |
+LL |     (n1.inner.0).0 == (n1.inner.0).0 && (n1.inner.1).0 == (n2.inner.1).0 && (n1.inner.2).0 == (n2.inner.2).0
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 29 previous errors
+

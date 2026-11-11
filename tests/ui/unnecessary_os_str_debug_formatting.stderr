@@ -1,0 +1,67 @@
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:15:22
+   |
+LL |     println!("{:?}", os_str);
+   |                      ^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_str.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+   = note: `-D clippy::unnecessary-debug-formatting` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_debug_formatting)]`
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:16:22
+   |
+LL |     println!("{:?}", os_string);
+   |                      ^^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_string.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:18:16
+   |
+LL |     println!("{os_str:?}");
+   |                ^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_str.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:19:16
+   |
+LL |     println!("{os_string:?}");
+   |                ^^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_string.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `format!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:21:37
+   |
+LL |     let _: String = format!("{:?}", os_str);
+   |                                     ^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_str.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `format!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:22:37
+   |
+LL |     let _: String = format!("{:?}", os_string);
+   |                                     ^^^^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_string.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:34:22
+   |
+LL |     println!("{:?}", os_str);
+   |                      ^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_str.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: aborting due to 7 previous errors
+

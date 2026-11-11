@@ -1,0 +1,36 @@
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> tests/ui/return_self_not_must_use.rs:8:5
+   |
+LL |     fn what(&self) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = note: `-D clippy::return-self-not-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::return_self_not_must_use)]`
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> tests/ui/return_self_not_must_use.rs:20:5
+   |
+LL | /     pub fn foo(&self) -> Self {
+LL | |
+LL | |
+LL | |         Self
+LL | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> tests/ui/return_self_not_must_use.rs:25:5
+   |
+LL | /     pub fn bar(self) -> Self {
+LL | |
+LL | |
+LL | |         self
+LL | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+
+error: aborting due to 3 previous errors
+

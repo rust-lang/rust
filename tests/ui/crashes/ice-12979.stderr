@@ -1,0 +1,19 @@
+error: empty line after outer attribute
+  --> tests/ui/crashes/ice-12979.rs:1:1
+   |
+LL | / #[deny(clippy::declare_interior_mutable_const)]
+LL | |
+   | |_^
+LL |   const FOO: u8 = 0;
+   |   --------- the attribute applies to this constant item
+   |
+   = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_outer_attr)]`
+   = help: if the empty line is unintentional, remove it
+help: if the attribute should apply to the crate use an inner attribute
+   |
+LL | #![deny(clippy::declare_interior_mutable_const)]
+   |  +
+
+error: aborting due to 1 previous error
+

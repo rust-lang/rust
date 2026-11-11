@@ -1,0 +1,275 @@
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:15:5
+   |
+LL |     true
+   |     ^^^^
+   |
+   = note: `-D clippy::implicit-return` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_return)]`
+help: add `return` as shown
+   |
+LL |     return true
+   |     ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:20:15
+   |
+LL |     if true { true } else { false }
+   |               ^^^^
+   |
+help: add `return` as shown
+   |
+LL |     if true { return true } else { false }
+   |               ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:20:29
+   |
+LL |     if true { true } else { false }
+   |                             ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     if true { true } else { return false }
+   |                             ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:28:17
+   |
+LL |         true => false,
+   |                 ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |         true => return false,
+   |                 ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:30:20
+   |
+LL |         false => { true },
+   |                    ^^^^
+   |
+help: add `return` as shown
+   |
+LL |         false => { return true },
+   |                    ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:44:9
+   |
+LL |         break true;
+   |         ^^^^^^^^^^
+   |
+help: change `break` to `return` as shown
+   |
+LL -         break true;
+LL +         return true;
+   |
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:52:13
+   |
+LL |             break true;
+   |             ^^^^^^^^^^
+   |
+help: change `break` to `return` as shown
+   |
+LL -             break true;
+LL +             return true;
+   |
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:61:13
+   |
+LL |             break true;
+   |             ^^^^^^^^^^
+   |
+help: change `break` to `return` as shown
+   |
+LL -             break true;
+LL +             return true;
+   |
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:80:18
+   |
+LL |     let _ = || { true };
+   |                  ^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = || { return true };
+   |                  ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:82:16
+   |
+LL |     let _ = || true;
+   |                ^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = || return true;
+   |                ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:91:5
+   |
+LL |     format!("test {}", "test")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     return format!("test {}", "test")
+   |     ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:101:5
+   |
+LL |     m!(true, false)
+   |     ^^^^^^^^^^^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     return m!(true, false)
+   |     ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:108:13
+   |
+LL |             break true;
+   |             ^^^^^^^^^^
+   |
+help: change `break` to `return` as shown
+   |
+LL -             break true;
+LL +             return true;
+   |
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:114:17
+   |
+LL |                 break 'outer false;
+   |                 ^^^^^^^^^^^^^^^^^^
+   |
+help: change `break` to `return` as shown
+   |
+LL -                 break 'outer false;
+LL +                 return false;
+   |
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:130:5
+   |
+LL | /     loop {
+LL | |         m!(true);
+LL | |     }
+   | |_____^
+   |
+help: add `return` as shown
+   |
+LL |     return loop {
+   |     ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:145:5
+   |
+LL |     true
+   |     ^^^^
+   |
+help: add `return` as shown
+   |
+LL |     return true
+   |     ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:170:22
+   |
+LL |     let _ = async || 0;
+   |                      ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || return 0;
+   |                      ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:173:31
+   |
+LL |     let _ = async || -> i32 { 0 };
+   |                               ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || -> i32 { return 0 };
+   |                               ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:175:28
+   |
+LL |     let _ = async |a: i32| a;
+   |                            ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async |a: i32| return a;
+   |                            ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:178:30
+   |
+LL |     let _ = async |a: i32| { a };
+   |                              ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async |a: i32| { return a };
+   |                              ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:187:22
+   |
+LL |     let _ = async || foo().await;
+   |                      ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || return foo().await;
+   |                      ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:191:9
+   |
+LL |         foo().await
+   |         ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |         return foo().await
+   |         ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:195:24
+   |
+LL |     let _ = async || { foo().await };
+   |                        ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || { return foo().await };
+   |                        ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:197:32
+   |
+LL |     let _ = async || -> bool { foo().await };
+   |                                ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || -> bool { return foo().await };
+   |                                ++++++
+
+error: aborting due to 24 previous errors
+

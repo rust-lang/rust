@@ -1,0 +1,17 @@
+error: use of a disallowed method `replaceable_disallowed_methods::bad`
+  --> tests/ui-toml/toml_replaceable_disallowed_methods/replaceable_disallowed_methods.rs:6:5
+   |
+LL |     bad();
+   |     ^^^ help: use: `good`
+   |
+   = note: `-D clippy::disallowed-methods` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
+
+error: use of a disallowed method `replaceable_disallowed_methods::questionable`
+  --> tests/ui-toml/toml_replaceable_disallowed_methods/replaceable_disallowed_methods.rs:8:5
+   |
+LL |     questionable();
+   |     ^^^^^^^^^^^^ help: a better function exists: `good`
+
+error: aborting due to 2 previous errors
+

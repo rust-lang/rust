@@ -1,0 +1,68 @@
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:12:9
+   |
+LL |     let Struct { .. } = ref_value;
+   |         ^^^^^^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:15:33
+   |
+LL |     if let &Struct { ref_inner: Some(_) } = ref_value {}
+   |                                 ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:18:32
+   |
+LL |     if let Struct { ref_inner: Some(_) } = *ref_value {}
+   |                                ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:36:12
+   |
+LL |     if let StructEnum::Var { .. } = ref_value {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:39:12
+   |
+LL |     if let StructEnum::Var { inner_ref: Some(_) } = ref_value {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:42:42
+   |
+LL |     if let &StructEnum::Var { inner_ref: Some(_) } = ref_value {}
+   |                                          ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:45:41
+   |
+LL |     if let StructEnum::Var { inner_ref: Some(_) } = *ref_value {}
+   |                                         ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> tests/ui/pattern_type_mismatch/pattern_structs.rs:48:12
+   |
+LL |     if let StructEnum::Empty = ref_value {}
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: aborting due to 8 previous errors
+

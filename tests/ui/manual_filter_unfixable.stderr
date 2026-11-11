@@ -1,0 +1,16 @@
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter_unfixable.rs:8:9
+   |
+LL |       opt.and_then(|x| {
+   |  _________^
+LL | |
+LL | |         // keep this explanation
+LL | |         if x < 10 { Some(x) } else { None }
+LL | |     });
+   | |______^ help: try: `filter(|&x| x < 10)`
+   |
+   = note: `-D clippy::manual-filter` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_filter)]`
+
+error: aborting due to 1 previous error
+

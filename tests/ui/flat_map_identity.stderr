@@ -1,0 +1,29 @@
+error: use of `flat_map` with an identity function
+  --> tests/ui/flat_map_identity.rs:8:22
+   |
+LL |     let _ = iterator.flat_map(|x| x);
+   |                      ^^^^^^^^^^^^^^^ help: try: `flatten()`
+   |
+   = note: `-D clippy::flat-map-identity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::flat_map_identity)]`
+
+error: use of `flat_map` with an identity function
+  --> tests/ui/flat_map_identity.rs:12:22
+   |
+LL |     let _ = iterator.flat_map(convert::identity);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: use of `flat_map` with an identity function
+  --> tests/ui/flat_map_identity.rs:16:22
+   |
+LL |     let _ = iterator.flat_map(|x| return x);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: use of `flat_map` with an identity function
+  --> tests/ui/flat_map_identity.rs:29:31
+   |
+LL |     let _ = x.iter().copied().flat_map(|[x, y]| [x, y]);
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: aborting due to 4 previous errors
+

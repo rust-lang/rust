@@ -1,0 +1,43 @@
+if let StmtKind::Let(local) = stmt.kind
+    && let Some(init) = local.init
+    && let ExprKind::If(cond, then, Some(else_expr)) = init.kind
+    && let ExprKind::Lit(ref lit) = cond.kind
+    && let LitKind::Bool(true) = lit.node
+    && let ExprKind::Block(block, None) = then.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Semi(e) = block.stmts[0].kind
+    && let ExprKind::Binary(op, left, right) = e.kind
+    && BinOpKind::Eq == op.node
+    && let ExprKind::Lit(ref lit1) = left.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit1.node
+    && let ExprKind::Lit(ref lit2) = right.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit2.node
+    && block.expr.is_none()
+    && let ExprKind::Block(block1, None) = else_expr.kind
+    && block1.stmts.len() == 1
+    && let StmtKind::Semi(e1) = block1.stmts[0].kind
+    && let ExprKind::Binary(op1, left1, right1) = e1.kind
+    && BinOpKind::Eq == op1.node
+    && let ExprKind::Lit(ref lit3) = left1.kind
+    && let LitKind::Int(2, LitIntType::Unsuffixed) = lit3.node
+    && let ExprKind::Lit(ref lit4) = right1.kind
+    && let LitKind::Int(2, LitIntType::Unsuffixed) = lit4.node
+    && block1.expr.is_none()
+    && let PatKind::Wild = local.pat.kind
+{
+    // report your lint here
+}
+if let ExprKind::If(cond, then, Some(else_expr)) = expr.kind
+    && let ExprKind::Let(let_expr) = cond.kind
+    && let PatKind::Expr(lit_expr) = let_expr.pat.kind
+    && let PatExprKind::Lit { ref lit, negated } = lit_expr.kind
+    && let LitKind::Bool(true) = lit.node
+    && let ExprKind::Block(block, None) = then.kind
+    && block.stmts.is_empty()
+    && block.expr.is_none()
+    && let ExprKind::Block(block1, None) = else_expr.kind
+    && block1.stmts.is_empty()
+    && block1.expr.is_none()
+{
+    // report your lint here
+}

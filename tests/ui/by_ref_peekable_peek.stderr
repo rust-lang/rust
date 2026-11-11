@@ -1,0 +1,101 @@
+error: calling `.by_ref().peekable().peek()` will advance the underlying iterator and consume its first output
+  --> tests/ui/by_ref_peekable_peek.rs:19:27
+   |
+LL |     let _: Option<&i32> = i.by_ref().peekable().peek();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you might want to transform the iterator itself using `.peekable()` without using `.by_ref()`
+   = note: `-D clippy::by-ref-peekable-peek` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::by_ref_peekable_peek)]`
+help: to advance the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = i.by_ref().peekable().peek();
+LL +     let _: Option<&i32> = i.next().as_ref();
+   |
+
+error: calling `.by_ref().peekable().peek()` will advance the underlying iterator and consume its first output
+  --> tests/ui/by_ref_peekable_peek.rs:25:27
+   |
+LL |     let _: Option<&i32> = i.by_ref().peekable().peek();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: to peek the first item without advancing the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = i.by_ref().peekable().peek();
+LL +     let _: Option<&i32> = i.clone().next().as_ref();
+   |
+help: to advance the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = i.by_ref().peekable().peek();
+LL +     let _: Option<&i32> = i.next().as_ref();
+   |
+help: to make the iterator peekable, use
+   |
+LL ~     let mut i = a.into_iter().peekable();
+LL ~     let _: Option<&i32> = i.peek();
+   |
+
+error: calling `.by_ref().peekable().peek()` will advance the underlying iterator and consume its first output
+  --> tests/ui/by_ref_peekable_peek.rs:36:27
+   |
+LL |     let _: Option<&i32> = i.by_ref().peekable().peek();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: to peek the first item without advancing the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = i.by_ref().peekable().peek();
+LL +     let _: Option<&i32> = i.clone().next().as_ref();
+   |
+help: to advance the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = i.by_ref().peekable().peek();
+LL +     let _: Option<&i32> = i.next().as_ref();
+   |
+help: to make the iterator peekable, use
+   |
+LL ~     let mut i = mac!().peekable();
+LL ~     let _: Option<&i32> = i.peek();
+   |
+
+error: calling `.by_ref().peekable().peek()` will advance the underlying iterator and consume its first output
+  --> tests/ui/by_ref_peekable_peek.rs:42:27
+   |
+LL |     let _: Option<&i32> = iter.by_ref().peekable().peek();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: to peek the first item without advancing the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = iter.by_ref().peekable().peek();
+LL +     let _: Option<&i32> = iter.clone().next().as_ref();
+   |
+help: to advance the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = iter.by_ref().peekable().peek();
+LL +     let _: Option<&i32> = iter.next().as_ref();
+   |
+help: to make the iterator peekable, use
+   |
+LL ~     let mut iter = [1, 2, 3].into_iter().peekable();
+LL ~     let _: Option<&i32> = iter.peek();
+   |
+
+error: calling `.by_ref().peekable().peek()` will advance the underlying iterator and consume its first output
+  --> tests/ui/by_ref_peekable_peek.rs:46:27
+   |
+LL |     let _: Option<&i32> = (&mut iter).by_ref().peekable().peek();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you might want to transform the iterator itself using `.peekable()` without using `.by_ref()`
+help: to peek the first item without advancing the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = (&mut iter).by_ref().peekable().peek();
+LL +     let _: Option<&i32> = (&mut iter).clone().next().as_ref();
+   |
+help: to advance the underlying iterator, use
+   |
+LL -     let _: Option<&i32> = (&mut iter).by_ref().peekable().peek();
+LL +     let _: Option<&i32> = (&mut iter).next().as_ref();
+   |
+
+error: aborting due to 5 previous errors
+

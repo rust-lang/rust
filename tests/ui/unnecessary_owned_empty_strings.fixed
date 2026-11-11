@@ -1,0 +1,23 @@
+#![warn(clippy::unnecessary_owned_empty_strings)]
+
+fn ref_str_argument(_value: &str) {}
+
+#[allow(clippy::ptr_arg)]
+fn ref_string_argument(_value: &String) {}
+
+fn main() {
+    // should be linted
+    ref_str_argument("");
+    //~^ unnecessary_owned_empty_strings
+
+    // should be linted
+    #[allow(clippy::manual_string_new)]
+    ref_str_argument("");
+    //~^ unnecessary_owned_empty_strings
+
+    // should not be linted
+    ref_str_argument("");
+
+    // should not be linted
+    ref_string_argument(&String::new());
+}
