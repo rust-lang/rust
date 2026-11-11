@@ -21,14 +21,26 @@ fn outer_normal_attr(normal: &Box<ast::NormalAttr>, id: ast::AttrId, span: Span)
 fn extract_fn(
     item: &Annotatable,
 ) -> Option<(ast::Visibility, ast::FnSig, Ident, ast::Generics, Option<Box<ast::Block>>)> {
-    match item {
-        Annotatable::Item(iitem) => match &iitem.kind {
-            ast::ItemKind::Fn(ast::Fn { sig, ident, generics, body, .. }) => {
-                Some((iitem.vis.clone(), sig.clone(), *ident, generics.clone(), body.clone()))
-            }
-            _ => None,
-        },
+    let fn_item_kind_and_vis = match item {
+        Annotatable::Item(iitem) => Some((&iitem.kind, &iitem.vis)),
+        Annotatable::Stmt(stmt) if let ast::StmtKind::Item(iitem) = &stmt.kind => {
+            Some((&iitem.kind, &iitem.vis))
+        }
         _ => None,
+    };
+
+    if let Some((item_kind, visibility)) = fn_item_kind_and_vis
+        && let ast::ItemKind::Fn(kind) = item_kind
+    {
+        Some((
+            visibility.clone(),
+            kind.sig.clone(),
+            kind.ident,
+            kind.generics.clone(),
+            kind.body.clone(),
+        ))
+    } else {
+        None
     }
 }
 
@@ -68,7 +80,7 @@ pub(crate) fn expand_kernel(
     let dcx = ecx.sess.dcx();
 
     let Some((vis, sig, ident, generics, body)) = extract_fn(&item) else {
-        dcx.emit_err(diagnostics::AutoDiffInvalidApplication { span: item.span() });
+        dcx.emit_err(diagnostics::OffloadKernelInvalidApplication { span: item.span() });
         return vec![item];
     };
 
@@ -100,10 +112,19 @@ pub(crate) fn expand_kernel(
     );
 
     let device_item = {
-        let mut item =
+        let mut device_item_ecx =
             ecx.item(span, thin_vec![rustc_offload_kernel.clone()], ast::ItemKind::Fn(device_fn));
-        item.vis = vis.clone();
-        Annotatable::Item(item)
+        device_item_ecx.vis = vis.clone();
+
+        match &item {
+            Annotatable::Item(_) => Annotatable::Item(device_item_ecx),
+            Annotatable::Stmt(_) => {
+                Annotatable::Stmt(Box::new(ecx.stmt_item(span, device_item_ecx)))
+            }
+            _ => {
+                unreachable!("item kind checked previously")
+            }
+        }
     };
 
     // unimplemented! body
@@ -150,13 +171,20 @@ pub(crate) fn expand_kernel(
     let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
     let host_item = {
-        let mut item = ecx.item(
+        let mut host_item_ecx = ecx.item(
             span,
             thin_vec![rustc_offload_kernel, inline_never],
             ast::ItemKind::Fn(host_fn),
         );
-        item.vis = vis;
-        Annotatable::Item(item)
+        host_item_ecx.vis = vis;
+
+        match &item {
+            Annotatable::Item(_) => Annotatable::Item(host_item_ecx),
+            Annotatable::Stmt(_) => Annotatable::Stmt(Box::new(ecx.stmt_item(span, host_item_ecx))),
+            _ => {
+                unreachable!("item kind checked previously")
+            }
+        }
     };
 
     if compile_for_device(ecx) { vec![device_item] } else { vec![host_item] }
