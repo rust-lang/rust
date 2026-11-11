@@ -807,7 +807,9 @@ fn test_symlink() {
         return;
     }
     let file_target = utils::prepare_with_content("miri_test_libc_symlink_target.txt", b"hello");
+    let c_file_target = utils::into_c_string(&file_target);
     let dir_target = utils::prepare("miri_test_libc_symlink_target_dir");
+    let c_dir_target = utils::into_c_string(&dir_target);
     fs::create_dir(&dir_target).unwrap();
     let link = utils::prepare("miri_test_libc_symlink_link");
     let c_link = utils::into_c_string(&link);
@@ -838,7 +840,10 @@ fn test_symlink() {
     }
 
     // Check error when link already exists.
-    let c_dir_target = utils::into_c_string(&dir_target);
+    let err =
+        errno_result(unsafe { libc::symlink(c_file_target.as_ptr(), c_file_target.as_ptr()) })
+            .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EEXIST);
     let err = errno_result(unsafe { libc::symlink(c_dir_target.as_ptr(), c_dir_target.as_ptr()) })
         .unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::EEXIST);
