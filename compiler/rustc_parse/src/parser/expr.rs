@@ -34,7 +34,7 @@ use super::{
     AttrWrapper, BlockMode, ClosureSpans, ExpTokenPair, ForceCollect, Parser, PathStyle,
     Restrictions, SemiColonMode, SeqSep, TokenType, Trailing, UsePreAttrPos,
 };
-use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
+use crate::exp;
 
 pub(super) mod diagnostics;
 
@@ -1244,7 +1244,9 @@ impl<'a> Parser<'a> {
     /// N.B., this does not parse outer attributes, and is private because it only works
     /// correctly if called from `parse_expr_dot_or_call`.
     fn parse_expr_bottom(&mut self) -> PResult<'a, Box<Expr>> {
-        maybe_recover_from_interpolated_ty_qpath!(self, true);
+        if let Some(expr) = self.maybe_recover_from_bad_interpolated_ty_qpath() {
+            return expr;
+        }
 
         let span = self.token.span;
         if let Some(expr) = self.eat_metavar_seq_with_matcher(
