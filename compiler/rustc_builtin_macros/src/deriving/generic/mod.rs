@@ -845,39 +845,35 @@ impl<'a> MethodDef<'a> {
     ) -> BlockOrExpr {
         let variants = &enum_def.variants;
 
-        // For zero-variant enum, this function body is unreachable. Generate
-        // `match *self {}`. This produces machine code identical to `unsafe {
-        // core::intrinsics::unreachable() }` while being safe and stable.
-        if variants.is_empty() {
-            let match_arg = cx.expr_deref(span, cx.expr_self(span));
-            let expr = cx.expr_match(span, match_arg, ThinVec::new());
-            return BlockOrExpr::new_expr(expr);
-        }
-
         // There are some special cases involving fieldless enums where no
         // match is necessary.
         let all_fieldless = variants.iter().all(|v| v.data.fields().is_empty());
-        if all_fieldless {
-            if variants.len() > 1 {
-                match self.fieldless_variants_strategy {
-                    FieldlessVariantsStrategy::Unify => {
-                        // If the type is fieldless and the trait uses the discriminant and
-                        // there are multiple variants, we need just an operation on
-                        // the discriminant(s).
-                        return self.call_substructure_method(cx, span, EnumDiscr(None));
-                    }
-                    FieldlessVariantsStrategy::Default => (),
-                }
-            } else if let [variant] = variants.as_slice() {
+        // Traits that unify fieldless variants always use the discriminant(s).
+        let unify_fieldless_variants =
+            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
+
+        match variants.as_slice() {
+            [] => {
+                // For zero-variant enum, this function body is unreachable. Generate
+                // `match *self {}`. This produces machine code identical to `unsafe {
+                // core::intrinsics::unreachable() }` while being safe and stable.
+                let match_arg = cx.expr_deref(span, cx.expr_self(span));
+                let expr = cx.expr_match(span, match_arg, ThinVec::new());
+                return BlockOrExpr::new_expr(expr);
+            }
+            [variant] if all_fieldless => {
                 // If there is a single variant, we don't need an operation on
                 // the discriminant(s). Just use the most degenerate result.
                 return self.call_substructure_method(cx, span, EnumMatching(variant, Vec::new()));
             }
+            _ if all_fieldless && unify_fieldless_variants => {
+                // If the type is fieldless and the trait uses the discriminant and
+                // there are multiple variants, we need just an operation on
+                // the discriminant(s).
+                return self.call_substructure_method(cx, span, EnumDiscr(None));
+            }
+            _ => (),
         }
-
-        // Traits that unify fieldless variants always use the discriminant(s).
-        let unify_fieldless_variants =
-            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
         // These arms are of the form:
         // (Variant1, Variant1) => Body1
