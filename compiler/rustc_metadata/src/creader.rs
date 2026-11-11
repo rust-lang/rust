@@ -822,6 +822,7 @@ impl CStore {
                 // dummy. We ignore compiler-injected prelude/sysroot loads here so they don't
                 // suppress unrelated diagnostics, such as "unsupported targets for std library"
                 // etc., these may be helpful for users to resolve crate loading failure.
+                self.has_crate_resolve_with_fail = true;
                 let missing_core = self
                     .maybe_resolve_crate(
                         tcx,
@@ -1472,7 +1473,14 @@ impl CStore {
     }
 
     pub fn maybe_process_path_extern(&mut self, tcx: TyCtxt<'_>, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern).ok()
+        match self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern)
+        {
+            Ok(cnum) => Some(cnum),
+            Err(_) => {
+                self.has_crate_resolve_with_fail = true;
+                None
+            }
+        }
     }
 }
 
