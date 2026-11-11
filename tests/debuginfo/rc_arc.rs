@@ -19,7 +19,7 @@
 //@ lldb-command:v rc
 //@ lldb-check:[...] strong=11, weak=2 { value = 111 }
 //@ lldb-command:v arc
-//@ lldb-check:[...] strong=21, weak=2 { data = 222 }
+//@ lldb-check:[...] strong=21, weak=2 { value = 222 }
 //@ lldb-command:continue
 //@ lldb-command:v rc_u64
 //@ lldb-check:[...] rc_u64 = strong=1, weak=1 { value = 10 }

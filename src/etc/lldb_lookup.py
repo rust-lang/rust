@@ -334,7 +334,7 @@ def register_providers_compatibility():
 
     # Arc
     register(
-        arc_synthetic,
+        StdRcSyntheticProvider,
         StdRcSummaryProvider,
         r"^(alloc::([a-z_]+::)+)Arc<.+>$",
     )
@@ -482,10 +482,6 @@ def classify_hashset(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
         return StdHashMapSyntheticProvider(valobj, _dict, show_values=False)
     else:
         return StdOldHashMapSyntheticProvider(hash_map, _dict, show_values=False)
-
-
-def arc_synthetic(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
-    return StdRcSyntheticProvider(valobj, _dict, is_atomic=True)
 
 
 def is_udt(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
