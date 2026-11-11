@@ -108,6 +108,10 @@ recommendations. This language is based on [IETF RFC
 
 ## Adding a new target
 
+<!--
+Make sure to sync with Forge compiler Proposals and Stabilizations docs.
+-->
+
 New targets typically start as Tier 3 and then can be promoted later.
 To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
 
@@ -118,9 +122,10 @@ To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
 - Add the target to the [SUMMARY.md][summary] (allows wildcards) and
   [platform-support.md][platformsupport] (must name all targets verbatim).
   Link to the created description page.
-- Ensure the pull request is assigned to a member of the [Rust compiler team][rust_compiler_team] by commenting:
+- Ensure the pull request is assigned to one of the compiler team co-leads by
+  writing in the PR description or in a comment:
   ```text
-  r? compiler
+  r? compiler_leads
   ```
 
 See also the documentation in the `rustc-dev-guide` on [adding a new target to
@@ -154,8 +159,8 @@ are documented at our [Forge documentation site][forge].
 At this tier, the Rust project provides no official support for a target, so we
 place minimal requirements on the introduction of targets.
 
-A proposed new tier 3 target must be reviewed and approved by a member of the
-compiler team based on these requirements. The reviewer may choose to gauge
+A proposed new tier 3 target must be reviewed and approved by one of the
+compiler co-leads based on these requirements. The reviewer may choose to gauge
 broader compiler team consensus via a [Major Change Proposal (MCP)][MCP].
 
 A proposed target or target-specific patch that substantially changes code
