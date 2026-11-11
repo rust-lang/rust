@@ -110,9 +110,8 @@
 
 #![feature(no_core, lang_items, f16, f128)]
 #![no_core]
-// only Complex<{float}> is guaranteed to be ABI-compatible for now
-#![expect(improper_ctypes_definitions)]
 #![crate_type = "lib"]
+#![deny(improper_ctypes_definitions)]
 
 extern crate minicore;
 #[cfg(target_arch = "powerpc")]
@@ -244,6 +243,7 @@ pub extern "C" fn cplx_ppcf128(x: Complex<ppcf128>) -> Complex<ppcf128> {
 }
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
     // AARCH64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
     // AARCH64_DARWIN: define{{.*}} i64 @cplx_i8(i64{{.*}})
@@ -280,6 +280,7 @@ pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
 }
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
     // AARCH64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
     // AARCH64_DARWIN: define{{.*}} i64 @cplx_i16(i64{{.*}})
@@ -316,6 +317,7 @@ pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
 }
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i32(x: Complex<i32>) -> Complex<i32> {
     // AARCH64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
     // AARCH64_DARWIN: define{{.*}} i64 @cplx_i32(i64 {{.*}})
@@ -352,6 +354,7 @@ pub extern "C" fn cplx_i32(x: Complex<i32>) -> Complex<i32> {
 }
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // AARCH64:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
     // AARCH64_DARWIN: define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
@@ -391,6 +394,7 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
 struct Wrapper<T>(T);
 
 #[no_mangle]
+#[expect(improper_ctypes_definitions)]
 pub extern "C" fn wrapper_cplx_i64(
     x: Wrapper<Complex<Wrapper<i64>>>,
 ) -> Wrapper<Complex<Wrapper<i64>>> {
