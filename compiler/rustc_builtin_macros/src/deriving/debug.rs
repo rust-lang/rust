@@ -166,54 +166,20 @@ fn debug_body(
             value_exprs.push(field);
         }
 
-        // `let names: &'static _ = "StructName field1 field2"`
-        let names_let = is_struct.then(|| {
-            let lt_static = Some(cx.lifetime_static(span));
-            let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
-            let names_expr = cx.expr_str(span, Symbol::intern(&names));
-            cx.stmt_let_ty(span, false, sym::names, Some(ty_static_ref), names_expr)
-        });
-
-        // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
-        let path_debug = cx.std_path(span, &[sym::fmt, sym::Debug]);
-        let ty_dyn_debug = cx.ty(
-            span,
-            ast::TyKind::TraitObject(
-                thin_vec![cx.trait_bound(path_debug, false)],
-                ast::TraitObjectSyntax::Dyn,
-            ),
-        );
-        let ty_slice = cx.ty(
-            span,
-            ast::TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)),
-        );
-        let values_let = cx.stmt_let_ty(
-            span,
-            false,
-            sym::values,
-            Some(cx.ty_ref(span, ty_slice, None, ast::Mutability::Not)),
-            cx.expr_array_ref(span, value_exprs),
-        );
-
-        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)`
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, "StructName field1 field2", &[&&self.field1, &&self.field2])` or
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, "StructName", &[&&self.field1, &&self.field2])`
         let sym_debug = sym::debug_struct_fields_finish;
         let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
         let args = thin_vec![
             fmt,
-            if is_struct { cx.expr_name(span, sym::names) } else { expr_name() },
-            cx.expr_name(span, sym::values)
+            if is_struct { cx.expr_str(span, Symbol::intern(&names)) } else { expr_name() },
+            cx.expr_array_ref(span, value_exprs),
         ];
 
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
-        let stmts = if is_struct {
-            thin_vec![names_let.unwrap(), values_let]
-        } else {
-            thin_vec![values_let]
-        };
-
-        BlockOrExpr::new_mixed(stmts, Some(expr))
+        BlockOrExpr::new_expr(expr)
     }
 }
 
