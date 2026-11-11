@@ -85,8 +85,7 @@ pub(super) fn add_data_and_relocation(
     target: &Target,
     kind: SymbolExportKind,
 ) -> object::write::Result<()> {
-    let authenticated_pointer =
-        kind == SymbolExportKind::Text && target.llvm_target.starts_with("arm64e");
+    let authenticated_pointer = kind == SymbolExportKind::Text && target.is_arm64e_apple();
 
     let data: &[u8] = match target.pointer_width {
         _ if authenticated_pointer => &[0, 0, 0, 0, 0, 0, 0, 0x80],

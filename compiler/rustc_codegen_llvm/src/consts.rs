@@ -16,7 +16,7 @@ use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_span::{Symbol, bug, span_bug};
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, BinaryFormat};
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
@@ -166,7 +166,9 @@ fn codegen_static_initializer<'ll, 'tcx>(
         .link_section
         .map(|link_section| {
             let s = link_section.as_str();
-            if s.starts_with(".init_array") || s.starts_with(".fini_array") {
+            if cx.sess().target.binary_format == BinaryFormat::Elf
+                && (s.starts_with(".init_array") || s.starts_with(".fini_array"))
+            {
                 IsInitOrFini::Yes
             } else {
                 IsInitOrFini::No

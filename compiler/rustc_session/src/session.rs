@@ -123,7 +123,7 @@ pub struct PointerAuthSchema {
 }
 impl PointerAuthSchema {
     pub fn function_pointers_default(target: &Target) -> Self {
-        assert!(target.cfg_abi == CfgAbi::Pauthtest);
+        assert!(target.cfg_abi == CfgAbi::Pauthtest || target.is_arm64e_apple());
         return Self {
             is_address_discriminated: PointerAuthAddressDiscriminator::HardwareAddress(false),
             discrimination_kind: PointerAuthDiscrimination::None,
@@ -167,6 +167,24 @@ pub struct PointerAuthConfig {
     pub vt_ptr_type_discrimination: bool,
 }
 impl PointerAuthConfig {
+    fn arm64e_apple(target: &Target) -> Self {
+        assert!(target.is_arm64e_apple());
+        Self {
+            return_addresses: true,
+            auth_traps: true,
+            indirect_gotos: true,
+            elf_got: false,
+            aarch64_jump_table_hardening: true,
+            // C function pointers must use Clang's IA/zero convention for interoperability.
+            function_pointers: Some(PointerAuthSchema::function_pointers_default(target)),
+            init_fini: None,
+            intrinsics: true,
+            typeinfo_vt_ptr_discrimination: false,
+            vt_ptr_addr_discrimination: false,
+            vt_ptr_type_discrimination: false,
+        }
+    }
+
     fn default(target: &Target) -> Self {
         assert!(target.cfg_abi == CfgAbi::Pauthtest);
         return Self {
@@ -229,6 +247,9 @@ impl PointerAuthConfig {
         pauth_abi_version
     }
     pub fn from_raw(raw: &[(PointerAuthOption, bool)], target: &Target) -> Option<Self> {
+        if target.is_arm64e_apple() {
+            return Some(Self::arm64e_apple(target));
+        }
         if target.cfg_abi != CfgAbi::Pauthtest {
             return None;
         }
