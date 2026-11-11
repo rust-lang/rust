@@ -55,7 +55,7 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error>;
 
     /// Runs after recursively rendering all sub-items of a module.
-    fn mod_item_out(&mut self) -> Result<(), Error> {
+    fn mod_item_out(&mut self, _item: &clean::Item) -> Result<(), Error> {
         Ok(())
     }
 
@@ -82,7 +82,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
             cx.restore_module_data(info);
         }
 
-        cx.mod_item_out()?;
+        cx.mod_item_out(item)?;
     // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
     // cases. Use an explicit match instead.
     } else if let Some(item_name) = item.name

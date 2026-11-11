@@ -26,7 +26,7 @@ use super::{
     render_attributes_in_code, render_impl, render_repr_attribute_in_code, render_rightside,
     render_stability_since_raw, render_stability_since_raw_with_extra, write_section_heading,
 };
-use crate::clean::{self, ItemKind};
+use crate::clean::{self, ExternalLocation, ItemKind};
 use crate::config::ModuleSorting;
 use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::formats::Impl;
@@ -61,6 +61,20 @@ struct NotableTraitBadgeVars {
     color: NotableTraitColor,
 }
 
+enum HtmlLinkOrPath {
+    Link { path: String, url: String },
+    Path(String),
+}
+
+impl fmt::Display for HtmlLinkOrPath {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Link { path, url } => write!(fmt, "<a href=\"{url}\">{path}</a>"),
+            Self::Path(path) => write!(fmt, "<code>{path}</code>"),
+        }
+    }
+}
+
 #[derive(Template)]
 #[template(path = "print_item.html")]
 struct ItemVars<'a> {
@@ -71,12 +85,108 @@ struct ItemVars<'a> {
     stability_since_raw: &'a str,
     notable_trait_badges: Vec<NotableTraitBadgeVars>,
     src_href: Option<&'a str>,
+    original_path: Option<HtmlLinkOrPath>,
 }
 
-pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Display {
+fn compute_reexport_path(
+    cx: &Context<'_>,
+    item: &clean::Item,
+    target_def_id: DefId,
+) -> HtmlLinkOrPath {
+    // We build the doc path from the `DefPath` because we assume that if a foreign item
+    // is not `doc(hidden)`, then it's reachable.
+    fn build_path_from_def_data(
+        root: String,
+        crate_name: Option<Symbol>,
+        path: String,
+        item: &clean::Item,
+        def_path: rustc_hir::definitions::DefPath,
+    ) -> HtmlLinkOrPath {
+        let [parts @ .., last] = &def_path.data else {
+            return HtmlLinkOrPath::Path(path);
+        };
+        let mut root: UrlPartsBuilder = root.into();
+        if let Some(crate_name) = crate_name {
+            root.push(crate_name.as_str());
+        }
+        if item.is_exported_decl_macro() {
+            root.push_fmt(format_args!("{}.{}.html", item.type_(), last.as_sym(true)));
+            HtmlLinkOrPath::Link { path, url: root.finish() }
+        } else {
+            let mut url = parts.iter().fold(root, |mut acc, item| {
+                acc.push_fmt(format_args!("{}", item.as_sym(true)));
+                acc
+            });
+            let kind = item.type_();
+            if matches!(kind, ItemType::Module) {
+                url.push_fmt(format_args!("{}/index.html", last.as_sym(true)));
+            } else {
+                url.push_fmt(format_args!("{}.{}.html", kind, last.as_sym(true)));
+            }
+            HtmlLinkOrPath::Link { path, url: url.finish() }
+        }
+    }
+
+    let tcx = cx.tcx();
+    if item.is_primitive() {
+        HtmlLinkOrPath::Path(item.inner.name.unwrap().to_string())
+    } else if target_def_id.is_local() {
+        let def_path = tcx.def_path(target_def_id);
+        let path = format!("crate{}", def_path.to_string_no_crate_verbose());
+        let is_private = !cx.cache().document_private
+            && !cx.cache().effective_visibilities.is_directly_public(tcx, target_def_id);
+        if !is_private {
+            build_path_from_def_data(
+                // We don't need the root of all crates, just of the current one.
+                cx.root_path()
+                    .strip_suffix("../")
+                    .expect("it should always contain at least one `../`")
+                    .to_string(),
+                None,
+                path,
+                item,
+                def_path,
+            )
+        } else {
+            HtmlLinkOrPath::Path(path)
+        }
+    } else {
+        // To ensure that we go completely through the reexports. If we use
+        // `def_path_debug_str`, we get `alloc::vec::Vec`, but if we use `def_path_str`, we
+        // get `std::vec::Vec`. So let's force the right path.
+        let def_path = tcx.cstore_untracked().def_path(target_def_id);
+        let crate_name = tcx.crate_name(target_def_id.krate);
+        let path = if item.is_exported_decl_macro() {
+            // `macro_rules!` is always documented at the top of the (foreign) crate, so we tweak
+            // the path to reflect that.
+            format!("{}::{}", crate_name, tcx.item_name(target_def_id))
+        } else {
+            format!("{}{}", crate_name, def_path.to_string_no_crate_verbose())
+        };
+        match cx.cache().extern_locations.get(&target_def_id.krate) {
+            Some(ExternalLocation::Local) => build_path_from_def_data(
+                cx.root_path().clone(),
+                Some(crate_name),
+                path,
+                item,
+                def_path,
+            ),
+            Some(ExternalLocation::Remote { url, .. }) => {
+                build_path_from_def_data(url.to_string(), Some(crate_name), path, item, def_path)
+            }
+            Some(ExternalLocation::Unknown) | None => HtmlLinkOrPath::Path(path),
+        }
+    }
+}
+
+pub(super) fn print_item(
+    cx: &Context<'_>,
+    item: &clean::Item,
+    ancestor_reexported: bool,
+) -> impl fmt::Display {
     debug_assert!(!item.is_stripped());
 
-    fmt::from_fn(|buf| {
+    fmt::from_fn(move |buf| {
         let typ = match item.kind {
             ItemKind::Module(_) if item.is_crate() => "Crate ",
             ItemKind::Module(_) => "Module ",
@@ -104,8 +214,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
                 unreachable!();
             }
         };
+        let tcx = cx.tcx();
         let stability_since_raw =
-            render_stability_since_raw(item.stable_since(cx.tcx()), item.const_stability(cx.tcx()))
+            render_stability_since_raw(item.stable_since(tcx), item.const_stability(tcx))
                 .maybe_display()
                 .to_string();
 
@@ -128,6 +239,14 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             })
             .collect();
         let has_notable_trait_badges = !notable_trait_badges.is_empty();
+
+        let mut original_path = None;
+        if (ancestor_reexported || item.inner.inline_stmt_id.is_some())
+            && let Some(target_def_id) = item.item_id.as_def_id()
+            && (!tcx.is_doc_hidden(target_def_id) || cx.cache().document_hidden)
+        {
+            original_path = Some(compute_reexport_path(cx, item, target_def_id));
+        }
 
         let path_components = if item.is_fake_item() {
             vec![]
@@ -154,6 +273,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             stability_since_raw: &stability_since_raw,
             notable_trait_badges,
             src_href: src_href.as_deref(),
+            original_path,
         };
 
         item_vars.render_into(buf).unwrap();
