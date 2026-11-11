@@ -46,6 +46,7 @@
     any(target_arch = "powerpc", target_arch = "powerpc64"),
     feature(powerpc_ppcf128)
 )]
+#![cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), feature(x87_f80))]
 #![cfg_attr(
     test,
     feature(

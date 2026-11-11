@@ -144,7 +144,7 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Returns `true` if the JSON output format is enabled for generating the crate content.
     ///
-    /// If another option like `--show-coverage` is enabled, it will return `false`.
+    /// If another option like `--coverage` is enabled, it will return `false`.
     pub(crate) fn is_json_output(&self) -> bool {
         self.output_format == OutputFormat::IrJson
     }

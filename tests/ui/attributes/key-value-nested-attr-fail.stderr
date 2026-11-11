@@ -17,18 +17,6 @@ LL | #[clippy::insubstantial = #[cfg(true)] "insignificant"]
    |                           ^^^^^^^^^^^^
 
 error: this attribute is not allowed in this context
-  --> $DIR/key-value-nested-attr-fail.rs:51:24
-   |
-LL | #[clippy::immaterial = #[allow(dead_code)] "incorporeal"]
-   |                        ^^^^^^^^^^^^^^^^^^^
-
-error: this attribute is not allowed in this context
-  --> $DIR/key-value-nested-attr-fail.rs:59:9
-   |
-LL | #[arg = #[allow(dead_code)] 0]
-   |         ^^^^^^^^^^^^^^^^^^^
-
-error: this attribute is not allowed in this context
   --> $DIR/key-value-nested-attr-fail.rs:17:10
    |
 LL | #![doc = #[allow(dead_code)] "content"]
@@ -60,6 +48,18 @@ error: this attribute is not allowed in this context
    |
 LL |         repr(Rust)
    |         ^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:51:24
+   |
+LL | #[clippy::immaterial = #[allow(dead_code)] "incorporeal"]
+   |                        ^^^^^^^^^^^^^^^^^^^
+
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-fail.rs:59:9
+   |
+LL | #[arg = #[allow(dead_code)] 0]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error: attribute value must be a literal
   --> $DIR/key-value-nested-attr-fail.rs:65:25

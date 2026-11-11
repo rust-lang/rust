@@ -951,6 +951,7 @@ unsafe extern "C" {
 
     // Operations on non-IEEE real types
     pub(crate) fn LLVMBFloatTypeInContext<'ll>(C: Context<'ll>) -> Type<'ll>;
+    pub(crate) fn LLVMX86FP80TypeInContext<'ll>(C: Context<'ll>) -> Type<'ll>;
     pub(crate) fn LLVMPPCFP128TypeInContext<'ll>(C: Context<'ll>) -> Type<'ll>;
 
     // Operations on function types
@@ -2273,6 +2274,7 @@ unsafe extern "C" {
         kind: DebugEmissionKind,
         DWOId: u64,
         SplitDebugInlining: bool,
+        DebugInfoForProfiling: bool,
         DebugNameTableKind: DebugNameTableKind,
     ) -> &'a DIDescriptor;
 

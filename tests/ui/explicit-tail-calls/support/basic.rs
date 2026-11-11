@@ -1,5 +1,4 @@
 //@ build-pass
-//@ ignore-backends: gcc
 //@ add-minicore
 //
 //@ revisions: i686

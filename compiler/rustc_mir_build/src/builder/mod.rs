@@ -20,7 +20,7 @@
 //! `let this = self;` or similar, allowing subsequent code to uniformly refer
 //! to the builder as `this` (and never `self`), even when not nested.
 
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
@@ -392,8 +392,35 @@ impl LocalsForNode {
     }
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct UnterminatedBlockData<'tcx> {
+    statements: Vec<Statement<'tcx>>,
+    is_cleanup: bool,
+}
+impl<'tcx> UnterminatedBlockData<'tcx> {
+    fn new(statements: Vec<Statement<'tcx>>, is_cleanup: bool) -> Self {
+        UnterminatedBlockData { statements, is_cleanup }
+    }
+}
+
+pub(crate) type CFGBlock<'tcx> = Either<BasicBlockData<'tcx>, UnterminatedBlockData<'tcx>>;
+
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // Note: It's important that `CFGBlock` has the same layout as `BasicBlockData`.
+    // because it makes the final transition to `IndexVec<BasicBlock, BasicBlockData<'tcx>>`
+    // cheaper. If those type layouts differ, we get a perf regression.
+    // See benchmarks in https://github.com/rust-lang/rust/pull/165611 for more info.
+    static_assert_size!(BasicBlockData<'_>, 136);
+    static_assert_size!(CFGBlock<'_>, 136);
+}
+
+#[derive(Debug, Clone)]
 struct CFG<'tcx> {
-    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: IndexVec<BasicBlock, CFGBlock<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -756,7 +783,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
 
     Body::new(
         MirSource::item(def_id.to_def_id()),
-        cfg.basic_blocks,
+        cfg.into_basic_blocks(),
         source_scopes,
         local_decls,
         IndexVec::new(),
@@ -919,7 +946,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn dump_for_debugging(&self) {
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
-            self.cfg.basic_blocks.clone(),
+            self.cfg.clone().into_basic_blocks(),
             self.source_scopes.clone(),
             self.local_decls.clone(),
             self.canonical_user_type_annotations.clone(),
@@ -938,7 +965,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn finish(self) -> Body<'tcx> {
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
-            self.cfg.basic_blocks,
+            self.cfg.into_basic_blocks(),
             self.source_scopes,
             self.local_decls,
             self.canonical_user_type_annotations,

@@ -17,7 +17,7 @@ where
         Numeric::Int(Integer::I128, _) => false,
         Numeric::Float(Float::F32 | Float::F64) => true,
         Numeric::Float(Float::F16 | Float::F128) => false,
-        Numeric::Float(Float::F16B | Float::PpcF128) => bug!("unsupported on mips"),
+        Numeric::Float(Float::F16B | Float::X87F80 | Float::PpcF128) => bug!("unsupported on mips"),
     };
 
     if let Some(component) = ret.layout.complex_number(cx)

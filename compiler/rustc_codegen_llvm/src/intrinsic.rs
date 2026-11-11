@@ -301,6 +301,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     Primitive::Float(Float::PpcF128) => {
                         // Supported on powerpc and powerpc64 targets.
                     }
+                    Primitive::Float(Float::X87F80) => {
+                        // FIXME(x87_f80) we should support this.
+                        bug!("the va_arg intrinsic does not currently support `x87_f80`")
+                    }
                 }
 
                 emit_va_arg(self, args[0], result_layout)
@@ -744,7 +748,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 assert_matches!(
                     self.layout_of(fn_args.type_at(0)).backend_repr,
                     BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        number_of_vectors: NumScalableVectors(2..=8),
                         ..
                     }
                 );
@@ -765,7 +769,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 assert_matches!(
                     self.layout_of(fn_args.type_at(0)).backend_repr,
                     BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        number_of_vectors: NumScalableVectors(2..=8),
                         ..
                     }
                 );

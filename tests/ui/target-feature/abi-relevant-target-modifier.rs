@@ -5,7 +5,6 @@
 //@ needs-llvm-components: arm
 //@[allowed] compile-flags: -Cunsafe-allow-abi-mismatch=target-feature
 //@ aux-build: using-atomics-32.rs
-//@ ignore-backends: gcc
 #![feature(no_core)]
 #![no_core]
 

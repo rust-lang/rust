@@ -1335,10 +1335,9 @@ pub(crate) struct UnknownVersionLiteral {
     pub span: Span,
 }
 
-// FIXME(jdonszelmann) duplicated from `rustc_passes`, remove once `check_attr` is integrated.
 #[derive(Diagnostic)]
 #[diag("multiple `{$name}` attributes")]
-pub(crate) struct UnusedMultiple {
+pub struct UnusedMultiple {
     #[primary_span]
     #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,

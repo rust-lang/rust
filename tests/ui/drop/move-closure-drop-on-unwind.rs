@@ -4,7 +4,6 @@
 
 //@ run-pass
 //@ needs-unwind
-//@ ignore-backends: gcc
 
 use std::panic;
 

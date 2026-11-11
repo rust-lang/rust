@@ -2,7 +2,6 @@
 #![allow(unused_must_use)]
 //@ needs-threads
 //@ needs-unwind
-//@ ignore-backends: gcc
 #![feature(rustc_attrs)]
 
 use std::thread;

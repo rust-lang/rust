@@ -8,7 +8,6 @@
 //! * Functions called by the compiler itself.
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_macros::{BlobDecodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::{Symbol, kw, sym};
@@ -80,7 +79,7 @@ macro_rules! language_item_table {
         $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
         /// A representation of all the valid lang items in Rust.
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, BlobDecodable, PrintAttribute)]
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, StableHash, Encodable, BlobDecodable, PrintAttribute)]
         pub enum LangItem {
             $(
                 #[doc = concat!("The `", stringify!($name), "` lang item.")]
@@ -146,12 +145,6 @@ macro_rules! language_item_table {
                 }
             )*
         }
-    }
-}
-
-impl StableHash for LangItem {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
     }
 }
 
@@ -240,6 +233,8 @@ language_item_table! {
 
     Complex,                 sym::complex,             complex,                    Target::Struct,         GenericRequirement::Exact(1);
     PpcF128,                 sym::ppcf128,             ppcf128,                    Target::Struct,         GenericRequirement::None;
+    X87F80,                  sym::x87_f80,             x87_f80,                    Target::Struct,         GenericRequirement::None;
+    X87F80Raw,               sym::x87_f80_raw,         x87_f80_raw,                Target::Struct,         GenericRequirement::None;
 
     Deref,                   kw::Deref,                deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
@@ -279,6 +274,8 @@ language_item_table! {
 
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     kw::Pin,                  pin_type,                   Target::Struct,         GenericRequirement::None;
+
+    Move,                    sym::move_trait,          move_trait,                 Target::Trait,          GenericRequirement::None;
 
     OrderingEnum,            sym::Ordering,            ordering_enum,              Target::Enum,           GenericRequirement::Exact(0);
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);

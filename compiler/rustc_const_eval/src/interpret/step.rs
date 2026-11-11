@@ -340,6 +340,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if active_field_index.is_some() {
             assert_eq!(operands.len(), 1);
         }
+        // We generally rely on the `reset_provenance_and_padding` below to ensure that all padding
+        // is uninit. However, if we are creating a new union, everything outside the initialized
+        // field should be uninit -- but validity cannot know this as it cannot look into unions. So
+        // for unions we have to additionally reset everything before writing the fields.
+        // We skip this for non-unions for two reasons: (a) performance, and (b) to keep assignments
+        // where LHS and RHS overlap working for scalar types.
+        if dest.layout.ty.is_union() {
+            self.write_uninit(dest)?;
+        }
+        // Initialize the fields.
         for (field_index, operand) in operands.iter_enumerated() {
             let field_index = active_field_index.unwrap_or(field_index);
             let field_dest = self.project_field(&variant_dest, field_index)?;
@@ -347,9 +357,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // We validate manually below so we don't have to do it here.
             self.copy_op_no_validate(&op, &field_dest, /*allow_transmute*/ false)?;
         }
+        // At the end, write the discriminant.
         self.write_discriminant(variant_index, dest)?;
-        // Validate that the entire thing is valid, and reset padding that might be in between the
-        // fields.
+        // Validate that the entire thing is valid, and reset padding.
         if M::enforce_validity(self, dest.layout()) {
             self.validate_place(
                 dest,

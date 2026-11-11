@@ -499,7 +499,7 @@ fn opts() -> Vec<RustcOptGroup> {
             Unstable,
             FlagMulti,
             "",
-            "show-coverage",
+            "coverage",
             "calculate percentage of public items with documentation",
             "",
         ),
