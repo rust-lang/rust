@@ -1,0 +1,12 @@
+error[E0185]: method `bar` has a `&self` declaration in the impl, but not in the trait
+  --> $DIR/staticness-mismatch.rs:7:5
+   |
+LL |     fn bar();
+   |     --------- trait method declared without `&self`
+...
+LL |     fn bar(&self) {}
+   |     ^^^^^^^^^^^^^ `&self` used in impl
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0185`.

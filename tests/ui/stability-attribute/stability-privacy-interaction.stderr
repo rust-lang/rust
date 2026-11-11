@@ -1,0 +1,176 @@
+error[E0658]: use of unstable library feature `unstable_undeclared`
+  --> $DIR/stability-privacy-interaction.rs:29:9
+   |
+LL |         a_unstable_undeclared_pub: _,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
+   = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_undeclared`
+  --> $DIR/stability-privacy-interaction.rs:39:5
+   |
+LL |     r.a_unstable_undeclared_pub;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
+   = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0616]: field `b_crate` of struct `Record` is private
+  --> $DIR/stability-privacy-interaction.rs:40:7
+   |
+LL |     r.b_crate;
+   |       ^^^^^^^ private field
+
+error[E0616]: field `c_mod` of struct `Record` is private
+  --> $DIR/stability-privacy-interaction.rs:41:7
+   |
+LL |     r.c_mod;
+   |       ^^^^^ private field
+
+error[E0616]: field `d_priv` of struct `Record` is private
+  --> $DIR/stability-privacy-interaction.rs:42:7
+   |
+LL |     r.d_priv;
+   |       ^^^^^^ private field
+
+error[E0658]: use of unstable library feature `unstable_undeclared`
+  --> $DIR/stability-privacy-interaction.rs:46:5
+   |
+LL |     t.2;
+   |     ^^^
+   |
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
+   = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0616]: field `3` of struct `pub_and_stability::Tuple` is private
+  --> $DIR/stability-privacy-interaction.rs:47:7
+   |
+LL |     t.3;
+   |       ^ private field
+
+error[E0616]: field `4` of struct `pub_and_stability::Tuple` is private
+  --> $DIR/stability-privacy-interaction.rs:48:7
+   |
+LL |     t.4;
+   |       ^ private field
+
+error[E0616]: field `5` of struct `pub_and_stability::Tuple` is private
+  --> $DIR/stability-privacy-interaction.rs:49:7
+   |
+LL |     t.5;
+   |       ^ private field
+
+error[E0658]: use of unstable library feature `unstable_undeclared`
+  --> $DIR/stability-privacy-interaction.rs:54:7
+   |
+LL |     r.unstable_undeclared_trait_method();
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
+   = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_undeclared`
+  --> $DIR/stability-privacy-interaction.rs:59:7
+   |
+LL |     r.unstable_undeclared();
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
+   = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0624]: method `pub_crate` is private
+  --> $DIR/stability-privacy-interaction.rs:61:7
+   |
+LL |     r.pub_crate();
+   |       ^^^^^^^^^ private method
+   |
+  ::: $DIR/auxiliary/pub-and-stability.rs:114:9
+   |
+LL |         pub(crate) fn pub_crate(&self) -> i32 { self.d_priv }
+   |         ------------------------------------- private method defined here
+
+error[E0624]: method `pub_mod` is private
+  --> $DIR/stability-privacy-interaction.rs:62:7
+   |
+LL |     r.pub_mod();
+   |       ^^^^^^^ private method
+   |
+  ::: $DIR/auxiliary/pub-and-stability.rs:116:9
+   |
+LL |         pub(in crate::m) fn pub_mod(&self) -> i32 { self.d_priv }
+   |         ----------------------------------------- private method defined here
+
+error[E0624]: method `private` is private
+  --> $DIR/stability-privacy-interaction.rs:63:7
+   |
+LL |     r.private();
+   |       ^^^^^^^ private method
+   |
+  ::: $DIR/auxiliary/pub-and-stability.rs:118:9
+   |
+LL |         fn private(&self) -> i32 { self.d_priv }
+   |         ------------------------ private method defined here
+
+error[E0658]: use of unstable library feature `unstable_undeclared`
+  --> $DIR/stability-privacy-interaction.rs:69:7
+   |
+LL |     t.unstable_undeclared_trait_method();
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
+   = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_undeclared`
+  --> $DIR/stability-privacy-interaction.rs:73:7
+   |
+LL |     t.unstable_undeclared();
+   |       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
+   = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0624]: method `pub_crate` is private
+  --> $DIR/stability-privacy-interaction.rs:75:7
+   |
+LL |     t.pub_crate();
+   |       ^^^^^^^^^ private method
+   |
+  ::: $DIR/auxiliary/pub-and-stability.rs:129:9
+   |
+LL |         pub(crate) fn pub_crate(&self) -> i32 { self.0 }
+   |         ------------------------------------- private method defined here
+
+error[E0624]: method `pub_mod` is private
+  --> $DIR/stability-privacy-interaction.rs:76:7
+   |
+LL |     t.pub_mod();
+   |       ^^^^^^^ private method
+   |
+  ::: $DIR/auxiliary/pub-and-stability.rs:130:9
+   |
+LL |         pub(in crate::m) fn pub_mod(&self) -> i32 { self.0 }
+   |         ----------------------------------------- private method defined here
+
+error[E0624]: method `private` is private
+  --> $DIR/stability-privacy-interaction.rs:77:7
+   |
+LL |     t.private();
+   |       ^^^^^^^ private method
+   |
+  ::: $DIR/auxiliary/pub-and-stability.rs:131:9
+   |
+LL |         fn private(&self) -> i32 { self.0 }
+   |         ------------------------ private method defined here
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0616, E0624, E0658.
+For more information about an error, try `rustc --explain E0616`.

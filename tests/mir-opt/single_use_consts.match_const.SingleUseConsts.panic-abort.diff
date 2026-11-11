@@ -1,0 +1,48 @@
+- // MIR for `match_const` before SingleUseConsts
++ // MIR for `match_const` after SingleUseConsts
+  
+  fn match_const() -> &str {
+      let mut _0: &str;
+      let mut _1: i32;
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const <T as MyTrait>::ASSOC_INT;
+-         switchInt(copy _1) -> [7: bb3, 42: bb2, otherwise: bb1];
++         nop;
++         switchInt(const <T as MyTrait>::ASSOC_INT) -> [7: bb3, 42: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const "world";
+          goto -> bb4;
+      }
+  
+      bb2: {
+          _0 = const "towel";
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = const "hello";
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_1);
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 5, align: 1) {
+      77 6f 72 6c 64                                  │ world
+  }
+  
+  ALLOC1 (size: 5, align: 1) {
+      74 6f 77 65 6c                                  │ towel
+  }
+  
+  ALLOC2 (size: 5, align: 1) {
+      68 65 6c 6c 6f                                  │ hello
+  }
+  

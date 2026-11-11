@@ -1,0 +1,10 @@
+{ "type": "suite", "event": "started", "test_count": 4 }
+{ "type": "test", "event": "started", "name": "a" }
+{ "type": "test", "name": "a", "event": "ok", "stdout": "print from successful test\n" }
+{ "type": "test", "event": "started", "name": "b" }
+{ "type": "test", "name": "b", "event": "failed", "stdout": "\nthread 'b' ($TID) panicked at f.rs:9:5:\nassertion failed: false\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n" }
+{ "type": "test", "event": "started", "name": "c" }
+{ "type": "test", "name": "c", "event": "ok", "stdout": "\nthread 'c' ($TID) panicked at f.rs:15:5:\nassertion failed: false\n" }
+{ "type": "test", "event": "started", "name": "d" }
+{ "type": "test", "name": "d", "event": "ignored", "message": "msg" }
+{ "type": "suite", "event": "failed", "passed": 2, "failed": 1, "ignored": 1, "measured": 0, "filtered_out": 0, "exec_time": "$EXEC_TIME" }

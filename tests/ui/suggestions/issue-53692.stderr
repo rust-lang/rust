@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-53692.rs:7:33
+   |
+LL |     let items_clone: Vec<i32> = ref_items.clone();
+   |                      --------   ^^^^^^^^^^^^^^^^^ expected `Vec<i32>`, found `&[i32]`
+   |                      |
+   |                      expected due to this
+   |
+   = note: expected struct `Vec<i32>`
+           found reference `&[i32]`
+help: try using a conversion method
+   |
+LL -     let items_clone: Vec<i32> = ref_items.clone();
+LL +     let items_clone: Vec<i32> = ref_items.to_vec();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/issue-53692.rs:14:26
+   |
+LL |     let string: String = s.clone();
+   |                 ------   ^^^^^^^^^ expected `String`, found `&str`
+   |                 |
+   |                 expected due to this
+   |
+help: try using a conversion method
+   |
+LL -     let string: String = s.clone();
+LL +     let string: String = s.to_string();
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

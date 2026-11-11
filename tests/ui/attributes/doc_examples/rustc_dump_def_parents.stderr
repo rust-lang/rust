@@ -1,0 +1,57 @@
+error: rustc_dump_def_parents: DefId(0:4 ~ rustc_dump_def_parents[9c2e]::parent::child)
+  --> $DIR/rustc_dump_def_parents.rs:8:5
+   |
+ 8 |     fn child() {}
+   |     ^^^^^^^^^^
+   |
+note: DefId(0:3 ~ rustc_dump_def_parents[9c2e]::parent)
+  --> $DIR/rustc_dump_def_parents.rs:6:1
+   |
+ 6 | fn parent() {
+   | ^^^^^^^^^^^
+note: DefId(0:0 ~ rustc_dump_def_parents[9c2e])
+  --> $DIR/rustc_dump_def_parents.rs:4:1
+   |
+ 4 | / #![feature(rustc_attrs)]
+ 5 | |
+ 6 | | fn parent() {
+ 7 | |     #[rustc_dump_def_parents]
+...  |
+19 | |     },
+20 | | >;
+   | |__^
+
+error: rustc_dump_def_parents: DefId(0:11 ~ rustc_dump_def_parents[9c2e]::CONST::{constant#1}::baby)
+  --> $DIR/rustc_dump_def_parents.rs:16:9
+   |
+16 |         fn baby() {}
+   |         ^^^^^^^^^
+   |
+note: DefId(0:10 ~ rustc_dump_def_parents[9c2e]::CONST::{constant#1})
+  --> $DIR/rustc_dump_def_parents.rs:14:5
+   |
+14 | /     {
+15 | |         #[rustc_dump_def_parents]
+16 | |         fn baby() {}
+...  |
+19 | |     },
+   | |_____^
+note: DefId(0:8 ~ rustc_dump_def_parents[9c2e]::CONST)
+  --> $DIR/rustc_dump_def_parents.rs:13:1
+   |
+13 | const CONST: Struct<42> = Struct::<
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: DefId(0:0 ~ rustc_dump_def_parents[9c2e])
+  --> $DIR/rustc_dump_def_parents.rs:4:1
+   |
+ 4 | / #![feature(rustc_attrs)]
+ 5 | |
+ 6 | | fn parent() {
+ 7 | |     #[rustc_dump_def_parents]
+...  |
+19 | |     },
+20 | | >;
+   | |__^
+
+error: aborting due to 2 previous errors
+

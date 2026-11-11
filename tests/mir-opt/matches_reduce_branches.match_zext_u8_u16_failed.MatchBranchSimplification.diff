@@ -1,0 +1,42 @@
+- // MIR for `match_zext_u8_u16_failed` before MatchBranchSimplification
++ // MIR for `match_zext_u8_u16_failed` after MatchBranchSimplification
+  
+  fn match_zext_u8_u16_failed(_1: EnumAu8) -> u16 {
+      debug i => _1;
+      let mut _0: u16;
+      let mut _2: u8;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb5, 127: bb4, 128: bb3, 255: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = const 255_u16;
+          goto -> bb6;
+      }
+  
+      bb3: {
+          _0 = const 128_u16;
+          goto -> bb6;
+      }
+  
+      bb4: {
+          _0 = const 65407_u16;
+          goto -> bb6;
+      }
+  
+      bb5: {
+          _0 = const 0_u16;
+          goto -> bb6;
+      }
+  
+      bb6: {
+          return;
+      }
+  }
+  

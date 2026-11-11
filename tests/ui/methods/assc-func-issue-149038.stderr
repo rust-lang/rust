@@ -1,0 +1,43 @@
+error[E0599]: no method named `foo` found for reference `&S` in the current scope
+  --> $DIR/assc-func-issue-149038.rs:5:14
+   |
+LL |         self.foo();
+   |              ^^^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `S`
+  --> $DIR/assc-func-issue-149038.rs:3:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -         self.foo();
+LL +         S::foo();
+   |
+
+error[E0609]: no field `foo` on type `&S`
+  --> $DIR/assc-func-issue-149038.rs:6:28
+   |
+LL |         let f: fn() = self.foo;
+   |                            ^^^
+   |                            |
+   |                            this is an associated function, not a method
+   |                            unknown field
+   |
+   = note: found the following associated function; to be used as method, it must have a `self` parameter
+note: the candidate is defined in an impl for the type `S`
+  --> $DIR/assc-func-issue-149038.rs:3:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -         let f: fn() = self.foo;
+LL +         let f: fn() = S::foo;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0609.
+For more information about an error, try `rustc --explain E0599`.

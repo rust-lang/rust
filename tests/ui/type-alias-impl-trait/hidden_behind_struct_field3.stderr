@@ -1,0 +1,23 @@
+error: unconstrained opaque type
+  --> $DIR/hidden_behind_struct_field3.rs:16:19
+   |
+LL |     type Assoc2 = impl std::fmt::Debug;
+   |                   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Assoc2` must be used in combination with a concrete type within the same impl
+
+error[E0308]: mismatched types
+  --> $DIR/hidden_behind_struct_field3.rs:20:27
+   |
+LL |     type Assoc2 = impl std::fmt::Debug;
+   |                   -------------------- the expected opaque type
+...
+LL |         vec![Foo { field: () }].into_iter()
+   |                           ^^ expected opaque type, found `()`
+   |
+   = note: expected opaque type `<Bar as Trait>::Assoc2`
+                found unit type `()`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

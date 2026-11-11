@@ -1,0 +1,25 @@
+error[E0381]: partially assigned binding `s` isn't fully initialized
+  --> $DIR/borrowck-union-uninitialized.rs:13:9
+   |
+LL |         let mut s: S;
+   |             ----- binding declared here but left uninitialized
+LL |         let mut u: U;
+LL |         s.a = 0;
+   |         ^^^^^^^ `s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `u` isn't fully initialized
+  --> $DIR/borrowck-union-uninitialized.rs:14:9
+   |
+LL |         let mut u: U;
+   |             ----- binding declared here but left uninitialized
+LL |         s.a = 0;
+LL |         u.a = 0;
+   |         ^^^^^^^ `u` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

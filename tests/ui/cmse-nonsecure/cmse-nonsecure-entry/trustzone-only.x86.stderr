@@ -1,0 +1,9 @@
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/trustzone-only.rs:18:12
+   |
+LL | pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0570`.

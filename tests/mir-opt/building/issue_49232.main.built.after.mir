@@ -1,0 +1,92 @@
+// MIR for `main` after built
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: ();
+    let _2: i32;
+    let mut _3: bool;
+    let mut _4: !;
+    let _5: ();
+    let mut _6: &i32;
+    scope 1 {
+        debug beacon => _2;
+    }
+
+    bb0: {
+        goto -> bb1;
+    }
+
+    bb1: {
+        falseUnwind -> [real: bb2, unwind: bb14];
+    }
+
+    bb2: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = const true;
+        PlaceMention(_3);
+        switchInt(copy _3) -> [0: bb4, otherwise: bb6];
+    }
+
+    bb3: {
+        FakeRead(ForMatchedPlace(None), _3);
+        unreachable;
+    }
+
+    bb4: {
+        falseEdge -> [real: bb8, imaginary: bb6];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        _0 = const ();
+        goto -> bb13;
+    }
+
+    bb7: {
+        goto -> bb3;
+    }
+
+    bb8: {
+        _2 = const 4_i32;
+        goto -> bb11;
+    }
+
+    bb9: {
+        unreachable;
+    }
+
+    bb10: {
+        goto -> bb11;
+    }
+
+    bb11: {
+        FakeRead(ForLet(None), _2);
+        StorageDead(_3);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = &_2;
+        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb12, unwind: bb14];
+    }
+
+    bb12: {
+        StorageDead(_6);
+        StorageDead(_5);
+        _1 = const ();
+        StorageDead(_2);
+        goto -> bb1;
+    }
+
+    bb13: {
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+
+    bb14 (cleanup): {
+        resume;
+    }
+}

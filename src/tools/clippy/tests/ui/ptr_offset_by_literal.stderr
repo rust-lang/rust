@@ -1,0 +1,141 @@
+error: use of `offset` with zero
+  --> tests/ui/ptr_offset_by_literal.rs:13:17
+   |
+LL |         let _ = ptr.offset(0);
+   |                 ^^^----------
+   |                    |
+   |                    help: remove the call to `offset`
+   |
+   = note: `-D clippy::ptr-offset-by-literal` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_offset_by_literal)]`
+
+error: use of `offset` with zero
+  --> tests/ui/ptr_offset_by_literal.rs:15:17
+   |
+LL |         let _ = ptr.offset(-0);
+   |                 ^^^-----------
+   |                    |
+   |                    help: remove the call to `offset`
+
+error: use of `offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:18:17
+   |
+LL |         let _ = ptr.offset(5);
+   |                 ^^^^^^^^^^^^^
+   |
+help: use `add` instead
+   |
+LL -         let _ = ptr.offset(5);
+LL +         let _ = ptr.add(5);
+   |
+
+error: use of `offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:20:17
+   |
+LL |         let _ = ptr.offset(-5);
+   |                 ^^^^^^^^^^^^^^
+   |
+help: use `sub` instead
+   |
+LL -         let _ = ptr.offset(-5);
+LL +         let _ = ptr.sub(5);
+   |
+
+error: use of `wrapping_offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:26:17
+   |
+LL |         let _ = ptr.wrapping_offset(5isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `wrapping_add` instead
+   |
+LL -         let _ = ptr.wrapping_offset(5isize);
+LL +         let _ = ptr.wrapping_add(5);
+   |
+
+error: use of `wrapping_offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:28:17
+   |
+LL |         let _ = ptr.wrapping_offset(-5isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `wrapping_sub` instead
+   |
+LL -         let _ = ptr.wrapping_offset(-5isize);
+LL +         let _ = ptr.wrapping_sub(5);
+   |
+
+error: use of `offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:31:17
+   |
+LL |         let _ = ptr.offset(-(5));
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: use `sub` instead
+   |
+LL -         let _ = ptr.offset(-(5));
+LL +         let _ = ptr.sub(5);
+   |
+
+error: use of `wrapping_offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:33:17
+   |
+LL |         let _ = ptr.wrapping_offset(-(5));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `wrapping_sub` instead
+   |
+LL -         let _ = ptr.wrapping_offset(-(5));
+LL +         let _ = ptr.wrapping_sub(5);
+   |
+
+error: use of `offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:37:17
+   |
+LL |         let _ = ptr.offset(2_147_483_647isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `add` instead
+   |
+LL -         let _ = ptr.offset(2_147_483_647isize);
+LL +         let _ = ptr.add(2_147_483_647);
+   |
+
+error: use of `offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:39:17
+   |
+LL |         let _ = ptr.offset(-2_147_483_648isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `sub` instead
+   |
+LL -         let _ = ptr.offset(-2_147_483_648isize);
+LL +         let _ = ptr.sub(2_147_483_648);
+   |
+
+error: use of `offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:42:17
+   |
+LL |         let _ = ptr.offset(5_0__isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `add` instead
+   |
+LL -         let _ = ptr.offset(5_0__isize);
+LL +         let _ = ptr.add(5_0);
+   |
+
+error: use of `offset` with a literal
+  --> tests/ui/ptr_offset_by_literal.rs:44:17
+   |
+LL |         let _ = ptr.offset(-5_0__isize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `sub` instead
+   |
+LL -         let _ = ptr.offset(-5_0__isize);
+LL +         let _ = ptr.sub(5_0);
+   |
+
+error: aborting due to 12 previous errors
+

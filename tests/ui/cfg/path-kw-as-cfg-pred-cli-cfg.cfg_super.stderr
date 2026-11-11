@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `super` (malformed `cfg` input, expected a valid identifier)
+

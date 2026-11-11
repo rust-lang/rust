@@ -1,0 +1,8 @@
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-53598.rs:19:31
+   |
+LL |     fn foo<T: Debug>(_: T) -> Self::Item {
+   |                               ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+error: expected identifier, found reserved keyword `try`
+  --> $DIR/keyword-try-as-identifier-edition2018.rs:4:9
+   |
+LL |     let try = "foo";
+   |         ^^^ expected identifier, found reserved keyword
+   |
+help: escape `try` to use it as an identifier
+   |
+LL |     let r#try = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

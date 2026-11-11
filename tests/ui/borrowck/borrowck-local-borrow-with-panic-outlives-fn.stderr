@@ -1,0 +1,17 @@
+error[E0597]: `z.1` does not live long enough
+  --> $DIR/borrowck-local-borrow-with-panic-outlives-fn.rs:3:15
+   |
+LL |     let mut z = (0, 0);
+   |         ----- binding `z` declared here
+LL |     *x = Some(&mut z.1);
+   |     ----------^^^^^^^^-
+   |     |         |
+   |     |         borrowed value does not live long enough
+   |     assignment requires that `z.1` is borrowed for `'static`
+...
+LL | }
+   | - `z.1` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

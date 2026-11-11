@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `&'static B: From<&A>` is not satisfied
+  --> $DIR/multiple-def-uses-in-one-fn.rs:10:45
+   |
+LL | fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
+   |                                             ^^^^^^^^^^^^^^^^^^ the trait `From<&A>` is not implemented for `&'static B`
+   |
+   = note: required for `&A` to implement `Into<&'static B>`
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) where &'static B: From<&A> {
+   |                                                                ++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

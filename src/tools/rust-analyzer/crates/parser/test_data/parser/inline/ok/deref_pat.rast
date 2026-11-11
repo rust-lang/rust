@@ -1,0 +1,36 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          DEREF_PAT
+            BUILTIN_KW "builtin"
+            WHITESPACE " "
+            POUND "#"
+            WHITESPACE " "
+            DEREF_KW "deref"
+            L_PAREN "("
+            WILDCARD_PAT
+              UNDERSCORE "_"
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

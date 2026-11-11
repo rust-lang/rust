@@ -1,0 +1,30 @@
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/concat-trace-errors.rs:17:24
+   |
+LL | macro_rules! post_expansion {
+LL |     ($a:literal) => {
+LL |         const _: () = ${concat("hi", $a, "bye")};
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | post_expansion!("!");
+   | -------------------- in this macro invocation
+   |
+   = note: this `${concat(..)}` invocation generated `hi!bye`, but '!' is not XID_Continue
+   = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
+
+error: `${concat(..)}` is not generating a valid identifier
+  --> $DIR/concat-trace-errors.rs:31:24
+   |
+LL | macro_rules! post_expansion_many {
+LL |     ($a:ident, $b:ident, $c:ident, $d:literal, $e:ident) => {
+LL |         const _: () = ${concat($a, $b, $c, $d, $e)};
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | post_expansion_many!(a, b, c, ".d", e);
+   | -------------------------------------- in this macro invocation
+   |
+   = note: this `${concat(..)}` invocation generated `abc.de`, but '.' is not XID_Continue
+   = note: see <https://doc.rust-lang.org/reference/identifiers.html> for the definition of valid identifiers
+
+error: aborting due to 2 previous errors
+

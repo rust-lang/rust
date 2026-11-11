@@ -1,0 +1,18 @@
+error[E0255]: the name `Iter` is defined multiple times
+  --> $DIR/resolve-conflict-type-vs-import.rs:3:1
+   |
+LL | use std::slice::Iter;
+   |     ---------------- previous import of the type `Iter` here
+LL |
+LL | struct Iter;
+   | ^^^^^^^^^^^^ `Iter` redefined here
+   |
+   = note: `Iter` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use std::slice::Iter as OtherIter;
+   |                      ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0255`.

@@ -1,0 +1,12 @@
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/issue-57979-deeply-nested-impl-trait-in-assoc-proj.rs:14:48
+   |
+LL | pub fn demo(_: impl Quux<Assoc=Deeper<impl Foo<impl Bar>>>) { }
+   |                                       ---------^^^^^^^^-
+   |                                       |        |
+   |                                       |        nested `impl Trait` here
+   |                                       outer `impl Trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0666`.

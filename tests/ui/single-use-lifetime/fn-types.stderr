@@ -1,0 +1,28 @@
+error: lifetime parameter `'a` only used once
+  --> $DIR/fn-types.rs:9:10
+   |
+LL |   a: for<'a> fn(&'a u32),
+   |          ^^      -- ...is used only here
+   |          |
+   |          this lifetime...
+   |
+note: the lint level is defined here
+  --> $DIR/fn-types.rs:1:9
+   |
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+help: elide the single-use lifetime
+   |
+LL -   a: for<'a> fn(&'a u32),
+LL +   a: fn(&u32),
+   |
+
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/fn-types.rs:12:22
+   |
+LL |   d: for<'a> fn() -> &'a u32, // OK, used only in return type.
+   |                      ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0581`.

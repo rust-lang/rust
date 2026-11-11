@@ -1,0 +1,32 @@
+error[E0703]: invalid ABI: found `'`
+  --> $DIR/extern-only-quotes-issue-147365.rs:7:8
+   |
+LL | extern "'" {}
+   |        ^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+help: there's a similarly named valid ABI `C`
+   |
+LL - extern "'" {}
+LL + extern "C" {}
+   |
+
+error[E0703]: invalid ABI: found `''`
+  --> $DIR/extern-only-quotes-issue-147365.rs:9:8
+   |
+LL | extern "''" {}
+   |        ^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error[E0703]: invalid ABI: found `'''`
+  --> $DIR/extern-only-quotes-issue-147365.rs:11:8
+   |
+LL | extern "'''" {}
+   |        ^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0703`.

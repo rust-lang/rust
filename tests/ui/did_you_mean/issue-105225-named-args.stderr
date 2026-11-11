@@ -1,0 +1,22 @@
+error: redundant argument
+  --> $DIR/issue-105225-named-args.rs:5:21
+   |
+LL |     println!("{x}", x, x = y);
+   |                     ^
+   |
+note: the formatting specifier is referencing the binding already
+  --> $DIR/issue-105225-named-args.rs:5:16
+   |
+LL |     println!("{x}", x, x = y);
+   |                ^
+
+error: duplicate argument named `x`
+  --> $DIR/issue-105225-named-args.rs:8:28
+   |
+LL |     println!("{x}", x = y, x = y);
+   |                     -      ^ duplicate argument
+   |                     |
+   |                     previously here
+
+error: aborting due to 2 previous errors
+

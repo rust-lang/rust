@@ -1,0 +1,45 @@
+error[E0570]: "Swift" is not a supported ABI for the current target
+  --> $DIR/swift-abi-non-apple.rs:13:8
+   |
+LL | extern "Swift" fn f() {}
+   |        ^^^^^^^
+
+error[E0570]: "Swift" is not a supported ABI for the current target
+  --> $DIR/swift-abi-non-apple.rs:16:12
+   |
+LL |     extern "Swift" fn m();
+   |            ^^^^^^^
+
+error[E0570]: "Swift" is not a supported ABI for the current target
+  --> $DIR/swift-abi-non-apple.rs:18:12
+   |
+LL |     extern "Swift" fn dm() {}
+   |            ^^^^^^^
+
+error[E0570]: "Swift" is not a supported ABI for the current target
+  --> $DIR/swift-abi-non-apple.rs:23:12
+   |
+LL |     extern "Swift" fn m() {}
+   |            ^^^^^^^
+
+error[E0570]: "Swift" is not a supported ABI for the current target
+  --> $DIR/swift-abi-non-apple.rs:27:12
+   |
+LL |     extern "Swift" fn im() {}
+   |            ^^^^^^^
+
+error[E0570]: "Swift" is not a supported ABI for the current target
+  --> $DIR/swift-abi-non-apple.rs:30:18
+   |
+LL | type TA = extern "Swift" fn();
+   |                  ^^^^^^^
+
+error[E0570]: "Swift" is not a supported ABI for the current target
+  --> $DIR/swift-abi-non-apple.rs:32:8
+   |
+LL | extern "Swift" {}
+   |        ^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0570`.

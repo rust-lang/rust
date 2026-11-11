@@ -1,0 +1,17 @@
+error[E0220]: associated type `Res` not found for `Self`
+  --> $DIR/issue-59029-1.rs:5:52
+   |
+LL | trait MkSvc<Target, Req> = Svc<Target> where Self::Res: Svc<Req>;
+   |                                                    ^^^ there is an associated type `Res` in the trait `Svc`
+
+error[E0220]: associated type `Res` not found for `Self`
+  --> $DIR/issue-59029-1.rs:5:52
+   |
+LL | trait MkSvc<Target, Req> = Svc<Target> where Self::Res: Svc<Req>;
+   |                                                    ^^^ there is an associated type `Res` in the trait `Svc`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

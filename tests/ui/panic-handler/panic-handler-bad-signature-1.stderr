@@ -1,0 +1,12 @@
+error[E0308]: `#[panic_handler]` function has wrong type
+  --> $DIR/panic-handler-bad-signature-1.rs:9:16
+   |
+LL | fn panic(info: PanicInfo) -> () {}
+   |                ^^^^^^^^^ expected `&PanicInfo<'_>`, found `PanicInfo<'_>`
+   |
+   = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
+              found signature `for<'a> fn(PanicInfo<'a>) -> ()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,41 @@
+note: external requirements
+  --> $DIR/escape-upvar-ref.rs:23:27
+   |
+LL |         let mut closure = || p = &y;
+   |                           ^^
+   |
+   = note: defining type: test::{closure#0} with closure args [
+               i16,
+               extern "rust-call" fn(()),
+               (&'?1 mut &'?2 i32, &'?3 i32),
+           ]
+   = note: number of external vids: 4
+   = note: where '?3: '?2
+
+note: no external requirements
+  --> $DIR/escape-upvar-ref.rs:17:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+   = note: defining type: test
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-upvar-ref.rs:23:35
+   |
+LL |         let y = 22;
+   |             - binding `y` declared here
+LL |         let mut closure = || p = &y;
+   |                           --      ^ borrowed value does not live long enough
+   |                           |
+   |                           value captured here
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL |
+LL |     deref(p);
+   |           - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

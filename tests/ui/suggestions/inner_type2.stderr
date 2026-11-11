@@ -1,0 +1,29 @@
+error[E0599]: no method named `method` found for struct `LocalKey<T>` in the current scope
+  --> $DIR/inner_type2.rs:18:12
+   |
+LL |     STRUCT.method();
+   |            ^^^^^^ method not found in `LocalKey<Struct<u32>>`
+   |
+   = help: use `with` or `try_with` to access thread local storage
+note: the method `method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type2.rs:6:5
+   |
+LL |     pub fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `method` found for union `MaybeUninit<T>` in the current scope
+  --> $DIR/inner_type2.rs:23:10
+   |
+LL |     item.method();
+   |          ^^^^^^ method not found in `MaybeUninit<Struct<u32>>`
+   |
+   = help: if this `MaybeUninit<Struct<u32>>` has been initialized, use one of the `assume_init` methods to access the inner value
+note: the method `method` exists on the type `Struct<u32>`
+  --> $DIR/inner_type2.rs:6:5
+   |
+LL |     pub fn method(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

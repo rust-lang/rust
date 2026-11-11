@@ -1,0 +1,15 @@
+error[E0382]: use of moved value
+  --> $DIR/move-in-pattern-mut-in-loop.rs:7:21
+   |
+LL |         if let Some(mut _x) = opt {}
+   |                     ^^^^^^ value moved here, in previous iteration of loop
+   |
+   = note: move occurs because value has type `&mut i32`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         if let Some(ref mut _x) = opt {}
+   |                     +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,25 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-in-structs.rs:10:9
+   |
+LL |     a: &'a isize,
+   |         ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct StructDecl<'a> {
+   |                  ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-in-structs.rs:11:9
+   |
+LL |     b: &'a isize,
+   |         ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct StructDecl<'a> {
+   |                  ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

@@ -1,0 +1,15 @@
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/yield-in-static.rs:3:18
+   |
+LL | static B: u8 = { yield 3u8; 3u8};
+   |                  ^^^^^^^^^
+
+error[E0627]: yield expression outside of coroutine literal
+  --> $DIR/yield-in-static.rs:3:18
+   |
+LL | static B: u8 = { yield 3u8; 3u8};
+   |                  ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0627`.

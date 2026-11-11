@@ -1,0 +1,16 @@
+error: malformed `deny` attribute input
+  --> $DIR/deduplicate-diagnostics.rs:10:8
+   |
+LL | #[deny("literal")]
+   |        ^^^^^^^^^ not the name of a lint
+   |
+   = help: try using `#[deny(literal)]`
+
+error: cannot find derive macro `Unresolved` in this scope
+  --> $DIR/deduplicate-diagnostics.rs:6:10
+   |
+LL | #[derive(Unresolved)]
+   |          ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

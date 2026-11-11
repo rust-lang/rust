@@ -1,0 +1,72 @@
+- // MIR for `if_let` before UnreachablePropagation
++ // MIR for `if_let` after UnreachablePropagation
+  
+  fn if_let() -> () {
+      let mut _0: ();
+      let mut _1: std::option::Option<Empty>;
+      let mut _2: isize;
+      let _5: ();
+      let mut _6: bool;
+      let mut _7: !;
++     let mut _8: bool;
+      scope 1 {
+          debug _x => _3;
+          let _3: Empty;
+          let mut _4: i32;
+          scope 2 {
+              debug _y => _4;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = empty() -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [1: bb2, otherwise: bb6];
++         _8 = Ne(copy _2, const 1_isize);
++         assume(move _8);
++         goto -> bb6;
+      }
+  
+      bb2: {
+-         StorageLive(_3);
+-         _3 = move ((_1 as Some).0: Empty);
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = const true;
+-         switchInt(move _6) -> [0: bb4, otherwise: bb3];
++         unreachable;
+      }
+  
+      bb3: {
+-         _4 = const 21_i32;
+-         _5 = const ();
+-         goto -> bb5;
++         unreachable;
+      }
+  
+      bb4: {
+-         _4 = const 42_i32;
+-         _5 = const ();
+-         goto -> bb5;
++         unreachable;
+      }
+  
+      bb5: {
+-         StorageDead(_6);
+-         StorageDead(_5);
+-         StorageLive(_7);
+          unreachable;
+      }
+  
+      bb6: {
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  

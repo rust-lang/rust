@@ -1,0 +1,39 @@
+warning: `#[unsafe(no_mangle)]` attribute may not be used in combination with `#[unsafe(export_name)]`
+  --> $DIR/mixed_export_name_and_no_mangle_2024.rs:7:1
+   |
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^ `#[unsafe(no_mangle)]` is ignored
+   |
+note: `#[unsafe(export_name)]` takes precedence
+  --> $DIR/mixed_export_name_and_no_mangle_2024.rs:9:1
+   |
+LL | #[unsafe(export_name = "foo")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/mixed_export_name_and_no_mangle_2024.rs:6:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+help: remove the `#[unsafe(no_mangle)]` attribute
+   |
+LL - #[unsafe(no_mangle)]
+   |
+
+warning: `#[unsafe(no_mangle)]` attribute may not be used in combination with `#[unsafe(export_name)]`
+  --> $DIR/mixed_export_name_and_no_mangle_2024.rs:12:1
+   |
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^ `#[unsafe(no_mangle)]` is ignored
+   |
+note: `#[unsafe(export_name)]` takes precedence
+  --> $DIR/mixed_export_name_and_no_mangle_2024.rs:14:1
+   |
+LL | #[unsafe(export_name = "baz")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove the `#[unsafe(no_mangle)]` attribute
+   |
+LL - #[unsafe(no_mangle)]
+   |
+
+warning: 2 warnings emitted
+

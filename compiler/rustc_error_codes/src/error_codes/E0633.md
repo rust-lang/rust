@@ -1,0 +1,27 @@
+#### Note: this error code is no longer emitted by the compiler.
+
+The `unwind` attribute was malformed.
+
+Erroneous code example:
+
+```compile_fail
+#![feature(unwind_attributes)]
+
+#[unwind()] // error: expected one argument
+pub extern "C" fn something() {}
+
+fn main() {}
+```
+
+The `#[unwind]` attribute should be used as follows:
+
+- `#[unwind(aborts)]` -- specifies that if a non-Rust ABI function
+  should abort the process if it attempts to unwind. This is the safer
+  and preferred option.
+
+- `#[unwind(allowed)]` -- specifies that a non-Rust ABI function
+  should be allowed to unwind. This can easily result in Undefined
+  Behavior (UB), so be careful.
+
+NB. The default behavior here is "allowed", but this is unspecified
+and likely to change in the future.

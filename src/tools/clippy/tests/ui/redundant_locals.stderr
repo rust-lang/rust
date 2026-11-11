@@ -1,0 +1,172 @@
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:13:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:12:9
+   |
+LL |     let x = 1;
+   |         ^
+   = note: `-D clippy::redundant-locals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_locals)]`
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:19:5
+   |
+LL |     let mut x = x;
+   |     ^^^^^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:18:9
+   |
+LL |     let mut x = 1;
+   |         ^^^^^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:50:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:49:14
+   |
+LL | fn parameter(x: i32) {
+   |              ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:56:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:55:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:58:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:56:9
+   |
+LL |     let x = x;
+   |         ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:60:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:58:9
+   |
+LL |     let x = x;
+   |         ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:62:5
+   |
+LL |     let x = x;
+   |     ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:60:9
+   |
+LL |     let x = x;
+   |         ^
+
+error: redundant redefinition of a binding `a`
+  --> tests/ui/redundant_locals.rs:69:5
+   |
+LL |     let a = a;
+   |     ^^^^^^^^^^
+   |
+help: `a` is initially defined here
+  --> tests/ui/redundant_locals.rs:67:9
+   |
+LL |     let a = 1;
+   |         ^
+
+error: redundant redefinition of a binding `b`
+  --> tests/ui/redundant_locals.rs:71:5
+   |
+LL |     let b = b;
+   |     ^^^^^^^^^^
+   |
+help: `b` is initially defined here
+  --> tests/ui/redundant_locals.rs:68:9
+   |
+LL |     let b = 2;
+   |         ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:78:9
+   |
+LL |         let x = x;
+   |         ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:77:13
+   |
+LL |         let x = 1;
+   |             ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:86:9
+   |
+LL |         let x = x;
+   |         ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:85:13
+   |
+LL |         let x = 1;
+   |             ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:90:9
+   |
+LL |         let x = x;
+   |         ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:89:6
+   |
+LL |     |x: i32| {
+   |      ^
+
+error: redundant redefinition of a binding `x`
+  --> tests/ui/redundant_locals.rs:110:9
+   |
+LL |         let x = x;
+   |         ^^^^^^^^^^
+   |
+help: `x` is initially defined here
+  --> tests/ui/redundant_locals.rs:107:9
+   |
+LL |     let x = 1;
+   |         ^
+
+error: redundant redefinition of a binding `a`
+  --> tests/ui/redundant_locals.rs:166:5
+   |
+LL |     let a = a;
+   |     ^^^^^^^^^^
+   |
+help: `a` is initially defined here
+  --> tests/ui/redundant_locals.rs:164:9
+   |
+LL |     let a = WithoutDrop(1);
+   |         ^
+
+error: aborting due to 14 previous errors
+

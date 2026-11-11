@@ -1,0 +1,19 @@
+error: symbol-name(_ZN5basic4main17hd30beb15618b9d64E)
+  --> $DIR/basic.rs:8:1
+   |
+LL | / #[rustc_dump_symbol_name]
+...  |
+LL | | fn main() {
+   | |_________^
+   |
+   = note: demangling(basic::main::hd30beb15618b9d64)
+   = note: demangling-alt(basic::main)
+
+error: def-path(main)
+  --> $DIR/basic.rs:15:1
+   |
+LL | #[rustc_dump_def_path]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,13 @@
+error: path separator must be a double colon
+  --> $DIR/issue-54516.rs:5:28
+   |
+LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
+   |                            ^
+   |
+help: use a double colon instead
+   |
+LL |     println!("{}", std::mem::size_of::<BTreeMap<u32, u32>>());
+   |                             +
+
+error: aborting due to 1 previous error
+

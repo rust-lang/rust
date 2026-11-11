@@ -1,0 +1,12 @@
+warning: method `foo` is never used
+  --> $DIR/method-two-trait-defer-resolution-2.rs:17:19
+   |
+LL | trait MyCopy { fn foo(&self) { } }
+   |       ------      ^^^
+   |       |
+   |       method in this trait
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

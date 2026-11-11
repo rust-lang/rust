@@ -1,0 +1,156 @@
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:42:1
+   |
+LL | pub struct T5<T>(T, Private);
+   | ^^^^^^^^^^^^^^^^ -  ------- this field contains `Private`, which has private fields, so it could become non-zero-sized in the future
+   | |                |
+   | |                this field is generic and hence may have non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:46:1
+   |
+LL | pub struct T6(Sized, NonExhaustive);
+   | ^^^^^^^^^^^^^ -----  ------------- this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |             |
+   | |             this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:50:1
+   |
+LL | pub struct T6a(Sized, <i32 as Trait>::Assoc); // normalizes to `NonExhaustive`
+   | ^^^^^^^^^^^^^^ -----  --------------------- this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:54:1
+   |
+LL | pub struct T7(Sized, NonExhaustiveEnum);
+   | ^^^^^^^^^^^^^ -----  ----------------- this field contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |             |
+   | |             this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:58:1
+   |
+LL | pub struct T8(Sized, NonExhaustiveVariant);
+   | ^^^^^^^^^^^^^ -----  -------------------- this field contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |             |
+   | |             this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:62:1
+   |
+LL | pub struct T9(Sized, InternalIndirection<Private>);
+   | ^^^^^^^^^^^^^ -----  ---------------------------- this field contains `Private`, which has private fields, so it could become non-zero-sized in the future
+   | |             |
+   | |             this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:66:1
+   |
+LL | pub struct T10(Sized, InternalIndirection<NonExhaustive>);
+   | ^^^^^^^^^^^^^^ -----  ---------------------------------- this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:70:1
+   |
+LL | pub struct T11(Sized, InternalIndirection<NonExhaustiveEnum>);
+   | ^^^^^^^^^^^^^^ -----  -------------------------------------- this field contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:74:1
+   |
+LL | pub struct T12(Sized, InternalIndirection<NonExhaustiveVariant>);
+   | ^^^^^^^^^^^^^^ -----  ----------------------------------------- this field contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:78:1
+   |
+LL | pub struct T13(Sized, ExternalIndirection<Private>);
+   | ^^^^^^^^^^^^^^ -----  ---------------------------- this field contains `Private`, which has private fields, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:82:1
+   |
+LL | pub struct T14(Sized, ExternalIndirection<NonExhaustive>);
+   | ^^^^^^^^^^^^^^ -----  ---------------------------------- this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:86:1
+   |
+LL | pub struct T15(Sized, ExternalIndirection<NonExhaustiveEnum>);
+   | ^^^^^^^^^^^^^^ -----  -------------------------------------- this field contains `NonExhaustiveEnum`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:90:1
+   |
+LL | pub struct T16(Sized, ExternalIndirection<NonExhaustiveVariant>);
+   | ^^^^^^^^^^^^^^ -----  ----------------------------------------- this field contains `NonExhaustiveVariant`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field has non-zero size
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:94:1
+   |
+LL | pub struct T17(NonExhaustive, Sized);
+   | ^^^^^^^^^^^^^^ -------------  ----- this field has non-zero size
+   | |              |
+   | |              this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:98:1
+   |
+LL | pub struct T18(NonExhaustive, NonExhaustive);
+   | ^^^^^^^^^^^^^^ -------------  ------------- this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:102:1
+   |
+LL | pub struct T19(NonExhaustive, Private);
+   | ^^^^^^^^^^^^^^ -------------  ------- this field contains `Private`, which has private fields, so it could become non-zero-sized in the future
+   | |              |
+   | |              this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | needs at most one non-trivial field, but has 2
+
+error[E0690]: transparent struct needs at most one non-trivial field, but has 2
+  --> $DIR/repr-transparent-non-exhaustive.rs:106:1
+   |
+LL | pub struct T19Flipped(Private, NonExhaustive);
+   | ^^^^^^^^^^^^^^^^^^^^^ -------  ------------- this field contains `NonExhaustive`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future
+   | |                     |
+   | |                     this field contains `Private`, which has private fields, so it could become non-zero-sized in the future
+   | needs at most one non-trivial field, but has 2
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0690`.

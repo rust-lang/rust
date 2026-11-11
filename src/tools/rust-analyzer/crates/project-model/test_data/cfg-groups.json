@@ -1,0 +1,26 @@
+{
+    "sysroot_src": null,
+    "cfg_groups": {
+        "group1": ["group1_cfg=\"some_config\"", "group1_other_cfg=\"other_config\""],
+        "group2": ["group2_cfg=\"yet_another_config\""]
+    },
+    "crates": [
+        {
+            "display_name": "hello_world",
+            "root_module": "$ROOT$src/lib.rs",
+            "edition": "2018",
+            "cfg_groups": ["group1", "group2"],
+            "deps": [],
+            "is_workspace_member": true
+        },
+        {
+            "display_name": "other_crate",
+            "root_module": "$ROOT$src/lib.rs",
+            "edition": "2018",
+            "cfg_groups": ["group2"],
+            "cfg": ["group2_cfg=\"fourth_config\"", "unrelated_cfg"],
+            "deps": [],
+            "is_workspace_member": true
+        }
+    ]
+}

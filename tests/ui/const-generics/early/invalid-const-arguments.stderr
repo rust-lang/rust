@@ -1,0 +1,96 @@
+error[E0425]: cannot find const `N` in this scope
+  --> $DIR/invalid-const-arguments.rs:5:16
+   |
+LL | struct A<const N: u8>;
+   |          ----------- corresponding const parameter on the type defined here
+LL | trait Foo {}
+LL | impl Foo for A<N> {}
+   |                ^ not found in this scope
+   |
+help: you might have meant to introduce a const parameter `N` on the impl
+   |
+LL | impl<const N: u8> Foo for A<N> {}
+   |     +++++++++++++
+
+error[E0425]: cannot find const `T` in this scope
+  --> $DIR/invalid-const-arguments.rs:13:32
+   |
+LL | struct C<const C: u8, const N: u8>;
+   |                       ----------- corresponding const parameter on the type defined here
+LL | impl<const N: u8> Foo for C<N, T> {}
+   |                                ^ not found in this scope
+   |
+help: you might have meant to introduce a const parameter `T` on the impl
+   |
+LL | impl<const N: u8, const T: u8> Foo for C<N, T> {}
+   |                 +++++++++++++
+
+error[E0425]: cannot find const `E` in this scope
+  --> $DIR/invalid-const-arguments.rs:17:16
+   |
+LL | struct D<const E: u8, const X: u8, const P: u32>;
+   |          ----------- corresponding const parameter on the type defined here
+LL | impl Foo for D<E, X, P> {}
+   |                ^ not found in this scope
+   |
+help: you might have meant to introduce a const parameter `E` on the impl
+   |
+LL | impl<const E: u8> Foo for D<E, X, P> {}
+   |     +++++++++++++
+
+error[E0425]: cannot find const `X` in this scope
+  --> $DIR/invalid-const-arguments.rs:17:19
+   |
+LL | struct D<const E: u8, const X: u8, const P: u32>;
+   |                       ----------- corresponding const parameter on the type defined here
+LL | impl Foo for D<E, X, P> {}
+   |                   ^ not found in this scope
+   |
+help: you might have meant to introduce a const parameter `X` on the impl
+   |
+LL | impl<const X: u8> Foo for D<E, X, P> {}
+   |     +++++++++++++
+
+error[E0425]: cannot find const `P` in this scope
+  --> $DIR/invalid-const-arguments.rs:17:22
+   |
+LL | struct D<const E: u8, const X: u8, const P: u32>;
+   |                                    ------------ corresponding const parameter on the type defined here
+LL | impl Foo for D<E, X, P> {}
+   |                      ^ not found in this scope
+   |
+help: you might have meant to introduce a const parameter `P` on the impl
+   |
+LL | impl<const P: u32> Foo for D<E, X, P> {}
+   |     ++++++++++++++
+
+error[E0425]: cannot find const `Q` in this scope
+  --> $DIR/invalid-const-arguments.rs:22:46
+   |
+LL | struct D<const E: u8, const X: u8, const P: u32>;
+   |                       ----------- corresponding const parameter on the type defined here
+...
+LL | impl<const F: u8, const H: u32> Foo for D<F, Q, D> {}
+   |                                              ^ not found in this scope
+   |
+help: you might have meant to introduce a const parameter `Q` on the impl
+   |
+LL | impl<const F: u8, const H: u32, const Q: u8> Foo for D<F, Q, D> {}
+   |                               +++++++++++++
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/invalid-const-arguments.rs:9:19
+   |
+LL | impl<N> Foo for B<N> {}
+   |                   ^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL - impl<N> Foo for B<N> {}
+LL + impl<const N: u8> Foo for B<N> {}
+   |
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0425, E0747.
+For more information about an error, try `rustc --explain E0425`.

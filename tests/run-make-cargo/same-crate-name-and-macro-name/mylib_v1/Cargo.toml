@@ -1,0 +1,6 @@
+[package]
+name = "mylib"
+version = "1.0.0"
+
+# Avoid interference with root workspace when casually testing
+[workspace]

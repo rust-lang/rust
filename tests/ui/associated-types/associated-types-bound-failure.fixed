@@ -1,0 +1,29 @@
+//@ run-rustfix
+// Test equality constraints on associated types in a where clause.
+#![allow(dead_code)]
+
+pub trait ToInt {
+    fn to_int(&self) -> isize;
+}
+
+pub trait GetToInt
+{
+    type R;
+
+    fn get(&self) -> <Self as GetToInt>::R;
+}
+
+fn foo<G>(g: G) -> isize
+    where G : GetToInt, <G as GetToInt>::R: ToInt
+{
+    ToInt::to_int(&g.get()) //~ ERROR E0277
+}
+
+fn bar<G : GetToInt>(g: G) -> isize
+    where G::R : ToInt
+{
+    ToInt::to_int(&g.get()) // OK
+}
+
+pub fn main() {
+}

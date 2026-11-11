@@ -1,0 +1,18 @@
+error: `args` must be a tuple literal
+  --> $DIR/non_tuple_args.rs:7:5
+   |
+LL |     core::offload::offload! { kernel = kernel_0, args = 42 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `args` must be a tuple literal
+  --> $DIR/non_tuple_args.rs:13:5
+   |
+LL |     core::offload::offload! { kernel = kernel_0, args = args }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::offload` which comes from the expansion of the macro `core::offload::offload` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

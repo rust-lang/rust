@@ -1,0 +1,10 @@
+warning: use of deprecated function `deprecated_future`: text
+  --> $DIR/deprecation-in-future.rs:9:5
+   |
+LL |     deprecated_future(); // ok; deprecated_in_future only applies with `#![feature(staged_api)]`
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: 1 warning emitted
+

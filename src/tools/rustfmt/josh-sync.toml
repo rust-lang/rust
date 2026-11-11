@@ -1,0 +1,4 @@
+repo = "rustfmt"
+filter = ":~(history=\"keep-trivial-merges,no-splice\")[:rev(<=e47f161c8476418e8b55b61db3bbf0338e0ab827:prefix=src/tools/rustfmt,<=e5b95097d9a14bdec7cd9101dde67ee3aad2578a:SQUASH)]:/src/tools/rustfmt"
+filter-version = 2
+pull-mode = "Nightly"

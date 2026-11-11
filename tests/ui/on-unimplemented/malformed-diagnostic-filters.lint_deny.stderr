@@ -1,0 +1,14 @@
+error: invalid flag in `on`-clause
+  --> $DIR/malformed-diagnostic-filters.rs:13:29
+   |
+LL | #[rustc_on_unimplemented(on(invalid, message = "unused"), message = "fallback")]
+   |                             ^^^^^^^ expected one of the `crate_local`, `direct` or `from_desugaring` flags, not `invalid`
+   |
+note: the lint level is defined here
+  --> $DIR/malformed-diagnostic-filters.rs:11:29
+   |
+LL | #![cfg_attr(lint_deny, deny(malformed_diagnostic_filters))]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

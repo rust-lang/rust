@@ -1,0 +1,387 @@
+#[cfg(feature = "master")]
+use gccjit::FnAttribute;
+use gccjit::{ToLValue, ToRValue, Type};
+#[cfg(feature = "master")]
+use rustc_abi::{ArmCall, InterruptKind, X86Call};
+use rustc_abi::{CanonAbi, Reg, RegKind};
+use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutOf;
+#[cfg(feature = "master")]
+use rustc_session::{Session, config};
+use rustc_span::bug;
+use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, IndirectMode, PassMode};
+use rustc_target::spec::Arch;
+
+use crate::builder::Builder;
+use crate::context::CodegenCx;
+use crate::type_of::LayoutGccExt;
+
+impl AbiBuilderMethods for Builder<'_, '_, '_> {
+    fn get_param(&mut self, mut index: usize) -> Self::Value {
+        let func = self.current_func();
+        if let Some(&return_value) = self.functions_with_indirect_return.borrow().get(&func) {
+            // cg_ssa sees the return pointer as the first parameter, but in GCC it is a hidden
+            // parameter: hand out the address of the local holding the return value instead.
+            if index == 0 {
+                return return_value.get_address(self.location);
+            }
+            index -= 1;
+        }
+        let param = func.get_param(index as i32);
+        let on_stack = if let Some(on_stack_param_indices) =
+            self.on_stack_function_params.borrow().get(&func)
+        {
+            on_stack_param_indices.contains(&index)
+        } else {
+            false
+        };
+        if on_stack { param.to_lvalue().get_address(None) } else { param.to_rvalue() }
+    }
+}
+
+impl GccType for CastTarget {
+    fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, '_>) -> Type<'gcc> {
+        let rest_gcc_unit = self.rest.unit.gcc_type(cx);
+        let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
+            (0, 0)
+        } else {
+            (
+                self.rest.total.bytes() / self.rest.unit.size.bytes(),
+                self.rest.total.bytes() % self.rest.unit.size.bytes(),
+            )
+        };
+
+        if self.prefix.is_empty() {
+            // Simplify to a single unit when there is no prefix and size <= unit size
+            if self.rest.total <= self.rest.unit.size {
+                return rest_gcc_unit;
+            }
+
+            // Simplify to array when all chunks are the same size and type
+            if rem_bytes == 0 {
+                return cx.type_array(rest_gcc_unit, rest_count);
+            }
+        }
+
+        // Create list of fields in the main structure
+        let mut args: Vec<_> = self
+            .prefix
+            .iter()
+            .map(|reg| reg.gcc_type(cx))
+            .chain((0..rest_count).map(|_| rest_gcc_unit))
+            .collect();
+
+        // Append final integer
+        if rem_bytes != 0 {
+            // Only integers can be really split further.
+            assert_eq!(self.rest.unit.kind, RegKind::Integer);
+            args.push(cx.type_ix(rem_bytes * 8));
+        }
+
+        cx.type_struct(&args, &[])
+    }
+}
+
+pub trait GccType {
+    fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, '_>) -> Type<'gcc>;
+}
+
+impl GccType for Reg {
+    fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, '_>) -> Type<'gcc> {
+        match self.kind {
+            RegKind::Integer => cx.type_ix(self.size.bits()),
+            RegKind::Float => match self.size.bits() {
+                32 => cx.type_f32(),
+                64 => cx.type_f64(),
+                128 => cx.type_f128(),
+                _ => bug!("unsupported float: {:?}", self),
+            },
+            RegKind::PpcF128 => cx.type_ppcf128(),
+            RegKind::Vector { hint_vector_elem: _ } => {
+                cx.type_vector(cx.type_i8(), self.size.bytes())
+            }
+        }
+    }
+}
+
+pub struct FnAbiGcc<'gcc> {
+    pub return_type: Type<'gcc>,
+    pub arguments_type: Vec<Type<'gcc>>,
+    pub is_c_variadic: bool,
+    pub on_stack_param_indices: FxHashSet<usize>,
+    #[cfg(feature = "master")]
+    pub fn_attributes: Vec<FnAttribute<'gcc>>,
+    /// Whether the value is returned in memory, through a pointer that GCC passes as a hidden
+    /// parameter.
+    #[cfg(feature = "master")]
+    pub has_indirect_return: bool,
+}
+
+pub trait FnAbiGccExt<'gcc, 'tcx> {
+    // FIXME(antoyo): return a function pointer type instead?
+    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc>;
+    fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
+    #[cfg(feature = "master")]
+    fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>>;
+}
+
+impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
+    fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc> {
+        let mut on_stack_param_indices = FxHashSet::default();
+        let has_indirect_return = cfg!(feature = "master") && self.ret.is_indirect();
+
+        // This capacity calculation is approximate.
+        let mut argument_tys = Vec::with_capacity(
+            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 },
+        );
+
+        let return_type = match self.ret.mode {
+            PassMode::Ignore => cx.type_void(),
+            PassMode::Pair(..) if returns_pair_in_two_registers(cx, self) => cx
+                .type_two_register_pair(
+                    self.ret.layout.scalar_pair_element_gcc_type(cx, 0),
+                    self.ret.layout.scalar_pair_element_gcc_type(cx, 1),
+                ),
+            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_gcc_type(cx),
+            PassMode::Cast { ref cast, .. } => cast.gcc_type(cx),
+            // Returned by value: the function (or function pointer type) is flagged as returning
+            // in memory, so GCC does the sret lowering itself, with the hidden pointer in the
+            // register the target ABI reserves for it.
+            PassMode::Indirect { .. } if has_indirect_return => self.ret.layout.gcc_type(cx),
+            PassMode::Indirect { .. } => {
+                argument_tys.push(cx.type_ptr_to(self.ret.layout.gcc_type(cx)));
+                cx.type_void()
+            }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
+        };
+        #[cfg(feature = "master")]
+        let mut non_null_args = Vec::new();
+
+        #[cfg(feature = "master")]
+        let mut apply_attrs = |mut ty: Type<'gcc>, attrs: &ArgAttributes, arg_index: usize| {
+            if cx.sess().opts.optimize == config::OptLevel::No {
+                return ty;
+            }
+            if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NoAlias) {
+                ty = ty.make_restrict()
+            }
+            if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NonNull) {
+                non_null_args.push(arg_index as i32 + 1);
+            }
+            // There are a few others `ArgAttribute` variants"
+            //
+            // * ArgAttribute::ReadOnly: `access(read_only())`, but it's only used for emitting
+            //   warning, not for optimization.
+            // * ArgAttribute::NoUndef: No equivalent in GCC
+            // * ArgAttribute::Writable: `access(read_write())` or `access(write_only())`, but it's
+            //   only used for emitting warning, not for optimization.
+            // * ArgAttribute::NoFree: No equivalent in GCC
+            ty
+        };
+        #[cfg(not(feature = "master"))]
+        let apply_attrs = |ty: Type<'gcc>, _attrs: &ArgAttributes, _arg_index: usize| ty;
+
+        for (source_arg_index, arg) in self.args.iter().enumerate() {
+            #[cfg(not(feature = "master"))]
+            let _ = source_arg_index;
+
+            let arg_ty = match arg.mode {
+                PassMode::Ignore => continue,
+                PassMode::Pair(a, b) => {
+                    let arg_pos = argument_tys.len();
+                    argument_tys.push(apply_attrs(
+                        arg.layout.scalar_pair_element_gcc_type(cx, 0),
+                        &a,
+                        arg_pos,
+                    ));
+                    argument_tys.push(apply_attrs(
+                        arg.layout.scalar_pair_element_gcc_type(cx, 1),
+                        &b,
+                        arg_pos + 1,
+                    ));
+                    continue;
+                }
+                PassMode::Cast { ref cast, pad_i32_count } => {
+                    // Add padding.
+                    argument_tys.extend(std::iter::repeat_n(
+                        Reg::i32().gcc_type(cx),
+                        usize::from(pad_i32_count),
+                    ));
+
+                    let ty = cast.gcc_type(cx);
+                    apply_attrs(ty, &cast.attrs, argument_tys.len())
+                }
+                PassMode::Indirect { attrs: _, address_space: _, mode: IndirectMode::OnStack } => {
+                    let x86_interrupt_first_arg = {
+                        #[cfg(feature = "master")]
+                        {
+                            source_arg_index == 0
+                                && matches!(self.conv, CanonAbi::Interrupt(InterruptKind::X86))
+                        }
+                        #[cfg(not(feature = "master"))]
+                        {
+                            false
+                        }
+                    };
+
+                    if x86_interrupt_first_arg {
+                        // Rust lowers the first `x86-interrupt` argument as a byval stack slot.
+                        // LLVM represents that as a pointer parameter with `byval`; GCC's
+                        // interrupt attribute likewise requires a pointer-shaped first parameter.
+                        // Do not add this parameter to `on_stack_param_indices`: that set is only
+                        // needed when GCC represents a byval argument as a value parameter, while
+                        // this parameter is already pointer-shaped.
+                        cx.type_ptr_to(arg.layout.gcc_type(cx))
+                    } else {
+                        // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
+                        on_stack_param_indices.insert(argument_tys.len());
+                        arg.layout.gcc_type(cx)
+                    }
+                }
+                PassMode::Indirect {
+                    attrs: _,
+                    address_space: _,
+                    mode: IndirectMode::AmdgpuKernelArg,
+                } => {
+                    unimplemented!("unsupported amdgpu kernel argument")
+                }
+                PassMode::Direct(attrs) => {
+                    apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs, argument_tys.len())
+                }
+                PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::Pointer } => {
+                    apply_attrs(cx.type_ptr_to(arg.layout.gcc_type(cx)), &attrs, argument_tys.len())
+                }
+                PassMode::IndirectUnsized { attrs, meta_attrs } => {
+                    // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
+                    // Any two ABI-compatible unsized types have the same metadata type and
+                    // moreover the same metadata value leads to the same dynamic size and
+                    // alignment, so this respects ABI compatibility.
+                    let ptr_ty = Ty::new_mut_ptr(cx.tcx, arg.layout.ty);
+                    let ptr_layout = cx.layout_of(ptr_ty);
+                    let typ1 = ptr_layout.scalar_pair_element_gcc_type(cx, 0);
+                    let typ2 = ptr_layout.scalar_pair_element_gcc_type(cx, 1);
+                    argument_tys.push(apply_attrs(typ1, &attrs, argument_tys.len()));
+                    argument_tys.push(apply_attrs(typ2, &meta_attrs, argument_tys.len()));
+                    continue;
+                }
+            };
+            argument_tys.push(arg_ty);
+        }
+
+        #[cfg(feature = "master")]
+        let fn_attrs = if non_null_args.is_empty() {
+            Vec::new()
+        } else {
+            vec![FnAttribute::NonNull(non_null_args)]
+        };
+
+        FnAbiGcc {
+            return_type,
+            arguments_type: argument_tys,
+            is_c_variadic: self.c_variadic,
+            on_stack_param_indices,
+            #[cfg(feature = "master")]
+            fn_attributes: fn_attrs,
+            #[cfg(feature = "master")]
+            has_indirect_return,
+        }
+    }
+
+    fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
+        // FIXME(antoyo): Should we do something with `FnAbiGcc::fn_attributes`?
+        let fn_abi_gcc = self.gcc_type(cx);
+        let pointer_type = cx.context.new_function_pointer_type(
+            None,
+            fn_abi_gcc.return_type,
+            &fn_abi_gcc.arguments_type,
+            fn_abi_gcc.is_c_variadic,
+        );
+        #[cfg(feature = "master")]
+        if fn_abi_gcc.has_indirect_return {
+            // Calls through this pointer must use the same convention as direct calls to a
+            // function declared with an indirect return.
+            pointer_type
+                .dyncast_function_ptr_type()
+                .expect("function pointer type")
+                .set_indirect_return();
+        }
+        pointer_type
+    }
+
+    #[cfg(feature = "master")]
+    fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>> {
+        conv_to_fn_attribute(cx.sess(), self.conv)
+    }
+}
+
+/// cg_llvm returns each scalar of a pair in its own register, but on x86-64 SysV GCC packs two
+/// scalars sharing an eightbyte into one register, which code built by cg_llvm would misread.
+fn returns_pair_in_two_registers<'gcc, 'tcx>(
+    cx: &CodegenCx<'gcc, 'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+) -> bool {
+    let target = &cx.sess().target;
+    target.arch == Arch::X86_64
+        && !target.is_like_windows
+        && matches!(fn_abi.conv, CanonAbi::Rust | CanonAbi::RustCold)
+        && fn_abi.ret.layout.size.bytes() <= 8
+}
+
+#[cfg(feature = "master")]
+pub fn conv_to_fn_attribute<'gcc>(sess: &Session, conv: CanonAbi) -> Option<FnAttribute<'gcc>> {
+    let attribute = match conv {
+        CanonAbi::C | CanonAbi::Rust => return None,
+        CanonAbi::RustPreserveNone => {
+            // This calling convention is LLVM-specific and unspecified.
+            sess.dcx()
+                .fatal("gcc/gccjit backend does not support RustPreserveNone calling convention")
+        }
+        CanonAbi::RustTail => {
+            // This calling convention is LLVM-specific and unspecified.
+            sess.dcx().fatal("gcc/gccjit backend does not support RustTail calling convention")
+        }
+        CanonAbi::RustCold => FnAttribute::Cold,
+        // Functions with this calling convention can only be called from assembly, but it is
+        // possible to declare an `extern "custom"` block, so the backend still needs a calling
+        // convention for declaring foreign functions.
+        CanonAbi::Custom => return None,
+        CanonAbi::Swift => {
+            // gcc/gccjit does not have anything for Swift's calling convention.
+            sess.dcx().fatal("gcc/gccjit backend does not support Swift calling convention")
+        }
+        CanonAbi::Arm(arm_call) => match arm_call {
+            ArmCall::CCmseNonSecureCall => FnAttribute::ArmCmseNonsecureCall,
+            ArmCall::CCmseNonSecureEntry => FnAttribute::ArmCmseNonsecureEntry,
+            ArmCall::Aapcs => FnAttribute::ArmPcs("aapcs"),
+        },
+        CanonAbi::GpuKernel => match &sess.target.arch {
+            &Arch::AmdGpu => FnAttribute::GcnAmdGpuHsaKernel,
+            &Arch::Nvptx64 => FnAttribute::NvptxKernel,
+            arch => sess
+                .dcx()
+                .fatal(format!("Arch {arch} does not support GpuKernel calling convention")),
+        },
+        // FIXME(antoyo): check if those AVR attributes are mapped correctly.
+        CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
+            InterruptKind::Avr => FnAttribute::AvrSignal,
+            InterruptKind::AvrNonBlocking => FnAttribute::AvrInterrupt,
+            InterruptKind::Msp430 => FnAttribute::Msp430Interrupt,
+            InterruptKind::RiscvMachine => FnAttribute::RiscvInterrupt("machine"),
+            InterruptKind::RiscvSupervisor => FnAttribute::RiscvInterrupt("supervisor"),
+            InterruptKind::X86 => FnAttribute::X86Interrupt,
+        },
+        CanonAbi::X86(x86_call) => match x86_call {
+            X86Call::Fastcall => FnAttribute::X86FastCall,
+            X86Call::Stdcall => FnAttribute::X86Stdcall,
+            X86Call::Thiscall => FnAttribute::X86ThisCall,
+            // // NOTE: the vectorcall calling convention is not yet implemented in GCC:
+            // // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89485
+            X86Call::Vectorcall => return None,
+            X86Call::SysV64 => FnAttribute::X86SysvAbi,
+            X86Call::Win64 => FnAttribute::X86MsAbi,
+        },
+    };
+    Some(attribute)
+}

@@ -1,0 +1,2 @@
+error: incorrect value `garbage` for unstable option `deny-partial-mitigations` - comma-separated list of mitigation kinds (available: `stack-protector`, `control-flow-guard`) was expected
+

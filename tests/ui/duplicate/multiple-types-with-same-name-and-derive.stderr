@@ -1,0 +1,14 @@
+error[E0428]: the name `NotSM` is defined multiple times
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:11:1
+   |
+LL | struct NotSM;
+   | ------------- previous definition of the type `NotSM` here
+...
+LL | struct NotSM<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^ `NotSM` redefined here
+   |
+   = note: `NotSM` must be defined only once in the type namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

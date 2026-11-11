@@ -1,0 +1,17 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/if-let-chain-unclosed-delim.rs:8:54
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+LL |     if let Some(x) = Some(42) {
+   |                               - this delimiter might not be properly closed...
+LL |         && x == 42
+   |         -- you might have meant to continue an if-let chain here
+...
+LL | }
+   | -                                                   ^
+   | |
+   | ...as it matches this but it has different indentation
+
+error: aborting due to 1 previous error
+

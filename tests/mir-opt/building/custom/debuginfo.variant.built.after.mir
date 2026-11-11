@@ -1,0 +1,10 @@
+// MIR for `variant` after built
+
+fn variant(_1: Option<i32>) -> () {
+    debug inner => ((_1 as variant#1).0: i32);
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}

@@ -1,0 +1,16 @@
+error: item in documentation is missing backticks
+  --> tests/ui-toml/doc_valid_idents_append/doc_markdown.rs:9:5
+   |
+LL | /// TestItemThingyOfCoolness might sound cool but is not on the list and should be linted.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+help: try
+   |
+LL - /// TestItemThingyOfCoolness might sound cool but is not on the list and should be linted.
+LL + /// `TestItemThingyOfCoolness` might sound cool but is not on the list and should be linted.
+   |
+
+error: aborting due to 1 previous error
+

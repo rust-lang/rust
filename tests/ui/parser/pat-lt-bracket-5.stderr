@@ -1,0 +1,17 @@
+error: expected a pattern, found an expression
+  --> $DIR/pat-lt-bracket-5.rs:2:9
+   |
+LL |     let v[0] = v[1];
+   |         ^^^^ not a pattern
+   |
+   = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
+
+error[E0425]: cannot find value `v` in this scope
+  --> $DIR/pat-lt-bracket-5.rs:2:16
+   |
+LL |     let v[0] = v[1];
+   |                ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

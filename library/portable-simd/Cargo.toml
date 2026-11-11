@@ -1,0 +1,18 @@
+[workspace]
+resolver = "1"
+members = [
+    "crates/core_simd",
+    "crates/std_float",
+    "crates/test_helpers",
+]
+
+[profile.test.package."*"]
+opt-level = 2
+
+[profile.test.package.test_helpers]
+opt-level = 2
+
+[workspace.dependencies.proptest]
+version = "1.11"
+default-features = false
+features = ["alloc", "f16"]

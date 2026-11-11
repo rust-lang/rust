@@ -1,0 +1,18 @@
+error: struct fields are separated by `,`
+  --> $DIR/struct-parser-recovery-issue-126344.rs:2:11
+   |
+LL | struct Wrong {
+   |        ----- while parsing this struct
+LL |     x: i32;
+   |           ^ help: replace `;` with `,`
+
+error: expected type, found `1`
+  --> $DIR/struct-parser-recovery-issue-126344.rs:21:8
+   |
+LL | struct WrongWithType {
+   |        ------------- while parsing this struct
+LL |     x: 1,
+   |        ^ expected type
+
+error: aborting due to 2 previous errors
+

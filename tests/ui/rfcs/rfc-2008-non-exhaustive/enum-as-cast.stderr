@@ -1,0 +1,11 @@
+error[E0606]: casting `FieldLessWithNonExhaustiveVariant` as `u8` is invalid
+  --> $DIR/enum-as-cast.rs:9:13
+   |
+LL |     let d = e as u8;
+   |             ^^^^^^^
+   |
+   = note: cannot cast an enum with a non-exhaustive variant when it's defined in another crate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

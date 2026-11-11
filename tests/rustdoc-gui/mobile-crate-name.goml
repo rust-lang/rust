@@ -1,0 +1,22 @@
+// Checks that if the crate name is too long on mobile, it will not grow and overflow its parent
+// (thanks to text overflow ellipsis).
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+// First we change the title to make it big.
+set-window-size: (350, 800)
+// We ensure that the "format" of the title is the same as the one we'll use.
+assert-text: ("rustdoc-topbar h2 a", "Crate test_docs")
+// We store the height we know is correct.
+store-property: ("rustdoc-topbar h2", {"offsetHeight": height})
+// We change the crate name to something longer.
+set-text: ("rustdoc-topbar h2 a", "cargo_packager_resource_resolver")
+// And we check that the size remained the same.
+assert-property: ("rustdoc-topbar h2", {"offsetHeight": |height|})
+
+// Now we check if it works for the non-crate pages as well.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+// We store the height we know is correct.
+store-property: ("rustdoc-topbar h2", {"offsetHeight": height})
+set-text: ("rustdoc-topbar h2 a", "Something_incredibly_long_because")
+// And we check that the size remained the same.
+assert-property: ("rustdoc-topbar h2", {"offsetHeight": |height|})

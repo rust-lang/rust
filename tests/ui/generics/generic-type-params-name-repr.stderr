@@ -1,0 +1,69 @@
+error[E0308]: mismatched types
+  --> $DIR/generic-type-params-name-repr.rs:15:25
+   |
+LL |     let _: Foo<isize> = ();
+   |            ----------   ^^ expected `Foo<isize>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<isize>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/generic-type-params-name-repr.rs:22:31
+   |
+LL |     let _: Foo<isize, B, C> = ();
+   |            ----------------   ^^ expected `Foo<isize>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<isize>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/generic-type-params-name-repr.rs:29:37
+   |
+LL |     let _: HashMap<String, isize> = ();
+   |            ----------------------   ^^ expected `HashMap<String, isize>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `HashMap<String, isize>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/generic-type-params-name-repr.rs:34:51
+   |
+LL |     let _: HashMap<String, isize, Hash<String>> = ();
+   |            ------------------------------------   ^^ expected `HashMap<String, isize>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `HashMap<String, isize>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/generic-type-params-name-repr.rs:41:31
+   |
+LL |     let _: Foo<A, isize, C> = ();
+   |            ----------------   ^^ expected `Foo<A, isize>`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<A, isize>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/generic-type-params-name-repr.rs:48:27
+   |
+LL |     let _: Foo<A, B, C> = ();
+   |            ------------   ^^ expected `Foo`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo`
+           found unit type `()`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

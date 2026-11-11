@@ -1,0 +1,32 @@
+error: [A: +, B: +]
+  --> $DIR/variance-types-bounds.rs:7:1
+   |
+LL | struct TestImm<A, B> {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: [A: +, B: o]
+  --> $DIR/variance-types-bounds.rs:13:1
+   |
+LL | struct TestMut<A, B:'static> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: +, B: o]
+  --> $DIR/variance-types-bounds.rs:19:1
+   |
+LL | struct TestIndirect<A:'static, B:'static> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: o, B: o]
+  --> $DIR/variance-types-bounds.rs:24:1
+   |
+LL | struct TestIndirect2<A:'static, B:'static> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [A: o, R: o]
+  --> $DIR/variance-types-bounds.rs:38:1
+   |
+LL | struct TestObject<A, R> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

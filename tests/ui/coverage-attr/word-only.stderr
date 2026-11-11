@@ -1,0 +1,229 @@
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:11:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:16:8
+   |
+LL |     #![coverage]
+   |        ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #![coverage(off)]
+   |                +++++
+LL |     #![coverage(on)]
+   |                ++++
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:20:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: the `coverage` attribute cannot be used on structs
+  --> $DIR/word-only.rs:20:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^
+...
+LL | struct MyStruct;
+   |
+   = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:25:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:28:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
+
+error: the `coverage` attribute cannot be used on associated consts
+  --> $DIR/word-only.rs:28:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^
+...
+LL |     const X: u32 = 7;
+   |
+   = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:34:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: the `coverage` attribute cannot be used on traits
+  --> $DIR/word-only.rs:34:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^
+...
+LL | trait MyTrait {
+   |
+   = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:38:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
+
+error: the `coverage` attribute cannot be used on associated consts
+  --> $DIR/word-only.rs:38:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^
+...
+LL |     const X: u32;
+   |
+   = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:43:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
+
+error: the `coverage` attribute cannot be used on associated types
+  --> $DIR/word-only.rs:43:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^
+...
+LL |     type T;
+   |
+   = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:49:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:52:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
+
+error: the `coverage` attribute cannot be used on associated consts
+  --> $DIR/word-only.rs:52:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^
+...
+LL |     const X: u32 = 8;
+   |
+   = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:57:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
+
+error: the `coverage` attribute cannot be used on associated types
+  --> $DIR/word-only.rs:57:7
+   |
+LL |     #[coverage]
+   |       ^^^^^^^^
+...
+LL |     type T = ();
+   |
+   = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:63:3
+   |
+LL | #[coverage]
+   |   ^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: aborting due to 19 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

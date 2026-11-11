@@ -1,0 +1,11 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/missing_right_paren.rs:3:11
+   |
+LL | fn main((ؼ
+   |        -- ^
+   |        ||
+   |        |unclosed delimiter
+   |        unclosed delimiter
+
+error: aborting due to 1 previous error
+

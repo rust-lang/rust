@@ -1,0 +1,18 @@
+error[E0382]: use of moved value: `self`
+  --> $DIR/moved-value-suggest-reborrow-issue-127285.rs:10:9
+   |
+LL |     fn f(&mut self) {
+   |          --------- move occurs because `self` has type `&mut X`, which does not implement the `Copy` trait
+LL |         generic(self);
+   |                 ---- value moved here
+LL |         self.0 += 1;
+   |         ^^^^^^^^^^^ value used here after move
+   |
+help: consider creating a fresh reborrow of `self` here
+   |
+LL |         generic(&mut *self);
+   |                 ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

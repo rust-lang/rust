@@ -1,0 +1,13 @@
+- // MIR for `invalid_char` before GVN
++ // MIR for `invalid_char` after GVN
+  
+  fn invalid_char() -> char {
+      let mut _0: char;
+  
+      bb0: {
+-         _0 = const core::num::<impl i32>::MAX as char (Transmute);
++         _0 = const {transmute(0x7fffffff): char};
+          return;
+      }
+  }
+  

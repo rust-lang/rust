@@ -1,0 +1,468 @@
+//! Traits related to testing.
+//!
+//! There are three main traits in this module:
+//!
+//! - `Tuple`: Implemented on tuples to help extract types.
+//! - `TupleCall`: implemented on tuples to allow calling them as function arguments.
+//! - `CheckOutput`: implemented on anything that is an output type for validation against an
+//!   expected value.
+
+use std::panic::{RefUnwindSafe, UnwindSafe};
+use std::{fmt, panic};
+
+use anyhow::{Context, anyhow, bail, ensure};
+use libm::support::{DisplayHex, Hex};
+
+use crate::precision::CheckAction;
+use crate::{
+    CheckBasis, CheckCtx, Float, GeneratorKind, Int, MaybeOverride, SpecialCase, TestResult,
+};
+
+/// Trait for calling a function with a tuple as arguments.
+///
+/// Implemented on the tuple with the function signature as the generic (so we can use the same
+/// tuple for multiple signatures).
+pub trait TupleCall<Func>: fmt::Debug {
+    type Output;
+
+    fn call(self, f: Func) -> Self::Output;
+
+    /// Intercept panics and print the input to stderr before continuing.
+    fn call_intercept_panics(self, f: Func) -> Self::Output
+    where
+        Self: RefUnwindSafe + Copy,
+        Func: UnwindSafe,
+    {
+        let res = panic::catch_unwind(|| self.call(f));
+        match res {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("panic with the following input: {self:?}");
+                panic::resume_unwind(e)
+            }
+        }
+    }
+}
+
+/// Helper to allow extracting types from a tuple.
+pub trait Tuple {
+    type T0;
+    type T1;
+    type T2;
+}
+
+/// If a tuple contains fewer types than provided in `Tuple`, they use this struct.
+pub enum Unused {}
+
+/// A trait to implement on any output type so we can verify it in a generic way.
+pub trait CheckOutput<Input>: Sized {
+    /// Validate `self` (actual) and `expected` are the same.
+    ///
+    /// `input` is only used here for error messages.
+    fn validate(self, expected: Self, input: Input, ctx: &CheckCtx) -> TestResult;
+}
+
+/* implement Tuple */
+
+impl<T0> Tuple for (T0,) {
+    type T0 = T0;
+    type T1 = Unused;
+    type T2 = Unused;
+}
+
+impl<T0, T1> Tuple for (T0, T1) {
+    type T0 = T0;
+    type T1 = T1;
+    type T2 = Unused;
+}
+
+impl<T0, T1, T2> Tuple for (T0, T1, T2) {
+    type T0 = T0;
+    type T1 = T1;
+    type T2 = T2;
+}
+
+/* implement `TupleCall` */
+
+impl<T1, R> TupleCall<fn(T1) -> R> for (T1,)
+where
+    T1: fmt::Debug,
+{
+    type Output = R;
+
+    fn call(self, f: fn(T1) -> R) -> Self::Output {
+        f(self.0)
+    }
+}
+
+impl<T1, T2, R> TupleCall<fn(T1, T2) -> R> for (T1, T2)
+where
+    T1: fmt::Debug,
+    T2: fmt::Debug,
+{
+    type Output = R;
+
+    fn call(self, f: fn(T1, T2) -> R) -> Self::Output {
+        f(self.0, self.1)
+    }
+}
+
+impl<T1, T2, R> TupleCall<fn(T1, &mut T2) -> R> for (T1,)
+where
+    T1: fmt::Debug,
+    T2: fmt::Debug + Default,
+{
+    type Output = (R, T2);
+
+    fn call(self, f: fn(T1, &mut T2) -> R) -> Self::Output {
+        let mut t2 = T2::default();
+        (f(self.0, &mut t2), t2)
+    }
+}
+
+impl<T1, T2, T3, R> TupleCall<fn(T1, T2, T3) -> R> for (T1, T2, T3)
+where
+    T1: fmt::Debug,
+    T2: fmt::Debug,
+    T3: fmt::Debug,
+{
+    type Output = R;
+
+    fn call(self, f: fn(T1, T2, T3) -> R) -> Self::Output {
+        f(self.0, self.1, self.2)
+    }
+}
+
+impl<T1, T2, T3, R> TupleCall<fn(T1, T2, &mut T3) -> R> for (T1, T2)
+where
+    T1: fmt::Debug,
+    T2: fmt::Debug,
+    T3: fmt::Debug + Default,
+{
+    type Output = (R, T3);
+
+    fn call(self, f: fn(T1, T2, &mut T3) -> R) -> Self::Output {
+        let mut t3 = T3::default();
+        (f(self.0, self.1, &mut t3), t3)
+    }
+}
+
+impl<T1, T2, T3> TupleCall<for<'a> fn(T1, &'a mut T2, &'a mut T3)> for (T1,)
+where
+    T1: fmt::Debug,
+    T2: fmt::Debug + Default,
+    T3: fmt::Debug + Default,
+{
+    type Output = (T2, T3);
+
+    fn call(self, f: for<'a> fn(T1, &'a mut T2, &'a mut T3)) -> Self::Output {
+        let mut t2 = T2::default();
+        let mut t3 = T3::default();
+        f(self.0, &mut t2, &mut t3);
+        (t2, t3)
+    }
+}
+
+/* trait implementations for bool */
+
+impl<Input> CheckOutput<Input> for bool
+where
+    Input: Copy + DisplayHex + fmt::Debug,
+    SpecialCase: MaybeOverride<Input>,
+{
+    fn validate<'a>(self, expected: Self, input: Input, _ctx: &CheckCtx) -> TestResult {
+        anyhow::ensure!(
+            self == expected,
+            "\
+            \n    input:    {input:?} {ibits}\
+            \n    expected: {expected}\
+            \n    actual:   {self}\
+            ",
+            ibits = Hex(input),
+        );
+
+        Ok(())
+    }
+}
+
+/* trait implementations for ints */
+
+macro_rules! impl_int {
+    ($($ty:ty),*) => {
+        $(
+            impl<Input> $crate::CheckOutput<Input> for $ty
+            where
+                Input: Copy + DisplayHex + fmt::Debug,
+                SpecialCase: MaybeOverride<Input>,
+            {
+                fn validate<'a>(
+                    self,
+                    expected: Self,
+                    input: Input,
+                    ctx: &$crate::CheckCtx,
+                ) -> TestResult {
+                    validate_int(self, expected, input, ctx)
+                }
+            }
+        )*
+    };
+}
+
+fn validate_int<I, Input>(actual: I, expected: I, input: Input, ctx: &CheckCtx) -> TestResult
+where
+    I: Int,
+    Input: Copy + DisplayHex + fmt::Debug,
+    SpecialCase: MaybeOverride<Input>,
+{
+    let (result, xfail_msg) = match SpecialCase::check_int(input, actual, expected, ctx) {
+        // `require_biteq` forbids overrides.
+        _ if ctx.gen_kind == GeneratorKind::List => (actual == expected, None),
+        CheckAction::AssertSuccess => (actual == expected, None),
+        CheckAction::AssertFailure(msg) => (actual != expected, Some(msg)),
+        CheckAction::Custom(res) => return res,
+        CheckAction::Skip => return Ok(()),
+        CheckAction::AssertWithUlp(_) => panic!("ulp has no meaning for integer checks"),
+    };
+
+    let make_xfail_msg = || match xfail_msg {
+        Some(m) => format!(
+            "expected failure but test passed. Does an XFAIL need to be updated?\n\
+            failed at: {m}",
+        ),
+        None => String::new(),
+    };
+
+    if !result {
+        bail!(make_error_message(
+            input,
+            expected,
+            actual,
+            "",
+            &make_xfail_msg()
+        ));
+    }
+
+    Ok(())
+}
+
+impl_int!(u16, i16, u32, i32, u64, i64, u128, i128, usize);
+
+/* trait implementations for floats */
+
+macro_rules! impl_float {
+    ($($ty:ty),*) => {
+        $(
+            impl<Input> $crate::CheckOutput<Input> for $ty
+            where
+                Input: Copy + DisplayHex + fmt::Debug,
+                SpecialCase: MaybeOverride<Input>,
+            {
+                fn validate<'a>(
+                    self,
+                    expected: Self,
+                    input: Input,
+                    ctx: &$crate::CheckCtx,
+                ) -> TestResult {
+                    validate_float(self, expected, input, ctx)
+                }
+            }
+        )*
+    };
+}
+
+fn validate_float<F, Input>(actual: F, expected: F, input: Input, ctx: &CheckCtx) -> TestResult
+where
+    F: Float,
+    Input: Copy + DisplayHex + fmt::Debug,
+    u32: TryFrom<F::SignedInt, Error: fmt::Debug>,
+    SpecialCase: MaybeOverride<Input>,
+{
+    let mut assert_failure_msg = None;
+
+    // Create a wrapper function so we only need to `.with_context` once.
+    let mut inner = || -> TestResult {
+        let mut allowed_ulp = ctx
+            .ulp
+            .expect("functions returning floats should have a default ulp set");
+
+        match SpecialCase::check_float(input, actual, expected, ctx) {
+            CheckAction::AssertSuccess => (),
+            CheckAction::AssertFailure(msg) => assert_failure_msg = Some(msg),
+            CheckAction::Custom(res) => return res,
+            CheckAction::Skip => return Ok(()),
+            CheckAction::AssertWithUlp(ulp_override) => allowed_ulp = ulp_override,
+        };
+
+        // Check when both are NaNs
+        if actual.is_nan() && expected.is_nan() {
+            // Don't assert NaN bitwise equality if:
+            //
+            // * Testing against MPFR (there is a single NaN representation)
+            // * Testing against Musl except for explicit tests (Musl does some NaN quieting)
+            //
+            // In these cases, just the check that actual and expected are both NaNs is
+            // sufficient.
+            let skip_nan_biteq = ctx.basis == CheckBasis::Mpfr
+                || (ctx.basis == CheckBasis::Musl && ctx.gen_kind != GeneratorKind::List);
+
+            if !skip_nan_biteq {
+                ensure!(actual.biteq(expected), "mismatched NaN bitpatterns");
+            }
+
+            // By default, NaNs have nothing special to check.
+            return Ok(());
+        } else if actual.is_nan() || expected.is_nan() {
+            // Check when only one is a NaN
+            bail!("real value != NaN")
+        }
+
+        // Make sure that the signs are the same before checing ULP to avoid wraparound
+        let act_sig = actual.signum();
+        let exp_sig = expected.signum();
+        ensure!(
+            act_sig == exp_sig,
+            "mismatched signs {act_sig:?} {exp_sig:?}"
+        );
+
+        if actual.is_infinite() ^ expected.is_infinite() {
+            bail!("mismatched infinities");
+        }
+
+        let act_bits = actual.to_bits().signed();
+        let exp_bits = expected.to_bits().signed();
+
+        let ulp_diff = act_bits.checked_sub(exp_bits).unwrap().abs();
+
+        let ulp_u32 = u32::try_from(ulp_diff)
+            .map_err(|e| anyhow!("{e:?}: ulp of {ulp_diff} exceeds u32::MAX"))?;
+
+        ensure!(ulp_u32 <= allowed_ulp, "ulp {ulp_diff} > {allowed_ulp}",);
+
+        Ok(())
+    };
+
+    let mut res = inner();
+
+    if let Some(msg) = assert_failure_msg {
+        // Invert `Ok` and `Err` if the test is an xfail.
+        if res.is_ok() {
+            let e = anyhow!(
+                "expected failure but test passed. Does an XFAIL need to be updated?\n\
+                failed at: {msg}",
+            );
+            res = Err(e)
+        } else {
+            res = Ok(())
+        }
+    }
+
+    res.with_context(|| make_error_message(input, expected, actual, "", ""))
+}
+
+impl_float!(f32, f64);
+
+#[cfg(f16_enabled)]
+impl_float!(f16);
+
+#[cfg(f128_enabled)]
+impl_float!(f128);
+
+/* trait implementations for compound types */
+
+/// Implement `CheckOutput` for combinations of types.
+macro_rules! impl_tuples {
+    ($(($a:ty, $b:ty);)*) => {
+        $(
+            impl<Input> CheckOutput<Input> for ($a, $b)
+            where
+                Input: Copy + DisplayHex + fmt::Debug,
+                SpecialCase: MaybeOverride<Input>,
+            {
+                fn validate<'a>(
+                    self,
+                    expected: Self,
+                    input: Input,
+                    ctx: &CheckCtx,
+                ) -> TestResult {
+                    self.0
+                        .validate(expected.0, input, ctx)
+                        .and_then(|()| self.1.validate(expected.1, input, ctx))
+                        .with_context(|| {
+                            make_error_message(
+                                input,
+                                expected,
+                                self,
+                                "full context:",
+                                "",
+                            )
+                        })
+                }
+            }
+        )*
+    };
+}
+
+impl_tuples!(
+    (i32, i32);
+    (i64, i64);
+    (i128, i128);
+
+    (u32, u32);
+    (u64, u64);
+    (u128, u128);
+
+    (i32, bool);
+    (i64, bool);
+    (i128, bool);
+
+    (u32, bool);
+    (u64, bool);
+    (u128, bool);
+
+    (f32, i32);
+    (f64, i32);
+    (f32, f32);
+    (f64, f64);
+);
+
+#[cfg(f16_enabled)]
+impl_tuples!(
+    (f16, i32);
+    (f16, f16);
+);
+
+#[cfg(f128_enabled)]
+impl_tuples!(
+    (f128, i32);
+    (f128, f128);
+);
+
+fn make_error_message<I, E, A>(
+    input: I,
+    expected: E,
+    actual: A,
+    pre_msg: &str,
+    post_msg: &str,
+) -> String
+where
+    I: Copy + fmt::Debug + DisplayHex,
+    E: Copy + fmt::Debug + DisplayHex,
+    A: Copy + fmt::Debug + DisplayHex,
+{
+    let pre_pad = if pre_msg.is_empty() { "" } else { "\n    " };
+    let post_pad = if post_msg.is_empty() { "" } else { "\n    " };
+    format!(
+        "\
+        {pre_pad}{pre_msg}\
+        \n    input:    {input:?}\
+        \n    as hex:   {ihex}\
+        \n    as bits:  {ihex:-}\
+        \n    expected: {expected:<16?}    {exphex}   {exphex:-}\
+        \n    actual:   {actual:<16?}    {acthex}   {acthex:-}\
+        {post_pad}{post_msg}\
+        ",
+        ihex = Hex(input),
+        exphex = Hex(expected),
+        acthex = Hex(actual),
+    )
+}

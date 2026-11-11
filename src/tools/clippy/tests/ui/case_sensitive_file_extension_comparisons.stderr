@@ -1,0 +1,102 @@
+error: case-sensitive file extension comparison
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:13:5
+   |
+LL |     filename.ends_with(".rs")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+   = note: `-D clippy::case-sensitive-file-extension-comparisons` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::case_sensitive_file_extension_comparisons)]`
+help: use std::path::Path
+   |
+LL ~     std::path::Path::new(filename)
+LL +         .extension()
+LL +         .is_some_and(|ext| ext.eq_ignore_ascii_case("rs"))
+   |
+
+error: case-sensitive file extension comparison
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:19:13
+   |
+LL |     let _ = String::new().ends_with(".ext12");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+help: use std::path::Path
+   |
+LL ~     let _ = std::path::Path::new(&String::new())
+LL +         .extension()
+LL ~         .is_some_and(|ext| ext.eq_ignore_ascii_case("ext12"));
+   |
+
+error: case-sensitive file extension comparison
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:21:13
+   |
+LL |     let _ = "str".ends_with(".ext12");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+help: use std::path::Path
+   |
+LL ~     let _ = std::path::Path::new("str")
+LL +         .extension()
+LL ~         .is_some_and(|ext| ext.eq_ignore_ascii_case("ext12"));
+   |
+
+error: case-sensitive file extension comparison
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:26:17
+   |
+LL |         let _ = "str".ends_with(".ext12");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+help: use std::path::Path
+   |
+LL ~         let _ = std::path::Path::new("str")
+LL +             .extension()
+LL ~             .is_some_and(|ext| ext.eq_ignore_ascii_case("ext12"));
+   |
+
+error: case-sensitive file extension comparison
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:34:13
+   |
+LL |     let _ = String::new().ends_with(".EXT12");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+help: use std::path::Path
+   |
+LL ~     let _ = std::path::Path::new(&String::new())
+LL +         .extension()
+LL ~         .is_some_and(|ext| ext.eq_ignore_ascii_case("EXT12"));
+   |
+
+error: case-sensitive file extension comparison
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:36:13
+   |
+LL |     let _ = "str".ends_with(".EXT12");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+help: use std::path::Path
+   |
+LL ~     let _ = std::path::Path::new("str")
+LL +         .extension()
+LL ~         .is_some_and(|ext| ext.eq_ignore_ascii_case("EXT12"));
+   |
+
+error: case-sensitive file extension comparison
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:69:13
+   |
+LL |     let _ = String::new().ends_with(".ext12");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a case-insensitive comparison instead
+help: use std::path::Path
+   |
+LL ~     let _ = std::path::Path::new(&String::new())
+LL +         .extension()
+LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
+   |
+
+error: aborting due to 7 previous errors
+

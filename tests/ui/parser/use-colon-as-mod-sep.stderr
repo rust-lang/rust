@@ -1,0 +1,50 @@
+error: expected `::`, found `:`
+  --> $DIR/use-colon-as-mod-sep.rs:3:17
+   |
+LL | use std::process:Command;
+   |                 ^
+   |
+   = note: import paths are delimited using `::`
+help: use double colon
+   |
+LL | use std::process::Command;
+   |                  +
+
+error: expected `::`, found `:`
+  --> $DIR/use-colon-as-mod-sep.rs:5:8
+   |
+LL | use std:fs::File;
+   |        ^
+   |
+   = note: import paths are delimited using `::`
+help: use double colon
+   |
+LL | use std::fs::File;
+   |         +
+
+error: expected `::`, found `:`
+  --> $DIR/use-colon-as-mod-sep.rs:7:8
+   |
+LL | use std:collections:HashMap;
+   |        ^
+   |
+   = note: import paths are delimited using `::`
+help: use double colon
+   |
+LL | use std::collections:HashMap;
+   |         +
+
+error: expected `::`, found `:`
+  --> $DIR/use-colon-as-mod-sep.rs:7:20
+   |
+LL | use std:collections:HashMap;
+   |                    ^
+   |
+   = note: import paths are delimited using `::`
+help: use double colon
+   |
+LL | use std:collections::HashMap;
+   |                     +
+
+error: aborting due to 4 previous errors
+

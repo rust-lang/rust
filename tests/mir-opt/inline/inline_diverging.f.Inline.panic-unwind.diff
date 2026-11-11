@@ -1,0 +1,21 @@
+- // MIR for `f` before Inline
++ // MIR for `f` after Inline
+  
+  fn f() -> () {
+      let mut _0: ();
+      let mut _1: !;
+      let _2: !;
++     scope 1 (inlined sleep) {
++     }
+  
+      bb0: {
+          StorageLive(_2);
+-         _2 = sleep() -> unwind continue;
++         goto -> bb1;
++     }
++ 
++     bb1: {
++         goto -> bb1;
+      }
+  }
+  

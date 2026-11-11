@@ -1,0 +1,36 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: u8;
+      let mut _2: [u8; 5000];
+      let _3: usize;
+      let mut _4: bool;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = [const 0_u8; 5000];
+          StorageLive(_3);
+          _3 = const 2_usize;
+-         _4 = Lt(copy _3, const 5000_usize);
+-         assert(move _4, "index out of bounds: the length is {} but the index is {}", const 5000_usize, copy _3) -> [success: bb1, unwind continue];
++         _4 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 5000_usize, const 2_usize) -> [success: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         _1 = copy _2[_3];
++         _1 = copy _2[2 of 3];
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  

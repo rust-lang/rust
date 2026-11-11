@@ -1,0 +1,8 @@
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/issue-69341-malformed-derive-inert.rs:4:7
+   |
+LL |     #[derive(parse())]
+   |       ^^^^^^ not a non-macro attribute
+
+error: aborting due to 1 previous error
+

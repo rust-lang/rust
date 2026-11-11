@@ -1,0 +1,2 @@
+#[rustfmt::invalid]
+fn main() {}

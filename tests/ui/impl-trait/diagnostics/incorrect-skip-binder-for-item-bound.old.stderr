@@ -1,0 +1,25 @@
+error[E0277]: the trait bound `for<'a> u8: From<&'a ()>` is not satisfied
+  --> $DIR/incorrect-skip-binder-for-item-bound.rs:16:15
+   |
+LL | fn hello() -> impl for<'a> A<'a, Assoc: Into<u8> + 'static + Copy> {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> From<&'a ()>` is not implemented for `u8`
+   |
+help: `u8` implements trait `From<T>`
+  --> $SRC_DIR/core/src/convert/num.rs:LL:COL
+   |
+   = note: `From<bool>`
+  ::: $SRC_DIR/core/src/convert/num.rs:LL:COL
+   |
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
+   |
+   = note: `From<std::ascii::Char>`
+  ::: $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
+   |
+   = note: in this macro invocation
+   = note: required for `&'a ()` to implement `for<'a> Into<u8>`
+   = note: this error originates in the macro `impl_from_bool` which comes from the expansion of the macro `into_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

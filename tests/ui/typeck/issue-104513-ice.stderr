@@ -1,0 +1,21 @@
+error[E0405]: cannot find trait `Oops` in this scope
+  --> $DIR/issue-104513-ice.rs:3:19
+   |
+LL |     let _: S<impl Oops> = S;
+   |                   ^^^^ not found in this scope
+
+error[E0562]: `impl Trait` is not allowed in the type of variable bindings
+  --> $DIR/issue-104513-ice.rs:3:14
+   |
+LL |     let _: S<impl Oops> = S;
+   |              ^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0405, E0562.
+For more information about an error, try `rustc --explain E0405`.

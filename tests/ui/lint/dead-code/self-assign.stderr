@@ -1,0 +1,44 @@
+warning: useless assignment of variable of type `i32` to itself
+  --> $DIR/self-assign.rs:19:5
+   |
+LL |     x = x;
+   |     ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/self-assign.rs:15:9
+   |
+LL | #![warn(dead_code)]
+   |         ^^^^^^^^^
+
+warning: useless assignment of variable of type `i32` to itself
+  --> $DIR/self-assign.rs:22:5
+   |
+LL |     x = (x);
+   |     ^^^^^^^
+
+warning: useless assignment of variable of type `S<'_>` to itself
+  --> $DIR/self-assign.rs:31:5
+   |
+LL |     s = s;
+   |     ^^^^^
+
+warning: useless assignment of field of type `&str` to itself
+  --> $DIR/self-assign.rs:34:5
+   |
+LL |     s.f = s.f;
+   |     ^^^^^^^^^
+
+warning: useless assignment of field of type `Box<i32>` to itself
+  --> $DIR/self-assign.rs:43:5
+   |
+LL |     n3.n.0.n.x = n3.n.0.n.x;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: useless assignment of field of type `i32` to itself
+  --> $DIR/self-assign.rs:47:5
+   |
+LL |     t.1.0.2.1 = t.1.0.2.1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: 6 warnings emitted
+

@@ -1,0 +1,25 @@
+warning: trait method `try_into` will become ambiguous in Rust 2021
+  --> $DIR/future-prelude-collision-macros.rs:39:5
+   |
+LL |     foo!().try_into(todo!());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `MyTry::try_into(foo!(), todo!())`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/prelude.html>
+note: the lint level is defined here
+  --> $DIR/future-prelude-collision-macros.rs:4:9
+   |
+LL | #![warn(rust_2021_prelude_collisions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: trait-associated function `try_from` will become ambiguous in Rust 2021
+  --> $DIR/future-prelude-collision-macros.rs:42:5
+   |
+LL |     <bar!()>::try_from(0);
+   |     ^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `<bar!() as TryFromU8>::try_from`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/prelude.html>
+
+warning: 2 warnings emitted
+

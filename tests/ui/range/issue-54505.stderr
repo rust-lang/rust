@@ -1,0 +1,128 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:14:16
+   |
+LL |     take_range(0..1);
+   |     ---------- ^^^^ expected `&_`, found `Range<{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `std::ops::Range<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(0..1));
+   |                ++    +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:19:16
+   |
+LL |     take_range(1..);
+   |     ---------- ^^^ expected `&_`, found `RangeFrom<{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `std::ops::RangeFrom<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(1..));
+   |                ++   +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:24:16
+   |
+LL |     take_range(..);
+   |     ---------- ^^ expected `&_`, found `RangeFull`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `RangeFull`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
+help: you might have meant to use `..` to skip providing a value for expected fields, but this is only supported on non-tuple struct literals when `#![feature(default_field_values)]` is enabled; it is instead interpreted as a `std::ops::RangeFull` literal
+  --> $DIR/issue-54505.rs:24:16
+   |
+LL |     take_range(..);
+   |                ^^
+help: consider borrowing here
+   |
+LL |     take_range(&(..));
+   |                ++  +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:30:16
+   |
+LL |     take_range(0..=1);
+   |     ---------- ^^^^^ expected `&_`, found `RangeInclusive<{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `std::ops::RangeInclusive<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(0..=1));
+   |                ++     +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:35:16
+   |
+LL |     take_range(..5);
+   |     ---------- ^^^ expected `&_`, found `RangeTo<{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `RangeTo<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(..5));
+   |                ++   +
+
+error[E0308]: mismatched types
+  --> $DIR/issue-54505.rs:40:16
+   |
+LL |     take_range(..=42);
+   |     ---------- ^^^^^ expected `&_`, found `RangeToInclusive<{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `std::ops::RangeToInclusive<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
+help: consider borrowing here
+   |
+LL |     take_range(&(..=42));
+   |                ++     +
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

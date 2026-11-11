@@ -1,0 +1,18 @@
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/issue-26094.rs:10:17
+   |
+LL |         $other(None)
+   |                ---- unexpected argument of type `Option<_>`
+...
+LL |     some_macro!(some_function);
+   |                 ^^^^^^^^^^^^^
+   |
+note: function defined here
+  --> $DIR/issue-26094.rs:7:4
+   |
+LL | fn some_function() {}
+   |    ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

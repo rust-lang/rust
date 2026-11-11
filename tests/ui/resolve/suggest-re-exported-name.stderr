@@ -1,0 +1,37 @@
+error[E0404]: expected trait, found struct `Debug`
+  --> $DIR/suggest-re-exported-name.rs:6:22
+   |
+LL | pub fn foo() -> impl Debug {
+   |                      ^^^^^ not a trait
+   |
+help: consider using this trait through its public re-export instead
+   |
+LL | pub fn foo() -> impl OtherDebug {
+   |                      +++++
+
+error[E0404]: expected trait, found struct `crate::Debug`
+  --> $DIR/suggest-re-exported-name.rs:10:22
+   |
+LL | pub fn bar() -> impl crate::Debug {
+   |                      ^^^^^^^^^^^^ not a trait
+   |
+help: consider using this trait through its public re-export instead
+   |
+LL - pub fn bar() -> impl crate::Debug {
+LL + pub fn bar() -> impl OtherDebug {
+   |
+
+error[E0404]: expected trait, found struct `Debug`
+  --> $DIR/suggest-re-exported-name.rs:14:15
+   |
+LL | pub fn baz<T: Debug>() {}
+   |               ^^^^^ not a trait
+   |
+help: consider using this trait through its public re-export instead
+   |
+LL | pub fn baz<T: OtherDebug>() {}
+   |               +++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0404`.

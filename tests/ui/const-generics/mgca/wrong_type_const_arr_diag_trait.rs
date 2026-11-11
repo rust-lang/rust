@@ -1,0 +1,20 @@
+// This test causes ERROR: mismatched types [E0308]
+// and makes rustc to print array from const arguments
+#![feature(gca_adts, gca_min_const_items, gca_macroless_args, adt_const_params, trivial_bounds)]
+
+trait Trait {
+    #[rustc_always_gca]
+    const ASSOC: u8;
+}
+
+struct TakesArr<const N: [u8; 1]>;
+
+fn foo<const N: u8>()
+where
+    u8: Trait,
+{
+    let _: TakesArr<{ [<u8 as Trait>::ASSOC] }> = TakesArr::<{ [1] }>;
+    //~^ ERROR: mismatched types [E0308]
+}
+
+fn main() {}

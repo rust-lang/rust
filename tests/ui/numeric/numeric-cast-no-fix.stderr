@@ -1,0 +1,396 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:10:15
+   |
+LL |     x_usize > -1_isize;
+   |     -------   ^^^^^^^^ expected `usize`, found `isize`
+   |     |
+   |     expected because this is `usize`
+   |
+   = note: `-1_isize` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:12:14
+   |
+LL |     x_u128 > -1_isize;
+   |     ------   ^^^^^^^^ expected `u128`, found `isize`
+   |     |
+   |     expected because this is `u128`
+   |
+   = note: `-1_isize` cannot fit into type `u128`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:14:13
+   |
+LL |     x_u64 > -1_isize;
+   |     -----   ^^^^^^^^ expected `u64`, found `isize`
+   |     |
+   |     expected because this is `u64`
+   |
+   = note: `-1_isize` cannot fit into type `u64`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:16:13
+   |
+LL |     x_u32 > -1_isize;
+   |     -----   ^^^^^^^^ expected `u32`, found `isize`
+   |     |
+   |     expected because this is `u32`
+   |
+   = note: `-1_isize` cannot fit into type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:18:13
+   |
+LL |     x_u16 > -1_isize;
+   |     -----   ^^^^^^^^ expected `u16`, found `isize`
+   |     |
+   |     expected because this is `u16`
+   |
+   = note: `-1_isize` cannot fit into type `u16`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:20:12
+   |
+LL |     x_u8 > -1_isize;
+   |     ----   ^^^^^^^^ expected `u8`, found `isize`
+   |     |
+   |     expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `isize`, matching the type of `-1_isize`
+   |
+LL |     isize::from(x_u8) > -1_isize;
+   |     ++++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:23:15
+   |
+LL |     x_usize > -1_i128;
+   |     -------   ^^^^^^^ expected `usize`, found `i128`
+   |     |
+   |     expected because this is `usize`
+   |
+   = note: `-1_i128` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:25:14
+   |
+LL |     x_u128 > -1_i128;
+   |     ------   ^^^^^^^ expected `u128`, found `i128`
+   |     |
+   |     expected because this is `u128`
+   |
+   = note: `-1_i128` cannot fit into type `u128`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:27:13
+   |
+LL |     x_u64 > -1_i128;
+   |     -----   ^^^^^^^ expected `u64`, found `i128`
+   |     |
+   |     expected because this is `u64`
+   |
+help: you can convert `x_u64` from `u64` to `i128`, matching the type of `-1_i128`
+   |
+LL |     i128::from(x_u64) > -1_i128;
+   |     +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:29:13
+   |
+LL |     x_u32 > -1_i128;
+   |     -----   ^^^^^^^ expected `u32`, found `i128`
+   |     |
+   |     expected because this is `u32`
+   |
+help: you can convert `x_u32` from `u32` to `i128`, matching the type of `-1_i128`
+   |
+LL |     i128::from(x_u32) > -1_i128;
+   |     +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:31:13
+   |
+LL |     x_u16 > -1_i128;
+   |     -----   ^^^^^^^ expected `u16`, found `i128`
+   |     |
+   |     expected because this is `u16`
+   |
+help: you can convert `x_u16` from `u16` to `i128`, matching the type of `-1_i128`
+   |
+LL |     i128::from(x_u16) > -1_i128;
+   |     +++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:33:12
+   |
+LL |     x_u8 > -1_i128;
+   |     ----   ^^^^^^^ expected `u8`, found `i128`
+   |     |
+   |     expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `i128`, matching the type of `-1_i128`
+   |
+LL |     i128::from(x_u8) > -1_i128;
+   |     +++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:36:15
+   |
+LL |     x_usize > -1_i64;
+   |     -------   ^^^^^^ expected `usize`, found `i64`
+   |     |
+   |     expected because this is `usize`
+   |
+   = note: `-1_i64` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:38:14
+   |
+LL |     x_u128 > -1_i64;
+   |     ------   ^^^^^^ expected `u128`, found `i64`
+   |     |
+   |     expected because this is `u128`
+   |
+   = note: `-1_i64` cannot fit into type `u128`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:40:13
+   |
+LL |     x_u64 > -1_i64;
+   |     -----   ^^^^^^ expected `u64`, found `i64`
+   |     |
+   |     expected because this is `u64`
+   |
+   = note: `-1_i64` cannot fit into type `u64`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:42:13
+   |
+LL |     x_u32 > -1_i64;
+   |     -----   ^^^^^^ expected `u32`, found `i64`
+   |     |
+   |     expected because this is `u32`
+   |
+help: you can convert `x_u32` from `u32` to `i64`, matching the type of `-1_i64`
+   |
+LL |     i64::from(x_u32) > -1_i64;
+   |     ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:44:13
+   |
+LL |     x_u16 > -1_i64;
+   |     -----   ^^^^^^ expected `u16`, found `i64`
+   |     |
+   |     expected because this is `u16`
+   |
+help: you can convert `x_u16` from `u16` to `i64`, matching the type of `-1_i64`
+   |
+LL |     i64::from(x_u16) > -1_i64;
+   |     ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:46:12
+   |
+LL |     x_u8 > -1_i64;
+   |     ----   ^^^^^^ expected `u8`, found `i64`
+   |     |
+   |     expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `i64`, matching the type of `-1_i64`
+   |
+LL |     i64::from(x_u8) > -1_i64;
+   |     ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:49:15
+   |
+LL |     x_usize > -1_i32;
+   |     -------   ^^^^^^ expected `usize`, found `i32`
+   |     |
+   |     expected because this is `usize`
+   |
+   = note: `-1_i32` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:51:14
+   |
+LL |     x_u128 > -1_i32;
+   |     ------   ^^^^^^ expected `u128`, found `i32`
+   |     |
+   |     expected because this is `u128`
+   |
+   = note: `-1_i32` cannot fit into type `u128`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:53:13
+   |
+LL |     x_u64 > -1_i32;
+   |     -----   ^^^^^^ expected `u64`, found `i32`
+   |     |
+   |     expected because this is `u64`
+   |
+   = note: `-1_i32` cannot fit into type `u64`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:55:13
+   |
+LL |     x_u32 > -1_i32;
+   |     -----   ^^^^^^ expected `u32`, found `i32`
+   |     |
+   |     expected because this is `u32`
+   |
+   = note: `-1_i32` cannot fit into type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:57:13
+   |
+LL |     x_u16 > -1_i32;
+   |     -----   ^^^^^^ expected `u16`, found `i32`
+   |     |
+   |     expected because this is `u16`
+   |
+help: you can convert `x_u16` from `u16` to `i32`, matching the type of `-1_i32`
+   |
+LL |     i32::from(x_u16) > -1_i32;
+   |     ++++++++++     +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:59:12
+   |
+LL |     x_u8 > -1_i32;
+   |     ----   ^^^^^^ expected `u8`, found `i32`
+   |     |
+   |     expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `i32`, matching the type of `-1_i32`
+   |
+LL |     i32::from(x_u8) > -1_i32;
+   |     ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:62:15
+   |
+LL |     x_usize > -1_i16;
+   |     -------   ^^^^^^ expected `usize`, found `i16`
+   |     |
+   |     expected because this is `usize`
+   |
+   = note: `-1_i16` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:64:14
+   |
+LL |     x_u128 > -1_i16;
+   |     ------   ^^^^^^ expected `u128`, found `i16`
+   |     |
+   |     expected because this is `u128`
+   |
+   = note: `-1_i16` cannot fit into type `u128`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:66:13
+   |
+LL |     x_u64 > -1_i16;
+   |     -----   ^^^^^^ expected `u64`, found `i16`
+   |     |
+   |     expected because this is `u64`
+   |
+   = note: `-1_i16` cannot fit into type `u64`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:68:13
+   |
+LL |     x_u32 > -1_i16;
+   |     -----   ^^^^^^ expected `u32`, found `i16`
+   |     |
+   |     expected because this is `u32`
+   |
+   = note: `-1_i16` cannot fit into type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:70:13
+   |
+LL |     x_u16 > -1_i16;
+   |     -----   ^^^^^^ expected `u16`, found `i16`
+   |     |
+   |     expected because this is `u16`
+   |
+   = note: `-1_i16` cannot fit into type `u16`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:72:12
+   |
+LL |     x_u8 > -1_i16;
+   |     ----   ^^^^^^ expected `u8`, found `i16`
+   |     |
+   |     expected because this is `u8`
+   |
+help: you can convert `x_u8` from `u8` to `i16`, matching the type of `-1_i16`
+   |
+LL |     i16::from(x_u8) > -1_i16;
+   |     ++++++++++    +
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:75:15
+   |
+LL |     x_usize > -1_i8;
+   |     -------   ^^^^^ expected `usize`, found `i8`
+   |     |
+   |     expected because this is `usize`
+   |
+   = note: `-1_i8` cannot fit into type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:77:14
+   |
+LL |     x_u128 > -1_i8;
+   |     ------   ^^^^^ expected `u128`, found `i8`
+   |     |
+   |     expected because this is `u128`
+   |
+   = note: `-1_i8` cannot fit into type `u128`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:79:13
+   |
+LL |     x_u64 > -1_i8;
+   |     -----   ^^^^^ expected `u64`, found `i8`
+   |     |
+   |     expected because this is `u64`
+   |
+   = note: `-1_i8` cannot fit into type `u64`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:81:13
+   |
+LL |     x_u32 > -1_i8;
+   |     -----   ^^^^^ expected `u32`, found `i8`
+   |     |
+   |     expected because this is `u32`
+   |
+   = note: `-1_i8` cannot fit into type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:83:13
+   |
+LL |     x_u16 > -1_i8;
+   |     -----   ^^^^^ expected `u16`, found `i8`
+   |     |
+   |     expected because this is `u16`
+   |
+   = note: `-1_i8` cannot fit into type `u16`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-no-fix.rs:85:12
+   |
+LL |     x_u8 > -1_i8;
+   |     ----   ^^^^^ expected `u8`, found `i8`
+   |     |
+   |     expected because this is `u8`
+   |
+   = note: `-1_i8` cannot fit into type `u8`
+
+error: aborting due to 36 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,5 @@
+// Checks that the "keyword" results have the expected text alongside them.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("perform-search", {"query": "for"})
+assert-text: (".result-keyword .result-name", "keyword for")

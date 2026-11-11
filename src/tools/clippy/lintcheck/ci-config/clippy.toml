@@ -1,0 +1,7 @@
+# Configuration applied when running lintcheck from the CI
+#
+# The CI will set the `CLIPPY_CONF_DIR` environment variable
+# to `$PWD/lintcheck/ci-config`.
+
+avoid-breaking-exported-api = false
+lint-commented-code = false

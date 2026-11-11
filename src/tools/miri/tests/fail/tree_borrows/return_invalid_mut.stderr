@@ -1,0 +1,37 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[0x4] is forbidden
+  --> tests/fail/tree_borrows/return_invalid_mut.rs:LL:CC
+   |
+LL |     *ret = 3;
+   |     ^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here
+  --> tests/fail/tree_borrows/return_invalid_mut.rs:LL:CC
+   |
+LL |     let ret = foo(arg);
+   |               ^^^^^^^^
+help: the conflicting tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/tree_borrows/return_invalid_mut.rs:LL:CC
+   |
+LL |     let ret = unsafe { &mut (*xraw).1 };
+   |                        ^^^^^^^^^^^^^^
+help: the conflicting tag <TAG> later transitioned to Unique due to a child write access at offsets [0x4..0x8]
+  --> tests/fail/tree_borrows/return_invalid_mut.rs:LL:CC
+   |
+LL |     *ret = *ret; // activate
+   |     ^^^^^^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+help: the conflicting tag <TAG> later transitioned to Frozen due to a foreign read access at offsets [0x0..0x8]
+  --> tests/fail/tree_borrows/return_invalid_mut.rs:LL:CC
+   |
+LL |     let _val = unsafe { *xraw }; // invalidate xref for writing
+   |                         ^^^^^
+   = help: this transition corresponds to a loss of write permissions
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

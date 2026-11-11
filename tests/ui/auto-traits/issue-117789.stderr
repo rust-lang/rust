@@ -1,0 +1,22 @@
+error[E0567]: auto traits cannot have generic parameters
+  --> $DIR/issue-117789.rs:1:17
+   |
+LL | auto trait Trait<P> {}
+   |            -----^^^
+   |            |
+   |            auto trait cannot have generic parameters
+
+error[E0658]: auto traits are experimental and possibly buggy
+  --> $DIR/issue-117789.rs:1:1
+   |
+LL | auto trait Trait<P> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #13231 <https://github.com/rust-lang/rust/issues/13231> for more information
+   = help: add `#![feature(auto_traits)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0567, E0658.
+For more information about an error, try `rustc --explain E0567`.

@@ -1,0 +1,15 @@
+error: item does not constrain `TE::{opaque#0}`
+  --> $DIR/type-alias-impl-trait-fns.rs:20:4
+   |
+LL | fn bla2() -> TE {
+   |    ^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/type-alias-impl-trait-fns.rs:25:11
+   |
+LL | type TE = impl MyTrait;
+   |           ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

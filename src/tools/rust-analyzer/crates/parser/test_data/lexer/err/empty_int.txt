@@ -1,0 +1,26 @@
+INT_NUMBER "0b" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0o" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0x" error: Missing digits after the integer base prefix
+WHITESPACE "\n\n"
+INT_NUMBER "0b_" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0o_" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0x_" error: Missing digits after the integer base prefix
+WHITESPACE "\n\n"
+INT_NUMBER "0bnoDigit" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0onoDigit" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0xnoDigit" error: Missing digits after the integer base prefix
+WHITESPACE "\n\n"
+INT_NUMBER "0xG" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0xg" error: Missing digits after the integer base prefix
+WHITESPACE "\n\n"
+INT_NUMBER "0x_g" error: Missing digits after the integer base prefix
+WHITESPACE "\n"
+INT_NUMBER "0x_G" error: Missing digits after the integer base prefix
+WHITESPACE "\n"

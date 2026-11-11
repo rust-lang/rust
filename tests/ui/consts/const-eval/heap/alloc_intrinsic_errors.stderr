@@ -1,0 +1,15 @@
+error[E0080]: invalid align passed to `const_allocate`: 3 is not a power of 2
+  --> $DIR/alloc_intrinsic_errors.rs:7:18
+   |
+LL | const FOO: i32 = foo();
+   |                  ^^^^^ evaluation of `FOO` failed inside this call
+   |
+note: inside `foo`
+  --> $DIR/alloc_intrinsic_errors.rs:10:17
+   |
+LL |         let _ = intrinsics::const_allocate(4, 3) as *mut i32;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

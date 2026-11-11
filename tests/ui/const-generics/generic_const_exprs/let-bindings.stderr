@@ -1,0 +1,20 @@
+error: overly complex generic constant
+  --> $DIR/let-bindings.rs:6:68
+   |
+LL | fn test<const N: usize>() -> [u8; { let x = N; N + 1 }] where [u8; { let x = N; N + 1 }]: Default {
+   |                                                                    ^^^^^^^^^^^^^^^^^^^^ blocks are not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: overly complex generic constant
+  --> $DIR/let-bindings.rs:6:35
+   |
+LL | fn test<const N: usize>() -> [u8; { let x = N; N + 1 }] where [u8; { let x = N; N + 1 }]: Default {
+   |                                   ^^^^^^^^^^^^^^^^^^^^ blocks are not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error: aborting due to 2 previous errors
+

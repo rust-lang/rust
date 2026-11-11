@@ -1,0 +1,83 @@
+error[E0432]: unresolved import `foo`
+  --> $DIR/unresolved-import.rs:6:5
+   |
+LL | use foo::beans;
+   |     ^^^ could not find `foo` in the crate root
+   |
+help: a module with a similar name exists
+   |
+LL | use food::beans;
+   |        +
+
+error[E0432]: unresolved import `bar::Baz`
+  --> $DIR/unresolved-import.rs:12:5
+   |
+LL | use bar::Baz as x;
+   |     ^^^^^---^^^^^
+   |          |
+   |          no `Baz` in `bar`
+   |
+help: a similar name exists in the module
+   |
+LL - use bar::Baz as x;
+LL + use bar::Bar as x;
+   |
+
+error[E0432]: unresolved import `food::baz`
+  --> $DIR/unresolved-import.rs:18:5
+   |
+LL | use food::baz;
+   |     ^^^^^^---
+   |           |
+   |           no `baz` in `food`
+   |
+note: module `food::zug::baz` exists but is inaccessible
+  --> $DIR/unresolved-import.rs:38:9
+   |
+LL |         pub mod baz {
+   |         ^^^^^^^^^^^ not accessible
+help: a similar name exists in the module
+   |
+LL - use food::baz;
+LL + use food::bag;
+   |
+
+error[E0432]: unresolved import `food::beens`
+  --> $DIR/unresolved-import.rs:24:12
+   |
+LL | use food::{beens as Foo};
+   |            -----^^^^^^^
+   |            |
+   |            no `beens` in `food`
+   |
+help: a similar name exists in the module
+   |
+LL - use food::{beens as Foo};
+LL + use food::{beans as Foo};
+   |
+
+error[E0432]: unresolved import `MyEnum`
+  --> $DIR/unresolved-import.rs:51:9
+   |
+LL |     use MyEnum::*;
+   |         ^^^^^^
+   |
+help: a similar path exists
+   |
+LL |     use self::MyEnum::*;
+   |         ++++++
+
+error[E0432]: unresolved import `Enum`
+  --> $DIR/unresolved-import.rs:62:9
+   |
+LL |     use Enum::*;
+   |         ^^^^
+   |
+help: a similar path exists
+   |
+LL |     use self::Enum::*;
+   |         ++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

@@ -1,0 +1,66 @@
+error[E0658]: linking to Enzyme intrinsics is experimental
+  --> $DIR/feature-gate-link-enzyme-intrinsics-no-gate.rs:4:5
+   |
+LL |     fn __enzyme_autodiff();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_enzyme_intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: linking to Enzyme intrinsics is experimental
+  --> $DIR/feature-gate-link-enzyme-intrinsics-no-gate.rs:7:5
+   |
+LL |     fn __enzyme_fwddiff();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_enzyme_intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: linking to Enzyme intrinsics is experimental
+  --> $DIR/feature-gate-link-enzyme-intrinsics-no-gate.rs:10:5
+   |
+LL |     fn __enzyme_augmentfwd();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_enzyme_intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: linking to Enzyme intrinsics is experimental
+  --> $DIR/feature-gate-link-enzyme-intrinsics-no-gate.rs:13:5
+   |
+LL |     fn __enzyme_reverse();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_enzyme_intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: linking to Enzyme intrinsics is experimental
+  --> $DIR/feature-gate-link-enzyme-intrinsics-no-gate.rs:17:5
+   |
+LL |     fn autodiff();
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_enzyme_intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: linking to Enzyme intrinsics is experimental
+  --> $DIR/feature-gate-link-enzyme-intrinsics-no-gate.rs:20:5
+   |
+LL |     static __enzyme_dup: i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_enzyme_intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: linking to Enzyme intrinsics is experimental
+  --> $DIR/feature-gate-link-enzyme-intrinsics-no-gate.rs:24:5
+   |
+LL |     static ENZYME_DUP: i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(link_enzyme_intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

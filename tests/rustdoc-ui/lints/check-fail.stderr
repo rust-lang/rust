@@ -1,0 +1,58 @@
+error: missing documentation for a function
+  --> $DIR/check-fail.rs:13:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/check-fail.rs:4:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: missing code example in this documentation
+  --> $DIR/check-fail.rs:13:1
+   |
+LL | pub fn foo() {}
+   | ^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/check-fail.rs:5:9
+   |
+LL | #![deny(rustdoc::missing_doc_code_examples)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unknown attribute `testharness`
+  --> $DIR/check-fail.rs:8:1
+   |
+LL | / //! ```rust,testharness
+LL | |
+LL | | //! let x = 12;
+LL | | //! ```
+   | |_______^
+   |
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+note: the lint level is defined here
+  --> $DIR/check-fail.rs:6:9
+   |
+LL | #![deny(rustdoc::all)]
+   |         ^^^^^^^^^^^^
+   = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(rustdoc::all)]`
+
+error: unknown attribute `testharness`
+  --> $DIR/check-fail.rs:17:1
+   |
+LL | / /// hello
+LL | |
+LL | | ///
+LL | | /// ```rust,testharness
+LL | | /// let x = 12;
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: aborting due to 4 previous errors
+

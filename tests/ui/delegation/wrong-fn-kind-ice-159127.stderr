@@ -1,0 +1,24 @@
+error[E0428]: the name `bar` is defined multiple times
+  --> $DIR/wrong-fn-kind-ice-159127.rs:11:9
+   |
+LL |         reuse foo::<>as bar;
+   |         -------------------- previous definition of the value `bar` here
+LL |         reuse bar;
+   |         ^^^^^^^^^^ `bar` redefined here
+   |
+   = note: `bar` must be defined only once in the value namespace of this block
+
+error: expected type, found `gca!()` constant
+  --> $DIR/wrong-fn-kind-ice-159127.rs:7:5
+   |
+LL | /     gca!({
+LL | |
+LL | |         fn foo() {}
+LL | |         reuse foo::<>as bar;
+...  |
+LL | |     })
+   | |______^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

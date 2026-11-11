@@ -1,0 +1,13 @@
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/non-structural-match-types-cycle-err.rs:21:9
+   |
+LL | impl<T> AnyOption<T> {
+LL |     const NONE: Option<T> = None;
+   |     --------------------- constant defined here
+...
+LL |         AnyOption::<_>::NONE => {}
+   |         ^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0158`.

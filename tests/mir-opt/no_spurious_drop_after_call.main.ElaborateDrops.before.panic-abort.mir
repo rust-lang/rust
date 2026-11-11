@@ -1,0 +1,42 @@
+// MIR for `main` before ElaborateDrops
+
+fn main() -> () {
+    let mut _0: ();
+    let _1: ();
+    let mut _2: std::string::String;
+    let mut _3: &str;
+    let _4: &str;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = const "";
+        _3 = &(*_4);
+        _2 = <str as ToString>::to_string(move _3) -> [return: bb1, unwind: bb4];
+    }
+
+    bb1: {
+        StorageDead(_3);
+        _1 = std::mem::drop::<String>(move _2) -> [return: bb2, unwind: bb3];
+    }
+
+    bb2: {
+        StorageDead(_2);
+        StorageDead(_4);
+        StorageDead(_1);
+        _0 = const ();
+        return;
+    }
+
+    bb3 (cleanup): {
+        drop(_2) -> [return: bb4, unwind terminate(cleanup)];
+    }
+
+    bb4 (cleanup): {
+        resume;
+    }
+}
+
+ALLOC0 (size: 0, align: 1) {}

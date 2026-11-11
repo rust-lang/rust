@@ -1,0 +1,14 @@
+error: the constant `0` is not of type `usize`
+  --> $DIR/type-const-value-type-mismatch.rs:22:5
+   |
+LL |     const LEN: usize = gca!(0u8);
+   |     ^^^^^^^^^^^^^^^^ expected `usize`, found `u8`
+
+error: the constant `0` is not of type `usize`
+  --> $DIR/type-const-value-type-mismatch.rs:25:5
+   |
+LL |     fn arr() -> [u8; const { Self::LEN }] {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `u8`
+
+error: aborting due to 2 previous errors
+

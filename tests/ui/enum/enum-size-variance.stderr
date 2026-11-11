@@ -1,0 +1,14 @@
+warning: enum variant is more than three times larger (32 bytes) than the next largest
+  --> $DIR/enum-size-variance.rs:18:5
+   |
+LL |     L(i64, i64, i64, i64),
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/enum-size-variance.rs:3:9
+   |
+LL | #![warn(variant_size_differences)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

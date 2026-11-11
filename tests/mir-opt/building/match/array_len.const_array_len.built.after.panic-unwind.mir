@@ -1,0 +1,155 @@
+// MIR for `const_array_len` after built
+
+fn const_array_len(_1: [T; 5]) -> () {
+    debug x => _1;
+    let mut _0: ();
+    let _6: ();
+    let mut _7: T;
+    let _8: ();
+    let mut _9: T;
+    let _10: ();
+    let mut _11: [T; 2];
+    let _12: ();
+    let mut _13: T;
+    scope 1 {
+        debug a => _2;
+        debug b => _3;
+        debug rest => _4;
+        debug e => _5;
+        let _2: T;
+        let _3: T;
+        let _4: [T; 2];
+        let _5: T;
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        falseEdge -> [real: bb2, imaginary: bb1];
+    }
+
+    bb1: {
+        goto -> bb7;
+    }
+
+    bb2: {
+        StorageLive(_2);
+        _2 = move _1[0 of 5];
+        StorageLive(_3);
+        _3 = move _1[1 of 5];
+        StorageLive(_4);
+        _4 = move _1[2..4];
+        StorageLive(_5);
+        _5 = move _1[4 of 5];
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = move _2;
+        _6 = opaque::<T>(move _7) -> [return: bb3, unwind: bb17];
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageLive(_8);
+        StorageLive(_9);
+        _9 = move _3;
+        _8 = opaque::<T>(move _9) -> [return: bb4, unwind: bb16];
+    }
+
+    bb4: {
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageLive(_10);
+        StorageLive(_11);
+        _11 = move _4;
+        _10 = opaque::<[T; 2]>(move _11) -> [return: bb5, unwind: bb15];
+    }
+
+    bb5: {
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageLive(_12);
+        StorageLive(_13);
+        _13 = move _5;
+        _12 = opaque::<T>(move _13) -> [return: bb6, unwind: bb14];
+    }
+
+    bb6: {
+        StorageDead(_13);
+        StorageDead(_12);
+        _0 = const ();
+        drop(_5) -> [return: bb8, unwind: bb19];
+    }
+
+    bb7: {
+        _0 = const ();
+        goto -> bb12;
+    }
+
+    bb8: {
+        StorageDead(_5);
+        drop(_4) -> [return: bb9, unwind: bb20];
+    }
+
+    bb9: {
+        StorageDead(_4);
+        drop(_3) -> [return: bb10, unwind: bb21];
+    }
+
+    bb10: {
+        StorageDead(_3);
+        drop(_2) -> [return: bb11, unwind: bb22];
+    }
+
+    bb11: {
+        StorageDead(_2);
+        goto -> bb12;
+    }
+
+    bb12: {
+        drop(_1) -> [return: bb13, unwind: bb23];
+    }
+
+    bb13: {
+        return;
+    }
+
+    bb14 (cleanup): {
+        drop(_13) -> [return: bb18, unwind terminate(cleanup)];
+    }
+
+    bb15 (cleanup): {
+        drop(_11) -> [return: bb18, unwind terminate(cleanup)];
+    }
+
+    bb16 (cleanup): {
+        drop(_9) -> [return: bb18, unwind terminate(cleanup)];
+    }
+
+    bb17 (cleanup): {
+        drop(_7) -> [return: bb18, unwind terminate(cleanup)];
+    }
+
+    bb18 (cleanup): {
+        drop(_5) -> [return: bb19, unwind terminate(cleanup)];
+    }
+
+    bb19 (cleanup): {
+        drop(_4) -> [return: bb20, unwind terminate(cleanup)];
+    }
+
+    bb20 (cleanup): {
+        drop(_3) -> [return: bb21, unwind terminate(cleanup)];
+    }
+
+    bb21 (cleanup): {
+        drop(_2) -> [return: bb22, unwind terminate(cleanup)];
+    }
+
+    bb22 (cleanup): {
+        drop(_1) -> [return: bb23, unwind terminate(cleanup)];
+    }
+
+    bb23 (cleanup): {
+        resume;
+    }
+}

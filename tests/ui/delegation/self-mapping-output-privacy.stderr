@@ -1,0 +1,27 @@
+error[E0451]: field `0` of struct `W` is private
+  --> $DIR/self-mapping-output-privacy.rs:23:18
+   |
+LL |     reuse Trait::method { S }
+   |                  ^^^^^^ private field
+
+error[E0451]: field `0` of struct `W` is private
+  --> $DIR/self-mapping-output-privacy.rs:28:18
+   |
+LL |     reuse Trait::method { S }
+   |                  ^^^^^^ private field
+
+error[E0451]: field `sss` of struct `W1` is private
+  --> $DIR/self-mapping-output-privacy.rs:33:18
+   |
+LL |     reuse Trait::method { S }
+   |                  ^^^^^^ private field
+
+error[E0451]: field `sss` of struct `W1` is private
+  --> $DIR/self-mapping-output-privacy.rs:38:18
+   |
+LL |     reuse Trait::method { S }
+   |                  ^^^^^^ private field
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0451`.

@@ -1,0 +1,13 @@
+error: function parameters require top-level or-patterns in parentheses
+  --> $DIR/fn-param-wrap-parens.rs:13:9
+   |
+LL | fn fun1(A | B: E) {}
+   |         ^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL | fn fun1((A | B): E) {}
+   |         +     +
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,18 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-50439.rs:25:22
+   |
+LL |         let _ = [(); 0 - !!(<Bears<T> as ReflectDrop>::REFLECT_DROP) as usize];
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-50439.rs:25:17
+   |
+LL |         let _ = [(); 0 - !!(<Bears<T> as ReflectDrop>::REFLECT_DROP) as usize];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+

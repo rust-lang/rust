@@ -1,0 +1,8 @@
+error: defaults for generic parameters are not allowed here
+  --> $DIR/default_function_param.rs:3:8
+   |
+LL | fn foo<const SIZE: usize = 5usize>() {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

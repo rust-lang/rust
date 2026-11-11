@@ -1,0 +1,14 @@
+error: this `if` expression is missing a block after the condition
+  --> $DIR/issue-91421.rs:4:17
+   |
+LL |     let value = if true && {
+   |                 ^^
+   |
+help: this binary operation is possibly unfinished
+  --> $DIR/issue-91421.rs:4:20
+   |
+LL |     let value = if true && {
+   |                    ^^^^^^^
+
+error: aborting due to 1 previous error
+

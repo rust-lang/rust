@@ -1,0 +1,65 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-26638.rs:1:62
+   |
+LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.next() }
+   |                     ------------------------------------     ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `iter`'s 2 lifetimes it is borrowed from
+help: consider introducing a named lifetime parameter
+   |
+LL | fn parse_type<'a>(iter: Box<dyn Iterator<Item=&'a str>+'static>) -> &'a str { iter.next() }
+   |              ++++                              ++                    ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-26638.rs:4:40
+   |
+LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
+   |                                        ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &'static str { iter() }
+   |                                         +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL | fn parse_type_2(iter: &fn(&u8)->&u8) -> &str { iter() }
+   |                       +
+help: ...or alternatively, you might want to return an owned value
+   |
+LL - fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
+LL + fn parse_type_2(iter: fn(&u8)->&u8) -> String { iter() }
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-26638.rs:8:22
+   |
+LL | fn parse_type_3() -> &str { unimplemented!() }
+   |                      ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+   |
+LL | fn parse_type_3() -> &'static str { unimplemented!() }
+   |                       +++++++
+help: instead, you are more likely to want to return an owned value
+   |
+LL - fn parse_type_3() -> &str { unimplemented!() }
+LL + fn parse_type_3() -> String { unimplemented!() }
+   |
+
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/issue-26638.rs:4:47
+   |
+LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
+   |                                               ^^^^-- argument #1 of type `&u8` is missing
+   |
+help: provide the argument
+   |
+LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter(/* &u8 */) }
+   |                                                    +++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0061, E0106.
+For more information about an error, try `rustc --explain E0061`.

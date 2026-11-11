@@ -1,0 +1,20 @@
+LooksLikeAPrivateGlobal(13)
+cdecl_fn_undecorated(1)
+cdecl_fn_undecorated2(10)
+cdecl_fn_noprefix(2)
+cdecl_fn_decorated(3)
+stdcall_fn_undecorated(4)
+stdcall_fn_undecorated2(14)
+stdcall_fn_noprefix(5)
+stdcall_fn_decorated(6)
+fastcall_fn_undecorated(7)
+fastcall_fn_undecorated2(17)
+fastcall_fn_noprefix(8)
+fastcall_fn_decorated(9)
+extern_variable_undecorated value: 42
+extern_variable_noprefix value: 43
+extern_variable_decorated value: 44
+vectorcall_fn_undecorated(10)
+vectorcall_fn_undecorated2(20)
+vectorcall_fn_noprefix(11)
+vectorcall_fn_decorated(12)

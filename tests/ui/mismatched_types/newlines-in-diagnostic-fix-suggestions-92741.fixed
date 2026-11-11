@@ -1,0 +1,14 @@
+// https://github.com/rust-lang/rust/issues/92741
+//@ run-rustfix
+fn main() {}
+fn _foo() -> bool {
+    if true { true } else { false }
+}
+
+fn _bar() -> bool {
+    if true { true } else { false }
+}
+
+fn _baz() -> bool {
+    if true { true } else { false }
+}

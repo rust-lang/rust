@@ -1,0 +1,4 @@
+COMMENT "//@ edition: 2021"
+WHITESPACE "\n\n"
+POUND "#"
+STRING "\"foo\""

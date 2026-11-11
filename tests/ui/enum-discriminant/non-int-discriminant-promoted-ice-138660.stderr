@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/non-int-discriminant-promoted-ice-138660.rs:5:17
+   |
+LL |     V1(isize) = 1..=10,
+   |                 ^^^^^^ expected `isize`, found `RangeInclusive<{integer}>`
+   |
+   = note: expected type `isize`
+            found struct `std::ops::RangeInclusive<{integer}>`
+   = note: enum variant discriminant can only be of a primitive type compatible with the enum's `repr`
+
+error[E0308]: mismatched types
+  --> $DIR/non-int-discriminant-promoted-ice-138660.rs:7:10
+   |
+LL |     V0 = 1..=10,
+   |          ^^^^^^ expected `isize`, found `RangeInclusive<{integer}>`
+   |
+   = note: expected type `isize`
+            found struct `std::ops::RangeInclusive<{integer}>`
+   = note: enum variant discriminant can only be of a primitive type compatible with the enum's `repr`
+
+error[E0732]: `#[repr(inttype)]` must be specified for enums with explicit discriminants and non-unit variants
+  --> $DIR/non-int-discriminant-promoted-ice-138660.rs:3:1
+   |
+LL | enum A {
+   | ^^^^^^
+LL |
+LL |     V1(isize) = 1..=10,
+   |                 ------ explicit discriminant on non-unit variant specified here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0732.
+For more information about an error, try `rustc --explain E0308`.

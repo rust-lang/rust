@@ -1,0 +1,55 @@
+error: used `panic!()` or assertion in a function that returns `Result`
+  --> tests/ui/panic_in_result_fn.rs:6:5
+   |
+LL | /     fn result_with_panic() -> Result<bool, String> // should emit lint
+LL | |
+LL | |     {
+LL | |         panic!("error");
+LL | |     }
+   | |_____^
+   |
+   = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> tests/ui/panic_in_result_fn.rs:9:9
+   |
+LL |         panic!("error");
+   |         ^^^^^^^^^^^^^^^
+   = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::panic_in_result_fn)]`
+
+error: used `panic!()` or assertion in a function that returns `Result`
+  --> tests/ui/panic_in_result_fn.rs:53:1
+   |
+LL | / fn function_result_with_panic() -> Result<bool, String> // should emit lint
+LL | |
+LL | | {
+LL | |     panic!("error");
+LL | | }
+   | |_^
+   |
+   = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> tests/ui/panic_in_result_fn.rs:56:5
+   |
+LL |     panic!("error");
+   |     ^^^^^^^^^^^^^^^
+
+error: used `panic!()` or assertion in a function that returns `Result`
+  --> tests/ui/panic_in_result_fn.rs:59:1
+   |
+LL | / fn in_closure() -> Result<bool, String> {
+LL | |
+LL | |     let c = || panic!();
+LL | |     c()
+LL | | }
+   | |_^
+   |
+   = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> tests/ui/panic_in_result_fn.rs:61:16
+   |
+LL |     let c = || panic!();
+   |                ^^^^^^^^
+
+error: aborting due to 3 previous errors
+

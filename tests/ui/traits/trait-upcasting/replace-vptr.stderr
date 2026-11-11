@@ -1,0 +1,20 @@
+warning: method `foo_a` is never used
+  --> $DIR/replace-vptr.rs:4:8
+   |
+LL | trait A {
+   |       - method in this trait
+LL |     fn foo_a(&self);
+   |        ^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `foo_c` is never used
+  --> $DIR/replace-vptr.rs:12:8
+   |
+LL | trait C: A + B {
+   |       - method in this trait
+LL |     fn foo_c(&self);
+   |        ^^^^^
+
+warning: 2 warnings emitted
+

@@ -1,0 +1,11 @@
+// MIR for `variant_deref` after built
+
+fn variant_deref(_1: Option<&i32>) -> () {
+    debug pointer => ((_1 as variant#1).0: &i32);
+    debug deref => (*((_1 as variant#1).0: &i32));
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}

@@ -1,0 +1,549 @@
+PRINT-ATTR_ARGS INPUT (DISPLAY): first_outer
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "first_outer",
+        span: $DIR/weird-braces.rs:16:25: 16:36 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): #[print_target_and_args(second_outer)] impl Bar<{1 > 0}> for Foo<{true}>
+{
+    #![print_target_and_args(first_inner)]
+    #![print_target_and_args(second_inner)]
+}
+PRINT-ATTR RE-COLLECTED (DISPLAY): #[print_target_and_args(second_outer)] impl Bar < { 1 > 0 } > for Foo <
+{ true } >
+{
+    #![print_target_and_args(first_inner)]
+    #![print_target_and_args(second_inner)]
+}
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[print_target_and_args(second_outer)] impl Bar < { 1 > 0 } > for Foo <
+{ true } >
+{
+    #! [print_target_and_args(first_inner)] #!
+    [print_target_and_args(second_inner)]
+}
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:17:1: 17:2 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "print_target_and_args",
+                span: $DIR/weird-braces.rs:17:3: 17:24 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "second_outer",
+                        span: $DIR/weird-braces.rs:17:25: 17:37 (#0),
+                    },
+                ],
+                span: $DIR/weird-braces.rs:17:24: 17:38 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:17:2: 17:39 (#0),
+    },
+    Ident {
+        ident: "impl",
+        span: $DIR/weird-braces.rs:18:1: 18:5 (#0),
+    },
+    Ident {
+        ident: "Bar",
+        span: $DIR/weird-braces.rs:18:6: 18:9 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:9: 18:10 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:11: 18:12 (#0),
+            },
+            Punct {
+                ch: '>',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:18:13: 18:14 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "0",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:15: 18:16 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:10: 18:17 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:17: 18:18 (#0),
+    },
+    Ident {
+        ident: "for",
+        span: $DIR/weird-braces.rs:18:19: 18:22 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/weird-braces.rs:18:23: 18:26 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:26: 18:27 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "true",
+                span: $DIR/weird-braces.rs:18:28: 18:32 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:27: 18:33 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:33: 18:34 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/weird-braces.rs:19:5: 19:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:19:6: 19:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/weird-braces.rs:19:8: 19:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "first_inner",
+                                span: $DIR/weird-braces.rs:19:30: 19:41 (#0),
+                            },
+                        ],
+                        span: $DIR/weird-braces.rs:19:29: 19:42 (#0),
+                    },
+                ],
+                span: $DIR/weird-braces.rs:19:7: 19:43 (#0),
+            },
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/weird-braces.rs:20:5: 20:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:20:6: 20:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/weird-braces.rs:20:8: 20:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "second_inner",
+                                span: $DIR/weird-braces.rs:20:30: 20:42 (#0),
+                            },
+                        ],
+                        span: $DIR/weird-braces.rs:20:29: 20:43 (#0),
+                    },
+                ],
+                span: $DIR/weird-braces.rs:20:7: 20:44 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:35: 21:2 (#0),
+    },
+]
+PRINT-ATTR_ARGS INPUT (DISPLAY): second_outer
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "second_outer",
+        span: $DIR/weird-braces.rs:17:25: 17:37 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): impl Bar<{1 > 0}> for Foo<{true}>
+{
+    #![print_target_and_args(first_inner)]
+    #![print_target_and_args(second_inner)]
+}
+PRINT-ATTR RE-COLLECTED (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } >
+{
+    #![print_target_and_args(first_inner)]
+    #![print_target_and_args(second_inner)]
+}
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } >
+{
+    #! [print_target_and_args(first_inner)] #!
+    [print_target_and_args(second_inner)]
+}
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "impl",
+        span: $DIR/weird-braces.rs:18:1: 18:5 (#0),
+    },
+    Ident {
+        ident: "Bar",
+        span: $DIR/weird-braces.rs:18:6: 18:9 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:9: 18:10 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:11: 18:12 (#0),
+            },
+            Punct {
+                ch: '>',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:18:13: 18:14 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "0",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:15: 18:16 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:10: 18:17 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:17: 18:18 (#0),
+    },
+    Ident {
+        ident: "for",
+        span: $DIR/weird-braces.rs:18:19: 18:22 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/weird-braces.rs:18:23: 18:26 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:26: 18:27 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "true",
+                span: $DIR/weird-braces.rs:18:28: 18:32 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:27: 18:33 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:33: 18:34 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/weird-braces.rs:19:5: 19:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:19:6: 19:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/weird-braces.rs:19:8: 19:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "first_inner",
+                                span: $DIR/weird-braces.rs:19:30: 19:41 (#0),
+                            },
+                        ],
+                        span: $DIR/weird-braces.rs:19:29: 19:42 (#0),
+                    },
+                ],
+                span: $DIR/weird-braces.rs:19:7: 19:43 (#0),
+            },
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/weird-braces.rs:20:5: 20:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:20:6: 20:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/weird-braces.rs:20:8: 20:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "second_inner",
+                                span: $DIR/weird-braces.rs:20:30: 20:42 (#0),
+                            },
+                        ],
+                        span: $DIR/weird-braces.rs:20:29: 20:43 (#0),
+                    },
+                ],
+                span: $DIR/weird-braces.rs:20:7: 20:44 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:35: 21:2 (#0),
+    },
+]
+PRINT-ATTR_ARGS INPUT (DISPLAY): first_inner
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "first_inner",
+        span: $DIR/weird-braces.rs:19:30: 19:41 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): impl Bar<{1 > 0}> for Foo<{true}> { #![print_target_and_args(second_inner)] }
+PRINT-ATTR RE-COLLECTED (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } >
+{ #![print_target_and_args(second_inner)] }
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } >
+{ #! [print_target_and_args(second_inner)] }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "impl",
+        span: $DIR/weird-braces.rs:18:1: 18:5 (#0),
+    },
+    Ident {
+        ident: "Bar",
+        span: $DIR/weird-braces.rs:18:6: 18:9 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:9: 18:10 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:11: 18:12 (#0),
+            },
+            Punct {
+                ch: '>',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:18:13: 18:14 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "0",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:15: 18:16 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:10: 18:17 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:17: 18:18 (#0),
+    },
+    Ident {
+        ident: "for",
+        span: $DIR/weird-braces.rs:18:19: 18:22 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/weird-braces.rs:18:23: 18:26 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:26: 18:27 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "true",
+                span: $DIR/weird-braces.rs:18:28: 18:32 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:27: 18:33 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:33: 18:34 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/weird-braces.rs:20:5: 20:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:20:6: 20:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/weird-braces.rs:20:8: 20:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "second_inner",
+                                span: $DIR/weird-braces.rs:20:30: 20:42 (#0),
+                            },
+                        ],
+                        span: $DIR/weird-braces.rs:20:29: 20:43 (#0),
+                    },
+                ],
+                span: $DIR/weird-braces.rs:20:7: 20:44 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:35: 21:2 (#0),
+    },
+]
+PRINT-ATTR_ARGS INPUT (DISPLAY): second_inner
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "second_inner",
+        span: $DIR/weird-braces.rs:20:30: 20:42 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): impl Bar<{1 > 0}> for Foo<{true}> {}
+PRINT-ATTR RE-COLLECTED (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } > {}
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "impl",
+        span: $DIR/weird-braces.rs:18:1: 18:5 (#0),
+    },
+    Ident {
+        ident: "Bar",
+        span: $DIR/weird-braces.rs:18:6: 18:9 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:9: 18:10 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:11: 18:12 (#0),
+            },
+            Punct {
+                ch: '>',
+                spacing: Alone,
+                span: $DIR/weird-braces.rs:18:13: 18:14 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "0",
+                suffix: None,
+                span: $DIR/weird-braces.rs:18:15: 18:16 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:10: 18:17 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:17: 18:18 (#0),
+    },
+    Ident {
+        ident: "for",
+        span: $DIR/weird-braces.rs:18:19: 18:22 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/weird-braces.rs:18:23: 18:26 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:26: 18:27 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "true",
+                span: $DIR/weird-braces.rs:18:28: 18:32 (#0),
+            },
+        ],
+        span: $DIR/weird-braces.rs:18:27: 18:33 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/weird-braces.rs:18:33: 18:34 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/weird-braces.rs:18:35: 21:2 (#0),
+    },
+]

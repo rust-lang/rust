@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-102374.rs:16:5
+   |
+LL | ) -> i32 {
+   |      --- expected `i32` because of return type
+LL |     f
+   |     ^ expected `i32`, found fn pointer
+   |
+   = note:    expected type `i32`
+           found fn pointer `for<'z1, 'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'l, 'm, 'n, 'o, 'p, 'q, 'r, 's, 't, 'u, 'v, 'w, 'x, 'y, 'z, 'z0> fn(Cell<(&'z1 i32, &'a i32, &'b i32, &'c i32, &'d i32, &'e i32, &'f i32, &'g i32, &'h i32, &'i i32, &'j i32, &'k i32, &'l i32, &'m i32, &'n i32, &'o i32, &'p i32, &'q i32, &'r i32, &'s i32, &'t i32, &'u i32, &'v i32, &'w i32, &'x i32, &'y i32, &'z i32, &'z0 i32)>)`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

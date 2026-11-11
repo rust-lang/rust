@@ -1,0 +1,62 @@
+error: type `ONE_TWO_THREE` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:4:8
+   |
+LL | struct ONE_TWO_THREE;
+   |        ^^^^^^^^^^^^^ help: convert the identifier to upper camel case: `OneTwoThree`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-non-camel-case-types.rs:1:11
+   |
+LL | #![forbid(non_camel_case_types)]
+   |           ^^^^^^^^^^^^^^^^^^^^
+
+error: type `foo` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:7:8
+   |
+LL | struct foo {
+   |        ^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo`
+
+error: type `foo2` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:11:6
+   |
+LL | enum foo2 {
+   |      ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo2`
+
+error: type `foo3` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:15:8
+   |
+LL | struct foo3 {
+   |        ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo3`
+
+error: type `foo4` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:19:6
+   |
+LL | type foo4 = isize;
+   |      ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo4`
+
+error: variant `bar` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:22:5
+   |
+LL |     bar
+   |     ^^^ help: convert the identifier to upper camel case: `Bar`
+
+error: trait `foo6` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:25:7
+   |
+LL | trait foo6 {
+   |       ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo6`
+
+error: associated type `foo7` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:26:10
+   |
+LL |     type foo7;
+   |          ^^^^ help: convert the identifier to upper camel case (notice the capitalization): `Foo7`
+
+error: type parameter `ty` should have an upper camel case name
+  --> $DIR/lint-non-camel-case-types.rs:30:6
+   |
+LL | fn f<ty>(_: ty) {}
+   |      ^^ help: convert the identifier to upper camel case: `Ty`
+
+error: aborting due to 9 previous errors
+

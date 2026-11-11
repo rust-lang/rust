@@ -1,0 +1,9 @@
+error[E0322]: explicit impls for the `DiscriminantKind` trait are not permitted
+  --> $DIR/forbidden-discriminant-kind-impl.rs:9:1
+   |
+LL | impl DiscriminantKind for NewType {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `DiscriminantKind` not allowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0322`.

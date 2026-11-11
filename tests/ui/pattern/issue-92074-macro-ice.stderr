@@ -1,0 +1,38 @@
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/issue-92074-macro-ice.rs:18:25
+   |
+LL | macro_rules! make_vec {
+LL |     () => { force_expr!(Vec::new()) }
+   |                         ^^^^^^^^^^
+...
+LL |     assert!(matches!(x, En::A(make_vec!())));
+   |                               ----------- in this macro invocation
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/issue-92074-macro-ice.rs:22:24
+   |
+LL | macro_rules! make_pat {
+LL |     () => { force_pat!(get_usize(), get_usize()) }
+   |                        ^^^^^^^^^^^
+...
+LL |     assert!(matches!(5, make_pat!()));
+   |                         ----------- in this macro invocation
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/issue-92074-macro-ice.rs:22:37
+   |
+LL | macro_rules! make_pat {
+LL |     () => { force_pat!(get_usize(), get_usize()) }
+   |                                     ^^^^^^^^^^^
+...
+LL |     assert!(matches!(5, make_pat!()));
+   |                         ----------- in this macro invocation
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+
+error: aborting due to 3 previous errors
+

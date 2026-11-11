@@ -1,0 +1,12 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-107423-unused-delim-only-one-no-pair.rs:4:11
+   |
+LL | fn a(){{{
+   |       ---^
+   |       |||
+   |       ||unclosed delimiter
+   |       |unclosed delimiter
+   |       unclosed delimiter
+
+error: aborting due to 1 previous error
+

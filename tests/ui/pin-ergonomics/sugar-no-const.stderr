@@ -1,0 +1,52 @@
+error: expected one of `!`, `(`, `::`, `;`, `<`, or `=`, found `i32`
+  --> $DIR/sugar-no-const.rs:7:18
+   |
+LL |     let _x: &pin i32 = todo!();
+   |           -      ^^^ expected one of `!`, `(`, `::`, `;`, `<`, or `=`
+   |           |
+   |           while parsing the type for `_x`
+   |
+help: there is a keyword `in` with a similar name
+   |
+LL -     let _x: &pin i32 = todo!();
+LL +     let _x: &in i32 = todo!();
+   |
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `x`
+  --> $DIR/sugar-no-const.rs:12:19
+   |
+LL |     let _x = &pin x;
+   |                   ^ expected one of 8 possible tokens
+   |
+help: there is a keyword `in` with a similar name
+   |
+LL -     let _x = &pin x;
+LL +     let _x = &in x;
+   |
+
+error: expected one of `:`, `;`, `=`, `@`, or `|`, found `_x`
+  --> $DIR/sugar-no-const.rs:16:14
+   |
+LL |     let &pin _x: &pin i32 = todo!();
+   |              ^^ expected one of `:`, `;`, `=`, `@`, or `|`
+   |
+help: there is a keyword `in` with a similar name
+   |
+LL -     let &pin _x: &pin i32 = todo!();
+LL +     let &in _x: &pin i32 = todo!();
+   |
+
+error: expected one of `:`, `;`, `=`, `@`, or `|`, found `_x`
+  --> $DIR/sugar-no-const.rs:20:17
+   |
+LL |     let ref pin _x: i32 = todo!();
+   |                 ^^ expected one of `:`, `;`, `=`, `@`, or `|`
+   |
+help: there is a keyword `in` with a similar name
+   |
+LL -     let ref pin _x: i32 = todo!();
+LL +     let ref in _x: i32 = todo!();
+   |
+
+error: aborting due to 4 previous errors
+

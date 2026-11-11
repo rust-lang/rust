@@ -1,0 +1,30 @@
+error[E0425]: cannot find value `banana` in this scope
+  --> $DIR/issue-60057.rs:8:21
+   |
+LL | impl A {
+LL |     fn new(peach: u8) -> A {
+LL |         A {
+LL |             banana: banana
+   |                     ^^^^^^
+   |
+note: a field by that name exists in `Self`
+  --> $DIR/issue-60057.rs:2:5
+   |
+LL | struct A {
+LL |     banana: u8,
+   |     ^^^^^^
+
+error[E0425]: cannot find value `banana` in this scope
+  --> $DIR/issue-60057.rs:14:21
+   |
+LL |             banana: banana
+   |                     ^^^^^^
+   |
+help: you might have meant to use the available field
+   |
+LL |             banana: self.banana
+   |                     +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

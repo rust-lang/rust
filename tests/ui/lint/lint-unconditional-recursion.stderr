@@ -1,0 +1,201 @@
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:4:1
+   |
+LL | fn foo() {
+   | ^^^^^^^^ cannot return without recursing
+LL |     foo();
+   |     ----- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+note: the lint level is defined here
+  --> $DIR/lint-unconditional-recursion.rs:1:9
+   |
+LL | #![deny(unconditional_recursion)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:14:1
+   |
+LL | fn baz() {
+   | ^^^^^^^^ cannot return without recursing
+LL |     if true {
+LL |         baz()
+   |         ----- recursive call site
+LL |     } else {
+LL |         baz()
+   |         ----- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:26:1
+   |
+LL | fn quz() -> bool {
+   | ^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     if true {
+LL |         while quz() {}
+   |               ----- recursive call site
+...
+LL |         loop { quz(); }
+   |                ----- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:37:5
+   |
+LL |     fn bar(&self) {
+   |     ^^^^^^^^^^^^^ cannot return without recursing
+LL |         self.bar()
+   |         ---------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:43:5
+   |
+LL |     fn bar(&self) {
+   |     ^^^^^^^^^^^^^ cannot return without recursing
+LL |         loop {
+LL |             self.bar()
+   |             ---------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:52:5
+   |
+LL |     fn bar(&self) {
+   |     ^^^^^^^^^^^^^ cannot return without recursing
+LL |         0.bar()
+   |         ------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:65:5
+   |
+LL |     fn bar(&self) {
+   |     ^^^^^^^^^^^^^ cannot return without recursing
+LL |         Foo2::bar(self)
+   |         --------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:71:5
+   |
+LL |     fn bar(&self) {
+   |     ^^^^^^^^^^^^^ cannot return without recursing
+LL |         loop {
+LL |             Foo2::bar(self)
+   |             --------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:81:5
+   |
+LL |     fn qux(&self) {
+   |     ^^^^^^^^^^^^^ cannot return without recursing
+LL |         self.qux();
+   |         ---------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:86:5
+   |
+LL |     fn as_ref(&self) -> &Self {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |         Baz::as_ref(self)
+   |         ----------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:93:5
+   |
+LL |     fn default() -> Baz {
+   |     ^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |         let x = Default::default();
+   |                 ------------------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:102:5
+   |
+LL |     fn deref(&self) -> &() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |         &**self
+   |          ------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:109:5
+   |
+LL |     fn index(&self, x: usize) -> &Baz {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |         &self[x]
+   |              --- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:118:5
+   |
+LL |     fn deref(&self) -> &Baz {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |         self.as_ref()
+   |         ------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:162:1
+   |
+LL | pub fn drop_and_replace(mut a: Option<String>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     a = None;
+LL |     drop_and_replace(a);
+   |     ------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:168:1
+   |
+LL | pub fn call() -> String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     let s = String::new();
+LL |     call();
+   |     ------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:175:1
+   |
+LL | pub fn overflow_check(a: i32, b: i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     let _ = a + b;
+LL |     overflow_check(a, b);
+   |     -------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:186:5
+   |
+LL |     fn default() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |             ..Default::default()
+   |               ------------------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: aborting due to 18 previous errors
+

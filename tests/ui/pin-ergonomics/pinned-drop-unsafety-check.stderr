@@ -1,0 +1,15 @@
+error[E0133]: call `Drop::pin_drop` explicitly is unsafe and requires unsafe block
+  --> $DIR/pinned-drop-unsafety-check.rs:14:9
+   |
+LL |         Self::pin_drop(Pin { pointer: self });
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0133]: call `Drop::drop` explicitly is unsafe and requires unsafe block
+  --> $DIR/pinned-drop-unsafety-check.rs:20:9
+   |
+LL |         Self::drop(self.pointer);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

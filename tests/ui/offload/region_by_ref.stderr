@@ -1,0 +1,26 @@
+error: offload kernel argument 0 contains a `Region` nested inside another type. Pass the `Region` by value so it can be mapped like a slice
+  --> $DIR/region_by_ref.rs:30:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: offload kernel argument 0 contains a `Region` nested inside another type. Pass the `Region` by value so it can be mapped like a slice
+  --> $DIR/region_by_ref.rs:42:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: offload kernel argument 0 contains a `Region` nested inside another type. Pass the `Region` by value so it can be mapped like a slice
+  --> $DIR/region_by_ref.rs:54:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: offload kernel argument 0 contains a `Region` nested inside another type. Pass the `Region` by value so it can be mapped like a slice
+  --> $DIR/region_by_ref.rs:66:5
+   |
+LL |     core::intrinsics::offload::<_, _, ()>(
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

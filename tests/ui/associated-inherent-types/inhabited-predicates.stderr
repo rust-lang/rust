@@ -1,0 +1,27 @@
+warning: associated type `PubTy::PrivAssocTy` is more private than the item `PubAlias0`
+  --> $DIR/inhabited-predicates.rs:6:1
+   |
+LL | pub type PubAlias0 = PubTy::PrivAssocTy;
+   | ^^^^^^^^^^^^^^^^^^ type alias `PubAlias0` is reachable at visibility `pub`
+   |
+note: but associated type `PubTy::PrivAssocTy` is only usable at visibility `pub(crate)`
+  --> $DIR/inhabited-predicates.rs:11:5
+   |
+LL |     type PrivAssocTy = ();
+   |     ^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+warning: associated type `PubTy::PrivAssocTy` is more private than the item `S::0`
+  --> $DIR/inhabited-predicates.rs:14:14
+   |
+LL | pub struct S(pub PubAlias0);
+   |              ^^^^^^^^^^^^^ field `S::0` is reachable at visibility `pub`
+   |
+note: but associated type `PubTy::PrivAssocTy` is only usable at visibility `pub(crate)`
+  --> $DIR/inhabited-predicates.rs:11:5
+   |
+LL |     type PrivAssocTy = ();
+   |     ^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

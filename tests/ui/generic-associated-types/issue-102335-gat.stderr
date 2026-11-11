@@ -1,0 +1,28 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-102335-gat.rs:2:21
+   |
+LL |     type A: S<C<(), i32 = ()> = ()>;
+   |                     ^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<(), i32 = ()> = ()>;
+LL +     type A: S<C<()> = ()>;
+   |
+
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-102335-gat.rs:2:21
+   |
+LL |     type A: S<C<(), i32 = ()> = ()>;
+   |                     ^^^^^^^^ associated item constraint not allowed here
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider removing this associated item binding
+   |
+LL -     type A: S<C<(), i32 = ()> = ()>;
+LL +     type A: S<C<()> = ()>;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0229`.

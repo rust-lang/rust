@@ -1,0 +1,231 @@
+TokenStream [Ident { ident: "ident", span: $DIR/dump-debug-span-debug.rs:10:5: 10:10 (#0) }, Ident { ident: "r#ident", span: $DIR/dump-debug-span-debug.rs:11:5: 11:12 (#0) }, Punct { ch: ',', spacing: Alone, span: $DIR/dump-debug-span-debug.rs:12:5: 12:6 (#0) }, Punct { ch: '&', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:13:5: 13:6 (#0) }, Punct { ch: '&', spacing: Alone, span: $DIR/dump-debug-span-debug.rs:13:6: 13:7 (#0) }, Punct { ch: '|', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:14:5: 14:6 (#0) }, Punct { ch: '|', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:14:6: 14:7 (#0) }, Punct { ch: '>', spacing: Alone, span: $DIR/dump-debug-span-debug.rs:14:7: 14:8 (#0) }, Punct { ch: '|', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:15:5: 15:6 (#0) }, Punct { ch: '|', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:15:6: 15:7 (#0) }, Punct { ch: '<', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:15:7: 15:8 (#0) }, Punct { ch: '<', spacing: Alone, span: $DIR/dump-debug-span-debug.rs:15:8: 15:9 (#0) }, Punct { ch: '.', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:16:5: 16:6 (#0) }, Punct { ch: '.', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:16:6: 16:7 (#0) }, Punct { ch: '=', spacing: Alone, span: $DIR/dump-debug-span-debug.rs:16:7: 16:8 (#0) }, Punct { ch: '<', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:17:5: 17:6 (#0) }, Punct { ch: '<', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:17:6: 17:7 (#0) }, Punct { ch: '=', spacing: Joint, span: $DIR/dump-debug-span-debug.rs:17:7: 17:8 (#0) }, Punct { ch: '!', spacing: Alone, span: $DIR/dump-debug-span-debug.rs:17:8: 17:9 (#0) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/dump-debug-span-debug.rs:18:5: 18:7 (#0) }, Group { delimiter: Bracket, stream: TokenStream [Ident { ident: "_", span: $DIR/dump-debug-span-debug.rs:19:6: 19:7 (#0) }], span: $DIR/dump-debug-span-debug.rs:19:5: 19:8 (#0) }, Literal { kind: Integer, symbol: "0", suffix: None, span: $DIR/dump-debug-span-debug.rs:22:5: 22:6 (#0) }, Literal { kind: Float, symbol: "1.0", suffix: None, span: $DIR/dump-debug-span-debug.rs:23:5: 23:8 (#0) }, Literal { kind: Str, symbol: "S", suffix: None, span: $DIR/dump-debug-span-debug.rs:24:5: 24:8 (#0) }, Literal { kind: ByteStr, symbol: "B", suffix: None, span: $DIR/dump-debug-span-debug.rs:25:5: 25:9 (#0) }, Literal { kind: StrRaw(0), symbol: "R", suffix: None, span: $DIR/dump-debug-span-debug.rs:26:5: 26:9 (#0) }, Literal { kind: StrRaw(2), symbol: "R", suffix: None, span: $DIR/dump-debug-span-debug.rs:27:5: 27:13 (#0) }, Literal { kind: ByteStrRaw(0), symbol: "BR", suffix: None, span: $DIR/dump-debug-span-debug.rs:28:5: 28:11 (#0) }, Literal { kind: ByteStrRaw(2), symbol: "BR", suffix: None, span: $DIR/dump-debug-span-debug.rs:29:5: 29:15 (#0) }, Literal { kind: Char, symbol: "C", suffix: None, span: $DIR/dump-debug-span-debug.rs:30:5: 30:8 (#0) }, Literal { kind: Byte, symbol: "B", suffix: None, span: $DIR/dump-debug-span-debug.rs:31:5: 31:9 (#0) }, Literal { kind: Integer, symbol: "0", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:34:5: 34:7 (#0) }, Literal { kind: Float, symbol: "1.0", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:35:5: 35:9 (#0) }, Literal { kind: Str, symbol: "S", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:36:5: 36:9 (#0) }, Literal { kind: ByteStr, symbol: "B", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:37:5: 37:10 (#0) }, Literal { kind: StrRaw(0), symbol: "R", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:38:5: 38:10 (#0) }, Literal { kind: StrRaw(2), symbol: "R", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:39:5: 39:14 (#0) }, Literal { kind: ByteStrRaw(0), symbol: "BR", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:40:5: 40:12 (#0) }, Literal { kind: ByteStrRaw(2), symbol: "BR", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:41:5: 41:16 (#0) }, Literal { kind: Char, symbol: "C", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:42:5: 42:9 (#0) }, Literal { kind: Byte, symbol: "B", suffix: Some("q"), span: $DIR/dump-debug-span-debug.rs:43:5: 43:10 (#0) }]
+TokenStream [
+    Ident {
+        ident: "ident",
+        span: $DIR/dump-debug-span-debug.rs:10:5: 10:10 (#0),
+    },
+    Ident {
+        ident: "r#ident",
+        span: $DIR/dump-debug-span-debug.rs:11:5: 11:12 (#0),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/dump-debug-span-debug.rs:12:5: 12:6 (#0),
+    },
+    Punct {
+        ch: '&',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:13:5: 13:6 (#0),
+    },
+    Punct {
+        ch: '&',
+        spacing: Alone,
+        span: $DIR/dump-debug-span-debug.rs:13:6: 13:7 (#0),
+    },
+    Punct {
+        ch: '|',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:14:5: 14:6 (#0),
+    },
+    Punct {
+        ch: '|',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:14:6: 14:7 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/dump-debug-span-debug.rs:14:7: 14:8 (#0),
+    },
+    Punct {
+        ch: '|',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:15:5: 15:6 (#0),
+    },
+    Punct {
+        ch: '|',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:15:6: 15:7 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:15:7: 15:8 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/dump-debug-span-debug.rs:15:8: 15:9 (#0),
+    },
+    Punct {
+        ch: '.',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:16:5: 16:6 (#0),
+    },
+    Punct {
+        ch: '.',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:16:6: 16:7 (#0),
+    },
+    Punct {
+        ch: '=',
+        spacing: Alone,
+        span: $DIR/dump-debug-span-debug.rs:16:7: 16:8 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:17:5: 17:6 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:17:6: 17:7 (#0),
+    },
+    Punct {
+        ch: '=',
+        spacing: Joint,
+        span: $DIR/dump-debug-span-debug.rs:17:7: 17:8 (#0),
+    },
+    Punct {
+        ch: '!',
+        spacing: Alone,
+        span: $DIR/dump-debug-span-debug.rs:17:8: 17:9 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/dump-debug-span-debug.rs:18:5: 18:7 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "_",
+                span: $DIR/dump-debug-span-debug.rs:19:6: 19:7 (#0),
+            },
+        ],
+        span: $DIR/dump-debug-span-debug.rs:19:5: 19:8 (#0),
+    },
+    Literal {
+        kind: Integer,
+        symbol: "0",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:22:5: 22:6 (#0),
+    },
+    Literal {
+        kind: Float,
+        symbol: "1.0",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:23:5: 23:8 (#0),
+    },
+    Literal {
+        kind: Str,
+        symbol: "S",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:24:5: 24:8 (#0),
+    },
+    Literal {
+        kind: ByteStr,
+        symbol: "B",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:25:5: 25:9 (#0),
+    },
+    Literal {
+        kind: StrRaw(0),
+        symbol: "R",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:26:5: 26:9 (#0),
+    },
+    Literal {
+        kind: StrRaw(2),
+        symbol: "R",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:27:5: 27:13 (#0),
+    },
+    Literal {
+        kind: ByteStrRaw(0),
+        symbol: "BR",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:28:5: 28:11 (#0),
+    },
+    Literal {
+        kind: ByteStrRaw(2),
+        symbol: "BR",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:29:5: 29:15 (#0),
+    },
+    Literal {
+        kind: Char,
+        symbol: "C",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:30:5: 30:8 (#0),
+    },
+    Literal {
+        kind: Byte,
+        symbol: "B",
+        suffix: None,
+        span: $DIR/dump-debug-span-debug.rs:31:5: 31:9 (#0),
+    },
+    Literal {
+        kind: Integer,
+        symbol: "0",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:34:5: 34:7 (#0),
+    },
+    Literal {
+        kind: Float,
+        symbol: "1.0",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:35:5: 35:9 (#0),
+    },
+    Literal {
+        kind: Str,
+        symbol: "S",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:36:5: 36:9 (#0),
+    },
+    Literal {
+        kind: ByteStr,
+        symbol: "B",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:37:5: 37:10 (#0),
+    },
+    Literal {
+        kind: StrRaw(0),
+        symbol: "R",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:38:5: 38:10 (#0),
+    },
+    Literal {
+        kind: StrRaw(2),
+        symbol: "R",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:39:5: 39:14 (#0),
+    },
+    Literal {
+        kind: ByteStrRaw(0),
+        symbol: "BR",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:40:5: 40:12 (#0),
+    },
+    Literal {
+        kind: ByteStrRaw(2),
+        symbol: "BR",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:41:5: 41:16 (#0),
+    },
+    Literal {
+        kind: Char,
+        symbol: "C",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:42:5: 42:9 (#0),
+    },
+    Literal {
+        kind: Byte,
+        symbol: "B",
+        suffix: Some("q"),
+        span: $DIR/dump-debug-span-debug.rs:43:5: 43:10 (#0),
+    },
+]

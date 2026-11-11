@@ -1,0 +1,43 @@
+error[E0308]: mismatched types
+  --> $DIR/string-match-as-str-suggestion.rs:7:9
+   |
+LL |     let _ = match s {
+   |                   - this expression has type `String`
+LL |         "yes" => Some(true),
+   |         ^^^^^ expected `String`, found `&str`
+   |
+help: consider converting the `String` to a `&str` using `.as_str()`
+   |
+LL |     let _ = match s.as_str() {
+   |                    +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/string-match-as-str-suggestion.rs:9:9
+   |
+LL |     let _ = match s {
+   |                   - this expression has type `String`
+...
+LL |         "no" => Some(false),
+   |         ^^^^ expected `String`, found `&str`
+   |
+help: consider converting the `String` to a `&str` using `.as_str()`
+   |
+LL |     let _ = match s.as_str() {
+   |                    +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/string-match-as-str-suggestion.rs:15:12
+   |
+LL |     if let "hello" = s2 {
+   |            ^^^^^^^   -- this expression has type `String`
+   |            |
+   |            expected `String`, found `&str`
+   |
+help: consider converting the `String` to a `&str` using `.as_str()`
+   |
+LL |     if let "hello" = s2.as_str() {
+   |                        +++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

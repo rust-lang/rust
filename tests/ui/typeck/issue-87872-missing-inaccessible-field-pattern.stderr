@@ -1,0 +1,22 @@
+error[E0027]: pattern does not mention field `visible` and inaccessible fields
+  --> $DIR/issue-87872-missing-inaccessible-field-pattern.rs:9:9
+   |
+LL |     let foo::Foo {} = foo::Foo::default();
+   |         ^^^^^^^^^^^ missing field `visible` and inaccessible fields
+   |
+help: include the missing field in the pattern and ignore the inaccessible fields
+   |
+LL |     let foo::Foo { visible, .. } = foo::Foo::default();
+   |                    +++++++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |     let foo::Foo { visible: _, .. } = foo::Foo::default();
+   |                    ++++++++++++++
+help: or always ignore missing fields here
+   |
+LL |     let foo::Foo { .. } = foo::Foo::default();
+   |                    ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0027`.

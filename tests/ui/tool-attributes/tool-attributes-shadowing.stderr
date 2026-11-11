@@ -1,0 +1,15 @@
+error[E0433]: cannot find `skip` in `rustfmt`
+  --> $DIR/tool-attributes-shadowing.rs:22:12
+   |
+LL | #[rustfmt::skip]
+   |            ^^^^ could not find `skip` in `rustfmt`
+
+error[E0433]: cannot find `custom_attr` in `custom_tool`
+  --> $DIR/tool-attributes-shadowing.rs:27:16
+   |
+LL | #[custom_tool::custom_attr]
+   |                ^^^^^^^^^^^ could not find `custom_attr` in `custom_tool`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

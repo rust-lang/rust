@@ -1,0 +1,9 @@
+error[E0601]: `main` function not found in crate `cfg_attr_cfg_2`
+  --> $DIR/cfg-attr-cfg-2.rs:7:14
+   |
+LL | fn main() { }
+   |              ^ consider adding a `main` function to `$DIR/cfg-attr-cfg-2.rs`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0601`.

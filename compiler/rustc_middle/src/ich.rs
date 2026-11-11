@@ -1,0 +1,242 @@
+use std::hash::Hasher;
+
+use rustc_crate_store::Untracked;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hash::{
+    RawDefId, RawSpan, StableHash, StableHashControls, StableHashCtxt, StableHasher,
+};
+use rustc_data_structures::sync::AppendOnlyIndexVec;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_session::Session;
+use rustc_span::source_map::SourceMap;
+use rustc_span::{BytePos, CachingSourceMapView, DUMMY_SP, Pos, Span, SpanData};
+
+// Very often, we are hashing something that does not need the `CachingSourceMapView`, so we
+// initialize it lazily.
+enum CachingSourceMap<'a> {
+    Unused(&'a SourceMap),
+    InUse(CachingSourceMapView<'a>),
+}
+
+/// This is the context state available during incr. comp. hashing. It contains
+/// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
+/// a reference to the `TyCtxt`) and it holds a few caches for speeding up various
+/// things (e.g., each `DefId`/`DefPath` is only hashed once).
+pub struct StableHashState<'a> {
+    untracked: &'a Untracked,
+    // The value of `-Z incremental-ignore-spans`.
+    // This field should only be used by `unstable_opts_incremental_ignore_span`
+    incremental_ignore_spans: bool,
+    caching_source_map: CachingSourceMap<'a>,
+    stable_hash_controls: StableHashControls,
+    source_span_cache: SourceSpanCache,
+}
+
+impl<'a> StableHashState<'a> {
+    #[inline]
+    pub fn new(sess: &'a Session, untracked: &'a Untracked) -> Self {
+        let hash_spans_initial = !sess.opts.unstable_opts.incremental_ignore_spans;
+
+        StableHashState {
+            untracked,
+            incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
+            caching_source_map: CachingSourceMap::Unused(sess.source_map()),
+            stable_hash_controls: StableHashControls { hash_spans: hash_spans_initial },
+            source_span_cache: SourceSpanCache::default(),
+        }
+    }
+
+    #[inline]
+    pub fn while_hashing_spans<F: FnOnce(&mut Self)>(&mut self, hash_spans: bool, f: F) {
+        let prev_hash_spans = self.stable_hash_controls.hash_spans;
+        self.stable_hash_controls.hash_spans = hash_spans;
+        f(self);
+        self.stable_hash_controls.hash_spans = prev_hash_spans;
+    }
+
+    #[inline]
+    fn source_map(&mut self) -> &mut CachingSourceMapView<'a> {
+        match self.caching_source_map {
+            CachingSourceMap::InUse(ref mut sm) => sm,
+            CachingSourceMap::Unused(sm) => {
+                self.caching_source_map = CachingSourceMap::InUse(CachingSourceMapView::new(sm));
+                self.source_map() // this recursive call will hit the `InUse` case
+            }
+        }
+    }
+
+    #[inline]
+    pub fn stable_hash_controls(&self) -> StableHashControls {
+        self.stable_hash_controls
+    }
+}
+
+impl<'a> StableHashCtxt for StableHashState<'a> {
+    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
+    /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
+    /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
+    /// containing `SourceFile` has moved within the `SourceMap`.
+    ///
+    /// Also note that we are hashing byte offsets for the column, not unicode codepoint offsets.
+    /// For the purpose of the hash that's sufficient. Also, hashing filenames is expensive so we
+    /// avoid doing it twice when the span starts and ends in the same file, which is almost always
+    /// the case.
+    ///
+    /// To avoid stable-hashing inconsistencies between stage1 and stage2 compilers, take care
+    /// not to rely on any `Hash` impls that were provided or derived by the standard library.
+    /// Instead, delegate to `StableHash` impls, or call `Hasher::write_*` methods directly.
+    ///
+    /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
+    #[inline]
+    fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
+        const TAG_VALID_SPAN: u8 = 0;
+        const TAG_INVALID_SPAN: u8 = 1;
+        const TAG_RELATIVE_SPAN: u8 = 2;
+
+        #[inline]
+        fn pack_span_location(
+            line_lo: usize,
+            col_lo: BytePos,
+            line_hi: usize,
+            col_hi: BytePos,
+        ) -> u64 {
+            let col_lo_trunc = (col_lo.0 as u64) & 0xFF;
+            let line_lo_trunc = ((line_lo as u64) & 0xFF_FF_FF) << 8;
+            let col_hi_trunc = ((col_hi.0 as u64) & 0xFF) << 32;
+            let line_hi_trunc = ((line_hi as u64) & 0xFF_FF_FF) << 40;
+            col_lo_trunc | line_lo_trunc | col_hi_trunc | line_hi_trunc
+        }
+
+        if !self.stable_hash_controls().hash_spans {
+            return;
+        }
+
+        let span = Span::from_raw_span(raw_span);
+        let span = span.data_untracked();
+        span.ctxt.stable_hash(self, hasher);
+        span.parent.stable_hash(self, hasher);
+
+        if span.is_dummy() {
+            hasher.write_u8(TAG_INVALID_SPAN);
+            return;
+        }
+
+        let parent = span
+            .parent
+            .map(|parent| self.source_span_cache.lookup(parent, &self.untracked.source_span));
+        if let Some(parent) = parent
+            && parent.contains(span)
+        {
+            // This span is enclosed in a definition: only hash the relative position. This catches
+            // a subset of the cases from the `file.contains(parent.lo)`. But we can do this check
+            // cheaply without the expensive `span_data_to_lines_and_cols` query.
+            hasher.write_u8(TAG_RELATIVE_SPAN);
+            hasher.write_u32((span.lo - parent.lo).to_u32());
+            hasher.write_u32((span.hi - parent.lo).to_u32());
+            return;
+        }
+
+        // If this is not an empty or invalid span, we want to hash the last position that belongs
+        // to it, as opposed to hashing the first position past it.
+        let Some((file, line_lo, col_lo, line_hi, col_hi)) =
+            self.source_map().span_data_to_lines_and_cols(&span)
+        else {
+            hasher.write_u8(TAG_INVALID_SPAN);
+            return;
+        };
+        let file_stable_id = file.stable_id;
+
+        if let Some(parent) = parent
+            && file.contains(parent.lo)
+        {
+            // This span is relative to another span in the same file,
+            // only hash the relative position.
+            hasher.write_u8(TAG_RELATIVE_SPAN);
+            hasher.write_u32(span.lo.0.wrapping_sub(parent.lo.0));
+            hasher.write_u32(span.hi.0.wrapping_sub(parent.lo.0));
+            return;
+        }
+
+        hasher.write_u8(TAG_VALID_SPAN);
+        file_stable_id.stable_hash(self, hasher);
+
+        // Hash both the length and the end location (line/column) of a span. If we hash only the
+        // length, for example, then two otherwise equal spans with different end locations will
+        // have the same hash. This can cause a problem during incremental compilation wherein a
+        // previous result for a query that depends on the end location of a span will be
+        // incorrectly reused when the end location of the span it depends on has changed (see
+        // issue #74890). A similar analysis applies if some query depends specifically on the
+        // length of the span, but we only hash the end location. So hash both.
+
+        let col_line = pack_span_location(line_lo, col_lo, line_hi, col_hi);
+        let len = (span.hi - span.lo).0;
+        hasher.write_u64(col_line);
+        hasher.write_u32(len);
+    }
+
+    #[inline]
+    fn def_path_hash(&self, raw_def_id: RawDefId) -> Fingerprint {
+        let def_id = DefId::from_raw_def_id(raw_def_id);
+        if let Some(def_id) = def_id.as_local() {
+            self.untracked.definitions.read().def_path_hash(def_id)
+        } else {
+            self.untracked.cstore.read().def_path_hash(def_id)
+        }
+        .0
+    }
+
+    /// Assert that the provided `StableHashCtxt` is configured with the default
+    /// `StableHashControls`. We should always have bailed out before getting to here with a
+    /// non-default mode. With this check in place, we can avoid the need to maintain separate
+    /// versions of `ExpnData` hashes for each permutation of `StableHashControls` settings.
+    #[inline]
+    fn assert_default_stable_hash_controls(&self, msg: &str) {
+        let stable_hash_controls = self.stable_hash_controls;
+        let StableHashControls { hash_spans } = stable_hash_controls;
+
+        // Note that we require that `hash_spans` be the inverse of the global `-Z
+        // incremental-ignore-spans` option. Normally, this option is disabled, in which case
+        // `hash_spans` must be true.
+        //
+        // Span hashing can also be disabled without `-Z incremental-ignore-spans`. This is the
+        // case for instance when building a hash for name mangling. Such configuration must not be
+        // used for metadata.
+        assert_eq!(
+            hash_spans, !self.incremental_ignore_spans,
+            "Attempted hashing of {msg} with non-default StableHashControls: {stable_hash_controls:?}"
+        );
+    }
+
+    #[inline]
+    fn stable_hash_controls(&self) -> StableHashControls {
+        self.stable_hash_controls
+    }
+}
+
+/// A single-entry cache for a `SpanData`, to optimize a particular scenario: when iterating
+/// through child spans (e.g. during encoding/decoding/hashing), many of those spans will have the
+/// same parent span. In the case where that parent span is interned (e.g. the parent is a const
+/// literal item exceeding MAX_LEN bytes of source code), this cache avoids having to fetch the
+/// parent's `SpanData` from the interner (which involves TLS, locking, etc.) over and over. A
+/// single entry is enough for an extremely high hit rate.
+#[derive(Default)]
+pub(crate) struct SourceSpanCache(Option<(LocalDefId, SpanData)>);
+
+impl SourceSpanCache {
+    #[inline]
+    pub(crate) fn lookup(
+        &mut self,
+        def_id: LocalDefId,
+        source_span: &AppendOnlyIndexVec<LocalDefId, Span>,
+    ) -> SpanData {
+        if let Some(cache) = self.0
+            && cache.0 == def_id
+        {
+            cache.1
+        } else {
+            let span_data = source_span.get(def_id).unwrap_or(DUMMY_SP).data_untracked();
+            self.0 = Some((def_id, span_data));
+            span_data
+        }
+    }
+}

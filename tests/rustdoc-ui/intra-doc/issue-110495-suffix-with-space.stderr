@@ -1,0 +1,55 @@
+error: unresolved link to `Clone`
+  --> $DIR/issue-110495-suffix-with-space.rs:3:6
+   |
+LL | //! [Clone ()].
+   |      ^^^^^^^^ this link resolves to the trait `Clone`, which is not a function
+   |
+note: the lint level is defined here
+  --> $DIR/issue-110495-suffix-with-space.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the trait, prefix with `trait@`
+   |
+LL - //! [Clone ()].
+LL + //! [trait@Clone ].
+   |
+
+error: incompatible link kind for `Clone`
+  --> $DIR/issue-110495-suffix-with-space.rs:4:6
+   |
+LL | //! [Clone !].
+   |      ^^^^^^^ this link resolved to a derive macro, which is not a macro
+   |
+help: to link to the derive macro, prefix with `derive@`
+   |
+LL - //! [Clone !].
+LL + //! [derive@Clone ].
+   |
+
+error: unresolved link to `Clone`
+  --> $DIR/issue-110495-suffix-with-space.rs:5:7
+   |
+LL | //! [`Clone ()`].
+   |       ^^^^^^^^ this link resolves to the trait `Clone`, which is not a function
+   |
+help: to link to the trait, prefix with `trait@`
+   |
+LL - //! [`Clone ()`].
+LL + //! [`trait@Clone `].
+   |
+
+error: incompatible link kind for `Clone`
+  --> $DIR/issue-110495-suffix-with-space.rs:6:7
+   |
+LL | //! [`Clone !`].
+   |       ^^^^^^^ this link resolved to a derive macro, which is not a macro
+   |
+help: to link to the derive macro, prefix with `derive@`
+   |
+LL - //! [`Clone !`].
+LL + //! [`derive@Clone `].
+   |
+
+error: aborting due to 4 previous errors
+

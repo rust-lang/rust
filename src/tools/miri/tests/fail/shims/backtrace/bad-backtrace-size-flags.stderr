@@ -1,0 +1,12 @@
+error: unsupported operation: unknown `miri_backtrace_size` flags 2
+  --> tests/fail/shims/backtrace/bad-backtrace-size-flags.rs:LL:CC
+   |
+LL |         miri_backtrace_size(2);
+   |         ^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

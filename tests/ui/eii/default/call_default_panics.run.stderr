@@ -1,0 +1,10 @@
+
+thread 'main' ($TID) panicked at $DIR/auxiliary/decl_with_default_panics.rs:14:5:
+10
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::panic_display::<u64>
+   3: decl_with_default_panics::_::decl1
+   4: call_default_panics::main
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

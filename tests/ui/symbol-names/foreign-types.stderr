@@ -1,0 +1,13 @@
+error: symbol-name(_RMCsCRATE_HASH_13foreign_typesINtB<REF>_5CheckNtB<REF>_11ForeignTypeE)
+  --> $DIR/foreign-types.rs:16:1
+   |
+LL | / #[rustc_dump_symbol_name]
+...  |
+LL | | impl Check<ForeignType> {}
+   | |_______________________^
+   |
+   = note: demangling(<foreign_types[fcdd87e190ad88e3]::Check<foreign_types[fcdd87e190ad88e3]::ForeignType>>)
+   = note: demangling-alt(<foreign_types::Check<foreign_types::ForeignType>>)
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,18 @@
+error: ordinal value in `link_ordinal` is too large: `72436`
+  --> $DIR/link-ordinal-too-large.rs:3:5
+   |
+LL |     #[link_ordinal(72436)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the value may not exceed `u16::MAX`
+
+error: ordinal value in `link_ordinal` is too large: `72436`
+  --> $DIR/link-ordinal-too-large.rs:6:5
+   |
+LL |     #[link_ordinal(72436)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the value may not exceed `u16::MAX`
+
+error: aborting due to 2 previous errors
+

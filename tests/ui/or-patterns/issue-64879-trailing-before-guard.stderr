@@ -1,0 +1,25 @@
+error: a trailing `|` is not allowed in an or-pattern
+  --> $DIR/issue-64879-trailing-before-guard.rs:12:14
+   |
+LL |         E::A |
+   |         ---- while parsing this or-pattern starting here
+LL |         E::B |
+   |              ^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-64879-trailing-before-guard.rs:14:42
+   |
+LL |             let _recovery_witness: i32 = 0u32;
+   |                                    ---   ^^^^ expected `i32`, found `u32`
+   |                                    |
+   |                                    expected due to this
+   |
+help: change the type of the numeric literal from `u32` to `i32`
+   |
+LL -             let _recovery_witness: i32 = 0u32;
+LL +             let _recovery_witness: i32 = 0i32;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

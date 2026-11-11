@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/dispatch-on-self-type-2.rs:15:44
+   |
+LL |     let _: Parameterized<(), ()>::Output = String::new();
+   |            -----------------------------   ^^^^^^^^^^^^^ expected `bool`, found `String`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/dispatch-on-self-type-2.rs:16:47
+   |
+LL |     let _: Parameterized<bool, u32>::Result = ();
+   |            --------------------------------   ^^ expected `u32`, found `()`
+   |            |
+   |            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

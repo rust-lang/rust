@@ -1,0 +1,14 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-91461.rs:2:7
+   |
+LL |     a(_:b:,)
+   |       ^ expected identifier, found reserved identifier
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `:`
+  --> $DIR/issue-91461.rs:2:8
+   |
+LL |     a(_:b:,)
+   |        ^ expected one of `)`, `,`, `.`, `?`, or an operator
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,50 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/promote-ref-mut-in-let-issue-46557.rs:6:5
+   |
+LL |     let ref mut x = 1234543;
+   |                     ------- temporary value created here
+LL |     x
+   |     ^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/promote-ref-mut-in-let-issue-46557.rs:11:5
+   |
+LL |     let (ref mut x, ) = (1234543, );
+   |                         ----------- temporary value created here
+LL |     x
+   |     ^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/promote-ref-mut-in-let-issue-46557.rs:15:5
+   |
+LL |       match 1234543 {
+   |       ^     ------- temporary value created here
+   |  _____|
+   | |
+LL | |         ref mut x => x
+LL | |     }
+   | |_____^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/promote-ref-mut-in-let-issue-46557.rs:21:5
+   |
+LL |       match (123443,) {
+   |       ^     --------- temporary value created here
+   |  _____|
+   | |
+LL | |         (ref mut x,) => x,
+LL | |     }
+   | |_____^ returns a value referencing data owned by the current function
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/promote-ref-mut-in-let-issue-46557.rs:27:5
+   |
+LL |     &mut 1234543
+   |     ^^^^^-------
+   |     |    |
+   |     |    temporary value created here
+   |     returns a reference to data owned by the current function
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

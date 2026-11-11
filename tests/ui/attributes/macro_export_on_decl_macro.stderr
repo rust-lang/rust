@@ -1,0 +1,10 @@
+error: `#[macro_export]` is not allowed on declarative macro definitions
+  --> $DIR/macro_export_on_decl_macro.rs:5:1
+   |
+LL | #[macro_export]
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: declarative macros follow the same exporting rules as regular items
+
+error: aborting due to 1 previous error
+

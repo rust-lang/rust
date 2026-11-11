@@ -1,0 +1,46 @@
+error: unexpected token: `literal` metavariable
+  --> $DIR/float-field-interpolated.rs:8:13
+   |
+LL | macro_rules! generate_field_accesses {
+...
+LL |         { s.$b; }
+   |             ^^
+...
+LL |     generate_field_accesses!(1.1, 1.1, 1.1);
+   |     --------------------------------------- in this macro invocation
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `literal` metavariable
+  --> $DIR/float-field-interpolated.rs:8:13
+   |
+LL | macro_rules! generate_field_accesses {
+...
+LL |         { s.$b; }
+   |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+...
+LL |     generate_field_accesses!(1.1, 1.1, 1.1);
+   |     --------------------------------------- in this macro invocation
+
+error: unexpected token: `expr` metavariable
+  --> $DIR/float-field-interpolated.rs:10:13
+   |
+LL | macro_rules! generate_field_accesses {
+...
+LL |         { s.$c; }
+   |             ^^
+...
+LL |     generate_field_accesses!(1.1, 1.1, 1.1);
+   |     --------------------------------------- in this macro invocation
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `expr` metavariable
+  --> $DIR/float-field-interpolated.rs:10:13
+   |
+LL | macro_rules! generate_field_accesses {
+...
+LL |         { s.$c; }
+   |             ^^ expected one of `.`, `;`, `?`, `}`, or an operator
+...
+LL |     generate_field_accesses!(1.1, 1.1, 1.1);
+   |     --------------------------------------- in this macro invocation
+
+error: aborting due to 4 previous errors
+

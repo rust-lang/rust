@@ -1,0 +1,14 @@
+error: all items matching `Thing` are private or doc(hidden)
+  --> $DIR/filter-out-private-2.rs:13:21
+   |
+LL | /// Do stuff with [`Thing`].
+   |                     ^^^^^ unresolved link
+   |
+note: the lint level is defined here
+  --> $DIR/filter-out-private-2.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

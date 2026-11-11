@@ -1,0 +1,13 @@
+error: comptime functions can only be called at compile time
+  --> $DIR/reflection_methods_in_runtime_code.rs:7:5
+   |
+LL |     std::any::TypeId::of::<[u8; usize::MAX]>().trait_info_of::<dyn Trait>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: wrap the call in a const block to force compile time evaluation
+   |
+LL |     const { std::any::TypeId::of::<[u8; usize::MAX]>().trait_info_of::<dyn Trait>() };
+   |     +++++++                                                                         +
+
+error: aborting due to 1 previous error
+

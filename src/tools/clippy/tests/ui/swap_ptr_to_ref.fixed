@@ -1,0 +1,53 @@
+#![warn(clippy::swap_ptr_to_ref)]
+
+use core::ptr::addr_of_mut;
+
+fn main() {
+    let mut x = 0u32;
+    let y: *mut _ = &mut x;
+    let z: *mut _ = &mut x;
+
+    unsafe {
+        core::ptr::swap(y, z);
+        //~^ swap_ptr_to_ref
+        core::ptr::swap(y, &mut x);
+        //~^ swap_ptr_to_ref
+        core::ptr::swap(&mut x, y);
+        //~^ swap_ptr_to_ref
+        core::ptr::swap(addr_of_mut!(x), addr_of_mut!(x));
+        //~^ swap_ptr_to_ref
+    }
+
+    let y = &mut x;
+    let mut z = 0u32;
+    let z = &mut z;
+
+    core::mem::swap(y, z);
+}
+
+mod pr17777 {
+    #[clippy::msrv = "1.5.0"]
+    fn before_core_msrv(y: *mut u32, z: *mut u32) {
+        unsafe {
+            std::ptr::swap(y, z);
+            //~^ swap_ptr_to_ref
+        }
+    }
+
+    #[clippy::msrv = "1.6.0"]
+    fn after_core_msrv(y: *mut u32, z: *mut u32) {
+        unsafe {
+            core::ptr::swap(y, z);
+            //~^ swap_ptr_to_ref
+        }
+    }
+
+    // before const is in .._unfixable since there is no suggestion to be made but this still needs to warn
+    #[clippy::msrv = "1.85.0"]
+    const fn after_const_msrv(y: *mut u32, z: *mut u32) {
+        unsafe {
+            core::ptr::swap(y, z);
+            //~^ swap_ptr_to_ref
+        }
+    }
+}

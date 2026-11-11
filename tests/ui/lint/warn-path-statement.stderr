@@ -1,0 +1,22 @@
+error: path statement with no effect
+  --> $DIR/warn-path-statement.rs:10:5
+   |
+LL |     x;
+   |     ^^
+   |
+   = note: requested on the command line with `-D path-statements`
+
+error: path statement drops value
+  --> $DIR/warn-path-statement.rs:13:5
+   |
+LL |     y;
+   |     ^^ help: use `drop` to clarify the intent: `drop(y);`
+
+error: path statement drops value
+  --> $DIR/warn-path-statement.rs:16:5
+   |
+LL |     z;
+   |     ^^ help: use `drop` to clarify the intent: `drop(z);`
+
+error: aborting due to 3 previous errors
+

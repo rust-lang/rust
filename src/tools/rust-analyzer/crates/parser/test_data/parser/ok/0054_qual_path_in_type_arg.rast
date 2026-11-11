@@ -1,0 +1,126 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "a"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "Foo"
+            GENERIC_ARG_LIST
+              L_ANGLE "<"
+              TYPE_ARG
+                PATH_TYPE
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "bar"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Baz"
+              R_ANGLE ">"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "b"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        WILDCARD_PAT
+          UNDERSCORE "_"
+        COLON ":"
+        WHITESPACE " "
+        IMPL_TRAIT_TYPE
+          IMPL_KW "impl"
+          WHITESPACE " "
+          TYPE_BOUND_LIST
+            TYPE_BOUND
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "FnMut"
+                    PARENTHESIZED_ARG_LIST
+                      L_PAREN "("
+                      TYPE_ARG
+                        PATH_TYPE
+                          PATH
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "x"
+                            COLON2 "::"
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "Y"
+                      R_PAREN ")"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "c"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        WILDCARD_PAT
+          UNDERSCORE "_"
+        COLON ":"
+        WHITESPACE " "
+        IMPL_TRAIT_TYPE
+          IMPL_KW "impl"
+          WHITESPACE " "
+          TYPE_BOUND_LIST
+            TYPE_BOUND
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "FnMut"
+                    PARENTHESIZED_ARG_LIST
+                      L_PAREN "("
+                      TYPE_ARG
+                        REF_TYPE
+                          AMP "&"
+                          PATH_TYPE
+                            PATH
+                              PATH
+                                PATH_SEGMENT
+                                  NAME_REF
+                                    IDENT "x"
+                              COLON2 "::"
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Y"
+                      R_PAREN ")"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

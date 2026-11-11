@@ -1,0 +1,15 @@
+error[E0507]: cannot move out of `*self` which is behind a shared reference
+  --> $DIR/copy-overflow.rs:12:9
+   |
+LL |         *self
+   |         ^^^^^ move occurs because `*self` has type `S<T>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -         *self
+LL +         self.clone()
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

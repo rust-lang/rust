@@ -1,0 +1,13 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, found `,`
+  --> $DIR/turbofish-arg-with-stray-colon.rs:2:17
+   |
+LL |     let x = Tr<A, A:>;
+   |                 ^ expected one of 8 possible tokens
+   |
+help: maybe write a path separator here
+   |
+LL |     let x = Tr<A, A::>;
+   |                     +
+
+error: aborting due to 1 previous error
+

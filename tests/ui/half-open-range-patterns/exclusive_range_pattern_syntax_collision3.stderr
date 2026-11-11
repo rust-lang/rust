@@ -1,0 +1,40 @@
+error[E0308]: mismatched types
+  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:3:12
+   |
+LL |     match [5..4, 99..105, 43..44] {
+   |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
+LL |         [..9, 99..100, _] => {},
+   |            ^ expected `Range<{integer}>`, found integer
+   |
+   = note: expected struct `std::ops::Range<{integer}>`
+                found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:3:15
+   |
+LL |     match [5..4, 99..105, 43..44] {
+   |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
+LL |         [..9, 99..100, _] => {},
+   |               ^^  --- this is of type `{integer}`
+   |               |
+   |               expected `Range<{integer}>`, found integer
+   |
+   = note: expected struct `std::ops::Range<{integer}>`
+                found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/exclusive_range_pattern_syntax_collision3.rs:3:19
+   |
+LL |     match [5..4, 99..105, 43..44] {
+   |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
+LL |         [..9, 99..100, _] => {},
+   |               --  ^^^ expected `Range<{integer}>`, found integer
+   |               |
+   |               this is of type `{integer}`
+   |
+   = note: expected struct `std::ops::Range<{integer}>`
+                found type `{integer}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,19 @@
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-id-trait.rs:24:27
+   |
+LL | fn m<'a>() {
+   |      -- lifetime `'a` defined here
+LL |     let unsend: *const dyn Cat<'a> = &();
+LL |     let _send = unsend as *const S<dyn Cat<'static>>;
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |
+note: raw pointer casts of trait objects cannot extend lifetimes
+  --> $DIR/ptr-to-trait-obj-different-regions-id-trait.rs:24:17
+   |
+LL |     let _send = unsend as *const S<dyn Cat<'static>>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this was previously accepted by the compiler but was changed recently
+   = help: see <https://github.com/rust-lang/rust/issues/141402> for more information
+
+error: aborting due to 1 previous error
+

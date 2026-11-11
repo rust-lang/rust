@@ -1,0 +1,26 @@
+error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
+  --> tests/ui/string_add_assign.rs:8:9
+   |
+LL |         x = x + ".";
+   |         ^^^^^^^^^^^
+   |
+   = note: `-D clippy::string-add-assign` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::string_add_assign)]`
+
+error: manual implementation of an assign operation
+  --> tests/ui/string_add_assign.rs:8:9
+   |
+LL |         x = x + ".";
+   |         ^^^^^^^^^^^ help: replace it with: `x += "."`
+   |
+   = note: `-D clippy::assign-op-pattern` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
+
+error: manual implementation of an assign operation
+  --> tests/ui/string_add_assign.rs:19:5
+   |
+LL |     x = x + 1;
+   |     ^^^^^^^^^ help: replace it with: `x += 1`
+
+error: aborting due to 3 previous errors
+

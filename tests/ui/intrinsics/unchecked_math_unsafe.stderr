@@ -1,0 +1,27 @@
+error[E0133]: call to unsafe function `unchecked_add` is unsafe and requires unsafe function or block
+  --> $DIR/unchecked_math_unsafe.rs:5:15
+   |
+LL |     let add = std::intrinsics::unchecked_add(x, y);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `unchecked_sub` is unsafe and requires unsafe function or block
+  --> $DIR/unchecked_math_unsafe.rs:6:15
+   |
+LL |     let sub = std::intrinsics::unchecked_sub(x, y);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `unchecked_mul` is unsafe and requires unsafe function or block
+  --> $DIR/unchecked_math_unsafe.rs:7:15
+   |
+LL |     let mul = std::intrinsics::unchecked_mul(x, y);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

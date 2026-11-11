@@ -1,0 +1,31 @@
+# Missing in old c compiler
+lasx_concat_128
+lasx_concat_128_d
+lasx_concat_128_s
+lasx_extract_128_hi
+lasx_extract_128_lo
+lasx_extract_128_hi_d
+lasx_extract_128_lo_d
+lasx_extract_128_hi_s
+lasx_extract_128_lo_s
+lasx_insert_128_hi
+lasx_insert_128_lo
+lasx_insert_128_hi_d
+lasx_insert_128_lo_d
+lasx_insert_128_hi_s
+lasx_insert_128_lo_s
+
+# Missing in old qemu
+lasx_xvfrecipe_d
+lasx_xvfrecipe_s
+lasx_xvfrsqrte_d
+lasx_xvfrsqrte_s
+lsx_vfrecipe_d
+lsx_vfrecipe_s
+lsx_vfrsqrte_d
+lsx_vfrsqrte_s
+
+# Top bits are undefined, unclear how to test these
+lasx_cast_128
+lasx_cast_128_d
+lasx_cast_128_s

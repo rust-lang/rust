@@ -1,0 +1,16 @@
+[package]
+name = "rustc_lint_defs"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_ast = { path = "../rustc_ast" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_error_messages = { path = "../rustc_error_messages" }
+rustc_hir_id = { path = "../rustc_hir_id" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+serde = { version = "1.0.125", features = ["derive"] }
+# tidy-alphabetical-end

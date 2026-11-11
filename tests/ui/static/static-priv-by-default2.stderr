@@ -1,0 +1,27 @@
+error[E0603]: static `private` is private
+  --> $DIR/static-priv-by-default2.rs:15:30
+   |
+LL |     use child::childs_child::private;
+   |                              ^^^^^^^ private static
+   |
+note: the static `private` is defined here
+  --> $DIR/static-priv-by-default2.rs:7:9
+   |
+LL |         static private: isize = 0;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0603]: static `private` is private
+  --> $DIR/static-priv-by-default2.rs:23:33
+   |
+LL |     use static_priv_by_default::private;
+   |                                 ^^^^^^^ private static
+   |
+note: the static `private` is defined here
+  --> $DIR/auxiliary/static_priv_by_default.rs:3:1
+   |
+LL | static private: isize = 0;
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

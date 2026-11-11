@@ -1,0 +1,8 @@
+error: expected one of `>`, a const expression, lifetime, or type, found keyword `mut`
+  --> $DIR/removed-syntax-uniq-mut-ty.rs:1:20
+   |
+LL | type mut_box = Box<mut isize>;
+   |                    ^^^ expected one of `>`, a const expression, lifetime, or type
+
+error: aborting due to 1 previous error
+

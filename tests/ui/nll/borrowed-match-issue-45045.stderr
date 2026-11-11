@@ -1,0 +1,15 @@
+error[E0503]: cannot use `e` because it was mutably borrowed
+  --> $DIR/borrowed-match-issue-45045.rs:12:11
+   |
+LL |     let f = &mut e;
+   |             ------ `e` is borrowed here
+LL |     let g = f;
+LL |     match e {
+   |           ^ use of borrowed `e`
+...
+LL |     *g = Xyz::B;
+   |     ----------- borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0503`.

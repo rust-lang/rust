@@ -1,0 +1,53 @@
+error[E0597]: `local` does not live long enough
+  --> $DIR/local-outlives-static-via-hrtb.rs:24:28
+   |
+LL |     let local = 0;
+   |         ----- binding `local` declared here
+LL |     assert_static_via_hrtb(&local);
+   |     -----------------------^^^^^^-
+   |     |                      |
+   |     |                      borrowed value does not live long enough
+   |     argument requires that `local` is borrowed for `'static`
+LL |     assert_static_via_hrtb_with_assoc_type(&&local);
+LL | }
+   | - `local` dropped here while still borrowed
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/local-outlives-static-via-hrtb.rs:15:42
+   |
+LL | fn assert_static_via_hrtb<G>(_: G) where for<'a> G: Outlives<'a> {}
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/local-outlives-static-via-hrtb.rs:15:53
+   |
+LL | fn assert_static_via_hrtb<G>(_: G) where for<'a> G: Outlives<'a> {}
+   |                                                     ^^^^^^^^^^^^
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/local-outlives-static-via-hrtb.rs:25:45
+   |
+LL |     let local = 0;
+   |         ----- binding `local` declared here
+LL |     assert_static_via_hrtb(&local);
+LL |     assert_static_via_hrtb_with_assoc_type(&&local);
+   |     ----------------------------------------^^^^^^-
+   |     |                                       |
+   |     |                                       borrowed value does not live long enough
+   |     argument requires that `local` is borrowed for `'static`
+LL | }
+   | - `local` dropped here while still borrowed
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/local-outlives-static-via-hrtb.rs:19:5
+   |
+LL |     for<'a> &'a T: Reference<AssociatedType = &'a ()>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/local-outlives-static-via-hrtb.rs:19:30
+   |
+LL |     for<'a> &'a T: Reference<AssociatedType = &'a ()>,
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

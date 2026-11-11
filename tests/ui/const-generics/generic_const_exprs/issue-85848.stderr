@@ -1,0 +1,72 @@
+error[E0277]: the trait bound `(): _Contains<&C>` is not satisfied
+  --> $DIR/issue-85848.rs:24:29
+   |
+LL |     writes_to_specific_path(&cap);
+   |     ----------------------- ^^^^ the trait `_Contains<&C>` is not implemented for `()`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-85848.rs:4:1
+   |
+LL | trait _Contains<T> {
+   | ^^^^^^^^^^^^^^^^^^
+note: required for `&C` to implement `Contains<(), true>`
+  --> $DIR/issue-85848.rs:21:12
+   |
+LL | impl<T, U> Contains<T, { contains::<T, U>() }> for U where T: _Contains<U> {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ^          ------------ unsatisfied trait bound introduced here
+note: required for `&C` to implement `Delegates<()>`
+  --> $DIR/issue-85848.rs:12:12
+   |
+LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}
+   |            ^^^^^^^^^^^^     ^          ----------------- unsatisfied trait bound introduced here
+note: required by a bound in `writes_to_specific_path`
+  --> $DIR/issue-85848.rs:30:31
+   |
+LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
+   |                               ^^^^^^^^^^^^^ required by this bound in `writes_to_specific_path`
+
+error: unconstrained generic constant
+  --> $DIR/issue-85848.rs:24:29
+   |
+LL |     writes_to_specific_path(&cap);
+   |     ----------------------- ^^^^
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `&C` to implement `Contains<(), true>`
+  --> $DIR/issue-85848.rs:21:12
+   |
+LL | impl<T, U> Contains<T, { contains::<T, U>() }> for U where T: _Contains<U> {}
+   |            ^^^^^^^^^^^^----------------------^     ^
+   |                        |
+   |                        unsatisfied trait bound introduced here
+note: required for `&C` to implement `Delegates<()>`
+  --> $DIR/issue-85848.rs:12:12
+   |
+LL | impl<T, U> Delegates<U> for T where T: Contains<U, true> {}
+   |            ^^^^^^^^^^^^     ^          ----------------- unsatisfied trait bound introduced here
+note: required by a bound in `writes_to_specific_path`
+  --> $DIR/issue-85848.rs:30:31
+   |
+LL | fn writes_to_specific_path<C: Delegates<()>>(cap: &C) {}
+   |                               ^^^^^^^^^^^^^ required by this bound in `writes_to_specific_path`
+help: try adding a `where` bound
+   |
+LL | fn writes_to_path<C>(cap: &C) where [(); { contains::<T, U>() } as usize]: {
+   |                               ++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-85848.rs:24:5
+   |
+LL |     writes_to_specific_path(&cap);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `true`, found `{ contains::<T, U>() }`
+   |
+   = note: expected constant `true`
+              found constant `{ contains::<T, U>() }`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

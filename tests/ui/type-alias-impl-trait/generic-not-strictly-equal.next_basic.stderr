@@ -1,0 +1,8 @@
+error: non-defining use of `Opaque<'_>` in the defining scope
+  --> $DIR/generic-not-strictly-equal.rs:28:18
+   |
+LL |     let opaque = None::<Opaque<'_>>; // let's call this lifetime '?1
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

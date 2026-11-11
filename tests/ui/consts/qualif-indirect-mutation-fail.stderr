@@ -1,0 +1,82 @@
+error[E0493]: destructor of `(u32, Option<NotConstDestruct>)` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:12:9
+   |
+LL |     let mut a: (u32, Option<NotConstDestruct>) = (0, None);
+   |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
+LL |     let _ = &mut a.1;
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:21:13
+   |
+LL |         let mut x = None;
+   |             ^^^^^ the destructor for this type cannot be evaluated in constants
+...
+LL |     };
+   |     - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:37:13
+   |
+LL |         let _z = x;
+   |             ^^ the destructor for this type cannot be evaluated in constants
+LL |     };
+   |     - value is dropped here
+
+error[E0493]: destructor of `Option<T>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:43:9
+   |
+LL |     let x: Option<T> = None;
+   |         ^ the destructor for this type cannot be evaluated in constant functions
+LL |     let _ = x.is_some();
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<T>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:51:9
+   |
+LL |     let _y = x;
+   |         ^^ the destructor for this type cannot be evaluated in constant functions
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:59:9
+   |
+LL |     let mut y: Option<NotConstDestruct> = None;
+   |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
+LL |     std::ptr::addr_of_mut!(y);
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:56:9
+   |
+LL |     let mut x: Option<NotConstDestruct> = None;
+   |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:69:9
+   |
+LL |     let y: Option<NotConstDestruct> = None;
+   |         ^ the destructor for this type cannot be evaluated in constant functions
+LL |     std::ptr::addr_of!(y);
+LL | }
+   | - value is dropped here
+
+error[E0493]: destructor of `Option<NotConstDestruct>` cannot be evaluated at compile-time
+  --> $DIR/qualif-indirect-mutation-fail.rs:66:9
+   |
+LL |     let x: Option<NotConstDestruct> = None;
+   |         ^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

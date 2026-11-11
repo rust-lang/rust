@@ -1,0 +1,35 @@
+//! Named-argument suggestions must account for standard macro argument layouts.
+
+//@ revisions: e2015 e2021
+//@ run-rustfix
+//@[e2015] edition: 2015
+//@[e2021] edition: 2021
+#![allow(dead_code, unreachable_code)]
+
+struct Example {
+    value: usize,
+}
+
+impl Example {
+    fn report(&self) {
+        use std::fmt::Write;
+
+        // A destination or assertion operands precede the formatting arguments.
+        let _ = write!(String::new(), "{value}", value = self.value);
+        //~^ ERROR cannot find value `value` in this scope
+        assert_eq!(1, 1, "{value}", value = self.value);
+        //~^ ERROR cannot find value `value` in this scope
+
+        // Explicit arguments select formatting in both editions.
+        panic!("{} {value}", 1, value = self.value);
+        //~^ ERROR cannot find value `value` in this scope
+    }
+
+    #[cfg(e2021)]
+    fn single_argument_panic(&self) {
+        unreachable!("{value}");
+        //[e2021]~^ ERROR cannot find value `value` in this scope
+    }
+}
+
+fn main() {}

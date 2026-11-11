@@ -1,0 +1,18 @@
+error[E0038]: the trait `DynIncompatible` is not dyn compatible
+ --> $DIR/rustc_dyn_incompatible_trait.rs:8:15
+  |
+8 | pub fn f(_x: &dyn DynIncompatible) {}
+  |               ^^^^^^^^^^^^^^^^^^^ `DynIncompatible` is not dyn compatible
+  |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+ --> $DIR/rustc_dyn_incompatible_trait.rs:5:1
+  |
+5 | #[rustc_dyn_incompatible_trait]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because it opted out of dyn-compatibility
+6 | pub trait DynIncompatible {}
+  |           --------------- this trait is not dyn compatible...
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

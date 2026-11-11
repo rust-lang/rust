@@ -1,0 +1,150 @@
+#![warn(clippy::nonnull_unchecked_on_box_ptr)]
+
+use std::ptr::NonNull;
+
+macro_rules! identity {
+    ($x:expr) => {
+        $x
+    };
+}
+
+macro_rules! weird {
+    ($x:expr) => {{
+        let y = 1;
+        $x
+    }};
+}
+
+macro_rules! from_macro {
+    ($x:expr) => {
+        unsafe { NonNull::new_unchecked(Box::into_raw($x)) }
+    };
+}
+
+fn identity<T>(x: T) -> T {
+    x
+}
+
+unsafe fn unsafe_identity<T>(x: T) -> T {
+    x
+}
+
+fn lint() {
+    fn basic() {
+        let one = Box::new(1);
+        let _ = Box::into_non_null(one);
+
+        let one = Box::new(1);
+        let _ = Box::into_non_null(identity(one));
+    }
+
+    fn qualifiers() {
+        let one = Box::new(1);
+        let _ = Box::into_non_null(one);
+
+        {
+            use Box as Box2;
+            use NonNull as NonNull2;
+            let one = Box::new(1);
+            let _ = Box::into_non_null(one);
+        }
+
+        {
+            type Box2<T> = Box<T>;
+            type NonNull2<T> = NonNull<T>;
+            let one = Box::new(1);
+            let _ = Box::into_non_null(one);
+        }
+    }
+
+    fn macros() {
+        let one = Box::new(1);
+        let _ = Box::into_non_null(one);
+
+        let one = Box::new(1);
+        let _ = identity!(Box::into_non_null(one));
+
+        let one = Box::new(1);
+        let _ = Box::into_non_null(one);
+
+        let one = Box::new(1);
+        let _ = Box::into_non_null(one);
+
+        let one = Box::new(1);
+        let _ = Box::into_non_null(one);
+
+        let one = Box::new(1);
+        let _ = Box::into_non_null(weird!(one));
+    }
+
+    fn keep_unsafe_block() {
+        let one = Box::new(1);
+        let _ = unsafe {
+            Box::into_non_null(unsafe_identity(one))
+            //~^ nonnull_unchecked_on_box_ptr
+        };
+
+        let one = Box::new(1);
+        let _ = unsafe {
+            identity(Box::into_non_null(one))
+            //~^ nonnull_unchecked_on_box_ptr
+        };
+
+        let one = Box::new(1);
+        let _ = unsafe {
+            unsafe_identity(Box::into_non_null(one))
+            //~^ nonnull_unchecked_on_box_ptr
+        };
+
+        let _ = unsafe {
+            Box::into_non_null(Box::new(std::num::NonZeroI32::new_unchecked(1)))
+            //~^ nonnull_unchecked_on_box_ptr
+        };
+
+        let _ = unsafe {
+            let one = Box::new(1);
+            Box::into_non_null(one)
+            //~^ nonnull_unchecked_on_box_ptr
+        };
+    }
+}
+
+fn no_lint() {
+    fn basic() {
+        let one = Box::new(1);
+        let _ = NonNull::from_mut(Box::leak(one));
+
+        let one = Box::new(1);
+        let _ = unsafe { NonNull::new_unchecked(identity(Box::into_raw(one))) };
+    }
+
+    // TODO?
+    fn does_not_check_expr_init() {
+        let one = Box::new(1);
+        let leaked = Box::into_raw(one);
+        let _ = unsafe { NonNull::new_unchecked(leaked) };
+
+        let one = Box::new(1);
+        let leaked = Box::leak(one);
+        let _ = NonNull::from_mut(leaked);
+    }
+
+    fn macros() {
+        let one = Box::new(1);
+        let _ = from_macro!(one);
+    }
+}
+
+#[clippy::msrv = "1.98"]
+fn msrv_1_98() {
+    let one = Box::new(1);
+    let _ = unsafe { NonNull::new_unchecked(Box::into_raw(one)) };
+}
+
+#[clippy::msrv = "1.99"]
+fn msrv_1_99() {
+    let one = Box::new(1);
+    let _ = Box::into_non_null(one);
+}
+
+fn main() {}

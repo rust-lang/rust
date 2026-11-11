@@ -1,0 +1,18 @@
+error: use of SIMD type `LocalSimd` in FFI is highly experimental and may result in invalid code
+  --> $DIR/feature-gate-simd-ffi.rs:9:17
+   |
+LL |     fn baz() -> LocalSimd;
+   |                 ^^^^^^^^^
+   |
+   = help: add `#![feature(simd_ffi)]` to the crate attributes to enable
+
+error: use of SIMD type `LocalSimd` in FFI is highly experimental and may result in invalid code
+  --> $DIR/feature-gate-simd-ffi.rs:10:15
+   |
+LL |     fn qux(x: LocalSimd);
+   |               ^^^^^^^^^
+   |
+   = help: add `#![feature(simd_ffi)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+

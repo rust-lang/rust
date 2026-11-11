@@ -1,0 +1,34 @@
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
+//@ edition: 2015
+
+#[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+is_inner: false}]
+struct PlainDeprecated;
+
+#[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
+note: here's why this is deprecated#0}, is_inner: false}]
+struct DirectNote;
+
+#[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
+note: here's why this is deprecated#0}, is_inner: false}]
+struct ExplicitNote;
+
+#[attr = Deprecated {deprecation: Deprecation {since: NonStandard("1.2.3"),
+note: here's why this is deprecated#0}, is_inner: false}]
+struct SinceAndNote;
+
+#[attr = Deprecated {deprecation: Deprecation {since: NonStandard("1.2.3"),
+note: here's why this is deprecated#0}, is_inner: false}]
+struct FlippedOrder;
+
+fn f() {
+
+    // Attribute is ignored here (with a warning), but still preserved in HIR
+    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+    is_inner: false}]
+    0
+}

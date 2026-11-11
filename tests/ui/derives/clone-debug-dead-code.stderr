@@ -1,0 +1,71 @@
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:6:12
+   |
+LL | struct A { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+note: the lint level is defined here
+  --> $DIR/clone-debug-dead-code.rs:4:11
+   |
+LL | #![forbid(dead_code)]
+   |           ^^^^^^^^^
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:10:12
+   |
+LL | struct B { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+note: `f` is used in the expansion of the derive macro `Clone`, but this is intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code.rs:9:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:14:12
+   |
+LL | struct C { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+note: `f` is used in the expansion of the derive macro `Debug`, but this is intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code.rs:13:10
+   |
+LL | #[derive(Debug)]
+   |          ^^^^^
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:18:12
+   |
+LL | struct D { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+   |
+note: `f` is used in the expansion of the derive macro `Debug`, but this is intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code.rs:17:10
+   |
+LL | #[derive(Debug,Clone)]
+   |          ^^^^^
+note: `f` is used in the expansion of the derive macro `Clone`, but this is intentionally ignored during dead code analysis
+  --> $DIR/clone-debug-dead-code.rs:17:16
+   |
+LL | #[derive(Debug,Clone)]
+   |                ^^^^^
+
+error: field `f` is never read
+  --> $DIR/clone-debug-dead-code.rs:21:12
+   |
+LL | struct E { f: () }
+   |        -   ^
+   |        |
+   |        field in this struct
+
+error: aborting due to 5 previous errors
+

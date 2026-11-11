@@ -1,0 +1,83 @@
+#![feature(rustc_private)]
+
+extern crate rustc_ast;
+extern crate rustc_driver;
+extern crate rustc_errors;
+extern crate rustc_parse;
+extern crate rustc_session;
+extern crate rustc_span;
+
+use rustc_ast::ast::{AttrKind, Attribute, DUMMY_NODE_ID, Expr};
+use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::node_id::NodeId;
+use rustc_ast::token;
+use rustc_ast::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
+use rustc_errors::Diag;
+use rustc_parse::parser::Recovery;
+use rustc_session::parse::ParseSess;
+use rustc_span::{AttrId, DUMMY_SP, FileName, Span};
+
+pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<Box<Expr>> {
+    let parser = rustc_parse::unwrap_or_emit_fatal(rustc_parse::new_parser_from_source_str(
+        psess,
+        FileName::anon_source_code(source_code),
+        source_code.to_owned(),
+        rustc_parse::lexer::StripTokens::Nothing,
+    ));
+
+    let mut parser = parser.recovery(Recovery::Forbidden);
+    let mut expr = parser.parse_expr().map_err(Diag::cancel).ok()?;
+    if parser.token != token::Eof {
+        return None;
+    }
+
+    Normalize.visit_expr(&mut expr);
+    Some(expr)
+}
+
+// Erase Span information that could distinguish between identical expressions
+// parsed from different source strings.
+struct Normalize;
+
+impl MutVisitor for Normalize {
+    fn visit_id(&mut self, id: &mut NodeId) {
+        *id = DUMMY_NODE_ID;
+    }
+
+    fn visit_span(&mut self, span: &mut Span) {
+        *span = DUMMY_SP;
+    }
+
+    fn visit_attribute(&mut self, attr: &mut Attribute) {
+        attr.id = AttrId::from_u32(0);
+        if let AttrKind::Normal(normal_attr) = &mut attr.kind {
+            if let Some(tokens) = &mut normal_attr.tokens {
+                let stream = normalize_token_stream(&tokens.to_token_stream());
+                *tokens = LazyTokenStream::new_direct(stream);
+            }
+        }
+        mut_visit::walk_attribute(self, attr);
+    }
+}
+
+fn normalize_token_stream(stream: &TokenStream) -> TokenStream {
+    TokenStream::new(stream.iter().map(normalize_token_tree).collect())
+}
+
+fn normalize_token_tree(tt: &TokenTree) -> TokenTree {
+    match tt {
+        TokenTree::Token(token, spacing) => {
+            let mut token = *token;
+            Normalize.visit_span(&mut token.span);
+            TokenTree::Token(token, *spacing)
+        }
+        TokenTree::Delimited(_dspan, spacing, delim, stream) => {
+            TokenTree::Delimited(
+                DelimSpan::dummy(),
+                *spacing,
+                *delim,
+                normalize_token_stream(stream),
+            )
+        }
+    }
+}

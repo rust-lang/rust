@@ -1,0 +1,14 @@
+warning: variant `Void` is never constructed
+  --> $DIR/derive-debug-uninhabited-enum.rs:17:5
+   |
+LL | enum Foo {
+   |      --- variant in this enum
+LL |     Bar(#[allow(dead_code)] u8),
+LL |     Void(Void),
+   |     ^^^^
+   |
+   = note: `-W dead-code` implied by `-W unused`
+   = help: to override `-W unused` add `#[expect(dead_code)]` or `#[allow(dead_code)]`
+
+warning: 1 warning emitted
+

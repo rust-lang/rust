@@ -1,0 +1,62 @@
+error: borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:14:14
+   |
+LL |     let _p = &val as *const i32;
+   |              ^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of!(val)`
+   |
+   = note: `-D clippy::borrow-as-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
+
+error: borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:22:18
+   |
+LL |     let _p_mut = &mut val_mut as *mut i32;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of_mut!(val_mut)`
+
+error: borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:26:16
+   |
+LL |     let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of_mut!(x[1])`
+
+error: borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:32:17
+   |
+LL |     let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try: `&raw mut x[1]`
+
+error: implicit borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:38:25
+   |
+LL |     let p: *const i32 = &val;
+   |                         ^^^^
+   |
+help: use a raw pointer instead
+   |
+LL |     let p: *const i32 = &raw const val;
+   |                          +++++++++
+
+error: implicit borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:42:23
+   |
+LL |     let p: *mut i32 = &mut val;
+   |                       ^^^^^^^^
+   |
+help: use a raw pointer instead
+   |
+LL |     let p: *mut i32 = &raw mut val;
+   |                        +++
+
+error: implicit borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:47:19
+   |
+LL |     core::ptr::eq(&val, &1);
+   |                   ^^^^
+   |
+help: use a raw pointer instead
+   |
+LL |     core::ptr::eq(&raw const val, &1);
+   |                    +++++++++
+
+error: aborting due to 7 previous errors
+

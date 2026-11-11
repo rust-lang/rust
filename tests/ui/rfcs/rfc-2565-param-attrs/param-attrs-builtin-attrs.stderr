@@ -1,0 +1,466 @@
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:5:11
+   |
+LL |         #[test] a: i32,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:21:7
+   |
+LL |     #[test] a: u32,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:36:7
+   |
+LL |     #[test] a: u32,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:56:11
+   |
+LL |         #[test] a: i32,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:71:11
+   |
+LL |         #[test] a: i32,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:92:11
+   |
+LL |         #[test] a: i32,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:111:11
+   |
+LL |         #[test] a: i32,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:126:11
+   |
+LL |         #[test] a: i32,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:146:11
+   |
+LL |         #[test] a: i32,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/param-attrs-builtin-attrs.rs:163:11
+   |
+LL |         #[test] a: u32,
+   |           ^^^^ not a non-macro attribute
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:3:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:7:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:11:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:19:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:23:5
+   |
+LL |     /// Bar
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:27:5
+   |
+LL |     /// Baz
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:34:5
+   |
+LL |     /// Foo
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:38:5
+   |
+LL |     /// Bar
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:42:5
+   |
+LL |     /// Baz
+   |     ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:51:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:54:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:58:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:62:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:69:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:73:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:77:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:87:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:90:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:94:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:98:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:106:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:109:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:113:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:117:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:124:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:128:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:132:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:141:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:144:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:148:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:152:9
+   |
+LL |         /// Qux
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:161:9
+   |
+LL |         /// Foo
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:165:9
+   |
+LL |         /// Bar
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to function parameters
+  --> $DIR/param-attrs-builtin-attrs.rs:169:9
+   |
+LL |         /// Baz
+   |         ^^^^^^^ doc comments are not allowed here
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:9:11
+   |
+LL |         /// Bar
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:13:11
+   |
+LL |         /// Bar
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:25:7
+   |
+LL |     /// Bar
+LL |
+LL |     #[must_use]
+   |       ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:29:7
+   |
+LL |     /// Bar
+...
+LL |     #[no_mangle] b: i32,
+   |       ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:40:7
+   |
+LL |     /// Bar
+LL |
+LL |     #[must_use]
+   |       ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:44:7
+   |
+LL |     /// Bar
+...
+LL |     #[no_mangle] b: i32,
+   |       ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:60:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:64:11
+   |
+LL |         /// Baz
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:75:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:79:11
+   |
+LL |         /// Baz
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:96:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:100:11
+   |
+LL |         /// Baz
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:115:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:119:11
+   |
+LL |         /// Baz
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:130:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:134:11
+   |
+LL |         /// Baz
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:150:11
+   |
+LL |         /// Baz
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:154:11
+   |
+LL |         /// Baz
+...
+LL |         #[no_mangle] b: i32,
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `must_use` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:167:11
+   |
+LL |         /// Bar
+LL |
+LL |         #[must_use]
+   |           ^^^^^^^^
+   |
+   = help: the `must_use` attribute can be applied to data types, functions, and traits
+
+error: the `no_mangle` attribute cannot be used on function params
+  --> $DIR/param-attrs-builtin-attrs.rs:171:11
+   |
+LL |         /// Bar
+...
+LL |         #[no_mangle] b: i32
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: aborting due to 64 previous errors
+

@@ -1,0 +1,16 @@
+error: constant of non-structural type `&[B]` in a pattern
+  --> $DIR/issue-61188-match-slice-forbidden-without-eq.rs:15:9
+   |
+LL | struct B(i32);
+   | -------- must be annotated with `#[derive(PartialEq)]` to be usable in patterns
+LL |
+LL | const A: &[B] = &[];
+   | ------------- constant defined here
+...
+LL |         A => (),
+   |         ^ constant of non-structural type
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error: aborting due to 1 previous error
+

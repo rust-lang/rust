@@ -1,0 +1,266 @@
+use rustc_span::Symbol;
+
+use super::{
+    ShiftOp, packssdw, packsswb, packusdw, packuswb, pavg, permute, permute2, pmaddbw, pmaddwd,
+    psadbw, pshufb, shift_simd_by_simd,
+};
+use crate::*;
+
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn emulate_x86_avx512_intrinsic(
+        &mut self,
+        link_name: Symbol,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx, EmulateItemResult> {
+        let this = self.eval_context_mut();
+        // Prefix should have already been checked.
+        let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx512.").unwrap();
+
+        match unprefixed_name {
+            // Used by _mm512_{sllv,srlv}_epi64.
+            "psllv.q.512" | "psrlv.q.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let which = match unprefixed_name {
+                    "psllv.q.512" => ShiftOp::Left,
+                    "psrlv.q.512" => ShiftOp::RightLogic,
+                    _ => unreachable!(),
+                };
+                shift_simd_by_simd(this, left, right, which, dest)?;
+            }
+            // Used by the ternarylogic functions.
+            "pternlog.d.128" | "pternlog.d.256" | "pternlog.d.512" | "pternlog.q.128"
+            | "pternlog.q.256" | "pternlog.q.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                if !unprefixed_name.ends_with(".512") {
+                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                }
+
+                let [a, b, c, imm8] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                assert_eq!(dest.layout, a.layout);
+                assert_eq!(dest.layout, b.layout);
+                assert_eq!(dest.layout, c.layout);
+
+                // The signatures of these operations are:
+                //
+                // ```
+                // fn vpternlogd(a: i32x16, b: i32x16, c: i32x16, imm8: i32) -> i32x16;
+                // fn vpternlogd256(a: i32x8, b: i32x8, c: i32x8, imm8: i32) -> i32x8;
+                // fn vpternlogd128(a: i32x4, b: i32x4, c: i32x4, imm8: i32) -> i32x4;
+                // fn vpternlogq(a: i64x8, b: i64x8, c: i64x8, imm8: i32) -> i64x8;
+                // fn vpternlogq256(a: i64x4, b: i64x4, c: i64x4, imm8: i32) -> i64x4;
+                // fn vpternlogq128(a: i64x2, b: i64x2, c: i64x2, imm8: i32) -> i64x2;
+                // ```
+                //
+                // The element type is a 32- or 64-bit integer, the width varies. The operation
+                // is bitwise, so the element size only matters to the masked forms, which stdarch
+                // builds from this and a select.
+
+                let (a, _a_len) = this.project_to_simd(a)?;
+                let (b, _b_len) = this.project_to_simd(b)?;
+                let (c, _c_len) = this.project_to_simd(c)?;
+                let (dest, dest_len) = this.project_to_simd(dest)?;
+
+                // Compute one lane with ternary table.
+                let tern = |xa: u128, xb: u128, xc: u128, imm: u128, bits: u64| -> u128 {
+                    let mut out = 0u128;
+                    // At each bit position, select bit from imm8 at index = (a << 2) | (b << 1) | c
+                    for bit in 0..bits {
+                        let ia = (xa >> bit) & 1;
+                        let ib = (xb >> bit) & 1;
+                        let ic = (xc >> bit) & 1;
+                        let idx = (ia << 2) | (ib << 1) | ic;
+                        let v = (imm >> idx) & 1;
+                        out |= v << bit;
+                    }
+                    out
+                };
+
+                let imm8 = u128::from(this.read_scalar(imm8)?.to_u32()? & 0xFF);
+                for i in 0..dest_len {
+                    let a_lane = this.project_index(&a, i)?;
+                    let b_lane = this.project_index(&b, i)?;
+                    let c_lane = this.project_index(&c, i)?;
+                    let d_lane = this.project_index(&dest, i)?;
+
+                    let size = d_lane.layout.size;
+                    let va = this.read_scalar(&a_lane)?.to_bits(size)?;
+                    let vb = this.read_scalar(&b_lane)?.to_bits(size)?;
+                    let vc = this.read_scalar(&c_lane)?.to_bits(size)?;
+
+                    let r = tern(va, vb, vc, imm8, size.bits());
+                    this.write_scalar(Scalar::from_uint(r, size), &d_lane)?;
+                }
+            }
+            // Used to implement the _mm512_sad_epu8 function.
+            "psad.bw.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                psadbw(this, left, right, dest)?
+            }
+            // Used to implement the _mm512_madd_epi16 function.
+            "pmaddw.d.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pmaddwd(this, left, right, dest)?;
+            }
+            // Used to implement the _mm512_maddubs_epi16 function.
+            "pmaddubs.w.512" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pmaddbw(this, left, right, dest)?;
+            }
+            // Used to implement the _mm512_permutexvar_epi32/_mm512_permutexvar_epi64 functions.
+            "permvar.si.512" | "permvar.di.512" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                permute(this, left, right, dest)?;
+            }
+            "permvar.qi.512" | "permvar.qi.256" | "permvar.qi.128" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+                if !unprefixed_name.ends_with("512") {
+                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                }
+
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                permute(this, left, right, dest)?;
+            }
+            // Used to implement the _mm512_permutex2var_epi{32,64} intrinsics.
+            "vpermi2var.d.512" | "vpermi2var.q.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+                let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                permute2(this, left, indices, right, dest)?;
+            }
+            // Used to implement the _mm{256,512}_permutex2var_epi8 intrinsics.
+            "vpermi2var.qi.256" | "vpermi2var.qi.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512vbmi")?;
+                if unprefixed_name.ends_with(".256") {
+                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                }
+
+                let [left, indices, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                permute2(this, left, indices, right, dest)?;
+            }
+            // Used to implement the _mm512_shuffle_epi8 intrinsic.
+            "pshuf.b.512" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pshufb(this, left, right, dest)?;
+            }
+
+            // Used to implement the _mm512_dpbusd_epi32 function.
+            "vpdpbusd.512" | "vpdpbusd.256" | "vpdpbusd.128" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512vnni")?;
+                if matches!(unprefixed_name, "vpdpbusd.128" | "vpdpbusd.256") {
+                    this.expect_target_feature_for_intrinsic(link_name, "avx512vl")?;
+                }
+
+                let [src, a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                vpdpbusd(this, src, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packs_epi16 function
+            "packsswb.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                packsswb(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packus_epi16 function
+            "packuswb.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                packuswb(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packs_epi32 function
+            "packssdw.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                packssdw(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_packus_epi32 function
+            "packusdw.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                packusdw(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_avg_epu8 and _mm512_avg_epu16 functions.
+            // Averages packed unsigned 8/16-bit integers in `left` and `right`.
+            "pavg.b.512" | "pavg.w.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pavg(this, left, right, dest)?;
+            }
+            _ => return interp_ok(EmulateItemResult::NotSupported),
+        }
+        interp_ok(EmulateItemResult::NeedsReturn)
+    }
+}
+
+/// Multiply groups of 4 adjacent pairs of unsigned 8-bit integers in `a` with corresponding signed
+/// 8-bit integers in `b`, producing 4 intermediate signed 16-bit results. Sum these 4 results with
+/// the corresponding 32-bit integer in `src` (using wrapping arighmetic), and store the packed
+/// 32-bit results in `dst`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_dpbusd_epi32>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_dpbusd_epi32>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_dpbusd_epi32>
+fn vpdpbusd<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    src: &OpTy<'tcx>,
+    a: &OpTy<'tcx>,
+    b: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (src, src_len) = ecx.project_to_simd(src)?;
+    let (a, a_len) = ecx.project_to_simd(a)?;
+    let (b, b_len) = ecx.project_to_simd(b)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn vpdpbusd(src: i32x16, a: u8x64, b: i8x64) -> i32x16;
+    // fn vpdpbusd256(src: i32x8, a: u8x32, b: i8x32) -> i32x8;
+    // fn vpdpbusd128(src: i32x4, a: u8x16, b: i8x16) -> i32x4;
+    assert_eq!(src_len, dest_len);
+    assert_eq!(a_len, dest_len.strict_mul(4));
+    assert_eq!(b_len, a_len);
+
+    for i in 0..dest_len {
+        let src = ecx.read_scalar(&ecx.project_index(&src, i)?)?.to_i32()?;
+        let dest = ecx.project_index(&dest, i)?;
+
+        let mut intermediate_sum: i32 = 0;
+        for j in 0..4 {
+            let idx = i.strict_mul(4).strict_add(j);
+            let a = ecx.read_scalar(&ecx.project_index(&a, idx)?)?.to_u8()?;
+            let b = ecx.read_scalar(&ecx.project_index(&b, idx)?)?.to_i8()?;
+
+            let product = i32::from(a).strict_mul(i32::from(b));
+            intermediate_sum = intermediate_sum.strict_add(product);
+        }
+
+        // Use `wrapping_add` because `src` is an arbitrary i32 and the addition can overflow.
+        let res = Scalar::from_i32(intermediate_sum.wrapping_add(src));
+        ecx.write_scalar(res, &dest)?;
+    }
+
+    interp_ok(())
+}

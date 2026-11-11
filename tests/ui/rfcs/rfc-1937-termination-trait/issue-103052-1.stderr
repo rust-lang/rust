@@ -1,0 +1,22 @@
+error[E0277]: the trait bound `Something: Termination` is not satisfied
+  --> $DIR/issue-103052-1.rs:10:13
+   |
+LL |     receive(Something);
+   |     ------- ^^^^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Termination` is not implemented for `Something`
+  --> $DIR/issue-103052-1.rs:7:1
+   |
+LL | struct Something;
+   | ^^^^^^^^^^^^^^^^
+note: required by a bound in `receive`
+  --> $DIR/issue-103052-1.rs:5:20
+   |
+LL | fn receive(_: impl std::process::Termination) {}
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `receive`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

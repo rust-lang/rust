@@ -1,0 +1,11 @@
+[package]
+name = "cross-crate-items"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures = { version = "0.3.0", default-features = false, features = ["alloc", "async-await"] }
+
+[lints.cargo]
+# panic_abort is not directly used but must be linked in
+unused_dependencies = "allow"

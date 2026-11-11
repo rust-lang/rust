@@ -1,0 +1,16 @@
+error[E0597]: `c` does not live long enough
+  --> $DIR/regionck-unboxed-closure-lifetimes.rs:7:21
+   |
+LL |         let c = 1;
+   |             - binding `c` declared here
+LL |         let c_ref = &c;
+   |                     ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `c` dropped here while still borrowed
+LL |     f.use_mut();
+   |     - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

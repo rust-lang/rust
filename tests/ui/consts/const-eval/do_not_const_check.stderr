@@ -1,0 +1,40 @@
+error: internal compiler error: compiler/rustc_const_eval/src/const_eval/machine.rs:LL:CC: calling non-const function `mostly_harmless`
+  --> $DIR/do_not_const_check.rs:21:5
+   |
+LL |     mostly_harmless();
+   |     ^^^^^^^^^^^^^^^^^
+
+
+stack backtrace:
+
+note: using internal features is not supported and expected to cause internal compiler errors when used incorrectly
+
+note: rustc {version} running on {platform}
+
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `_`
+#1 [eval_to_const_value_raw] simplifying constant for the type system `_`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `_`
+#3 [analysis] running analysis passes on crate `do_not_const_check`
+end of query stack
+error: internal compiler error: compiler/rustc_const_eval/src/const_eval/machine.rs:LL:CC: calling non-const function `integer_min::<i32>`
+  --> $DIR/do_not_const_check.rs:34:5
+   |
+LL |     integer_min(0, 1);
+   |     ^^^^^^^^^^^^^^^^^
+
+
+stack backtrace:
+
+note: using internal features is not supported and expected to cause internal compiler errors when used incorrectly
+
+note: rustc {version} running on {platform}
+
+query stack during panic:
+#0 [eval_to_allocation_raw] const-evaluating + checking `_`
+#1 [eval_to_const_value_raw] simplifying constant for the type system `_`
+#2 [eval_to_const_value_raw] simplifying constant for the type system `_`
+#3 [analysis] running analysis passes on crate `do_not_const_check`
+end of query stack
+error: aborting due to 2 previous errors
+

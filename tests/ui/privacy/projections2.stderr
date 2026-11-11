@@ -1,0 +1,34 @@
+warning: type `Priv` is more private than the item `Leak`
+  --> $DIR/projections2.rs:4:5
+   |
+LL |     pub type Leak = Priv;
+   |     ^^^^^^^^^^^^^ type alias `Leak` is reachable at visibility `pub(crate)`
+   |
+note: but type `Priv` is only usable at visibility `pub(self)`
+  --> $DIR/projections2.rs:3:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+error[E0446]: private associated type `Trait3::A` in public interface
+  --> $DIR/projections2.rs:19:9
+   |
+LL |         type A<T: Trait>;
+   |         ---------------- `Trait3::A` declared as private
+...
+LL |         type A<T: Trait> = <u8 as Trait3>::A<T>;
+   |         ^^^^^^^^^^^^^^^^ can't leak private associated type
+
+error[E0446]: private trait `Trait3` in public interface
+  --> $DIR/projections2.rs:19:9
+   |
+LL |     trait Trait3 {
+   |     ------------ `Trait3` declared as private
+...
+LL |         type A<T: Trait> = <u8 as Trait3>::A<T>;
+   |         ^^^^^^^^^^^^^^^^ can't leak private trait
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0446`.

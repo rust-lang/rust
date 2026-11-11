@@ -1,0 +1,14 @@
+error[E0618]: expected function, found `usize`
+  --> $DIR/const-as-fn.rs:4:5
+   |
+LL | const FOO: usize = 0;
+   | ---------------- `FOO` defined here
+...
+LL |     FOO();
+   |     ^^^--
+   |     |
+   |     call expression requires function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

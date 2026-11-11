@@ -1,0 +1,52 @@
+# .clang-format
+
+BasedOnStyle: LLVM
+Standard: c++20
+
+ColumnLimit: 100
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Empty
+BreakBeforeBraces: Attach
+
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlwaysBreakAfterReturnType: None
+
+# Force parameters to break and align
+AlignAfterOpenBracket: BlockIndent
+AllowAllArgumentsOnNextLine: false
+
+# Spacing around braces and parentheses
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceInEmptyBlock: false
+SpacesInContainerLiterals: true
+SpacesInParensOptions:
+  InCStyleCasts: false
+  InConditionalStatements: false
+  InEmptyParentheses: false
+  Other: false
+SpacesInSquareBrackets: false
+
+# Brace spacing for initializers
+Cpp11BracedListStyle: false
+SpaceBeforeCpp11BracedList: true
+
+# Import grouping: group standard, external, and project includes.
+IncludeBlocks: Regroup
+SortIncludes: true
+
+# Granularity: sort includes per module/file.
+IncludeIsMainRegex: '([-_](test|unittest))?$'
+
+# Miscellaneous
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+PointerAlignment: Left
+IndentCaseLabels: true
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never

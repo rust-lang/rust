@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/issue-90455.rs:6:8
+   |
+LL |     n: [u64; num_limbs(N)],
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | struct FieldElement<const N: &'static str> where [(); num_limbs(N)]: {
+   |                                            +++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+

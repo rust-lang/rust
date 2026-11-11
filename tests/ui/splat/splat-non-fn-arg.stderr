@@ -1,0 +1,101 @@
+error: the `rustc_splat` attribute cannot be used on functions
+  --> $DIR/splat-non-fn-arg.rs:6:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | fn tuple_args_bad((a, b): (u32, i8)) {}
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on traits
+  --> $DIR/splat-non-fn-arg.rs:9:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | trait FooTraitBad {
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on inherent impl blocks
+  --> $DIR/splat-non-fn-arg.rs:18:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | impl Foo {
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on inherent methods
+  --> $DIR/splat-non-fn-arg.rs:24:7
+   |
+LL |     #[rustc_splat]
+   |       ^^^^^^^^^^^
+LL |     fn tuple_3_bad((a, b, c): (u32, i32, i8)) {}
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on inherent methods
+  --> $DIR/splat-non-fn-arg.rs:27:7
+   |
+LL |     #[rustc_splat]
+   |       ^^^^^^^^^^^
+LL |     fn tuple_2_bad(self, (a, b): (u32, i8)) -> u32 {
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on trait impl blocks
+  --> $DIR/splat-non-fn-arg.rs:33:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | impl FooTraitBad for Foo {
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on foreign modules
+  --> $DIR/splat-non-fn-arg.rs:40:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | extern "C" {
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on foreign functions
+  --> $DIR/splat-non-fn-arg.rs:46:7
+   |
+LL |     #[rustc_splat]
+   |       ^^^^^^^^^^^
+LL |     fn bar_2_bad(_: (u32, i8));
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on modules
+  --> $DIR/splat-non-fn-arg.rs:50:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | mod foo_mod {}
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on use statements
+  --> $DIR/splat-non-fn-arg.rs:53:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | use std::mem;
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: the `rustc_splat` attribute cannot be used on structs
+  --> $DIR/splat-non-fn-arg.rs:56:3
+   |
+LL | #[rustc_splat]
+   |   ^^^^^^^^^^^
+LL | struct FooStruct;
+   |
+   = help: the `rustc_splat` attribute can only be applied to function params
+
+error: aborting due to 11 previous errors
+

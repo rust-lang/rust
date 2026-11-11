@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found keyword `let`
+  --> $DIR/public-instead-of-pub-2.rs:4:8
+   |
+LL | public let x = 1;
+   |        ^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+

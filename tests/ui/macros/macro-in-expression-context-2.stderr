@@ -1,0 +1,17 @@
+error: macro expansion ends with an incomplete expression: expected expression
+  --> $DIR/macro-in-expression-context-2.rs:5:16
+   |
+LL | macro_rules! empty { () => () }
+   |                            -- in this macro arm
+...
+LL |         _ => { empty!() }
+   |                ^^^^^^^^ expected expression
+   |
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
+help: add `;` to interpret the expansion as a statement
+   |
+LL |         _ => { empty!(); }
+   |                        +
+
+error: aborting due to 1 previous error
+

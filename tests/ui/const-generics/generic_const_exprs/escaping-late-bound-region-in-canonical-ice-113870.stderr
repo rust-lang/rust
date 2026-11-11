@@ -1,0 +1,52 @@
+error[E0403]: the name `'b` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/escaping-late-bound-region-in-canonical-ice-113870.rs:6:20
+   |
+LL | const fn allow<'b, 'b>() -> usize
+   |                --  ^^ already used
+   |                |
+   |                first use of `'b`
+
+error[E0496]: lifetime name `'b` shadows a lifetime name that is already in scope
+  --> $DIR/escaping-late-bound-region-in-canonical-ice-113870.rs:9:9
+   |
+LL | const fn allow<'b, 'b>() -> usize
+   |                -- first declared here
+...
+LL |     for<'b> [u8; foo::<'a, 'b>()]: Sized,
+   |         ^^ lifetime `'b` already in scope
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/escaping-late-bound-region-in-canonical-ice-113870.rs:9:24
+   |
+LL |     for<'b> [u8; foo::<'a, 'b>()]: Sized,
+   |                        ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
+   |
+LL |     for<'a, 'b> [u8; foo::<'a, 'b>()]: Sized,
+   |         +++
+help: consider introducing lifetime `'a` here
+   |
+LL | const fn allow<'a, 'b, 'b>() -> usize
+   |                +++
+
+error[E0601]: `main` function not found in crate `escaping_late_bound_region_in_canonical_ice_113870`
+  --> $DIR/escaping-late-bound-region-in-canonical-ice-113870.rs:23:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/escaping-late-bound-region-in-canonical-ice-113870.rs`
+
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/escaping-late-bound-region-in-canonical-ice-113870.rs:9:28
+   |
+LL | const fn allow<'b, 'b>() -> usize
+   |                -- lifetime defined here
+...
+LL |     for<'b> [u8; foo::<'a, 'b>()]: Sized,
+   |                            ^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0261, E0403, E0496, E0601.
+For more information about an error, try `rustc --explain E0261`.

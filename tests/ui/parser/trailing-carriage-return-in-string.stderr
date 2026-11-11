@@ -1,0 +1,10 @@
+error: unknown character escape: `\r`
+  --> $DIR/trailing-carriage-return-in-string.rs:10:25
+   |
+LL |     let bad = "This is \␍ a test";
+   |                         ^ unknown character escape
+   |
+   = help: this is an isolated carriage return; consider checking your editor and version control settings
+
+error: aborting due to 1 previous error
+

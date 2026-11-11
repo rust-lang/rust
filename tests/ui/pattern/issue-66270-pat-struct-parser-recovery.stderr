@@ -1,0 +1,10 @@
+error: expected type, found `0`
+  --> $DIR/issue-66270-pat-struct-parser-recovery.rs:4:22
+   |
+LL | struct Bug {
+   |        --- while parsing this struct
+LL |     incorrect_field: 0,
+   |                      ^ expected type
+
+error: aborting due to 1 previous error
+

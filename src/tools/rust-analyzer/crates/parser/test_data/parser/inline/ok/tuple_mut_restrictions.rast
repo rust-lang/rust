@@ -1,0 +1,37 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        VISIBILITY
+          PUB_KW "pub"
+          VISIBILITY_INNER
+            L_PAREN "("
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  CRATE_KW "crate"
+            R_PAREN ")"
+        WHITESPACE " "
+        MUT_RESTRICTION
+          MUT_KW "mut"
+          VISIBILITY_INNER
+            L_PAREN "("
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  SUPER_KW "super"
+            R_PAREN ")"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i32"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

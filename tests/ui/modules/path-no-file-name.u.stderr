@@ -1,0 +1,8 @@
+error: `$DIR/.` is a directory
+  --> $DIR/path-no-file-name.rs:6:1
+   |
+LL | mod m;
+   | ^^^^^^
+
+error: aborting due to 1 previous error
+

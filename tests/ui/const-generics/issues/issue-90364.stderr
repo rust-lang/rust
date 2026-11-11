@@ -1,0 +1,9 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-90364.rs:4:28
+   |
+LL | pub struct Foo<T, const H: T>(T)
+   |                            ^ the type must not depend on the parameter `T`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0770`.

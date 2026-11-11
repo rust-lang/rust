@@ -1,0 +1,16 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `T`
+  --> $DIR/struct-field-generic-type-binary-assignment-error-6738.rs:7:9
+   |
+LL |         self.x += v.x;
+   |         ------^^^^^^^
+   |         |
+   |         cannot use `+=` on type `T`
+   |
+help: consider restricting type parameter `T` with trait `AddAssign`
+   |
+LL | impl<T: std::ops::AddAssign> Foo<T> {
+   |       +++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0368`.

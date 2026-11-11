@@ -1,0 +1,17 @@
+//@ check-pass
+//@ run-rustfix
+//@ compile-flags: --force-warn deprecated_where_clause_location
+
+
+#![allow(dead_code)]
+
+trait Trait {
+    type Assoc;
+}
+
+impl Trait for i32 {
+    type Assoc = () where i32: Copy;
+    //~^ WARNING where clause not allowed here
+}
+
+fn main() {}

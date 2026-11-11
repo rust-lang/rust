@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/gat-hide-lifetime-for-swap.rs:35:5
+   |
+LL |     h.hide_ref(&mut res).swap(h.hide_ref(&mut &x));
+   |                                               -- `x` is borrowed here
+LL |     res
+   |     ^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

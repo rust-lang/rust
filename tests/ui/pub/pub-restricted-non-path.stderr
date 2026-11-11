@@ -1,0 +1,8 @@
+error: expected identifier, found `.`
+  --> $DIR/pub-restricted-non-path.rs:3:6
+   |
+LL | pub (.) fn afn() {}
+   |      ^ expected identifier
+
+error: aborting due to 1 previous error
+

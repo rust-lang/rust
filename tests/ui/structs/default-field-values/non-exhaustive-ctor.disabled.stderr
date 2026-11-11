@@ -1,0 +1,86 @@
+error[E0658]: default values on fields are experimental
+  --> $DIR/non-exhaustive-ctor.rs:9:22
+   |
+LL |         pub field: () = (),
+   |                      ^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/non-exhaustive-ctor.rs:11:25
+   |
+LL |         pub field1: Priv = Priv,
+   |                         ^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: default values on fields are experimental
+  --> $DIR/non-exhaustive-ctor.rs:13:25
+   |
+LL |         pub field2: Priv = Priv,
+   |                         ^^^^^^^
+   |
+   = note: see issue #132162 <https://github.com/rust-lang/rust/issues/132162> for more information
+   = help: add `#![feature(default_field_values)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0797]: base expression required after `..`
+  --> $DIR/non-exhaustive-ctor.rs:20:19
+   |
+LL |     let _ = S { .. }; // ok
+   |                   ^
+   |
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
+help: add a base expression here
+   |
+LL |     let _ = S { ../* expr */ }; // ok
+   |                   ++++++++++
+
+error[E0797]: base expression required after `..`
+  --> $DIR/non-exhaustive-ctor.rs:22:30
+   |
+LL |     let _ = S { field: (), .. }; // ok
+   |                              ^
+   |
+help: add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+   |
+LL + #![feature(default_field_values)]
+   |
+help: add a base expression here
+   |
+LL |     let _ = S { field: (), ../* expr */ }; // ok
+   |                              ++++++++++
+
+error[E0063]: missing fields `field`, `field1` and `field2` in initializer of `S`
+  --> $DIR/non-exhaustive-ctor.rs:24:13
+   |
+LL |     let _ = S { };
+   |             ^ missing `field`, `field1` and `field2`
+   |
+help: all remaining fields have default values, if you added `#![feature(default_field_values)]` to your crate you could use those values with `..`
+   |
+LL |     let _ = S { .. };
+   |                 ++
+
+error[E0063]: missing fields `field1` and `field2` in initializer of `S`
+  --> $DIR/non-exhaustive-ctor.rs:26:13
+   |
+LL |     let _ = S { field: () };
+   |             ^ missing `field1` and `field2`
+   |
+help: all remaining fields have default values, if you added `#![feature(default_field_values)]` to your crate you could use those values with `..`
+   |
+LL |     let _ = S { field: (), .. };
+   |                          ++++
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0063, E0658, E0797.
+For more information about an error, try `rustc --explain E0063`.

@@ -1,0 +1,38 @@
+
+<style>
+.kw { color: #8959A8; }
+.kw-2, .prelude-ty { color: #4271AE; }
+.number, .string { color: #718C00; }
+.self, .bool-val, .prelude-val, .attr, .attr .ident { color: #C82829; }
+.macro, .macro-nonterminal { color: #3E999F; }
+.lifetime { color: #B76514; }
+.question-mark { color: #ff9011; }
+</style>
+<pre><code><span class="attr">#![crate_type = <span class="string">"lib"</span>]
+
+</span><span class="kw">use </span>std::path::{Path, PathBuf};
+
+<span class="attr">#[cfg(target_os = <span class="string">"linux"</span>)]
+#[cfg(target_os = <span class="string">"windows"</span>)]
+</span><span class="kw">fn </span>main() -&gt; () {
+    <span class="kw">let </span>foo = <span class="bool-val">true </span>&amp;&amp; <span class="bool-val">false </span>|| <span class="bool-val">true</span>;
+    <span class="kw">let _</span>: <span class="kw-2">*const </span>() = <span class="number">0</span>;
+    <span class="kw">let _ </span>= <span class="kw-2">&amp;</span>foo;
+    <span class="kw">let _ </span>= &amp;&amp;foo;
+    <span class="kw">let _ </span>= <span class="kw-2">*</span>foo;
+    <span class="macro">mac!</span>(foo, <span class="kw-2">&amp;mut </span>bar);
+    <span class="macro">assert!</span>(<span class="self">self</span>.length &lt; N &amp;&amp; index &lt;= <span class="self">self</span>.length);
+    ::std::env::var(<span class="string">"gateau"</span>).is_ok();
+    <span class="attr">#[rustfmt::skip]
+    </span><span class="kw">let </span>s:std::path::PathBuf = std::path::PathBuf::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>s = String::new();
+
+    <span class="kw">match </span><span class="kw-2">&amp;</span>s {
+        <span class="kw-2">ref mut </span>x =&gt; {}
+    }
+}
+
+<span class="macro">macro_rules!</span> bar {
+    (<span class="macro-nonterminal">$foo</span>:tt) =&gt; {};
+}
+</code></pre>

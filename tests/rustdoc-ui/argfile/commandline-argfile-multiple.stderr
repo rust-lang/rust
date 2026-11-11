@@ -1,0 +1,6 @@
+error: failed to load argument file: IO error: $DIR/commandline-argfile-missing.args: $FILE_MISSING (os error $ERR)
+
+error: failed to load argument file: UTF-8 error in $DIR/commandline-argfile-badutf8.args
+
+error: failed to load argument file: IO error: $DIR/commandline-argfile-missing2.args: $FILE_MISSING (os error $ERR)
+

@@ -1,0 +1,54 @@
+PRINT-BANG INPUT (DISPLAY): /**
+*******
+* DOC *
+* DOC *
+* DOC *
+*******
+*/
+ pub struct S;
+PRINT-BANG RE-COLLECTED (DISPLAY): #[doc = "\n*******\n* DOC *\n* DOC *\n* DOC *\n*******\n"] pub struct S;
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/doc-comment-preserved.rs:13:1: 19:3 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "doc",
+                span: $DIR/doc-comment-preserved.rs:13:1: 19:3 (#0),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: $DIR/doc-comment-preserved.rs:13:1: 19:3 (#0),
+            },
+            Literal {
+                kind: Str,
+                symbol: "\n*******\n* DOC *\n* DOC *\n* DOC *\n*******\n",
+                suffix: None,
+                span: $DIR/doc-comment-preserved.rs:13:1: 19:3 (#0),
+            },
+        ],
+        span: $DIR/doc-comment-preserved.rs:13:1: 19:3 (#0),
+    },
+    Ident {
+        ident: "pub",
+        span: $DIR/doc-comment-preserved.rs:20:1: 20:4 (#0),
+    },
+    Ident {
+        ident: "struct",
+        span: $DIR/doc-comment-preserved.rs:20:5: 20:11 (#0),
+    },
+    Ident {
+        ident: "S",
+        span: $DIR/doc-comment-preserved.rs:20:12: 20:13 (#0),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: $DIR/doc-comment-preserved.rs:20:13: 20:14 (#0),
+    },
+]

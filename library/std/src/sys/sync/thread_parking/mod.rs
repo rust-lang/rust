@@ -1,0 +1,46 @@
+cfg_select! {
+    any(
+        all(target_os = "windows", not(target_vendor = "win7")),
+        target_os = "linux",
+        target_os = "android",
+        all(target_family = "wasm", target_feature = "atomics"),
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "dragonfly",
+        target_os = "fuchsia",
+        target_os = "motor",
+        target_os = "hermit",
+        all(target_os = "wasi", target_env = "p3"),
+    ) => {
+        mod futex;
+        pub use futex::Parker;
+    }
+    any(
+        target_os = "netbsd",
+        all(target_vendor = "fortanix", target_env = "sgx"),
+        target_os = "solid_asp3",
+    ) => {
+        mod id;
+        pub use id::Parker;
+    }
+    target_vendor = "win7" => {
+        mod windows7;
+        pub use windows7::Parker;
+    }
+    target_vendor = "apple" => {
+        mod darwin;
+        pub use darwin::Parker;
+    }
+    target_os = "xous" => {
+        mod xous;
+        pub use xous::Parker;
+    }
+    any(target_family = "unix", target_os = "teeos") => {
+        mod pthread;
+        pub use pthread::Parker;
+    }
+    _ => {
+        mod unsupported;
+        pub use unsupported::Parker;
+    }
+}

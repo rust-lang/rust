@@ -1,0 +1,13 @@
+warning: method `into_future` is never used
+  --> $DIR/issue-38033.rs:22:8
+   |
+LL | trait IntoFuture {
+   |       ---------- method in this trait
+...
+LL |     fn into_future(self) -> Self::Future;
+   |        ^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

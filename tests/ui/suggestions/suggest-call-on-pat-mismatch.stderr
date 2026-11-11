@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-call-on-pat-mismatch.rs:7:12
+   |
+LL |     if let E::One(var1, var2) = var {
+   |            ^^^^^^^^^^^^^^^^^^   --- this expression has type `fn(i32, i32) -> E {E::One}`
+   |            |
+   |            expected enum constructor, found `E`
+   |
+   = note: expected enum constructor `fn(i32, i32) -> E {E::One}`
+                          found enum `E`
+help: use parentheses to construct this tuple variant
+   |
+LL |     if let E::One(var1, var2) = var(/* i32 */, /* i32 */) {
+   |                                    ++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-call-on-pat-mismatch.rs:13:9
+   |
+LL |     let Some(x) = Some;
+   |         ^^^^^^^   ---- this expression has type `fn(_) -> Option<_> {Option::<_>::Some}`
+   |         |
+   |         expected enum constructor, found `Option<_>`
+   |
+   = note: expected enum constructor `fn(_) -> Option<_> {Option::<_>::Some}`
+                          found enum `Option<_>`
+help: use parentheses to construct this tuple variant
+   |
+LL |     let Some(x) = Some(/* value */);
+   |                       +++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

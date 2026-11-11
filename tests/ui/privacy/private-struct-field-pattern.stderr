@@ -1,0 +1,9 @@
+error[E0451]: field `x` of struct `Foo` is private
+  --> $DIR/private-struct-field-pattern.rs:15:15
+   |
+LL |         Foo { x: _ } => {}
+   |               ^ private field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0451`.

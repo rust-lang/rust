@@ -1,0 +1,86 @@
+BYTE "b''" error: empty character literal
+WHITESPACE "\n"
+BYTE "b'\\'" error: Missing trailing `'` symbol to terminate the byte literal
+WHITESPACE "\n"
+BYTE "b'\n'" error: byte constant must be escaped
+WHITESPACE "\n"
+BYTE "b'spam'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\x0ff'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\\"a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\na'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\ra'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\ta'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\\\a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\'a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\0a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\u{0}x'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{1F63b}}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\v'" error: unknown byte escape
+WHITESPACE "\n"
+BYTE "b'\\💩'" error: unknown byte escape
+WHITESPACE "\n"
+BYTE "b'\\●'" error: unknown byte escape
+WHITESPACE "\n"
+BYTE "b'\\\\\\r'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+BYTE "b'\\x'" error: numeric character escape is too short
+WHITESPACE "\n"
+BYTE "b'\\x0'" error: numeric character escape is too short
+WHITESPACE "\n"
+BYTE "b'\\xf'" error: numeric character escape is too short
+WHITESPACE "\n"
+BYTE "b'\\xa'" error: numeric character escape is too short
+WHITESPACE "\n"
+BYTE "b'\\xx'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+BYTE "b'\\xы'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+BYTE "b'\\x🦀'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+BYTE "b'\\xtt'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+BYTE "b'\\u'" error: incorrect unicode escape sequence
+WHITESPACE "\n"
+BYTE "b'\\u[0123]'" error: incorrect unicode escape sequence
+WHITESPACE "\n"
+BYTE "b'\\u{0x}'" error: invalid character in unicode escape
+WHITESPACE "\n"
+BYTE "b'\\u{'" error: unterminated unicode escape
+WHITESPACE "\n"
+BYTE "b'\\u{0000'" error: unterminated unicode escape
+WHITESPACE "\n"
+BYTE "b'\\u{}'" error: empty unicode escape
+WHITESPACE "\n"
+BYTE "b'\\u{_0000}'" error: invalid start of unicode escape
+WHITESPACE "\n"
+BYTE "b'\\u{0000000}'" error: overlong unicode escape
+WHITESPACE "\n"
+BYTE "b'\\u{FFFFFF}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{ffffff}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{ffffff}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{DC00}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{DDDD}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{DFFF}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{D800}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{DAAA}'" error: unicode escape in byte string
+WHITESPACE "\n"
+BYTE "b'\\u{DBFF}'" error: unicode escape in byte string
+WHITESPACE "\n"

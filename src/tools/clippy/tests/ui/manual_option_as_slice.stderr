@@ -1,0 +1,110 @@
+error: manual implementation of `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:5:9
+   |
+LL |       _ = match x.as_ref() {
+   |  _________^
+LL | |
+LL | |         Some(f) => std::slice::from_ref(f),
+LL | |         None => &[],
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::manual-option-as-slice` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_option_as_slice)]`
+help: use `Option::as_slice` directly
+   |
+LL -     _ = match x.as_ref() {
+LL -
+LL -         Some(f) => std::slice::from_ref(f),
+LL -         None => &[],
+LL -     };
+LL +     _ = x.as_slice();
+   |
+
+error: manual implementation of `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:11:9
+   |
+LL |       _ = if let Some(f) = x.as_ref() {
+   |  _________^
+LL | |
+LL | |
+LL | |         std::slice::from_ref(f)
+LL | |     } else {
+LL | |         &[]
+LL | |     };
+   | |_____^
+   |
+help: use `Option::as_slice` directly
+   |
+LL -     _ = if let Some(f) = x.as_ref() {
+LL -
+LL - 
+LL -         std::slice::from_ref(f)
+LL -     } else {
+LL -         &[]
+LL -     };
+LL +     _ = x.as_slice();
+   |
+
+error: manual implementation of `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:19:9
+   |
+LL |     _ = x.as_ref().map_or(&[][..], std::slice::from_ref);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `Option::as_slice` directly
+   |
+LL -     _ = x.as_ref().map_or(&[][..], std::slice::from_ref);
+LL +     _ = x.as_slice();
+   |
+
+error: manual implementation of `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:22:9
+   |
+LL |     _ = x.as_ref().map_or_else(Default::default, std::slice::from_ref);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `Option::as_slice` directly
+   |
+LL -     _ = x.as_ref().map_or_else(Default::default, std::slice::from_ref);
+LL +     _ = x.as_slice();
+   |
+
+error: manual implementation of `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:25:9
+   |
+LL |     _ = x.as_ref().map(std::slice::from_ref).unwrap_or_default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `Option::as_slice` directly
+   |
+LL -     _ = x.as_ref().map(std::slice::from_ref).unwrap_or_default();
+LL +     _ = x.as_slice();
+   |
+
+error: manual implementation of `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:28:9
+   |
+LL |     _ = x.as_ref().map_or_else(|| &[42][..0], std::slice::from_ref);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `Option::as_slice` directly
+   |
+LL -     _ = x.as_ref().map_or_else(|| &[42][..0], std::slice::from_ref);
+LL +     _ = x.as_slice();
+   |
+
+error: manual implementation of `Option::as_slice`
+  --> tests/ui/manual_option_as_slice.rs:33:13
+   |
+LL |         _ = x.as_ref().map_or_else(<&[_]>::default, from_ref);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `Option::as_slice` directly
+   |
+LL -         _ = x.as_ref().map_or_else(<&[_]>::default, from_ref);
+LL +         _ = x.as_slice();
+   |
+
+error: aborting due to 7 previous errors
+

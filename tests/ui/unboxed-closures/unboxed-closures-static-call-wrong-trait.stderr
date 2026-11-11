@@ -1,0 +1,9 @@
+error[E0599]: no method named `call` found for closure `{closure@$DIR/unboxed-closures-static-call-wrong-trait.rs:6:26: 6:29}` in the current scope
+  --> $DIR/unboxed-closures-static-call-wrong-trait.rs:7:10
+   |
+LL |     mut_.call((0, ));
+   |          ^^^^ method not found in `{closure@$DIR/unboxed-closures-static-call-wrong-trait.rs:6:26: 6:29}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

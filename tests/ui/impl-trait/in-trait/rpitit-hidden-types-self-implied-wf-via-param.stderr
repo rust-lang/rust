@@ -1,0 +1,19 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/rpitit-hidden-types-self-implied-wf-via-param.rs:8:13
+   |
+LL |     fn extend<'a: 'a>(_: &'a str) -> (impl Sized + 'a, &'static str);
+   |     ----------------------------------------------------------------- definition of `extend` from trait
+...
+LL |         'a: 'static,
+   |             ^^^^^^^ impl has extra requirement `'a: 'static`
+   |
+help: copy the `where` clause predicates from the trait
+   |
+LL -     where
+LL -         'a: 'static,
+LL +     where 'a: 'a
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0276`.

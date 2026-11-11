@@ -1,0 +1,26 @@
+name: Release-plz
+
+permissions:
+  pull-requests: write
+  contents: write
+  id-token: write
+
+on:
+  push: { branches: [main] }
+
+jobs:
+  release-plz:
+    name: Release-plz
+    runs-on: ubuntu-26.04
+    environment: publish
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install Rust (rustup)
+        run: rustup update nightly --no-self-update && rustup default nightly
+      - name: Run release-plz
+        uses: release-plz/action@18641b6c63063cc5ff8786ebf69cd57e8541bae1 # v0.5.140
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

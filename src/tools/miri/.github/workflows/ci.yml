@@ -1,0 +1,351 @@
+name: CI
+
+on:
+  merge_group:
+  pull_request:
+    branches:
+      - 'master'
+  schedule:
+    - cron: '14 4 * * *' # At 4:14 UTC every day.
+  workflow_dispatch: {}
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.host_target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - host_target: i686-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: i386
+            gcc_cross: i686-linux-gnu
+          - host_target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+          # Ubuntu mirrors are not reliable enough for these architectures
+          # (see <https://bugs.launchpad.net/ubuntu/+bug/2130309>).
+          # - host_target: riscv64gc-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: riscv64
+          #   gcc_cross: riscv64-linux-gnu
+          #   qemu: true
+          # - host_target: s390x-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: s390x
+          #   gcc_cross: s390x-linux-gnu
+          #   qemu: true
+          # - host_target: powerpc64le-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   multiarch: ppc64el
+          #   gcc_cross: powerpc64le-linux-gnu
+          #   qemu: true
+          - host_target: aarch64-apple-darwin
+            # Pinning macos-15 to work around <https://github.com/rust-lang/rust/issues/161561>.
+            os: macos-15
+          - host_target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - host_target: aarch64-pc-windows-msvc
+            os: windows-11-arm
+    runs-on: ${{ matrix.os }}
+    env:
+      HOST_TARGET: ${{ matrix.host_target }}
+    steps:
+      - name: more runner information
+        if: ${{ matrix.multiarch != '' }}
+        run: |
+          set -x
+          lscpu
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: install multiarch
+        if: ${{ matrix.multiarch != '' }}
+        run: |
+          set -x
+          # s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
+          #sudo bash -c "echo 'https://ports.ubuntu.com/	priority:0' >> /etc/apt/apt-mirrors.txt"
+          # Add architecture
+          sudo dpkg --add-architecture ${MULTIARCH}
+          # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
+          for TRY in $(seq 3); do
+            { sudo apt update -o APT::Update::Error-Mode=any && break; } || sleep 60
+          done
+          # Install needed packages
+          sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed "s/:/:${MULTIARCH}/g")
+        env:
+          MULTIARCH: ${{ matrix.multiarch }}
+      - name: install qemu
+        if: ${{ matrix.qemu }}
+        run: sudo apt install qemu-user qemu-user-binfmt
+      - uses: $/.github/workflows/setup
+        with:
+          toolchain_flags: "--host ${{ matrix.host_target }}"
+
+      # We set up the cross-compiler *after* the basic setup as setting CC would otherwise
+      # cause confusion.
+      - name: install gcc-cross
+        if: ${{ matrix.gcc_cross != '' }}
+        run: |
+          sudo apt install gcc-${GCC_CROSS}
+          echo "Setting environment variables:"
+          echo "CC_${HOST_TARGET}=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
+          TARGET_UPPERCASE=$(echo ${HOST_TARGET} | tr '[:lower:]-' '[:upper:]_')
+          echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
+          echo "CARGO_HOST_${TARGET_UPPERCASE}_LINKER=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
+          echo "MIRI_TESTS_CROSS_COMPILED=1" | tee -a $GITHUB_ENV
+        env:
+          GCC_CROSS: ${{ matrix.gcc_cross }}
+
+      # The main test job! We don't run this in qemu as that is quite slow,
+      # so those targets only get the clippy check below.
+      - name: test Miri
+        if: ${{ !matrix.qemu }}
+        run: ./ci/ci.sh
+
+      # The `style` job only runs on Linux; this makes sure the host-specific
+      # code is also covered by clippy.
+      - name: clippy
+        run: ./miri clippy -- -D warnings
+
+  test-vm-freebsd:
+    name: test (x86_64-unknown-freebsd)
+    env:
+      HOST_TARGET: x86_64-unknown-freebsd
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
+        with:
+            # Use FreeBSD 15.x
+            release: "15"
+            # We don't want to copy the modified source tree back to the host
+            # file system as this would just be a waste of time.
+            copyback: false
+            envs: HOST_TARGET
+            prepare: ./ci/vm-prepare.sh
+            run: |
+                # Source the cargo environment.
+                . "$HOME/.cargo/env"
+                ./ci/ci.sh
+
+  style:
+    name: style checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: $/.github/workflows/setup
+
+      - name: rustfmt
+        run: ./miri fmt --check
+      - name: clippy (no features)
+        run: ./miri clippy --no-default-features -- -D warnings
+      - name: clippy (all features)
+        run: ./miri clippy --all-features -- -D warnings
+      - name: rustdoc
+        run: RUSTDOCFLAGS="-Dwarnings" ./miri doc --document-private-items
+
+  bootstrap:
+    name: bootstrap build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      # Deliberately skipping `./.github/workflows/setup` as we do our own setup
+      - name: Add cache for cargo
+        id: cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: |
+            # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
+            # Cache package/registry information
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            # Cache bootstrap downloads
+            ../rust/build/cache
+          key: cargo-bootstrap-${{ hashFiles('rust-version') }}
+          restore-keys: cargo-bootstrap
+      - name: prepare build environment
+        run: |
+          MIRIDIR=$(pwd)
+          cd ..
+          # Bootstrap needs at least depth 2 to function.
+          git clone https://github.com/rust-lang/rust/ rust --depth 2 --revision $(cat "$MIRIDIR/rust-version")
+          cd rust
+          # Replace the in-tree Miri with the current version.
+          rm src/tools/miri -rf
+          ln -s "$MIRIDIR" src/tools/miri
+      - name: check build
+        run: |
+          cd ../rust # ./x does not seem to like being invoked from elsewhere
+          ./x check src/tools/miri
+
+  # This job is intentionally separate from `test` so that the Priroda test
+  # suite is exercised on its own (it is gated behind the `priroda` feature of
+  # the `miri` crate, and so is not part of the regular `./miri test` run).
+  priroda:
+    name: priroda
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: $/.github/workflows/setup
+      - name: clippy Priroda
+        run: CARGO_EXTRA_FLAGS=--locked ./miri clippy --features priroda -- -D warnings
+      - name: test Priroda
+        run: CARGO_EXTRA_FLAGS=--locked ./miri test-priroda
+
+  coverage:
+    name: coverage report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: $/.github/workflows/setup
+      - name: coverage
+        run: ./miri test --coverage
+
+  # Summary job for the merge queue.
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+  # And they should be added below in `cron-fail-notify` as well.
+  conclusion:
+    needs: [test, test-vm-freebsd, style, bootstrap, coverage, priroda]
+    # We need to ensure this job does *not* get skipped if its dependencies fail,
+    # because a skipped job is considered a success by GitHub. So we have to
+    # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
+    # when the workflow is canceled manually.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      # Manually check the status of all dependencies. `if: failure()` does not work.
+      - name: Conclusion
+        run: |
+            # Print the dependent jobs to see them in the CI log
+            jq -C <<< "${JSON_NEEDS}"
+            # Check if all jobs that we depend on (in the needs array) were successful.
+            jq --exit-status 'all(.result == "success")' <<< "${JSON_NEEDS}"
+        env:
+          JSON_NEEDS: ${{ toJson(needs) }}
+
+  cron-rustc-pull:
+    name: automatic pull from rustc
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 256 # get a bit more of the history
+          persist-credentials: false
+      - name: install josh-sync
+        run: cargo +stable install --locked --git https://github.com/rust-lang/josh-sync
+      - name: Install nightly toolchain
+        run: rustup toolchain install nightly --profile minimal
+      - name: Install rustup-toolchain-install-master
+        run: cargo install --locked -f rustup-toolchain-install-master
+      # Create a token for the next step so it can create a PR that actually runs CI.
+      - name: Create GitHub App Token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          permission-contents: write # The cronjob needs to be able to push to the repo...
+          permission-pull-requests: write # ... and create a PR.
+          app-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+        # This configures `git` to use `gh` as a credential helper, which will
+        # look for the `GH_TOKEN` environment variable. It also sets up the git user
+        # so that the new commits will be attributed to the app.
+      - name: Setup `git` as ${{ steps.app-token.outputs.app-slug }} bot
+        run: |
+            user_id=$(gh api "/users/${BOT_SLUG}[bot]" --jq .id)
+            git config --global user.name "${BOT_SLUG}[bot]"
+            git config --global user.email "${user_id}+${BOT_SLUG}[bot]@users.noreply.github.com"
+            gh auth setup-git
+        env:
+            BOT_SLUG: ${{ steps.app-token.outputs.app-slug }}
+            GH_TOKEN: ${{ steps.app-token.outputs.token }}
+      - name: pull changes from rustc and create PR
+        run: |
+          # Make it easier to see what happens.
+          set -x
+
+          if [[ "${GH_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            PULL_FLAGS="--allow-noop"
+          fi
+
+          # Temporarily disable early exit to examine the status code of rustc-josh-sync
+          set +e
+          rustc-josh-sync pull $PULL_FLAGS
+          exitcode=$?
+          set -e
+
+          # If there were no changes to pull, rustc-josh-sync returns status code 2.
+          # In that case, skip the rest of the job.
+          if [ $exitcode -eq 2 ]; then
+            echo "Nothing changed in rustc, skipping PR"
+            exit 0
+          elif [ $exitcode -ne 0 ]; then
+            # If return code was not 0 or 2, rustc-josh-sync actually failed
+            echo "error: rustc-josh-sync failed"
+            exit ${exitcode}
+          fi
+
+          # Store merge commit message
+          git log -1 --pretty=%B > message.txt
+
+          # Format changes
+          ./miri toolchain
+          ./miri fmt --check || (./miri fmt && git commit -am "fmt")
+
+          # Create a PR
+          BRANCH="rustup-$(date -u +%Y-%m-%d)"
+          git switch -c $BRANCH
+          git push -u origin $BRANCH
+          gh pr create -B master --title 'Automatic Rustup' --body-file message.txt
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_EVENT_NAME: ${{ github.event_name }}
+
+  cron-fail-notify:
+    name: cronjob failure notification
+    runs-on: ubuntu-latest
+    needs: [test, test-vm-freebsd, style, bootstrap, coverage, priroda]
+    if: ${{ ( github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ) && failure() }}
+    steps:
+      # Send a Zulip notification
+      - name: Install zulip-send
+        run: pip3 install zulip
+      - name: Send Zulip notification
+        env:
+          ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
+          ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
+        run: |
+          ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
+            --stream miri --subject "Miri Build Failure ($(date -u +%Y-%m))" \
+            --message 'Dear @*T-miri*,
+
+          It would appear that the [Miri cron job build]('"https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"') failed.
+
+          This likely means that rustc changed the miri directory and
+          we now need to do a [`rustc-josh-sync pull`](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#importing-changes-from-the-rustc-repo).
+
+          Would you mind investigating this issue?
+
+          Thanks in advance!
+          Sincerely,
+          The Miri Cronjobs Bot'

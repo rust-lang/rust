@@ -1,0 +1,30 @@
+error[E0119]: conflicting implementations of trait `Foo` for type `(dyn Send + 'static)`
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:5:1
+   |
+LL | impl Foo for dyn Send {}
+   | --------------------- first implementation here
+LL |
+LL | impl Foo for dyn Send + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
+
+error[E0119]: conflicting implementations of trait `Foo` for type `(dyn Send + Sync + 'static)`
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:10:1
+   |
+LL | impl Foo for dyn Send + Sync {}
+   | ---------------------------- first implementation here
+LL |
+LL | impl Foo for dyn Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+
+error[E0119]: conflicting implementations of trait `Foo` for type `(dyn Send + Sync + 'static)`
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:13:1
+   |
+LL | impl Foo for dyn Send + Sync {}
+   | ---------------------------- first implementation here
+...
+LL | impl Foo for dyn Send + Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

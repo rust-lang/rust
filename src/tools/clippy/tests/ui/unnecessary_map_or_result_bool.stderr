@@ -1,0 +1,69 @@
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:14:20
+   |
+LL |     let _ = result.map_or(false, |_| true);
+   |                    ^^^^^^-----------------
+   |                    |
+   |                    help: use `is_ok` instead: `is_ok()`
+   |
+   = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:16:20
+   |
+LL |     let _ = result.map_or(true, |_| false);
+   |                    ^^^^^^-----------------
+   |                    |
+   |                    help: use `is_err` instead: `is_err()`
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:18:20
+   |
+LL |     let _ = result.map_or(false, |_: i32| true);
+   |                    ^^^^^^----------------------
+   |                    |
+   |                    help: use `is_ok` instead: `is_ok()`
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:20:20
+   |
+LL |     let _ = result.map_or(!true, |_| TRUE);
+   |                    ^^^^^^-----------------
+   |                    |
+   |                    help: use `is_ok` instead: `is_ok()`
+
+error: this `map_or_else` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:23:20
+   |
+LL |     let _ = result.map_or_else(|_| false, |_| true);
+   |                    ^^^^^^^^^^^---------------------
+   |                    |
+   |                    help: use `is_ok` instead: `is_ok()`
+
+error: this `map_or_else` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:25:20
+   |
+LL |     let _ = result.map_or_else(|_| true, |_| false);
+   |                    ^^^^^^^^^^^---------------------
+   |                    |
+   |                    help: use `is_err` instead: `is_err()`
+
+error: this `map_or_else` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:27:20
+   |
+LL |     let _ = result.map_or_else(|_: i32| false, |_: i32| true);
+   |                    ^^^^^^^^^^^-------------------------------
+   |                    |
+   |                    help: use `is_ok` instead: `is_ok()`
+
+error: this `map_or_else` can be simplified
+  --> tests/ui/unnecessary_map_or_result_bool.rs:29:20
+   |
+LL |     let _ = result.map_or_else(|_| FALSE, |_| !false);
+   |                    ^^^^^^^^^^^-----------------------
+   |                    |
+   |                    help: use `is_ok` instead: `is_ok()`
+
+error: aborting due to 8 previous errors
+

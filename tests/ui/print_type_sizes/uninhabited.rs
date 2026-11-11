@@ -1,0 +1,11 @@
+//@ compile-flags: -Z print-type-sizes --crate-type=lib
+//@ build-pass
+//@ no-pass-override (codegen affects -Zprint-type-sizes)
+// ^-- needed because `--pass check` does not emit the output needed.
+//     FIXME: consider using an attribute instead of side-effects.
+
+pub fn test() {
+    let _x: Option<!> = None;
+    let _y: Result<u32, !> = Ok(42);
+    let _z: Result<!, !> = loop {};
+}

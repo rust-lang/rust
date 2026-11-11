@@ -1,0 +1,12 @@
+error[E0493]: destructor of `Option<T>` cannot be evaluated at compile-time
+  --> $DIR/precise-drop-allow-const-fn-unstable.rs:11:24
+   |
+LL | pub const fn unwrap<T>(this: Option<T>) -> T {
+   |                        ^^^^ the destructor for this type cannot be evaluated in constant functions
+...
+LL | }
+   | - value is dropped here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0493`.

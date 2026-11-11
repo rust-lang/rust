@@ -1,0 +1,90 @@
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:32:8
+   |
+LL |     _: U,
+   |        ^
+
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:65:48
+   |
+LL | extern "cmse-nonsecure-entry" fn impl_trait(_: impl Copy, _: u32, _: u32, _: u32) -> u64 {
+   |                                                ^^^^^^^^^
+
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:80:57
+   |
+LL | extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
+   |                                                         ^^^^^^^^^
+
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:80:71
+   |
+LL | extern "cmse-nonsecure-entry" fn identity_impl_trait(v: impl Copy) -> impl Copy {
+   |                                                                       ^^^^^^^^^
+
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:87:8
+   |
+LL |     v: (impl Copy, i32),
+   |        ^^^^^^^^^^^^^^^^
+
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:89:6
+   |
+LL | ) -> (impl Copy, i32) {
+   |      ^^^^^^^^^^^^^^^^
+
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:15:57
+   |
+LL |     extern "cmse-nonsecure-entry" fn ambient_generic(_: T, _: u32, _: u32, _: u32) -> u64 {
+   |                                                         ^
+
+error[E0798]: generics are not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:21:12
+   |
+LL |         _: Wrapper<T>,
+   |            ^^^^^^^^^^
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/generics.rs:47:65
+   |
+LL | extern "cmse-nonsecure-entry" fn trait_object(x: &dyn Trait) -> &dyn Trait {
+   |                                                                 ^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/generics.rs:52:80
+   |
+LL | extern "cmse-nonsecure-entry" fn static_trait_object(x: &'static dyn Trait) -> &'static dyn Trait {
+   |                                                                                ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
+  --> $DIR/generics.rs:60:81
+   |
+LL | extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> WrapperTransparent {
+   |                                                                                 ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
+   |
+   = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
+   = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:70:57
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait() -> impl Copy {
+   |                                                         ^^^^^^^^^
+
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/generics.rs:75:64
+   |
+LL | extern "cmse-nonsecure-entry" fn return_impl_trait_nested() -> (impl Copy, i32) {
+   |                                                                ^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0798`.

@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-58299.rs:14:9
+   |
+LL | fn foo<'a>(x: i32) {
+   |        -- lifetime `'a` defined here
+...
+LL |         A::<'a>::X..=A::<'static>::X => (),
+   |         ^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-58299.rs:22:27
+   |
+LL | fn bar<'a>(x: i32) {
+   |        -- lifetime `'a` defined here
+...
+LL |         A::<'static>::X..=A::<'a>::X => (),
+   |                           ^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to 2 previous errors
+

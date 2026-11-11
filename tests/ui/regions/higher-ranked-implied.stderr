@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-implied.rs:12:16
+   |
+LL |     let y: B = x;
+   |            -   ^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(Inv<&'a &'b ()>, Inv<&'b &'a ()>, Inv<&'b ()>)`
+              found fn pointer `for<'a, 'b> fn(Inv<&'a &'b ()>, Inv<&'b &'a ()>, Inv<&'a ()>)`
+
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-implied.rs:13:16
+   |
+LL |     let _: A = y;
+   |            -   ^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(Inv<&'a &'b ()>, Inv<&'b &'a ()>, Inv<&'a ()>)`
+              found fn pointer `for<'a, 'b> fn(Inv<&'a &'b ()>, Inv<&'b &'a ()>, Inv<&'b ()>)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

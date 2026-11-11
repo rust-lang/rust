@@ -1,0 +1,15 @@
+error: variable `A` should have a snake case name
+  --> $DIR/forbid-group-group-1.rs:11:9
+   |
+LL |     let A: ();
+   |         ^ help: convert the identifier to snake case: `a`
+   |
+note: the lint level is defined here
+  --> $DIR/forbid-group-group-1.rs:4:11
+   |
+LL | #![forbid(nonstandard_style)]
+   |           ^^^^^^^^^^^^^^^^^
+   = note: `#[forbid(non_snake_case)]` implied by `#[forbid(nonstandard_style)]`
+
+error: aborting due to 1 previous error
+

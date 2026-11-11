@@ -1,0 +1,18 @@
+error: Undefined Behavior: memory access failed: attempting to access N bytes, but got ALLOC which is only 1 byte from the end of the allocation
+  --> tests/fail/shims/pthread_key_create_wrong_pointee_type.rs:LL:CC
+   |
+LL |         pthread_key_create(&raw mut i as *mut c_void, my_dtor);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> tests/fail/shims/pthread_key_create_wrong_pointee_type.rs:LL:CC
+   |
+LL |         let mut i: u8 = 32;
+   |             ^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

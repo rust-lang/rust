@@ -1,0 +1,8 @@
+error: expected `fn`, found `PUT_ANYTHING_YOU_WANT_HERE`
+  --> $DIR/issue-68062-const-extern-fns-dont-need-fn-specifier.rs:5:25
+   |
+LL |     const extern "Rust" PUT_ANYTHING_YOU_WANT_HERE bug() -> usize { 1 }
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `fn`
+
+error: aborting due to 1 previous error
+

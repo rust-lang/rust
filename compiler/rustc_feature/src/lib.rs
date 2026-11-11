@@ -1,0 +1,182 @@
+//! # Feature gates
+//!
+//! This crate declares the set of past and present unstable features in the compiler.
+//! Feature gate checking itself is done in `rustc_ast_passes/src/feature_gate.rs`
+//! at the moment.
+//!
+//! Features are enabled in programs via the crate-level attributes of
+//! `#![feature(...)]` with a comma-separated list of features.
+//!
+//! For the purpose of future feature-tracking, once a feature gate is added,
+//! even if it is stabilized or removed, *do not remove it*. Instead, move the
+//! symbol to the `accepted` or `removed` modules respectively.
+
+mod accepted;
+mod builtin_attrs;
+mod removed;
+mod unstable;
+
+#[cfg(test)]
+mod tests;
+
+use std::num::NonZero;
+
+use rustc_span::Symbol;
+
+#[derive(Debug, Clone)]
+pub struct Feature {
+    pub name: Symbol,
+    /// For unstable features: the version the feature was added in.
+    /// For accepted features: the version the feature got stabilized in.
+    /// For removed features we are inconsistent; sometimes this is the
+    /// version it got added, sometimes the version it got removed.
+    pub since: &'static str,
+    issue: Option<NonZero<u32>>,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum UnstableFeatures {
+    /// Disallow use of unstable features and unstable compiler flags.
+    ///
+    /// Used by default by beta/stable channels.
+    Disallow,
+    /// Allow use of unstable features and unstable compiler flags.
+    ///
+    /// Used by default by the nightly channel.
+    Allow,
+    /// Allow use of unstable features and unstable compiler flags, even if it is not the default
+    /// behavior.
+    ///
+    /// Can be used to make a beta/stable channel act like a nightly channel.
+    ///
+    /// Errors are bypassed for bootstrapping. This is required any time
+    /// during the build that feature-related lints are set to warn or above
+    /// because the build turns on warnings-as-errors and uses lots of unstable
+    /// features. As a result, this is always required for building Rust itself.
+    Cheat,
+    /// Allow the use of selected *unstable compiler flags*, but disallow the use of
+    /// *unstable language features*.
+    ///
+    /// **This mode is designed only for internal testing of rustc.**
+    ///
+    /// Specifically, we need it when we want to test how rustc behaves on the stable channel,
+    /// but at the same time we need to be able to pass it some unstable `-Z` compiler flags
+    /// required for the testing infrastructure itself to work.
+    AllowSelectedUnstableCompilerFlagsOnly {
+        /// Unstable compiler flags that we are allowed to use, without their `-Z` prefix.
+        allowed_flags: Vec<String>,
+    },
+}
+
+impl UnstableFeatures {
+    /// This takes into account `RUSTC_BOOTSTRAP`.
+    ///
+    /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
+    /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
+    pub fn from_environment(krate: Option<&str>) -> Self {
+        Self::from_environment_value(krate, std::env::var("RUSTC_BOOTSTRAP"))
+    }
+
+    /// Avoid unsafe `std::env::set_var()` by allowing tests to inject
+    /// `std::env::var("RUSTC_BOOTSTRAP")` with the `env_var_rustc_bootstrap`
+    /// arg.
+    fn from_environment_value(
+        krate: Option<&str>,
+        env_var_rustc_bootstrap: Result<String, std::env::VarError>,
+    ) -> Self {
+        // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
+        let disable_unstable_features =
+            option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
+        // Returns whether `krate` should be counted as unstable
+        let is_unstable_crate =
+            |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
+
+        let allow_unstable_flags_prefix = "-allow-unstable-compiler-flags=";
+        if let Ok(val) = env_var_rustc_bootstrap.as_deref() {
+            match val {
+                // Act as stable, but still accept unstable compiler flags required by compiletest
+                val if let Some(flags) = val.strip_prefix(allow_unstable_flags_prefix) => {
+                    return UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly {
+                        allowed_flags: flags.split(",").map(|s| s.trim().to_string()).collect(),
+                    };
+                }
+                val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
+                // Hypnotize ourselves so that we think we are a stable compiler and thus don't
+                // allow any unstable features.
+                "-1" => return UnstableFeatures::Disallow,
+                _ => {}
+            }
+        }
+
+        if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
+    }
+
+    /// Are we allowed to use the given unstable `flag`?
+    /// If it is a `-Z<flag>`, it should be passed without the `-Z` prefix.
+    pub fn allow_unstable_compiler_flag(&self, flag: &str) -> bool {
+        match self {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { allowed_flags }
+                if allowed_flags.iter().any(|allowed_flag| allowed_flag == flag) =>
+            {
+                true
+            }
+            UnstableFeatures::Disallow
+            | UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. } => false,
+        }
+    }
+
+    pub fn is_nightly_build(&self) -> bool {
+        match *self {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            UnstableFeatures::Disallow
+            | UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. } => false,
+        }
+    }
+}
+
+fn find_lang_feature_issue(feature: Symbol) -> Option<NonZero<u32>> {
+    // Search in all the feature lists.
+    if let Some(f) = UNSTABLE_LANG_FEATURES.iter().find(|f| f.name == feature) {
+        return f.issue;
+    }
+    if let Some(f) = ACCEPTED_LANG_FEATURES.iter().find(|f| f.name == feature) {
+        return f.issue;
+    }
+    if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| f.feature.name == feature) {
+        return f.feature.issue;
+    }
+    panic!("feature `{feature}` is not declared anywhere");
+}
+
+const fn to_nonzero(n: Option<u32>) -> Option<NonZero<u32>> {
+    // Can be replaced with `n.and_then(NonZero::new)` if that is ever usable
+    // in const context. Requires https://github.com/rust-lang/rfcs/pull/2632.
+    match n {
+        None => None,
+        Some(n) => NonZero::new(n),
+    }
+}
+
+pub enum GateIssue {
+    Language,
+    Library(Option<NonZero<u32>>),
+}
+
+pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u32>> {
+    match issue {
+        GateIssue::Language => find_lang_feature_issue(feature),
+        GateIssue::Library(lib) => lib,
+    }
+}
+
+pub use accepted::ACCEPTED_LANG_FEATURES;
+pub use builtin_attrs::{
+    AttributeStability, BUILTIN_ATTRIBUTE_SET, BUILTIN_ATTRIBUTES, GatedCfg, find_gated_cfg,
+    is_builtin_attr_name,
+};
+pub use removed::REMOVED_LANG_FEATURES;
+pub use unstable::{
+    DEPENDENT_FEATURES, DependentFeature, EnabledLangFeature, EnabledLibFeature, Features,
+    INCOMPATIBLE_FEATURES, TRACK_FEATURE, UNSTABLE_LANG_FEATURES,
+};

@@ -1,0 +1,217 @@
+use rustc_ast::{self as ast, Generics, ItemKind, Safety, VariantData};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_expand::base::ExtCtxt;
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
+use thin_vec::{ThinVec, thin_vec};
+
+use crate::deriving::generic::*;
+use crate::deriving::path_std;
+
+pub(crate) fn expand_derive_clone(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    item: &ast::Item,
+    push: &mut dyn FnMut(Box<ast::Item>),
+    is_const: bool,
+) {
+    // The simple form is `fn clone(&self) -> Self { *self }`, possibly with
+    // some additional `AssertParamIsClone` assertions.
+    //
+    // We can use the simple form if either of the following are true.
+    // - The type derives Copy and there are no generic parameters. (If we
+    //   used the simple form with generics, we'd have to bound the generics
+    //   with Clone + Copy, and then there'd be no Clone impl at all if the
+    //   user fills in something that is Clone but not Copy. After
+    //   specialization we can remove this no-generics limitation.)
+    // - The item is a union. (Unions with generic parameters still can derive
+    //   Clone because they require Copy for deriving, Clone alone is not
+    //   enough. Whether Clone is implemented for fields is irrelevant so we
+    //   don't assert it.)
+    let bounds;
+    let body: MethodBodyFunc<'_>;
+    let is_simple;
+    match &item.kind {
+        ItemKind::Struct(_, Generics { params, .. }, _)
+        | ItemKind::Enum(_, Generics { params, .. }, _) => {
+            let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
+            let has_derive_copy = cx.resolver.has_derive_copy(container_id);
+            bounds = smallvec![];
+            if has_derive_copy
+                && !params
+                    .iter()
+                    .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
+            {
+                is_simple = true;
+                body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, false));
+            } else {
+                is_simple = false;
+                body = Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap()));
+            }
+        }
+        ItemKind::Union(..) => {
+            bounds = smallvec![path_std!(cx, span, marker::Copy)];
+            is_simple = true;
+            body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, true));
+        }
+        _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
+    }
+
+    // If the clone method is just copying the value, also mark the type as
+    // `TrivialClone` to allow some library optimizations.
+    if is_simple {
+        let trivial_def = TraitDef {
+            span,
+            path: path_std!(cx, span, clone::TrivialClone),
+            needs_copy_as_bound_if_packed: true,
+            additional_bounds: bounds.clone(),
+            supports_unions: true,
+            methods: SmallVec::new(),
+            is_const,
+            safety: Safety::Unsafe(DUMMY_SP),
+            // `TrivialClone` is not part of an API guarantee, so it shouldn't
+            // appear in rustdoc output.
+            document: false,
+            ..
+        };
+
+        trivial_def.expand(cx, item, push);
+    }
+
+    let trait_def = TraitDef {
+        span,
+        path: path_std!(cx, span, clone::Clone),
+        needs_copy_as_bound_if_packed: true,
+        additional_bounds: bounds,
+        supports_unions: true,
+        methods: smallvec![MethodDef {
+            name: sym::clone,
+            generics: cx.empty_generics(span),
+            explicit_self: true,
+            nonself_args: SmallVec::new(),
+            has_other_selflike_arg: false,
+            ret_ty: cx.ty_self(span),
+            attributes: thin_vec![
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
+            ],
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
+            body,
+        }],
+        is_const,
+        ..
+    };
+
+    trait_def.expand_ext(cx, item, push, is_simple)
+}
+
+fn clone_simple_body(
+    cx: &ExtCtxt<'_>,
+    trait_span: Span,
+    substr: Substructure<'_>,
+    is_union: bool,
+) -> BlockOrExpr {
+    let mut stmts = ThinVec::new();
+    let mut seen_type_names = FxHashSet::default();
+    let mut process_variant = |variant: &VariantData| {
+        for field in variant.fields() {
+            // This basic redundancy checking only prevents duplication of
+            // assertions like `AssertParamIsClone<Foo>` where the type is a
+            // simple name. That's enough to get a lot of cases, though.
+            if let Some(name) = field.ty.kind.is_simple_path()
+                && !seen_type_names.insert(name)
+            {
+                // Already produced an assertion for this type.
+                // Anonymous structs or unions must be eliminated as they cannot be
+                // type parameters.
+            } else {
+                // let _: AssertParamIsClone<FieldTy>;
+                super::assert_ty_bounds(
+                    cx,
+                    &mut stmts,
+                    field.ty.clone(),
+                    field.span,
+                    &[sym::clone, sym::AssertParamIsClone],
+                );
+            }
+        }
+    };
+
+    if is_union {
+        // Just a single assertion for unions, that the union impls `Copy`.
+        // let _: AssertParamIsCopy<Self>;
+        let self_ty = cx.ty_self(DUMMY_SP);
+        super::assert_ty_bounds(
+            cx,
+            &mut stmts,
+            self_ty,
+            trait_span,
+            &[sym::clone, sym::AssertParamIsCopy],
+        );
+    } else {
+        match substr {
+            StaticStruct(vdata, ..) => {
+                process_variant(vdata);
+            }
+            StaticEnum(enum_def, ..) => {
+                for variant in &enum_def.variants {
+                    process_variant(&variant.data);
+                }
+            }
+            _ => cx.dcx().span_bug(trait_span, "unexpected substructure in simple `derive(Clone)`"),
+        }
+    }
+    BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
+}
+
+fn clone_body(
+    cx: &ExtCtxt<'_>,
+    trait_span: Span,
+    substr: Substructure<'_>,
+    type_ident: Ident,
+) -> BlockOrExpr {
+    let subcall = |field: FieldInfo| {
+        let args = thin_vec![field.self_expr];
+        cx.expr_call_global(
+            field.span,
+            cx.std_path(field.span, &[sym::clone, sym::Clone, sym::clone]),
+            args,
+        )
+    };
+
+    let ctor_path;
+    let all_fields;
+    let vdata;
+    // We need to use `type_ident` instead of `Self` here,
+    // see https://github.com/rust-lang/rust/issues/163800
+    match substr {
+        Struct(vdata_, af) => {
+            ctor_path = cx.path(trait_span, &[type_ident]);
+            all_fields = af;
+            vdata = vdata_;
+        }
+        EnumMatching(.., variant, af) => {
+            ctor_path = cx.path(trait_span, &[type_ident, variant.ident]);
+            all_fields = af;
+            vdata = &variant.data;
+        }
+        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Clone)`"),
+    }
+
+    let expr = match *vdata {
+        VariantData::Struct { .. } => {
+            let fields = all_fields
+                .into_iter()
+                .map(|field| cx.field_imm(field.span, field.name.unwrap(), subcall(field)))
+                .collect::<ThinVec<_>>();
+
+            cx.expr_struct(trait_span, ctor_path, fields)
+        }
+        VariantData::Tuple(..) => {
+            let subcalls = all_fields.into_iter().map(subcall).collect();
+            let path = cx.expr_path(ctor_path);
+            cx.expr_call(trait_span, path, subcalls)
+        }
+        VariantData::Unit(..) => cx.expr_path(ctor_path),
+    };
+    BlockOrExpr::new_expr(expr)
+}

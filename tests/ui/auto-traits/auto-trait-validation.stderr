@@ -1,0 +1,84 @@
+error[E0567]: auto traits cannot have generic parameters
+  --> $DIR/auto-trait-validation.rs:6:19
+   |
+LL | auto trait Generic<T> {}
+   |            -------^^^
+   |            |
+   |            auto trait cannot have generic parameters
+
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/auto-trait-validation.rs:8:20
+   |
+LL | auto trait Bound : Copy {}
+   |            -----   ^^^^
+   |            |
+   |            auto traits cannot have super traits or lifetime bounds
+
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/auto-trait-validation.rs:10:28
+   |
+LL | auto trait LifetimeBound : 'static {}
+   |            -------------   ^^^^^^^
+   |            |
+   |            auto traits cannot have super traits or lifetime bounds
+
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/auto-trait-validation.rs:12:25
+   |
+LL | auto trait MyTrait { fn foo() {} }
+   |            -------      ^^^
+   |            |
+   |            auto traits cannot have associated items
+
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/auto-trait-validation.rs:14:27
+   |
+LL | auto trait AssocTy { type Bar; }
+   |            -------        ^^^
+   |            |
+   |            auto traits cannot have associated items
+
+error[E0567]: auto traits cannot have generic parameters
+  --> $DIR/auto-trait-validation.rs:16:15
+   |
+LL | auto trait All<'a, T> {
+   |            ---^^^^^^^
+   |            |
+   |            auto trait cannot have generic parameters
+
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/auto-trait-validation.rs:18:10
+   |
+LL | auto trait All<'a, T> {
+   |            --- auto traits cannot have associated items
+LL |
+LL |     type Bar;
+   |          ^^^
+LL |
+LL |     fn foo() {}
+   |        ^^^
+
+error[E0568]: auto traits cannot have super traits or lifetime bounds
+  --> $DIR/auto-trait-validation.rs:23:18
+   |
+LL | auto trait All2: Copy + 'static {
+   |            ----  ^^^^   ^^^^^^^
+   |            |
+   |            auto traits cannot have super traits or lifetime bounds
+
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/auto-trait-validation.rs:25:10
+   |
+LL | auto trait All2: Copy + 'static {
+   |            ---- auto traits cannot have associated items
+LL |
+LL |     type Bar;
+   |          ^^^
+LL |
+LL |     fn foo() {}
+   |        ^^^
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0380, E0567, E0568.
+For more information about an error, try `rustc --explain E0380`.

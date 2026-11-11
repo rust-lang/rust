@@ -1,0 +1,35 @@
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/priv-in-bad-locations.rs:1:1
+   |
+LL | pub extern "C" {
+   | ^^^ help: remove the qualifier
+   |
+   = note: place qualifiers on individual foreign items instead
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/priv-in-bad-locations.rs:11:1
+   |
+LL | pub impl B {}
+   | ^^^ help: remove the qualifier
+   |
+   = note: place qualifiers on individual impl items instead
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/priv-in-bad-locations.rs:13:1
+   |
+LL | pub impl A for B {
+   | ^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/priv-in-bad-locations.rs:14:5
+   |
+LL |     pub fn foo(&self) {}
+   |     ^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

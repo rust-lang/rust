@@ -1,0 +1,10 @@
+error: `gca_const_items` requires -Znext-solver=globally to be enabled
+  --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:10:5
+   |
+LL |     gca_const_items,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: enable all of these features
+
+error: aborting due to 1 previous error
+

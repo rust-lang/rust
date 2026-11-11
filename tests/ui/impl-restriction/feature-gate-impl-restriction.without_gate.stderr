@@ -1,0 +1,173 @@
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:8:5
+   |
+LL | pub impl(crate) trait Bar {}
+   |     ^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:9:5
+   |
+LL | pub impl(in crate) trait BarInCrate {}
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:12:9
+   |
+LL |     pub impl(in crate::foo) trait Baz {}
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:13:9
+   |
+LL |     pub impl(super) unsafe trait BazUnsafeSuper {}
+   |         ^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:14:9
+   |
+LL |     pub impl(self) auto trait BazAutoSelf {}
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:15:9
+   |
+LL |     pub impl(in self) const trait BazConst {}
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:18:13
+   |
+LL |         pub impl(in crate::foo::foo_inner) trait Qux {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:19:13
+   |
+LL | ...   pub impl(in crate::foo::foo_inner) unsafe auto trait QuxAutoUnsafe {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:20:13
+   |
+LL | ...   pub impl(in crate::foo::foo_inner) const unsafe trait QuxConstUnsafe {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:24:9
+   |
+LL |     pub impl(crate) trait Bar {}
+   |         ^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:26:9
+   |
+LL |     pub impl(in crate) trait BarInCrate {}
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:28:9
+   |
+LL |     pub impl(self) unsafe trait BazUnsafeSelf {}
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:30:9
+   |
+LL |     pub impl(in super) auto trait BazAutoSuper {}
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:32:9
+   |
+LL |     pub impl(super) const trait BazConstSuper {}
+   |         ^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:36:13
+   |
+LL |         pub impl(in crate::foo::cfged_out_foo) trait CfgedOutQux {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:37:13
+   |
+LL | ...   pub impl(in crate::foo::cfged_out_foo) unsafe auto trait CfgedOutQuxUnsafeAuto {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `impl` restrictions are experimental
+  --> $DIR/feature-gate-impl-restriction.rs:38:13
+   |
+LL | ...   pub impl(in crate::foo::cfged_out_foo) const unsafe trait CfgedOutQuxConstUnsafe {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(impl_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

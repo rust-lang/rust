@@ -1,0 +1,56 @@
+//! Test that CoerceShared doesn't capture an omitted field, and that the source's omitted field can
+//! be used as exclusive while the captured field is still captured.
+//! This should eventually pass.
+
+#![feature(reborrow)]
+
+use std::marker::{CoerceShared, Reborrow};
+
+struct ExtraMut<'a, T> {
+    value: &'a mut T,
+}
+
+impl<'a, T> Reborrow for ExtraMut<'a, T> {}
+
+struct OmitMut<'a, T> {
+    value: &'a mut T,
+    extra: ExtraMut<'a, T>,
+}
+
+impl<'a, T> Reborrow for OmitMut<'a, T> {}
+
+struct OmitRef<'a, T> {
+    value: &'a T,
+}
+
+impl<'a, T> Clone for OmitRef<'a, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a, T> Copy for OmitRef<'a, T> {}
+
+impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
+//~^ ERROR
+
+fn get<'a>(value: OmitRef<'a, i32>) -> &'a i32 {
+    value.value
+}
+
+fn main() {
+    let mut value = 1;
+    let mut extra_value = 2;
+    let extra = ExtraMut { value: &mut extra_value };
+
+    let mut wrapped = OmitMut {
+        value: &mut value,
+        extra,
+    };
+
+    let shared = get(wrapped);
+
+    *wrapped.extra.value = 3;
+
+    let _ = shared;
+}

@@ -1,0 +1,10 @@
+error: free function without a body
+  --> $DIR/trait-bound-holds-for-ty-error-140303.rs:28:1
+   |
+LL | async fn c(); // kaboom
+   | ^^^^^^^^^^^^-
+   |             |
+   |             help: provide a definition for the function: `{ <body> }`
+
+error: aborting due to 1 previous error
+

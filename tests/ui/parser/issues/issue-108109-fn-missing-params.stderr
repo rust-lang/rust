@@ -1,0 +1,24 @@
+error: missing parameters for function definition
+  --> $DIR/issue-108109-fn-missing-params.rs:3:15
+   |
+LL | pub fn missing -> () {}
+   |               ^
+   |
+help: add a parameter list
+   |
+LL | pub fn missing() -> () {}
+   |               ++
+
+error: missing parameters for function definition
+  --> $DIR/issue-108109-fn-missing-params.rs:6:16
+   |
+LL | pub fn missing2 {}
+   |                ^
+   |
+help: add a parameter list
+   |
+LL | pub fn missing2() {}
+   |                ++
+
+error: aborting due to 2 previous errors
+

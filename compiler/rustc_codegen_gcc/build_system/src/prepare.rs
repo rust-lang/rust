@@ -1,0 +1,212 @@
+use std::ffi::OsStr;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Output;
+
+use crate::rustc_info::get_rustc_path;
+use crate::utils::{
+    cargo_install, create_dir, get_sysroot_dir, git_clone_root_dir, remove_file, run_command,
+    run_command_with_output, walk_dir,
+};
+
+// This is needed on systems where nothing is configured.
+// git really needs something here, or it will fail.
+// Even using --author is not enough.
+const GIT_CMD: [&dyn AsRef<OsStr>; 9] = [
+    &"git",
+    &"-c",
+    &"user.name=None",
+    &"-c",
+    &"user.email=none@example.com",
+    &"-c",
+    &"core.autocrlf=false",
+    &"-c",
+    &"commit.gpgSign=false",
+];
+
+fn run_git_command(
+    command: &dyn AsRef<OsStr>,
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+) -> Result<Output, String> {
+    let git_cmd =
+        &GIT_CMD.into_iter().chain([command]).chain(input.iter().cloned()).collect::<Vec<_>>()[..];
+    run_command(git_cmd, cwd)
+}
+
+fn run_git_command_with_output(
+    command: &dyn AsRef<OsStr>,
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+) -> Result<(), String> {
+    let git_cmd =
+        &GIT_CMD.into_iter().chain([command]).chain(input.iter().cloned()).collect::<Vec<_>>()[..];
+    run_command_with_output(git_cmd, cwd)
+}
+
+fn prepare_libcore(
+    sysroot_path: &Path,
+    libgccjit12_patches: bool,
+    cross_compile: bool,
+    sysroot_source: Option<String>,
+) -> Result<(), String> {
+    let rustlib_dir: PathBuf;
+
+    if let Some(path) = sysroot_source {
+        rustlib_dir = Path::new(&path)
+            .canonicalize()
+            .map_err(|error| format!("Failed to canonicalize path: {error:?}"))?;
+        if !rustlib_dir.is_dir() {
+            return Err(format!("Custom sysroot path {rustlib_dir:?} not found"));
+        }
+    } else {
+        let rustc_path = match get_rustc_path() {
+            Some(path) => path,
+            None => return Err("`rustc` path not found".to_string()),
+        };
+
+        let parent = match rustc_path.parent() {
+            Some(path) => path,
+            None => return Err(format!("No parent for `{}`", rustc_path.display())),
+        };
+
+        rustlib_dir = parent
+            .join("../lib/rustlib/src/rust")
+            .canonicalize()
+            .map_err(|error| format!("Failed to canonicalize path: {error:?}"))?;
+        if !rustlib_dir.is_dir() {
+            return Err("Please install `rust-src` component".to_string());
+        }
+    }
+
+    let sysroot_dir = sysroot_path.join("sysroot_src");
+    if sysroot_dir.is_dir()
+        && let Err(error) = fs::remove_dir_all(&sysroot_dir)
+    {
+        return Err(format!("Failed to remove `{}`: {:?}", sysroot_dir.display(), error,));
+    }
+
+    let sysroot_library_dir = sysroot_dir.join("library");
+    create_dir(&sysroot_library_dir)?;
+
+    run_command(&[&"cp", &"-r", &rustlib_dir.join("library"), &sysroot_dir], None)?;
+
+    println!("[GIT] init (cwd): `{}`", sysroot_dir.display());
+    run_git_command(&"init", &[], Some(&sysroot_dir))?;
+    println!("[GIT] add (cwd): `{}`", sysroot_dir.display());
+    run_git_command(&"add", &[&"."], Some(&sysroot_dir))?;
+    println!("[GIT] commit (cwd): `{}`", sysroot_dir.display());
+
+    run_git_command(&"commit", &[&"-m", &"Initial commit", &"-q"], Some(&sysroot_dir))?;
+
+    let mut patches = Vec::new();
+    walk_dir(
+        "patches",
+        &mut |_| Ok(()),
+        &mut |file_path: &Path| {
+            patches.push(file_path.to_path_buf());
+            Ok(())
+        },
+        false,
+    )?;
+    if cross_compile {
+        walk_dir(
+            "patches/cross_patches",
+            &mut |_| Ok(()),
+            &mut |file_path: &Path| {
+                patches.push(file_path.to_path_buf());
+                Ok(())
+            },
+            false,
+        )?;
+    }
+    if libgccjit12_patches {
+        walk_dir(
+            "patches/libgccjit12",
+            &mut |_| Ok(()),
+            &mut |file_path: &Path| {
+                patches.push(file_path.to_path_buf());
+                Ok(())
+            },
+            false,
+        )?;
+    }
+    patches.sort();
+    for file_path in patches {
+        println!("[GIT] apply `{}`", file_path.display());
+        let path = Path::new("../../..").join(file_path);
+        run_git_command_with_output(&"apply", &[&path], Some(&sysroot_dir))?;
+        run_git_command_with_output(&"add", &[&"-A"], Some(&sysroot_dir))?;
+        run_git_command_with_output(
+            &"commit",
+            &[&"-m", &format!("Patch {}", path.display())],
+            Some(&sysroot_dir),
+        )?;
+    }
+    println!("Successfully prepared libcore for building");
+
+    Ok(())
+}
+
+// build with cg_llvm for perf comparison
+fn build_raytracer(repo_dir: &Path) -> Result<(), String> {
+    run_command(&[&"cargo", &"build"], Some(repo_dir))?;
+    let mv_target = repo_dir.join("raytracer_cg_llvm");
+    if mv_target.is_file() {
+        remove_file(&mv_target)?;
+    }
+    run_command(&[&"mv", &"target/debug/main", &"raytracer_cg_llvm"], Some(repo_dir))?;
+    Ok(())
+}
+
+fn clone_and_setup<F>(repo_url: &str, checkout_commit: &str, extra: Option<F>) -> Result<(), String>
+where
+    F: Fn(&Path) -> Result<(), String>,
+{
+    let clone_result = git_clone_root_dir(repo_url, Path::new(crate::BUILD_DIR), false)?;
+    if !clone_result.ran_clone {
+        println!("`{}` has already been cloned", clone_result.repo_name);
+    }
+    let repo_path = Path::new(crate::BUILD_DIR).join(&clone_result.repo_name);
+    run_git_command(&"checkout", &[&"--", &"."], Some(&repo_path))?;
+    run_git_command(&"checkout", &[&checkout_commit], Some(&repo_path))?;
+    if let Some(extra) = extra {
+        extra(&repo_path)?;
+    }
+    Ok(())
+}
+
+sub_command_decl! {
+    PrepareArg => "prepare",
+    cross_compile: bool = "--cross" => "Apply the patches needed to do cross-compilation",
+    only_libcore: bool = "--only-libcore" => "Only setup libcore and don't clone other repositories",
+    libgccjit12_patches: bool = "--libgccjit12-patches" => "Apply patches needed for libgccjit12",
+    sysroot_source: Option<String> = "--sysroot-source" => "Specify custom path for sysroot source",
+}
+
+pub fn run() -> Result<(), String> {
+    let args = match PrepareArg::new()? {
+        Some(a) => a,
+        None => return Ok(()),
+    };
+    let sysroot_path = get_sysroot_dir();
+    prepare_libcore(
+        &sysroot_path,
+        args.libgccjit12_patches,
+        args.cross_compile,
+        args.sysroot_source,
+    )?;
+
+    if !args.only_libcore {
+        cargo_install("hyperfine")?;
+
+        clone_and_setup(
+            "https://github.com/ebobby/simple-raytracer",
+            "804a7a21b9e673a482797aa289a18ed480e4d813",
+            Some(build_raytracer),
+        )?;
+    }
+
+    println!("Successfully ran `prepare`");
+    Ok(())
+}

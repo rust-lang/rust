@@ -1,0 +1,10 @@
+error: abnormal termination: called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread
+  --> tests/fail-dep/concurrency/apple_os_unfair_lock_assert_owner.rs:LL:CC
+   |
+LL |         libc::os_unfair_lock_assert_owner(lock.get());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

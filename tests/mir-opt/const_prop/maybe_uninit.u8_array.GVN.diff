@@ -1,0 +1,28 @@
+- // MIR for `u8_array` before GVN
++ // MIR for `u8_array` after GVN
+  
+  fn u8_array() -> [MaybeUninit<u8>; 8] {
+      let mut _0: [std::mem::MaybeUninit<u8>; 8];
+      let mut _1: std::mem::MaybeUninit<u8>;
+      scope 1 (inlined MaybeUninit::<u8>::uninit) {
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = MaybeUninit::<u8> { uninit: const () };
+-         _0 = [move _1; 8];
++         _1 = const <uninit>;
++         _0 = const <uninit>;
+          StorageDead(_1);
+          return;
+      }
++ }
++ 
++ ALLOC0 (size: 8, align: 1) {
++     __ __ __ __ __ __ __ __                         │ ░░░░░░░░
++ }
++ 
++ ALLOC1 (size: 1, align: 1) {
++     __                                              │ ░
+  }
+  

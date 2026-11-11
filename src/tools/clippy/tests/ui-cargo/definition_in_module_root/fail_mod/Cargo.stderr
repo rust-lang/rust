@@ -1,0 +1,64 @@
+error: definition in module root file
+ --> src/stuff/mod.rs:4:1
+  |
+4 | pub struct Foo;
+  | ^^^^^^^^^^^^^^^
+  |
+  = help: move struct `Foo` to a dedicated file
+  = note: `-D clippy::definition-in-module-root` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::definition_in_module_root)]`
+
+error: definition in module root file
+ --> src/stuff/mod.rs:5:1
+  |
+5 | / pub enum Bar {
+6 | |     A,
+7 | |     B,
+8 | | }
+  | |_^
+  |
+  = help: move enum `Bar` to a dedicated file
+
+error: definition in module root file
+ --> src/stuff/mod.rs:9:1
+  |
+9 | pub fn baz() {}
+  | ^^^^^^^^^^^^^^^
+  |
+  = help: move function `baz` to a dedicated file
+
+error: definition in module root file
+  --> src/stuff/mod.rs:10:1
+   |
+10 | pub const QUUX: u32 = 1;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move constant item `QUUX` to a dedicated file
+
+error: definition in module root file
+  --> src/stuff/mod.rs:11:1
+   |
+11 | pub trait Trait1 {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move trait `Trait1` to a dedicated file
+
+error: definition in module root file
+  --> src/stuff/mod.rs:12:1
+   |
+12 | pub type Alias<T> = std::result::Result<T, String>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: move type alias `Alias` to a dedicated file
+
+error: definition in module root file
+  --> src/stuff/mod.rs:13:1
+   |
+13 | / impl Foo {
+14 | |     pub fn method(&self) {}
+15 | | }
+   | |_^
+   |
+   = help: move the implementation to a dedicated file
+
+error: could not compile `fail-mod` (lib) due to 7 previous errors

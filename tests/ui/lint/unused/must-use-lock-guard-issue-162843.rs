@@ -1,0 +1,41 @@
+//@ run-rustfix
+//! Regression test for https://github.com/rust-lang/rust/issues/162843.
+//! Must-use values with nontrivial drop should suggest a binding that preserves drop timing.
+#![deny(unused_must_use)]
+
+use std::sync::Mutex;
+
+struct Guard;
+
+impl Drop for Guard {
+    fn drop(&mut self) {}
+}
+
+#[must_use]
+fn guard() -> Guard {
+    Guard
+}
+
+#[must_use]
+fn value() -> u8 {
+    0
+}
+
+#[must_use]
+fn vec_values() -> Vec<u8> {
+    vec![1, 2, 3]
+}
+
+#[must_use]
+fn box_value() -> Box<u8> {
+    Box::new(0)
+}
+
+fn main() {
+    let mutex = Mutex::new(0);
+    mutex.lock().unwrap(); //~ ERROR unused `std::sync::MutexGuard` that must be used
+    guard(); //~ ERROR unused return value of `guard` that must be used
+    value(); //~ ERROR unused return value of `value` that must be used
+    vec_values(); //~ ERROR unused return value of `vec_values` that must be used
+    box_value(); //~ ERROR unused return value of `box_value` that must be used
+}

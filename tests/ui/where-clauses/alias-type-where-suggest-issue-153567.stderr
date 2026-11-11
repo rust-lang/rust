@@ -1,0 +1,16 @@
+warning: where clause not allowed here
+  --> $DIR/alias-type-where-suggest-issue-153567.rs:13:16
+   |
+LL |     type Assoc where i32: Copy = () where;
+   |                ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+   = note: requested on the command line with `--force-warn deprecated-where-clause-location`
+help: move it to the end of the type declaration
+   |
+LL -     type Assoc where i32: Copy = () where;
+LL +     type Assoc = () where i32: Copy;
+   |
+
+warning: 1 warning emitted
+

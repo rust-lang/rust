@@ -1,0 +1,20 @@
+# Should not lint for dev or build dependencies. See issue 5041.
+
+[package]
+name = "multiple-crate-versions"
+version = "0.1.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+cfg-if = "0.1"
+
+[build-dependencies]
+cfg-if = "1.0"
+
+[dev-dependencies]
+cfg-if = "1.0"
+
+[lints.cargo]
+unused_dependencies = "allow"

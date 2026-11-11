@@ -1,0 +1,152 @@
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:9:5
+   |
+LL |     let x = 5;
+   |     ---------- unnecessary `let` binding
+LL |     x
+   |     ^
+   |
+   = note: `-D clippy::let-and-return` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::let_and_return)]`
+help: return the expression directly
+   |
+LL ~     
+LL ~     5
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:17:9
+   |
+LL |         let x = 5;
+   |         ---------- unnecessary `let` binding
+LL |         x
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         5
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:80:5
+   |
+LL |     let line = stdin.lock().lines().next().unwrap().unwrap();
+   |     --------------------------------------------------------- unnecessary `let` binding
+LL |     line
+   |     ^^^^
+   |
+help: return the expression directly
+   |
+LL ~     
+LL ~     stdin.lock().lines().next().unwrap().unwrap()
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:171:13
+   |
+LL |             let clone = Arc::clone(&self.foo);
+   |             ---------------------------------- unnecessary `let` binding
+LL |             clone
+   |             ^^^^^
+   |
+help: return the expression directly
+   |
+LL ~             
+LL ~             (Arc::clone(&self.foo)) as _
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:190:13
+   |
+LL | /             let result = match self {
+LL | |                 E::A(x) => x,
+LL | |                 E::B(x) => x,
+LL | |             };
+   | |______________- unnecessary `let` binding
+LL |
+LL |               result
+   |               ^^^^^^
+   |
+help: return the expression directly
+   |
+LL ~             
+LL |
+LL ~             (match self {
+LL +                 E::A(x) => x,
+LL +                 E::B(x) => x,
+LL +             }) as _
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:216:9
+   |
+LL |         let s = if true { "a".to_string() } else { "b".to_string() } + "c";
+   |         ------------------------------------------------------------------- unnecessary `let` binding
+LL |         s
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         (if true { "a".to_string() } else { "b".to_string() } + "c")
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:222:9
+   |
+LL |         let s = "c".to_string() + if true { "a" } else { "b" };
+   |         ------------------------------------------------------- unnecessary `let` binding
+LL |         s
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         "c".to_string() + if true { "a" } else { "b" }
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:228:9
+   |
+LL |         let s = { "a".to_string() } + "b" + { "c" } + "d";
+   |         -------------------------------------------------- unnecessary `let` binding
+LL |         s
+   |         ^
+   |
+help: return the expression directly
+   |
+LL ~         
+LL ~         ({ "a".to_string() } + "b" + { "c" } + "d")
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:236:13
+   |
+LL |             let s = if true { 2 } else { 3 } << 4;
+   |             -------------------------------------- unnecessary `let` binding
+LL |             s
+   |             ^
+   |
+help: return the expression directly
+   |
+LL ~             
+LL ~             (if true { 2 } else { 3 } << 4)
+   |
+
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:241:13
+   |
+LL |             let s = { true } || { false } && { 2 <= 3 };
+   |             -------------------------------------------- unnecessary `let` binding
+LL |             s
+   |             ^
+   |
+help: return the expression directly
+   |
+LL ~             
+LL ~             ({ true } || { false } && { 2 <= 3 })
+   |
+
+error: aborting due to 10 previous errors
+

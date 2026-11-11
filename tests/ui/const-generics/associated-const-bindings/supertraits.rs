@@ -1,0 +1,25 @@
+// Regression test for issue #118040.
+// Ensure that we support assoc const eq bounds where the assoc const comes from a supertrait.
+
+//@ check-pass
+
+#![feature(
+    gca_min_const_items,
+    adt_const_params,
+    const_param_ty_trait,
+    generic_const_parameter_types
+)]
+#![allow(incomplete_features)]
+
+use std::marker::ConstParamTy_;
+
+trait Trait: SuperTrait {}
+trait SuperTrait: SuperSuperTrait<i32> {}
+trait SuperSuperTrait<T: ConstParamTy_> {
+    #[rustc_always_gca]
+    const K: T;
+}
+
+fn take(_: impl Trait<K = 0>) {}
+
+fn main() {}

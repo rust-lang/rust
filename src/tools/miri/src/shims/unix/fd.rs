@@ -1,0 +1,839 @@
+//! General management of file descriptors, and support for
+//! standard file descriptors (stdin/stdout/stderr).
+
+use std::io;
+use std::io::ErrorKind;
+
+use rand::RngExt;
+use rustc_abi::{Align, Size};
+use rustc_target::spec::Os;
+
+use crate::shims::files::{BIG_ACCESS, DynFileDescriptionRef, FdNum, FileDescription};
+use crate::shims::sig::Varargs;
+use crate::shims::unix::socket::UnixSocketFileDescription;
+use crate::shims::unix::*;
+use crate::shims::{FdTable, FileDescriptionRef};
+use crate::*;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum FlockOp {
+    SharedLock { nonblocking: bool },
+    ExclusiveLock { nonblocking: bool },
+    Unlock,
+}
+
+/// Represents unix-specific file descriptions.
+pub trait UnixFileDescription: FileDescription {
+    /// Reads as much as possible into the given buffer `ptr` from a given offset.
+    /// `len` indicates how many bytes we should try to read.
+    /// `dest` is where the return value should be stored: number of bytes read, or `-1` in case of error.
+    fn pread<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        _len: u64,
+        _offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("cannot pread from {}", self.name());
+    }
+
+    /// Writes as much as possible from the given buffer `ptr` starting at a given offset.
+    /// `ptr` is the pointer to the user supplied read buffer.
+    /// `len` indicates how many bytes we should try to write.
+    /// `dest` is where the return value should be stored: number of bytes written, or `-1` in case of error.
+    fn pwrite<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        _len: u64,
+        _offset: u64,
+        _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("cannot pwrite to {}", self.name());
+    }
+
+    fn flock<'tcx>(
+        &self,
+        _communicate_allowed: bool,
+        _op: FlockOp,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        throw_unsup_format!("cannot flock {}", self.name());
+    }
+
+    /// Implementation of fcntl(F_GETFL) for this FD.
+    fn get_flags<'tcx>(&self, _ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_GETFL", self.name());
+    }
+
+    /// Implementation of fcntl(F_SETFL) for this FD.
+    fn set_flags<'tcx>(
+        &self,
+        _flag: i32,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
+    }
+
+    /// Returns this file description as a Unix socket, if it represents one.
+    fn as_socket(
+        self: FileDescriptionRef<Self>,
+    ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
+        None
+    }
+}
+
+impl UnixFileDescription for shims::files::Stdin {}
+impl UnixFileDescription for shims::files::Stdout {}
+impl UnixFileDescription for shims::files::Stderr {}
+impl UnixFileDescription for shims::files::NullOutput {}
+
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn close(&mut self, fd_num: FdNum) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+
+        let Some(fd) = ecx.machine.fds.remove(fd_num) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+        let fd = fd.as_unix(); // sanity-check
+        if ecx.tcx.sess.target.os == Os::Illumos {
+            // Illumos didn't like the Linux semantics of epoll tracking file *descriptions*
+            // rather than file *descriptors*. So on Illumos, when a file description is closed,
+            // de-register it from everything watching it.
+            // > While a best effort has been made to mimic the Linux semantics, there are
+            // > some semantics that are too peculiar or ill-conceived to merit
+            // > accommodation. In particular, the Linux epoll facility will -- by design
+            // > -- continue to generate events for closed file descriptors where/when the
+            // > underlying file description remains open. [...]
+            // > This epoll facility refuses to honor these semantics;
+            // > closing the EPOLL_CTL_ADD'd file descriptor will always result in no
+            // > further events being generated for that event description.
+            if let Some(watched) = fd.readiness_watched() {
+                watched.remove_file_num_interests(fd.id(), fd_num);
+            }
+        }
+        drop(fd);
+        // Our close is always successful. Close does not reliably return errors anyway so it is
+        // not worth the effort to try and return anything here.
+        interp_ok(Scalar::from_i32(0))
+    }
+
+    fn dup(&mut self, old_fd_num: FdNum) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+
+        let Some(fd) = ecx.machine.fds.get(old_fd_num) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+        let Some(new_fd) = ecx.machine.fds.insert(fd) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        interp_ok(Scalar::from_i32(new_fd))
+    }
+
+    fn dup2(&mut self, old_fd_num: FdNum, new_fd_num: FdNum) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+
+        let Some(fd) = ecx.machine.fds.get(old_fd_num) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+        if !FdTable::fd_num_valid(new_fd_num) {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        }
+        if new_fd_num != old_fd_num {
+            if ecx.machine.fds.get(new_fd_num).is_some() {
+                // Close the FD currently holding this spot.
+                let ret = ecx.close(new_fd_num)?;
+                assert!(ret.to_i32().unwrap() == 0);
+            }
+            // Insert new FD in this spot.
+            let Some(actual_fd_num) = ecx.machine.fds.insert_with_min_num(fd, new_fd_num) else {
+                panic!("we validated new_fd_num above")
+            };
+            assert_eq!(actual_fd_num, new_fd_num);
+        }
+        interp_ok(Scalar::from_i32(new_fd_num))
+    }
+
+    fn flock(&mut self, fd_num: FdNum, op: i32) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+        let Some(fd) = ecx.machine.fds.get(fd_num) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+
+        // We need to check that there aren't unsupported options in `op`.
+        let lock_sh = ecx.eval_libc_i32("LOCK_SH");
+        let lock_ex = ecx.eval_libc_i32("LOCK_EX");
+        let lock_nb = ecx.eval_libc_i32("LOCK_NB");
+        let lock_un = ecx.eval_libc_i32("LOCK_UN");
+
+        use FlockOp::*;
+        let parsed_op = if op == lock_sh {
+            SharedLock { nonblocking: false }
+        } else if op == lock_sh | lock_nb {
+            SharedLock { nonblocking: true }
+        } else if op == lock_ex {
+            ExclusiveLock { nonblocking: false }
+        } else if op == lock_ex | lock_nb {
+            ExclusiveLock { nonblocking: true }
+        } else if op == lock_un {
+            Unlock
+        } else {
+            throw_unsup_format!("unsupported flags {:#x}", op);
+        };
+
+        let result = fd.as_unix().flock(ecx.machine.communicate(), parsed_op)?;
+        // return `0` if flock is successful
+        let result = result.map(|()| 0i32);
+        interp_ok(Scalar::from_i32(ecx.try_unwrap_io_result(result)?))
+    }
+
+    fn ioctl(
+        &mut self,
+        fd: &OpTy<'tcx>,
+        op: &OpTy<'tcx>,
+        varargs: Varargs<'tcx, '_>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+
+        let fd = ecx.read_scalar(fd)?.to_i32()?;
+        let op = ecx.read_scalar(op)?;
+
+        let Some(fd) = ecx.machine.fds.get(fd) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        };
+
+        // Handle common opcodes.
+        let fioclex = ecx.eval_libc("FIOCLEX");
+        let fionclex = ecx.eval_libc("FIONCLEX");
+        let fionbio = ecx.eval_libc("FIONBIO");
+
+        if op == fioclex || op == fionclex {
+            // Since we don't support `exec`, those are NOPs.
+            interp_ok(Scalar::from_i32(0))
+        } else if op == fionbio {
+            // On these OSes, the Rust standard library uses the ioctl for changing the blocking mode
+            // of certain file descriptors, so we trust that it is reasonable and controls the same
+            // internal flag as fcntl.
+            if !matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
+            {
+                // FIONBIO cannot be used to change the blocking mode of some file descriptors on solarish targets:
+                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
+                // Since there might be more targets which do weird things with this option, we use
+                // an allowlist instead of just denying solarish targets.
+                throw_unsup_format!(
+                    "ioctl: setting FIONBIO is unsupported on {} on target {}",
+                    fd.name(),
+                    ecx.tcx.sess.target.os
+                );
+            }
+
+            let ([value_ptr], _) = ecx.check_varargs(shim_varargs![*i32], varargs, "ioctl")?;
+            let value = ecx.deref_pointer(&value_ptr)?;
+            let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
+
+            let o_nonblock = ecx.eval_libc_i32("O_NONBLOCK");
+
+            // We change the blocking mode of the file description using `set_flags`.
+            // For this we first fetch the current flags using `get_flags` and then
+            // we add or subtract O_NONBLOCK to them.
+
+            let unix_fd = fd.as_unix();
+            let mut flags = unix_fd.get_flags(ecx)?.to_i32()?;
+            if non_block {
+                // Add O_NONBLOCK to the existing flags.
+                flags |= o_nonblock
+            } else {
+                // Remove O_NONBLOCK from the existing flags.
+                flags &= !o_nonblock
+            }
+            unix_fd.set_flags(flags & !ecx.setfl_ignored_flags(), ecx)?;
+            interp_ok(Scalar::from_i32(0))
+        } else {
+            throw_unsup_format!("ioctl: unsupported operation {op:#x} on {}", fd.name())
+        }
+    }
+
+    fn fcntl(
+        &mut self,
+        fd_num: &OpTy<'tcx>,
+        cmd: &OpTy<'tcx>,
+        varargs: Varargs<'tcx, '_>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_mut();
+
+        let fd_num = ecx.read_scalar(fd_num)?.to_i32()?;
+        let cmd = ecx.read_scalar(cmd)?.to_i32()?;
+
+        let f_getfd = ecx.eval_libc_i32("F_GETFD");
+        let f_dupfd = ecx.eval_libc_i32("F_DUPFD");
+        let f_dupfd_cloexec = ecx.eval_libc_i32("F_DUPFD_CLOEXEC");
+        let f_getfl = ecx.eval_libc_i32("F_GETFL");
+        let f_setfl = ecx.eval_libc_i32("F_SETFL");
+
+        // We only support getting the flags for a descriptor.
+        match cmd {
+            cmd if cmd == f_getfd => {
+                // Currently this is the only flag that `F_GETFD` returns. It is OK to just return the
+                // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
+                // always sets this flag when opening a file. However we still need to check that the
+                // file itself is open.
+                if !ecx.machine.fds.is_fd_num(fd_num) {
+                    ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"))
+                } else {
+                    interp_ok(ecx.eval_libc("FD_CLOEXEC"))
+                }
+            }
+            cmd if cmd == f_dupfd || cmd == f_dupfd_cloexec => {
+                // Note that we always assume the FD_CLOEXEC flag is set for every open file, in part
+                // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
+                // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
+                // thus they can share the same implementation here.
+                let cmd_name = if cmd == f_dupfd {
+                    "fcntl(fd, F_DUPFD, ...)"
+                } else {
+                    "fcntl(fd, F_DUPFD_CLOEXEC, ...)"
+                };
+
+                let ([start], _) = ecx.check_varargs(shim_varargs![i32], varargs, cmd_name)?;
+                let start = ecx.read_scalar(&start)?.to_i32()?;
+
+                let Some(fd) = ecx.machine.fds.get(fd_num) else {
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                };
+                if !FdTable::fd_num_valid(start) {
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+                }
+                let Some(new_fd_num) = ecx.machine.fds.insert_with_min_num(fd, start) else {
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
+                interp_ok(Scalar::from_i32(new_fd_num))
+            }
+            cmd if cmd == f_getfl => {
+                // Check if this is a valid open file descriptor.
+                let Some(fd) = ecx.machine.fds.get(fd_num) else {
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                };
+
+                fd.as_unix().get_flags(ecx)
+            }
+            cmd if cmd == f_setfl => {
+                // Check if this is a valid open file descriptor.
+                let Some(fd) = ecx.machine.fds.get(fd_num) else {
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                };
+
+                let ([flag], _) =
+                    ecx.check_varargs(shim_varargs![i32], varargs, "fcntl(fd, F_SETFL, ...)")?;
+                let flag = ecx.read_scalar(&flag)?.to_i32()?;
+
+                fd.as_unix().set_flags(flag & !ecx.setfl_ignored_flags(), ecx)
+            }
+            cmd if ecx.tcx.sess.target.os == Os::MacOs
+                && cmd == ecx.eval_libc_i32("F_FULLFSYNC") =>
+            {
+                // Reject if isolation is enabled.
+                if let IsolatedOp::Reject(reject_with) = ecx.machine.isolated_op {
+                    ecx.reject_in_isolation("`fcntl`", reject_with)?;
+                    return ecx.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
+                }
+
+                ecx.ffullsync_fd(fd_num)
+            }
+            cmd if ecx.tcx.sess.target.os == Os::MacOs
+                && ecx.frame_in_std()
+                && cmd == ecx.eval_libc_i32("F_GETPATH") =>
+            {
+                // Std uses this when debug-printing `File`. We stub it out by returning an error.
+                ecx.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"))
+            }
+            cmd if ecx.tcx.sess.target.os == Os::FreeBsd
+                && ecx.frame_in_std()
+                && cmd == ecx.eval_libc_i32("F_KINFO") =>
+            {
+                // Std uses this when debug-printing `File`. We stub it out by returning an error.
+                ecx.set_errno_and_return_neg1_i32(LibcError("EOPNOTSUPP"))
+            }
+            cmd => {
+                throw_unsup_format!("fcntl: unsupported command {cmd:#x}");
+            }
+        }
+    }
+
+    /// Read data from `fd` into buffer specified by `buf` and `count`.
+    ///
+    /// If `offset` is `None`, reads data from current cursor position associated with `fd`
+    /// and updates cursor position on completion. Otherwise, reads from the specified offset
+    /// and keeps the cursor unchanged.
+    fn read(
+        &mut self,
+        fd_num: i32,
+        buf: Pointer,
+        count: u64,
+        offset: Option<i128>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        // Isolation check is done via `FileDescription` trait.
+
+        trace!("Reading from FD {}, size {}", fd_num, count);
+
+        // Check that the *entire* buffer is actually valid memory.
+        ecx.check_ptr_access(buf, Size::from_bytes(count), CheckInAllocMsg::MemoryAccess)?;
+
+        // POSIX says that if count does not fit isize, behavior is implementation-defined.
+        // We simply cap the count to that number.
+        let count = count.clamp_to(..=u64::try_from(ecx.target_isize_max()).unwrap());
+
+        // Get the FD.
+        let Some(fd) = ecx.machine.fds.get(fd_num) else {
+            trace!("read: FD not found");
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+
+        let dest = dest.clone();
+        ecx.read_from_fd(
+            fd,
+            buf,
+            count,
+            offset,
+            callback!(
+                @capture<'tcx> {
+                    count: u64,
+                    dest: MPlaceTy<'tcx>,
+                }
+                |ecx, result: Result<u64, IoError>| {
+                    match result {
+                        Ok(read_size) => {
+                            assert!(read_size <= count);
+                            // This must fit since `count` fits.
+                            ecx.write_int(i64::try_from(read_size).unwrap(), &dest)
+                        }
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
+                }}
+            ),
+        )
+    }
+
+    fn write(
+        &mut self,
+        fd_num: i32,
+        buf: Pointer,
+        count: u64,
+        offset: Option<i128>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        // Isolation check is done via `FileDescription` trait.
+
+        // Check that the *entire* buffer is actually valid memory.
+        ecx.check_ptr_access(buf, Size::from_bytes(count), CheckInAllocMsg::MemoryAccess)?;
+
+        // POSIX says that if count does not fit isize, behavior is implementation-defined.
+        // We simply cap the count to that number.
+        let count = count.clamp_to(..=u64::try_from(ecx.target_isize_max()).unwrap());
+
+        // We temporarily dup the FD to be able to retain mutable access to `ecx`.
+        let Some(fd) = ecx.machine.fds.get(fd_num) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+
+        let dest = dest.clone();
+        ecx.write_to_fd(
+            fd,
+            buf,
+            count,
+            offset,
+            callback!(
+                @capture<'tcx> {
+                    count: u64,
+                    dest: MPlaceTy<'tcx>,
+                }
+                |ecx, result: Result<u64, IoError>| {
+                    match result {
+                        Ok(write_size) => {
+                            assert!(write_size <= count);
+                            // This must fit since `count` fits.
+                            ecx.write_int(i64::try_from(write_size).unwrap(), &dest)
+                        }
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
+
+                }}
+            ),
+        )
+    }
+
+    /// Vectored reads are implemented by first reading bytes from `fd`
+    /// into a temporary buffer which has the combined size of all buffers in
+    /// `iov`. After that we split the bytes of the combined buffer into the
+    /// buffers of `iov`. This ensures that the vectored read occurs atomically.
+    fn readv(
+        &mut self,
+        fd: &OpTy<'tcx>,
+        iov: &OpTy<'tcx>,
+        iovcnt: &OpTy<'tcx>,
+        offset: Option<&OpTy<'tcx>>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let fd = ecx.read_scalar(fd)?.to_i32()?;
+        let iov = ecx.deref_pointer(iov)?;
+        let iovcnt = ecx.read_scalar(iovcnt)?.to_i32()?;
+
+        // `readv` is the same as `preadv` without an offset.
+        let offset = if let Some(offset) = offset {
+            if matches!(ecx.tcx.sess.target.os, Os::Solaris) {
+                throw_unsup_format!(
+                    "preadv: vectored reads with offsets aren't supported on Solaris"
+                )
+            }
+            Some(ecx.read_scalar(offset)?.to_int(offset.layout.size)?)
+        } else {
+            None
+        };
+
+        let Ok(iovcnt) = u64::try_from(iovcnt) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+
+        // Check that the FD exists.
+        let Some(fd) = ecx.machine.fds.get(fd) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+
+        let Some((buffers, total_bytes)) = ecx.read_iovec_array(&iov, iovcnt)? else {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+        // `read_iovec_array` also ensures that the total length fits in a target isize.
+
+        // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
+        let tmp_ptr: Pointer = ecx
+            .allocate_ptr(
+                Size::from_bytes(total_bytes),
+                Align::ONE,
+                MemoryKind::Stack,
+                AllocInit::Uninit,
+            )?
+            .into();
+
+        let dest = dest.clone();
+        ecx.read_from_fd(
+            fd,
+            tmp_ptr,
+            total_bytes,
+            offset,
+            callback!(
+                @capture<'tcx> {
+                    tmp_ptr: Pointer,
+                    buffers: Vec<(Pointer, u64)>,
+                    dest: MPlaceTy<'tcx>
+                } |ecx, result: Result<u64, IoError>| {
+                    let bytes_read = match result {
+                        Ok(size) => size,
+                        Err(e) => {
+                            ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
+                            return ecx.set_errno_and_return_neg1(e, &dest)
+                        }
+                    };
+                    ecx.write_scalar(Scalar::from_target_isize(bytes_read.try_into().unwrap(), ecx), &dest)?;
+                    let mut remaining_bytes = bytes_read;
+
+                    // Split the bytes from the temporary buffer into the buffers provided in `iov`.
+                    // We start at the first buffer and fill them in order, until we reach the end of the
+                    // initialized bytes in the temporary buffer.
+                    for (buffer_ptr, buffer_len) in buffers {
+                        // Offset temporary buffer by the amount of bytes we already copied into previous buffers.
+                        let tmp_ptr_with_offset =
+                            ecx.ptr_offset_inbounds(tmp_ptr, i64::try_from(bytes_read.strict_sub(remaining_bytes)).unwrap())?;
+
+                        // Copy at most as many bytes as the buffer fits but without reading
+                        // any uninitialized bytes from the temporary buffer.
+                        let copy_amount = buffer_len.min(remaining_bytes);
+                        ecx.mem_copy(
+                            tmp_ptr_with_offset,
+                            buffer_ptr,
+                            Size::from_bytes(copy_amount),
+                            // The buffers are guaranteed to not overlap because we just newly allocated
+                            // the `tmp_ptr`, and `tmp_ptr_with_offset` is guaranteed to be
+                            // within those boundaries.
+                            true,
+                        )?;
+
+                        remaining_bytes = remaining_bytes.strict_sub(copy_amount);
+                        if remaining_bytes == 0 {
+                            // We don't have anything left to copy; exit the loop.
+                            break;
+                        }
+                    }
+
+                    ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)
+                }),
+        )
+    }
+
+    /// Vectored writes are implemented by first writing the bytes from all
+    /// buffers of `iov` into a combined temporary buffer and then writing this
+    /// combined buffer into `fd`. This ensures that the vectored write occurs atomically.
+    fn writev(
+        &mut self,
+        fd: &OpTy<'tcx>,
+        iov: &OpTy<'tcx>,
+        iovcnt: &OpTy<'tcx>,
+        offset: Option<&OpTy<'tcx>>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let fd = ecx.read_scalar(fd)?.to_i32()?;
+        let iov = ecx.deref_pointer(iov)?;
+        let iovcnt = ecx.read_scalar(iovcnt)?.to_i32()?;
+        // `writev` is the same as `pwritev` without an offset.
+        let offset = if let Some(offset) = offset {
+            if matches!(ecx.tcx.sess.target.os, Os::Solaris) {
+                throw_unsup_format!(
+                    "pwritev: vectored writes with offsets aren't supported on Solaris"
+                )
+            }
+            Some(ecx.read_scalar(offset)?.to_int(offset.layout.size)?)
+        } else {
+            None
+        };
+
+        let Ok(iovcnt) = u64::try_from(iovcnt) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+
+        // Check that the FD exists.
+        let Some(fd) = ecx.machine.fds.get(fd) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+
+        let Some((buffers, total_bytes)) = ecx.read_iovec_array(&iov, iovcnt)? else {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+        // `read_iovec_array` also ensures that the total length fits in a target isize.
+
+        // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
+        let tmp_ptr: Pointer = ecx
+            .allocate_ptr(
+                Size::from_bytes(total_bytes),
+                Align::ONE,
+                MemoryKind::Stack,
+                AllocInit::Uninit,
+            )?
+            .into();
+
+        // Copy the bytes from all buffers provided in `iov` into the temporary buffer.
+        // We start at the first buffer and then continue buffer by buffer.
+        let mut bytes_copied: u64 = 0;
+        for (buffer_ptr, buffer_len) in buffers {
+            // Offset temporary buffer by the amount of bytes we already copied from previous buffers.
+            let tmp_ptr_with_offset =
+                ecx.ptr_offset_inbounds(tmp_ptr, i64::try_from(bytes_copied).unwrap())?;
+
+            ecx.mem_copy(
+                buffer_ptr,
+                tmp_ptr_with_offset,
+                Size::from_bytes(buffer_len),
+                // The buffers are guaranteed to not overlap because we just newly allocated
+                // the `tmp_ptr`, and `tmp_ptr_with_offset` is guaranteed to be
+                // within those boundaries.
+                true,
+            )?;
+
+            bytes_copied = bytes_copied.strict_add(buffer_len);
+        }
+
+        let dest = dest.clone();
+        // Write bytes from the temporary buffer. This ensures the write is atomic.
+        ecx.write_to_fd(
+            fd,
+            tmp_ptr,
+            total_bytes,
+            offset,
+            callback!(
+                @capture<'tcx> {
+                    tmp_ptr: Pointer,
+                    dest: MPlaceTy<'tcx>,
+                }
+                |ecx, result: Result<u64, IoError>| {
+                    ecx.deallocate_ptr(tmp_ptr, None, MemoryKind::Stack)?;
+                    match result {
+                        Ok(size) => ecx.write_scalar(Scalar::from_target_isize(size.try_into().unwrap(), ecx), &dest),
+                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
+                    }
+            }),
+        )
+    }
+}
+
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Read `len` bytes from the `fd` file description at `offset` into the buffer
+    /// pointed to by `ptr`.
+    /// If `offset` is [`Some`], the read occurs at the given absolute position rather
+    /// than the current file position (`read_at` semantics rather than `read`).
+    /// `finish` will be invoked when the read is done (which might be way after
+    /// this function returns as the read may block).
+    fn read_from_fd(
+        &mut self,
+        fd: DynFileDescriptionRef,
+        ptr: Pointer,
+        len: u64,
+        offset: Option<i128>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        // Handle the zero-sized case. The man page says:
+        // > If count is zero, read() may detect the errors described below.  In the absence of any
+        // > errors, or if read() does not check for errors, a read() with a count of 0 returns zero
+        // > and has no other effects.
+        if len == 0 {
+            return finish.call(ecx, Ok(0));
+        }
+
+        // Non-deterministically decide to further reduce the length, simulating a partial read (but
+        // never to 0, that would indicate EOF).
+        let len = if ecx.machine.short_fd_operations
+            && fd.short_fd_operations()
+            && len >= 2
+            && let rng = ecx.machine.rng.get_mut()
+            // Big accesses are shortened with a chance of 75%.
+            && (rng.random() || (len >= BIG_ACCESS && rng.random()))
+        {
+            len / 2 // since `len` is at least 2, the result is still at least 1
+        } else {
+            len
+        };
+
+        match offset {
+            None => fd.read(ecx.machine.communicate(), ptr, len, ecx, finish)?,
+            Some(offset) => {
+                let Ok(offset) = u64::try_from(offset) else {
+                    return finish.call(ecx, Err(LibcError("EINVAL")));
+                };
+                fd.as_unix().pread(ecx.machine.communicate(), ptr, len, offset, ecx, finish)?
+            }
+        };
+        interp_ok(())
+    }
+
+    /// Write `len` bytes at `offset` from the buffer pointed to by `ptr` into the `fd`
+    /// file description.
+    /// If `offset` is [`Some`], the write occurs at the given absolute position rather
+    /// than the current file position (`write_at` semantics rather than `write`).
+    /// `finish` will be invoked when the write is done (which might be way after
+    /// this function returns as the write may block).
+    fn write_to_fd(
+        &mut self,
+        fd: DynFileDescriptionRef,
+        ptr: Pointer,
+        len: u64,
+        offset: Option<i128>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        // Handle the zero-sized case. The man page says:
+        // > If count is zero and fd refers to a regular file, then write() may return a failure
+        // > status if one of the errors below is detected.  If no errors are detected, or error
+        // > detection is not performed, 0 is returned without causing any other effect.   If  count
+        // > is  zero  and  fd refers to a file other than a regular file, the results are not
+        // > specified.
+        if len == 0 {
+            // For now let's not open the can of worms of what exactly "not specified" could mean...
+            return finish.call(ecx, Ok(0));
+        }
+
+        // Non-deterministically decide to further reduce the length, simulating a partial write.
+        // We avoid reducing the write size to 0: the docs seem to be entirely fine with that,
+        // but the standard library is not (https://github.com/rust-lang/rust/issues/145959).
+        let len = if ecx.machine.short_fd_operations
+            && fd.short_fd_operations()
+            && len >= 2
+            && let rng = ecx.machine.rng.get_mut()
+            // Big accesses are shortened with a chance of 75%.
+            && (rng.random() || (len >= BIG_ACCESS && rng.random()))
+        {
+            len / 2
+        } else {
+            len
+        };
+
+        match offset {
+            None => fd.write(ecx.machine.communicate(), ptr, len, ecx, finish)?,
+            Some(offset) => {
+                let Ok(offset) = u64::try_from(offset) else {
+                    return finish.call(ecx, Err(LibcError("EINVAL")));
+                };
+                fd.as_unix().pwrite(ecx.machine.communicate(), ptr, len, offset, ecx, finish)?
+            }
+        };
+        interp_ok(())
+    }
+
+    /// Flags that never get stored by SETFL.
+    fn setfl_ignored_flags(&self) -> i32 {
+        let ecx = self.eval_context_ref();
+
+        // The F_SETFL man page specifies that the "[...] File access mode
+        // (O_RDONLY, O_WRONLY, O_RDWR) and file creation flags (i.e., O_CREAT,
+        // O_EXCL, O_NOCTTY, O_TRUNC) in arg are ignored."
+
+        ecx.eval_libc_i32("O_RDONLY")
+            | ecx.eval_libc_i32("O_WRONLY")
+            | ecx.eval_libc_i32("O_RDWR")
+            | ecx.eval_libc_i32("O_CREAT")
+            | ecx.eval_libc_i32("O_EXCL")
+            | ecx.eval_libc_i32("O_NOCTTY")
+            | ecx.eval_libc_i32("O_TRUNC")
+    }
+
+    /// Read the first `iovcnt` entries of the `iovec` array `iov`.
+    /// Returns the `(iov_base, iov_len)` pair of every entry together with the sum of all
+    /// `iov_len` values, after checking that every buffer is valid memory.
+    /// If that sum does not fit in the target's `ssize_t`, [`None`] is returned instead, and
+    /// the caller should fail with `EINVAL`.
+    fn read_iovec_array(
+        &mut self,
+        iov: &MPlaceTy<'tcx>,
+        iovcnt: u64,
+    ) -> InterpResult<'tcx, Option<(Vec<(Pointer, u64)>, u64)>> {
+        let ecx = self.eval_context_mut();
+        let ssize_max = u64::try_from(ecx.target_isize_max()).unwrap();
+
+        let mut buffers = Vec::new();
+        let mut total_bytes: u64 = 0;
+        for idx in 0..iovcnt {
+            let iov_elem = ecx.project_c_array_field(iov, idx)?;
+            let iov_len_field = ecx.project_field_named(&iov_elem, "iov_len")?;
+            let iov_len = ecx.read_target_usize(&iov_len_field)?;
+            let iov_base_field = ecx.project_field_named(&iov_elem, "iov_base")?;
+            let iov_base_ptr = ecx.read_pointer(&iov_base_field)?;
+
+            // POSIX functions taking an `iovec` array, such as `readv` and `writev`, "shall fail"
+            // with EINVAL if "the sum of the iov_len values in the iov array overflowed an
+            // ssize_t". This also covers a single `iov_len` that is larger than `SSIZE_MAX`.
+            match total_bytes.checked_add(iov_len) {
+                Some(sum) if sum <= ssize_max => total_bytes = sum,
+                _ => return interp_ok(None),
+            }
+            buffers.push((iov_base_ptr, iov_len));
+        }
+
+        // Check that all buffers are valid memory, like `read` and `write` do. This also means
+        // that every `iov_len` is bounded by the size of a real allocation, so callers do not
+        // have to deal with arbitrarily large lengths.
+        for &(ptr, len) in &buffers {
+            ecx.check_ptr_access(ptr, Size::from_bytes(len), CheckInAllocMsg::MemoryAccess)?;
+        }
+
+        interp_ok(Some((buffers, total_bytes)))
+    }
+}

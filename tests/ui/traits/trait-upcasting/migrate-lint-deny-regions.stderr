@@ -1,0 +1,17 @@
+warning: this `Deref` implementation is covered by an implicit supertrait coercion
+  --> $DIR/migrate-lint-deny-regions.rs:9:1
+   |
+LL | impl<'a> Deref for dyn Foo<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Foo<'_>` implements `Deref<Target = dyn Bar<'_>>` which conflicts with supertrait `Bar<'_>`
+LL |
+LL |     type Target = dyn Bar<'a>;
+   |     ----------- target type is a supertrait of `dyn Foo<'_>`
+   |
+note: the lint level is defined here
+  --> $DIR/migrate-lint-deny-regions.rs:2:9
+   |
+LL | #![warn(deref_into_dyn_supertrait)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

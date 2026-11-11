@@ -1,0 +1,39 @@
+error[E0583]: file not found for module `lib`
+  --> $DIR/special_module_name.rs:1:1
+   |
+LL | mod lib;
+   | ^^^^^^^^
+   |
+   = help: to create the module `lib`, create file "$DIR/lib.rs" or "$DIR/lib/mod.rs"
+   = note: if there is a `mod lib` elsewhere in the crate already, import it with `use crate::...` instead
+
+error[E0583]: file not found for module `main`
+  --> $DIR/special_module_name.rs:4:1
+   |
+LL | mod main;
+   | ^^^^^^^^^
+   |
+   = help: to create the module `main`, create file "$DIR/main.rs" or "$DIR/main/mod.rs"
+   = note: if there is a `mod main` elsewhere in the crate already, import it with `use crate::...` instead
+
+warning: found module declaration for lib.rs
+  --> $DIR/special_module_name.rs:1:1
+   |
+LL | mod lib;
+   | ^^^^^^^^
+   |
+   = note: lib.rs is the root of this crate's library target
+   = help: to refer to it from other targets, use the library's name as the path
+   = note: `#[warn(special_module_name)]` on by default
+
+warning: found module declaration for main.rs
+  --> $DIR/special_module_name.rs:4:1
+   |
+LL | mod main;
+   | ^^^^^^^^^
+   |
+   = note: a binary crate cannot be used as library
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0583`.

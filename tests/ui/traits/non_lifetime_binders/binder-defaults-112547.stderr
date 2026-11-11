@@ -1,0 +1,31 @@
+error[E0425]: cannot find type `V` in this scope
+  --> $DIR/binder-defaults-112547.rs:9:4
+   |
+LL | }> V: IntoIterator
+   |    ^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | pub fn bar<V>()
+   |           +++
+
+error: late-bound const parameters cannot be used currently
+  --> $DIR/binder-defaults-112547.rs:5:15
+   |
+LL |     for<const N: usize = {
+   |               ^
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/binder-defaults-112547.rs:5:9
+   |
+LL |       for<const N: usize = {
+   |  _________^
+LL | |
+LL | |
+LL | |     (||1usize)()
+LL | | }> V: IntoIterator
+   | |_^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

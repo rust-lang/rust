@@ -1,0 +1,15 @@
+error[E0053]: associated type `Foo` has an incompatible type for const generic parameter
+  --> $DIR/const_params_have_right_type.rs:6:23
+   |
+LL |     type Foo<const N: u64> = u32;
+   |                       ^^^ expected `u8`, found `u64`
+   |
+note: type in trait
+  --> $DIR/const_params_have_right_type.rs:2:23
+   |
+LL |     type Foo<const N: u8>;
+   |                       ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

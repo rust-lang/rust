@@ -1,0 +1,84 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-37767.rs:10:7
+   |
+LL |     a.foo()
+   |       ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `A`
+  --> $DIR/issue-37767.rs:2:5
+   |
+LL |     fn foo(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in the trait `B`
+  --> $DIR/issue-37767.rs:6:5
+   |
+LL |     fn foo(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     a.foo()
+LL +     A::foo(&mut a)
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     a.foo()
+LL +     B::foo(&mut a)
+   |
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-37767.rs:22:7
+   |
+LL |     a.foo()
+   |       ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `C`
+  --> $DIR/issue-37767.rs:14:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
+note: candidate #2 is defined in the trait `D`
+  --> $DIR/issue-37767.rs:18:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     a.foo()
+LL +     C::foo(&a)
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     a.foo()
+LL +     D::foo(&a)
+   |
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/issue-37767.rs:34:7
+   |
+LL |     a.foo()
+   |       ^^^ multiple `foo` found
+   |
+note: candidate #1 is defined in the trait `E`
+  --> $DIR/issue-37767.rs:26:5
+   |
+LL |     fn foo(self) {}
+   |     ^^^^^^^^^^^^
+note: candidate #2 is defined in the trait `F`
+  --> $DIR/issue-37767.rs:30:5
+   |
+LL |     fn foo(self) {}
+   |     ^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     a.foo()
+LL +     E::foo(a)
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     a.foo()
+LL +     F::foo(a)
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0034`.

@@ -1,0 +1,31 @@
+error: use of deprecated `try` macro
+  --> $DIR/try-macro-suggestion.rs:3:8
+   |
+LL |     Ok(try!());
+   |        ^^^^^^
+   |
+   = note: in the 2018 edition `try` is a reserved keyword, and the `try!()` macro is deprecated
+help: you can still access the deprecated `try!()` macro using the "raw identifier" syntax
+   |
+LL |     Ok(r#try!());
+   |        ++
+
+error: use of deprecated `try` macro
+  --> $DIR/try-macro-suggestion.rs:4:8
+   |
+LL |     Ok(try!(Ok(())))
+   |        ^^^^^^^^^^^^
+   |
+   = note: in the 2018 edition `try` is a reserved keyword, and the `try!()` macro is deprecated
+help: you can use the `?` operator instead
+   |
+LL -     Ok(try!(Ok(())))
+LL +     Ok(Ok(())?)
+   |
+help: alternatively, you can still access the deprecated `try!()` macro using the "raw identifier" syntax
+   |
+LL |     Ok(r#try!(Ok(())))
+   |        ++
+
+error: aborting due to 2 previous errors
+

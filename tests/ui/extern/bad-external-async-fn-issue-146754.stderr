@@ -1,0 +1,21 @@
+error: functions in `extern` blocks cannot have `async` qualifier
+  --> $DIR/bad-external-async-fn-issue-146754.rs:5:5
+   |
+LL | unsafe extern "C" {
+   | ----------------- in this `extern` block
+LL |     async fn function() -> [(); || {}];
+   |     ^^^^^ help: remove the `async` qualifier
+
+error[E0308]: mismatched types
+  --> $DIR/bad-external-async-fn-issue-146754.rs:5:33
+   |
+LL |     async fn function() -> [(); || {}];
+   |                                 ^^^^^ expected `usize`, found closure
+   |
+   = note: expected type `usize`
+           found closure `{closure@$DIR/bad-external-async-fn-issue-146754.rs:5:33: 5:35}`
+   = note: array length can only be `usize`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

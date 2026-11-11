@@ -1,0 +1,15 @@
+error[E0618]: expected function, found `Enum<()>`
+  --> $DIR/issue-114701.rs:14:27
+   |
+LL | enum Enum<T> { SVariant { v: T }, UVariant }
+   |                                   -------- `Enum::UVariant` defined here
+...
+LL |         assert!(if let Enum::$variant::<()> $matcher = $expr () { true } else { false },
+   |                                                        -------- call expression requires function
+...
+LL |     is_variant!(UVariant, Enum::<()>::UVariant);
+   |                           ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

@@ -1,0 +1,18 @@
+error[E0038]: the trait `X` is not dyn compatible
+  --> $DIR/bounds.rs:7:15
+   |
+LL | fn f() -> Box<dyn X<U = u32>> {
+   |               ^^^^^^^^^^^^^^ `X` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/bounds.rs:4:13
+   |
+LL | trait X {
+   |       - this trait is not dyn compatible...
+LL |     type U: PartialEq<Self>;
+   |             ^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

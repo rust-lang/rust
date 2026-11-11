@@ -1,0 +1,11 @@
+error[E0277]: `main` has invalid return type `impl Copy`
+  --> $DIR/termination-trait-impl-trait.rs:2:14
+   |
+LL | fn main() -> impl Copy { }
+   |              ^^^^^^^^^ `main` can only return types that implement `Termination`
+   |
+   = help: consider using `()`, or a `Result`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

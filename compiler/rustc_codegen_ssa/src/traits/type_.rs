@@ -1,0 +1,181 @@
+use rustc_abi::{AddressSpace, Float, Integer, Primitive, Reg, Scalar};
+use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
+use rustc_span::bug;
+use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
+
+use super::BackendTypes;
+use super::misc::MiscCodegenMethods;
+use crate::mir::place::PlaceRef;
+
+pub trait BaseTypeCodegenMethods: BackendTypes {
+    fn type_i8(&self) -> Self::Type;
+    fn type_i16(&self) -> Self::Type;
+    fn type_i32(&self) -> Self::Type;
+    fn type_i64(&self) -> Self::Type;
+    fn type_i128(&self) -> Self::Type;
+    fn type_isize(&self) -> Self::Type;
+
+    fn type_f16(&self) -> Self::Type;
+    fn type_f16b(&self) -> Self::Type;
+    fn type_f32(&self) -> Self::Type;
+    fn type_f64(&self) -> Self::Type;
+    fn type_f128(&self) -> Self::Type;
+    fn type_ppcf128(&self) -> Self::Type;
+    fn type_x87_f80(&self) -> Self::Type;
+
+    fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::FunctionSignature;
+    fn type_ptr(&self) -> Self::Type;
+    fn type_ptr_ext(&self, address_space: AddressSpace) -> Self::Type;
+
+    /// Returns the element type of `ty` if it is a vector type, otherwise returns `None`.
+    fn vector_element_type(&self, ty: Self::Type) -> Option<Self::Type> {
+        self.vector_element_type_and_length(ty).map(|(elem, _)| elem)
+    }
+    /// Returns the number of elements in `ty` if it is a vector type, otherwise returns `None`.
+    fn vector_length(&self, ty: Self::Type) -> Option<u64> {
+        self.vector_element_type_and_length(ty).map(|(_, len)| len)
+    }
+    /// Returns the tuple (element_type, length) of `ty` if it is a vector type, otherwise returns
+    /// `None`.
+    fn vector_element_type_and_length(&self, ty: Self::Type) -> Option<(Self::Type, u64)>;
+
+    /// Retrieves the scalar float type of `ty`. Returns `None` is `ty` is not a float.
+    fn float_type(&self, ty: Self::Type) -> Option<Float>;
+
+    /// Retrieves the bit width of the scalar integer type `ty`. Returns `None` is `ty` is not an
+    /// integer.
+    fn int_width(&self, ty: Self::Type) -> Option<u64>;
+
+    fn val_ty(&self, v: Self::Value) -> Self::Type;
+}
+
+pub trait DerivedTypeCodegenMethods<'tcx>:
+    BaseTypeCodegenMethods + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx> + HasTypingEnv<'tcx>
+{
+    fn type_int(&self) -> Self::Type {
+        match &self.sess().target.c_int_width {
+            16 => self.type_i16(),
+            32 => self.type_i32(),
+            64 => self.type_i64(),
+            width => bug!("Unsupported c_int_width: {}", width),
+        }
+    }
+
+    fn type_from_integer(&self, i: Integer) -> Self::Type {
+        use Integer::*;
+        match i {
+            I8 => self.type_i8(),
+            I16 => self.type_i16(),
+            I32 => self.type_i32(),
+            I64 => self.type_i64(),
+            I128 => self.type_i128(),
+        }
+    }
+
+    fn type_from_float(&self, f: Float) -> Self::Type {
+        use Float::*;
+        match f {
+            F16 => self.type_f16(),
+            F16B => self.type_f16b(),
+            F32 => self.type_f32(),
+            F64 => self.type_f64(),
+            X87F80 => self.type_x87_f80(),
+            F128 => self.type_f128(),
+            PpcF128 => self.type_ppcf128(),
+        }
+    }
+
+    fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+        ty.needs_drop(self.tcx(), self.typing_env())
+    }
+
+    fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_sized(self.tcx(), self.typing_env())
+    }
+
+    fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_freeze(self.tcx(), self.typing_env())
+    }
+
+    fn type_from_primitive(&self, p: Primitive) -> Self::Type {
+        use Primitive::*;
+        match p {
+            Int(i, _) => self.type_from_integer(i),
+            Float(f) => self.type_from_float(f),
+            Pointer(address_space) => self.type_ptr_ext(address_space),
+        }
+    }
+
+    fn type_from_scalar(&self, s: Scalar) -> Self::Type {
+        // `MaybeUninit` being `repr(transparent)` somewhat implies that the type
+        // of a scalar has to be the type of its primitive (which is true in LLVM,
+        // where noundef is a parameter attribute or metadata) but if we ever get
+        // a backend where that's no longer true, every use of this will need to
+        // to carefully scrutinized and re-evaluated.
+        self.type_from_primitive(s.primitive())
+    }
+}
+
+impl<'tcx, T> DerivedTypeCodegenMethods<'tcx> for T where
+    Self: BaseTypeCodegenMethods + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx> + HasTypingEnv<'tcx>
+{
+}
+
+pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
+    /// The backend type used for a Rust type when it is being loaded from or
+    /// stored to memory.
+    ///
+    /// Note that this type may be different from the type used for allocas.
+    /// For instance for x87_f80 the store size and allocation size is different,
+    /// so different types are used to represent it in memory versus on the stack.
+    fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
+    fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
+    fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::FunctionSignature;
+    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Type;
+    fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
+    /// The backend type used for a rust type when it's in an SSA register.
+    ///
+    /// For nearly all types this is the same as the [`Self::backend_type`], however
+    /// `bool` (and other `0`-or-`1` values) are kept as `i1` in registers but as
+    /// [`BaseTypeCodegenMethods::type_i8`] in memory.
+    ///
+    /// Converting values between the two different backend types is done using
+    /// [`from_immediate`](super::BuilderMethods::from_immediate) and
+    /// [`to_immediate_scalar`](super::BuilderMethods::to_immediate_scalar).
+    fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
+    fn scalar_pair_element_backend_type(
+        &self,
+        layout: TyAndLayout<'tcx>,
+        index: usize,
+        immediate: bool,
+    ) -> Self::Type;
+}
+
+// For backends that support CFI using type membership (i.e., testing whether a given pointer is
+// associated with a type identifier).
+pub trait TypeMembershipCodegenMethods<'tcx>: BackendTypes {
+    fn add_type_metadata(&self, _function: Self::Function, _typeid: &[u8]) {}
+    fn set_type_metadata(&self, _function: Self::Function, _typeid: &[u8]) {}
+    fn add_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}
+    fn set_kcfi_type_metadata(&self, _function: Self::Function, _typeid: u32) {}
+}
+
+pub trait ArgAbiBuilderMethods<'tcx>: BackendTypes {
+    fn store_fn_arg(
+        &mut self,
+        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        idx: &mut usize,
+        dst: PlaceRef<'tcx, Self::Value>,
+    );
+    fn store_arg(
+        &mut self,
+        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+        val: Self::Value,
+        dst: PlaceRef<'tcx, Self::Value>,
+    );
+}
+
+pub trait TypeCodegenMethods<'tcx> = DerivedTypeCodegenMethods<'tcx>
+    + LayoutTypeCodegenMethods<'tcx>
+    + TypeMembershipCodegenMethods<'tcx>;

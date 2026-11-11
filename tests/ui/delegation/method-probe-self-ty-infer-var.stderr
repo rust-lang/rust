@@ -1,0 +1,24 @@
+error[E0392]: type parameter `S` is never used
+  --> $DIR/method-probe-self-ty-infer-var.rs:9:10
+   |
+LL | struct S<S>;
+   |          ^ unused type parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `S` to be a const parameter, use `const S: /* Type */` instead
+
+error[E0282]: type annotations needed
+  --> $DIR/method-probe-self-ty-infer-var.rs:13:27
+   |
+LL |     reuse Trait::method { S }
+   |                           ^ cannot infer type of the type parameter `S` declared on the struct `S`
+   |
+help: consider specifying a concrete type for the type parameter `S`
+   |
+LL |     reuse Trait::method { S::</* Type */> }
+   |                            ++++++++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0392.
+For more information about an error, try `rustc --explain E0282`.

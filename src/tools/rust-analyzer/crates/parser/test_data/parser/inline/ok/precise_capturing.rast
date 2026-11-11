@@ -1,0 +1,75 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "captures"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'a"
+      COMMA ","
+      WHITESPACE " "
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'b"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      IMPL_TRAIT_TYPE
+        IMPL_KW "impl"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Sized"
+          WHITESPACE " "
+          PLUS "+"
+          WHITESPACE " "
+          TYPE_BOUND
+            USE_KW "use"
+            USE_BOUND_GENERIC_ARGS
+              L_ANGLE "<"
+              LIFETIME
+                LIFETIME_IDENT "'b"
+              COMMA ","
+              WHITESPACE " "
+              NAME_REF
+                IDENT "T"
+              COMMA ","
+              WHITESPACE " "
+              NAME_REF
+                SELF_TYPE_KW "Self"
+              R_ANGLE ">"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

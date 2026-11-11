@@ -1,0 +1,442 @@
+//! Everything related to checking the signature of shim invocations.
+
+use rustc_abi::ExternAbi;
+use rustc_middle::ty::{Binder, FnSig, FnSigKind, Ty};
+use rustc_span::Symbol;
+use rustc_target::callconv::FnAbi;
+
+use crate::*;
+
+/// Describes the expected signature of a shim.
+pub struct ShimSig<'tcx, const ARGS: usize> {
+    pub abi: ExternAbi,
+    pub args: [Ty<'tcx>; ARGS],
+    pub ret: Ty<'tcx>,
+    pub c_variadic: bool,
+}
+
+/// Construct a `ShimSig` with convenient syntax:
+/// ```rust,ignore
+/// shim_sig!(extern "C" fn (*const T, i32) -> usize)
+/// ```
+///
+/// The following types are supported:
+/// - primitive integer and floating-point types
+/// - `()`
+/// - (thin) raw pointers, written `*_` since the mutability and pointee type are irrelevant
+/// - `$crate::$mod::...::$ty` for a type from the given crate (most commonly that is `libc`)
+/// - `winapi::$ty` for a type from `std::sys::pal::windows::c`
+#[macro_export]
+macro_rules! shim_sig {
+    (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
+        |ecx| {
+            let (args, c_variadic) = shim_sig_args_sep!(ecx, [$($args)*]);
+            $crate::shims::sig::ShimSig {
+                abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
+                args,
+                ret: shim_sig_arg!(ecx, $($ret)*),
+                c_variadic,
+            }
+        }
+    };
+}
+
+/// Computes a list of types for varargs, using the same syntax as `shim_sig!`.
+#[macro_export]
+macro_rules! shim_varargs {
+    ($($args:tt)*) => {
+        |ecx| {
+            let (args, c_variadic) = shim_sig_args_sep!(ecx, [$($args)*]);
+            assert!(!c_variadic); // don't accept `...` here
+            args
+        }
+    };
+}
+
+/// Helper for `shim_sig!`.
+///
+/// Groups tokens into comma-separated chunks and calls the provided macro on them.
+/// Returns a list of types and a boolean indicating whether there was a trailing `...`.
+///
+/// # Examples
+///
+/// ```ignore
+/// shim_sig_args_sep!(ecx, [*_, i32, libc::off64_t]);
+/// // expands to:
+/// [shim_sig_arg!(*_), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
+/// ```
+#[macro_export]
+macro_rules! shim_sig_args_sep {
+    ($ecx:ident, [$($tt:tt)*]) => {
+        shim_sig_args_sep!(@ $ecx [] [] $($tt)*)
+    };
+
+    // All below matchers form a fairly simple iterator over the input.
+    // - Non-comma token - append to collector
+    // - Comma token - call the provided macro on the collector and reset the collector
+    // - End of input - empty collector one last time. emit output as an array
+
+    // Handles `,` token - take collected type and call shim_sig_arg on it.
+    // Append the result to the final output.
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)*] , $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $ecx [$($final)* shim_sig_arg!($ecx, $($collected)*), ] [] $($tt)*)
+    };
+    // Handle non-comma token - append to collected type.
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)*] $first:tt $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $ecx [$($final)*] [$($collected)* $first] $($tt)*)
+    };
+    // No more tokens, trailing `...` - emit final output, indicate ecx is variadic.
+    (@ $ecx:ident [$($final:tt)*] [...] ) => {
+        ([$($final)*], true)
+    };
+    // No more tokens - emit final output, including final non-comma type.
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)+] ) => {
+        ([$($final)* shim_sig_arg!($ecx, $($collected)*)], false)
+    };
+    // No more tokens, empty collector - emit final output.
+    (@ $ecx:ident [$($final:tt)*] [] ) => {
+        ([$($final)*], false)
+    };
+}
+
+/// Helper for `shim_sig!`.
+///
+/// Converts a type
+#[macro_export]
+macro_rules! shim_sig_arg {
+    ($ecx:ident, i8) => {
+        $ecx.tcx.types.i8
+    };
+    ($ecx:ident, i16) => {
+        $ecx.tcx.types.i16
+    };
+    ($ecx:ident, i32) => {
+        $ecx.tcx.types.i32
+    };
+    ($ecx:ident, i64) => {
+        $ecx.tcx.types.i64
+    };
+    ($ecx:ident, i128) => {
+        $ecx.tcx.types.i128
+    };
+    ($ecx:ident, isize) => {
+        $ecx.tcx.types.isize
+    };
+    ($ecx:ident, u8) => {
+        $ecx.tcx.types.u8
+    };
+    ($ecx:ident, u16) => {
+        $ecx.tcx.types.u16
+    };
+    ($ecx:ident, u32) => {
+        $ecx.tcx.types.u32
+    };
+    ($ecx:ident, u64) => {
+        $ecx.tcx.types.u64
+    };
+    ($ecx:ident, u128) => {
+        $ecx.tcx.types.u128
+    };
+    ($ecx:ident, usize) => {
+        $ecx.tcx.types.usize
+    };
+    ($ecx:ident, f32) => {
+        $ecx.tcx.types.f32
+    };
+    ($ecx:ident, f64) => {
+        $ecx.tcx.types.f64
+    };
+    ($ecx:ident, ()) => {
+        $ecx.tcx.types.unit
+    };
+    ($ecx:ident, !) => {
+        $ecx.tcx.types.never
+    };
+    ($ecx:ident, bool) => {
+        $ecx.tcx.types.bool
+    };
+    ($ecx:ident, *_) => {
+        // Mutability does not matter for ABI.
+        $ecx.machine.layouts.void_ptr_mut.ty
+    };
+    ($ecx:ident, *$($ty:tt)*) => {
+        // Pointee types matter for varargs so we support explicitly giving them.
+        // Mutability does not matter for ABI.
+        rustc_middle::ty::Ty::new_ptr(
+            *$ecx.tcx,
+            shim_sig_arg!($ecx, $($ty)*),
+            rustc_middle::mir::Mutability::Mut,
+        )
+    };
+    ($ecx:ident, fn(..) -> _) => {
+        // All function pointer types are the same on the ABI level so we don't care about arg/ret.
+        $ecx.machine.layouts.fn_ptr.ty
+    };
+    ($ecx:ident, &[$($ty:tt)*]) => {
+        rustc_middle::ty::Ty::new_ref(
+            *$ecx.tcx,
+            $ecx.tcx.lifetimes.re_erased,
+            rustc_middle::ty::Ty::new_slice(*$ecx.tcx, shim_sig_arg!($ecx, $($ty)*)),
+            rustc_middle::mir::Mutability::Not,
+        )
+    };
+    ($ecx:ident, winapi::$ty:ident) => {
+        $ecx.windows_ty_layout(stringify!($ty)).ty
+    };
+    ($ecx:ident, $krate:ident :: $($path:ident)::+) => {
+        helpers::path_ty_layout($ecx, &[stringify!($krate), $(stringify!($path)),*]).ty
+    };
+    ($ecx:ident, $($other:tt)*) => {
+        compile_error!(concat!("unsupported signature type: ", stringify!($($other)*)))
+    }
+}
+
+impl<'tcx, const ARGS: usize> ShimSig<'tcx, ARGS> {
+    fn as_abi(&self, ecx: &MiriInterpCx<'tcx>) -> &FnAbi<'tcx, Ty<'tcx>> {
+        let mut inputs_and_output = Vec::with_capacity(ARGS.strict_add(1));
+        inputs_and_output.extend(&self.args);
+        inputs_and_output.push(self.ret);
+        let fn_sig_binder = Binder::dummy(FnSig {
+            inputs_and_output: ecx.machine.tcx.mk_type_list(&inputs_and_output),
+            fn_sig_kind: FnSigKind::default().set_c_variadic(self.c_variadic).set_abi(self.abi),
+        });
+        ecx.fn_abi_of_fn_ptr(fn_sig_binder, Default::default()).unwrap()
+    }
+}
+
+/// Helper function to compare two ABIs.
+fn check_shim_abi<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
+    link_name: Symbol,
+    callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
+) -> InterpResult<'tcx> {
+    if callee_abi.conv != caller_abi.conv {
+        throw_ub_format!(
+            r#"ABI mismatch: `{link_name}` has calling convention "{callee}", but the caller is using calling convention "{caller}""#,
+            callee = callee_abi.conv,
+            caller = caller_abi.conv,
+        );
+    }
+    // No need to check unwinding: if the caller signature forbids unwinding, that's already
+    // reflected in the unwind destination so if an unwind occurs it will be reported as UB.
+
+    if caller_abi.c_variadic && !callee_abi.c_variadic {
+        throw_ub_format!(
+            "ABI mismatch: `{link_name}` is a non-variadic function, but the caller is using a c-variadic signature"
+        );
+    }
+    if !caller_abi.c_variadic && callee_abi.c_variadic {
+        throw_ub_format!(
+            "ABI mismatch: `{link_name}` is a c-variadic function, but the caller is using a non-variadic signature"
+        );
+    }
+
+    if callee_abi.fixed_count != caller_abi.fixed_count {
+        throw_ub_format!(
+            "ABI mismatch: calling `{link_name}` which takes {} {}argument{}, but {} argument{} given",
+            callee_abi.fixed_count,
+            if callee_abi.c_variadic { "fixed (non-variadic) " } else { "" },
+            if callee_abi.fixed_count == 1 { "" } else { "s" },
+            caller_abi.fixed_count,
+            if caller_abi.fixed_count == 1 { " was" } else { "s were" },
+        );
+    }
+
+    if !ecx.check_argument_compat(&caller_abi.ret, &callee_abi.ret)? {
+        throw_ub!(AbiMismatchReturn {
+            caller_ty: caller_abi.ret.layout.ty,
+            callee_ty: callee_abi.ret.layout.ty
+        });
+    }
+
+    for (idx, (caller_arg, callee_arg)) in
+        caller_abi.args.iter().zip(callee_abi.args.iter()).enumerate()
+    {
+        if !ecx.check_argument_compat(caller_arg, callee_arg)? {
+            throw_ub!(AbiMismatchArgument {
+                arg_idx: idx,
+                caller_ty: caller_abi.args[idx].layout.ty,
+                callee_ty: callee_abi.args[idx].layout.ty
+            });
+        }
+    }
+
+    interp_ok(())
+}
+
+/// Represents a tail of variadic arguments that have not yet been checked.
+// Deliberately not `Copy` so that we don't consume the same vararg multiple times accidentally.
+pub struct Varargs<'tcx, 'a> {
+    args: &'a [OpTy<'tcx>],
+    /// Number of arguments (variadic and fixed) that have already been taken, for error messages.
+    already_gone: usize,
+}
+
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Ensure the given symbol is not exported by the program.
+    fn check_shim_symbol_clash(&self, link_name: Symbol) -> InterpResult<'tcx, ()> {
+        let ecx = self.eval_context_ref();
+        if let Some(instance) = ecx.lookup_exported_symbol(link_name)? {
+            // If compiler-builtins is providing the symbol, then don't treat it as a clash.
+            // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
+            // performance. Note that this means we won't catch any undefined behavior in
+            // compiler-builtins when running other crates, but Miri can still be run on
+            // compiler-builtins itself (or any crate that uses it as a normal dependency)
+            if ecx.tcx.is_compiler_builtins(instance.def_id().krate) {
+                return interp_ok(());
+            }
+
+            throw_machine_stop!(TerminationInfo::SymbolShimClashing {
+                link_name,
+                span: ecx.tcx.def_span(instance.def_id()),
+            })
+        }
+        interp_ok(())
+    }
+
+    /// Check that the given `caller_fn_abi` matches the expected ABI described by `shim_sig`, and
+    /// then returns the list of arguments, transmuted to the expected (shim) types.
+    fn check_shim_sig<const N: usize>(
+        &self,
+        shim_sig: fn(&MiriInterpCx<'tcx>) -> ShimSig<'tcx, N>,
+        // We take these as a tuple so that this takes less space on the caller side.
+        (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &[OpTy<'tcx>]),
+    ) -> InterpResult<'tcx, [OpTy<'tcx>; N]> {
+        let ecx = self.eval_context_ref();
+
+        // Compute callee ABI.
+        let shim_sig = shim_sig(ecx);
+        assert!(!shim_sig.c_variadic);
+        let callee_fn_abi = shim_sig.as_abi(ecx);
+
+        // Check everything.
+        check_shim_abi(ecx, link_name, callee_fn_abi, caller_fn_abi)?;
+        ecx.check_shim_symbol_clash(link_name)?;
+
+        // Return arguments.
+        let transmuted = std::array::try_from_fn(|i| {
+            caller_args[i].transmute(callee_fn_abi.args[i].layout, ecx)
+        })?;
+        interp_ok(transmuted)
+    }
+
+    /// Check that the given `caller_fn_abi` matches the expected ABI described by `shim_sig`, and
+    /// then returns the list of fixed and variadic arguments in separate lists.
+    /// The fixed arguments are transmuted to the expected (shim) types.
+    fn check_shim_sig_variadic<'a, const N: usize>(
+        &self,
+        shim_sig: fn(&MiriInterpCx<'tcx>) -> ShimSig<'tcx, N>,
+        // We take these as a tuple so that this takes less space on the caller side.
+        (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &'a [OpTy<'tcx>]),
+    ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
+        let ecx = self.eval_context_ref();
+
+        // Compute callee ABI.
+        let shim_sig = shim_sig(ecx);
+        assert!(shim_sig.c_variadic);
+        let callee_fn_abi = shim_sig.as_abi(ecx);
+
+        // Check everything.
+        check_shim_abi(ecx, link_name, callee_fn_abi, caller_fn_abi)?;
+        ecx.check_shim_symbol_clash(link_name)?;
+
+        // Return transmuted arguments.
+        if let Some((fixed, var)) = caller_args.split_first_chunk::<N>() {
+            let transmuted =
+                std::array::try_from_fn(|i| fixed[i].transmute(callee_fn_abi.args[i].layout, ecx))?;
+            return interp_ok((transmuted, Varargs { args: var, already_gone: N }));
+        }
+        unreachable!()
+    }
+
+    /// Fetches `N` arguments from `varargs`, checking their types.
+    /// Also returns the remaining varargs.
+    /// The returned arguments are transmuted to the expected types.
+    fn check_varargs<'a, const N: usize>(
+        &self,
+        tys: fn(&MiriInterpCx<'tcx>) -> [Ty<'tcx>; N],
+        varargs: Varargs<'tcx, 'a>,
+        fn_name: &str,
+    ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
+        let ecx = self.eval_context_ref();
+        let tys = tys(ecx);
+
+        let Some((now, tail)) = varargs.args.split_first_chunk::<N>() else {
+            throw_ub_format!(
+                "not enough arguments for `{fn_name}`: got {}, expected at least {}",
+                varargs.already_gone.strict_add(varargs.args.len()),
+                varargs.already_gone.strict_add(N),
+            )
+        };
+
+        for (n, (caller_gave, callee_expected)) in now.iter().zip(tys).enumerate() {
+            // Check ABI compatibility.
+            let compatible =
+                ecx.validate_c_variadic_compatible_ty(caller_gave.layout.ty, callee_expected)?;
+            match compatible {
+                VarArgCompatible::Compatible => {}
+                VarArgCompatible::Incompatible => {
+                    throw_ub_format!(
+                        "incorrect c-variadic argument type for `{fn_name}`: \
+                        expected argument #{n} to have type `{callee_expected}` but got incompatible type `{caller_ty}`",
+                        n = varargs.already_gone.strict_add(n).strict_add(1),
+                        caller_ty = caller_gave.layout.ty,
+                    );
+                }
+                VarArgCompatible::CastIntTo { source_is_signed } => {
+                    // Check that the value can be represented in the target type.
+                    let size = caller_gave.layout.size;
+                    let scalar = ecx.read_scalar(caller_gave)?;
+                    if scalar.to_int(size)? < 0 {
+                        throw_ub_format!(
+                            "incorrect c-variadic argument type for `{fn_name}`: \
+                            argument #{n} has value `{value}_{caller_ty}` which cannot be represented in expected type `{callee_expected}`",
+                            n = varargs.already_gone.strict_add(n).strict_add(1),
+                            caller_ty = caller_gave.layout.ty,
+                            value = if source_is_signed {
+                                scalar.to_int(size)?.to_string()
+                            } else {
+                                scalar.to_uint(size)?.to_string()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        let transmuted = std::array::try_from_fn(|i| {
+            let layout = ecx.layout_of(tys[i])?;
+            now[i].transmute(layout, ecx)
+        })?;
+
+        interp_ok((
+            transmuted,
+            Varargs { args: tail, already_gone: varargs.already_gone.strict_add(N) },
+        ))
+    }
+
+    /// Check that the given function has the expected amount of arguments, and then
+    /// return the list of arguments.
+    ///
+    /// This may only be used for `extern "llvm-intrinsic"` LLVM intrinsics.
+    fn check_shim_sig_llvm_intrinsic<'a, const N: usize>(
+        &mut self,
+        link_name: Symbol,
+        args: &'a [OpTy<'tcx>],
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
+        assert!(link_name.as_str().starts_with("llvm."));
+
+        self.check_shim_symbol_clash(link_name)?;
+
+        if let Ok(ops) = args.try_into() {
+            return interp_ok(ops);
+        }
+        throw_ub_format!(
+            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
+            args.len(),
+            N
+        )
+    }
+}

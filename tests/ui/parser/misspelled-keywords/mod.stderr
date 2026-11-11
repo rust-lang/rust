@@ -1,0 +1,14 @@
+error: expected one of `!` or `::`, found `parser`
+  --> $DIR/mod.rs:1:6
+   |
+LL | mode parser;
+   |      ^^^^^^ expected one of `!` or `::`
+   |
+help: there is a keyword `mod` with a similar name
+   |
+LL - mode parser;
+LL + mod parser;
+   |
+
+error: aborting due to 1 previous error
+

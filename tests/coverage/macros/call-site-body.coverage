@@ -1,0 +1,55 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2024
+   LL|       |
+   LL|       |// Snapshot test demonstrating how the function signature span and body span
+   LL|       |// affect coverage instrumentation in the presence of macro expansion.
+   LL|       |// This test captures current behaviour, which is not necessarily "correct".
+   LL|       |
+   LL|       |// This macro uses an argument token tree directly as a function body.
+   LL|       |#[rustfmt::skip]
+   LL|       |macro_rules! with_call_site_body {
+   LL|       |    ($body:tt) => {
+   LL|       |        fn
+   LL|       |        fn_with_call_site_body
+   LL|       |            ()
+   LL|       |        $body
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |with_call_site_body!(
+   LL|       |    // (force line break)
+   LL|      1|    {
+   LL|      1|        say("hello");
+   LL|       |    }
+   LL|       |);
+   LL|       |
+   LL|       |// This macro uses as an argument token tree as code within an explicit body.
+   LL|       |#[rustfmt::skip]
+   LL|       |macro_rules! with_call_site_inner {
+   LL|       |    ($inner:tt) => {
+   LL|      0|        fn
+   LL|      0|        fn_with_call_site_inner
+   LL|      0|            ()
+   LL|       |        {
+   LL|       |            $inner
+   LL|      0|        }
+   LL|       |    };
+   LL|       |}
+   LL|       |
+   LL|       |with_call_site_inner!(
+   LL|       |    // (force line break)
+   LL|       |    {
+   LL|       |        say("hello");
+   LL|       |    }
+   LL|       |);
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    fn_with_call_site_body();
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(message: &str) {
+   LL|       |    println!("{message}");
+   LL|       |}
+

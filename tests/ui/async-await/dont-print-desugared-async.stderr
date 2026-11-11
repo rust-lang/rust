@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/dont-print-desugared-async.rs:5:20
+   |
+LL | async fn async_fn(&ref mut s: &[i32]) {}
+   |                    ^^^^^^^^^ cannot borrow as mutable through `&` reference
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

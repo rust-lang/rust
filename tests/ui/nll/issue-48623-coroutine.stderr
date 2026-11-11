@@ -1,0 +1,11 @@
+warning: unused coroutine that must be used
+  --> $DIR/issue-48623-coroutine.rs:15:18
+   |
+LL |     #[coroutine] move || { d; yield; &mut *r };
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: coroutines are lazy and do nothing unless resumed
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

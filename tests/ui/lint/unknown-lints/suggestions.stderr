@@ -1,0 +1,28 @@
+warning: unknown lint: `FOO_BAR`
+  --> $DIR/suggestions.rs:6:9
+   |
+LL | #[allow(FOO_BAR)]
+   |         ^^^^^^^
+   |
+   = note: `#[warn(unknown_lints)]` on by default
+
+warning: unknown lint: `DEAD_CODE`
+  --> $DIR/suggestions.rs:10:8
+   |
+LL | #[warn(DEAD_CODE)]
+   |        ^^^^^^^^^ help: did you mean: `dead_code`
+
+warning: unknown lint: `Warnings`
+  --> $DIR/suggestions.rs:15:8
+   |
+LL | #[deny(Warnings)]
+   |        ^^^^^^^^ help: did you mean (notice the capitalization): `warnings`
+
+warning: unknown lint: `rust_2018_idiots`
+  --> $DIR/suggestions.rs:19:8
+   |
+LL | #[deny(rust_2018_idiots)]
+   |        ^^^^^^^^^^^^^^^^ help: did you mean: `rust_2018_idioms`
+
+warning: 4 warnings emitted
+

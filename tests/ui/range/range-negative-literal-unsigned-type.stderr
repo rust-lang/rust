@@ -1,0 +1,122 @@
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/range-negative-literal-unsigned-type.rs:6:9
+   |
+LL |         -1..=2 => {}
+   |         ^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/range-negative-literal-unsigned-type.rs:8:9
+   |
+LL |         -0..=0 => {}
+   |         ^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/range-negative-literal-unsigned-type.rs:10:9
+   |
+LL |         -256..=2 => {}
+   |         ^^^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/range-negative-literal-unsigned-type.rs:12:9
+   |
+LL |         -255..=2 => {}
+   |         ^^^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/range-negative-literal-unsigned-type.rs:14:13
+   |
+LL |         0..=-1 => {}
+   |             ^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/range-negative-literal-unsigned-type.rs:16:9
+   |
+LL |         -2..=-1 => {}
+   |         ^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/range-negative-literal-unsigned-type.rs:16:14
+   |
+LL |         -2..=-1 => {}
+   |              ^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

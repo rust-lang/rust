@@ -1,0 +1,8 @@
+error: unexpected `self` parameter in function
+  --> $DIR/self-in-function-arg.rs:1:15
+   |
+LL | fn foo(x:i32, self: i32) -> i32 { self }
+   |               ^^^^ must be the first parameter of an associated function
+
+error: aborting due to 1 previous error
+

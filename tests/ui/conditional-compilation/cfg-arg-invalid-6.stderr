@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `a{` (expected `key` or `key="value"`)
+

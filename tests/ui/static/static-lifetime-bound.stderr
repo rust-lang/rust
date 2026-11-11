@@ -1,0 +1,22 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/static-lifetime-bound.rs:5:7
+   |
+LL |     let x = 0;
+   |         - binding `x` declared here
+LL |     f(&x);
+   |     --^^-
+   |     | |
+   |     | borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
+LL | }
+   | - `x` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/static-lifetime-bound.rs:1:10
+   |
+LL | fn f<'a: 'static>(_: &'a i32) {}
+   |          ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,68 @@
+// MIR for `move_out_from_end` after CleanupPostBorrowck
+
+fn move_out_from_end() -> () {
+    let mut _0: ();
+    let _1: [std::boxed::Box<i32>; 2];
+    let mut _2: std::boxed::Box<i32>;
+    let mut _3: std::boxed::Box<i32>;
+    scope 1 {
+        debug a => _1;
+        let _4: std::boxed::Box<i32>;
+        scope 2 {
+            debug _y => _4;
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = Box::<i32>::new(const 1_i32) -> [return: bb1, unwind: bb9];
+    }
+
+    bb1: {
+        StorageLive(_3);
+        _3 = Box::<i32>::new(const 2_i32) -> [return: bb2, unwind: bb8];
+    }
+
+    bb2: {
+        _1 = [move _2, move _3];
+        drop(_3) -> [return: bb3, unwind: bb8];
+    }
+
+    bb3: {
+        StorageDead(_3);
+        drop(_2) -> [return: bb4, unwind: bb9];
+    }
+
+    bb4: {
+        StorageDead(_2);
+        nop;
+        PlaceMention(_1);
+        StorageLive(_4);
+        _4 = move _1[1 of 2];
+        _0 = const ();
+        drop(_4) -> [return: bb5, unwind: bb7];
+    }
+
+    bb5: {
+        StorageDead(_4);
+        drop(_1) -> [return: bb6, unwind: bb9];
+    }
+
+    bb6: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb7 (cleanup): {
+        drop(_1) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
+        drop(_2) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb9 (cleanup): {
+        resume;
+    }
+}

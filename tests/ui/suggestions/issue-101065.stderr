@@ -1,0 +1,23 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/issue-101065.rs:12:9
+   |
+LL |       let _x = if true {
+   |  ______________-
+LL | |         FakeResult::Ok(FakeResult::Ok(()))
+   | |         ---------------------------------- expected because of this
+LL | |     } else {
+LL | |         FakeResult::Ok(())
+   | |         ^^^^^^^^^^^^^^^^^^ expected `FakeResult<FakeResult<()>>`, found `FakeResult<()>`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note: expected enum `FakeResult<FakeResult<()>>`
+              found enum `FakeResult<()>`
+help: try wrapping the expression in `FakeResult::Ok`
+   |
+LL |         FakeResult::Ok(FakeResult::Ok(()))
+   |         +++++++++++++++                  +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

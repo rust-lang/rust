@@ -1,0 +1,15 @@
+SOURCE_FILE
+  STRUCT
+    VISIBILITY
+      PUB_KW "pub"
+      VISIBILITY_INNER
+        L_PAREN "("
+        R_PAREN ")"
+    WHITESPACE " "
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 4: expected identifier, `self`, `super`, `crate`, or `Self`

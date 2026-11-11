@@ -1,0 +1,15 @@
+error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
+  --> $DIR/issue-33819.rs:4:34
+   |
+LL |         Some(ref v) => { let a = &mut v; },
+   |                                  ^^^^^^ cannot borrow as mutable
+   |
+help: try removing `&mut` here
+   |
+LL -         Some(ref v) => { let a = &mut v; },
+LL +         Some(ref v) => { let a = v; },
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

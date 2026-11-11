@@ -1,0 +1,16 @@
+error: expected expression, found `let` statement
+  --> $DIR/missing_block_in_let_binding.rs:3:9
+   |
+LL |     let x = |x|
+   |             --- while parsing the body of this closure
+LL |         let y = x;
+   |         ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to open the body of the closure
+   |
+LL |     let x = |x| {
+   |                 +
+
+error: aborting due to 1 previous error
+

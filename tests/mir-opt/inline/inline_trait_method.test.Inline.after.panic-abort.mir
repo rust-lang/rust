@@ -1,0 +1,18 @@
+// MIR for `test` after Inline
+
+fn test(_1: &dyn X) -> u32 {
+    debug x => _1;
+    let mut _0: u32;
+    let mut _2: &dyn X;
+
+    bb0: {
+        StorageLive(_2);
+        _2 = copy _1;
+        _0 = <dyn X as X>::y(move _2) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_2);
+        return;
+    }
+}

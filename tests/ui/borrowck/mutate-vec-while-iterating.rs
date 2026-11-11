@@ -1,0 +1,21 @@
+// Regression test for https://github.com/rust-lang/rust/issues/159489
+
+fn main() {
+    let mut values = vec![1, 2, 3];
+
+    for value in &values {
+        if *value == 2 {
+            values.push(4); //~ ERROR E0502
+        }
+    }
+}
+
+fn mutate_while_iterating_mut() {
+    let mut values = vec![1, 2, 3];
+
+    for value in &mut values {
+        if *value == 2 {
+            values.push(4); //~ ERROR E0499
+        }
+    }
+}

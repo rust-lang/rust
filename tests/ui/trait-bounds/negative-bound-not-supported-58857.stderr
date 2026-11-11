@@ -1,0 +1,8 @@
+error: negative bounds are not supported
+  --> $DIR/negative-bound-not-supported-58857.rs:5:9
+   |
+LL | impl<A: !Valid> Conj<A>{}
+   |         ^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,8 @@
+error: expected identifier, found `#`
+  --> <crate attribute>:1:4
+   |
+LL | #![#![feature(foo)]]
+   |    ^ expected identifier
+
+error: aborting due to 1 previous error
+

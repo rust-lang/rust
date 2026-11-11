@@ -1,0 +1,62 @@
+SOURCE_FILE
+  EXTERN_BLOCK
+    ABI
+      EXTERN_KW "extern"
+      WHITESPACE " "
+      STRING "\"C\""
+    WHITESPACE " "
+    EXTERN_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "printf"
+        PARAM_LIST
+          L_PAREN "("
+          PARAM
+            IDENT_PAT
+              NAME
+                IDENT "format"
+            COLON ":"
+            WHITESPACE " "
+            PTR_TYPE
+              STAR "*"
+              CONST_KW "const"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i8"
+          COMMA ","
+          WHITESPACE " "
+          PARAM
+            DOT3 "..."
+          COMMA ","
+          WHITESPACE " "
+          PARAM
+            WILDCARD_PAT
+              UNDERSCORE "_"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u8"
+          R_PAREN ")"
+        WHITESPACE " "
+        RET_TYPE
+          THIN_ARROW "->"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "i32"
+        SEMICOLON ";"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"

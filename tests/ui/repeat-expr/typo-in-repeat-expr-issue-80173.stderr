@@ -1,0 +1,134 @@
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:15:19
+   |
+LL |     let a = ["a", 10];
+   |                   ^^ expected `&str`, found integer
+   |
+help: replace the comma with a semicolon to create an array
+   |
+LL -     let a = ["a", 10];
+LL +     let a = ["a"; 10];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:20:20
+   |
+LL |     let b = [Type, size_b];
+   |                    ^^^^^^ expected `Type`, found `usize`
+   |
+help: replace the comma with a semicolon to create an array
+   |
+LL -     let b = [Type, size_b];
+LL +     let b = [Type; size_b];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:25:20
+   |
+LL |     let c = [Type, size_c];
+   |                    ^^^^^^ expected `Type`, found `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:29:20
+   |
+LL |     let d = [Type, size_d];
+   |                    ^^^^^^ expected `Type`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:32:29
+   |
+LL |     let e = [String::new(), 10];
+   |                             ^^ expected `String`, found integer
+   |
+help: try using a conversion method
+   |
+LL |     let e = [String::new(), 10.to_string()];
+   |                               ++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:36:19
+   |
+LL |     let f = ["f", get_size()];
+   |                   ^^^^^^^^^^ expected `&str`, found `usize`
+   |
+help: replace the comma with a semicolon to create an array
+   |
+LL -     let f = ["f", get_size()];
+LL +     let f = ["f"; get_size()];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:40:19
+   |
+LL |     let m = ["m", get_dyn_size()];
+   |                   ^^^^^^^^^^^^^^ expected `&str`, found `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:44:33
+   |
+LL |     let g = vec![String::new(), 10];
+   |                                 ^^ expected `String`, found integer
+   |
+help: replace the comma with a semicolon to create a vector
+   |
+LL -     let g = vec![String::new(), 10];
+LL +     let g = vec![String::new(); 10];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:49:24
+   |
+LL |     let h = vec![Type, dyn_size];
+   |                        ^^^^^^^^ expected `Type`, found integer
+   |
+help: replace the comma with a semicolon to create a vector
+   |
+LL -     let h = vec![Type, dyn_size];
+LL +     let h = vec![Type; dyn_size];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:53:24
+   |
+LL |     let i = vec![Type, get_dyn_size()];
+   |                        ^^^^^^^^^^^^^^ expected `Type`, found `usize`
+   |
+help: replace the comma with a semicolon to create a vector
+   |
+LL -     let i = vec![Type, get_dyn_size()];
+LL +     let i = vec![Type; get_dyn_size()];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:57:23
+   |
+LL |     let k = vec!['c', 10];
+   |                       ^^ expected `char`, found `u8`
+   |
+help: replace the comma with a semicolon to create a vector
+   |
+LL -     let k = vec!['c', 10];
+LL +     let k = vec!['c'; 10];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:61:24
+   |
+LL |     let j = vec![Type, 10_u8];
+   |                        ^^^^^ expected `Type`, found `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:64:27
+   |
+LL |     let l = vec![NewType, 10];
+   |                           ^^ expected `NewType`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/typo-in-repeat-expr-issue-80173.rs:68:24
+   |
+LL |     let h = vec![Type, byte_size];
+   |                        ^^^^^^^^^ expected `Type`, found `u8`
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

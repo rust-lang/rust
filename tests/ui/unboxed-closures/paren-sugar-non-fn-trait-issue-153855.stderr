@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `u8: Tr` is not satisfied
+  --> $DIR/paren-sugar-non-fn-trait-issue-153855.rs:10:6
+   |
+LL |     <u8 as Tr>::method();
+   |      ^^ the trait `Tr` is not implemented for `u8`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/paren-sugar-non-fn-trait-issue-153855.rs:5:1
+   |
+LL | trait Tr {
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,4 @@
+error: the crate `core` was compiled with a panic strategy which is incompatible with `immediate-abort`
+
+error: aborting due to 1 previous error
+

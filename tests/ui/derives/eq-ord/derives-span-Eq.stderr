@@ -1,0 +1,71 @@
+error[E0277]: the trait bound `Error: Eq` is not satisfied
+  --> $DIR/derives-span-Eq.rs:10:9
+   |
+LL | #[derive(Eq, PartialEq)]
+   |          -- in this derive macro expansion
+...
+LL |         x: Error,
+   |         ^^^^^^^^ the trait `Eq` is not implemented for `Error`
+   |
+note: required by a bound in `std::cmp::AssertParamIsEq`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: consider annotating `Error` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct Error;
+   |
+
+error[E0277]: the trait bound `Error: Eq` is not satisfied
+  --> $DIR/derives-span-Eq.rs:17:9
+   |
+LL | #[derive(Eq, PartialEq)]
+   |          -- in this derive macro expansion
+...
+LL |         Error,
+   |         ^^^^^ the trait `Eq` is not implemented for `Error`
+   |
+note: required by a bound in `std::cmp::AssertParamIsEq`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: consider annotating `Error` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct Error;
+   |
+
+error[E0277]: the trait bound `Error: Eq` is not satisfied
+  --> $DIR/derives-span-Eq.rs:23:5
+   |
+LL | #[derive(Eq, PartialEq)]
+   |          -- in this derive macro expansion
+LL | struct Struct {
+LL |     x: Error,
+   |     ^^^^^^^^ the trait `Eq` is not implemented for `Error`
+   |
+note: required by a bound in `std::cmp::AssertParamIsEq`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: consider annotating `Error` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct Error;
+   |
+
+error[E0277]: the trait bound `Error: Eq` is not satisfied
+  --> $DIR/derives-span-Eq.rs:28:5
+   |
+LL | #[derive(Eq, PartialEq)]
+   |          -- in this derive macro expansion
+LL | struct TupleStruct(
+LL |     Error,
+   |     ^^^^^ the trait `Eq` is not implemented for `Error`
+   |
+note: required by a bound in `std::cmp::AssertParamIsEq`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+help: consider annotating `Error` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct Error;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

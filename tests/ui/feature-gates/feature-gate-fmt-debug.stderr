@@ -1,0 +1,13 @@
+error[E0658]: `cfg(fmt_debug)` is experimental and subject to change
+  --> $DIR/feature-gate-fmt-debug.rs:1:7
+   |
+LL | #[cfg(fmt_debug = "full")]
+   |       ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #129709 <https://github.com/rust-lang/rust/issues/129709> for more information
+   = help: add `#![feature(fmt_debug)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,23 @@
+error: auto traits cannot be const
+  --> $DIR/const-auto-trait.rs:6:1
+   |
+LL | const auto trait Marker {}
+   | ^^^^^
+   |
+   = help: remove the `const` keyword
+
+error[E0277]: the trait bound `(): const Marker` is not satisfied
+  --> $DIR/const-auto-trait.rs:11:13
+   |
+LL |     check::<()>();
+   |             ^^
+   |
+note: required by a bound in `check`
+  --> $DIR/const-auto-trait.rs:10:17
+   |
+LL |     fn check<T: const Marker>() {}
+   |                 ^^^^^^^^^^^^ required by this bound in `check`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

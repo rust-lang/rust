@@ -1,0 +1,23 @@
+error[E0793]: reference to field of packed struct is unaligned
+  --> $DIR/packed-union-borrow-element.rs:20:24
+   |
+LL |     let brw = unsafe { &bar.foo1.0 };
+   |                        ^^^^^^^^^^^
+   |
+   = note: this struct is 1-byte aligned, but the type of this field may require higher alignment
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to field of packed union is unaligned
+  --> $DIR/packed-union-borrow-element.rs:24:24
+   |
+LL |     let brw = unsafe { &bar.foo4.0 };
+   |                        ^^^^^^^^^^^
+   |
+   = note: this union is at most 2-byte aligned, but the type of this field may require higher alignment
+   = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0793`.

@@ -1,0 +1,12 @@
+[package]
+name = "enclave"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[build-dependencies]
+cc = "1.0"
+cmake = "0.1"

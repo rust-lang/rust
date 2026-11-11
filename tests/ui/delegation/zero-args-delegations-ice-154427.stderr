@@ -1,0 +1,8 @@
+error: delegation's target expression is specified for function with no params
+  --> $DIR/zero-args-delegations-ice-154427.rs:14:29
+   |
+LL |         reuse to_reuse::foo { self }
+   |                             ^^^^^^^^
+
+error: aborting due to 1 previous error
+

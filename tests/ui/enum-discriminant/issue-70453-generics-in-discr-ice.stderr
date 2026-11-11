@@ -1,0 +1,20 @@
+error: generic parameters may not be used in enum discriminant values
+  --> $DIR/issue-70453-generics-in-discr-ice.rs:10:32
+   |
+LL |     Some = std::mem::size_of::<T>(),
+   |                                ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in enum discriminant values
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/issue-70453-generics-in-discr-ice.rs:7:20
+   |
+LL | enum MyWeirdOption<T> {
+   |                    ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

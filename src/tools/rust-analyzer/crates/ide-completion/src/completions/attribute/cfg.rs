@@ -1,0 +1,148 @@
+//! Completion for cfg
+
+use ide_db::SymbolKind;
+use itertools::Itertools;
+use syntax::{
+    AstToken, Direction, NodeOrToken, SmolStr, SyntaxKind, algo,
+    ast::{self, Ident, IsString},
+};
+
+use crate::{CompletionItem, completions::Completions, context::CompletionContext};
+
+pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_, '_>) {
+    let (token_range, snip) = if let Some(string) = ast::String::cast(ctx.original_token.clone())
+        && let Some(range) = string.text_range_between_quotes()
+    {
+        (range, str::to_owned as for<'a> fn(&'a str) -> _)
+    } else {
+        (ctx.source_range(), (|s| format!(r#""{s}""#)) as for<'a> fn(&'a str) -> _)
+    };
+    let add_completion = |item: &str| {
+        let mut completion =
+            CompletionItem::new(SymbolKind::BuiltinAttr, token_range, item, ctx.edition);
+        completion.insert_text(snip(item));
+        completion.add_to(acc, ctx.db);
+    };
+
+    // FIXME: Move this into context/analysis.rs
+    let previous = ctx
+        .original_token
+        .prev_token()
+        .and_then(|it| {
+            if matches!(it.kind(), SyntaxKind::EQ) {
+                Some(it.into())
+            } else {
+                algo::non_trivia_sibling(it.into(), Direction::Prev)
+            }
+        })
+        .filter(|t| matches!(t.kind(), SyntaxKind::EQ))
+        .and_then(|it| algo::non_trivia_sibling(it.prev_sibling_or_token()?, Direction::Prev))
+        .map(|it| match it {
+            NodeOrToken::Node(_) => None,
+            NodeOrToken::Token(t) => Ident::cast(t),
+        });
+    match previous {
+        Some(None) => (),
+        Some(Some(p)) => match p.text() {
+            "target_arch" => KNOWN_ARCH.iter().copied().for_each(add_completion),
+            "target_env" => KNOWN_ENV.iter().copied().for_each(add_completion),
+            "target_os" => KNOWN_OS.iter().copied().for_each(add_completion),
+            "target_vendor" => KNOWN_VENDOR.iter().copied().for_each(add_completion),
+            "target_endian" => ["little", "big"].into_iter().for_each(add_completion),
+            name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).for_each(|s| {
+                let s = s.as_str();
+                let mut item =
+                    CompletionItem::new(SymbolKind::BuiltinAttr, token_range, s, ctx.edition);
+                item.insert_text(snip(s));
+                item.add_to(acc, ctx.db);
+            }),
+        },
+        None => ctx
+            .krate
+            .potential_cfg(ctx.db)
+            .into_iter()
+            .map(|x| match x {
+                hir::CfgAtom::Flag(key) => (key.as_str(), "".into()),
+                hir::CfgAtom::KeyValue { key, .. } => (
+                    key.as_str(),
+                    if ctx.config.snippet_cap.is_some() {
+                        SmolStr::from_iter([key.as_str(), " = \"$1\""])
+                    } else {
+                        SmolStr::default()
+                    },
+                ),
+            })
+            .chain(CFG_CONDITION.iter().map(|&(k, snip)| (k, SmolStr::new_static(snip))))
+            .unique_by(|&(s, _)| s)
+            .for_each(|(s, snippet)| {
+                let mut item =
+                    CompletionItem::new(SymbolKind::BuiltinAttr, token_range, s, ctx.edition);
+                if let Some(cap) = ctx.config.snippet_cap
+                    && !snippet.is_empty()
+                {
+                    item.insert_snippet(cap, snippet);
+                }
+                item.add_to(acc, ctx.db);
+            }),
+    }
+}
+
+const CFG_CONDITION: &[(&str, &str)] = &[
+    ("all", "all($0)"),
+    ("any", "any($0)"),
+    ("not", "not($0)"),
+    ("false", "false"), // 'true' in 'potential_cfg'
+];
+
+const KNOWN_ARCH: [&str; 20] = [
+    "aarch64",
+    "arm",
+    "avr",
+    "csky",
+    "hexagon",
+    "mips",
+    "mips64",
+    "msp430",
+    "nvptx64",
+    "powerpc",
+    "powerpc64",
+    "riscv32",
+    "riscv64",
+    "s390x",
+    "sparc",
+    "sparc64",
+    "wasm32",
+    "wasm64",
+    "x86",
+    "x86_64",
+];
+
+const KNOWN_ENV: [&str; 7] = ["eabihf", "gnu", "gnueabihf", "msvc", "relibc", "sgx", "uclibc"];
+
+const KNOWN_OS: [&str; 22] = [
+    "cuda",
+    "dragonfly",
+    "emscripten",
+    "freebsd",
+    "fuchsia",
+    "haiku",
+    "hermit",
+    "hyperlight",
+    "illumos",
+    "l4re",
+    "linux",
+    "netbsd",
+    "none",
+    "openbsd",
+    "ps3",
+    "psp",
+    "redox",
+    "solaris",
+    "uefi",
+    "unknown",
+    "vxworks",
+    "windows",
+];
+
+const KNOWN_VENDOR: [&str; 8] =
+    ["apple", "fortanix", "nvidia", "pc", "sony", "unknown", "wrs", "uwp"];

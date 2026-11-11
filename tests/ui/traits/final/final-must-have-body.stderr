@@ -1,0 +1,10 @@
+error: `final` is only allowed on associated functions if they have a body
+  --> $DIR/final-must-have-body.rs:4:5
+   |
+LL |     final fn method();
+   |     -----^^^^^^^^^^^^^
+   |     |
+   |     `final` because of this
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,29 @@
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43023.rs:4:5
+   |
+LL |       #[derive(Debug)]
+   |       ^^^^^^^^^^^^^^^^ not applicable here
+LL | /     fn f() {
+LL | |         file!();
+LL | |     }
+   | |_____- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43023.rs:11:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |     fn f();
+   |     ------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43023.rs:16:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |     type F;
+   |     ------- not a `struct`, `enum` or `union`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0774`.

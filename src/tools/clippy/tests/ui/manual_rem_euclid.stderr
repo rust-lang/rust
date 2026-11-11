@@ -1,0 +1,67 @@
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:13:18
+   |
+LL |     let _: i32 = ((value % 4) + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+   |
+   = note: `-D clippy::manual-rem-euclid` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_rem_euclid)]`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:15:18
+   |
+LL |     let _: i32 = (4 + (value % 4)) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:17:18
+   |
+LL |     let _: i32 = (value % 4 + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:19:18
+   |
+LL |     let _: i32 = (4 + value % 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:21:22
+   |
+LL |     let _: i32 = 1 + (4 + value % 4) % 4;
+   |                      ^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:42:22
+   |
+LL |         let _: i32 = ((value % 4) + 4) % 4;
+   |                      ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `value.rem_euclid(4)`
+   |
+   = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:55:5
+   |
+LL |     ((num % 4) + 4) % 4
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `num.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:61:5
+   |
+LL |     ((num % 4) + 4) % 4
+   |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `num.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:74:18
+   |
+LL |     let _: i32 = ((x % 4) + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^ help: consider using: `x.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> tests/ui/manual_rem_euclid.rs:88:18
+   |
+LL |     let _: i32 = ((x % 4) + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^ help: consider using: `x.rem_euclid(4)`
+
+error: aborting due to 10 previous errors
+

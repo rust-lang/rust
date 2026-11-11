@@ -1,0 +1,31 @@
+error: missing lifetime in associated type
+  --> $DIR/missing-lifetime-in-assoc-type-3.rs:5:17
+   |
+LL |     type Item = &T;
+   |                 ^ this lifetime must come from the implemented type
+   |
+note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: add a lifetime to the impl block and use it in the self type and associated type
+   |
+LL ~ impl<'a> IntoIterator for &'a S {
+LL ~     type Item = &'a T;
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lifetime-in-assoc-type-3.rs:7:56
+   |
+LL |     type IntoIter = std::collections::btree_map::Values<i32, T>;
+   |                                                        ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ impl<'a> IntoIterator for &S {
+LL |     type Item = &T;
+LL |
+LL ~     type IntoIter = std::collections::btree_map::Values<'a, i32, T>;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

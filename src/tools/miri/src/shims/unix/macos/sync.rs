@@ -1,0 +1,607 @@
+//! Contains macOS-specific synchronization functions.
+//!
+//! For `os_unfair_lock`, see the documentation
+//! <https://developer.apple.com/documentation/os/synchronization?language=objc>
+//! and in case of underspecification its implementation
+//! <https://github.com/apple-oss-distributions/libplatform/blob/a00a4cc36da2110578bcf3b8eeeeb93dcc7f4e11/src/os/lock.c#L645>.
+//!
+//! Note that we don't emulate every edge-case behaviour of the locks. Notably,
+//! we don't abort when locking a lock owned by a thread that has already exited
+//! and we do not detect copying of the lock, but macOS doesn't guarantee anything
+//! in that case either.
+//! FIXME: synchronize behavior on lock copies/moves with macOS guarantees. Apparently there
+//! is hope that macOS might eventually guarantee more than it does today.
+
+use std::cell::Cell;
+use std::time::Duration;
+
+use rustc_abi::{Endian, FieldIdx, Size};
+use rustc_middle::ty::layout::TyAndLayout;
+
+use crate::concurrency::sync::FutexRef;
+use crate::meta_obj::OPAQUE_OBJ_COOKIE;
+use crate::*;
+
+#[derive(Clone)]
+enum MacOsUnfairLock {
+    Active {
+        mutex_ref: MutexRef,
+    },
+    /// If a lock gets copied while being held, we put it in this state.
+    /// It seems like in the real implementation, the lock actually remembers who held it,
+    /// and still behaves as-if it was held by that thread in the new location. In Miri, we don't
+    /// know who actually owns this lock at the moment.
+    PermanentlyLockedByUnknown,
+}
+
+impl MetaObj for MacOsUnfairLock {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
+        if let MacOsUnfairLock::Active { mutex_ref } = self
+            && !mutex_ref.queue_is_empty()
+        {
+            throw_ub_format!(
+                "accessing the memory backing a `os_unfair_lock` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+pub enum MacOsFutexTimeout<'a, 'tcx> {
+    None,
+    Relative { clock_op: &'a OpTy<'tcx>, timeout_op: &'a OpTy<'tcx> },
+    Absolute { clock_op: &'a OpTy<'tcx>, timeout_op: &'a OpTy<'tcx> },
+}
+
+/// Metadata for a macOS futex.
+///
+/// Since macOS 11.0, Apple has exposed the previously private futex API consisting
+/// of `os_sync_wait_on_address` (and friends) and `os_sync_wake_by_address_{any, all}`.
+/// These work with different value sizes and flags, which are validated to be consistent.
+/// This structure keeps track of both the futex queue and these values.
+struct MacOsFutex {
+    futex: FutexRef,
+    /// The size in bytes of the atomic primitive underlying this futex.
+    size: Cell<u64>,
+}
+
+impl MetaObj for MacOsFutex {
+    fn opaque(&self) -> bool {
+        false
+    }
+}
+
+#[derive(Clone)]
+struct MacOsSemaphore {
+    semaphore: SemaphoreRef,
+    init_value: u64,
+}
+
+// Constants from the dispatch semaphore API.
+const DISPATCH_TIME_NOW: u64 = 0;
+const DISPATCH_TIME_FOREVER: u64 = !0;
+
+impl MetaObj for MacOsSemaphore {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
+        if !self.semaphore.queue_is_empty() {
+            throw_ub_format!(
+                "accessing the memory behind a `dispatch_semaphore_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+fn dispatch_semaphore_layout<'tcx>(ecx: &MiriInterpCx<'tcx>) -> TyAndLayout<'tcx> {
+    // We can pick anything here as long as we are consistent.
+    ecx.machine.layouts.usize
+}
+
+impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn os_unfair_lock_get_data<'a>(
+        &'a mut self,
+        lock_ptr: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, &'a mut MacOsUnfairLock>
+    where
+        'tcx: 'a,
+    {
+        // `os_unfair_lock_s` wraps a single `u32` field. We use the first byte to store the "init"
+        // flag. Due to macOS always being little endian, that's the least significant byte.
+        let ecx = self.eval_context_mut();
+        assert!(ecx.tcx.data_layout.endian == Endian::Little);
+
+        let lock = ecx.deref_pointer(lock_ptr)?;
+        ecx.get_or_insert_meta(
+            &lock,
+            |ecx| {
+                let field = ecx.project_field(&lock, FieldIdx::from_u32(0))?;
+                let val = ecx.read_scalar(&field)?.to_u32()?;
+                if val == 0 {
+                    interp_ok(MacOsUnfairLock::Active { mutex_ref: MutexRef::new() })
+                } else if val == u32::from_ne_bytes([OPAQUE_OBJ_COOKIE; 4]) {
+                    // This is a lock that got copied while it is initialized. We reset locks to 0
+                    // when they get released, so it got copied while locked. Unfortunately that is
+                    // something `std` needs to support (the guard could have been leaked). On the
+                    // plus side, we know nobody was queued for the lock while it got copied; that
+                    // would have been rejected by our `on_access`.
+                    // The real implementation would apparently remember who held the old lock, and
+                    // consider them to hold the copy as well -- but our copies don't preserve sync
+                    // object metadata so we instead move the lock into a "permanently locked"
+                    // state.
+                    interp_ok(MacOsUnfairLock::PermanentlyLockedByUnknown)
+                } else {
+                    throw_ub_format!("`os_unfair_lock` was not properly initialized at this location, or it got overwritten");
+                }
+            },
+        )
+    }
+
+    fn dispatch_semaphore_get_data<'a>(
+        &'a self,
+        sem_ptr: Pointer,
+    ) -> InterpResult<'tcx, &'a MacOsSemaphore>
+    where
+        'tcx: 'a,
+    {
+        let ecx = self.eval_context_ref();
+        interp_ok(ecx.try_get_meta(
+            sem_ptr,
+        ).map_err(|_| err_ub_format!("`dispatch_semaphore_t` value has not been initialized with `dispatch_semaphore_create`"))?)
+    }
+}
+
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Implements [`os_sync_wait_on_address`], [`os_sync_wait_on_address_with_deadline`]
+    /// and [`os_sync_wait_on_address_with_timeout`].
+    ///
+    /// [`os_sync_wait_on_address`]: https://developer.apple.com/documentation/os/os_sync_wait_on_address?language=objc
+    /// [`os_sync_wait_on_address_with_deadline`]: https://developer.apple.com/documentation/os/os_sync_wait_on_address_with_deadline?language=objc
+    /// [`os_sync_wait_on_address_with_timeout`]: https://developer.apple.com/documentation/os/os_sync_wait_on_address_with_timeout?language=objc
+    fn os_sync_wait_on_address(
+        &mut self,
+        addr_op: &OpTy<'tcx>,
+        value_op: &OpTy<'tcx>,
+        size_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        timeout: MacOsFutexTimeout<'_, 'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        let none = ecx.eval_libc_u32("OS_SYNC_WAIT_ON_ADDRESS_NONE");
+        let absolute_clock = ecx.eval_libc_u32("OS_CLOCK_MACH_ABSOLUTE_TIME");
+
+        let ptr = ecx.read_pointer(addr_op)?;
+        let value = ecx.read_scalar(value_op)?.to_u64()?;
+        let size = ecx.read_target_usize(size_op)?;
+        let flags = ecx.read_scalar(flags_op)?.to_u32()?;
+
+        let clock_timeout = match timeout {
+            MacOsFutexTimeout::None => None,
+            MacOsFutexTimeout::Relative { clock_op, timeout_op } => {
+                let clock = ecx.read_scalar(clock_op)?.to_u32()?;
+                let timeout = ecx.read_scalar(timeout_op)?.to_u64()?;
+                Some((clock, TimeoutStyle::Relative, timeout))
+            }
+            MacOsFutexTimeout::Absolute { clock_op, timeout_op } => {
+                let clock = ecx.read_scalar(clock_op)?.to_u32()?;
+                let timeout = ecx.read_scalar(timeout_op)?.to_u64()?;
+                Some((clock, TimeoutStyle::Absolute, timeout))
+            }
+        };
+
+        // Perform validation of the arguments.
+        let addr = ptr.addr().bytes();
+        if addr == 0
+            || !matches!(size, 4 | 8)
+            || !addr.is_multiple_of(size)
+            || (flags != none)
+            || clock_timeout
+                .is_some_and(|(clock, _, timeout)| clock != absolute_clock || timeout == 0)
+        {
+            ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+            return interp_ok(());
+        }
+
+        let deadline = clock_timeout.map(|(_, style, timeout)| {
+            // The only clock that is currently supported is the monotonic clock (checked above).
+            // While the deadline argument of `os_sync_wait_on_address_with_deadline`
+            // is actually not in nanoseconds but in the units of `mach_current_time`,
+            // the two are equivalent in miri.
+            ecx.machine.timeout(TimeoutClock::Monotonic, style, Duration::from_nanos(timeout))
+        });
+
+        // See the Linux futex implementation for why this fence exists.
+        ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+        let layout = ecx.machine.layouts.uint(Size::from_bytes(size)).unwrap();
+        let futex_place = ecx.ptr_to_mplace(ptr, layout);
+        let futex_val = ecx
+            .read_scalar_atomic(&futex_place, AtomicReadOrd::Acquire)?
+            .to_bits(Size::from_bytes(size))?;
+
+        let futex = ecx.get_or_insert_meta(&futex_place, |_| {
+            interp_ok(MacOsFutex { futex: Default::default(), size: Cell::new(size) })
+        })?;
+
+        // Detect mismatches between the flags and sizes used on this address
+        // by comparing it with the parameters used by the other waiters in
+        // the current list. If the list is currently empty, update those
+        // parameters.
+        if futex.futex.waiters() == 0 {
+            futex.size.set(size);
+        } else if futex.size.get() != size {
+            ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+            return interp_ok(());
+        }
+
+        if futex_val == value.into() {
+            // If the values are the same, we have to block.
+            let futex_ref = futex.futex.clone();
+            let dest = dest.clone();
+            ecx.futex_wait(
+                futex_ref.clone(),
+                u32::MAX, // bitset
+                deadline,
+                callback!(
+                    @capture<'tcx> {
+                        dest: MPlaceTy<'tcx>,
+                        futex_ref: FutexRef,
+                    }
+                    |ecx, unblock: UnblockKind| {
+                        match unblock {
+                            UnblockKind::Ready => {
+                                let remaining = futex_ref.waiters().try_into().unwrap();
+                                ecx.write_scalar(Scalar::from_i32(remaining), &dest)
+                            }
+                            UnblockKind::TimedOut => {
+                                ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest)
+                            }
+                        }
+                    }
+                ),
+            );
+        } else {
+            // else retrieve the current number of waiters.
+            let waiters = futex.futex.waiters().try_into().unwrap();
+            ecx.write_scalar(Scalar::from_i32(waiters), dest)?;
+        }
+
+        interp_ok(())
+    }
+
+    /// Implements [`os_sync_wake_by_address_all`] and [`os_sync_wake_by_address_any`].
+    ///
+    /// [`os_sync_wake_by_address_all`]: https://developer.apple.com/documentation/os/os_sync_wake_by_address_all?language=objc
+    /// [`os_sync_wake_by_address_any`]: https://developer.apple.com/documentation/os/os_sync_wake_by_address_any?language=objc
+    fn os_sync_wake_by_address(
+        &mut self,
+        addr_op: &OpTy<'tcx>,
+        size_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        all: bool,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+        let none = ecx.eval_libc_u32("OS_SYNC_WAKE_BY_ADDRESS_NONE");
+
+        let ptr = ecx.read_pointer(addr_op)?;
+        let size = ecx.read_target_usize(size_op)?;
+        let flags = ecx.read_scalar(flags_op)?.to_u32()?;
+
+        // Perform validation of the arguments.
+        let addr = ptr.addr().bytes();
+        if addr == 0 || !matches!(size, 4 | 8) || (flags != none) {
+            ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
+            return interp_ok(());
+        }
+
+        // See the Linux futex implementation for why this fence exists.
+        ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
+
+        let Ok(futex) = ecx.try_get_meta::<MacOsFutex>(ptr) else {
+            // Same behavior for dangling pointers and when no futex has been put here yet.
+            return ecx.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
+        };
+
+        if futex.futex.waiters() == 0 {
+            return ecx.set_errno_and_return_neg1(LibcError("ENOENT"), dest);
+        // If there are waiters in the queue, they have all used the parameters
+        // stored in `futex` (we check this in `os_sync_wait_on_address` above).
+        // Detect mismatches between "our" parameters and the parameters used by
+        // the waiters and return an error in that case.
+        } else if futex.size.get() != size {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        }
+
+        ecx.futex_wake(&futex.futex.clone(), u32::MAX, if all { usize::MAX } else { 1 })?;
+        ecx.write_scalar(Scalar::from_i32(0), dest)?;
+        interp_ok(())
+    }
+
+    fn os_unfair_lock_lock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
+            // Trying to lock a perma-locked lock. On macOS this would block or abort depending
+            // on whether the current thread is considered to be the one holding this lock. We
+            // don't know who is considered to be holding the lock so we don't know what to do.
+            throw_unsup_format!(
+                "attempted to lock an os_unfair_lock that was copied while being locked"
+            );
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if let Some(owner) = mutex_ref.owner() {
+            if owner == ecx.active_thread() {
+                // Matching the current macOS implementation: abort on reentrant locking.
+                throw_machine_stop!(TerminationInfo::Abort(
+                    "attempted to lock an os_unfair_lock that is already locked by the current thread".to_owned()
+                ));
+            }
+
+            ecx.mutex_enqueue_and_block(mutex_ref, None);
+        } else {
+            ecx.mutex_lock(&mutex_ref)?;
+        }
+
+        interp_ok(())
+    }
+
+    fn os_unfair_lock_trylock(
+        &mut self,
+        lock_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
+            // Trying to lock a perma-locked lock. That behaves the same no matter who the owner is
+            // so we can implement the real behavior here.
+            ecx.write_scalar(Scalar::from_bool(false), dest)?;
+            return interp_ok(());
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if mutex_ref.owner().is_some() {
+            // Contrary to the blocking lock function, this does not check for reentrancy.
+            ecx.write_scalar(Scalar::from_bool(false), dest)?;
+        } else {
+            ecx.mutex_lock(&mutex_ref)?;
+            ecx.write_scalar(Scalar::from_bool(true), dest)?;
+        }
+
+        interp_ok(())
+    }
+
+    fn os_unfair_lock_unlock(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
+            // We don't know who the owner is so we cannot proceed.
+            throw_unsup_format!(
+                "attempted to unlock an os_unfair_lock that was copied while being locked"
+            );
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        // Now, unlock.
+        if ecx.mutex_unlock(&mutex_ref)?.is_none() {
+            // Matching the current macOS implementation: abort.
+            throw_machine_stop!(TerminationInfo::Abort(
+                "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
+            ));
+        }
+
+        // If the lock is not locked by anyone now, it went quiet.
+        // Reset to zero so that it can be moved and initialized again for the next phase.
+        if mutex_ref.owner().is_none() {
+            let lock_place =
+                ecx.project_field(&ecx.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
+            ecx.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
+        }
+
+        interp_ok(())
+    }
+
+    fn os_unfair_lock_assert_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
+            // We don't know who the owner is so we cannot proceed.
+            throw_unsup_format!(
+                "attempted to assert the owner of an os_unfair_lock that was copied while being locked"
+            );
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if mutex_ref.owner().is_none_or(|o| o != ecx.active_thread()) {
+            throw_machine_stop!(TerminationInfo::Abort(
+                "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
+            ));
+        }
+
+        // The lock is definitely not quiet since we are the owner.
+
+        interp_ok(())
+    }
+
+    fn os_unfair_lock_assert_not_owner(&mut self, lock_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let MacOsUnfairLock::Active { mutex_ref } = ecx.os_unfair_lock_get_data(lock_op)? else {
+            // We don't know who the owner is so we cannot proceed.
+            throw_unsup_format!(
+                "attempted to assert the owner of an os_unfair_lock that was copied while being locked"
+            );
+        };
+        let mutex_ref = mutex_ref.clone();
+
+        if mutex_ref.owner().is_some_and(|o| o == ecx.active_thread()) {
+            throw_machine_stop!(TerminationInfo::Abort(
+                "called os_unfair_lock_assert_not_owner on an os_unfair_lock owned by the current thread".to_owned()
+            ));
+        }
+
+        // If the lock is not locked by anyone now, it went quiet.
+        // Reset to zero so that it can be moved and initialized again for the next phase.
+        if mutex_ref.owner().is_none() {
+            let lock_place =
+                ecx.project_field(&ecx.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
+            ecx.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
+        }
+
+        interp_ok(())
+    }
+
+    fn dispatch_semaphore_create(
+        &mut self,
+        value: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let value = ecx.read_target_isize(value)?;
+
+        let Ok(value) = u64::try_from(value) else {
+            throw_machine_stop!(TerminationInfo::Abort(
+                "dispatch_semaphore_create called with a negative value".to_owned()
+            ));
+        };
+
+        // Create an allocation to hold the semaphore "state" (mostly meta state for us).
+        let alloc = ecx.allocate(dispatch_semaphore_layout(ecx), MiriMemoryKind::Runtime.into())?;
+        // Initialize semaphore.
+        let data = MacOsSemaphore { semaphore: SemaphoreRef::new(value), init_value: value };
+        ecx.insert_meta(&alloc, Box::new(data))?;
+
+        ecx.write_pointer(alloc.ptr(), dest)?;
+        interp_ok(())
+    }
+
+    fn dispatch_semaphore_wait(
+        &mut self,
+        sem_ptr: &OpTy<'tcx>,
+        timeout: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let sem_ptr = ecx.read_pointer(sem_ptr)?;
+        let timeout = ecx.read_scalar(timeout)?.to_u64()?;
+
+        let deadline = if timeout == DISPATCH_TIME_FOREVER {
+            None
+        } else {
+            // `timeout` is an absolute nanosecond value on the monotone clock.
+            // (This also handles `DISPATCH_TIME_NOW` as that is 0.)
+            let deadline =
+                ecx.machine.monotonic_clock.epoch().add_lossy(Duration::from_nanos(timeout));
+            Some(deadline.into())
+        };
+
+        let data = ecx.dispatch_semaphore_get_data(sem_ptr)?.clone();
+        let dest = dest.clone();
+        ecx.semaphore_decrement(
+            data.semaphore,
+            deadline,
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |ecx, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::Ready => ecx.write_int(0, &dest),
+                        UnblockKind::TimedOut => ecx.write_int(/* KERN_OPERATION_TIMED_OUT */ 49, &dest),
+                    }
+                }
+            ),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn dispatch_semaphore_signal(
+        &mut self,
+        sem_ptr: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let sem_ptr = ecx.read_pointer(sem_ptr)?;
+
+        let data = ecx.dispatch_semaphore_get_data(sem_ptr)?.clone();
+        let woke_thread = ecx.semaphore_increment(&data.semaphore)?;
+
+        // The `dispatch_semaphore_signal` docs do not discuss the return value,
+        // but the Swift-level docs say:
+        // > This function returns non-zero if a thread is woken. Otherwise, zero is returned.
+
+        ecx.write_int(woke_thread, dest)?;
+        interp_ok(())
+    }
+
+    fn dispatch_release(&mut self, sem_ptr: &OpTy<'tcx>) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let sem_ptr = ecx.read_pointer(sem_ptr)?;
+
+        let data = ecx.dispatch_semaphore_get_data(sem_ptr)?.clone();
+        // macOS aborts if the final value is below the initial value.
+        if data.semaphore.value() < data.init_value {
+            throw_machine_stop!(TerminationInfo::Abort(
+                "dispatch_semaphore destroyed while in use".to_owned()
+            ));
+        }
+
+        // Freeing the memory will also free the meta-object in `AllocExtra`.
+        let layout = dispatch_semaphore_layout(ecx);
+        ecx.deallocate_ptr(
+            sem_ptr,
+            Some((layout.size, layout.align)),
+            MiriMemoryKind::Runtime.into(),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn dispatch_time(
+        &mut self,
+        when: &OpTy<'tcx>,
+        delta: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let when = ecx.read_scalar(when)?.to_u64()?;
+        let delta = ecx.read_scalar(delta)?.to_i64()?;
+
+        if when != DISPATCH_TIME_NOW {
+            throw_unsup_format!(
+                "dispatch_time is only supported with `when` being `DISPATCH_TIME_NOW`"
+            );
+        }
+        let Ok(delta) = u64::try_from(delta) else {
+            throw_unsup_format!("dispatch_time with negative `delta` is not supported");
+        };
+
+        // `delta` is in nanoseconds. Uses the monotone clock.
+        let deadline = ecx.machine.monotonic_clock.now().add_lossy(Duration::from_nanos(delta));
+        // Convert back to absolute nanoseconds for return value.
+        let duration = deadline.duration_since(ecx.machine.monotonic_clock.epoch());
+        let Ok(nanos) = u64::try_from(duration.as_nanos()) else {
+            throw_unsup_format!("dispatch_time with too big `delta` is not supported");
+        };
+        ecx.write_int(nanos, dest)?;
+        interp_ok(())
+    }
+}

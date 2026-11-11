@@ -1,0 +1,43 @@
+error: invalid format string: raw identifiers are not supported
+  --> $DIR/raw-idents.rs:8:22
+   |
+LL |     println!("It is {r#type}");
+   |                      --^^^^
+   |                      |
+   |                      raw identifier used here in format string
+   |                      help: remove the `r#`
+   |
+   = note: identifiers in format strings can be keywords and don't need to be prefixed with `r#`
+
+error: invalid format string: raw identifiers are not supported
+  --> $DIR/raw-idents.rs:9:31
+   |
+LL |     println!(r##"It still is {r#type}"##);
+   |                               --^^^^
+   |                               |
+   |                               raw identifier used here in format string
+   |                               help: remove the `r#`
+   |
+   = note: identifiers in format strings can be keywords and don't need to be prefixed with `r#`
+
+error: invalid format string: raw identifiers are not supported
+  --> $DIR/raw-idents.rs:10:14
+   |
+LL |     println!(concat!("{r#", "type}"));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ raw identifier used here in format string
+   |
+   = note: identifiers in format strings can be keywords and don't need to be prefixed with `r#`
+
+error: invalid format string: raw identifiers are not supported
+  --> $DIR/raw-idents.rs:11:16
+   |
+LL |     println!("{\x72\x23type:?}");
+   |                --------^^^^
+   |                |
+   |                raw identifier used here in format string
+   |                help: remove the `r#`
+   |
+   = note: identifiers in format strings can be keywords and don't need to be prefixed with `r#`
+
+error: aborting due to 4 previous errors
+

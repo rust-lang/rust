@@ -1,0 +1,75 @@
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:5:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | trait T { }
+   | ----------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:8:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | impl S { }
+   | ---------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:11:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | impl T for S { }
+   | ---------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:14:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | static s: usize = 0;
+   | -------------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:17:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | const c: usize = 0;
+   | ------------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:20:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | mod m { }
+   | --------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:23:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | extern "C" { }
+   | -------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:26:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | type A = usize;
+   | --------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/deriving-non-type.rs:29:1
+   |
+LL | #[derive(PartialEq)]
+   | ^^^^^^^^^^^^^^^^^^^^ not applicable here
+LL | fn main() { }
+   | ------------- not a `struct`, `enum` or `union`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0774`.

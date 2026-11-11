@@ -1,0 +1,48 @@
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo)]`
+  --> $DIR/dont_promote_unstable_const_fn.rs:14:25
+   |
+LL | const fn bar() -> u32 { foo() }
+   |                         ^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn bar() -> u32 { foo() }
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_unstable_const_fn.rs:17:28
+   |
+LL |     let _: &'static u32 = &foo();
+   |            ------------    ^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_unstable_const_fn.rs:21:28
+   |
+LL |     let _: &'static u32 = &meh();
+   |            ------------    ^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/dont_promote_unstable_const_fn.rs:22:26
+   |
+LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
+   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

@@ -1,0 +1,30 @@
+// MIR for `add::{closure#0}` 0 coroutine_drop_proxy_async
+
+fn add::{closure#0}(_1: Pin<&mut {async fn body of add()}>, _2: &mut Context<'_>) -> Poll<()> {
+    let mut _0: std::task::Poll<()>;
+    let mut _3: &mut {async fn body of add()};
+    let mut _4: std::future::ResumeTy;
+    let mut _5: std::ptr::NonNull<std::task::Context<'_>>;
+    scope 1 {
+        scope 2 {
+            scope 3 {
+                scope 4 {
+                    scope 5 {
+                    }
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _5 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
+        _4 = std::future::ResumeTy(move _5);
+        _3 = copy (_1.0: &mut {async fn body of add()});
+        drop((*_3)) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _0 = Poll::<()>::Ready(const ());
+        return;
+    }
+}

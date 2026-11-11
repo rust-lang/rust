@@ -1,0 +1,36 @@
+error[E0308]: mismatched types
+  --> $DIR/consider-removing-last-semi.rs:3:15
+   |
+LL | pub fn f() -> String {
+   |        -      ^^^^^^ expected `String`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+LL |     0u8;
+LL |     "bla".to_string();
+   |                      - help: remove this semicolon to return this value
+
+error[E0308]: mismatched types
+  --> $DIR/consider-removing-last-semi.rs:8:15
+   |
+LL | pub fn g() -> String {
+   |        -      ^^^^^^ expected `String`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+LL |     "this won't work".to_string();
+LL |     "removeme".to_string();
+   |                           - help: remove this semicolon to return this value
+
+error[E0308]: mismatched types
+  --> $DIR/consider-removing-last-semi.rs:13:25
+   |
+LL | pub fn macro_tests() -> u32 {
+   |        -----------      ^^^ expected `u32`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+...
+LL |     mac!();
+   |           - help: remove this semicolon to return this value
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

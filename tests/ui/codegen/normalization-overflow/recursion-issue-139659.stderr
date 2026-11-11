@@ -1,0 +1,10 @@
+error: reached the recursion limit while instantiating `recurse`
+   |
+note: `recurse` defined here
+  --> $DIR/recursion-issue-139659.rs:27:1
+   |
+LL | pub fn recurse() -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

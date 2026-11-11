@@ -1,0 +1,26 @@
+error: invalid comparison operator `===`
+  --> $DIR/js-style-comparison-op.rs:3:10
+   |
+LL |     if 1 === 1 {
+   |          ^^^
+   |
+help: `===` is not a valid comparison operator, use `==`
+   |
+LL -     if 1 === 1 {
+LL +     if 1 == 1 {
+   |
+
+error: invalid comparison operator `!==`
+  --> $DIR/js-style-comparison-op.rs:5:17
+   |
+LL |     } else if 1 !== 1 {
+   |                 ^^^
+   |
+help: `!==` is not a valid comparison operator, use `!=`
+   |
+LL -     } else if 1 !== 1 {
+LL +     } else if 1 != 1 {
+   |
+
+error: aborting due to 2 previous errors
+

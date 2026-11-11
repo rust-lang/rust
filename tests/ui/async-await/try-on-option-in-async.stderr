@@ -1,0 +1,36 @@
+error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-on-option-in-async.rs:7:10
+   |
+LL |     async {
+   |     ----- this function should return `Result` or `Option` to accept `?`
+LL |         let x: Option<u32> = None;
+LL |         x?;
+   |          ^ cannot use the `?` operator in an async block that returns `{integer}`
+
+error[E0277]: the `?` operator can only be used in an async closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-on-option-in-async.rs:16:10
+   |
+LL |       let async_closure = async || {
+   |  __________________________________-
+LL | |         let x: Option<u32> = None;
+LL | |         x?;
+   | |          ^ cannot use the `?` operator in an async closure that returns `u32`
+LL | |         22_u32
+LL | |     };
+   | |_____- this function should return `Result` or `Option` to accept `?`
+
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+  --> $DIR/try-on-option-in-async.rs:25:6
+   |
+LL |   async fn an_async_function() -> u32 {
+   |  _____________________________________-
+LL | |     let x: Option<u32> = None;
+LL | |     x?;
+   | |      ^ cannot use the `?` operator in an async function that returns `u32`
+LL | |     22
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

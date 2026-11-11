@@ -1,0 +1,79 @@
+error[E0539]: malformed `warn` attribute input
+  --> $DIR/reasons-erroneous.rs:3:4
+   |
+LL | #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                                          |
+   |                                                          expected a string literal here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
+LL + #![warn(lint1)]
+   |
+LL - #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
+LL + #![warn(lint1, lint2, ...)]
+   |
+LL - #![warn(absolute_paths_not_starting_with_crate, reason = 0)]
+LL + #![warn(lint1, lint2, lint3, reason = "...")]
+   |
+
+error[E0539]: malformed `warn` attribute input
+  --> $DIR/reasons-erroneous.rs:7:4
+   |
+LL | #![warn(anonymous_parameters, reason = b"consider these, for we have condemned them")]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                        |
+   |                                        help: consider removing the prefix
+   |
+   = note: expected a normal string literal, not a byte string literal
+
+error: malformed `warn` attribute input
+  --> $DIR/reasons-erroneous.rs:10:29
+   |
+LL | #![warn(bare_trait_objects, reasons = "leaders to no sure land, guides their bearings lost")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[warn(dead_code)]` for `dead_code`
+
+error: malformed `warn` attribute input
+  --> $DIR/reasons-erroneous.rs:13:22
+   |
+LL | #![warn(unsafe_code, blerp = "or in league with robbers have reversed the signposts")]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[warn(dead_code)]` for `dead_code`
+
+error: malformed `warn` attribute input
+  --> $DIR/reasons-erroneous.rs:16:36
+   |
+LL | #![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not the name of a lint
+   |
+   = help: for example, write `#[warn(dead_code)]` for `dead_code`
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/reasons-erroneous.rs:19:44
+   |
+LL | #![warn(ellipsis_inclusive_range_patterns, reason = "born barren", reason = "a freak growth")]
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
+
+error[E0452]: malformed lint attribute input
+  --> $DIR/reasons-erroneous.rs:22:25
+   |
+LL | #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
+
+warning: unknown lint: `reason`
+  --> $DIR/reasons-erroneous.rs:25:39
+   |
+LL | #![warn(missing_copy_implementations, reason)]
+   |                                       ^^^^^^
+   |
+   = note: `#[warn(unknown_lints)]` on by default
+
+error: aborting due to 7 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0452, E0539.
+For more information about an error, try `rustc --explain E0452`.

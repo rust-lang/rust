@@ -1,0 +1,4 @@
+error: `-Zsanitizer-cfi-diag` requires `-Zsanitizer=cfi`
+
+error: aborting due to 1 previous error
+

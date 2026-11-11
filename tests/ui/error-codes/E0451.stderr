@@ -1,0 +1,15 @@
+error[E0451]: field `b` of struct `Foo` is private
+  --> $DIR/E0451.rs:14:21
+   |
+LL |     let bar::Foo{a, b} = foo;
+   |                     ^ private field
+
+error[E0451]: field `b` of struct `Foo` is private
+  --> $DIR/E0451.rs:18:29
+   |
+LL |     let f = bar::Foo{ a: 0, b: 0 };
+   |                             ^ private field
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0451`.

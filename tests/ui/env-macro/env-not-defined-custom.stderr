@@ -1,0 +1,8 @@
+error: my error message
+  --> $DIR/env-not-defined-custom.rs:1:13
+   |
+LL | fn main() { env!("__HOPEFULLY_NOT_DEFINED__", "my error message"); }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

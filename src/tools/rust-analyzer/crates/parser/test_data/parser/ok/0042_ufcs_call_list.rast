@@ -1,0 +1,128 @@
+SOURCE_FILE
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/596"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    SEMICOLON ";"
+  WHITESPACE "\n\n"
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "bar"
+        PARAM_LIST
+          L_PAREN "("
+          R_PAREN ")"
+        WHITESPACE " "
+        RET_TYPE
+          THIN_ARROW "->"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "bool"
+        WHITESPACE " "
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            MACRO_EXPR
+              MACRO_CALL
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "unimplemented"
+                BANG "!"
+                TOKEN_TREE
+                  L_PAREN "("
+                  R_PAREN ")"
+            WHITESPACE "\n    "
+            R_CURLY "}"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "baz"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        WILDCARD_PAT
+          UNDERSCORE "_"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "bool"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        CALL_EXPR
+          PATH_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "baz"
+          ARG_LIST
+            L_PAREN "("
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      TYPE_ANCHOR
+                        L_ANGLE "<"
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "Foo"
+                        R_ANGLE ">"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "bar"
+              ARG_LIST
+                L_PAREN "("
+                R_PAREN ")"
+            R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

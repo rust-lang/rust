@@ -1,0 +1,15 @@
+error: invalid signature for `extern "gpu-kernel"` function
+  --> $DIR/cannot-return.rs:17:37
+   |
+LL | extern "gpu-kernel" fn ret_i32() -> i32 { 0 }
+   |                                     ^^^
+   |
+   = note: functions with the "gpu-kernel" ABI cannot have a return type
+help: remove the return type
+  --> $DIR/cannot-return.rs:17:37
+   |
+LL | extern "gpu-kernel" fn ret_i32() -> i32 { 0 }
+   |                                     ^^^
+
+error: aborting due to 1 previous error
+

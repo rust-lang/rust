@@ -1,0 +1,95 @@
+use rustc_attr_ir::{ReprAttr, find_attr};
+use rustc_feature::AttributeStability;
+
+use super::prelude::*;
+use crate::diagnostics::RustcPubTransparent;
+
+pub(crate) struct LintAsPtrParser;
+impl NoArgsAttributeParser for LintAsPtrParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::as_ptr];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintAsPtr;
+}
+
+pub(crate) struct LintNeverReturnsNullPtrParser;
+
+impl NoArgsAttributeParser for LintNeverReturnsNullPtrParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::never_returns_null_ptr];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintNeverReturnsNullPtr;
+}
+
+pub(crate) struct RustcPubTransparentParser;
+impl NoArgsAttributeParser for RustcPubTransparentParser {
+    const PATH: &[Symbol] = &[sym::rustc_pub_transparent];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPubTransparent;
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        // `#[rustc_pub_transparent]` may only be applied to `#[repr(transparent)]` types.
+        let is_transparent = find_attr!(
+            cx.parsed_attrs,
+            Repr { reprs, .. } if reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent)
+        );
+        if !is_transparent {
+            cx.emit_err(RustcPubTransparent { span: cx.target_span, attr_span });
+        }
+    }
+}
+
+pub(crate) struct RustcPassByValueParser;
+impl NoArgsAttributeParser for RustcPassByValueParser {
+    const PATH: &[Symbol] = &[sym::rustc_pass_by_value];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::TyAlias),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPassByValue;
+}
+
+pub(crate) struct LintShouldNotBeCalledOnConstItemsParser;
+impl NoArgsAttributeParser for LintShouldNotBeCalledOnConstItemsParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::should_not_be_called_on_const_items];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintShouldNotBeCalledOnConstItems;
+}
+
+pub(crate) struct AutomaticallyDerivedParser;
+impl NoArgsAttributeParser for AutomaticallyDerivedParser {
+    const PATH: &[Symbol] = &[sym::automatically_derived];
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Impl { of_trait: true }),
+        Error(Target::Crate),
+        Error(Target::WherePredicate),
+        Error(Target::Param),
+    ]);
+    const STABILITY: AttributeStability = AttributeStability::Stable;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::AutomaticallyDerived;
+}

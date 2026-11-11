@@ -1,0 +1,90 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:21:39
+   |
+LL |     do_something(if let Some(value) = Droppy.get_ref() { value } else { &0 });
+   |                                       ^^^^^^                   - temporary value is freed at the end of this statement
+   |                                       |
+   |                                       creates a temporary value which is freed while still in use
+   |
+note: lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:21:64
+   |
+LL |     do_something(if let Some(value) = Droppy.get_ref() { value } else { &0 });
+   |                                                                ^
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = Droppy;
+LL ~     do_something(if let Some(value) = binding.get_ref() { value } else { &0 });
+   |
+help: consider rewriting the `if` into `match` which preserves the extended lifetime
+   |
+LL -     do_something(if let Some(value) = Droppy.get_ref() { value } else { &0 });
+LL +     do_something({ match Droppy.get_ref()  { Some(value) => { value } _ => { &0 }}});
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:23:39
+   |
+LL |     do_something(if let Some(value) = Droppy.get_ref() {
+   |                                       ^^^^^^ creates a temporary value which is freed while still in use
+...
+LL |     } else if let Some(value) = Droppy.get_ref() {
+   |     - temporary value is freed at the end of this statement
+   |
+note: lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:26:5
+   |
+LL |     } else if let Some(value) = Droppy.get_ref() {
+   |     ^
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = Droppy;
+LL ~     do_something(if let Some(value) = binding.get_ref() {
+   |
+help: consider rewriting the `if` into `match` which preserves the extended lifetime
+   |
+LL ~     do_something({ match Droppy.get_ref()  { Some(value) => {
+LL |
+LL |         value
+LL ~     } _ => if let Some(value) = Droppy.get_ref() {
+LL |
+...
+LL |         &0
+LL ~     }}});
+   |
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:26:33
+   |
+LL |     } else if let Some(value) = Droppy.get_ref() {
+   |                                 ^^^^^^ creates a temporary value which is freed while still in use
+...
+LL |     } else {
+   |     - temporary value is freed at the end of this statement
+   |
+note: lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead
+  --> $DIR/if-let-rescope-borrowck-suggestions.rs:29:5
+   |
+LL |     } else {
+   |     ^
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = Droppy;
+LL ~     do_something(if let Some(value) = Droppy.get_ref() {
+LL |
+LL |         value
+LL ~     } else if let Some(value) = binding.get_ref() {
+   |
+help: consider rewriting the `if` into `match` which preserves the extended lifetime
+   |
+LL ~     } else { match Droppy.get_ref()  { Some(value) => {
+LL |
+LL |         value
+LL ~     } _ => {
+LL |         &0
+LL ~     }}});
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

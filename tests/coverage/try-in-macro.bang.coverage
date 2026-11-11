@@ -1,0 +1,44 @@
+   LL|       |//! Regression test for <https://github.com/rust-lang/rust/issues/141577>.
+   LL|       |//!
+   LL|       |//! The changes in <https://github.com/rust-lang/rust/pull/144298> exposed a
+   LL|       |//! latent bug that would sometimes cause the compiler to emit a covfun record
+   LL|       |//! for a function, but not emit a corresponding PGO symbol name entry, because
+   LL|       |//! the function did not have any physical coverage counters. The `llvm-cov`
+   LL|       |//! tool would then fail to resolve the covfun record's function name hash,
+   LL|       |//! and exit with the cryptic error:
+   LL|       |//!
+   LL|       |//! ```text
+   LL|       |//!    malformed instrumentation profile data: function name is empty
+   LL|       |//! ```
+   LL|       |//!
+   LL|       |//! The bug was then triggered in the wild by the macro-expansion of
+   LL|       |//! `#[derive(arbitrary::Arbitrary)]`.
+   LL|       |//!
+   LL|       |//! This test uses a minimized form of the `Arbitrary` derive macro that was
+   LL|       |//! found to still trigger the original bug. The bug could also be triggered
+   LL|       |//! by a bang proc-macro or an attribute proc-macro.
+   LL|       |
+   LL|       |//@ edition: 2024
+   LL|       |//@ revisions: attr bang derive
+   LL|       |//@ proc-macro: try_in_macro_helper.rs
+   LL|       |
+   LL|       |trait Arbitrary {
+   LL|       |    fn try_size_hint() -> Option<usize>;
+   LL|       |}
+   LL|       |
+   LL|       |// Expand via an attribute proc-macro.
+   LL|       |#[cfg_attr(attr, try_in_macro_helper::attr)]
+   LL|       |const _: () = ();
+   LL|       |
+   LL|       |// Expand via a regular bang-style proc-macro.
+   LL|       |#[cfg(bang)]
+   LL|       |try_in_macro_helper::bang!();
+   LL|       |
+   LL|       |// Expand via a derive proc-macro.
+   LL|       |#[cfg_attr(derive, derive(try_in_macro_helper::Arbitrary))]
+   LL|       |enum MyEnum {}
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    MyEnum::try_size_hint();
+   LL|      1|}
+

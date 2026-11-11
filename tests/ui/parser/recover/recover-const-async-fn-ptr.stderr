@@ -1,0 +1,258 @@
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:3:11
+   |
+LL | type T0 = const fn();
+   |           ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type T0 = const fn();
+LL + type T0 = fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:4:11
+   |
+LL | type T1 = const extern "C" fn();
+   |           ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type T1 = const extern "C" fn();
+LL + type T1 = extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:5:11
+   |
+LL | type T2 = const unsafe extern "C" fn();
+   |           ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type T2 = const unsafe extern "C" fn();
+LL + type T2 = unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:6:11
+   |
+LL | type T3 = async fn();
+   |           ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type T3 = async fn();
+LL + type T3 = fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:7:11
+   |
+LL | type T4 = async extern "C" fn();
+   |           ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type T4 = async extern "C" fn();
+LL + type T4 = extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:8:11
+   |
+LL | type T5 = async unsafe extern "C" fn();
+   |           ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type T5 = async unsafe extern "C" fn();
+LL + type T5 = unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:9:11
+   |
+LL | type T6 = const async unsafe extern "C" fn();
+   |           ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type T6 = const async unsafe extern "C" fn();
+LL + type T6 = async unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:9:17
+   |
+LL | type T6 = const async unsafe extern "C" fn();
+   |                 ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type T6 = const async unsafe extern "C" fn();
+LL + type T6 = const unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:13:20
+   |
+LL | type FT0 = for<'a> const fn();
+   |                    ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type FT0 = for<'a> const fn();
+LL + type FT0 = for<'a> fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:14:20
+   |
+LL | type FT1 = for<'a> const extern "C" fn();
+   |                    ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type FT1 = for<'a> const extern "C" fn();
+LL + type FT1 = for<'a> extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:15:20
+   |
+LL | type FT2 = for<'a> const unsafe extern "C" fn();
+   |                    ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type FT2 = for<'a> const unsafe extern "C" fn();
+LL + type FT2 = for<'a> unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:16:20
+   |
+LL | type FT3 = for<'a> async fn();
+   |                    ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type FT3 = for<'a> async fn();
+LL + type FT3 = for<'a> fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:17:20
+   |
+LL | type FT4 = for<'a> async extern "C" fn();
+   |                    ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type FT4 = for<'a> async extern "C" fn();
+LL + type FT4 = for<'a> extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:18:20
+   |
+LL | type FT5 = for<'a> async unsafe extern "C" fn();
+   |                    ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type FT5 = for<'a> async unsafe extern "C" fn();
+LL + type FT5 = for<'a> unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:19:20
+   |
+LL | type FT6 = for<'a> const async unsafe extern "C" fn();
+   |                    ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type FT6 = for<'a> const async unsafe extern "C" fn();
+LL + type FT6 = for<'a> async unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:19:26
+   |
+LL | type FT6 = for<'a> const async unsafe extern "C" fn();
+   |                          ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type FT6 = for<'a> const async unsafe extern "C" fn();
+LL + type FT6 = for<'a> const unsafe extern "C" fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:24:18
+   |
+LL | type W1 = unsafe const fn();
+   |                  ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type W1 = unsafe const fn();
+LL + type W1 = unsafe fn();
+   |
+
+error: an `fn` pointer type cannot be `async`
+  --> $DIR/recover-const-async-fn-ptr.rs:26:18
+   |
+LL | type W2 = unsafe async fn();
+   |                  ^^^^^ `async` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `async` qualifier
+   |
+LL - type W2 = unsafe async fn();
+LL + type W2 = unsafe fn();
+   |
+
+error: an `fn` pointer type cannot be `const`
+  --> $DIR/recover-const-async-fn-ptr.rs:28:26
+   |
+LL | type W3 = for<'a> unsafe const fn();
+   |                          ^^^^^ `const` because of this
+   |
+   = note: allowed qualifiers are: `unsafe` and `extern`
+help: remove the `const` qualifier
+   |
+LL - type W3 = for<'a> unsafe const fn();
+LL + type W3 = for<'a> unsafe fn();
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/recover-const-async-fn-ptr.rs:32:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 20 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

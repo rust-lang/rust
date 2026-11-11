@@ -1,0 +1,16 @@
+//@ edition:2018
+//@ aux-build: remove-extern-crate.rs
+//@ run-rustfix
+//@ rustfix-only-machine-applicable
+
+#![warn(rust_2018_idioms)]
+
+ //~ WARNING unused extern crate
+ //~ WARNING unused extern crate
+
+mod another {
+     //~ WARNING unused extern crate
+     //~ WARNING unused extern crate
+}
+
+fn main() {}

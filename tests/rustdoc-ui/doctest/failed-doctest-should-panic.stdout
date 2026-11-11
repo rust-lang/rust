@@ -1,0 +1,15 @@
+
+running 1 test
+test $DIR/failed-doctest-should-panic.rs - Foo (line 12) - should panic ... FAILED
+
+failures:
+
+---- $DIR/failed-doctest-should-panic.rs - Foo (line 12) stdout ----
+note: test did not panic as expected at $DIR/failed-doctest-should-panic.rs:12:0
+
+failures:
+    $DIR/failed-doctest-should-panic.rs - Foo (line 12)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+all doctests ran in $TIME; merged doctests compilation took $TIME

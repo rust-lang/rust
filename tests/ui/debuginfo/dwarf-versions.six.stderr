@@ -1,0 +1,6 @@
+error: requested DWARF version 6 is not supported
+   |
+   = help: supported DWARF versions are 2, 3, 4 and 5
+
+error: aborting due to 1 previous error
+

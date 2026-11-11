@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/type-error-post-normalization-test.rs:20:22
+   |
+LL | fn other_define() -> Tait {
+   |                      ^^^^ expected `&isize`, got `()`
+   |
+note: previous use here
+  --> $DIR/type-error-post-normalization-test.rs:16:9
+   |
+LL |     set(x);
+   |         ^
+
+error: aborting due to 1 previous error
+

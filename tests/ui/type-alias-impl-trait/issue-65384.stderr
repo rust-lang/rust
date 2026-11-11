@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `MyTrait` for type `()`
+  --> $DIR/issue-65384.rs:9:1
+   |
+LL | impl MyTrait for () {}
+   | ------------------- first implementation here
+...
+LL | impl MyTrait for Bar {}
+   | ^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

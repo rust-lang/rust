@@ -1,0 +1,21 @@
+error: `#[cfg_attr]` does not expand to any attributes
+  --> $DIR/cfg-attr-empty-is-unused.rs:5:1
+   |
+LL | #[cfg_attr(FALSE,)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/cfg-attr-empty-is-unused.rs:3:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_attributes)]` implied by `#[deny(unused)]`
+
+error: `#[cfg_attr]` does not expand to any attributes
+  --> $DIR/cfg-attr-empty-is-unused.rs:8:1
+   |
+LL | #[cfg_attr(not(FALSE),)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,4 @@
+error: the generated executable for the input file "main.rs" conflicts with the existing directory "."
+
+error: aborting due to 1 previous error
+

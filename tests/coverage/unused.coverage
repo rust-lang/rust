@@ -1,0 +1,64 @@
+   LL|       |#![allow(dead_code, unused_assignments, unused_must_use, unused_variables)]
+   LL|       |
+   LL|      2|fn foo<T>(x: T) {
+   LL|      2|    let mut i = 0;
+   LL|     22|    while i < 10 {
+   LL|     20|        i != 0 || i != 0;
+                                ^2
+   LL|     20|        i += 1;
+   LL|       |    }
+   LL|      2|}
+  ------------------
+  | unused::foo::<f32>:
+  |   LL|      1|fn foo<T>(x: T) {
+  |   LL|      1|    let mut i = 0;
+  |   LL|     11|    while i < 10 {
+  |   LL|     10|        i != 0 || i != 0;
+  |                                ^1
+  |   LL|     10|        i += 1;
+  |   LL|       |    }
+  |   LL|      1|}
+  ------------------
+  | unused::foo::<u32>:
+  |   LL|      1|fn foo<T>(x: T) {
+  |   LL|      1|    let mut i = 0;
+  |   LL|     11|    while i < 10 {
+  |   LL|     10|        i != 0 || i != 0;
+  |                                ^1
+  |   LL|     10|        i += 1;
+  |   LL|       |    }
+  |   LL|      1|}
+  ------------------
+   LL|       |
+   LL|      0|fn unused_template_func<T>(x: T) {
+   LL|      0|    let mut i = 0;
+   LL|      0|    while i < 10 {
+   LL|      0|        i != 0 || i != 0;
+   LL|      0|        i += 1;
+   LL|       |    }
+   LL|      0|}
+   LL|       |
+   LL|      0|fn unused_func(mut a: u32) {
+   LL|      0|    if a != 0 {
+   LL|      0|        a += 1;
+   LL|      0|    }
+   LL|      0|}
+   LL|       |
+   LL|      0|fn unused_func2(mut a: u32) {
+   LL|      0|    if a != 0 {
+   LL|      0|        a += 1;
+   LL|      0|    }
+   LL|      0|}
+   LL|       |
+   LL|      0|fn unused_func3(mut a: u32) {
+   LL|      0|    if a != 0 {
+   LL|      0|        a += 1;
+   LL|      0|    }
+   LL|      0|}
+   LL|       |
+   LL|      1|fn main() -> Result<(), u8> {
+   LL|      1|    foo::<u32>(0);
+   LL|      1|    foo::<f32>(0.0);
+   LL|      1|    Ok(())
+   LL|      1|}
+

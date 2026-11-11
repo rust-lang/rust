@@ -1,0 +1,143 @@
+error[E0392]: type parameter `A` is never used
+  --> $DIR/variance-unused-type-param.rs:6:19
+   |
+LL | struct SomeStruct<A> { x: u32 }
+   |                   ^ unused type parameter
+   |
+   = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
+
+error[E0392]: type parameter `A` is never used
+  --> $DIR/variance-unused-type-param.rs:9:15
+   |
+LL | enum SomeEnum<A> { Nothing }
+   |               ^ unused type parameter
+   |
+   = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
+
+error: type parameter `T` is only used recursively
+  --> $DIR/variance-unused-type-param.rs:14:23
+   |
+LL | enum ListCell<T> {
+   |               - type parameter must be used non-recursively in the definition
+LL |     Cons(Box<ListCell<T>>),
+   |                       ^
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error: type parameter `T` is only used recursively
+  --> $DIR/variance-unused-type-param.rs:19:27
+   |
+LL | struct SelfTyAlias<T>(Box<Self>);
+   |                    -      ^^^^
+   |                    |
+   |                    type parameter must be used non-recursively in the definition
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = note: all type parameters must be used in a non-recursive way in order to constrain their variance
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:22:19
+   |
+LL | struct WithBounds<T: Sized> {}
+   |                   ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:25:24
+   |
+LL | struct WithWhereBounds<T> where T: Sized {}
+   |                        ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:28:27
+   |
+LL | struct WithOutlivesBounds<T: 'static> {}
+   |                           ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:31:22
+   |
+LL | struct DoubleNothing<T> {
+   |                      ^ unused type parameter
+LL |
+LL |     s: SomeStruct<T>,
+   |                   - `T` is named here, but is not used in the type that wraps it
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:37:22
+   |
+LL | struct NestedNothing<T> {
+   |                      ^ unused type parameter
+LL |
+LL |     s: SomeStruct<Vec<T>>,
+   |                       - `T` is named here, but is not used in the type that wraps it
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0091]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:42:14
+   |
+LL | type Discard<T> = ();
+   |              ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:45:25
+   |
+LL | struct ThroughTypeAlias<T>(Discard<T>);
+   |                         ^          - `T` is named here, but is not used in the type that wraps it
+   |                         |
+   |                         unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `B` is never used
+  --> $DIR/variance-unused-type-param.rs:49:24
+   |
+LL | struct SecondUnused<A, B> { a: A }
+   |                        ^ unused type parameter
+   |
+   = help: consider removing `B`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `B` to be a const parameter, use `const B: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:52:25
+   |
+LL | struct UsesSecondUnused<T>(SecondUnused<u32, T>);
+   |                         ^                    - `T` is named here, but is not used in the type that wraps it
+   |                         |
+   |                         unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/variance-unused-type-param.rs:58:31
+   |
+LL | struct ThroughForwardingAlias<T>(Forward<T>);
+   |                               ^          - `T` is named here, but is not used in the type that wraps it
+   |                               |
+   |                               unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0091, E0392.
+For more information about an error, try `rustc --explain E0091`.

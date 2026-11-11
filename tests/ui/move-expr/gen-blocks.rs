@@ -1,0 +1,79 @@
+//@ edition: 2024
+//@ run-pass
+// This needs to remain a run-pass test to check capture behavior at runtime.
+#![allow(incomplete_features)]
+#![deny(unused_mut)]
+#![feature(gen_blocks, move_expr)]
+
+use std::cell::Cell;
+use std::sync::Arc;
+
+fn main() {
+    let created = Cell::new(0);
+    let mut iter = gen {
+        let n = move({
+            created.set(created.get() + 1);
+            created.get()
+        });
+        yield n;
+        yield n + 1;
+    };
+    assert_eq!(created.get(), 1);
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), None);
+
+    let x = Arc::new(String::from("hello"));
+    assert_eq!(Arc::strong_count(&x), 1);
+    let mut iter = gen {
+        let value = move(x.clone());
+        yield Arc::strong_count(&value);
+        yield Arc::strong_count(&value);
+    };
+    assert_eq!(Arc::strong_count(&x), 2);
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(2));
+    drop(iter);
+    assert_eq!(Arc::strong_count(&x), 1);
+
+    let y = Arc::new(String::from("nested"));
+    let weak = Arc::downgrade(&y);
+    let mut iter = gen {
+        let mut inner = gen {
+            let value = move(move(y.clone()));
+            yield Arc::strong_count(&value);
+        };
+        yield inner.next().unwrap();
+    };
+    assert_eq!(weak.strong_count(), 2);
+    assert_eq!(iter.next(), Some(2));
+    drop(iter);
+    assert_eq!(weak.strong_count(), 1);
+    assert_eq!(&*y, "nested");
+
+    let z = Arc::new(String::from("gen move"));
+    assert_eq!(Arc::strong_count(&z), 1);
+    let mut iter = gen move {
+        let value = move(z.clone());
+        yield Arc::strong_count(&value);
+    };
+    assert_eq!(Arc::strong_count(&z), 2);
+    assert_eq!(iter.next(), Some(2));
+    drop(iter);
+    assert_eq!(Arc::strong_count(&z), 1);
+
+    let data = vec![1];
+    let mut iter = gen {
+        for _ in 0..2 {
+            let len = {
+                let data = &mut move(data);
+                data.push(2);
+                data.len()
+            };
+            yield len;
+        }
+    };
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), None);
+}

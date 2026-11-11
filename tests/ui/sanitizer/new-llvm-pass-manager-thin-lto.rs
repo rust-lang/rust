@@ -1,0 +1,30 @@
+// Regression test for sanitizer function instrumentation passes not
+// being run when compiling with new LLVM pass manager and ThinLTO.
+// Note: The issue occurred only on non-zero opt-level.
+//
+//@ needs-sanitizer-support
+//@ needs-sanitizer-address
+//@ ignore-cross-compile
+//
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//
+//@ no-prefer-dynamic
+//@ revisions: opt0 opt1
+//@ compile-flags: -Zsanitizer=address -Clto=thin
+//@[opt0]compile-flags: -Copt-level=0
+//@[opt1]compile-flags: -Copt-level=1
+//@ run-fail-or-crash
+//@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
+//@ ignore-backends: gcc
+
+static mut P: *mut usize = std::ptr::null_mut();
+
+fn main() {
+    unsafe {
+        {
+            let mut x = 0;
+            P = &mut x;
+        }
+        std::ptr::write_volatile(P, 123);
+    }
+}

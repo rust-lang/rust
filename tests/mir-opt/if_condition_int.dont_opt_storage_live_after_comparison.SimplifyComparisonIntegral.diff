@@ -1,0 +1,27 @@
+- // MIR for `dont_opt_storage_live_after_comparison` before SimplifyComparisonIntegral
++ // MIR for `dont_opt_storage_live_after_comparison` after SimplifyComparisonIntegral
+  
+  fn dont_opt_storage_live_after_comparison(_1: bool) -> () {
+      let mut _0: ();
+      let mut _2: u32;
+      let mut _3: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          goto -> bb1;
+      }
+  
+      bb1: {
+          _2 = copy _1 as u32 (IntToInt);
+          _3 = Eq(copy _2, const 42_u32);
+          StorageDead(_2);
+          StorageLive(_2);
+          switchInt(move _3) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

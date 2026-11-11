@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-74280.rs:10:5
+   |
+LL | fn test() -> Test {
+   |              ---- expected `()` because of return type
+LL |     let y = || -> Test { () };
+LL |     7
+   |     ^ expected `()`, found integer
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

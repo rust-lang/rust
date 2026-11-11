@@ -1,0 +1,453 @@
+//! Checks that `#[repr(complex)]` `Complex<T>` matches the C `_Complex` ABI in `extern "C"`
+//! functions. This is the rustc side of `tests/run-make/complex-c-abi`, which additionally
+//! checks these signatures against clang. Revisions are grouped by LLVM component.
+
+//@ add-minicore
+//@ compile-flags: -C no-prepopulate-passes -Z codegen-source-order -C opt-level=3
+
+//@ revisions: X86_64 WINDOWS_MSVC WINDOWS_GNU
+//@ [X86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@ [X86_64] needs-llvm-components: x86
+//@ [WINDOWS_MSVC] compile-flags: --target x86_64-pc-windows-msvc
+//@ [WINDOWS_MSVC] needs-llvm-components: x86
+//@ [WINDOWS_GNU] compile-flags: --target x86_64-pc-windows-gnu
+//@ [WINDOWS_GNU] needs-llvm-components: x86
+
+//@ revisions: I686 WIN32_MSVC WIN32_GNU
+//@ [I686] compile-flags: --target i686-unknown-linux-gnu
+//@ [I686] needs-llvm-components: x86
+//@ [WIN32_MSVC] compile-flags: --target i686-pc-windows-msvc
+//@ [WIN32_MSVC] needs-llvm-components: x86
+//@ [WIN32_GNU] compile-flags: --target i686-pc-windows-gnu
+//@ [WIN32_GNU] needs-llvm-components: x86
+
+//@ revisions: AARCH64 AARCH64_DARWIN AARCH64_MSVC ARM64EC
+//@ [AARCH64] compile-flags: --target aarch64-unknown-linux-gnu
+//@ [AARCH64] needs-llvm-components: aarch64
+//@ [AARCH64_DARWIN] compile-flags: --target aarch64-apple-darwin
+//@ [AARCH64_DARWIN] needs-llvm-components: aarch64
+//@ [AARCH64_MSVC] compile-flags: --target aarch64-pc-windows-msvc
+//@ [AARCH64_MSVC] needs-llvm-components: aarch64
+//@ [ARM64EC] compile-flags: --target arm64ec-pc-windows-msvc
+//@ [ARM64EC] needs-llvm-components: aarch64
+
+//@ revisions: ARM
+//@ [ARM] compile-flags: --target arm-unknown-linux-gnueabihf
+//@ [ARM] needs-llvm-components: arm
+
+//@ revisions: RISCV64 RISCV32
+//@ [RISCV64] compile-flags: --target riscv64gc-unknown-linux-gnu
+//@ [RISCV64] needs-llvm-components: riscv
+//@ [RISCV32] compile-flags: --target riscv32gc-unknown-linux-gnu
+//@ [RISCV32] needs-llvm-components: riscv
+
+//@ revisions: LOONGARCH64 LOONGARCH32
+//@ [LOONGARCH64] compile-flags: --target loongarch64-unknown-linux-gnu
+//@ [LOONGARCH64] needs-llvm-components: loongarch
+//@ [LOONGARCH32] compile-flags: --target loongarch32-unknown-none
+//@ [LOONGARCH32] needs-llvm-components: loongarch
+
+//@ revisions: S390X
+//@ [S390X] compile-flags: --target s390x-unknown-linux-gnu
+//@ [S390X] needs-llvm-components: systemz
+
+//@ revisions: WASM32 WASM64
+//@ [WASM32] compile-flags: --target wasm32-unknown-unknown
+//@ [WASM32] needs-llvm-components: webassembly
+//@ [WASM64] compile-flags: --target wasm64-unknown-unknown
+//@ [WASM64] needs-llvm-components: webassembly
+
+//@ revisions: CSKY
+//@ [CSKY] compile-flags: --target csky-unknown-linux-gnuabiv2
+//@ [CSKY] needs-llvm-components: csky
+
+//@ revisions: SPARC64 SPARC
+//@ [SPARC64] compile-flags: --target sparc64-unknown-linux-gnu
+//@ [SPARC64] needs-llvm-components: sparc
+//@ [SPARC] compile-flags: --target sparc-unknown-linux-gnu
+//@ [SPARC] needs-llvm-components: sparc
+
+//@ revisions: POWERPC64LE POWERPC64 AIX
+//@ [POWERPC64LE] compile-flags: --target powerpc64le-unknown-linux-gnu
+//@ [POWERPC64LE] needs-llvm-components: powerpc
+//@ [POWERPC64] compile-flags: --target powerpc64-unknown-linux-gnu
+//@ [POWERPC64] needs-llvm-components: powerpc
+//@ [AIX] compile-flags: --target powerpc64-ibm-aix
+//@ [AIX] needs-llvm-components: powerpc
+
+// NOTE: for 32-bit powerpc we follow the GCC ABI, not the Clang ABI.
+//@ revisions: POWERPC
+//@ [POWERPC] compile-flags: --target powerpc-unknown-linux-gnu
+//@ [POWERPC] needs-llvm-components: powerpc
+
+// NOTE: in clang <= 23 Complex is passed incorrectly.
+// See https://github.com/llvm/llvm-project/issues/212109.
+//@ revisions: MIPS64 MIPS64EL
+//@ [MIPS64] compile-flags: --target mips64-unknown-linux-gnuabi64
+//@ [MIPS64] needs-llvm-components: mips
+//@ [MIPS64EL] compile-flags: --target mips64el-unknown-linux-gnuabi64
+//@ [MIPS64EL] needs-llvm-components: mips
+
+//@ revisions: MIPS MIPSEL
+//@ [MIPS] compile-flags: --target mips-unknown-linux-gnu
+//@ [MIPS] needs-llvm-components: mips
+//@ [MIPSEL] compile-flags: --target mipsel-unknown-linux-gnu
+//@ [MIPSEL] needs-llvm-components: mips
+
+// FIXME: the revisions below are deliberately disabled for now.
+
+// revisions: NVPTX
+// [NVPTX] compile-flags: --target nvptx64-nvidia-cuda
+// [NVPTX] needs-llvm-components: nvptx
+
+// revisions: AMDGPU
+// [AMDGPU] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
+// [AMDGPU] needs-llvm-components: amdgpu
+
+// revisions: BPF
+// [BPF] compile-flags: --target bpfel-unknown-none
+// [BPF] needs-llvm-components: bpf
+
+#![feature(no_core, lang_items, f16, f128)]
+#![no_core]
+// only Complex<{float}> is guaranteed to be ABI-compatible for now
+#![expect(improper_ctypes_definitions)]
+#![crate_type = "lib"]
+
+extern crate minicore;
+#[cfg(target_arch = "powerpc")]
+use minicore::arch::powerpc::ppcf128;
+#[cfg(target_arch = "powerpc64")]
+use minicore::arch::powerpc64::ppcf128;
+use minicore::num::Complex;
+
+#[no_mangle]
+pub extern "C" fn cplx_f16(x: Complex<f16>) -> Complex<f16> {
+    // AARCH64:        define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // ARM64EC:        define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // ARM:            define{{.*}} [2 x half] @cplx_f16([2 x half] {{.*}})
+    // I686:           define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
+    // LOONGARCH64:    define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
+    // NVPTX:          define{{.*}} { half, half } @cplx_f16(ptr {{.*}} byval({ half, half }) {{.*}})
+    // RISCV32:        define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
+    // RISCV64:        define{{.*}} { half, half } @cplx_f16({ half, half } {{.*}})
+    // S390X:          define{{.*}} void @cplx_f16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} <2 x half> @cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} i32 @cplx_f16(i32 {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} i32 @cplx_f16(i32 {{.*}})
+    // X86_64:         define{{.*}} float @cplx_f16(float {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
+    // AARCH64:        define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
+    // AIX:            define{{.*}} { float, float } @cplx_f32({ float, float } %0)
+    // ARM64EC:        define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
+    // ARM:            define{{.*}} [2 x float] @cplx_f32([2 x float] {{.*}})
+    // BPF:            define{{.*}} void @cplx_f32(ptr {{.*}} sret({ float, float }) {{.*}}, i64 {{.*}})
+    // CSKY:           define{{.*}} [2 x i32] @cplx_f32([2 x i32] {{.*}})
+    // I686:           define{{.*}} i64 @cplx_f32(ptr {{.*}} byval([8 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
+    // LOONGARCH64:    define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
+    // MIPS64:         define{{.*}} { float, float } @cplx_f32([2 x float] {{.*}})
+    // MIPS64EL:       define{{.*}} { float, float } @cplx_f32([2 x float] {{.*}})
+    // MIPS:           define{{.*}} [2 x float] @cplx_f32([2 x i32] {{.*}})
+    // MIPSEL:         define{{.*}} [2 x float] @cplx_f32([2 x i32] {{.*}})
+    // NVPTX:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} byval({ float, float }) {{.*}})
+    // POWERPC64:      define{{.*}} { float, float } @cplx_f32({ float, float } %0)
+    // POWERPC64LE:    define{{.*}} { float, float } @cplx_f32({ float, float } %0)
+    // POWERPC:        define{{.*}} i64 @cplx_f32(i64 {{.*}})
+    // RISCV32:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
+    // RISCV64:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
+    // S390X:          define{{.*}} void @cplx_f32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
+    // SPARC64:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
+    // SPARC:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} dereferenceable(8) {{.*}})
+    // WASM32:         define{{.*}} void @cplx_f32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @cplx_f32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} i64 @cplx_f32(ptr {{.*}} byval([8 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} i64 @cplx_f32(ptr {{.*}} byval([8 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} i64 @cplx_f32(i64 {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} i64 @cplx_f32(i64 {{.*}})
+    // X86_64:         define{{.*}} double @cplx_f32(double {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
+    // AARCH64:        define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
+    // AIX:            define{{.*}} { double, double } @cplx_f64({ double, double } %0)
+    // ARM64EC:        define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
+    // ARM:            define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
+    // BPF:            define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, [2 x i64] {{.*}})
+    // CSKY:           define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, [4 x i32] {{.*}})
+    // I686:           define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    // LOONGARCH64:    define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    // MIPS64:         define{{.*}} { double, double } @cplx_f64([2 x double] {{.*}})
+    // MIPS64EL:       define{{.*}} { double, double } @cplx_f64([2 x double] {{.*}})
+    // MIPS:           define{{.*}} [2 x double] @cplx_f64([4 x i32] {{.*}})
+    // MIPSEL:         define{{.*}} [2 x double] @cplx_f64([4 x i32] {{.*}})
+    // NVPTX:          define{{.*}} { double, double } @cplx_f64(ptr {{.*}} byval({ double, double }) {{.*}})
+    // POWERPC64:      define{{.*}} { double, double } @cplx_f64({ double, double } %0)
+    // POWERPC64LE:    define{{.*}} { double, double } @cplx_f64({ double, double } %0)
+    // POWERPC:        define{{.*}} [4 x i32] @cplx_f64([4 x i32] {{.*}})
+    // RISCV32:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    // RISCV64:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    // S390X:          define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // SPARC64:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    // SPARC:          define{{.*}} { double, double } @cplx_f64(ptr {{.*}} dereferenceable(16) {{.*}})
+    // WASM32:         define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn cplx_f128(x: Complex<f128>) -> Complex<f128> {
+    // AARCH64:        define{{.*}} [2 x fp128] {{.*}})
+    // I686:           define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
+    // MIPS64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, i32 %0, { fp128, fp128 } %1)
+    // MIPS64EL:       define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, i32 %0, { fp128, fp128 } %1)
+    // POWERPC64LE:    define{{.*}} { fp128, fp128 } @cplx_f128({ fp128, fp128 } %0)
+    // SPARC:          define{{.*}} inreg { fp128, fp128 } @cplx_f128(ptr {{.*}} dereferenceable(32) {{.*}})
+    // WASM32:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
+    // LOONGARCH64:    define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // RISCV64:        define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    x
+}
+
+#[no_mangle]
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+pub extern "C" fn cplx_ppcf128(x: Complex<ppcf128>) -> Complex<ppcf128> {
+    // AIX:            define{{.*}} { ppc_fp128, ppc_fp128 } @cplx_ppcf128({ ppc_fp128, ppc_fp128 } %0)
+    // POWERPC64:      define{{.*}} { ppc_fp128, ppc_fp128 } @cplx_ppcf128({ ppc_fp128, ppc_fp128 } %0)
+    // POWERPC64LE:    define{{.*}} { ppc_fp128, ppc_fp128 } @cplx_ppcf128({ ppc_fp128, ppc_fp128 } %0)
+    // POWERPC:        define{{.*}} [8 x i32] @cplx_ppcf128([8 x i32] {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
+    // AARCH64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // AARCH64_DARWIN: define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // AARCH64_MSVC:   define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // AIX:            define{{.*}} { i8, i8 } @cplx_i8({ i8, i8 } %0)
+    // ARM64EC:        define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // ARM:            define{{.*}} i32 @cplx_i8([1 x i32]{{.*}})
+    // BPF:            define{{.*}} void @cplx_i8(ptr {{.*}} sret({ i8, i8 }) {{.*}}, i16 {{.*}})
+    // CSKY:           define{{.*}} i32 @cplx_i8(i32{{.*}})
+    // I686:           define{{.*}} i16 @cplx_i8(ptr {{.*}} byval([2 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} i32 @cplx_i8(i32{{.*}})
+    // LOONGARCH64:    define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // MIPS64:         define{{.*}} i16 @cplx_i8(i16 inreg {{.*}})
+    // MIPS64EL:       define{{.*}} i16 @cplx_i8(i16 inreg {{.*}})
+    // MIPS:           define{{.*}} i16 @cplx_i8(i32 {{.*}})
+    // MIPSEL:         define{{.*}} i16 @cplx_i8(i32 {{.*}})
+    // NVPTX:          define{{.*}} { i8, i8 } @cplx_i8(ptr {{.*}} byval({ i8, i8 }) {{.*}})
+    // POWERPC64:      define{{.*}} { i8, i8 } @cplx_i8({ i8, i8 } %0)
+    // POWERPC64LE:    define{{.*}} { i8, i8 } @cplx_i8({ i8, i8 } %0)
+    // POWERPC:        define{{.*}} i16 @cplx_i8(i16 {{.*}})
+    // RISCV32:        define{{.*}} i32 @cplx_i8(i32{{.*}})
+    // RISCV64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
+    // S390X:          define{{.*}} void @cplx_i8(ptr {{.*}} sret([2 x i8]) {{.*}}, ptr {{.*}})
+    // SPARC64:        define{{.*}} i16 @cplx_i8(i16{{.*}})
+    // SPARC:          define{{.*}} i16 @cplx_i8(i16{{.*}})
+    // WASM32:         define{{.*}} void @cplx_i8(ptr {{.*}} sret([2 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @cplx_i8(ptr {{.*}} sret([2 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} i16 @cplx_i8(ptr {{.*}} byval([2 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} i16 @cplx_i8(ptr {{.*}} byval([2 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} i16 @cplx_i8(i16 {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} i16 @cplx_i8(i16 {{.*}})
+    // X86_64:         define{{.*}} i16 @cplx_i8(i16 {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
+    // AARCH64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // AARCH64_DARWIN: define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // AARCH64_MSVC:   define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // AIX:            define{{.*}} { i16, i16 } @cplx_i16(i16 {{.*}}, i16 {{.*}})
+    // ARM64EC:        define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // ARM:            define{{.*}} i32 @cplx_i16([1 x i32]{{.*}})
+    // BPF:            define{{.*}} void @cplx_i16(ptr {{.*}} sret({ i16, i16 }) {{.*}}, i32 {{.*}})
+    // CSKY:           define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // I686:           define{{.*}} i32 @cplx_i16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // LOONGARCH64:    define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // MIPS64:         define{{.*}} i32 @cplx_i16(i32 inreg {{.*}})
+    // MIPS64EL:       define{{.*}} i32 @cplx_i16(i32 inreg {{.*}})
+    // MIPS:           define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // MIPSEL:         define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // NVPTX:          define{{.*}} { i16, i16 } @cplx_i16(ptr {{.*}} byval({ i16, i16 }) {{.*}})
+    // POWERPC64:      define{{.*}} { i16, i16 } @cplx_i16(i16 {{.*}}, i16 {{.*}})
+    // POWERPC64LE:    define{{.*}} { i16, i16 } @cplx_i16(i16 {{.*}}, i16 {{.*}})
+    // POWERPC:        define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // RISCV32:        define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // RISCV64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
+    // S390X:          define{{.*}} void @cplx_i16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
+    // SPARC64:        define{{.*}} i32 @cplx_i16(i32{{.*}})
+    // SPARC:          define{{.*}} i32 @cplx_i16(i32{{.*}})
+    // WASM32:         define{{.*}} void @cplx_i16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @cplx_i16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} i32 @cplx_i16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} i32 @cplx_i16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    // X86_64:         define{{.*}} i32 @cplx_i16(i32 {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn cplx_i32(x: Complex<i32>) -> Complex<i32> {
+    // AARCH64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // AARCH64_DARWIN: define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // AARCH64_MSVC:   define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // AIX:            define{{.*}} { i32, i32 } @cplx_i32({ i32, i32 } %0)
+    // ARM64EC:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // ARM:            define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, [2 x i32] {{.*}})
+    // BPF:            define{{.*}} void @cplx_i32(ptr {{.*}} sret({ i32, i32 }) {{.*}}, i64 {{.*}})
+    // CSKY:           define{{.*}} [2 x i32] @cplx_i32([2 x i32] {{.*}})
+    // I686:           define{{.*}} i64 @cplx_i32(ptr {{.*}} byval([8 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} [2 x i32] @cplx_i32([2 x i32] {{.*}})
+    // LOONGARCH64:    define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // MIPS64:         define{{.*}} i64 @cplx_i32(i64 inreg {{.*}})
+    // MIPS64EL:       define{{.*}} i64 @cplx_i32(i64 inreg {{.*}})
+    // MIPS:           define{{.*}} [2 x i32] @cplx_i32([2 x i32] {{.*}})
+    // MIPSEL:         define{{.*}} [2 x i32] @cplx_i32([2 x i32] {{.*}})
+    // NVPTX:          define{{.*}} { i32, i32 } @cplx_i32(ptr {{.*}} byval({ i32, i32 }) {{.*}})
+    // POWERPC64:      define{{.*}} { i32, i32 } @cplx_i32({ i32, i32 } %0)
+    // POWERPC64LE:    define{{.*}} { i32, i32 } @cplx_i32({ i32, i32 } %0)
+    // POWERPC:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // RISCV32:        define{{.*}} [2 x i32] @cplx_i32([2 x i32] {{.*}})
+    // RISCV64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // S390X:          define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
+    // SPARC64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // SPARC:          define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // WASM32:         define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} i64 @cplx_i32(ptr {{.*}} byval([8 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} i64 @cplx_i32(ptr {{.*}} byval([8 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    // X86_64:         define{{.*}} i64 @cplx_i32(i64 {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
+    // AARCH64:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
+    // AIX:            define{{.*}} { i64, i64 } @cplx_i64({ i64, i64 } %0)
+    // ARM64EC:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
+    // ARM:            define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, [2 x i64] {{.*}})
+    // BPF:            define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, [2 x i64] {{.*}})
+    // CSKY:           define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, [4 x i32] {{.*}})
+    // I686:           define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // LOONGARCH64:    define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
+    // MIPS64:         define{{.*}} { i64, i64 } @cplx_i64(i128 {{.*}})
+    // MIPS64EL:       define{{.*}} { i64, i64 } @cplx_i64(i128 {{.*}})
+    // MIPS:           define{{.*}} [2 x i64] @cplx_i64([4 x i32] {{.*}})
+    // MIPSEL:         define{{.*}} [2 x i64] @cplx_i64([4 x i32] {{.*}})
+    // NVPTX:          define{{.*}} { i64, i64 } @cplx_i64(ptr {{.*}} byval({ i64, i64 }) {{.*}})
+    // POWERPC64:      define{{.*}} { i64, i64 } @cplx_i64({ i64, i64 } %0)
+    // POWERPC64LE:    define{{.*}} { i64, i64 } @cplx_i64({ i64, i64 } %0)
+    // POWERPC:        define{{.*}} [4 x i32] @cplx_i64([4 x i32] {{.*}})
+    // RISCV32:        define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // RISCV64:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
+    // S390X:          define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // SPARC64:        define{{.*}} { i64, i64 } @cplx_i64({ i64, i64 } {{.*}})
+    // SPARC:          define{{.*}} { i64, i64 } @cplx_i64(ptr {{.*}} dereferenceable(16) {{.*}})
+    // WASM32:         define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} { i64, i64 } @cplx_i64({ i64, i64 } {{.*}})
+    x
+}
+
+#[repr(transparent)]
+struct Wrapper<T>(T);
+
+#[no_mangle]
+pub extern "C" fn wrapper_cplx_i64(
+    x: Wrapper<Complex<Wrapper<i64>>>,
+) -> Wrapper<Complex<Wrapper<i64>>> {
+    // AARCH64:        define{{.*}} [2 x i64] @wrapper_cplx_i64([2 x i64] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x i64] @wrapper_cplx_i64([2 x i64] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x i64] @wrapper_cplx_i64([2 x i64] {{.*}})
+    // AIX:            define{{.*}} { i64, i64 } @wrapper_cplx_i64({ i64, i64 } %0)
+    // ARM64EC:        define{{.*}} [2 x i64] @wrapper_cplx_i64([2 x i64] {{.*}})
+    // ARM:            define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, [2 x i64] {{.*}})
+    // BPF:            define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, [2 x i64] {{.*}})
+    // CSKY:           define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, [4 x i32] {{.*}})
+    // I686:           define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // LOONGARCH64:    define{{.*}} [2 x i64] @wrapper_cplx_i64([2 x i64] {{.*}})
+    // MIPS64:         define{{.*}} { i64, i64 } @wrapper_cplx_i64(i128 {{.*}})
+    // MIPS64EL:       define{{.*}} { i64, i64 } @wrapper_cplx_i64(i128 {{.*}})
+    // MIPS:           define{{.*}} [2 x i64] @wrapper_cplx_i64([4 x i32] {{.*}})
+    // MIPSEL:         define{{.*}} [2 x i64] @wrapper_cplx_i64([4 x i32] {{.*}})
+    // NVPTX:          define{{.*}} { i64, i64 } @wrapper_cplx_i64(ptr {{.*}} byval({ i64, i64 }) {{.*}})
+    // POWERPC64:      define{{.*}} { i64, i64 } @wrapper_cplx_i64({ i64, i64 } %0)
+    // POWERPC64LE:    define{{.*}} { i64, i64 } @wrapper_cplx_i64({ i64, i64 } %0)
+    // POWERPC:        define{{.*}} [4 x i32] @wrapper_cplx_i64([4 x i32] {{.*}})
+    // RISCV32:        define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // RISCV64:        define{{.*}} [2 x i64] @wrapper_cplx_i64([2 x i64] {{.*}})
+    // S390X:          define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // SPARC64:        define { i64, i64 } @wrapper_cplx_i64({ i64, i64 } {{.*}})
+    // SPARC:          define{{.*}} { i64, i64 } @wrapper_cplx_i64(ptr {{.*}} dereferenceable(16) {{.*}})
+    // WASM32:         define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WASM64:         define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} { i64, i64 } @wrapper_cplx_i64({ i64, i64 } {{.*}})
+    x
+}
+
+#[no_mangle]
+pub extern "C" fn wrapper_cplx_f16(
+    x: Wrapper<Complex<Wrapper<f16>>>,
+) -> Wrapper<Complex<Wrapper<f16>>> {
+    // AARCH64:        define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // AARCH64_DARWIN: define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // AARCH64_MSVC:   define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // ARM64EC:        define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // ARM:            define{{.*}} [2 x half] @wrapper_cplx_f16([2 x half] {{.*}})
+    // I686:           define{{.*}} <2 x half> @wrapper_cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // LOONGARCH32:    define{{.*}} { half, half } @wrapper_cplx_f16({ half, half } {{.*}})
+    // LOONGARCH64:    define{{.*}} { half, half } @wrapper_cplx_f16({ half, half } {{.*}})
+    // NVPTX:          define{{.*}} { half, half } @wrapper_cplx_f16(ptr {{.*}} byval({ half, half }) {{.*}})
+    // RISCV32:        define{{.*}} { half, half } @wrapper_cplx_f16({ half, half } {{.*}})
+    // RISCV64:        define{{.*}} { half, half } @wrapper_cplx_f16({ half, half } {{.*}})
+    // S390X:          define{{.*}} void @wrapper_cplx_f16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
+    // WIN32_GNU:      define{{.*}} <2 x half> @wrapper_cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} <2 x half> @wrapper_cplx_f16(ptr {{.*}} byval([4 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} i32 @wrapper_cplx_f16(i32 {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} i32 @wrapper_cplx_f16(i32 {{.*}})
+    // X86_64:         define{{.*}} float @wrapper_cplx_f16(float {{.*}})
+    x
+}

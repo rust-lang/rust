@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/doesnt_unify_evaluatable.rs:9:11
+   |
+LL |     bar::<{ T::ASSOC }>();
+   |           ^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | fn foo<T: Trait, U: Trait>() where [(); U::ASSOC]:, [(); { T::ASSOC }]: {
+   |                                                     +++++++++++++++++++
+
+error: aborting due to 1 previous error
+

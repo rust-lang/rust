@@ -1,0 +1,15 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-71381.rs:14:82
+   |
+LL |     pub fn call_me<Args: Sized, const IDX: usize, const FN: unsafe extern "C" fn(Args)>(&self) {
+   |                                                                                  ^^^^ the type must not depend on the parameter `Args`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/issue-71381.rs:23:40
+   |
+LL |         const FN: unsafe extern "C" fn(Args),
+   |                                        ^^^^ the type must not depend on the parameter `Args`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0770`.

@@ -1,0 +1,28 @@
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/derive_multiple_lifetimes.rs:41:1
+   |
+LL | impl<'a, 'b, T> CoerceShared<ManualShared<'a, 'b, T>> for ManualMut<'a, 'b, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------------------^^^^^^--------------------^^^
+   | |                            |                            |
+   | |                            |                            source type has 2 non-ZST reborrow data fields
+   | |                            target type has 2 non-ZST reborrow data fields
+   | in this `CoerceShared` implementation
+   |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
+
+error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
+  --> $DIR/derive_multiple_lifetimes.rs:56:20
+   |
+LL | #[derive(Reborrow, CoerceShared)]
+   |                    ^^^^^^^^^^^^
+   |                    |
+   |                    in this `CoerceShared` implementation
+   |                    source type has 2 non-ZST reborrow data fields
+LL |
+LL | #[coerce_shared(DerivedShared<'a, 'b, T>)]
+   |                 ------------------------ target type has 2 non-ZST reborrow data fields
+   |
+   = note: this is a temporary restriction until `CoerceShared` lowering supports non-trivially memcpy-compatible field layouts
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,9 @@
+error[E0131]: `main` function is not allowed to have generic parameters
+  --> $DIR/main-with-lifetime-param.rs:3:8
+   |
+LL | fn main<'a>() {}
+   |        ^^^^ `main` cannot have generic parameters
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0131`.

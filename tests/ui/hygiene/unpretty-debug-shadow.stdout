@@ -1,0 +1,30 @@
+//@ check-pass
+//@ compile-flags: -Zunpretty=expanded,hygiene
+
+// Regression test for token hygiene annotations in -Zunpretty=expanded,hygiene
+// Previously, tokens in macro_rules! bodies were missing hygiene annotations,
+// making it impossible to see how a macro's reference to a shadowed variable
+// is distinguished from the shadowing binding.
+
+// Don't break whenever Symbol numbering changes
+//@ normalize-stdout: "\d+#" -> "0#"
+
+#![feature /* 0#0 */(no_core /* 0#0 */)]
+#![no_core /* 0#0 */]
+
+fn f /* 0#0 */() {
+    let x /* 0#0 */ = 0;
+    macro_rules! use_x /* 0#0 */ { () => { x /* 0#0 */ }; }
+    let x /* 0#0 */ = 1;
+    x /* 0#1 */;
+}
+
+/*
+Expansions:
+crate0::{{expn0}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
+crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "use_x")
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
+#1: parent: #0, outer_mark: (crate0::{{expn1}}, SemiOpaque)
+*/

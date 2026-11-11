@@ -1,0 +1,35 @@
+error: comparison operators cannot be chained
+  --> $DIR/issue-82566-1.rs:18:7
+   |
+LL |     T1<1>::C;
+   |       ^ ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     T1::<1>::C;
+   |       ++
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-82566-1.rs:19:9
+   |
+LL |     T2<1, 2>::C;
+   |         ^ expected one of `.`, `;`, `?`, `}`, or an operator
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     T2::<1, 2>::C;
+   |       ++
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/issue-82566-1.rs:20:9
+   |
+LL |     T3<1, 2, 3>::C;
+   |         ^ expected one of `.`, `;`, `?`, `}`, or an operator
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     T3::<1, 2, 3>::C;
+   |       ++
+
+error: aborting due to 3 previous errors
+

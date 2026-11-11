@@ -1,0 +1,92 @@
+#![warn(clippy::filter_next, clippy::new_ret_no_self)]
+
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::ops::Mul;
+use std::rc::{self, Rc};
+use std::sync::{self, Arc};
+
+struct Lt<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt<'a> {
+    // The lifetime is different, but that’s irrelevant; see issue #734.
+    #[allow(clippy::needless_lifetimes)]
+    pub fn new<'b>(s: &'b str) -> Lt<'b> {
+        unimplemented!()
+    }
+}
+
+struct Lt2<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt2<'a> {
+    // The lifetime is different, but that’s irrelevant; see issue #734.
+    pub fn new(s: &str) -> Lt2<'_> {
+        unimplemented!()
+    }
+}
+
+struct Lt3<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt3<'a> {
+    // The lifetime is different, but that’s irrelevant; see issue #734.
+    pub fn new() -> Lt3<'static> {
+        unimplemented!()
+    }
+}
+
+#[derive(Clone, Copy)]
+struct U;
+
+impl U {
+    fn new() -> Self {
+        U
+    }
+    // Ok because `U` is `Copy`.
+    fn to_something(self) -> u32 {
+        0
+    }
+}
+
+struct V<T> {
+    _dummy: T,
+}
+
+impl<T> V<T> {
+    fn new() -> Option<V<T>> {
+        None
+    }
+}
+
+struct AsyncNew;
+
+impl AsyncNew {
+    async fn new() -> Option<Self> {
+        None
+    }
+}
+
+struct BadNew;
+
+impl BadNew {
+    fn new() -> i32 {
+        //~^ new_ret_no_self
+        0
+    }
+}
+
+struct T;
+
+impl Mul<T> for T {
+    type Output = T;
+    // No error, obviously.
+    fn mul(self, other: T) -> T {
+        self
+    }
+}
+
+fn main() {}

@@ -1,0 +1,12 @@
+warning: unexpected `xxx` condition value: `xxx`
+  --> $DIR/and-more-diagnostic.rs:11:10
+   |
+LL |     cfg!(target_feature = "zebra");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `xxx` are: `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, `xxx`, and `xxx` and X more
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

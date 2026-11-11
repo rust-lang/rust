@@ -1,0 +1,19 @@
+error: missing `for` in a trait impl
+  --> $DIR/impl-parsing.rs:4:11
+   |
+LL | impl Trait Type {}
+   |           ^
+   |
+help: add `for` here
+   |
+LL | impl Trait for Type {}
+   |            +++
+
+error: expected a trait, found type
+  --> $DIR/impl-parsing.rs:5:6
+   |
+LL | impl ?Sized for Type {}
+   |      ^^^^^^
+
+error: aborting due to 2 previous errors
+

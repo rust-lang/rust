@@ -1,0 +1,34 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/issue-70304.rs:46:41
+   |
+LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
+   |                                         ^^ `'_` is a reserved lifetime name
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-70304.rs:46:61
+   |
+LL | fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
+   |                                                             ^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+   |
+LL - fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
+LL + fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'static>> {
+   |
+
+error: missing required bound on `Cursor`
+  --> $DIR/issue-70304.rs:2:5
+   |
+LL |     type Cursor<'a>: DocCursor<'a>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                   |
+   |                                   help: add the required where clause: `where Self: 'a`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0637.
+For more information about an error, try `rustc --explain E0106`.

@@ -1,0 +1,14 @@
+error[E0507]: cannot move out of dereference of `MyBox<Vec<i32>>`
+  --> $DIR/ufcs-for-deref-inner-clone.rs:14:14
+   |
+LL |     let _x = MyBox(vec![1, 2]).into_iter();
+   |              ^^^^^^^^^^^^^^^^^ move occurs because value has type `Vec<i32>`, which does not implement the `Copy` trait
+   |
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     let _x = <Vec<i32> as Clone>::clone(&MyBox(vec![1, 2])).into_iter();
+   |              ++++++++++++++++++++++++++++                 +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

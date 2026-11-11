@@ -1,0 +1,38 @@
+error: unknown start of token: \u{37e}
+  --> $DIR/unicode-chars.rs:2:14
+   |
+LL |     let y = 0;
+   |              ^
+   |
+help: Unicode character ';' (Greek Question Mark) looks like ';' (Semicolon), but it is not
+   |
+LL -     let y = 0;
+LL +     let y = 0;
+   |
+
+error: unknown start of token: \u{a0}
+  --> $DIR/unicode-chars.rs:5:5
+   |
+LL |         let x = 0;
+   |     ^^^^
+   |
+   = note: character appears 3 more times
+help: Unicode character ' ' (No-Break Space) looks like ' ' (Space), but it is not
+   |
+LL |         let x = 0;
+   |     ++++
+
+error: unknown start of token: \u{2a75}
+  --> $DIR/unicode-chars.rs:9:15
+   |
+LL |     let _ = 1 ⩵ 2;
+   |               ^
+   |
+help: Unicode character '⩵' (Two Consecutive Equals Signs) looks like '==' (Double Equals Sign), but it is not
+   |
+LL -     let _ = 1 ⩵ 2;
+LL +     let _ = 1 == 2;
+   |
+
+error: aborting due to 3 previous errors
+

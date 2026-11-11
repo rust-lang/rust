@@ -1,0 +1,22 @@
+error: expected one of `+`, `,`, `::`, `=`, or `>`, found `From`
+  --> $DIR/parse_error.rs:2:46
+   |
+LL | impl<S: Into<std::borrow::Cow<'static, str>> From<S> for Canonical {
+   |                                              ^^^^ expected one of `+`, `,`, `::`, `=`, or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | impl<S: Into<std::borrow::Cow<'static, str>>> From<S> for Canonical {
+   |                                             +
+
+error[E0369]: cannot add `{integer}` to `&str`
+  --> $DIR/parse-error-resolve.rs:5:16
+   |
+LL |     let _ = "" + 1;
+   |             -- ^ - {integer}
+   |             |
+   |             &str
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

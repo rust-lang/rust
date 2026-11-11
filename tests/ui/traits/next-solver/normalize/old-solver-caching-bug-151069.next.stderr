@@ -1,0 +1,31 @@
+error[E0275]: overflow evaluating the requirement `<Bar as Trait>::Assoc2 == _`
+  --> $DIR/old-solver-caching-bug-151069.rs:17:1
+   |
+LL | / impl Trait for Bar
+LL | | where
+LL | |     <Bar as Trait>::Assoc2: Trait,
+   | |__________________________________^
+
+error[E0275]: overflow evaluating the requirement `<Bar as Trait>::Assoc2 == _`
+  --> $DIR/old-solver-caching-bug-151069.rs:21:5
+   |
+LL |     type Assoc2 = ();
+   |     ^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<Bar as Trait>::Assoc2 == _`
+  --> $DIR/old-solver-caching-bug-151069.rs:24:12
+   |
+LL |     field: <Bar as Trait>::Assoc2,
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating whether `<Bar as Trait>::Assoc2` is well-formed
+  --> $DIR/old-solver-caching-bug-151069.rs:24:12
+   |
+LL |     field: <Bar as Trait>::Assoc2,
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<Foo as Pointee>::Metadata == _`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

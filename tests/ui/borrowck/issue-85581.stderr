@@ -1,0 +1,17 @@
+error[E0499]: cannot borrow `*heap` as mutable more than once at a time
+  --> $DIR/issue-85581.rs:9:22
+   |
+LL |     match heap.peek_mut() {
+   |           ---------------
+   |           |
+   |           first mutable borrow occurs here
+   |           a temporary with access to the first borrow is created here ...
+LL |         Some(_) => { heap.pop(); },
+   |                      ^^^^ second mutable borrow occurs here
+...
+LL | }
+   | - ... and the first borrow might be used here, when that temporary is dropped and runs the destructor for type `Option<std::collections::binary_heap::PeekMut<'_, i32>>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

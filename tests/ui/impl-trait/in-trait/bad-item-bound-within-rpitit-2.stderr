@@ -1,0 +1,33 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/bad-item-bound-within-rpitit-2.rs:4:20
+   |
+LL |     fn bar<'other: 'a>() -> impl Sized + 'a {}
+   |                    ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn bar<'a, 'other: 'a>() -> impl Sized + 'a {}
+   |            +++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait Foo<'a> {
+   |          ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/bad-item-bound-within-rpitit-2.rs:4:42
+   |
+LL |     fn bar<'other: 'a>() -> impl Sized + 'a {}
+   |                                          ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL |     fn bar<'a, 'other: 'a>() -> impl Sized + 'a {}
+   |            +++
+help: consider introducing lifetime `'a` here
+   |
+LL | trait Foo<'a> {
+   |          ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

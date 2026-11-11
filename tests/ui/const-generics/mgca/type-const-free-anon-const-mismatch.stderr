@@ -1,0 +1,8 @@
+error: the constant `"this isn't a usize"` is not of type `usize`
+  --> $DIR/type-const-free-anon-const-mismatch.rs:9:1
+   |
+LL | const N: usize = gca!("this isn't a usize");
+   | ^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+
+error: aborting due to 1 previous error
+

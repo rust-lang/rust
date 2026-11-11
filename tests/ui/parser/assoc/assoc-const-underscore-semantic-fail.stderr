@@ -1,0 +1,21 @@
+error: `const` items in this context need a name
+  --> $DIR/assoc-const-underscore-semantic-fail.rs:6:15
+   |
+LL |         const _: () = ();
+   |               ^ `_` is not a valid name for this `const` item
+
+error: `const` items in this context need a name
+  --> $DIR/assoc-const-underscore-semantic-fail.rs:9:15
+   |
+LL |         const _: () = ();
+   |               ^ `_` is not a valid name for this `const` item
+
+error[E0438]: const `_` is not a member of trait `A`
+  --> $DIR/assoc-const-underscore-semantic-fail.rs:9:9
+   |
+LL |         const _: () = ();
+   |         ^^^^^^^^^^^^^^^^^ not a member of trait `A`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0438`.

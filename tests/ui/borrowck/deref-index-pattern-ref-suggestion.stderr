@@ -1,0 +1,29 @@
+error[E0508]: cannot move out of type `[Option<NonCopy>; 1]`, a non-copy array
+  --> $DIR/deref-index-pattern-ref-suggestion.rs:7:28
+   |
+LL |     if let Some(mut val) = wrap[0] {
+   |                 -------    ^^^^^^^ cannot move out of here
+   |                 |
+   |                 data moved here because `val` has type `NonCopy`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     if let Some(ref mut val) = wrap[0] {
+   |                 +++
+
+error[E0508]: cannot move out of type `[Option<NonCopy>; 1]`, a non-copy array
+  --> $DIR/deref-index-pattern-ref-suggestion.rs:14:28
+   |
+LL |     if let Some(mut val) = (&mut wrap)[0] {
+   |                 -------    ^^^^^^^^^^^^^^ cannot move out of here
+   |                 |
+   |                 data moved here because `val` has type `NonCopy`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     if let Some(ref mut val) = (&mut wrap)[0] {
+   |                 +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0508`.

@@ -1,0 +1,255 @@
+use arrayvec::ArrayVec;
+use rustc_abi::{
+    BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg, RegKind,
+    Size, TyAbiInterface,
+};
+
+use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
+
+fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
+    // Always sign extend u32 values on 64-bit mips
+    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
+        && let Primitive::Int(i, signed) = scalar.primitive()
+        && !signed
+        && i.size().bits() == 32
+        && let PassMode::Direct(ref mut attrs) = arg.mode
+    {
+        attrs.ext(ArgExtension::Sext);
+        return;
+    }
+
+    arg.extend_integer_width_to(bits);
+}
+
+fn float_reg<'a, Ty, C>(cx: &C, ret: &ArgAbi<'a, Ty>, i: usize) -> Option<Reg>
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    match ret.layout.field(cx, i).backend_repr {
+        BackendRepr::Scalar(scalar) => match scalar.primitive() {
+            Primitive::Float(float) => {
+                match float {
+                    // C does not have the f16 type
+                    Float::F16 => None,
+                    Float::F32 => Some(Reg::f32()),
+                    Float::F64 => Some(Reg::f64()),
+                    Float::F128 => Some(Reg::f128()),
+                    Float::F16B => unreachable!("`f16b` unsupported on mips64"),
+                    Float::X87F80 => unreachable!("`x87_f80` unsupported on mips64"),
+                    Float::PpcF128 => unreachable!("`ppcf128` unsupported on mips64"),
+                }
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    if !ret.layout.is_aggregate() {
+        extend_integer_width_mips(ret, 64);
+        return;
+    }
+
+    let size = ret.layout.size;
+    let bits = size.bits();
+    if bits <= 128 {
+        // NOTE: Complex<f128> is returned indirectly.
+        if let Some(component) = ret.layout.complex_number(cx) {
+            match component {
+                Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) => {
+                    // Return a Complex<{integer}> packed into a single register when that fits.
+                    ret.cast_to(Reg { kind: RegKind::Integer, size });
+                }
+                _ => {
+                    // Otherwise pass in 2 registers.
+                    let reg = Reg { kind: component.reg_kind(), size: component.size() };
+                    ret.cast_to(CastTarget::pair(reg, reg));
+                }
+            }
+            return;
+        }
+
+        // Unlike other architectures which return aggregates in registers, MIPS n64 limits the
+        // use of float registers to structures (not unions) containing exactly one or two
+        // float fields.
+
+        if let FieldsShape::Arbitrary { .. } = ret.layout.fields {
+            if ret.layout.fields.count() == 1 {
+                if let Some(reg) = float_reg(cx, ret, 0) {
+                    // The inreg attribute forces LLVM to return a struct containing a f128 in
+                    // $f0 and $f1 rather than $f0 and $f2, see:
+                    // https://github.com/llvm/llvm-project/blob/a81db64570f94c2ca8ac0f598c0b5bba1a7ae59e/llvm/lib/Target/Mips/MipsCallingConv.td#L48-L51
+                    ret.cast_to_with_attrs(reg, ArgAttribute::InReg.into());
+                    return;
+                }
+            } else if ret.layout.fields.count() == 2
+                && let Some(reg0) = float_reg(cx, ret, 0)
+                && let Some(reg1) = float_reg(cx, ret, 1)
+            {
+                ret.cast_to_with_attrs(CastTarget::pair(reg0, reg1), ArgAttribute::InReg.into());
+                return;
+            }
+        }
+
+        // Cast to a uniform int structure
+        ret.cast_to(Uniform::new(Reg::i64(), size));
+    } else {
+        ret.make_indirect();
+        *offset += cx.data_layout().pointer_size();
+    }
+}
+
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, offset: &mut Size)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    let dl = cx.data_layout();
+    let size = arg.layout.size;
+    let mut prefix = ArrayVec::new();
+
+    // Detect need for padding
+    let align = Ord::clamp(arg.layout.align, dl.i64_align, dl.i128_align);
+    let pad_i32 = u8::from(!offset.is_aligned(align));
+
+    if !arg.layout.is_aggregate() {
+        extend_integer_width_mips(arg, 64);
+
+        // We always pad with an integer, even if the primitive is a float. This
+        // is because the N64 ABI puts the n-th argument in the n-th register
+        // starting from $4 if it belongs in a GPR and in the n-th register
+        // starting from $f12 if it belongs in a FPR.
+        // Therefore padding with an integer results in skipping a FPR for the
+        // next floating point parameter.
+        if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+            let kind = RegKind::from_primitive(scalar.primitive());
+            arg.cast_to_and_pad_i32(CastTarget::from(Reg { kind, size }), pad_i32);
+        }
+    } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+    } else if let Some(component) = arg.layout.complex_number(cx)
+        && !matches!(component, Numeric::Float(Float::F16))
+    {
+        let slot = dl.pointer_size();
+        let curr_offset = offset.align_to(align);
+
+        const NUM_ARG_SLOTS: u64 = 8;
+
+        match component {
+            Numeric::Float(Float::F16B) => unreachable!("Complex<f16b> is not C-compatible"),
+            Numeric::Float(Float::F16 | Float::X87F80 | Float::PpcF128) => {
+                unreachable!("not supported on mips64")
+            }
+            Numeric::Float(Float::F32 | Float::F64) => {
+                // Only pass a Complex<f32>/Complex<f64> in FPRs when two argument slots are free.
+                if curr_offset.bytes() / slot.bytes() + 2 <= NUM_ARG_SLOTS {
+                    // Both components claim a slot, even a Complex<f32> which could fit in one
+                    // slot.
+                    //
+                    // FIXME(complex_numbers): c-variadic arguments are passed in GPRs, so need a
+                    // special carve-out here and Complex<f32> is bitpacked into one 64-bit GPR.
+                    *offset = curr_offset + slot * 2;
+                    let unit = Reg { kind: RegKind::Float, size: component.size() };
+                    let cast_target = CastTarget::from(Uniform::new(unit, size));
+                    arg.cast_to(cast_target);
+                    return;
+                }
+
+                // Otherwise pack it into GPRs (or the stack) like an integer of the same size.
+                arg.cast_to_and_pad_i32(Uniform::new(Reg::i64(), size), pad_i32);
+            }
+            Numeric::Float(Float::F128) => {
+                // Complex<f128> is passed in 4 FPRs, but aligned to 16 so may need padding.
+                let reg = Reg { kind: RegKind::Float, size: arg.layout.field(cx, 0).size };
+                arg.cast_to_and_pad_i32(CastTarget::pair(reg, reg), pad_i32);
+            }
+            Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32, _) => {
+                // Cast Complex<i8> into i16, Complex<i16> to i32, etc.
+                let cast_target = CastTarget::from(Reg { kind: RegKind::Integer, size });
+                // The inreg attribute makes the bits land in the right (upper) bits on BE targets.
+                arg.cast_to(cast_target.with_attrs(ArgAttribute::InReg.into()));
+            }
+            Numeric::Int(Integer::I64 | Integer::I128, _) => {
+                // Complex<i64> and Complex<i128> are passed as 2 separate arguments.
+                let cast_target = CastTarget::from(Reg { kind: RegKind::Integer, size });
+                arg.cast_to(cast_target);
+            }
+        }
+    } else {
+        match arg.layout.fields {
+            FieldsShape::Primitive => unreachable!(),
+            FieldsShape::Array { .. } => {
+                // Arrays are passed indirectly
+                arg.make_indirect();
+            }
+            FieldsShape::Union(_) => {
+                // Unions and are always treated as a series of 64-bit integer chunks
+            }
+            FieldsShape::Arbitrary { .. } => {
+                // Structures are split up into a series of 64-bit integer chunks, but any aligned
+                // doubles not part of another aggregate are passed as floats.
+                let mut last_offset = Size::ZERO;
+
+                'outer: for i in 0..arg.layout.fields.count() {
+                    let field = arg.layout.field(cx, i);
+                    let offset = arg.layout.fields.offset(i);
+
+                    // We only care about aligned doubles
+                    if let BackendRepr::Scalar(scalar) = field.backend_repr {
+                        if scalar.primitive() == Primitive::Float(Float::F64) {
+                            if offset.is_aligned(dl.f64_align) {
+                                // Insert enough integers to cover [last_offset, offset)
+                                assert!(last_offset.is_aligned(dl.f64_align));
+                                for _ in 0..((offset - last_offset).bits() / 64) {
+                                    if prefix.try_push(Reg::i64()).is_err() {
+                                        break 'outer;
+                                    }
+                                }
+
+                                if prefix.try_push(Reg::f64()).is_err() {
+                                    break;
+                                }
+                                last_offset = offset + Reg::f64().size;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Extract first 8 chunks as the prefix
+        let rest_size = size - Size::from_bytes(8) * prefix.len() as u64;
+        arg.cast_to_and_pad_i32(
+            CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)),
+            pad_i32,
+        );
+    }
+    *offset = offset.align_to(align) + size.align_to(align);
+}
+
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    // mips64 argument passing is also affected by the alignment of aggregates.
+    // see mips.rs for how the offset is used
+    let mut offset = Size::ZERO;
+
+    if !fn_abi.ret.is_ignore() && fn_abi.ret.layout.is_sized() {
+        classify_ret(cx, &mut fn_abi.ret, &mut offset);
+    }
+
+    for arg in fn_abi.args.iter_mut() {
+        if arg.is_ignore() || !arg.layout.is_sized() {
+            continue;
+        }
+        classify_arg(cx, arg, &mut offset);
+    }
+}

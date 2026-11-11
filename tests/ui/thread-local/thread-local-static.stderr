@@ -1,0 +1,18 @@
+error[E0133]: use of mutable static is unsafe and requires unsafe function or block
+  --> $DIR/thread-local-static.rs:9:28
+   |
+LL |     std::mem::swap(x, &mut STATIC_VAR_2)
+   |                            ^^^^^^^^^^^^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+
+error[E0625]: thread-local statics cannot be accessed at compile-time
+  --> $DIR/thread-local-static.rs:9:28
+   |
+LL |     std::mem::swap(x, &mut STATIC_VAR_2)
+   |                            ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0133, E0625.
+For more information about an error, try `rustc --explain E0133`.

@@ -1,0 +1,65 @@
+error[E0277]: the trait bound `S: b::Hidden` is not satisfied
+  --> $DIR/sealed-trait-local.rs:52:20
+   |
+LL | impl a::Sealed for S {}
+   |                    ^ unsatisfied trait bound
+   |
+help: the trait `b::Hidden` is not implemented for `S`
+  --> $DIR/sealed-trait-local.rs:51:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+note: required by a bound in `a::Sealed`
+  --> $DIR/sealed-trait-local.rs:3:23
+   |
+LL |     pub trait Sealed: self::b::Hidden {
+   |                       ^^^^^^^^^^^^^^^ required by this bound in `Sealed`
+   = note: `Sealed` is a "sealed trait", because to implement it you also need to implement `a::b::Hidden`, which is not accessible; this is usually done to force you to use one of the provided types that already implement it
+   = help: the following type implements the trait:
+             a::X
+
+error[E0277]: the trait bound `S: d::Hidden` is not satisfied
+  --> $DIR/sealed-trait-local.rs:53:20
+   |
+LL | impl c::Sealed for S {}
+   |                    ^ unsatisfied trait bound
+   |
+help: the trait `d::Hidden` is not implemented for `S`
+  --> $DIR/sealed-trait-local.rs:51:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+note: required by a bound in `c::Sealed`
+  --> $DIR/sealed-trait-local.rs:17:23
+   |
+LL |     pub trait Sealed: self::d::Hidden {
+   |                       ^^^^^^^^^^^^^^^ required by this bound in `Sealed`
+   = note: `Sealed` is a "sealed trait", because to implement it you also need to implement `c::d::Hidden`, which is not accessible; this is usually done to force you to use one of the provided types that already implement it
+   = help: the following types implement the trait:
+             c::X
+             c::Y
+
+error[E0277]: the trait bound `S: f::Hidden` is not satisfied
+  --> $DIR/sealed-trait-local.rs:54:20
+   |
+LL | impl e::Sealed for S {}
+   |                    ^ unsatisfied trait bound
+   |
+help: the trait `f::Hidden` is not implemented for `S`
+  --> $DIR/sealed-trait-local.rs:51:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+note: required by a bound in `e::Sealed`
+  --> $DIR/sealed-trait-local.rs:35:23
+   |
+LL |     pub trait Sealed: self::f::Hidden {
+   |                       ^^^^^^^^^^^^^^^ required by this bound in `Sealed`
+   = note: `Sealed` is a "sealed trait", because to implement it you also need to implement `e::f::Hidden`, which is not accessible; this is usually done to force you to use one of the provided types that already implement it
+   = help: the following types implement the trait:
+             e::X
+             e::Y
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,48 @@
+error[E0038]: the trait `Expr` is not dyn compatible
+  --> $DIR/mentions-Self-in-super-predicates.rs:12:27
+   |
+LL |     elements: Vec<Box<dyn Expr + 'x>>,
+   |                           ^^^^ `Expr` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/mentions-Self-in-super-predicates.rs:5:21
+   |
+LL | trait Expr: Debug + PartialEq {
+   |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait is not dyn compatible...
+
+error[E0038]: the trait `Expr` is not dyn compatible
+  --> $DIR/mentions-Self-in-super-predicates.rs:38:20
+   |
+LL |     let a: Box<dyn Expr> = Box::new(SExpr::new());
+   |                    ^^^^ `Expr` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/mentions-Self-in-super-predicates.rs:5:21
+   |
+LL | trait Expr: Debug + PartialEq {
+   |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait is not dyn compatible...
+
+error[E0038]: the trait `Expr` is not dyn compatible
+  --> $DIR/mentions-Self-in-super-predicates.rs:40:20
+   |
+LL |     let b: Box<dyn Expr> = Box::new(SExpr::new());
+   |                    ^^^^ `Expr` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/mentions-Self-in-super-predicates.rs:5:21
+   |
+LL | trait Expr: Debug + PartialEq {
+   |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
+   |       |
+   |       this trait is not dyn compatible...
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

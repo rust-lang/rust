@@ -1,0 +1,8 @@
+error: requires `ResumeTy` lang_item
+  --> $DIR/required-lang-item.rs:10:14
+   |
+LL | async fn x() {}
+   |              ^^
+
+error: aborting due to 1 previous error
+

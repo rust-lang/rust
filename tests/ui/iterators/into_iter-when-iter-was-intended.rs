@@ -1,0 +1,10 @@
+//@ run-rustfix
+//@ edition:2021
+// Suggest using the right `IntoIterator` method. #68095
+fn main() {
+    let _a = [0, 1, 2].iter().chain([3, 4, 5].into_iter()); //~ ERROR E0271
+    let _b = [0, 1, 2].into_iter().chain([3, 4, 5].iter()); //~ ERROR E0271
+    // These don't have appropriate suggestions yet.
+    // let c = [0, 1, 2].iter().chain([3, 4, 5]);
+    // let d = [0, 1, 2].iter().chain(vec![3, 4, 5]);
+}

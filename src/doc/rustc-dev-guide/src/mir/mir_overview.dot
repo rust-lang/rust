@@ -1,0 +1,10 @@
+digraph G {
+    Operand -> Constant
+    Operand -> Place
+    Place -> Projection
+    Projection -> Place
+    Place -> Local
+    Rvalue -> Operand
+    Assignment -> Place
+    Assignment -> Operand
+}

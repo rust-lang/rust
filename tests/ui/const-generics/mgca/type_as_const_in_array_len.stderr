@@ -1,0 +1,19 @@
+error[E0107]: missing generics for struct `C`
+  --> $DIR/type_as_const_in_array_len.rs:6:19
+   |
+LL | struct B(Box<[u8; C]>);
+   |                   ^ expected 1 lifetime argument
+   |
+note: struct defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/type_as_const_in_array_len.rs:13:8
+   |
+LL | struct C<'a>(&'a u8);
+   |        ^ --
+help: add missing lifetime argument
+   |
+LL | struct B(Box<[u8; C<'a>]>);
+   |                    ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

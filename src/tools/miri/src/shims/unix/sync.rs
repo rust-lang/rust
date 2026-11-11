@@ -1,0 +1,980 @@
+use rustc_abi::Size;
+use rustc_target::spec::Os;
+
+use crate::*;
+
+/// Check if `place` stores the initializer called `name`.
+///
+/// `prefix`, if set, indicates that only the first N bytes should be compared.
+fn is_initializer<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
+    place: &MPlaceTy<'tcx>,
+    name: &str,
+    prefix: Option<u64>,
+) -> InterpResult<'tcx, bool> {
+    let size = place.layout.size;
+    let cmp_size = prefix.map(Size::from_bytes).unwrap_or(size);
+
+    let init = &ecx.eval_path(&["libc", name]);
+    assert_eq!(size, init.layout.size);
+
+    let place_bytes = ecx.read_bytes_ptr_strip_provenance(place.ptr(), cmp_size)?;
+    let init_bytes = ecx.read_bytes_ptr_strip_provenance(init.ptr(), cmp_size)?;
+
+    if place_bytes == init_bytes {
+        // Ensure that the static initializers are different from the dummy data backing an already
+        // initialized object.
+        assert!(init_bytes.iter().any(|b| *b != crate::meta_obj::OPAQUE_OBJ_COOKIE));
+        interp_ok(true)
+    } else {
+        interp_ok(false)
+    }
+}
+
+// # pthread_mutexattr_t
+
+struct PthreadMutexAttr {
+    /// `None` represents that the kind has not yet been explicitly set.
+    kind: Option<MutexKind>,
+}
+
+/// The mutex kind.
+#[derive(Debug, Clone, Copy)]
+enum MutexKind {
+    Normal,
+    Default,
+    Recursive,
+    ErrorCheck,
+}
+
+impl MetaObj for PthreadMutexAttr {
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+fn mutexattr_create<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    mutexattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let mutexattr = ecx.deref_pointer(mutexattr_ptr)?;
+    let data = PthreadMutexAttr { kind: None };
+    ecx.insert_meta(&mutexattr, Box::new(data))?;
+    interp_ok(())
+}
+
+fn mutexattr_destroy<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    mutexattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let mutexattr = ecx.deref_pointer(mutexattr_ptr)?;
+    ecx.remove_meta::<PthreadMutexAttr>(&mutexattr)?.ok_or_else(|| {
+        err_ub_format!("`pthread_mutexattr_t` has not been initialized or has been tampered with")
+    })?;
+    interp_ok(())
+}
+
+/// Returns the mutex attribute data stored at the address that `mutexattr_ptr` points to.
+/// Will raise an error if the mutex has been moved since its first use.
+fn mutexattr_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    mutexattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadMutexAttr>
+where
+    'tcx: 'a,
+{
+    let mutexattr = ecx.deref_pointer(mutexattr_ptr)?;
+    ecx.get_or_insert_meta(&mutexattr, |_ecx| {
+        throw_ub_format!("`pthread_mutexattr_t` has not been initialized or has been tampered with")
+    })
+}
+
+/// Translates the mutex kind from what is stored in pthread_mutexattr_t to our enum.
+fn mutexattr_translate_kind<'tcx>(ecx: &MiriInterpCx<'tcx>, kind: i32) -> Option<MutexKind> {
+    Some(if kind == (ecx.eval_libc_i32("PTHREAD_MUTEX_NORMAL")) {
+        MutexKind::Normal
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_ERRORCHECK") {
+        MutexKind::ErrorCheck
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_RECURSIVE") {
+        MutexKind::Recursive
+    } else if kind == ecx.eval_libc_i32("PTHREAD_MUTEX_DEFAULT") {
+        // We check this *last* since PTHREAD_MUTEX_DEFAULT may be numerically equal to one of the
+        // others, and we want an explicit `mutexattr_settype` to work as expected.
+        MutexKind::Default
+    } else {
+        return None;
+    })
+}
+
+// # pthread_mutex_t
+
+#[derive(Debug, Clone)]
+struct PthreadMutex {
+    mutex_ref: MutexRef,
+    kind: MutexKind,
+}
+
+impl MetaObj for PthreadMutex {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
+        if !self.mutex_ref.queue_is_empty() {
+            throw_ub_format!(
+                "accessing the memory backing a `pthread_mutex_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+/// Eagerly create and initialize a new mutex.
+fn mutex_create<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    mutex_ptr: &OpTy<'tcx>,
+    kind: MutexKind,
+) -> InterpResult<'tcx> {
+    let mutex = ecx.deref_pointer(mutex_ptr)?;
+    let data = PthreadMutex { mutex_ref: MutexRef::new(), kind };
+    ecx.insert_meta(&mutex, Box::new(data))?;
+    interp_ok(())
+}
+
+/// Returns the mutex data stored at the address that `mutex_ptr` points to.
+/// Will raise an error if the mutex has been moved since its first use.
+fn mutex_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    mutex_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadMutex>
+where
+    'tcx: 'a,
+{
+    let mutex = ecx.deref_pointer(mutex_ptr)?;
+    ecx.get_or_insert_meta(&mutex, |ecx| {
+        let kind = mutex_kind_from_static_initializer(ecx, &mutex)?;
+        interp_ok(PthreadMutex { mutex_ref: MutexRef::new(), kind })
+    })
+}
+
+/// Returns the kind of a static initializer.
+fn mutex_kind_from_static_initializer<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
+    mutex: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, MutexKind> {
+    let prefix = match &ecx.tcx.sess.target.os {
+        // On android, there's a 4-byte `value` header followed by "padding", and some versions
+        // of libc leave that padding uninitialized. Only check the `value` bytes.
+        Os::Android => Some(4),
+        _ => None,
+    };
+    let is_initializer = |name| is_initializer(ecx, mutex, name, prefix);
+
+    // All the static initializers recognized here *must* be checked in `mutex_init_offset`!
+
+    // PTHREAD_MUTEX_INITIALIZER is recognized on all targets.
+    if is_initializer("PTHREAD_MUTEX_INITIALIZER")? {
+        return interp_ok(MutexKind::Default);
+    }
+    // Support additional platform-specific initializers.
+    match &ecx.tcx.sess.target.os {
+        Os::Linux =>
+            if is_initializer("PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP")? {
+                return interp_ok(MutexKind::Recursive);
+            } else if is_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP")? {
+                return interp_ok(MutexKind::ErrorCheck);
+            },
+        _ => {}
+    }
+    throw_ub_format!(
+        "`pthread_mutex_t` was not properly initialized at this location, or it got overwritten"
+    );
+}
+
+// # pthread_rwlock_t
+
+#[derive(Debug, Clone)]
+struct PthreadRwLock {
+    rwlock_ref: RwLockRef,
+}
+
+impl MetaObj for PthreadRwLock {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
+        if !self.rwlock_ref.queue_is_empty() {
+            throw_ub_format!(
+                "accessing the memory backing a `pthread_rwlock_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+fn rwlock_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    rwlock_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadRwLock>
+where
+    'tcx: 'a,
+{
+    let rwlock = ecx.deref_pointer(rwlock_ptr)?;
+    ecx.get_or_insert_meta(
+        &rwlock,
+        |ecx| {
+            let prefix = match &ecx.tcx.sess.target.os {
+                // On android, there's a 4-byte `value` header followed by "padding", and some
+                // versions of libc leave that uninitialized. Only check the `value` bytes.
+                Os::Android => Some(4),
+                _ => None,
+            };
+            if !is_initializer(
+                ecx,
+                &rwlock,
+                "PTHREAD_RWLOCK_INITIALIZER",
+                prefix,
+            )? {
+                throw_ub_format!(
+                    "`pthread_rwlock_t` was not properly initialized at this location, or it got overwritten"
+                );
+            }
+            interp_ok(PthreadRwLock { rwlock_ref: RwLockRef::new() })
+        },
+    )
+}
+
+// # pthread_condattr_t
+
+struct PthreadCondAttr {
+    clock: TimeoutClock,
+}
+
+impl MetaObj for PthreadCondAttr {
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+fn condattr_create<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    condattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let condattr = ecx.deref_pointer(condattr_ptr)?;
+    let data = PthreadCondAttr { clock: TimeoutClock::RealTime };
+    ecx.insert_meta(&condattr, Box::new(data))?;
+    interp_ok(())
+}
+
+fn condattr_destroy<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    condattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx> {
+    let condattr = ecx.deref_pointer(condattr_ptr)?;
+    ecx.remove_meta::<PthreadCondAttr>(&condattr)?.ok_or_else(|| {
+        err_ub_format!("`pthread_condattr_t` has not been initialized or has been tampered with")
+    })?;
+    interp_ok(())
+}
+
+/// Returns the mutex attribute data stored at the address that `condattr_ptr` points to.
+/// Will raise an error if the mutex has been moved since its first use.
+fn condattr_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    condattr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadCondAttr>
+where
+    'tcx: 'a,
+{
+    let condattr = ecx.deref_pointer(condattr_ptr)?;
+    ecx.get_or_insert_meta(&condattr, |_ecx| {
+        throw_ub_format!("`pthread_condattr_t` has not been initialized or has been tampered with")
+    })
+}
+
+// # pthread_cond_t
+
+#[derive(Debug, Clone)]
+struct PthreadCondvar {
+    condvar_ref: CondvarRef,
+    clock: TimeoutClock,
+}
+
+impl MetaObj for PthreadCondvar {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
+        if !self.condvar_ref.queue_is_empty() {
+            throw_ub_format!(
+                "accessing the memory backing a `pthread_cond_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+fn cond_create<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    cond_ptr: &OpTy<'tcx>,
+    clock: TimeoutClock,
+) -> InterpResult<'tcx> {
+    let cond = ecx.deref_pointer(cond_ptr)?;
+    let data = PthreadCondvar { condvar_ref: CondvarRef::new(), clock };
+    ecx.insert_meta(&cond, Box::new(data))?;
+    interp_ok(())
+}
+
+fn cond_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    cond_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadCondvar>
+where
+    'tcx: 'a,
+{
+    let cond = ecx.deref_pointer(cond_ptr)?;
+    ecx.get_or_insert_meta(
+        &cond,
+        |ecx| {
+            let prefix = match &ecx.tcx.sess.target.os {
+                // On android, there's a 4-byte `value` header followed by "padding", and some
+                // versions of libc leave that uninitialized. Only check the `value` bytes.
+                Os::Android => Some(4),
+                _ => None,
+            };
+            if !is_initializer(
+                ecx,
+                &cond,
+                "PTHREAD_COND_INITIALIZER",
+                prefix,
+            )? {
+                throw_ub_format!(
+                    "`pthread_cond_t` was not properly initialized at this location, or it got overwritten"
+                );
+            }
+            // This used the static initializer. The clock there is always CLOCK_REALTIME.
+            interp_ok(PthreadCondvar {
+                condvar_ref: CondvarRef::new(),
+                clock: TimeoutClock::RealTime,
+            })
+        },
+    )
+}
+
+// # sem_t
+
+#[derive(Debug, Clone)]
+struct PthreadSem {
+    sem_ref: SemaphoreRef,
+}
+
+impl MetaObj for PthreadSem {
+    fn on_access<'tcx>(&self) -> InterpResult<'tcx> {
+        if !self.sem_ref.queue_is_empty() {
+            throw_ub_format!(
+                "accessing the memory backing a `sem_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn opaque(&self) -> bool {
+        true
+    }
+}
+
+fn sem_create<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    sem_ptr: &OpTy<'tcx>,
+    value: u32,
+) -> InterpResult<'tcx> {
+    let sem = ecx.deref_pointer(sem_ptr)?;
+    let data = PthreadSem { sem_ref: SemaphoreRef::new(value.into()) };
+    ecx.insert_meta(&sem, Box::new(data))?;
+    interp_ok(())
+}
+
+fn sem_get_data<'tcx, 'a>(
+    ecx: &'a mut MiriInterpCx<'tcx>,
+    sem_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, &'a mut PthreadSem>
+where
+    'tcx: 'a,
+{
+    let sem = ecx.deref_pointer(sem_ptr)?;
+    ecx.get_or_insert_meta(&sem, |_ecx| {
+        throw_ub_format!("`sem_t` value has not been initialized with `sem_init`")
+    })
+}
+
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    fn pthread_mutexattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        mutexattr_create(this, attr_op)
+    }
+
+    fn pthread_mutexattr_settype(
+        &mut self,
+        attr_op: &OpTy<'tcx>,
+        kind_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let kind = this.read_scalar(kind_op)?.to_i32()?;
+        let Some(kind) = mutexattr_translate_kind(this, kind) else {
+            let einval = this.eval_libc_i32("EINVAL");
+            return interp_ok(Scalar::from_i32(einval));
+        };
+
+        let mutexattr = mutexattr_get_data(this, attr_op)?;
+        mutexattr.kind = Some(kind);
+
+        interp_ok(Scalar::from_i32(0))
+    }
+
+    fn pthread_mutexattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        mutexattr_destroy(this, attr_op)
+    }
+
+    fn pthread_mutex_init(
+        &mut self,
+        mutex_op: &OpTy<'tcx>,
+        attr_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+
+        let attr = this.read_pointer(attr_op)?;
+        let kind = if this.ptr_is_null(attr)? {
+            MutexKind::Default
+        } else {
+            let mutexattr = mutexattr_get_data(this, attr_op)?;
+            mutexattr.kind.unwrap_or(MutexKind::Default)
+        };
+
+        mutex_create(this, mutex_op, kind)?;
+
+        interp_ok(())
+    }
+
+    fn pthread_mutex_lock(
+        &mut self,
+        mutex_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let mutex = mutex_get_data(this, mutex_op)?.clone();
+
+        let ret = if let Some(owner_thread) = mutex.mutex_ref.owner() {
+            if owner_thread != this.active_thread() {
+                this.mutex_enqueue_and_block(
+                    mutex.mutex_ref,
+                    Some((Scalar::from_i32(0), dest.clone())),
+                );
+                return interp_ok(());
+            } else {
+                // Trying to acquire the same mutex again.
+                match mutex.kind {
+                    MutexKind::Default =>
+                        throw_ub_format!(
+                            "trying to acquire default mutex already locked by the current thread"
+                        ),
+                    MutexKind::Normal => throw_machine_stop!(TerminationInfo::LocalDeadlock),
+                    MutexKind::ErrorCheck => this.eval_libc_i32("EDEADLK"),
+                    MutexKind::Recursive => {
+                        this.mutex_lock(&mutex.mutex_ref)?;
+                        0
+                    }
+                }
+            }
+        } else {
+            // The mutex is unlocked. Let's lock it.
+            this.mutex_lock(&mutex.mutex_ref)?;
+            0
+        };
+        this.write_scalar(Scalar::from_i32(ret), dest)?;
+        interp_ok(())
+    }
+
+    fn pthread_mutex_trylock(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let mutex = mutex_get_data(this, mutex_op)?.clone();
+
+        interp_ok(Scalar::from_i32(if let Some(owner_thread) = mutex.mutex_ref.owner() {
+            if owner_thread != this.active_thread() {
+                this.eval_libc_i32("EBUSY")
+            } else {
+                match mutex.kind {
+                    MutexKind::Default | MutexKind::Normal | MutexKind::ErrorCheck =>
+                        this.eval_libc_i32("EBUSY"),
+                    MutexKind::Recursive => {
+                        this.mutex_lock(&mutex.mutex_ref)?;
+                        0
+                    }
+                }
+            }
+        } else {
+            // The mutex is unlocked. Let's lock it.
+            this.mutex_lock(&mutex.mutex_ref)?;
+            0
+        }))
+    }
+
+    fn pthread_mutex_unlock(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let mutex = mutex_get_data(this, mutex_op)?.clone();
+
+        if let Some(_old_locked_count) = this.mutex_unlock(&mutex.mutex_ref)? {
+            // The mutex was locked by the current thread.
+            interp_ok(Scalar::from_i32(0))
+        } else {
+            // The mutex was locked by another thread or not locked at all. See
+            // the “Unlock When Not Owner” column in
+            // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_unlock.html.
+            match mutex.kind {
+                MutexKind::Default =>
+                    throw_ub_format!(
+                        "unlocked a default mutex that was not locked by the current thread"
+                    ),
+                MutexKind::Normal =>
+                    throw_ub_format!(
+                        "unlocked a PTHREAD_MUTEX_NORMAL mutex that was not locked by the current thread"
+                    ),
+                MutexKind::ErrorCheck | MutexKind::Recursive =>
+                    interp_ok(Scalar::from_i32(this.eval_libc_i32("EPERM"))),
+            }
+        }
+    }
+
+    fn pthread_mutex_destroy(&mut self, mutex_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+
+        // Reading the field also has the side-effect that we detect double-`destroy`
+        // since we make the field uninit below.
+        let mutex = mutex_get_data(this, mutex_op)?.clone();
+
+        if mutex.mutex_ref.owner().is_some() {
+            throw_ub_format!("destroyed a locked mutex");
+        }
+
+        // This write also deletes the interpreter state for this mutex.
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
+        let mutex_place = this.deref_pointer(mutex_op)?;
+        this.write_uninit(&mutex_place)?;
+
+        interp_ok(())
+    }
+
+    fn pthread_rwlock_rdlock(
+        &mut self,
+        rwlock_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+
+        if rwlock.rwlock_ref.is_write_locked() {
+            this.rwlock_enqueue_and_block_reader(
+                rwlock.rwlock_ref,
+                Scalar::from_i32(0),
+                dest.clone(),
+            );
+        } else {
+            this.rwlock_reader_lock(&rwlock.rwlock_ref)?;
+            this.write_int(0, dest)?;
+        }
+
+        interp_ok(())
+    }
+
+    fn pthread_rwlock_tryrdlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+
+        if rwlock.rwlock_ref.is_write_locked() {
+            interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
+        } else {
+            this.rwlock_reader_lock(&rwlock.rwlock_ref)?;
+            interp_ok(Scalar::from_i32(0))
+        }
+    }
+
+    fn pthread_rwlock_wrlock(
+        &mut self,
+        rwlock_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+
+        if rwlock.rwlock_ref.is_locked() {
+            // Note: this will deadlock if the lock is already locked by this
+            // thread in any way.
+            //
+            // Relevant documentation:
+            // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_rwlock_wrlock.html
+            // An in-depth discussion on this topic:
+            // https://github.com/rust-lang/rust/issues/53127
+            //
+            // FIXME: Detect and report the deadlock proactively. (We currently
+            // report the deadlock only when no thread can continue execution,
+            // but we could detect that this lock is already locked and report
+            // an error.)
+            this.rwlock_enqueue_and_block_writer(
+                rwlock.rwlock_ref,
+                Scalar::from_i32(0),
+                dest.clone(),
+            );
+        } else {
+            this.rwlock_writer_lock(&rwlock.rwlock_ref)?;
+            this.write_int(0, dest)?;
+        }
+
+        interp_ok(())
+    }
+
+    fn pthread_rwlock_trywrlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+
+        if rwlock.rwlock_ref.is_locked() {
+            interp_ok(Scalar::from_i32(this.eval_libc_i32("EBUSY")))
+        } else {
+            this.rwlock_writer_lock(&rwlock.rwlock_ref)?;
+            interp_ok(Scalar::from_i32(0))
+        }
+    }
+
+    fn pthread_rwlock_unlock(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+
+        if this.rwlock_reader_unlock(&rwlock.rwlock_ref)?
+            || this.rwlock_writer_unlock(&rwlock.rwlock_ref)?
+        {
+            interp_ok(())
+        } else {
+            throw_ub_format!("unlocked an rwlock that was not locked by the active thread");
+        }
+    }
+
+    fn pthread_rwlock_destroy(&mut self, rwlock_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+
+        // Reading the field also has the side-effect that we detect double-`destroy`
+        // since we make the field uninit below.
+        let rwlock = rwlock_get_data(this, rwlock_op)?.clone();
+
+        if rwlock.rwlock_ref.is_locked() {
+            throw_ub_format!("destroyed a locked rwlock");
+        }
+
+        // This write also deletes the interpreter state for this rwlock.
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
+        let rwlock_place = this.deref_pointer(rwlock_op)?;
+        this.write_uninit(&rwlock_place)?;
+
+        interp_ok(())
+    }
+
+    fn pthread_condattr_init(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        condattr_create(this, attr_op)
+    }
+
+    fn pthread_condattr_setclock(
+        &mut self,
+        attr_op: &OpTy<'tcx>,
+        clock_id_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
+        let Some(clock) = this.parse_clockid(clock_id) else {
+            let einval = this.eval_libc_i32("EINVAL");
+            return interp_ok(Scalar::from_i32(einval));
+        };
+
+        let condattr = condattr_get_data(this, attr_op)?;
+        condattr.clock = clock;
+
+        interp_ok(Scalar::from_i32(0))
+    }
+
+    fn pthread_condattr_getclock(
+        &mut self,
+        attr_op: &OpTy<'tcx>,
+        clk_id_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+
+        let clock_id_dest = this.deref_pointer(clk_id_op)?;
+        let condattr = condattr_get_data(this, attr_op)?;
+
+        let clock_id = match condattr.clock {
+            TimeoutClock::Monotonic => this.eval_libc_i32("CLOCK_MONOTONIC"),
+            TimeoutClock::RealTime => this.eval_libc_i32("CLOCK_REALTIME"),
+        };
+        this.write_int(clock_id, &clock_id_dest)?;
+
+        interp_ok(())
+    }
+
+    fn pthread_condattr_destroy(&mut self, attr_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        condattr_destroy(this, attr_op)
+    }
+
+    fn pthread_cond_init(
+        &mut self,
+        cond_op: &OpTy<'tcx>,
+        attr_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+
+        let attr = this.read_pointer(attr_op)?;
+        // Default clock if `attr` is null, and on macOS where there is no clock attribute.
+        let clock = if this.ptr_is_null(attr)? {
+            TimeoutClock::RealTime
+        } else {
+            let condattr = condattr_get_data(this, attr_op)?;
+            condattr.clock
+        };
+
+        cond_create(this, cond_op, clock)?;
+
+        interp_ok(())
+    }
+
+    fn pthread_cond_signal(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        let condvar = cond_get_data(this, cond_op)?.condvar_ref.clone();
+        this.condvar_signal(&condvar)?;
+        interp_ok(())
+    }
+
+    fn pthread_cond_broadcast(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        let condvar = cond_get_data(this, cond_op)?.condvar_ref.clone();
+        while this.condvar_signal(&condvar)? {}
+        interp_ok(())
+    }
+
+    fn pthread_cond_wait(
+        &mut self,
+        cond_op: &OpTy<'tcx>,
+        mutex_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = cond_get_data(this, cond_op)?.clone();
+        let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref.clone();
+
+        this.condvar_wait(
+            data.condvar_ref,
+            mutex_ref,
+            None, // no timeout
+            Scalar::from_i32(0),
+            Scalar::from_i32(0), // retval_timeout -- unused
+            dest.clone(),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn pthread_cond_timedwait(
+        &mut self,
+        cond_op: &OpTy<'tcx>,
+        mutex_op: &OpTy<'tcx>,
+        timeout_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+        macos_relative_np: bool,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = cond_get_data(this, cond_op)?.clone();
+        let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref.clone();
+
+        // Extract the timeout.
+        let Some(duration) = this.read_timespec(&this.deref_pointer(timeout_op)?)? else {
+            let einval = this.eval_libc("EINVAL");
+            this.write_scalar(einval, dest)?;
+            return interp_ok(());
+        };
+
+        let (clock, style) = if macos_relative_np {
+            // `pthread_cond_timedwait_relative_np` always measures time against the
+            // monotonic clock, regardless of the condvar clock.
+            (TimeoutClock::Monotonic, TimeoutStyle::Relative)
+        } else {
+            if data.clock == TimeoutClock::RealTime {
+                this.check_no_isolation("`pthread_cond_timedwait` with `CLOCK_REALTIME`")?;
+            }
+
+            (data.clock, TimeoutStyle::Absolute)
+        };
+
+        this.condvar_wait(
+            data.condvar_ref,
+            mutex_ref,
+            Some(this.machine.timeout(clock, style, duration)),
+            Scalar::from_i32(0),
+            this.eval_libc("ETIMEDOUT"), // retval_timeout
+            dest.clone(),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn pthread_cond_destroy(&mut self, cond_op: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+
+        // Reading the field also has the side-effect that we detect double-`destroy`
+        // since we make the field uninit below.
+        let condvar = &cond_get_data(this, cond_op)?.condvar_ref;
+        if !condvar.queue_is_empty() {
+            throw_ub_format!("destroying an awaited conditional variable");
+        }
+
+        // This write also deletes the interpreter state for this condvar.
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
+        let cond_place = this.deref_pointer(cond_op)?;
+        this.write_uninit(&cond_place)?;
+
+        interp_ok(())
+    }
+
+    fn pthread_sem_init(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        pshared_op: &OpTy<'tcx>,
+        value_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let pshared = this.read_scalar(pshared_op)?.to_i32()?;
+        let value = this.read_scalar(value_op)?.to_u32()?;
+
+        // We can ignore `pshared` since memory cannot actually be shared with other processes.
+        let _ignore = pshared;
+
+        sem_create(this, sem_op, value)?;
+
+        this.write_int(0, dest)?; // we always succeed
+        interp_ok(())
+    }
+
+    fn pthread_sem_wait(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = sem_get_data(this, sem_op)?.clone();
+        let dest = dest.clone();
+        this.semaphore_decrement(
+            data.sem_ref,
+            /* deadline */ None,
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |ecx, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
+                    ecx.write_int(0,&dest)?;
+                    interp_ok(())
+                }
+            ),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn pthread_sem_timedwait(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        abs_timeout_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.check_no_isolation("`pthread_sem_timedwait`")?;
+
+        let abs_timeout = this.deref_pointer(abs_timeout_op)?;
+
+        let Some(duration) = this.read_timespec(&abs_timeout)? else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+        let deadline =
+            this.machine.timeout(TimeoutClock::RealTime, TimeoutStyle::Absolute, duration);
+        let data = sem_get_data(this, sem_op)?.clone();
+        let dest = dest.clone();
+        this.semaphore_decrement(
+            data.sem_ref,
+            Some(deadline),
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |ecx, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::Ready =>
+                            ecx.write_int(0,&dest),
+                        UnblockKind::TimedOut =>
+                            ecx.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest),
+                    }
+                }
+            ),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn pthread_sem_post(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = sem_get_data(this, sem_op)?.clone();
+        this.semaphore_increment(&data.sem_ref)?;
+
+        this.write_int(0, dest)?; // we always succeed
+        interp_ok(())
+    }
+
+    fn pthread_sem_destroy(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let data = sem_get_data(this, sem_op)?.clone();
+        if !data.sem_ref.queue_is_empty() {
+            throw_ub_format!("destroying an awaited semaphore");
+        }
+
+        // This write also deletes the interpreter state for this semaphore.
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
+        let sem_place = this.deref_pointer(sem_op)?;
+        this.write_uninit(&sem_place)?;
+
+        this.write_int(0, dest)?; // we always succeed
+        interp_ok(())
+    }
+}

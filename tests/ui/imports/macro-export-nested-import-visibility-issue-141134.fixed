@@ -1,0 +1,79 @@
+//@ run-rustfix
+//@ edition: 2021
+
+// Nested macro import suggestions should preserve the original `use` visibility.
+
+#![allow(unused)]
+
+mod a {
+    #[macro_export]
+    macro_rules! m_pub {
+        () => {};
+    }
+    #[macro_export]
+    macro_rules! m_crate {
+        () => {};
+    }
+    #[macro_export]
+    macro_rules! m_in {
+        () => {};
+    }
+    #[macro_export]
+    macro_rules! m_super {
+        () => {};
+    }
+    #[macro_export]
+    macro_rules! m_self {
+        () => {};
+    }
+    #[macro_export]
+    macro_rules! m_private {
+        () => {};
+    }
+
+    pub struct S;
+
+    mod b0 {
+        pub use crate::m_pub;
+        pub use super::{S as PubS};
+        //~^ ERROR unresolved import `super::m_pub`
+        //~| HELP a macro with this name exists at the root of the crate
+    }
+
+    mod b1 {
+        pub(crate) use crate::m_crate;
+        pub(crate) use super::{S as CrateS};
+        //~^ ERROR unresolved import `super::m_crate`
+        //~| HELP a macro with this name exists at the root of the crate
+    }
+
+    mod b2 {
+        pub(in crate::a) use crate::m_in;
+        pub(in crate::a) use super::{S as InS};
+        //~^ ERROR unresolved import `super::m_in`
+        //~| HELP a macro with this name exists at the root of the crate
+    }
+
+    mod b3 {
+        pub(super) use crate::m_super;
+        pub(super) use super::{S as SuperS};
+        //~^ ERROR unresolved import `super::m_super`
+        //~| HELP a macro with this name exists at the root of the crate
+    }
+
+    mod b4 {
+        pub(self) use crate::m_self;
+        pub(self) use super::{S as SelfS};
+        //~^ ERROR unresolved import `super::m_self`
+        //~| HELP a macro with this name exists at the root of the crate
+    }
+
+    mod b5 {
+        use crate::m_private;
+        use super::{S as PrivateS};
+        //~^ ERROR unresolved import `super::m_private`
+        //~| HELP a macro with this name exists at the root of the crate
+    }
+}
+
+fn main() {}

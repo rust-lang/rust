@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `in`
+  --> $DIR/keyword-in-as-identifier.rs:4:9
+   |
+LL |     let in = "foo";
+   |         ^^ expected pattern
+
+error: aborting due to 1 previous error
+

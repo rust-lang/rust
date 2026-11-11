@@ -1,0 +1,131 @@
+- // MIR for `byref` before UnreachableEnumBranching
++ // MIR for `byref` after UnreachableEnumBranching
+  
+  fn byref() -> () {
+      let mut _0: ();
+      let _1: Plop;
+      let mut _2: Test3;
+      let _3: &str;
+      let mut _4: &Test3;
+      let mut _5: isize;
+      let _6: &str;
+      let _7: &str;
+      let _8: &str;
+      let _9: &str;
+      let mut _10: isize;
+      let _11: &str;
+      let _12: &str;
+      let _13: &str;
+      scope 1 {
+          debug plop => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = Test3::C;
+          _1 = Plop { xx: const 51_u32, test3: move _2 };
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = &(_1.1: Test3);
+          _5 = discriminant((*_4));
+-         switchInt(move _5) -> [0: bb5, 1: bb4, 2: bb3, 3: bb2, otherwise: bb1];
++         switchInt(move _5) -> [0: bb1, 1: bb1, 2: bb3, 3: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          StorageLive(_8);
+          _8 = const "D";
+          _3 = &(*_8);
+          StorageDead(_8);
+          goto -> bb6;
+      }
+  
+      bb3: {
+          StorageLive(_7);
+          _7 = const "C";
+          _3 = &(*_7);
+          StorageDead(_7);
+          goto -> bb6;
+      }
+  
+      bb4: {
+          StorageLive(_6);
+          _6 = const "B(Empty)";
+          _3 = &(*_6);
+          StorageDead(_6);
+          goto -> bb6;
+      }
+  
+      bb5: {
+          _3 = const "A(Empty)";
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_9);
+          _10 = discriminant((_1.1: Test3));
+-         switchInt(move _10) -> [0: bb10, 1: bb9, 2: bb8, 3: bb7, otherwise: bb1];
++         switchInt(move _10) -> [0: bb1, 1: bb1, 2: bb8, 3: bb7, otherwise: bb1];
+      }
+  
+      bb7: {
+          StorageLive(_13);
+          _13 = const "D";
+          _9 = &(*_13);
+          StorageDead(_13);
+          goto -> bb11;
+      }
+  
+      bb8: {
+          StorageLive(_12);
+          _12 = const "C";
+          _9 = &(*_12);
+          StorageDead(_12);
+          goto -> bb11;
+      }
+  
+      bb9: {
+          StorageLive(_11);
+          _11 = const "B(Empty)";
+          _9 = &(*_11);
+          StorageDead(_11);
+          goto -> bb11;
+      }
+  
+      bb10: {
+          _9 = const "A(Empty)";
+          goto -> bb11;
+      }
+  
+      bb11: {
+          StorageDead(_9);
+          _0 = const ();
+          StorageDead(_1);
+          return;
+      }
+  }
+  
+  ALLOC0 (size: 1, align: 1) {
+      44                                              │ D
+  }
+  
+  ALLOC1 (size: 1, align: 1) {
+      43                                              │ C
+  }
+  
+  ALLOC2 (size: 8, align: 1) {
+      42 28 45 6d 70 74 79 29                         │ B(Empty)
+  }
+  
+  ALLOC3 (size: 8, align: 1) {
+      41 28 45 6d 70 74 79 29                         │ A(Empty)
+  }
+  

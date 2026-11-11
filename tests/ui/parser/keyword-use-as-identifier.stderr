@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `use`
+  --> $DIR/keyword-use-as-identifier.rs:4:9
+   |
+LL |     let use = "foo";
+   |         ^^^ expected identifier, found keyword
+   |
+help: escape `use` to use it as an identifier
+   |
+LL |     let r#use = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,9 @@
+error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
+  --> $DIR/non-tupled-call.rs:9:5
+   |
+LL |     func(x);
+   |     ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0059`.

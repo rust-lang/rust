@@ -1,0 +1,24 @@
+error[E0382]: use of moved value: `first`
+  --> $DIR/moved-twice.rs:21:22
+   |
+LL |         let first = Foo([0; FOO_SIZE]);
+   |             ----- move occurs because `first` has type `Foo`, which does not implement the `Copy` trait
+LL |         yield;
+LL |         let second = first;
+   |                      ----- value moved here
+LL |         yield;
+LL |         let second = first;
+   |                      ^^^^^ value used here after move
+   |
+note: if `Foo` implemented `Clone`, you could clone the value
+  --> $DIR/moved-twice.rs:9:1
+   |
+LL | struct Foo([u8; FOO_SIZE]);
+   | ^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         let second = first;
+   |                      ----- you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

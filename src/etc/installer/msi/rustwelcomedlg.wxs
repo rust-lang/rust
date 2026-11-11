@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <UI>
+            <Dialog Id="RustWelcomeDlg" Width="370" Height="270" Title="!(loc.AdvancedWelcomeEulaDlg_Title)">
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="!(loc.AdvancedWelcomeEulaDlgBannerBitmap)" />
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="20" Y="10" Width="300" Height="24" Transparent="yes" NoPrefix="yes" Text="!(loc.AdvancedWelcomeEulaDlgTitle)" />
+                <Control Id="DescriptionPerMachine" Type="Text" X="20" Y="182" Width="330" Height="31" Transparent="yes" NoPrefix="yes" Hidden="yes" Text="!(loc.AdvancedWelcomeEulaDlgDescriptionPerMachine)">
+                    <Condition Action="show">NOT UPGRADE_DETECTED AND ALLUSERS</Condition>
+                </Control>
+                <Control Id="DescriptionPerUser" Type="Text" X="20" Y="182" Width="330" Height="31" Transparent="yes" NoPrefix="yes" Hidden="yes" Text="!(loc.AdvancedWelcomeEulaDlgDescriptionPerUser)">
+                    <Condition Action="show">NOT UPGRADE_DETECTED AND NOT ALLUSERS</Condition>
+                </Control>
+                <Control Id="DescriptionUpgrade" Type="Text" X="20" Y="182" Width="330" Height="31" Transparent="yes" NoPrefix="yes" Hidden="yes"
+                    Text="Click Install to upgrade the existing version of [ProductName].  Click Advanced to change installation options.">
+                    <Condition Action="show">UPGRADE_DETECTED</Condition>
+                </Control>
+                <Control Id="TargetPath" Type="Text" X="20" Y="212" Width="330" Height="31" Transparent="yes" NoPrefix="yes" Hidden="no"
+                    Text="Install Directory: [INSTALLDIR]">
+                </Control>
+                <Control Id="Print" Type="PushButton" X="88" Y="243" Width="56" Height="17" Text="!(loc.WixUIPrint)">
+                    <Publish Event="DoAction" Value="WixUIPrintEula">1</Publish>
+                </Control>
+                <Control Id="Advanced" Type="PushButton" X="156" Y="243" Width="56" Height="17" Text="!(loc.AdvancedWelcomeEulaDlgAdvanced)" />
+                <Control Id="Install" Type="PushButton" ElevationShield="yes" X="212" Y="243" Width="80" Height="17" Default="yes" Text="!(loc.AdvancedWelcomeEulaDlgInstall)" Hidden="yes">
+                    <Publish Event="SpawnWaitDialog" Value="WaitForCostingDlg">!(wix.WixUICostingPopupOptOut) OR CostingComplete = 1</Publish>
+                    <Publish Event="EndDialog" Value="Return"><![CDATA[OutOfDiskSpace <> 1]]></Publish>
+                    <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg">OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST="P" OR NOT PROMPTROLLBACKCOST)</Publish>
+                    <Publish Event="EndDialog" Value="Return">OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST="D"</Publish>
+                    <Publish Event="EnableRollback" Value="False">OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST="D"</Publish>
+                    <Publish Event="SpawnDialog" Value="OutOfDiskDlg">(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST="F")</Publish>
+                    <Condition Action="show">ALLUSERS</Condition>
+                </Control>
+                <Control Id="InstallNoShield" Type="PushButton" ElevationShield="no" X="212" Y="243" Width="80" Height="17" Default="yes" Text="!(loc.AdvancedWelcomeEulaDlgInstall)" Hidden="yes">
+                    <Publish Event="SpawnWaitDialog" Value="WaitForCostingDlg">!(wix.WixUICostingPopupOptOut) OR CostingComplete = 1</Publish>
+                    <Publish Event="EndDialog" Value="Return"><![CDATA[OutOfDiskSpace <> 1]]></Publish>
+                    <Publish Event="SpawnDialog" Value="OutOfRbDiskDlg">OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND (PROMPTROLLBACKCOST="P" OR NOT PROMPTROLLBACKCOST)</Publish>
+                    <Publish Event="EndDialog" Value="Return">OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST="D"</Publish>
+                    <Publish Event="EnableRollback" Value="False">OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 0 AND PROMPTROLLBACKCOST="D"</Publish>
+                    <Publish Event="SpawnDialog" Value="OutOfDiskDlg">(OutOfDiskSpace = 1 AND OutOfNoRbDiskSpace = 1) OR (OutOfDiskSpace = 1 AND PROMPTROLLBACKCOST="F")</Publish>
+                    <Condition Action="show">NOT ALLUSERS</Condition>
+                </Control>
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+                <Control Id="LicenseText" Type="ScrollableText" X="20" Y="55" Width="330" Height="121" Sunken="yes" TabSkip="no">
+                    <Text SourceFile="!(wix.WixUILicenseRtf)" />
+                </Control>
+            </Dialog>
+        </UI>
+
+        <InstallUISequence>
+            <Show Dialog="RustWelcomeDlg" Before="ProgressDlg">NOT Installed</Show>
+        </InstallUISequence>
+    </Fragment>
+</Wix>

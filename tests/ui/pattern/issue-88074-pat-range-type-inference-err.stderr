@@ -1,0 +1,19 @@
+error[E0029]: only `char` and numeric types are allowed in range patterns
+  --> $DIR/issue-88074-pat-range-type-inference-err.rs:11:9
+   |
+LL |         Zero::ZERO ..= Zero::ZERO => {},
+   |         ----------^^^^^----------
+   |         |              |
+   |         |              this is of type `String` but it should be `char` or numeric
+   |         this is of type `String` but it should be `char` or numeric
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-88074-pat-range-type-inference-err.rs:19:9
+   |
+LL |         Zero::ZERO ..= Zero::ZERO => {},
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0029, E0282.
+For more information about an error, try `rustc --explain E0029`.

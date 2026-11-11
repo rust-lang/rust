@@ -1,0 +1,12 @@
+error: the `track_caller` attribute cannot be used on foreign statics
+  --> $DIR/track_caller_static_errors.rs:5:3
+   |
+LL | #[track_caller]
+   |   ^^^^^^^^^^^^
+LL | #[eii(sfoo)]
+LL | static FOO: u64 = 42;
+   |
+   = help: the `track_caller` attribute can only be applied to functions
+
+error: aborting due to 1 previous error
+

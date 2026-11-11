@@ -1,0 +1,9 @@
+error[E0080]: index out of bounds: the length is 0 but the index is 1
+  --> $DIR/array_const_index-1.rs:2:16
+   |
+LL | const B: i32 = A[1];
+   |                ^^^^ evaluation of `B` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

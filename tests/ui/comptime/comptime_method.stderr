@@ -1,0 +1,13 @@
+error: comptime functions can only be called at compile time
+  --> $DIR/comptime_method.rs:15:5
+   |
+LL |     Bar.boo();
+   |     ^^^^^^^^^
+   |
+help: wrap the call in a const block to force compile time evaluation
+   |
+LL |     const { Bar.boo() };
+   |     +++++++           +
+
+error: aborting due to 1 previous error
+

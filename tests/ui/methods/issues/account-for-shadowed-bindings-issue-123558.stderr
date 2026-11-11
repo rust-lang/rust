@@ -1,0 +1,17 @@
+error[E0599]: no method named `push` found for type `{integer}` in the current scope
+  --> $DIR/account-for-shadowed-bindings-issue-123558.rs:5:11
+   |
+LL |         y.push(y);
+   |           ^^^^ method not found in `{integer}`
+   |
+note: there's an earlier shadowed binding `y` of type `Vec<{integer}>` that has method `push` available
+  --> $DIR/account-for-shadowed-bindings-issue-123558.rs:3:9
+   |
+LL |     let y = vec![1, 2];
+   |         ^ `y` of type `Vec<{integer}>` that has method `push` defined earlier here
+LL |     if let Some(y) = x {
+   |                 - earlier `y` shadowed here with type `{integer}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

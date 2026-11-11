@@ -1,0 +1,68 @@
+error[E0311]: the parameter type `A` may not live long enough
+  --> $DIR/type-param-missing-lifetime.rs:16:9
+   |
+LL | impl<X> MyTy<Elided<'_, X>> {
+   |                     -- the parameter type `A` must be valid for the anonymous lifetime as defined here...
+LL |     async fn foo<A>(self, arg: A, _: &str) -> &str {
+LL |         check_bound(arg, self.0 .0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL ~ impl<'a, X> MyTy<Elided<'a, X>> {
+LL ~     async fn foo<A: 'a>(self, arg: A, _: &str) -> &str {
+   |
+
+error[E0311]: the parameter type `A` may not live long enough
+  --> $DIR/type-param-missing-lifetime.rs:33:9
+   |
+LL |         lt: Inv<'_>,
+   |             ------- the parameter type `A` must be valid for the anonymous lifetime defined here...
+...
+LL |         check_bound(arg, lt);
+   |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL ~     async fn foo2<'b>(
+LL |         arg: A,
+LL ~         lt: Inv<'b>,
+LL |     ) -> (
+LL ~         impl Into<&'b str> + Into<&'b str> + 'b,
+LL ~         impl Into<Option<Elided<'b>>> + 'b,
+LL ~         impl Into<Option<Elided<'b, ()>>>,
+LL ~     ) where A: 'b {
+   |
+
+error[E0311]: the parameter type `A` may not live long enough
+  --> $DIR/type-param-missing-lifetime.rs:40:9
+   |
+LL |     async fn bar2<'b>(_dummy: &'a u8, arg: A, lt: Inv<'_>) {
+   |                                                   ------- the parameter type `A` must be valid for the anonymous lifetime defined here...
+LL |         check_bound(arg, lt);
+   |         ^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL -     async fn bar2<'b>(_dummy: &'a u8, arg: A, lt: Inv<'_>) {
+LL +     async fn bar2<'c, 'b>(_dummy: &'a u8, arg: A, lt: Inv<'c>) where A: 'c {
+   |
+
+error[E0311]: the parameter type `A` may not live long enough
+  --> $DIR/type-param-missing-lifetime.rs:47:9
+   |
+LL | impl<A> MyTy<Elided<'_, A>> {
+   |                     -- the parameter type `A` must be valid for the anonymous lifetime as defined here...
+LL |     async fn foo3(self) {
+LL |         check_bound(self.0 .1, self.0 .0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL - impl<A> MyTy<Elided<'_, A>> {
+LL + impl<'a, A: 'a> MyTy<Elided<'a, A>> {
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0311`.

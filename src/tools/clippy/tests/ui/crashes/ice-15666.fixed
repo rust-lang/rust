@@ -1,0 +1,6 @@
+#![warn(clippy::elidable_lifetime_names)]
+
+struct UnitVariantAccess<'a, 'b, 's>(&'a &'b &'s ());
+trait Trait<'de> {}
+impl<'de> Trait<'de> for UnitVariantAccess<'_, 'de, '_> {}
+//~^ elidable_lifetime_names

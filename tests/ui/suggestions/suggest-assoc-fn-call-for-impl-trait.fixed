@@ -1,0 +1,29 @@
+//@ run-rustfix
+
+struct A {
+
+}
+
+trait M {
+    fn foo(_a: Self);
+    fn bar(_a: Self);
+    fn baz(_a: i32);
+}
+
+impl M for A {
+    fn foo(_a: Self) {}
+    fn bar(_a: A) {}
+    fn baz(_a: i32) {}
+}
+
+fn main() {
+    let _a = A {};
+    A::foo(_a);
+    //~^ ERROR no method named `foo` found
+    A::baz(0);
+    //~^ ERROR no method named `baz` found
+
+    let _b = A {};
+    A::bar(_b);
+    //~^ ERROR no method named `bar` found
+}

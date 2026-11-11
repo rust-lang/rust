@@ -1,0 +1,10 @@
+error: nonexistent keyword `foo df` used in `#[doc(keyword = "...")]`
+  --> $DIR/invalid-keyword.rs:3:17
+   |
+LL | #[doc(keyword = "foo df")]
+   |                 ^^^^^^^^
+   |
+   = help: only existing keywords are allowed in core/std
+
+error: aborting due to 1 previous error
+

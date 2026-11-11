@@ -1,0 +1,513 @@
+warning: mutation of an interior mutable `const` item with call to `set`
+  --> $DIR/const-item-interior-mutations-const.rs:16:14
+   |
+LL |     let _a = A.set(1);
+   |              -^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: `#[warn(const_item_interior_mutations)]` on by default
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Mutex<i32> = Mutex::new(0);
+LL +     static A: Mutex<i32> = Mutex::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `replace`
+  --> $DIR/const-item-interior-mutations-const.rs:19:14
+   |
+LL |     let _a = A.replace(2);
+   |              -^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Mutex<i32> = Mutex::new(0);
+LL +     static A: Mutex<i32> = Mutex::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `lock`
+  --> $DIR/const-item-interior-mutations-const.rs:22:10
+   |
+LL |     drop(A.lock());
+   |          -^^^^^^^
+   |          |
+   |          `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Mutex<i32> = Mutex::new(0);
+LL +     static A: Mutex<i32> = Mutex::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_lock`
+  --> $DIR/const-item-interior-mutations-const.rs:25:10
+   |
+LL |     drop(A.try_lock());
+   |          -^^^^^^^^^^^
+   |          |
+   |          `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Mutex<i32> = Mutex::new(0);
+LL +     static A: Mutex<i32> = Mutex::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `clear_poison`
+  --> $DIR/const-item-interior-mutations-const.rs:28:14
+   |
+LL |     let _a = A.clear_poison();
+   |              -^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Mutex<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Mutex<i32> = Mutex::new(0);
+LL +     static A: Mutex<i32> = Mutex::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `call_once`
+  --> $DIR/const-item-interior-mutations-const.rs:35:14
+   |
+LL |     let _a = A.call_once(|| {});
+   |              -^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Once = Once::new();
+LL +     static A: Once = Once::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `call_once_force`
+  --> $DIR/const-item-interior-mutations-const.rs:38:14
+   |
+LL |     let _a = A.call_once_force(|_| {});
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Once = Once::new();
+LL +     static A: Once = Once::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait`
+  --> $DIR/const-item-interior-mutations-const.rs:41:14
+   |
+LL |     let _a = A.wait();
+   |              -^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Once = Once::new();
+LL +     static A: Once = Once::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait_force`
+  --> $DIR/const-item-interior-mutations-const.rs:44:14
+   |
+LL |     let _a = A.wait_force();
+   |              -^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Once`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Once = Once::new();
+LL +     static A: Once = Once::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `set`
+  --> $DIR/const-item-interior-mutations-const.rs:51:14
+   |
+LL |     let _a = A.set(1);
+   |              -^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RwLock<i32> = RwLock::new(0);
+LL +     static A: RwLock<i32> = RwLock::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `replace`
+  --> $DIR/const-item-interior-mutations-const.rs:54:14
+   |
+LL |     let _a = A.replace(2);
+   |              -^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RwLock<i32> = RwLock::new(0);
+LL +     static A: RwLock<i32> = RwLock::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `read`
+  --> $DIR/const-item-interior-mutations-const.rs:57:10
+   |
+LL |     drop(A.read());
+   |          -^^^^^^^
+   |          |
+   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RwLock<i32> = RwLock::new(0);
+LL +     static A: RwLock<i32> = RwLock::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_read`
+  --> $DIR/const-item-interior-mutations-const.rs:60:10
+   |
+LL |     drop(A.try_read());
+   |          -^^^^^^^^^^^
+   |          |
+   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RwLock<i32> = RwLock::new(0);
+LL +     static A: RwLock<i32> = RwLock::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `write`
+  --> $DIR/const-item-interior-mutations-const.rs:63:10
+   |
+LL |     drop(A.write());
+   |          -^^^^^^^^
+   |          |
+   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RwLock<i32> = RwLock::new(0);
+LL +     static A: RwLock<i32> = RwLock::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_write`
+  --> $DIR/const-item-interior-mutations-const.rs:66:10
+   |
+LL |     drop(A.try_write());
+   |          -^^^^^^^^^^^^
+   |          |
+   |          `A` is a interior mutable `const` item of type `std::sync::RwLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RwLock<i32> = RwLock::new(0);
+LL +     static A: RwLock<i32> = RwLock::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `force`
+  --> $DIR/const-item-interior-mutations-const.rs:73:14
+   |
+LL |     let _a = LazyLock::force(&A);
+   |              ^^^^^^^^^^^^^^^^^-^
+   |                               |
+   |                               `A` is a interior mutable `const` item of type `LazyLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: LazyLock<i32> = LazyLock::new(|| 0);
+LL +     static A: LazyLock<i32> = LazyLock::new(|| 0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get`
+  --> $DIR/const-item-interior-mutations-const.rs:76:14
+   |
+LL |     let _a = LazyLock::get(&A);
+   |              ^^^^^^^^^^^^^^^-^
+   |                             |
+   |                             `A` is a interior mutable `const` item of type `LazyLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: LazyLock<i32> = LazyLock::new(|| 0);
+LL +     static A: LazyLock<i32> = LazyLock::new(|| 0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get`
+  --> $DIR/const-item-interior-mutations-const.rs:83:14
+   |
+LL |     let _a = A.get();
+   |              -^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceLock<i32> = OnceLock::new();
+LL +     static A: OnceLock<i32> = OnceLock::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait`
+  --> $DIR/const-item-interior-mutations-const.rs:86:14
+   |
+LL |     let _a = A.wait();
+   |              -^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceLock<i32> = OnceLock::new();
+LL +     static A: OnceLock<i32> = OnceLock::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `set`
+  --> $DIR/const-item-interior-mutations-const.rs:89:14
+   |
+LL |     let _a = A.set(10);
+   |              -^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceLock<i32> = OnceLock::new();
+LL +     static A: OnceLock<i32> = OnceLock::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_insert`
+  --> $DIR/const-item-interior-mutations-const.rs:92:14
+   |
+LL |     let _a = A.try_insert(20);
+   |              -^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceLock<i32> = OnceLock::new();
+LL +     static A: OnceLock<i32> = OnceLock::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get_or_init`
+  --> $DIR/const-item-interior-mutations-const.rs:95:14
+   |
+LL |     let _a = A.get_or_init(|| 30);
+   |              -^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceLock<i32> = OnceLock::new();
+LL +     static A: OnceLock<i32> = OnceLock::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get_or_try_init`
+  --> $DIR/const-item-interior-mutations-const.rs:98:14
+   |
+LL |     let _a = A.get_or_try_init(|| Ok::<_, ()>(40));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `OnceLock<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceLock<i32> = OnceLock::new();
+LL +     static A: OnceLock<i32> = OnceLock::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait`
+  --> $DIR/const-item-interior-mutations-const.rs:108:14
+   |
+LL |     let _a = A.wait(guard);
+   |              -^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Condvar = Condvar::new();
+LL +     static A: Condvar = Condvar::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait_while`
+  --> $DIR/const-item-interior-mutations-const.rs:113:14
+   |
+LL |     let _a = A.wait_while(guard, |x| *x == 0);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Condvar = Condvar::new();
+LL +     static A: Condvar = Condvar::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait_timeout_ms`
+  --> $DIR/const-item-interior-mutations-const.rs:118:14
+   |
+LL |     let _a = A.wait_timeout_ms(guard, 10);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Condvar = Condvar::new();
+LL +     static A: Condvar = Condvar::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait_timeout`
+  --> $DIR/const-item-interior-mutations-const.rs:123:14
+   |
+LL |     let _a = A.wait_timeout(guard, Duration::from_millis(10));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Condvar = Condvar::new();
+LL +     static A: Condvar = Condvar::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `wait_timeout_while`
+  --> $DIR/const-item-interior-mutations-const.rs:128:14
+   |
+LL |     let _a = A.wait_timeout_while(guard, Duration::from_millis(10), |x| *x == 0);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Condvar = Condvar::new();
+LL +     static A: Condvar = Condvar::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `notify_one`
+  --> $DIR/const-item-interior-mutations-const.rs:131:14
+   |
+LL |     let _a = A.notify_one();
+   |              -^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Condvar = Condvar::new();
+LL +     static A: Condvar = Condvar::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `notify_all`
+  --> $DIR/const-item-interior-mutations-const.rs:134:14
+   |
+LL |     let _a = A.notify_all();
+   |              -^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `std::sync::Condvar`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Condvar = Condvar::new();
+LL +     static A: Condvar = Condvar::new();
+   |
+
+warning: 30 warnings emitted
+

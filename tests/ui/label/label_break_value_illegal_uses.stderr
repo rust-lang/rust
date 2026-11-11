@@ -1,0 +1,26 @@
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:7:12
+   |
+LL |     unsafe 'b: {}
+   |            ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:11:13
+   |
+LL |     if true 'b: {}
+   |             ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:15:21
+   |
+LL |     if true {} else 'b: {}
+   |                     ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label_break_value_illegal_uses.rs:19:17
+   |
+LL |     match false 'b: {
+   |                 ^^^ not supported here
+
+error: aborting due to 4 previous errors
+

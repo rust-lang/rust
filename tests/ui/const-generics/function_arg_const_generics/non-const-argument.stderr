@@ -1,0 +1,8 @@
+error: Path error
+  --> $DIR/non-const-argument.rs:9:17
+   |
+LL |     let _ = foo(x);
+   |                 ^
+
+error: aborting due to 1 previous error
+

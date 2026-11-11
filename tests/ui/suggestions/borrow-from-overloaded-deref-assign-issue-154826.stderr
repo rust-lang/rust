@@ -1,0 +1,25 @@
+error[E0507]: cannot move out of an `Rc`
+  --> $DIR/borrow-from-overloaded-deref-assign-issue-154826.rs:9:12
+   |
+LL |     (b,) = *Rc::new((NonCopy,));
+   |      -     ^^^^^^^^^^^^^^^^^^^^
+   |      |
+   |      data moved here because the place has type `NonCopy`, which does not implement the `Copy` trait
+   |
+help: destructuring assignment cannot borrow from this expression; consider using a `let` binding instead
+  --> $DIR/borrow-from-overloaded-deref-assign-issue-154826.rs:9:12
+   |
+LL |     (b,) = *Rc::new((NonCopy,));
+   |            ^^^^^^^^^^^^^^^^^^^^
+note: if `NonCopy` implemented `Clone`, you could clone the value
+  --> $DIR/borrow-from-overloaded-deref-assign-issue-154826.rs:5:1
+   |
+LL | struct NonCopy;
+   | ^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     (b,) = *Rc::new((NonCopy,));
+   |      - you could clone this value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,332 @@
+//@only-target: linux android
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
+//@run-native
+
+// FIXME(static_mut_refs): use raw pointers instead of references
+#![allow(static_mut_refs)]
+
+use std::mem::MaybeUninit;
+use std::ptr::{self, addr_of};
+use std::sync::atomic::*;
+use std::time::{Duration, Instant};
+use std::{io, thread};
+
+cfg_select! {
+    target_arch = "riscv32" => {
+        // riscv32 only has the 64-bit time variant of the futex syscall.
+        use libc::SYS_futex_time64 as SYS_futex;
+    }
+    _ => {
+        use libc::SYS_futex;
+    }
+}
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
+
+fn wake_nobody() {
+    let futex = 0;
+
+    // Wake 1 waiter. Expect zero waiters woken up, as nobody is waiting.
+    unsafe {
+        assert_eq!(libc::syscall(SYS_futex, addr_of!(futex), libc::FUTEX_WAKE, 1), 0);
+    }
+
+    // Same, but without omitting the unused arguments.
+    unsafe {
+        assert_eq!(
+            libc::syscall(
+                SYS_futex,
+                addr_of!(futex),
+                libc::FUTEX_WAKE,
+                1,
+                ptr::null::<libc::timespec>(),
+                0usize,
+                0,
+            ),
+            0,
+        );
+    }
+
+    // Wake u32::MAX waiters.
+    unsafe {
+        assert_eq!(libc::syscall(SYS_futex, addr_of!(futex), libc::FUTEX_WAKE, u32::MAX), 0);
+    }
+}
+
+fn wake_dangling() {
+    if !cfg!(miri) {
+        return; // can't really test this natively (FIXME: test with mmap?)
+    }
+
+    let futex = Box::new(0);
+    let ptr: *const u32 = &*futex;
+    drop(futex);
+
+    // Expect error since this is now "unmapped" memory.
+    // parking_lot relies on this:
+    // <https://github.com/Amanieu/parking_lot/blob/ca920b31312839013b4455aba1d53a4aede21b2f/core/src/thread_parker/linux.rs#L138-L145>
+    unsafe {
+        assert_eq!(libc::syscall(SYS_futex, ptr, libc::FUTEX_WAKE, 1), -1);
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::EFAULT);
+    }
+}
+
+fn wait_wrong_val() {
+    let futex: u32 = 123;
+
+    // Only wait if the futex value is 456.
+    unsafe {
+        assert_eq!(
+            libc::syscall(
+                SYS_futex,
+                addr_of!(futex),
+                libc::FUTEX_WAIT,
+                456,
+                ptr::null::<libc::timespec>(),
+            ),
+            -1,
+        );
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::EAGAIN);
+    }
+}
+
+fn wait_timeout() {
+    let start = Instant::now();
+
+    let futex: u32 = 123;
+
+    // Wait for 100ms, with nobody waking us up early.
+    unsafe {
+        assert_eq!(
+            libc::syscall(
+                SYS_futex,
+                addr_of!(futex),
+                libc::FUTEX_WAIT,
+                123,
+                &libc::timespec { tv_sec: 0, tv_nsec: 100_000_000 },
+            ),
+            -1,
+        );
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
+    }
+
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
+}
+
+fn wait_absolute_timeout() {
+    static mut FUTEX: i32 = 123;
+
+    let start = Instant::now();
+
+    // Get the current monotonic timestamp as timespec.
+    let mut timeout = unsafe {
+        let mut now: MaybeUninit<libc::timespec> = MaybeUninit::uninit();
+        assert_eq!(libc::clock_gettime(libc::CLOCK_MONOTONIC, now.as_mut_ptr()), 0);
+        now.assume_init()
+    };
+
+    // Add 100ms.
+    timeout.tv_nsec += 100_000_000;
+    if timeout.tv_nsec > 1_000_000_000 {
+        timeout.tv_nsec -= 1_000_000_000;
+        timeout.tv_sec += 1;
+    }
+
+    // Wait for 100ms from now, with nobody waking us up early.
+    unsafe {
+        assert_eq!(
+            libc::syscall(
+                SYS_futex,
+                addr_of!(FUTEX),         // uaddr
+                libc::FUTEX_WAIT_BITSET, // op
+                123,                     // val
+                &timeout,
+                ptr::null::<u32>(), // uaddr2
+                u32::MAX,           // val3 (bitset)
+            ),
+            -1,
+        );
+        assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
+    }
+
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
+}
+
+fn wait_wake() {
+    static mut FUTEX: i32 = 0;
+
+    // Make sure we start this before the thread starts sleeping.
+    let start = Instant::now();
+
+    let t = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(50));
+        unsafe {
+            assert_eq!(
+                libc::syscall(
+                    SYS_futex,
+                    addr_of!(FUTEX),
+                    libc::FUTEX_WAKE,
+                    10, // Wake up at most 10 threads.
+                ),
+                1, // Woken up one thread.
+            );
+        }
+    });
+
+    unsafe {
+        assert_eq!(
+            libc::syscall(
+                SYS_futex,
+                addr_of!(FUTEX),
+                libc::FUTEX_WAIT,
+                0,
+                ptr::null::<libc::timespec>(),
+            ),
+            0,
+        );
+    }
+
+    assert!((50..1000).contains(&start.elapsed().as_millis()));
+    t.join().unwrap();
+}
+
+fn wait_wake_bitset() {
+    static mut FUTEX: i32 = 0;
+
+    // Make sure we start this before the thread starts sleeping.
+    let start = Instant::now();
+
+    let t = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(50));
+        unsafe {
+            assert_eq!(
+                libc::syscall(
+                    SYS_futex,
+                    addr_of!(FUTEX),         // uaddr
+                    libc::FUTEX_WAKE_BITSET, // op
+                    10,                      // val (max wake up count)
+                    ptr::null::<libc::timespec>(),
+                    ptr::null::<u32>(), // uaddr2
+                    0b1001,             // val3 (bitset)
+                ),
+                0, // Didn't match any thread.
+            );
+        }
+        thread::sleep(Duration::from_millis(50));
+        unsafe {
+            assert_eq!(
+                libc::syscall(
+                    SYS_futex,
+                    addr_of!(FUTEX),         // uaddr
+                    libc::FUTEX_WAKE_BITSET, // op
+                    10,                      // val (max wake up count)
+                    ptr::null::<libc::timespec>(),
+                    ptr::null::<u32>(), // uaddr2
+                    0b0110,             // val3 (bitset)
+                ),
+                1, // Woken up one thread.
+            );
+        }
+    });
+
+    unsafe {
+        assert_eq!(
+            libc::syscall(
+                SYS_futex,
+                addr_of!(FUTEX),         // uaddr
+                libc::FUTEX_WAIT_BITSET, // op
+                0,                       // val
+                ptr::null::<libc::timespec>(),
+                ptr::null::<u32>(), // uaddr2
+                0b0100,             // val3 (bitset)
+            ),
+            0,
+        );
+    }
+
+    let wait_time = start.elapsed().as_millis();
+    assert!((100..1000).contains(&wait_time), "wait time was {wait_time}ms");
+    t.join().unwrap();
+}
+
+// Crucial test which relies on the SeqCst fences in futex wait/wake.
+fn concurrent_wait_wake() {
+    const FREE: i32 = 0;
+    const HELD: i32 = 1;
+    const ROUNDS: usize = 64;
+
+    // new futex each round to start from a clean state
+    static FUTEX: [AtomicI32; ROUNDS] = [const { AtomicI32::new(0) }; ROUNDS];
+    static mut DATA: i32 = 0;
+    static WOKEN: AtomicUsize = AtomicUsize::new(0);
+
+    let rounds = 64;
+    for r in 0..rounds {
+        unsafe { DATA = 0 }; // Reset
+        let futex = &FUTEX[r];
+        // Suppose the main thread is holding a lock implemented using futex...
+        futex.store(HELD, Ordering::Relaxed);
+
+        let t = thread::spawn(move || {
+            // If this syscall runs first, then we'll be woken up by
+            // the main thread's FUTEX_WAKE, and all is fine.
+            //
+            // If this sycall runs after the main thread's store
+            // and FUTEX_WAKE, the syscall must observe that
+            // the futex is FREE != HELD and return without waiting
+            // or we'll deadlock.
+            unsafe {
+                let ret = libc::syscall(
+                    SYS_futex,
+                    addr_of!(*futex).cast::<u32>(),
+                    libc::FUTEX_WAIT,
+                    HELD,
+                    ptr::null::<libc::timespec>(),
+                );
+                if ret == 0 {
+                    // We actually slept. And then woke up again. So we should be ordered-after
+                    // what happened-before the FUTEX_WAKE. So this is not a race.
+                    assert_eq!(DATA, 1);
+                    // Also remember that this happened at least once.
+                    WOKEN.fetch_add(1, Ordering::Relaxed);
+                }
+            }
+        });
+        // Let other thread go first half the time
+        if r % 2 == 0 {
+            yield_now();
+        }
+
+        futex.store(FREE, Ordering::Relaxed);
+        unsafe {
+            DATA = 1;
+            libc::syscall(SYS_futex, addr_of!(*futex).cast::<u32>(), libc::FUTEX_WAKE, 1);
+        }
+
+        t.join().unwrap();
+    }
+
+    // Make sure we got the interesting case (of having woken a thread) at least once, but not *each* time.
+    let woken = WOKEN.load(Ordering::Relaxed);
+    //eprintln!("waking happened {woken} times");
+    assert!(woken > 0 && woken < rounds, "woke {woken} times");
+}
+
+fn main() {
+    wake_nobody();
+    wake_dangling();
+    wait_wrong_val();
+    wait_timeout();
+    wait_absolute_timeout();
+    wait_wake();
+    wait_wake_bitset();
+    concurrent_wait_wake();
+}

@@ -1,0 +1,23 @@
+error[E0658]: use of unstable library feature `unstable_test_feature`
+  --> $DIR/stability-attribute-issue.rs:8:5
+   |
+LL |     unstable();
+   |     ^^^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `unstable_test_feature`: message
+  --> $DIR/stability-attribute-issue.rs:10:5
+   |
+LL |     unstable_msg();
+   |     ^^^^^^^^^^^^
+   |
+   = note: see issue #2 <https://github.com/rust-lang/rust/issues/2> for more information
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

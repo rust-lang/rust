@@ -1,0 +1,14 @@
+error[E0053]: method `call_once` has an incompatible type for trait
+  --> $DIR/fn-traits-call-once-signature-15094.rs:13:5
+   |
+LL | impl<T: fmt::Debug> ops::FnOnce<(),> for Debuger<T> {
+LL |     type Output = ();
+LL |     fn call_once(self, _args: ()) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "rust-call" fn, found "Rust" fn
+   |
+   = note: expected signature `extern "rust-call" fn(Debuger<_>, ())`
+              found signature `fn(Debuger<_>, ())`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

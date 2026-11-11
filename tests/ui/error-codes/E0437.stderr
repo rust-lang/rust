@@ -1,0 +1,9 @@
+error[E0437]: type `Bar` is not a member of trait `Foo`
+  --> $DIR/E0437.rs:4:5
+   |
+LL |     type Bar = bool;
+   |     ^^^^^^^^^^^^^^^^ not a member of trait `Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0437`.

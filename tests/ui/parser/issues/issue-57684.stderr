@@ -1,0 +1,26 @@
+error: expected `:`, found `=`
+  --> $DIR/issue-57684.rs:27:20
+   |
+LL |     let _ = X { f1 = 5 };
+   |                    ^
+   |
+help: replace equals symbol with a colon
+   |
+LL -     let _ = X { f1 = 5 };
+LL +     let _ = X { f1: 5 };
+   |
+
+error: expected `:`, found `=`
+  --> $DIR/issue-57684.rs:32:12
+   |
+LL |         f1 = 5,
+   |            ^
+   |
+help: replace equals symbol with a colon
+   |
+LL -         f1 = 5,
+LL +         f1: 5,
+   |
+
+error: aborting due to 2 previous errors
+

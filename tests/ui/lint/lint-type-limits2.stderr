@@ -1,0 +1,24 @@
+error: comparison is useless due to type limits
+  --> $DIR/lint-type-limits2.rs:13:5
+   |
+LL |     128 > bar()
+   |     ^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-D unused-comparisons`
+
+warning: literal out of range for `i8`
+  --> $DIR/lint-type-limits2.rs:13:5
+   |
+LL |     128 > bar()
+   |     ^^^
+   |
+   = note: the literal `128` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `u8` instead
+note: the lint level is defined here
+  --> $DIR/lint-type-limits2.rs:2:9
+   |
+LL | #![warn(overflowing_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error; 1 warning emitted
+

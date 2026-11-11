@@ -1,0 +1,45 @@
+error: meta-variable repeats with different Kleene operator
+  --> $DIR/issue-61053-different-kleene.rs:5:57
+   |
+LL |     ( $( $i:ident = $($j:ident),+ );* ) => { $( $( $i = $j; )* )* };
+   |                                 - expected repetition   ^^   - conflicting repetition
+   |
+note: the lint level is defined here
+  --> $DIR/issue-61053-different-kleene.rs:1:9
+   |
+LL | #![deny(meta_variable_misuse)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: meta-variable repeats with different Kleene operator
+  --> $DIR/issue-61053-different-kleene.rs:7:41
+   |
+LL |     ( $( $($j:ident),+ );* ) => { $( $( $j; )+ )+ };
+   |                          -              ^^      - conflicting repetition
+   |                          |
+   |                          expected repetition
+
+error: meta-variable repeats with different Kleene operator
+  --> $DIR/issue-61053-different-kleene.rs:15:65
+   |
+LL |             ( $( $i:ident = $($j:ident),+ );* ) => { $( $( $i = $j; )* )* };
+   |                                         - expected repetition   ^^   - conflicting repetition
+
+error: meta-variable repeats with different Kleene operator
+  --> $DIR/issue-61053-different-kleene.rs:17:49
+   |
+LL |             ( $( $($j:ident),+ );* ) => { $( $( $j; )+ )+ };
+   |                                  -              ^^      - conflicting repetition
+   |                                  |
+   |                                  expected repetition
+
+error: meta-variable repeats with different Kleene operator
+  --> $DIR/issue-61053-different-kleene.rs:22:28
+   |
+LL |     ( $( $i:ident = $($j:ident),+ );* ) => {
+   |                                 - expected repetition
+LL |         $(macro_rules! $i {
+LL |             () => { 0 $( + $j )* };
+   |                            ^^  - conflicting repetition
+
+error: aborting due to 5 previous errors
+

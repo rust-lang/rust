@@ -1,0 +1,12 @@
+warning: cannot use constants which depend on generic parameters in types
+  --> $DIR/function-call.rs:15:17
+   |
+LL |     let _ = [0; foo::<T>()];
+   |                 ^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,63 @@
+error[E0308]: mismatched types
+  --> $DIR/dereferencing-boxed-enum-in-match-57741.rs:21:9
+   |
+LL |     let y = match x {
+   |                   - this expression has type `Box<T>`
+LL |         T::A(a) | T::B(a) => a,
+   |         ^^^^^^^ expected `Box<T>`, found `T`
+   |
+   = note: expected struct `Box<T>`
+                found enum `T`
+help: consider dereferencing the boxed value
+   |
+LL |     let y = match *x {
+   |                   +
+
+error[E0308]: mismatched types
+  --> $DIR/dereferencing-boxed-enum-in-match-57741.rs:21:19
+   |
+LL |     let y = match x {
+   |                   - this expression has type `Box<T>`
+LL |         T::A(a) | T::B(a) => a,
+   |                   ^^^^^^^ expected `Box<T>`, found `T`
+   |
+   = note: expected struct `Box<T>`
+                found enum `T`
+help: consider dereferencing the boxed value
+   |
+LL |     let y = match *x {
+   |                   +
+
+error[E0308]: mismatched types
+  --> $DIR/dereferencing-boxed-enum-in-match-57741.rs:28:9
+   |
+LL |     let y = match x {
+   |                   - this expression has type `Box<S>`
+LL |         S::A { a } | S::B { b: a } => a,
+   |         ^^^^^^^^^^ expected `Box<S>`, found `S`
+   |
+   = note: expected struct `Box<S>`
+                found enum `S`
+help: consider dereferencing the boxed value
+   |
+LL |     let y = match *x {
+   |                   +
+
+error[E0308]: mismatched types
+  --> $DIR/dereferencing-boxed-enum-in-match-57741.rs:28:22
+   |
+LL |     let y = match x {
+   |                   - this expression has type `Box<S>`
+LL |         S::A { a } | S::B { b: a } => a,
+   |                      ^^^^^^^^^^^^^ expected `Box<S>`, found `S`
+   |
+   = note: expected struct `Box<S>`
+                found enum `S`
+help: consider dereferencing the boxed value
+   |
+LL |     let y = match *x {
+   |                   +
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

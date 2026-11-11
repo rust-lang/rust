@@ -1,0 +1,18 @@
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/fn-const-param-call.rs:13:25
+   |
+LL | struct Wrapper<const F: fn() -> u32>;
+   |                         ^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/fn-const-param-call.rs:15:15
+   |
+LL | impl<const F: fn() -> u32> Wrapper<F> {
+   |               ^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: aborting due to 2 previous errors
+

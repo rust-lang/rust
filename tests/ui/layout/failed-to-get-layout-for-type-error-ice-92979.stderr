@@ -1,0 +1,16 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/failed-to-get-layout-for-type-error-ice-92979.rs:69:39
+   |
+LL |         &mut position[position.len()] = f32::from_be_bytes(demo(p));
+   |         ----------------------------- ^
+   |         |
+   |         cannot assign to this expression
+   |
+help: consider dereferencing here to assign to the mutably borrowed value
+   |
+LL |         *&mut position[position.len()] = f32::from_be_bytes(demo(p));
+   |         +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0070`.

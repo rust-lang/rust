@@ -1,0 +1,34 @@
+error: `T` does not live long enough
+  --> $DIR/issue-105507.rs:37:5
+   |
+LL |     require_trait(wrap);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/issue-105507.rs:27:35
+   |
+LL |         for<'a> T::Projected<'a>: MyTrait,
+   |                                   ^^^^^^^
+help: consider restricting the type parameter to the `'static` lifetime
+   |
+LL | fn foo<T : MyTrait + 'static, U : MyTrait + 'static>(wrap: Wrapper<'_, Option<T>>, wrap1: Wrapper<'_, Option<U>>) {
+   |                    +++++++++              +++++++++
+
+error: `U` does not live long enough
+  --> $DIR/issue-105507.rs:39:5
+   |
+LL |     require_trait(wrap1);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/issue-105507.rs:27:35
+   |
+LL |         for<'a> T::Projected<'a>: MyTrait,
+   |                                   ^^^^^^^
+help: consider restricting the type parameter to the `'static` lifetime
+   |
+LL | fn foo<T : MyTrait + 'static, U : MyTrait + 'static>(wrap: Wrapper<'_, Option<T>>, wrap1: Wrapper<'_, Option<U>>) {
+   |                    +++++++++              +++++++++
+
+error: aborting due to 2 previous errors
+

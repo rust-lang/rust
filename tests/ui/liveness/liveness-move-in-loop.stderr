@@ -1,0 +1,26 @@
+error[E0382]: use of moved value: `y`
+  --> $DIR/liveness-move-in-loop.rs:11:25
+   |
+LL |     let y: Box<isize> = 42.into();
+   |         - move occurs because `y` has type `Box<isize>`, which does not implement the `Copy` trait
+...
+LL |     loop {
+   |     ---- inside of this loop
+LL |         println!("{}", y);
+LL |         loop {
+   |         ---- inside of this loop
+LL |             loop {
+   |             ---- inside of this loop
+LL |                 loop {
+   |                 ---- inside of this loop
+LL |                     x = y;
+   |                         ^ value moved here, in previous iteration of loop
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |                     x = y.clone();
+   |                          ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

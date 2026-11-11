@@ -1,0 +1,40 @@
+error[E0308]: cannot coerce functions which must be inlined to function pointers
+  --> $DIR/cast.rs:10:33
+   |
+LL |     let _: fn(isize) -> usize = callee;
+   |            ------------------   ^^^^^^ cannot coerce functions which must be inlined to function pointers
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `fn(_) -> _`
+                 found fn item `fn(_) -> _ {callee}`
+   = note: fn items are distinct from fn pointers
+help: consider casting to a fn pointer
+   |
+LL |     let _: fn(isize) -> usize = callee as fn(isize) -> usize;
+   |                                        +++++++++++++++++++++
+
+error[E0605]: non-primitive cast: `fn(isize) -> usize {callee}` as `fn(isize) -> usize`
+  --> $DIR/cast.rs:15:13
+   |
+LL |     let _ = callee as fn(isize) -> usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error[E0308]: cannot coerce functions which must be inlined to function pointers
+  --> $DIR/cast.rs:21:9
+   |
+LL |         callee,
+   |         ^^^^^^ cannot coerce functions which must be inlined to function pointers
+   |
+   = note: expected fn pointer `fn(_) -> _`
+                 found fn item `fn(_) -> _ {callee}`
+   = note: fn items are distinct from fn pointers
+help: consider casting to a fn pointer
+   |
+LL |         callee as fn(isize) -> usize,
+   |                +++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0605.
+For more information about an error, try `rustc --explain E0308`.

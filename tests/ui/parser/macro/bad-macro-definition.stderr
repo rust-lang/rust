@@ -1,0 +1,62 @@
+error: macro definition ended unexpectedly
+  --> $DIR/bad-macro-definition.rs:3:23
+   |
+LL | macro_rules! a { {} => }
+   |                       ^ expected right-hand side of macro rule
+
+error: invalid macro matcher; matchers must be contained in balanced delimiters
+  --> $DIR/bad-macro-definition.rs:6:18
+   |
+LL | macro_rules! b { 0 => }
+   |                  ^
+
+error: macro definition ended unexpectedly
+  --> $DIR/bad-macro-definition.rs:6:22
+   |
+LL | macro_rules! b { 0 => }
+   |                      ^ expected right-hand side of macro rule
+
+error: invalid macro matcher; matchers must be contained in balanced delimiters
+  --> $DIR/bad-macro-definition.rs:10:18
+   |
+LL | macro_rules! c { x => }
+   |                  ^
+
+error: macro definition ended unexpectedly
+  --> $DIR/bad-macro-definition.rs:10:22
+   |
+LL | macro_rules! c { x => }
+   |                      ^ expected right-hand side of macro rule
+
+error: invalid macro matcher; matchers must be contained in balanced delimiters
+  --> $DIR/bad-macro-definition.rs:14:18
+   |
+LL | macro_rules! d { _ => }
+   |                  ^
+
+error: macro definition ended unexpectedly
+  --> $DIR/bad-macro-definition.rs:14:22
+   |
+LL | macro_rules! d { _ => }
+   |                      ^ expected right-hand side of macro rule
+
+error: expected `=>`, found end of macro arguments
+  --> $DIR/bad-macro-definition.rs:18:20
+   |
+LL | macro_rules! e { {} }
+   |                    ^ expected `=>`
+
+error: macros must contain at least one rule
+  --> $DIR/bad-macro-definition.rs:21:1
+   |
+LL | macro_rules! f {}
+   | ^^^^^^^^^^^^^^^^^
+
+error: `unsafe` is only supported on `attr` rules
+  --> $DIR/bad-macro-definition.rs:24:18
+   |
+LL | macro_rules! g { unsafe {} => {} }
+   |                  ^^^^^^
+
+error: aborting due to 10 previous errors
+

@@ -1,0 +1,54 @@
+- // MIR for `mutable_ref` before JumpThreading
++ // MIR for `mutable_ref` after JumpThreading
+  
+  fn mutable_ref() -> bool {
+      let mut _0: bool;
+      let mut _1: i32;
+      let _3: ();
+      let mut _4: bool;
+      let mut _5: i32;
+      scope 1 {
+          debug x => _1;
+          let _2: *mut i32;
+          scope 2 {
+              debug a => _2;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 5_i32;
+          StorageLive(_2);
+          _2 = &raw mut _1;
+          _1 = const 7_i32;
+          StorageLive(_3);
+          (*_2) = const 8_i32;
+          _3 = const ();
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+          _4 = Eq(move _5, const 7_i32);
+          switchInt(move _4) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          _0 = const true;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          StorageDead(_5);
+          _0 = const false;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

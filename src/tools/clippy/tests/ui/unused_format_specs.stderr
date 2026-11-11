@@ -1,0 +1,124 @@
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:12:15
+   |
+LL |     println!("{:5}.", format_args!(""));
+   |               ^^^^
+   |
+   = note: `-D clippy::unused-format-specs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_format_specs)]`
+help: for the width to apply consider using `format!()`
+   |
+LL -     println!("{:5}.", format_args!(""));
+LL +     println!("{:5}.", format!(""));
+   |
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     println!("{:5}.", format_args!(""));
+LL +     println!("{}.", format_args!(""));
+   |
+
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:16:15
+   |
+LL |     println!("{:.3}", format_args!("abcde"));
+   |               ^^^^^
+   |
+help: for the precision to apply consider using `format!()`
+   |
+LL -     println!("{:.3}", format_args!("abcde"));
+LL +     println!("{:.3}", format!("abcde"));
+   |
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     println!("{:.3}", format_args!("abcde"));
+LL +     println!("{}", format_args!("abcde"));
+   |
+
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:19:15
+   |
+LL |     println!("{:5}.", format_args_from_macro!());
+   |               ^^^^
+   |
+   = help: for the width to apply consider using `format!()`
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     println!("{:5}.", format_args_from_macro!());
+LL +     println!("{}.", format_args_from_macro!());
+   |
+
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:23:15
+   |
+LL |     println!("{args:5}");
+   |               ^^^^^^^^
+   |
+   = help: for the width to apply consider using `format!()`
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     println!("{args:5}");
+LL +     println!("{args}");
+   |
+
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:48:25
+   |
+LL |     usr_println!(true, "{:5}.", format_args!(""));
+   |                         ^^^^
+   |
+help: for the width to apply consider using `format!()`
+   |
+LL -     usr_println!(true, "{:5}.", format_args!(""));
+LL +     usr_println!(true, "{:5}.", format!(""));
+   |
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     usr_println!(true, "{:5}.", format_args!(""));
+LL +     usr_println!(true, "{}.", format_args!(""));
+   |
+
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:52:25
+   |
+LL |     usr_println!(true, "{:.3}", format_args!("abcde"));
+   |                         ^^^^^
+   |
+help: for the precision to apply consider using `format!()`
+   |
+LL -     usr_println!(true, "{:.3}", format_args!("abcde"));
+LL +     usr_println!(true, "{:.3}", format!("abcde"));
+   |
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     usr_println!(true, "{:.3}", format_args!("abcde"));
+LL +     usr_println!(true, "{}", format_args!("abcde"));
+   |
+
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:55:25
+   |
+LL |     usr_println!(true, "{:5}.", format_args_from_macro!());
+   |                         ^^^^
+   |
+   = help: for the width to apply consider using `format!()`
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     usr_println!(true, "{:5}.", format_args_from_macro!());
+LL +     usr_println!(true, "{}.", format_args_from_macro!());
+   |
+
+error: format specifiers have no effect on `format_args!()`
+  --> tests/ui/unused_format_specs.rs:59:25
+   |
+LL |     usr_println!(true, "{args:5}");
+   |                         ^^^^^^^^
+   |
+   = help: for the width to apply consider using `format!()`
+help: if the current behavior is intentional, remove the format specifiers
+   |
+LL -     usr_println!(true, "{args:5}");
+LL +     usr_println!(true, "{args}");
+   |
+
+error: aborting due to 8 previous errors
+

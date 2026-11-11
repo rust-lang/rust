@@ -1,0 +1,65 @@
+error[E0425]: cannot find type `FromOutside` in this scope
+  --> $DIR/generate-mod.rs:35:13
+   |
+LL |     type A = $FromOutside;
+   |              ------------ due to this macro variable
+...
+LL |     genmod!(FromOutside, Outer);
+   |             ^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find type `Outer` in this scope
+  --> $DIR/generate-mod.rs:35:26
+   |
+LL |     struct $Outer;
+   |            ------ due to this macro variable
+...
+LL |     genmod!(FromOutside, Outer);
+   |                          ^^^^^ not found in this scope
+
+error[E0425]: cannot find type `FromOutside` in this scope
+  --> $DIR/generate-mod.rs:19:18
+   |
+LL | macro genmod_transparent() {
+...
+LL |         type A = FromOutside;
+   |                  ^^^^^^^^^^^ not found in this scope
+...
+LL |     genmod_transparent!();
+   |     --------------------- in this macro invocation
+
+error[E0425]: cannot find type `Outer` in this scope
+  --> $DIR/generate-mod.rs:20:22
+   |
+LL | macro genmod_transparent() {
+...
+LL |         type Inner = Outer;
+   |                      ^^^^^ not found in this scope
+...
+LL |     genmod_transparent!();
+   |     --------------------- in this macro invocation
+
+error[E0425]: cannot find type `FromOutside` in this scope
+  --> $DIR/generate-mod.rs:28:18
+   |
+LL | macro_rules! genmod_legacy { () => {
+...
+LL |         type A = FromOutside;
+   |                  ^^^^^^^^^^^ not found in this scope
+...
+LL |     genmod_legacy!();
+   |     ---------------- in this macro invocation
+
+error[E0425]: cannot find type `Outer` in this scope
+  --> $DIR/generate-mod.rs:29:22
+   |
+LL | macro_rules! genmod_legacy { () => {
+...
+LL |         type Inner = Outer;
+   |                      ^^^^^ not found in this scope
+...
+LL |     genmod_legacy!();
+   |     ---------------- in this macro invocation
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

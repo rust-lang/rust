@@ -1,0 +1,14 @@
+error[E0277]: the size for values of type `(dyn std::fmt::Display + 'static)` cannot be known at compilation time
+  --> $DIR/capture-unsized-by-move.rs:7:9
+   |
+LL |     let k2 = move || {
+   |                   -- this closure captures all values by move
+LL |         k.to_string();
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn std::fmt::Display + 'static)`
+   = note: all values captured by value by a closure must have a statically known size
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

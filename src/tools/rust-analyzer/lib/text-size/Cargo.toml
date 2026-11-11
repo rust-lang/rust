@@ -1,0 +1,28 @@
+[package]
+name = "text-size"
+version = "1.1.1"
+edition = "2024"
+
+authors = [
+    "Aleksey Kladov <aleksey.kladov@gmail.com>",
+    "Christopher Durham (CAD97) <cad97@cad97.com>"
+]
+description = "Newtypes for text offsets"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-analyzer/text-size"
+documentation = "https://docs.rs/text-size"
+
+[dependencies]
+serde = { version = "1.0", optional = true, default-features = false }
+
+[dev-dependencies]
+serde_test = "1.0"
+static_assertions = "1.1"
+
+[[test]]
+name = "serde"
+path = "tests/serde.rs"
+required-features = ["serde"]
+
+[lints]
+workspace = true

@@ -1,0 +1,37 @@
+error: missing `in` in `for` loop
+  --> $DIR/for-loop-missing-in.rs:4:11
+   |
+LL |     for _i 0..2 {}
+   |           ^
+   |
+help: try adding `in` here
+   |
+LL |     for _i in 0..2 {}
+   |            ++
+
+error: missing `in` in `for` loop
+  --> $DIR/for-loop-missing-in.rs:5:12
+   |
+LL |     for _i of 0..2 {}
+   |            ^^
+   |
+help: try using `in` here instead
+   |
+LL -     for _i of 0..2 {}
+LL +     for _i in 0..2 {}
+   |
+
+error: missing `in` in `for` loop
+  --> $DIR/for-loop-missing-in.rs:6:12
+   |
+LL |     for _i = 0..2 {}
+   |            ^
+   |
+help: try using `in` here instead
+   |
+LL -     for _i = 0..2 {}
+LL +     for _i in 0..2 {}
+   |
+
+error: aborting due to 3 previous errors
+

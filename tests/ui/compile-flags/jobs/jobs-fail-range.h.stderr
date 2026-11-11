@@ -1,0 +1,2 @@
+error: `-Zthreads`: expected a number from 0 to 255 or `sync`
+

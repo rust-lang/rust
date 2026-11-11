@@ -1,0 +1,110 @@
+// Check that the line number column has the correct layout.
+go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
+
+set-window-size: (1000, 1000)
+
+// We move the mouse over the scraped example for the prev button to be generated.
+move-cursor-to: ".scraped-example"
+
+// Check that it's not zero.
+assert-property-false: (
+    ".more-scraped-examples .scraped-example span[data-nosnippet]",
+    {"clientWidth": "0"}
+)
+
+// Check that examples with very long lines have the same width as ones that don't.
+store-property: (
+    ".more-scraped-examples .scraped-example:nth-child(2) span[data-nosnippet]",
+    {"clientWidth": clientWidth},
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(3) span[data-nosnippet]",
+    {"clientWidth": |clientWidth|}
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(4) span[data-nosnippet]",
+    {"clientWidth": |clientWidth|}
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(5) span[data-nosnippet]",
+    {"clientWidth": |clientWidth|}
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(6) span[data-nosnippet]",
+    {"clientWidth": |clientWidth|}
+)
+
+// The "title" should be located at the right bottom corner of the code example.
+store-position: (".scraped-example .example-wrap", {"x": x, "y": y})
+assert-size: (".scraped-example .example-wrap", {"height": 130})
+store-size: (".scraped-example .example-wrap", {"width": width, "height": height})
+store-size: (".scraped-example .scraped-example-title", {
+    "width": title_width,
+    "height": title_height,
+})
+assert-position: (".scraped-example .scraped-example-title", {
+    "x": |x| + |width| - |title_width| - 5,
+    "y": |y| + |height| - |title_height| - 8,
+})
+
+store-size: (".more-scraped-examples .scraped-example .example-wrap", {"height": more_height})
+assert: |more_height| > |height|
+assert-size: (".more-scraped-examples .scraped-example .example-wrap", {
+    "height": 250,
+    "width": |width|,
+})
+
+// Check that for both mobile and desktop sizes, the buttons in scraped examples are displayed
+// correctly.
+
+store-value: (offset_y, 4)
+
+// First with desktop
+assert-position: (".scraped-example", {"y": 214})
+assert-position: (".scraped-example .prev", {"y": 214 + |offset_y|})
+
+// Gradient background should be at the top of the code block.
+assert-css: (".scraped-example .example-wrap::before", {"top": "0px"})
+assert-css: (".scraped-example .example-wrap::after", {"bottom": "0px"})
+
+// Then with mobile
+set-window-size: (600, 600)
+store-size: (".scraped-example .scraped-example-title", {"height": title_height})
+assert-position: (".scraped-example", {"y": 249})
+assert-position: (".scraped-example .prev", {"y": 249 + |offset_y| + |title_height|})
+
+define-function: (
+    "check_title_and_code_position",
+    [],
+    block {
+        // Title should be above the code.
+        store-position: (".scraped-example .example-wrap", {"x": x, "y": y})
+        store-size: (".scraped-example .scraped-example-title", { "height": title_height })
+
+        assert-position: (".scraped-example .scraped-example-title", {
+            "x": |x|, // same X position.
+            "y": |y| - |title_height|,
+        })
+
+        // Line numbers should be right beside the code.
+        compare-elements-position-near: (
+            ".scraped-example .example-wrap span[data-nosnippet]",
+            // On the first line, the code starts with `fn main` so we have a keyword.
+            ".scraped-example .example-wrap .rust span.kw",
+            // They're not exactly the same size but since they're on the same line,
+            // it's kinda the same.
+            {"y": 2},
+        )
+    }
+)
+
+// Check that the title is now above the code.
+call-function: ("check_title_and_code_position", {})
+
+// Then with small mobile
+set-window-size: (300, 300)
+call-function: ("check_title_and_code_position", {})

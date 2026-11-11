@@ -1,0 +1,14 @@
+error: cannot override `method` because it already has a `final` definition in the trait
+  --> $DIR/overriding.rs:8:5
+   |
+LL |     fn method() {}
+   |     ^^^^^^^^^^^
+   |
+note: `method` is marked final here
+  --> $DIR/overriding.rs:4:5
+   |
+LL |     final fn method() {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

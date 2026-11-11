@@ -1,0 +1,17 @@
+# for this file to take effect make sure you use git ^2.23 and
+# add ignoreFile to your git configuration:
+# ```
+# git config --global blame.ignoreRevsFile .git-blame-ignore-revs
+# ```
+
+# prettier format
+f247090558c9ba3c551566eae5882b7ca865225f
+
+# pre-josh subtree syncs
+3e358a6827d83e8d6473913a5e304734aadfed04
+932d85b52946d917deab2c23ead552f7f713b828
+9d2cb42a413e51deb50b36794a2e1605381878fc
+b2f6fd4f961fc7e4fbfdb80cae2e6065f8436f15
+c48062fe2ab9a2d913d1985a6b0aec4bf936bfc1
+f532576ac53ddcc666bc8d59e0b6437065e2f599
+4704881b641884de50645637108b6b6f5b68aaf9

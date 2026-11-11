@@ -1,0 +1,13 @@
+error[E0464]: multiple candidates for `rmeta` dependency `crateresolve2` found
+  --> $DIR/crateresolve2.rs:10:1
+   |
+LL | extern crate crateresolve2;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: candidate #1: $TEST_BUILD_DIR/auxiliary/libcrateresolve2-1.rmeta
+   = note: candidate #2: $TEST_BUILD_DIR/auxiliary/libcrateresolve2-2.rmeta
+   = note: candidate #3: $TEST_BUILD_DIR/auxiliary/libcrateresolve2-3.rmeta
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0464`.

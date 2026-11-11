@@ -1,0 +1,33 @@
+SOURCE_FILE
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    CFG_META
+      CFG_KW "cfg"
+      L_PAREN "("
+      CFG_COMPOSITE
+        IDENT "any"
+        L_PAREN "("
+        CFG_ATOM
+          IDENT "a"
+        COMMA ","
+        WHITESPACE " "
+        CFG_COMPOSITE
+          IDENT "all"
+          L_PAREN "("
+          CFG_ATOM
+            IDENT "b"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            STRING "\"c\""
+          COMMA ","
+          WHITESPACE " "
+          CFG_ATOM
+            IDENT "d"
+          R_PAREN ")"
+        R_PAREN ")"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"

@@ -1,0 +1,4 @@
+error: Linking globals named 'foo': symbol multiply defined!
+
+error: aborting due to 1 previous error
+

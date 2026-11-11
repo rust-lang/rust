@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `TestDescAndFn: Testable` is not satisfied
+  --> $DIR/mismatch.rs:9:1
+   |
+LL | #[test]
+   | ------- in this attribute macro expansion
+LL | fn wrong_kind(){}
+   | ^^^^^^^^^^^^^^^^^ the trait `Testable` is not implemented for `TestDescAndFn`
+   |
+   = note: required for the cast from `&TestDescAndFn` to `&dyn Testable`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

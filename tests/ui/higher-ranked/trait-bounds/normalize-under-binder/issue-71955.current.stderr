@@ -1,0 +1,78 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-71955.rs:47:5
+   |
+LL |     foo(bar, |s| s.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: closure with signature `for<'a> fn(&'a &'2 str) -> bool` must implement `FnOnce<(&'b &'1 str,)>`, for any lifetime `'1`...
+  --> $DIR/issue-71955.rs:32:9
+   |
+LL | fn foo<F1, F2>(f1: F1, f2: F2)
+...
+LL |     F2: for<'b, 'c> FnOnce(&'b <F1 as Parser<'c>>::Output) -> bool,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `foo`
+   = note: ...but it actually implements `FnOnce<(&&'2 str,)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     foo(bar, |s: &'b &'c str| s.len() == 5);
+   |                +++++++++++++
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-71955.rs:47:5
+   |
+LL |     foo(bar, |s| s.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: closure with signature `for<'a> fn(&'a &'2 str) -> bool` must implement `FnOnce<(&'b &'1 str,)>`, for any lifetime `'1`...
+  --> $DIR/issue-71955.rs:32:63
+   |
+LL | fn foo<F1, F2>(f1: F1, f2: F2)
+...
+LL |     F2: for<'b, 'c> FnOnce(&'b <F1 as Parser<'c>>::Output) -> bool,
+   |                                                               ^^^^ required by this bound in `foo`
+   = note: ...but it actually implements `FnOnce<(&&'2 str,)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     foo(bar, |s: &'b &'c str| s.len() == 5);
+   |                +++++++++++++
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-71955.rs:50:5
+   |
+LL |     foo(baz, |s| s.0.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: closure with signature `for<'a> fn(&'a Wrapper<'2>) -> bool` must implement `FnOnce<(&'b Wrapper<'1>,)>`, for any lifetime `'1`...
+  --> $DIR/issue-71955.rs:32:9
+   |
+LL | fn foo<F1, F2>(f1: F1, f2: F2)
+...
+LL |     F2: for<'b, 'c> FnOnce(&'b <F1 as Parser<'c>>::Output) -> bool,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `foo`
+   = note: ...but it actually implements `FnOnce<(&Wrapper<'2>,)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     foo(baz, |s: &'b Wrapper<'c>| s.0.len() == 5);
+   |                +++++++++++++++++
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-71955.rs:50:5
+   |
+LL |     foo(baz, |s| s.0.len() == 5);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: closure with signature `for<'a> fn(&'a Wrapper<'2>) -> bool` must implement `FnOnce<(&'b Wrapper<'1>,)>`, for any lifetime `'1`...
+  --> $DIR/issue-71955.rs:32:63
+   |
+LL | fn foo<F1, F2>(f1: F1, f2: F2)
+...
+LL |     F2: for<'b, 'c> FnOnce(&'b <F1 as Parser<'c>>::Output) -> bool,
+   |                                                               ^^^^ required by this bound in `foo`
+   = note: ...but it actually implements `FnOnce<(&Wrapper<'2>,)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     foo(baz, |s: &'b Wrapper<'c>| s.0.len() == 5);
+   |                +++++++++++++++++
+
+error: aborting due to 4 previous errors
+

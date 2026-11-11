@@ -1,0 +1,250 @@
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::fs;
+use std::os::unix::fs::symlink;
+use std::path::{Path, PathBuf};
+
+use crate::config::{Channel, ConfigInfo};
+use crate::utils::{
+    create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, rustc_version_info,
+    walk_dir,
+};
+
+sub_command_decl! {
+    BuildArg => "build",
+    build_sysroot: bool = "--sysroot" => "When used on its own, build backend in dev mode with \
+optimized dependencies and sysroot in dev mode (unoptimized). When used together with \
+`--release`, build backend in release mode with optimized dependencies. When used together with \
+`--release-sysroot`, build the sysroot in release mode with optimized dependencies instead of \
+in dev mode",
+    + config_info: ConfigInfo
+}
+
+fn cleanup_sysroot_previous_build(library_dir: &Path) {
+    // Cleanup for previous run
+    // Clean target dir except for build scripts and incremental cache
+    let _ = walk_dir(
+        library_dir.join("target"),
+        &mut |dir: &Path| {
+            for top in &["debug", "release"] {
+                let _ = fs::remove_dir_all(dir.join(top).join("build"));
+                let _ = fs::remove_dir_all(dir.join(top).join("deps"));
+                let _ = fs::remove_dir_all(dir.join(top).join("examples"));
+                let _ = fs::remove_dir_all(dir.join(top).join("native"));
+
+                let _ = walk_dir(
+                    dir.join(top),
+                    &mut |sub_dir: &Path| {
+                        if sub_dir
+                            .file_name()
+                            .map(|filename| filename.to_str().unwrap().starts_with("libsysroot"))
+                            .unwrap_or(false)
+                        {
+                            let _ = fs::remove_dir_all(sub_dir);
+                        }
+                        Ok(())
+                    },
+                    &mut |file: &Path| {
+                        if file
+                            .file_name()
+                            .map(|filename| filename.to_str().unwrap().starts_with("libsysroot"))
+                            .unwrap_or(false)
+                        {
+                            let _ = fs::remove_file(file);
+                        }
+                        Ok(())
+                    },
+                    false,
+                );
+            }
+            Ok(())
+        },
+        &mut |_| Ok(()),
+        false,
+    );
+}
+
+pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
+    if let Some(sysroot_path) = &config.prebuilt_sysroot_path {
+        println!("Not building the sysroot since `{sysroot_path}` is used");
+        return Ok(());
+    }
+    let start_dir = get_sysroot_dir();
+
+    // Symlink libgccjit.so to sysroot.
+    let lib_path = start_dir.join("sysroot").join("lib");
+    let rustlib_target_path = lib_path
+        .join("rustlib")
+        .join(&config.host_triple)
+        .join("codegen-backends")
+        .join("lib")
+        .join(&config.target_triple);
+    let libgccjit_path =
+        PathBuf::from(config.gcc_path.as_ref().expect("libgccjit should be set by this point"))
+            .join("libgccjit.so");
+    let libgccjit_in_sysroot_path = rustlib_target_path.join("libgccjit.so");
+    // First remove the file to be able to create the symlink even when the file already exists.
+    let _ = fs::remove_file(&libgccjit_in_sysroot_path);
+    create_dir(&rustlib_target_path)?;
+    symlink(libgccjit_path, &libgccjit_in_sysroot_path)
+        .map_err(|error| format!("Cannot create symlink for libgccjit.so: {}", error))?;
+
+    let library_dir = start_dir.join("sysroot_src").join("library");
+    cleanup_sysroot_previous_build(&library_dir);
+
+    // Builds libs
+    let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+
+    // Remap both source spans and embedded panic locations to the standard virtual path.
+    let sysroot_source_dir = start_dir.join("sysroot_src");
+    let rustc_commit = rustc_version_info(env.get("RUSTC").map(String::as_str))?
+        .commit_hash
+        .ok_or_else(|| "Couldn't retrieve rustc commit hash".to_string())?;
+    // Cargo passes workspace-relative filenames, including those used by panic locations.
+    // Also: the `==` is intentional! The first `=` is "FROM" and the second `=` is for "TO".
+    rustflags.push_str(&format!(" --remap-path-prefix==/rustc/{rustc_commit}/library"));
+    rustflags.push_str(&format!(
+        " --remap-path-prefix={sysroot_source_dir}=/rustc/{rustc_commit}",
+        sysroot_source_dir = std::path::absolute(&sysroot_source_dir)
+            .map_err(|error| format!(
+                "Failed to get the absolute path of the sysroot sources: {error:?}"
+            ))?
+            .display(),
+    ));
+    if config.sysroot_panic_abort {
+        rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
+    }
+    rustflags.push_str(" -Z force-unstable-if-unmarked");
+    if config.no_default_features {
+        rustflags.push_str(" -Csymbol-mangling-version=v0");
+    }
+
+    let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
+    if config.target.ends_with(".json") {
+        args.push(&"-Zjson-target-spec");
+    }
+
+    for feature in &config.features {
+        args.push(&"--features");
+        args.push(feature);
+    }
+
+    if config.no_default_features {
+        rustflags.push_str(" -Csymbol-mangling-version=v0");
+        args.push(&"--no-default-features");
+    }
+
+    let channel = if config.sysroot_release_channel {
+        rustflags.push_str(" -Zmir-opt-level=3");
+        args.push(&"--release");
+        "release"
+    } else {
+        "debug"
+    };
+
+    // We have a different environment variable than RUSTFLAGS to make sure those flags are only
+    // sent to rustc_codegen_gcc and not the LLVM backend.
+    if let Ok(cg_rustflags) = std::env::var("CG_RUSTFLAGS") {
+        rustflags.push(' ');
+        rustflags.push_str(&cg_rustflags);
+    }
+
+    args.push(&"--features");
+    args.push(&"backtrace");
+
+    let mut env = env.clone();
+    env.insert("RUSTFLAGS".to_string(), rustflags);
+    let sysroot_dir = library_dir.join("sysroot");
+    run_command_with_output_and_env(&args, Some(&sysroot_dir), Some(&env))?;
+
+    // Copy files to sysroot
+    let sysroot_path = lib_path.join(format!("rustlib/{}/lib/", config.target_triple));
+    // To avoid errors like "multiple candidates for `rmeta` dependency `core` found", we clean the
+    // sysroot directory before copying the sysroot build artifacts.
+    let _ = fs::remove_dir_all(&sysroot_path);
+    create_dir(&sysroot_path)?;
+    let mut copier = |dir_to_copy: &Path| {
+        // FIXME: should not use shell command!
+        run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
+    };
+    let target_dir = library_dir.join(format!("target/{}/{}", config.target_triple, channel));
+    let deps_dir = target_dir.join("deps");
+    if deps_dir.is_dir() {
+        // Keep copying in the old directory just in case.
+        walk_dir(&deps_dir, &mut copier.clone(), &mut copier, false)?;
+    } else {
+        let build_dir = target_dir.join("build");
+        walk_dir(
+            &build_dir,
+            &mut |package_dir: &Path| {
+                walk_dir(
+                    package_dir,
+                    &mut |unit_dir: &Path| {
+                        let out_dir = unit_dir.join("out");
+                        if out_dir.is_dir() {
+                            walk_dir(&out_dir, &mut copier.clone(), &mut copier.clone(), false)?;
+                        }
+                        Ok(())
+                    },
+                    &mut |_| Ok(()),
+                    false,
+                )
+            },
+            &mut |_| Ok(()),
+            false,
+        )?;
+    }
+
+    // Copy the source files to the sysroot (Rust for Linux needs this).
+    let sysroot_src_path = start_dir.join("sysroot/lib/rustlib/src/rust");
+    create_dir(&sysroot_src_path)?;
+    run_command(&[&"cp", &"-r", &library_dir, &sysroot_src_path], None)?;
+
+    Ok(())
+}
+
+fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
+    let mut env = HashMap::new();
+
+    if args.config_info.no_default_features {
+        env.insert("RUSTFLAGS".to_string(), "-Csymbol-mangling-version=v0".to_string());
+    }
+
+    let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
+    if args.config_info.channel == Channel::Release {
+        command.push(&"--release");
+        env.insert("CHANNEL".to_string(), "release".to_string());
+        env.insert("CARGO_INCREMENTAL".to_string(), "1".to_string());
+    } else {
+        env.insert("CHANNEL".to_string(), "debug".to_string());
+    }
+    if args.config_info.no_default_features {
+        command.push(&"--no-default-features");
+    }
+    if args.config_info.prebuilt_backend_path.is_none() {
+        run_command_with_output_and_env(&command, None, Some(&env))?;
+    }
+
+    args.config_info.setup(&mut env, false, true)?;
+
+    // We voluntarily ignore the error.
+    let _ = fs::remove_dir_all("target/out");
+    let gccjit_target = "target/out/gccjit";
+    create_dir(gccjit_target)?;
+    if args.build_sysroot {
+        println!("[BUILD] sysroot");
+        build_sysroot(&env, &args.config_info)?;
+    }
+    Ok(())
+}
+
+/// Executes the build process.
+pub fn run() -> Result<(), String> {
+    let mut args = match BuildArg::new()? {
+        Some(args) => args,
+        None => return Ok(()),
+    };
+    args.config_info.setup_gcc_path()?;
+    build_codegen(&mut args)?;
+    Ok(())
+}

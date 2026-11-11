@@ -1,0 +1,43 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "async_foo"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        WILDCARD_PAT
+          UNDERSCORE "_"
+        COLON ":"
+        WHITESPACE " "
+        IMPL_TRAIT_TYPE
+          IMPL_KW "impl"
+          WHITESPACE " "
+          TYPE_BOUND_LIST
+            TYPE_BOUND
+              ASYNC_KW "async"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Fn"
+                    PARENTHESIZED_ARG_LIST
+                      L_PAREN "("
+                      TYPE_ARG
+                        REF_TYPE
+                          AMP "&"
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "i32"
+                      R_PAREN ")"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

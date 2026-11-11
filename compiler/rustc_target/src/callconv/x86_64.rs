@@ -1,0 +1,318 @@
+// The classification code for the x86_64 ABI is taken from the clay language
+// https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
+
+use rustc_abi::{
+    BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
+    Variants,
+};
+
+use crate::callconv::{ArgAbi, CastTarget, FnAbi};
+use crate::spec::HasTargetSpec;
+
+/// Classification of "eightbyte" components.
+///
+/// N.B., the order of the variants is from general to specific,
+/// such that `merge(a, b)` is the "smaller" of `a` and `b`, unless it is an error.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+enum Class {
+    Int,
+    Sse,
+    SseUp,
+    X87,
+    X87Up,
+}
+
+impl Class {
+    fn upper_half(self) -> Class {
+        match self {
+            Class::Sse | Class::SseUp => Class::SseUp,
+            Class::X87 | Class::X87Up => Class::X87Up,
+            Class::Int => Class::Int,
+        }
+    }
+
+    fn merge(self, other: Self) -> Result<Self, Memory> {
+        match (self, other) {
+            (Class::X87 | Class::X87Up, Class::Sse | Class::SseUp) => Err(Memory),
+            (Class::Sse | Class::SseUp, Class::X87 | Class::X87Up) => Err(Memory),
+            _ => Ok(Ord::min(self, other)),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Memory;
+
+// Currently supported vector size (AVX-512).
+const LARGEST_VECTOR_SIZE: usize = 512;
+const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
+
+fn classify_arg<'a, Ty, C>(
+    cx: &C,
+    arg: &ArgAbi<'a, Ty>,
+) -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
+{
+    fn classify<'a, Ty, C>(
+        cx: &C,
+        layout: TyAndLayout<'a, Ty>,
+        cls: &mut [Option<Class>],
+        off: Size,
+    ) -> Result<(), Memory>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasDataLayout,
+    {
+        if !off.is_aligned(layout.align) {
+            if !layout.is_zst() {
+                return Err(Memory);
+            }
+            return Ok(());
+        }
+
+        let mut c = match layout.backend_repr {
+            BackendRepr::Scalar(scalar) => match scalar.primitive() {
+                Primitive::Int(..) | Primitive::Pointer(_) => Class::Int,
+                Primitive::Float(Float::X87F80) => Class::X87,
+                Primitive::Float(_) => Class::Sse,
+            },
+
+            BackendRepr::SimdVector { .. } => Class::Sse,
+
+            BackendRepr::SimdScalableVector { .. } => panic!("scalable vectors are unsupported"),
+
+            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => {
+                for i in 0..layout.fields.count() {
+                    let field_off = off + layout.fields.offset(i);
+                    classify(cx, layout.field(cx, i), cls, field_off)?;
+                }
+
+                match &layout.variants {
+                    Variants::Single { .. } | Variants::Empty => {}
+                    Variants::Multiple { variants, .. } => {
+                        // Treat enum variants like union members.
+                        for variant_idx in variants.indices() {
+                            classify(cx, layout.for_variant(cx, variant_idx), cls, off)?;
+                        }
+                    }
+                }
+
+                return Ok(());
+            }
+        };
+
+        // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).
+        let first = (off.bytes() / 8) as usize;
+        let last = ((off.bytes() + layout.size.bytes() - 1) / 8) as usize;
+        for cls in &mut cls[first..=last] {
+            *cls = match cls {
+                Some(old) => Some(Class::merge(*old, c)?),
+                None => Some(c),
+            };
+
+            // Everything after the first "eightbyte" component is the upper half of a register.
+            c = c.upper_half();
+        }
+
+        Ok(())
+    }
+
+    let n = arg.layout.size.bytes().div_ceil(8) as usize;
+    if n > MAX_EIGHTBYTES {
+        return Err(Memory);
+    }
+
+    let mut cls = [None; MAX_EIGHTBYTES];
+    classify(cx, arg.layout, &mut cls, Size::ZERO)?;
+    if n > 2 {
+        if cls[0] != Some(Class::Sse) {
+            return Err(Memory);
+        }
+        if cls[1..n].iter().any(|&c| c != Some(Class::SseUp)) {
+            return Err(Memory);
+        }
+    } else {
+        let mut i = 0;
+        while i < n {
+            if cls[i] == Some(Class::SseUp) {
+                cls[i] = Some(Class::Sse);
+            } else if cls[i] == Some(Class::Sse) {
+                i += 1;
+                while i != n && cls[i] == Some(Class::SseUp) {
+                    i += 1;
+                }
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    // If X87UP is not preceded by X87, the whole argument is passed in memory.
+    if let [Some(Class::X87Up), ..] = cls {
+        return Err(Memory);
+    }
+
+    for [prev, curr] in cls[..n].array_windows() {
+        if *curr == Some(Class::X87Up) && *prev != Some(Class::X87) {
+            return Err(Memory);
+        }
+    }
+
+    Ok(cls)
+}
+
+fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg> {
+    let Some(Some(class)) = cls.get(*i) else {
+        return None;
+    };
+
+    match class {
+        Class::Int => {
+            *i += 1;
+            Some(if size.bytes() < 8 { Reg { kind: RegKind::Integer, size } } else { Reg::i64() })
+        }
+        Class::Sse => {
+            let vec_len =
+                1 + cls[*i + 1..].iter().take_while(|&&c| c == Some(Class::SseUp)).count();
+            *i += vec_len;
+            Some(if vec_len == 1 {
+                match size.bytes() {
+                    4 => Reg::f32(),
+                    _ => Reg::f64(),
+                }
+            } else {
+                Reg::opaque_vector(Size::from_bytes(8) * (vec_len as u64))
+            })
+        }
+        Class::X87 => {
+            let consumed =
+                1 + cls[*i + 1..].iter().take_while(|&&c| c == Some(Class::X87Up)).count();
+            assert_eq!(consumed, 2);
+            *i += consumed;
+            Some(Reg::x87_f80())
+        }
+        c => unreachable!("reg_component: unhandled class {:?}", c),
+    }
+}
+
+fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
+    let mut i = 0;
+    let lo = reg_component(cls, &mut i, size).unwrap();
+    let offset = Size::from_bytes(8) * (i as u64);
+    let mut target = CastTarget::from(lo);
+    if size > offset {
+        if let Some(hi) = reg_component(cls, &mut i, size - offset) {
+            target = CastTarget::pair(lo, hi);
+        }
+    }
+    assert_eq!(reg_component(cls, &mut i, Size::ZERO), None);
+    target
+}
+
+const MAX_INT_REGS: usize = 6; // RDI, RSI, RDX, RCX, R8, R9
+const MAX_SSE_REGS: usize = 8; // XMM0-7
+
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    let mut int_regs = MAX_INT_REGS;
+    let mut sse_regs = MAX_SSE_REGS;
+
+    let mut x86_64_arg_or_ret = |arg: &mut ArgAbi<'a, Ty>, is_arg: bool| {
+        if !arg.layout.is_sized() {
+            // FIXME: Update int_regs?
+            // Not touching this...
+            return;
+        }
+        if is_arg && arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+            int_regs = int_regs.saturating_sub(1);
+            arg.make_indirect();
+            return;
+        }
+        if is_arg && arg.layout.is_x87_f80(cx) {
+            // This branch and cast are not technically required, but it makes the IR more readable.
+            arg.cast_to(Reg::x87_f80());
+            return;
+        }
+        let mut cls_or_mem = classify_arg(cx, arg);
+
+        if is_arg && let Ok(cls) = cls_or_mem {
+            if cls.contains(&Some(Class::X87)) {
+                // An argument of class X87 is always passed in memory.
+                std::assert_matches!(cls, [Some(Class::X87), Some(Class::X87Up), ..]);
+                cls_or_mem = Err(Memory);
+            } else {
+                let mut needed_int = 0;
+                let mut needed_sse = 0;
+                for c in cls {
+                    match c {
+                        Some(Class::Int) => needed_int += 1,
+                        Some(Class::Sse) => needed_sse += 1,
+                        _ => {}
+                    }
+                }
+                match (int_regs.checked_sub(needed_int), sse_regs.checked_sub(needed_sse)) {
+                    (Some(left_int), Some(left_sse)) => {
+                        int_regs = left_int;
+                        sse_regs = left_sse;
+                    }
+                    _ => {
+                        // Not enough registers for this argument, so it will be
+                        // passed on the stack, but we only mark aggregates
+                        // explicitly as indirect `byval` arguments, as LLVM will
+                        // automatically put immediates on the stack itself.
+                        if arg.layout.is_aggregate() {
+                            cls_or_mem = Err(Memory);
+                        }
+                    }
+                }
+            }
+        }
+
+        match cls_or_mem {
+            Err(Memory) => {
+                if is_arg {
+                    // The x86_64 ABI doesn't have any special requirements for `byval` alignment,
+                    // the type's alignment is always used.
+                    arg.pass_by_stack_offset(None);
+                } else {
+                    // `sret` parameter thus one less integer register available
+                    arg.make_indirect();
+                    // NOTE(eddyb) return is handled first, so no registers
+                    // should've been used yet.
+                    assert_eq!(int_regs, MAX_INT_REGS);
+                    int_regs -= 1;
+                }
+            }
+            Ok(ref cls) => {
+                // split into sized chunks passed individually
+                if arg.layout.is_aggregate() {
+                    let size = arg.layout.size;
+                    arg.cast_to(cast_target(cls, size));
+                } else if is_arg || cx.target_spec().is_like_darwin {
+                    arg.extend_integer_width_to(32);
+                }
+                // The x86_64 psABI requires bools to be zero-extended to 8-bits, with high bits unspecified.
+                // zeroext i1 has this behavior in the LLVM X86 backend.
+                if !is_arg && arg.layout.backend_repr.is_bool() {
+                    arg.extend_integer_width_to(8);
+                }
+            }
+        }
+    };
+
+    if !fn_abi.ret.is_ignore() {
+        x86_64_arg_or_ret(&mut fn_abi.ret, false);
+    }
+
+    for arg in fn_abi.args.iter_mut() {
+        if arg.is_ignore() {
+            continue;
+        }
+        x86_64_arg_or_ret(arg, true);
+    }
+}

@@ -1,0 +1,19 @@
+error[E0107]: missing generics for struct `Struct`
+  --> $DIR/resolution-with-inherent-associated-types.rs:12:33
+   |
+LL | type Alias<T: Trait> = Struct<{ Struct::N }>;
+   |                                 ^^^^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `N`
+  --> $DIR/resolution-with-inherent-associated-types.rs:10:8
+   |
+LL | struct Struct<const N: usize>;
+   |        ^^^^^^ --------------
+help: add missing generic argument
+   |
+LL | type Alias<T: Trait> = Struct<{ Struct<N>::N }>;
+   |                                       +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

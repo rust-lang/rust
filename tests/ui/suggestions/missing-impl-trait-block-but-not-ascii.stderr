@@ -1,0 +1,32 @@
+error: unknown start of token: \u{ff1b}
+  --> $DIR/missing-impl-trait-block-but-not-ascii.rs:8:13
+   |
+LL | impl T for S；
+   |             ^^
+   |
+help: Unicode character '；' (Fullwidth Semicolon) looks like ';' (Semicolon), but it is not
+   |
+LL - impl T for S；
+LL + impl T for S;
+   |
+
+error: expected `{}`, found `;`
+  --> $DIR/missing-impl-trait-block-but-not-ascii.rs:8:13
+   |
+LL | impl T for S；
+   |             ^^
+   |
+   = help: try using `{}` instead
+
+error[E0046]: not all trait items implemented, missing: `f`
+  --> $DIR/missing-impl-trait-block-but-not-ascii.rs:8:1
+   |
+LL |     fn f();
+   |     ------- `f` from trait
+LL | }
+LL | impl T for S；
+   | ^^^^^^^^^^^^ missing `f` in implementation
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0046`.

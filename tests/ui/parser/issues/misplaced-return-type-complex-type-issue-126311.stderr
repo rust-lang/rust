@@ -1,0 +1,14 @@
+error: return type should be specified after the function parameters
+  --> $DIR/misplaced-return-type-complex-type-issue-126311.rs:1:30
+   |
+LL | fn foo<T>() where T: Default -> impl Default + 'static {}
+   |                              ^^ expected one of `(`, `+`, `,`, `::`, `<`, or `{`
+   |
+help: place the return type after the function parameters
+   |
+LL - fn foo<T>() where T: Default -> impl Default + 'static {}
+LL + fn foo<T>() -> impl Default + 'static where T: Default  {}
+   |
+
+error: aborting due to 1 previous error
+

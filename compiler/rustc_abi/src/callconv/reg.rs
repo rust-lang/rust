@@ -1,0 +1,102 @@
+#[cfg(feature = "nightly")]
+use rustc_macros::StableHash;
+
+use crate::{Align, Float, HasDataLayout, Integer, Primitive, Size};
+
+/// The "kind" of backend type, which combined with a [`Size`] forms a [`Reg`].
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum RegKind {
+    Integer,
+    Float,
+    /// The IBM extended-precision format: a pair of `f64`s, each passed in its own register.
+    /// This variant is needed to distinguish IEEE f128 and IBM f128 in the backends.
+    ///
+    /// Only used on PowerPC targets.
+    PpcF128,
+    Vector {
+        /// The `hint_vector_elem` is strictly for optimization purposes. E.g. it can be used by
+        /// a codegen backend to prevent extra bitcasts that obscure a pattern. Alternatively,
+        /// it can be safely ignored by always picking i8.
+        hint_vector_elem: Primitive,
+    },
+}
+
+impl RegKind {
+    pub fn from_primitive(primitive: Primitive) -> Self {
+        match primitive {
+            Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
+            Primitive::Float(Float::PpcF128) => RegKind::PpcF128,
+            Primitive::Float(
+                Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::X87F80 | Float::F128,
+            ) => RegKind::Float,
+        }
+    }
+}
+
+/// A combination of a [`RegKind`] and a [`Size`] that represents a builtin type in the backend.
+#[cfg_attr(feature = "nightly", derive(StableHash))]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Reg {
+    pub kind: RegKind,
+    pub size: Size,
+}
+
+macro_rules! reg_ctor {
+    ($name:ident, $kind:ident, $bits:expr) => {
+        pub fn $name() -> Reg {
+            Reg { kind: RegKind::$kind, size: Size::from_bits($bits) }
+        }
+    };
+}
+
+impl Reg {
+    reg_ctor!(i8, Integer, 8);
+    reg_ctor!(i16, Integer, 16);
+    reg_ctor!(i32, Integer, 32);
+    reg_ctor!(i64, Integer, 64);
+    reg_ctor!(i128, Integer, 128);
+
+    reg_ctor!(f16, Float, 16);
+    reg_ctor!(f32, Float, 32);
+    reg_ctor!(f64, Float, 64);
+    reg_ctor!(x87_f80, Float, 80);
+    reg_ctor!(f128, Float, 128);
+
+    /// A vector of the given size with an unknown (and irrelevant) element type.
+    pub fn opaque_vector(size: Size) -> Reg {
+        // Default to an i8 vector of the given size.
+        Reg { kind: RegKind::Vector { hint_vector_elem: Primitive::Int(Integer::I8, true) }, size }
+    }
+}
+
+impl Reg {
+    /// Alignment used for the scratch space when this type is part of a `PassMode::Cast`.
+    pub fn scratch_align<C: HasDataLayout>(&self, cx: &C) -> Align {
+        let dl = cx.data_layout();
+        match self.kind {
+            RegKind::Integer => match self.size.bits() {
+                1 => dl.i1_align,
+                2..=8 => dl.i8_align,
+                9..=16 => dl.i16_align,
+                17..=32 => dl.i32_align,
+                33..=64 => dl.i64_align,
+                65..=128 => dl.i128_align,
+                _ => panic!("unsupported integer: {self:?}"),
+            },
+            RegKind::Float => match self.size.bits() {
+                16 => dl.f16_align,
+                32 => dl.f32_align,
+                64 => dl.f64_align,
+                // This alignment is not a multiple of 80 bits, but the alignment
+                // here is only used to align the alloca of a cast, and there the
+                // full alignment of x87_f80 should be used.
+                80 => dl.x87_f80_align,
+                128 => dl.f128_align,
+                _ => panic!("unsupported float: {self:?}"),
+            },
+            RegKind::PpcF128 => dl.f128_align,
+            RegKind::Vector { .. } => dl.rust_vector_align(self.size),
+        }
+    }
+}

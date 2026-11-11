@@ -1,0 +1,31 @@
+error: cannot find macro `bar` in this scope
+  --> $DIR/issue-49074.rs:12:4
+   |
+LL |    bar!();
+   |    ^^^
+   |
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/issue-49074.rs:6:5
+   |
+LL | /  mod foo {
+LL | |/     macro_rules! bar {
+LL | ||         () => ();
+LL | ||     }
+   | ||_____^ a macro with the same name is defined here
+LL | |  }
+   | |__- consider annotating this `mod` with `#[macro_use]`
+
+error: cannot find attribute `marco_use` in this scope
+  --> $DIR/issue-49074.rs:3:3
+   |
+LL | #[marco_use] // typo
+   |   ^^^^^^^^^
+   |
+help: a built-in attribute with a similar name exists
+   |
+LL - #[marco_use] // typo
+LL + #[macro_use] // typo
+   |
+
+error: aborting due to 2 previous errors
+

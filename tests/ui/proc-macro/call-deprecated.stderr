@@ -1,0 +1,16 @@
+warning: use of deprecated macro `call_deprecated::attr`: test
+  --> $DIR/call-deprecated.rs:14:3
+   |
+LL | #[call_deprecated::attr]
+   |   ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated macro `call_deprecated::attr_remove`: test
+  --> $DIR/call-deprecated.rs:18:3
+   |
+LL | #[call_deprecated::attr_remove]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

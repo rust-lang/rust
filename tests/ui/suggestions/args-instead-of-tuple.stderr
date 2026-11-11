@@ -1,0 +1,125 @@
+error[E0061]: enum variant takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:7:36
+   |
+LL |     let _: Result<(i32, i8), ()> = Ok(1, 2);
+   |                                    ^^
+   |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+help: wrap these arguments in parentheses to construct a tuple
+   |
+LL |     let _: Result<(i32, i8), ()> = Ok((1, 2));
+   |                                       +    +
+
+error[E0061]: enum variant takes 1 argument but 3 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:9:46
+   |
+LL |     let _: Option<(i32, i8, &'static str)> = Some(1, 2, "hi");
+   |                                              ^^^^
+   |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: wrap these arguments in parentheses to construct a tuple
+   |
+LL |     let _: Option<(i32, i8, &'static str)> = Some((1, 2, "hi"));
+   |                                                   +          +
+
+error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:11:25
+   |
+LL |     let _: Option<()> = Some();
+   |                         ^^^^-- argument #1 of type `()` is missing
+   |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: provide the argument
+   |
+LL |     let _: Option<()> = Some(());
+   |                              ++
+
+error[E0308]: mismatched types
+  --> $DIR/args-instead-of-tuple.rs:14:34
+   |
+LL |     let _: Option<(i32,)> = Some(3);
+   |                             ---- ^ expected `(i32,)`, found integer
+   |                             |
+   |                             arguments to this enum variant are incorrect
+   |
+   = note: expected tuple `(i32,)`
+               found type `{integer}`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     let _: Option<(i32,)> = Some((3,));
+   |                                  + ++
+
+error[E0308]: mismatched types
+  --> $DIR/args-instead-of-tuple.rs:17:34
+   |
+LL |     let _: Option<(i32,)> = Some((3));
+   |                             ---- ^^^ expected `(i32,)`, found integer
+   |                             |
+   |                             arguments to this enum variant are incorrect
+   |
+   = note: expected tuple `(i32,)`
+               found type `{integer}`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     let _: Option<(i32,)> = Some((3,));
+   |                                    +
+
+error[E0061]: function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:20:5
+   |
+LL |     two_ints(1, 2);
+   |     ^^^^^^^^
+   |
+note: function defined here
+  --> $DIR/args-instead-of-tuple.rs:25:4
+   |
+LL | fn two_ints(_: (i32, i32)) {
+   |    ^^^^^^^^ -------------
+help: wrap these arguments in parentheses to construct a tuple
+   |
+LL |     two_ints((1, 2));
+   |              +    +
+
+error[E0061]: function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:22:5
+   |
+LL |     with_generic(3, 4);
+   |     ^^^^^^^^^^^^
+   |
+note: function defined here
+  --> $DIR/args-instead-of-tuple.rs:28:4
+   |
+LL | fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
+   |    ^^^^^^^^^^^^                 ----------------
+help: wrap these arguments in parentheses to construct a tuple
+   |
+LL |     with_generic((3, 4));
+   |                  +    +
+
+error[E0061]: function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:31:9
+   |
+LL |         with_generic(a, b);
+   |         ^^^^^^^^^^^^
+   |
+note: function defined here
+  --> $DIR/args-instead-of-tuple.rs:28:4
+   |
+LL | fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
+   |    ^^^^^^^^^^^^                 ----------------
+help: wrap these arguments in parentheses to construct a tuple
+   |
+LL |         with_generic((a, b));
+   |                      +    +
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0061, E0308.
+For more information about an error, try `rustc --explain E0061`.

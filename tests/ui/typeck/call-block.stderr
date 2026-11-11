@@ -1,0 +1,11 @@
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/call-block.rs:2:13
+   |
+LL |     let _ = {42}();
+   |             ^^^^--
+   |             |
+   |             call expression requires function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0618`.

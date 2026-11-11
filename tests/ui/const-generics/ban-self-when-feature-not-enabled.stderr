@@ -1,0 +1,10 @@
+error: cannot use `Self` in const parameter type
+  --> $DIR/ban-self-when-feature-not-enabled.rs:8:21
+   |
+LL |     fn foo<const N: Self>() {}
+   |                     ^^^^
+   |
+   = help: add `#![feature(min_adt_const_params)]` to the crate attributes to enable `Self` as a const parameter type
+
+error: aborting due to 1 previous error
+

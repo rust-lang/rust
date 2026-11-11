@@ -1,0 +1,59 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/ice-return-unsized-can-impl-2.rs:12:20
+   |
+LL |     fn concrete(b: B) -> B;
+   |                    ^
+   |
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `B`
+   |
+LL -     fn concrete(b: B) -> B;
+LL +     fn concrete<T: B>(b: T) -> B;
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn concrete(b: impl B) -> B;
+   |                    ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/ice-return-unsized-can-impl-2.rs:12:26
+   |
+LL |     fn concrete(b: B) -> B;
+   |                          ^
+   |
+help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn concrete(b: B) -> impl B;
+   |                          ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/ice-return-unsized-can-impl-2.rs:6:13
+   |
+LL |     fn f(a: A) -> A;
+   |             ^
+   |
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
+help: use a new generic type parameter, constrained by `A`
+   |
+LL -     fn f(a: A) -> A;
+LL +     fn f<T: A>(a: T) -> A;
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn f(a: impl A) -> A;
+   |             ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/ice-return-unsized-can-impl-2.rs:6:19
+   |
+LL |     fn f(a: A) -> A;
+   |                   ^
+   |
+help: `A` is dyn-incompatible, use `impl A` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn f(a: A) -> impl A;
+   |                   ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

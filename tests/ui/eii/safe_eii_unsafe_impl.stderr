@@ -1,0 +1,10 @@
+error: `foo` is not unsafe to implement
+  --> $DIR/safe_eii_unsafe_impl.rs:7:1
+   |
+LL | #[unsafe(foo)]
+   | ^^------^^^^^^
+   |   |
+   |   `unsafe` is not allowed here
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,65 @@
+error[E0277]: the trait bound `&'static (): Trait` is not satisfied
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:16
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `&'static ()`
+   |
+help: the trait `Trait` is implemented for `<&'static () as Trait>::Assoc`
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:1
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&'static (): Trait` is not satisfied
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:6
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   |      ^^^^^ the trait `Trait` is not implemented for `&'static ()`
+   |
+help: the trait `Trait` is implemented for `<&'static () as Trait>::Assoc`
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:1
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&'static (): Trait` is not satisfied
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:20:18
+   |
+LL |     type Assoc = ();
+   |                  ^^ the trait `Trait` is not implemented for `&'static ()`
+   |
+help: the trait `Trait` is implemented for `<&'static () as Trait>::Assoc`
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:1
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `&'static (): Trait` is not satisfied
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:16
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `&'static ()`
+   |
+help: the trait `Trait` is implemented for `<&'static () as Trait>::Assoc`
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:1
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `&'static (): Trait` is not satisfied
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:16
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `&'static ()`
+   |
+help: the trait `Trait` is implemented for `<&'static () as Trait>::Assoc`
+  --> $DIR/use-impl-to-normalize-own-self-ty-ice.rs:15:1
+   |
+LL | impl Trait for <&'static () as Trait>::Assoc {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

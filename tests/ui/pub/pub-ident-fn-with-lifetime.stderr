@@ -1,0 +1,13 @@
+error: missing `fn` for function definition
+  --> $DIR/pub-ident-fn-with-lifetime.rs:3:1
+   |
+LL | pub foo<'a>(_s: &'a usize) -> bool { true }
+   | ^^^^^^^
+   |
+help: add `fn` here to parse `foo` as a function
+   |
+LL | pub fn foo<'a>(_s: &'a usize) -> bool { true }
+   |     ++
+
+error: aborting due to 1 previous error
+

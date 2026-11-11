@@ -1,0 +1,8 @@
+Thread 1 executing: spawn
+Thread 2 executing: spawn
+Thread 2 executing: read x || retag y
+Thread 1 executing: read x || retag y
+Thread 1 executing: write y
+Thread 2 executing: write y
+Thread 2 executing: exit
+Thread 1 executing: exit

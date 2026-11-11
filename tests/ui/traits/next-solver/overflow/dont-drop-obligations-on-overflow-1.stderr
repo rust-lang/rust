@@ -1,0 +1,11 @@
+error[E0275]: overflow evaluating the requirement `&u8: Leak<Foo<'c, 'd>>`
+  --> $DIR/dont-drop-obligations-on-overflow-1.rs:43:13
+   |
+LL |             <&u8 as Leak<Foo<'c, 'd>>>::leak(&local)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`dont_drop_obligations_on_overflow_1`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

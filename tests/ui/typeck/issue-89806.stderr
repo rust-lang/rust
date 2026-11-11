@@ -1,0 +1,9 @@
+error[E0599]: no method named `as_ref` found for type `u8` in the current scope
+  --> $DIR/issue-89806.rs:2:9
+   |
+LL |     0u8.as_ref();
+   |         ^^^^^^ method not found in `u8`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

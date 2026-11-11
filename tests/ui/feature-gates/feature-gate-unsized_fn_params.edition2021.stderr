@@ -1,0 +1,65 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/feature-gate-unsized_fn_params.rs:24:11
+   |
+LL | fn bar(x: Foo) {
+   |           ^^^
+   |
+help: use a new generic type parameter, constrained by `Foo`
+   |
+LL - fn bar(x: Foo) {
+LL + fn bar<T: Foo>(x: T) {
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL | fn bar(x: impl Foo) {
+   |           ++++
+help: alternatively, use a trait object to accept any type that implements `Foo`, accessing its methods at runtime using dynamic dispatch
+   |
+LL | fn bar(x: &dyn Foo) {
+   |           ++++
+
+error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
+  --> $DIR/feature-gate-unsized_fn_params.rs:20:11
+   |
+LL | fn foo(x: dyn Foo) {
+   |           ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL - fn foo(x: dyn Foo) {
+LL + fn foo(x: impl Foo) {
+   |
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn foo(x: &dyn Foo) {
+   |           +
+
+error[E0277]: the size for values of type `[()]` cannot be known at compilation time
+  --> $DIR/feature-gate-unsized_fn_params.rs:30:11
+   |
+LL | fn qux(_: [()]) {}
+   |           ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[()]`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed slices always have a known size
+   |
+LL | fn qux(_: &[()]) {}
+   |           +
+
+error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
+  --> $DIR/feature-gate-unsized_fn_params.rs:34:9
+   |
+LL |     foo(*x);
+   |         ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo + 'static)`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0782.
+For more information about an error, try `rustc --explain E0277`.

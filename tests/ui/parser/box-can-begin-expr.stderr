@@ -1,0 +1,11 @@
+error: expected expression, found reserved keyword `box`
+  --> $DIR/box-can-begin-expr.rs:16:5
+   |
+LL |     ($e:expr) => {};
+   |      ------- while parsing argument for this `expr` macro fragment
+...
+LL | mk!(box 0);
+   |     ^^^ expected expression
+
+error: aborting due to 1 previous error
+

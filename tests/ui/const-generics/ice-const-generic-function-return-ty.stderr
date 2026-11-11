@@ -1,0 +1,16 @@
+error: expected one of `(`, `::`, `<`, or `>`, found `;`
+  --> $DIR/ice-const-generic-function-return-ty.rs:2:46
+   |
+LL | fn return_ty() -> impl Into<<() as Reexported;
+   |                                              ^ expected one of `(`, `::`, `<`, or `>`
+
+error: free function without a body
+  --> $DIR/ice-const-generic-function-return-ty.rs:2:1
+   |
+LL | fn return_ty() -> impl Into<<() as Reexported;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                                              |
+   |                                              help: provide a definition for the function: `{ <body> }`
+
+error: aborting due to 2 previous errors
+

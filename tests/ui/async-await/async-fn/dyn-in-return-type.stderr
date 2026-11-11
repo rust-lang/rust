@@ -1,0 +1,51 @@
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-in-return-type.rs:4:17
+   |
+LL | async fn f() -> dyn core::fmt::Debug {
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - async fn f() -> dyn core::fmt::Debug {
+LL + async fn f() -> impl core::fmt::Debug {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | async fn f() -> Box<dyn core::fmt::Debug> {
+   |                 ++++                    +
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-in-return-type.rs:11:26
+   |
+LL |     async fn f(&self) -> dyn core::fmt::Debug {
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL -     async fn f(&self) -> dyn core::fmt::Debug {
+LL +     async fn f(&self) -> impl core::fmt::Debug {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL |     async fn f(&self) -> Box<dyn core::fmt::Debug> {
+   |                          ++++                    +
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-in-return-type.rs:19:26
+   |
+LL |     async fn f(&self) -> dyn core::fmt::Debug {
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL -     async fn f(&self) -> dyn core::fmt::Debug {
+LL +     async fn f(&self) -> impl core::fmt::Debug {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL |     async fn f(&self) -> Box<dyn core::fmt::Debug> {
+   |                          ++++                    +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0746`.

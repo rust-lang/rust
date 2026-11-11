@@ -1,0 +1,26 @@
+error: invalid `?` in type
+  --> $DIR/infinite-assoc.rs:12:39
+   |
+LL | struct A((A, <S as Trait>::T<NOT_EXIST?>));
+   |                                       ^ `?` is only allowed on expressions, not types
+   |
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL - struct A((A, <S as Trait>::T<NOT_EXIST?>));
+LL + struct A((A, <S as Trait>::T<Option<NOT_EXIST>>));
+   |
+
+error[E0072]: recursive type `A` has infinite size
+  --> $DIR/infinite-assoc.rs:12:1
+   |
+LL | struct A((A, <S as Trait>::T<NOT_EXIST?>));
+   | ^^^^^^^^  - recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct A((Box<A>, <S as Trait>::T<NOT_EXIST?>));
+   |           ++++ +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0072`.

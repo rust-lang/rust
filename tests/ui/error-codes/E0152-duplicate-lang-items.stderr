@@ -1,0 +1,17 @@
+error[E0152]: found duplicate lang item `panic_fmt`
+  --> $DIR/E0152-duplicate-lang-items.rs:12:1
+   |
+LL | / fn panic_fmt() -> ! {
+LL | |
+LL | |
+LL | |     loop {}
+LL | | }
+   | |_^
+   |
+   = note: the lang item is first defined in crate `core` (which `std` depends on)
+   = note: first definition in `core` loaded from SYSROOT/libcore-*.rmeta
+   = note: second definition in the local crate (`E0152_duplicate_lang_items`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0152`.
