@@ -78,12 +78,22 @@ fn test_geteuid() {
     let _val = unsafe { libc::geteuid() };
 }
 
+fn test_pthread_atfork() {
+    extern "C" fn prepare() {}
+    extern "C" fn parent() {}
+    extern "C" fn child() {}
+
+    // Registering handlers should succeed.
+    assert_eq!(unsafe { libc::pthread_atfork(Some(prepare), Some(parent), Some(child)) }, 0);
+}
+
 fn main() {
     test_errno();
     test_environ();
     test_dlsym();
     test_getuid();
     test_geteuid();
+    test_pthread_atfork();
 
     #[cfg(target_os = "linux")]
     test_sigrt();

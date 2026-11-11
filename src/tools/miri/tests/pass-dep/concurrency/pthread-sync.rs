@@ -55,6 +55,8 @@ fn main() {
     {
         test_sem();
     }
+
+    test_sched_yield();
 }
 
 // We want to only use pthread APIs here for easier testing.
@@ -416,4 +418,36 @@ fn test_sem() {
 
         errno_check(libc::sem_destroy(sem.ptr));
     }
+}
+
+fn test_sched_yield() {
+    use libc_utils::errno_check;
+
+    let bomb = AbortOnDrop;
+    unsafe {
+        let data = SyncUnsafeCell::new((libc::PTHREAD_MUTEX_INITIALIZER, false));
+        let ptr = SendPtr { ptr: data.get() };
+
+        let t = thread::spawn(move || {
+            let ptr = ptr;
+            let mutexptr = ptr::addr_of_mut!((*ptr.ptr).0);
+            assert_eq!(libc::pthread_mutex_lock(mutexptr), 0);
+            (*ptr.ptr).1 = true;
+            assert_eq!(libc::pthread_mutex_unlock(mutexptr), 0);
+        });
+
+        // Let `t` go first.
+        errno_check(libc::sched_yield());
+
+        let mutexptr = ptr::addr_of_mut!((*ptr.ptr).0);
+        assert_eq!(libc::pthread_mutex_lock(mutexptr), 0);
+        // Without scheduler control, there is no guarantee that `t` went first.
+        if cfg!(miri) {
+            assert!((*ptr.ptr).1);
+        }
+        assert_eq!(libc::pthread_mutex_unlock(mutexptr), 0);
+
+        t.join().unwrap();
+    }
+    bomb.defuse();
 }
