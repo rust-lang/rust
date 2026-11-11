@@ -1,7 +1,10 @@
-# Workflow that runs after a merge to the default branch, analyses changes in test executions
-# and posts the result to the merged PR.
+# Workflow that runs after a merge to the default branch.
+# It performs two things:
+# 1) Analyses changes in test executions and posts the result to the merged PR.
+# 2) Performs a cargo publish on crates published from the `rust-lang/rust` repository, and if a
+#    publish happened, post the result to the merged PR.
 
-name: Post merge analysis
+name: Post merge workflow
 
 on:
   push:
@@ -13,7 +16,7 @@ jobs:
     runs-on: ubuntu-26.04
     if: github.repository == 'rust-lang/rust'
     permissions:
-      pull-requests: write
+      pull-requests: write  # For sending a PR comment
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -21,6 +24,7 @@ jobs:
           # Since all merges should be through merge commits, fetching two commits
           # should be enough to get the parent bors merge commit.
           fetch-depth: 2
+          persist-credentials: false
       - name: Perform analysis and send PR
         env:
           GH_TOKEN: ${{ github.token }}
@@ -51,3 +55,39 @@ jobs:
           cat output.log
 
           gh pr comment ${HEAD_PR} -F output.log
+  publish:
+    runs-on: ubuntu-26.04
+    if: github.repository == 'rust-lang/rust'
+    environment: publish-crates-io
+    permissions:
+      id-token: write # For OIDC crates.io publishing
+      pull-requests: write  # For sending a PR comment
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+        id: auth
+      - run: |
+          git submodule update --init library/backtrace
+          cd library/backtrace
+
+          if cargo publish; then
+            # Find PR for the current commit
+            HEAD_PR=`gh pr list --search "${{ github.sha }}" --state merged --json number --jq '.[0].number'`
+            if [ -z "${HEAD_PR}" ]; then
+              echo "PR for commit SHA ${{ github.sha }} not found, exiting"
+              exit 1
+            fi
+            echo "HEAD: ${{ github.sha }} (#${HEAD_PR})"
+
+            VERSION=`cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "backtrace") | .version'`
+
+            echo "backtrace \`${VERSION}\` published to crates.io" > output.log
+
+            gh pr comment ${HEAD_PR} -F output.log
+          else
+            echo "Nothing to publish"
+          fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
