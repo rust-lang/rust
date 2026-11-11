@@ -2,8 +2,7 @@ use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
 
-use rustc_index::bit_set::{self, DenseBitSet};
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexSlice, IndexVec, bit_set};
 use rustc_macros::StableHash;
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
@@ -609,15 +608,15 @@ where
     }
 }
 
-impl<I: Idx> StableHash for DenseBitSet<I> {
+impl<I: Idx> StableHash for bit_set::DenseBitSet<I> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
+        bit_set::DenseBitSet::stable_hash_inner(self, hasher);
     }
 }
 
 impl<R: Idx, C: Idx> StableHash for bit_set::BitMatrix<R, C> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
+        bit_set::BitMatrix::stable_hash_inner(self, hasher);
     }
 }
 
