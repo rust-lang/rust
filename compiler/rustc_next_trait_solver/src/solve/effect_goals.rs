@@ -293,6 +293,13 @@ where
         unimplemented!("Fn* are not yet const")
     }
 
+    fn consider_builtin_fn_static_trait_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        unimplemented!("Fn* are not yet const")
+    }
+
     #[instrument(level = "trace", skip_all, ret)]
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, D>,
