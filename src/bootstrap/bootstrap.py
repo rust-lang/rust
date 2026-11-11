@@ -199,7 +199,8 @@ def unpack(tarball, tarball_suffix, dst, verbose=0, match=None):
     eprint("extracting", tarball)
     fname = os.path.basename(tarball).replace(tarball_suffix, "")
     with contextlib.closing(tarfile.open(tarball)) as tar:
-        for member in tar.getnames():
+        for member_info in tar:
+            member = member_info.name
             if "/" not in member:
                 continue
             name = member.replace(fname + "/", "", 1)
@@ -210,7 +211,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=0, match=None):
             dst_path = os.path.join(dst, name)
             if verbose > 0:
                 eprint("  extracting", member)
-            tar.extract(member, dst)
+            tar.extract(member_info, dst)
             src_path = os.path.join(dst, member)
             if os.path.isdir(src_path) and os.path.exists(dst_path):
                 continue
