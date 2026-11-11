@@ -1,4 +1,4 @@
-error: extern location for libc does not exist: test.rlib
+error: extern location for `libc` does not exist at `test.rlib`
   --> $DIR/resolve-other-libc.rs:12:1
    |
 LL | extern crate libc;

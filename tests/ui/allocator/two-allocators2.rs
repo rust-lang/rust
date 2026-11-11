@@ -10,4 +10,4 @@ static A: System = System;
 
 fn main() {}
 
-//~? ERROR the `#[global_allocator]` in this crate conflicts with global allocator in: system_allocator
+//~? ERROR the `#[global_allocator]` in this crate conflicts with global allocator in `system_allocator`

@@ -1138,9 +1138,6 @@ impl CrateError {
                             span,
                             path,
                             crate_name,
-                        });
-                        dcx.emit_err(diagnostics::LibFilenameForm {
-                            span,
                             dll_prefix: &locator.dll_prefix,
                             dll_suffix: &locator.dll_suffix,
                         });

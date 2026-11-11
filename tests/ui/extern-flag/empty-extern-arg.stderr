@@ -1,4 +1,4 @@
-error: extern location for std does not exist: 
+error: extern location for `std` does not exist at ``
 
 error: cannot resolve a prelude import
 

@@ -1,4 +1,4 @@
-//~ ERROR extern location for std does not exist
+//~ ERROR extern location for `std` does not exist at ``
 //~^ ERROR cannot resolve a prelude import
 //@ compile-flags: --extern std=
 //@ needs-unwind since it affects the error output
