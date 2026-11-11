@@ -518,11 +518,5 @@ pub(crate) fn const_ptr_auth<'ll>(
     disc: u64,
     addr_diversity: Option<&'ll Value>,
 ) -> &'ll Value {
-    unsafe {
-        let addr_div_ptr = addr_diversity.map_or(std::ptr::null(), |v| v as *const Value);
-        let deactivation_symbol = std::ptr::null();
-        let result =
-            LLVMRustConstPtrAuth(ptr as *const Value, key, disc, addr_div_ptr, deactivation_symbol);
-        &*result
-    }
+    unsafe { LLVMRustConstPtrAuth(ptr, key, disc, addr_diversity, None) }
 }

@@ -2689,11 +2689,11 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
 
-    pub(crate) fn LLVMRustConstPtrAuth(
-        ptr: *const Value,
+    pub(crate) fn LLVMRustConstPtrAuth<'ll>(
+        ptr: &'ll Value,
         key: u32,
         disc: u64,
-        addr_diversity: *const Value,
-        deactivation_symbol: *const Value,
-    ) -> *const Value;
+        addr_diversity: Option<&'ll Value>,
+        deactivation_symbol: Option<&'ll Value>,
+    ) -> &'ll Value;
 }
