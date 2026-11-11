@@ -337,7 +337,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    /// Process the outlives constraints (both type outlives and region outlives) that must be proven (during
+    /// Process the type outlives constraints that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth.
     ///
@@ -347,13 +347,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
     #[instrument(level = "debug", skip(self, outlives_env))]
-    pub fn process_registered_outlives_constraints(
+    pub fn process_registered_type_outlives_constraints(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
         assert!(
             !self.in_snapshot(),
-            "cannot process registered outlives constraints in a snapshot"
+            "cannot process registered type outlives constraints in a snapshot"
         );
 
         if self.tcx.assumptions_on_binders() {
@@ -445,7 +445,7 @@ pub struct TypeOutlives<'cx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {
-    // See the comments on `process_registered_outlives_constraints` for the meaning
+    // See the comments on `process_registered_type_outlives_constraints` for the meaning
     // of these fields.
     delegate: D,
     tcx: TyCtxt<'tcx>,

@@ -46,7 +46,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.process_registered_outlives_constraints(outlives_env);
+        self.process_registered_type_outlives_constraints(outlives_env);
 
         let mut storage = {
             let mut inner = self.inner.borrow_mut();
