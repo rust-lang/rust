@@ -238,6 +238,20 @@ where
             arg.cast_to(Reg::x87_f80());
             return;
         }
+        if arg.layout.complex_float(cx) == Some(Float::X87F80) {
+            if is_arg {
+                arg.pass_by_stack_offset(None);
+            } else {
+                // Return in registers.
+                //
+                // NOTE: the x87_f80 register is only 10 bytes wide. For the size of the CastTarget
+                // to be correct, we need the second component to start at 12/16 bytes into the
+                // value.
+                let offset = Size::from_bytes(arg.layout.size.bytes() / 2);
+                arg.cast_to(CastTarget::offset_pair(Reg::x87_f80(), offset, Reg::x87_f80()));
+            }
+            return;
+        }
         let mut cls_or_mem = classify_arg(cx, arg);
 
         if is_arg && let Ok(cls) = cls_or_mem {

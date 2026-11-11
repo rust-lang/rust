@@ -114,11 +114,25 @@
 #![deny(improper_ctypes_definitions)]
 
 extern crate minicore;
-#[cfg(target_arch = "powerpc")]
-use minicore::arch::powerpc::ppcf128;
-#[cfg(target_arch = "powerpc64")]
-use minicore::arch::powerpc64::ppcf128;
 use minicore::num::Complex;
+
+minicore::cfg_select! {
+    target_arch = "powerpc" => {
+        use minicore::arch::powerpc::ppcf128;
+    }
+    target_arch = "powerpc64" => {
+        use minicore::arch::powerpc64::ppcf128;
+    }
+    target_arch = "x86" => {
+        use minicore::arch::x86::x87_f80;
+    }
+    target_arch = "x86_64" => {
+        use minicore::arch::x86_64::x87_f80;
+    }
+    _ => {
+        // Nothing else needs target-specific imports.
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn cplx_f16(x: Complex<f16>) -> Complex<f16> {
@@ -239,6 +253,18 @@ pub extern "C" fn cplx_ppcf128(x: Complex<ppcf128>) -> Complex<ppcf128> {
     // POWERPC64:      define{{.*}} { ppc_fp128, ppc_fp128 } @cplx_ppcf128({ ppc_fp128, ppc_fp128 } %0)
     // POWERPC64LE:    define{{.*}} { ppc_fp128, ppc_fp128 } @cplx_ppcf128({ ppc_fp128, ppc_fp128 } %0)
     // POWERPC:        define{{.*}} [8 x i32] @cplx_ppcf128([8 x i32] {{.*}})
+    x
+}
+
+#[no_mangle]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+pub extern "C" fn cplx_x87_f80(x: Complex<x87_f80>) -> Complex<x87_f80> {
+    // I686:           define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([24 x i8]) {{.*}}, ptr {{.*}} byval([24 x i8]) {{.*}})
+    // WIN32_GNU:      define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([24 x i8]) {{.*}}, ptr {{.*}} byval([24 x i8]) {{.*}})
+    // WIN32_MSVC:     define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
+    // WINDOWS_GNU:    define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // WINDOWS_MSVC:   define{{.*}} void @cplx_x87_f80(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
+    // X86_64:         define{{.*}} { x86_fp80, x86_fp80 } @cplx_x87_f80(ptr {{.*}} byval([32 x i8]) {{.*}})
     x
 }
 

@@ -235,8 +235,9 @@ impl LlvmType for CastTarget {
         let args: Vec<_> = prefix_args.chain(rest_args).collect();
 
         // The x87_f80 type has a store size of 10 bytes, but an allocation size of 12 or 16 bytes.
-        // Ensure we don't cast to it, because that could have unintened behavior.
-        assert!(args.iter().all(|a| *a != cx.type_x87_f80()));
+        // Ensure we don't cast to it, because that could have unintened behavior. With an explicit
+        // `rest_offset`, both halves are loaded and stored separately, so `x87_f80` is fine.
+        assert!(self.rest_offset.is_some() || args.iter().all(|a| *a != cx.type_x87_f80()));
 
         cx.type_struct(&args)
     }
