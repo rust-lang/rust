@@ -20,13 +20,13 @@
 //@ gdb-check:$4 = ("Hello", "World")
 
 //@ gdb-command:print str_in_rc
-//@ gdb-check:$5 = alloc::rcs::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rcs::rc::RcInner<&str>> {pointer: 0x[...]}, phantom: core::marker::PhantomData<alloc::rcs::rc::RcInner<&str>>, alloc: alloc::alloc::Global}
+//@ gdb-check:$5 = alloc::rcs::rc::Rc<&str, alloc::alloc::Global> {ptr: alloc::rcs::common::rc_value_pointer::RcValuePointer<&str> {ptr: core::ptr::non_null::NonNull<&str> {pointer: 0x[...]}}, phantom: core::marker::PhantomData<&str>, alloc: alloc::alloc::Global}
 
 //@ gdb-command:print box_str
 //@ gdb-check:$6 = alloc::boxed::Box<str, alloc::alloc::Global> [87, 111, 114, 108, 100]
 
 //@ gdb-command:print rc_str
-//@ gdb-check:$7 = alloc::rcs::rc::Rc<str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rcs::rc::RcInner<str>> {pointer: alloc::rcs::rc::RcInner<str> {strong: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, weak: core::cell::Cell<usize> {value: core::cell::UnsafeCell<usize> {value: 1}}, value: 0x[...]}}, phantom: core::marker::PhantomData<alloc::rcs::rc::RcInner<str>>, alloc: alloc::alloc::Global}
+//@ gdb-check:$7 = alloc::rcs::rc::Rc<str, alloc::alloc::Global> {ptr: alloc::rcs::common::rc_value_pointer::RcValuePointer<str> {ptr: core::ptr::non_null::NonNull<str> {pointer: *const str [87, 111, 114, 108, 100]}}, phantom: core::marker::PhantomData<str>, alloc: alloc::alloc::Global}
 
 // === LLDB TESTS ==================================================================================
 //@ lldb-command:run
