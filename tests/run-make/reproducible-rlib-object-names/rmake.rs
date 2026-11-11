@@ -6,6 +6,9 @@
 // 2. Swapping -C extra-filename across duplicate-named dependencies must not
 //    change module sorting during LTO (#165736).
 
+// GCC backend does not support LTO.
+//@ ignore-backends: gcc
+
 use run_make_support::{rfs, rustc};
 
 fn main() {
@@ -95,7 +98,7 @@ fn main() {
 
         assert!(
             rfs::read(format!("bin_run1_{lto}")) == rfs::read(format!("bin_run2_{lto}")),
-            "LTO binary differs when extra-filename is swapped across duplicate deps with lto={lto}"
+            "LTO binary differs when extra-filename is swapped for lto={lto}"
         );
     }
 }
