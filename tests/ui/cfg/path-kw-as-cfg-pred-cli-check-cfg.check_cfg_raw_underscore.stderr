@@ -1,6 +1,6 @@
 error: `_` cannot be a raw identifier
-  |
-  = note: this occurred on the command line: `--check-cfg=cfg(r#_)`
+ |
+ = note: this occurred on the command line: `--check-cfg=cfg(r#_)`
 
 error: invalid `--check-cfg` argument: `cfg(r#_)`
    |
