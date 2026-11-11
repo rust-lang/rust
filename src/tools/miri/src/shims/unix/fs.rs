@@ -1406,8 +1406,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(read_dir) => {
                 // Create an underlying FD as well, in case someone calls `dirfd` later.
                 // (We could do this lazily but that does not seem worth it.)
-                let dir = read_dir.dir();
-                let Ok(dir) = dir else {
+                let Ok(dir) = read_dir.dir() else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
