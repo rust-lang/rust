@@ -267,22 +267,13 @@ fn main() {
 
     if (env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
         || env::var_os("RUSTC_PRINT_STEP_RUSAGE").is_some())
-        && let Some(crate_name) = crate_name
+        && let Some(_crate_name) = crate_name
     {
-        let dur = start.elapsed();
+        let _dur = start.elapsed();
         // If the user requested resource usage data, then
         // include that in addition to the timing output.
-        let rusage_data =
+        let _rusage_data =
             env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data(child));
-        eprintln!(
-            "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
-            crate_name,
-            is_test,
-            dur.as_secs(),
-            dur.subsec_millis(),
-            if rusage_data.is_some() { " " } else { "" },
-            rusage_data.unwrap_or_default(),
-        );
     }
 
     if status.success() {
