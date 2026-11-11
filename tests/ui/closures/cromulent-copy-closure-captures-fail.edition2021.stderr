@@ -1,0 +1,174 @@
+error[E0700]: hidden type for `impl FnMut()` captures lifetime that does not appear in bounds
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:81:9
+   |
+LL |     fn baz<'a, 'b, 'c>(m: &'a MyStruct<'b, 'c>) -> impl FnMut() + use<'c> {
+   |                                                    ---------------------- opaque type defined here
+...
+LL |         c
+   |         ^
+   |
+   = note: hidden type `{closure@$DIR/cromulent-copy-closure-captures-fail.rs:78:17: 78:19}` captures lifetime `'_`
+
+error[E0597]: `foo` does not live long enough
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:14:29
+   |
+LL |     let closure = {
+   |         ------- borrow later captured here by closure
+LL |         let mut foo = 42;
+   |             ------- binding `foo` declared here
+LL |         let foo_ref: &u32 = &foo;
+   |                             ^^^^ borrowed value does not live long enough
+LL |         || *foo_ref
+LL |     };
+   |     - `foo` dropped here while still borrowed
+
+error[E0597]: `foo` does not live long enough
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:21:33
+   |
+LL |     let closure = {
+   |         ------- borrow later captured here by closure
+LL |         let mut foo = 42;
+   |             ------- binding `foo` declared here
+LL |         let foo_mut: &mut u32 = &mut foo;
+   |                                 ^^^^^^^^ borrowed value does not live long enough
+LL |         || *foo_mut
+LL |     };
+   |     - `foo` dropped here while still borrowed
+
+error[E0373]: closure may outlive the current function, but it borrows `really_large_copy_value`, which is owned by the current function
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:27:19
+   |
+LL |     let closure = || {
+   |                   ^^ may outlive borrowed value `really_large_copy_value`
+LL |
+LL |         let really_large_copy_ref = &really_large_copy_value;
+   |                                      ----------------------- `really_large_copy_value` is borrowed here
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:34:5
+   |
+LL |     assert_static_fn(closure);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `really_large_copy_value` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let closure = move || {
+   |                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `really_large_copy_value`, which is owned by the current function
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:36:19
+   |
+LL |     let closure = || {
+   |                   ^^ may outlive borrowed value `really_large_copy_value`
+LL |
+LL |         let _ = &really_large_copy_value;
+   |                  ----------------------- `really_large_copy_value` is borrowed here
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:43:5
+   |
+LL |     assert_static_fn(closure);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `really_large_copy_value` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let closure = move || {
+   |                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `really_large_copy_value`, which is owned by the current function
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:45:19
+   |
+LL |     let closure = || {
+   |                   ^^ may outlive borrowed value `really_large_copy_value`
+...
+LL |             drop(*&really_large_copy_value);
+   |                    ----------------------- `really_large_copy_value` is borrowed here
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:51:5
+   |
+LL |     assert_static_fn(closure);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `really_large_copy_value` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let closure = move || {
+   |                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `arr`, which is owned by the current function
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:56:19
+   |
+LL |     let closure = || arr[0];
+   |                   ^^ --- `arr` is borrowed here
+   |                   |
+   |                   may outlive borrowed value `arr`
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:58:5
+   |
+LL |     assert_static_fn(closure);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `arr` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let closure = move || arr[0];
+   |                   ++++
+
+error[E0373]: closure may outlive the current function, but it borrows `val`, which is owned by the current function
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:62:19
+   |
+LL |     let closure = || val == 21;
+   |                   ^^ --- `val` is borrowed here
+   |                   |
+   |                   may outlive borrowed value `val`
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:64:5
+   |
+LL |     assert_static_fn(closure);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `val` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let closure = move || val == 21;
+   |                   ++++
+
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:91:13
+   |
+LL |         let outer = |i: &&i32| {
+   |                      -  - let's call the lifetime of this reference `'1`
+   |                      |
+   |                      `i` is only valid in the closure body
+...
+LL |             assert_static(inner);
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             `i` escapes the closure body here
+   |             argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:9:34
+   |
+LL | fn assert_static(_: impl Sized + 'static) {}
+   |                                  ^^^^^^^ lifetime requirement introduced here
+
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:91:13
+   |
+LL |         let outer = |i: &&i32| {
+   |                      -   - let's call the lifetime of this reference `'2`
+   |                      |
+   |                      `i` is only valid in the closure body
+...
+LL |             assert_static(inner);
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             `i` escapes the closure body here
+   |             argument requires that `'2` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `assert_static` introduced here
+  --> $DIR/cromulent-copy-closure-captures-fail.rs:9:34
+   |
+LL | fn assert_static(_: impl Sized + 'static) {}
+   |                                  ^^^^^^^ lifetime requirement introduced here
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0373, E0521, E0597, E0700.
+For more information about an error, try `rustc --explain E0373`.

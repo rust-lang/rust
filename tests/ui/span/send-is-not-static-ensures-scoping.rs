@@ -17,7 +17,7 @@ fn main() {
         //~^ ERROR `x` does not live long enough
 
         scoped(|| {
-            let _z = y;
+            let _z = *&y;
             //~^ ERROR `y` does not live long enough
         })
     };
