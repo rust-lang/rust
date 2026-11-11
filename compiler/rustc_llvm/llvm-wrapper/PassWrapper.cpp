@@ -372,10 +372,12 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     return nullptr;
   }
 
-  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
-
 #if LLVM_VERSION_LT(24, 0)
+  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
   Options.FloatABIType = FloatABIType;
+#else
+  TargetOptions Options =
+      codegen::getTargetOptions(cl::getCAPILibraryOptions(), Trip);
 #endif
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
