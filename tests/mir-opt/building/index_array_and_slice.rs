@@ -8,7 +8,8 @@ fn index_array(array: &[i32; 7], index: usize) -> &i32 {
     // CHECK: assert(move [[LT]], "index out of bounds{{.+}}", const 7_usize, copy _3) -> [success: bb1, unwind
 
     // CHECK: bb1:
-    // CHECK: _0 = &(*_1)[_3];
+    // CHECK: _5 = &(*_1)[_3];
+    // CHECK: _0 = &(*_5);
     &array[index]
 }
 
@@ -20,7 +21,8 @@ fn index_const_generic_array<const N: usize>(array: &[i32; N], index: usize) -> 
     // CHECK: assert(move [[LT]], "index out of bounds{{.+}}", const N, copy _3) -> [success: bb1, unwind
 
     // CHECK: bb1:
-    // CHECK: _0 = &(*_1)[_3];
+    // CHECK: _5 = &(*_1)[_3];
+    // CHECK: _0 = &(*_5);
     &array[index]
 }
 
@@ -33,7 +35,8 @@ fn index_slice(slice: &[i32], index: usize) -> &i32 {
     // CHECK: assert(move [[LT]], "index out of bounds{{.+}}", move [[LEN]], copy _3) -> [success: bb1,
 
     // CHECK: bb1:
-    // CHECK: _0 = &(*_1)[_3];
+    // CHECK: _6 = &(*_1)[_3];
+    // CHECK: _0 = &(*_6);
     &slice[index]
 }
 
@@ -50,7 +53,8 @@ fn index_mut_slice(slice: &mut [i32], index: usize) -> &i32 {
     // CHECK: assert(move [[LT]], "index out of bounds{{.+}}", move [[LEN]], copy _3) -> [success: bb1,
 
     // CHECK: bb1:
-    // CHECK: _0 = &(*_1)[_3];
+    // CHECK: _7 = &(*_1)[_3];
+    // CHECK: _0 = &(*_7);
     &slice[index]
 }
 
@@ -66,7 +70,8 @@ fn index_custom(custom: &WithSliceTail, index: usize) -> &i32 {
     // CHECK: assert(move [[LT]], "index out of bounds{{.+}}", move [[LEN]], copy _3) -> [success: bb1,
 
     // CHECK: bb1:
-    // CHECK: _0 = &((*_1).1: [i32])[_3];
+    // CHECK: _7 = &((*_1).1: [i32])[_3];
+    // CHECK: _0 = &(*_7);
     &custom.1[index]
 }
 
