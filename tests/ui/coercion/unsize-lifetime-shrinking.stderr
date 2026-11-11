@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/unsize-lifetime-shrinking.rs:66:5
+  --> $DIR/unsize-lifetime-shrinking.rs:72:5
    |
 LL | fn mut_to_ref_sized_to_sized<'a: 'b, 'b>(x: Cell<&'a mut Thing>) -> Cell<&'b Thing> {
    |                                                                     --------------- expected `Cell<&'b Thing>` because of return type
@@ -25,7 +25,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:110:5
+  --> $DIR/unsize-lifetime-shrinking.rs:116:5
    |
 LL | fn mut_to_mut_sized_to_sized<'a: 'b, 'b>(x: Cell<&'a mut Thing>) -> Cell<&'b mut Thing> {
    |                              --      -- lifetime `'b` defined here
@@ -40,7 +40,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:157:5
+  --> $DIR/unsize-lifetime-shrinking.rs:163:5
    |
 LL | fn cell_ref_sized_to_sized<'a: 'b, 'b>(x: Cell<Ref<'a, Thing>>) -> Cell<Ref<'b, Thing>> {
    |                            --      -- lifetime `'b` defined here
@@ -55,7 +55,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:166:5
+  --> $DIR/unsize-lifetime-shrinking.rs:172:5
    |
 LL | fn cell_ref_sized_to_dyn<'a: 'b, 'b>(
    |                          --      -- lifetime `'b` defined here
@@ -71,7 +71,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:174:5
+  --> $DIR/unsize-lifetime-shrinking.rs:180:5
    |
 LL | fn cell_ref_upcast<'a: 'b, 'b>(
    |                    --      -- lifetime `'b` defined here
@@ -87,7 +87,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:182:5
+  --> $DIR/unsize-lifetime-shrinking.rs:188:5
    |
 LL | fn cell_ref_dyn_same<'a: 'b, 'b>(
    |                      --      -- lifetime `'b` defined here
@@ -103,7 +103,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:209:5
+  --> $DIR/unsize-lifetime-shrinking.rs:215:5
    |
 LL | fn cell_ref_mut_sized_to_sized<'a: 'b, 'b>(x: Cell<RefMut<'a, Thing>>) -> Cell<RefMut<'b, Thing>> {
    |                                --      -- lifetime `'b` defined here
@@ -118,7 +118,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:218:5
+  --> $DIR/unsize-lifetime-shrinking.rs:224:5
    |
 LL | fn cell_ref_mut_sized_to_dyn<'a: 'b, 'b>(
    |                              --      -- lifetime `'b` defined here
@@ -134,7 +134,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:226:5
+  --> $DIR/unsize-lifetime-shrinking.rs:232:5
    |
 LL | fn cell_ref_mut_upcast<'a: 'b, 'b>(
    |                        --      -- lifetime `'b` defined here
@@ -150,7 +150,7 @@ LL |     x
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/unsize-lifetime-shrinking.rs:234:5
+  --> $DIR/unsize-lifetime-shrinking.rs:240:5
    |
 LL | fn cell_ref_mut_dyn_same<'a: 'b, 'b>(
    |                          --      -- lifetime `'b` defined here
