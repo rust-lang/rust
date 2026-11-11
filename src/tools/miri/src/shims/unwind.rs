@@ -45,12 +45,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Handles the special `miri_start_unwind` intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
     fn handle_miri_start_unwind(&mut self, payload: &OpTy<'tcx>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        trace!("miri_start_unwind: {:?}", this.frame().instance());
+        trace!("miri_start_unwind: {:?}", ecx.frame().instance());
 
-        let payload = this.read_immediate(payload)?;
-        let thread = this.active_thread_mut();
+        let payload = ecx.read_immediate(payload)?;
+        let thread = ecx.active_thread_mut();
         thread.unwind_payloads.push(payload);
 
         interp_ok(())
@@ -65,7 +65,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Signature:
         //   fn catch_unwind(try_fn: unsafe fn(*mut Data), data: *mut Data, catch_fn: unsafe fn(*mut Data, *mut u8)) -> bool
@@ -79,16 +79,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // a pointer to `Box<dyn Any + Send + 'static>`.
 
         // Get all the arguments.
-        let try_fn = this.read_pointer(try_fn)?;
-        let data = this.read_immediate(data)?;
-        let catch_fn = this.read_pointer(catch_fn)?;
-        let dest = this.force_allocation(dest)?; // needs to be valid across fn calls
+        let try_fn = ecx.read_pointer(try_fn)?;
+        let data = ecx.read_immediate(data)?;
+        let catch_fn = ecx.read_pointer(catch_fn)?;
+        let dest = ecx.force_allocation(dest)?; // needs to be valid across fn calls
 
         // Now we make a function call, and pass `data` as first and only argument.
-        let f_instance = this.get_ptr_fn(try_fn)?.as_instance()?;
+        let f_instance = ecx.get_ptr_fn(try_fn)?.as_instance()?;
         trace!("try_fn: {:?}", f_instance);
         #[allow(clippy::cloned_ref_to_slice_refs)] // the code is clearer as-is
-        this.call_function(
+        ecx.call_function(
             f_instance,
             ExternAbi::Rust,
             &[data.clone()],
@@ -98,13 +98,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
-        this.write_int(0, &dest)?;
+        ecx.write_int(0, &dest)?;
 
         // In unwind mode, we tag this frame with the extra data needed to catch unwinding.
         // This lets `handle_stack_pop` (below) know that we should stop unwinding
         // when we pop this frame.
-        if this.tcx.sess.panic_strategy() == PanicStrategy::Unwind {
-            this.frame_mut().extra.catch_unwind =
+        if ecx.tcx.sess.panic_strategy() == PanicStrategy::Unwind {
+            ecx.frame_mut().extra.catch_unwind =
                 Some(CatchUnwindData { catch_fn, data, dest, ret });
         }
 
@@ -116,7 +116,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         mut extra: FrameExtra<'tcx>,
         unwinding: bool,
     ) -> InterpResult<'tcx, ReturnAction> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         trace!("handle_stack_pop_unwind(extra = {:?}, unwinding = {})", extra, unwinding);
 
         // We only care about `catch_panic` if we're unwinding - if we're doing a normal
@@ -126,20 +126,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // and we are unwinding, so we should catch that.
             trace!(
                 "unwinding: found catch_panic frame during unwinding: {:?}",
-                this.frame().instance()
+                ecx.frame().instance()
             );
 
             // We set the return value of `catch_unwind` to 1, since there was a panic.
-            this.write_scalar(Scalar::from_bool(true), &catch_unwind.dest)?;
+            ecx.write_scalar(Scalar::from_bool(true), &catch_unwind.dest)?;
 
             // The Thread's `panic_payload` holds what was passed to `miri_start_unwind`.
             // This is exactly the second argument we need to pass to `catch_fn`.
-            let payload = this.active_thread_mut().unwind_payloads.pop().unwrap();
+            let payload = ecx.active_thread_mut().unwind_payloads.pop().unwrap();
 
             // Push the `catch_fn` stackframe.
-            let f_instance = this.get_ptr_fn(catch_unwind.catch_fn)?.as_instance()?;
+            let f_instance = ecx.get_ptr_fn(catch_unwind.catch_fn)?.as_instance()?;
             trace!("catch_fn: {:?}", f_instance);
-            this.call_function(
+            ecx.call_function(
                 f_instance,
                 ExternAbi::Rust,
                 &[catch_unwind.data, payload],
