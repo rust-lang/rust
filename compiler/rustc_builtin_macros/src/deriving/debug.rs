@@ -125,15 +125,15 @@ fn debug_body(
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
         let mut args = ThinVec::with_capacity(2 + fields.len());
-        args.extend([fmt]);
+        args.push(fmt);
 
         if is_struct {
             let mut names = String::new();
-            names.push_str(ident.name.as_str());
+            names.push_str(ident.as_str());
 
             for field in fields.iter() {
                 names.push(' ');
-                names.push_str(field.name.unwrap().name.as_str());
+                names.push_str(field.name.unwrap().as_str());
             }
 
             let name_expr = cx.expr_str(span, Symbol::intern(&names));
@@ -152,7 +152,7 @@ fn debug_body(
         // Enough fields that we must use the any-length method.
         let mut names = String::new();
         if is_struct {
-            names.push_str(ident.name.as_str());
+            names.push_str(ident.as_str());
         }
         let mut value_exprs = ThinVec::with_capacity(fields.len());
 
@@ -319,8 +319,7 @@ fn debug_fieldless_enum_concat_str(
         .map(|(i, v)| {
             let name_offset = concatenated_names.len();
 
-            let name = v.ident.name.as_str();
-            concatenated_names.push_str(name);
+            concatenated_names.push_str(v.ident.as_str());
 
             let is_last = i == def.variants.len() - 1;
             if !is_last {
