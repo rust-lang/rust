@@ -374,6 +374,7 @@ impl Parse for Newtype {
             impl ::std::cmp::Eq for #name {}
 
             impl ::std::cmp::PartialEq for #name {
+                #[inline]
                 fn eq(&self, other: &Self) -> bool {
                     self.as_u32().eq(&other.as_u32())
                 }
