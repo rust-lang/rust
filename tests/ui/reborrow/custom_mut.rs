@@ -12,8 +12,24 @@ impl<'a, T> Reborrow for CustomMut<'a, T> {}
 
 fn method(_: CustomMut<'_, ()>) {}
 
+fn generic(_: impl Sized) {}
+
 fn main() {
     let a = CustomMut(&mut ());
     let _ = method(a);
     let _ = method(a);
+
+    generic(a);
+    generic(a);
+    {
+        a
+    };
+    generic(a);
+    let _local = a;
+    generic(a);
+    let _ = || a;
+    generic(a);
+    let mut _tup: (CustomMut<'_, ()>,) = (CustomMut(&mut ()),);
+    _tup.0 = a;
+    generic(a);
 }

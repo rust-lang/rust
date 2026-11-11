@@ -22,5 +22,5 @@ fn main() {
     let a = CustomMarker(PhantomData);
     method(a);
     drop(a);
-    //~^ ERROR cannot move out of `a` because it is borrowed
+    //~^ ERROR cannot borrow `a` as mutable because it is also borrowed as immutable
 }

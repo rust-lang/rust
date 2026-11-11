@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![allow(dead_code)]
 
 struct Events<R>(R);
@@ -27,7 +29,7 @@ fn this_compiles<'a, R>(value: &'a mut Events<R>) {
 
 fn this_does_not<'a, R>(value: &'a mut Events<R>) {
     for _ in 0..3 {
-        Other::handle(value); //~ ERROR use of moved value: `value`
+        Other::handle(value);
     }
 }
 

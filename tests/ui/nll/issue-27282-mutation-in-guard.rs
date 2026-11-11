@@ -4,7 +4,7 @@ fn main() {
         ref mut foo
             if {
                 (|| { let bar = foo; bar.take() })();
-                //~^ ERROR cannot move out of `foo` in pattern guard
+                //~^ ERROR cannot borrow `*foo` as mutable, as it is immutable for the pattern guard
                 false
             } => {},
         Some(ref _s) => println!("Note this arm is bogus; the `Some` became `None` in the guard."),
@@ -16,7 +16,7 @@ fn main() {
         ref mut foo
             if let Some(()) = {
                 (|| { let bar = foo; bar.take() })();
-                //~^ ERROR cannot move out of `foo` in pattern guard
+                //~^ ERROR cannot borrow `*foo` as mutable, as it is immutable for the pattern guard
                 None
             } => {},
         Some(_) => {},

@@ -1,19 +1,11 @@
-error[E0507]: cannot move out of a shared reference
-  --> $DIR/borrowck-errors.rs:33:29
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-errors.rs:32:23
    |
 LL |     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
-   |                       -     ^^^^^^^^^^^^^^^^^^^
-   |                       |
-   |                       data moved here because `x` has type `&mut u32`, which does not implement the `Copy` trait
-   |
-help: consider removing the borrow
-   |
-LL -     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
-LL +     if let Some(Some(x)) = Some(&Some(&mut 0)) {
-   |
+   |                       ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-errors.rs:38:10
+  --> $DIR/borrowck-errors.rs:37:10
    |
 LL |     let &ref mut x = &0;
    |          ^^^^^^^^^   -- this cannot be borrowed as mutable
@@ -22,5 +14,4 @@ LL |     let &ref mut x = &0;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0507, E0596.
-For more information about an error, try `rustc --explain E0507`.
+For more information about this error, try `rustc --explain E0596`.

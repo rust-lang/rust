@@ -350,10 +350,11 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 None => break None,
                             }
                         };
-                        if use_site.adjustments.last().is_some_and(|adj| {
-                            matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Builtin))
-                                && adj.target.ref_mutability() == Some(Mutability::Not)
-                        }) {
+                        if use_site
+                            .adjustments
+                            .last()
+                            .is_some_and(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Builtin)))
+                        {
                             deref_count += 1;
                         }
 

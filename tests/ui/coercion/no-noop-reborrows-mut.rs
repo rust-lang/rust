@@ -1,5 +1,4 @@
-// Ideally, this would pass.
-//@ revisions: fail0 fail1 fail2
+//@ run-pass
 
 struct NotCopy<'a>(&'a mut bool);
 
@@ -11,15 +10,9 @@ fn test<'a>(m: &'a mut bool) {
     // but `r` is not fully moved
 
     let _ = r.0.0;
-    #[cfg(fail0)]
     let _: &mut _ = r.0.0;
-    //[fail0]~^ ERROR borrow of moved value: `r.0`
-    #[cfg(fail1)]
     let _: &mut bool = r.0.0;
-    //[fail1]~^ ERROR borrow of moved value: `r.0`
-    #[cfg(fail2)]
     let _: &'a mut bool = r.0.0;
-    //[fail2]~^ ERROR borrow of moved value: `r.0`
 }
 
 fn main() {
