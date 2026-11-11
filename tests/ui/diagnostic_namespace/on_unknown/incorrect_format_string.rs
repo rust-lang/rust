@@ -1,5 +1,3 @@
-#![feature(diagnostic_on_unknown)]
-
 #[diagnostic::on_unknown(message = "foo {}")]
 //~^ WARN: positional arguments are not permitted in diagnostic attributes
 use std::does_not_exist;

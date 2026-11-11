@@ -1,5 +1,4 @@
 #![crate_type = "lib"]
-#![feature(diagnostic_on_unknown)]
 #![feature(custom_inner_attributes)]
 
 pub mod x {
