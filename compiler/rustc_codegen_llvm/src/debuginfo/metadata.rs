@@ -1513,7 +1513,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
 pub(crate) fn build_global_var_di_node<'ll>(
     cx: &CodegenCx<'ll, '_>,
     def_id: DefId,
-    global: &'ll Value,
+    global: Value<'ll>,
 ) {
     if cx.dbg_cx.is_none() {
         return;
@@ -1722,7 +1722,7 @@ fn build_unsafe_binder_type_di_node<'ll, 'tcx>(
 /// global variable (which is simply returned), or an addrspacecast constant expression.
 /// If the given value is an addrspacecast, the cast is removed and the global variable behind
 /// the cast is returned.
-fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
+fn find_vtable_behind_cast<'ll>(vtable: Value<'ll>) -> Value<'ll> {
     // The vtable is a global variable, which may be behind an addrspacecast.
     unsafe {
         if let Some(c) = llvm::LLVMIsAConstantExpr(vtable) {
@@ -1738,7 +1738,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
     trait_ref: Option<ExistentialTraitRef<'tcx>>,
-    vtable: &'ll Value,
+    vtable: Value<'ll>,
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
     // LLVM at the moment.
@@ -1803,7 +1803,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
     poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
-    vtable: &'ll Value,
+    vtable: Value<'ll>,
 ) {
     if cx.dbg_cx.is_none() {
         return;

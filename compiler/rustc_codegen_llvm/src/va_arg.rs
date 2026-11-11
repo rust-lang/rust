@@ -17,18 +17,18 @@ use crate::type_of::LayoutLlvmExt;
 
 fn round_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
-    mut value: &'ll Value,
+    mut value: Value<'ll>,
     align: Align,
-) -> &'ll Value {
+) -> Value<'ll> {
     value = bx.add(value, bx.cx().const_i32(align.bytes() as i32 - 1));
     return bx.and(value, bx.cx().const_i32(-(align.bytes() as i32)));
 }
 
 fn round_pointer_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
-    addr: &'ll Value,
+    addr: Value<'ll>,
     align: Align,
-) -> &'ll Value {
+) -> Value<'ll> {
     let ptr = bx.inbounds_ptradd(addr, bx.const_i32(align.bytes() as i32 - 1));
     let pointer_width = bx.tcx().sess.target.pointer_width;
     let mask = align.bytes().wrapping_neg() & (u64::MAX >> (64 - pointer_width));
@@ -41,13 +41,13 @@ fn round_pointer_up_to_alignment<'ll>(
 
 fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     size: Size,
     align: Align,
     slot_size: Align,
     allow_higher_align: bool,
     force_right_adjust: bool,
-) -> (&'ll Value, Align) {
+) -> (Value<'ll>, Align) {
     let va_list_ty = bx.type_ptr();
     let va_list_addr = list.immediate();
 
@@ -155,13 +155,13 @@ enum ForceRightAdjust {
 
 fn emit_ptr_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
     pass_mode: PassMode,
     slot_size: SlotSize,
     allow_higher_align: AllowHigherAlign,
     force_right_adjust: ForceRightAdjust,
-) -> &'ll Value {
+) -> Value<'ll> {
     let indirect = matches!(pass_mode, PassMode::Indirect);
     let allow_higher_align = matches!(allow_higher_align, AllowHigherAlign::Yes);
     let force_right_adjust = matches!(force_right_adjust, ForceRightAdjust::Yes);
@@ -195,9 +195,9 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
 
 fn emit_aapcs_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     let dl = bx.cx.data_layout();
 
     // Implementation of the AAPCS64 calling convention for va_args see
@@ -315,9 +315,9 @@ fn is_powerpc_softfloat_abi(target: &Target) -> bool {
 
 fn emit_powerpc_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     let dl = bx.cx.data_layout();
 
     // struct __va_list_tag {
@@ -443,9 +443,9 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
 fn emit_s390x_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     let dl = bx.cx.data_layout();
 
     // Implementation of the s390x ELF ABI calling convention for va_args see
@@ -551,9 +551,9 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
 
 fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     let dl = bx.cx.data_layout();
 
     // Implementation of the systemv x86_64 ABI calling convention for va_args, see
@@ -797,10 +797,10 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
 /// Copy into a temporary if the type is more aligned than the register save area.
 fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    reg_addr: &'ll Value,
+    reg_addr: Value<'ll>,
     layout: TyAndLayout<'tcx>,
     src_align: Align,
-) -> &'ll Value {
+) -> Value<'ll> {
     if layout.layout.align > src_align {
         assert!(layout.ty.is_integral());
 
@@ -816,9 +816,9 @@ fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
 
 fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    va_list_addr: &'ll Value,
+    va_list_addr: Value<'ll>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     let dl = bx.cx.data_layout();
     let ptr_align_abi = dl.data_layout().pointer_align();
 
@@ -855,9 +855,9 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
 
 fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     // Implementation of va_arg for Hexagon musl target.
     // Based on LLVM's HexagonBuiltinVaList implementation.
     //
@@ -934,9 +934,9 @@ fn emit_hexagon_va_arg_musl<'ll, 'tcx>(
 
 fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     // Implementation of va_arg for Hexagon bare-metal (non-musl) targets.
     // Based on LLVM's EmitVAArgForHexagon implementation.
     //
@@ -971,9 +971,9 @@ fn emit_hexagon_va_arg_bare_metal<'ll, 'tcx>(
 
 fn emit_xtensa_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    list: OperandRef<'tcx, &'ll Value>,
+    list: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     // Implementation of va_arg for Xtensa. There doesn't seem to be an authoritative source for
     // this, other than "what GCC does".
     //
@@ -1072,9 +1072,9 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
 /// <https://llvm.org/docs/LangRef.html#va-arg-instruction>
 pub(super) fn emit_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    addr: OperandRef<'tcx, &'ll Value>,
+    addr: OperandRef<'tcx, Value<'ll>>,
     layout: TyAndLayout<'tcx>,
-) -> &'ll Value {
+) -> Value<'ll> {
     // Some ABIs have special behavior for zero-sized types. currently `VaArgSafe` is not
     // implemented for any zero-sized types, so this assert should always hold.
     assert!(!layout.is_zst());

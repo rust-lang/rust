@@ -36,53 +36,60 @@ pub(crate) struct TypeTree {
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     // Enzyme
-    pub(crate) safe fn LLVMRustHasMetadata(I: &Value, KindID: MetadataKindId) -> bool;
-    pub(crate) fn LLVMRustEraseInstUntilInclusive(BB: &BasicBlock, I: &Value);
-    pub(crate) fn LLVMRustGetLastInstruction<'a>(BB: &BasicBlock) -> Option<&'a Value>;
-    pub(crate) fn LLVMRustDIGetInstMetadata(I: &Value) -> Option<&Metadata>;
-    pub(crate) fn LLVMRustEraseInstFromParent(V: &Value);
-    pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
-    pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
-    pub(crate) fn LLVMRustHasAttributeAtIndex(V: &Value, i: c_uint, Kind: AttributeKind) -> bool;
+    pub(crate) safe fn LLVMRustHasMetadata<'ll>(I: Value<'ll>, KindID: MetadataKindId) -> bool;
+    pub(crate) fn LLVMRustEraseInstUntilInclusive<'ll>(BB: &'ll BasicBlock, I: Value<'ll>);
+    pub(crate) fn LLVMRustGetLastInstruction<'ll>(BB: &'ll BasicBlock) -> Option<Value<'ll>>;
+    pub(crate) fn LLVMRustDIGetInstMetadata<'ll>(I: Value<'ll>) -> Option<&'ll Metadata>;
+    pub(crate) fn LLVMRustEraseInstFromParent<'ll>(V: Value<'ll>);
+    pub(crate) fn LLVMRustGetTerminator<'ll>(B: &'ll BasicBlock) -> Value<'ll>;
+    pub(crate) fn LLVMRustVerifyFunction<'ll>(
+        V: Value<'ll>,
+        action: LLVMRustVerifierFailureAction,
+    ) -> Bool;
+    pub(crate) fn LLVMRustHasAttributeAtIndex<'ll>(
+        V: Value<'ll>,
+        i: c_uint,
+        Kind: AttributeKind,
+    ) -> bool;
     pub(crate) fn LLVMRustGetArrayNumElements<'ll>(Ty: Type<'ll>) -> u64;
-    pub(crate) fn LLVMRustHasFnAttribute(
-        F: &Value,
+    pub(crate) fn LLVMRustHasFnAttribute<'ll>(
+        F: Value<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: libc::size_t,
     ) -> bool;
-    pub(crate) fn LLVMRustRemoveFnAttribute(
-        F: &Value,
+    pub(crate) fn LLVMRustRemoveFnAttribute<'ll>(
+        F: Value<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: libc::size_t,
     );
-    pub(crate) fn LLVMGetFirstFunction<'ll>(M: Module<'ll>) -> Option<&'ll Value>;
-    pub(crate) fn LLVMGetNextFunction(Fn: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMRustRemoveEnumAttributeAtIndex(
-        Fn: &Value,
+    pub(crate) fn LLVMGetFirstFunction<'ll>(M: Module<'ll>) -> Option<Value<'ll>>;
+    pub(crate) fn LLVMGetNextFunction<'ll>(Fn: Value<'ll>) -> Option<Value<'ll>>;
+    pub(crate) fn LLVMRustRemoveEnumAttributeAtIndex<'ll>(
+        Fn: Value<'ll>,
         index: c_uint,
         kind: AttributeKind,
     );
-    pub(crate) fn LLVMRustPositionBefore<'a>(B: &'a Builder<'_>, I: &'a Value);
-    pub(crate) fn LLVMRustPositionAfter<'a>(B: &'a Builder<'_>, I: &'a Value);
-    pub(crate) fn LLVMRustGetFunctionCall(
-        F: &Value,
+    pub(crate) fn LLVMRustPositionBefore<'ll>(B: &Builder<'ll>, I: Value<'ll>);
+    pub(crate) fn LLVMRustPositionAfter<'ll>(B: &Builder<'ll>, I: Value<'ll>);
+    pub(crate) fn LLVMRustGetFunctionCall<'ll>(
+        F: Value<'ll>,
         name: *const c_char,
         NameLen: libc::size_t,
-    ) -> Option<&Value>;
+    ) -> Option<Value<'ll>>;
 
-    pub(crate) safe fn LLVMRustIsCall(V: &Value) -> bool;
+    pub(crate) safe fn LLVMRustIsCall<'ll>(V: Value<'ll>) -> bool;
 }
 
 unsafe extern "C" {
     // Enzyme
     pub(crate) fn LLVMDumpModule<'ll>(M: Module<'ll>);
-    pub(crate) fn LLVMDumpValue(V: &Value);
-    pub(crate) fn LLVMGetFunctionCallConv(F: &Value) -> c_uint;
-    pub(crate) fn LLVMGetParams(Fnc: &Value, params: *mut &Value);
+    pub(crate) fn LLVMDumpValue<'ll>(V: Value<'ll>);
+    pub(crate) fn LLVMGetFunctionCallConv<'ll>(F: Value<'ll>) -> c_uint;
+    pub(crate) fn LLVMGetParams<'ll>(Fnc: Value<'ll>, params: *mut Value<'ll>);
     pub(crate) fn LLVMGetNamedFunction<'ll>(
         M: Module<'ll>,
         Name: *const c_char,
-    ) -> Option<&'ll Value>;
+    ) -> Option<Value<'ll>>;
 }
 
 #[repr(C)]
