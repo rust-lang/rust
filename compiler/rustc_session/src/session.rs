@@ -156,6 +156,8 @@ pub struct PointerAuthConfig {
     pub aarch64_jump_table_hardening: bool,
     /// The ABI for C function pointers.
     pub function_pointers: Option<PointerAuthSchema>,
+    /// Whether the function-pointer schema also covers Rust calling conventions.
+    pub covers_all_abis: bool,
     /// The ABI for function addresses in .init_array and .fini_array
     pub init_fini: Option<PointerAuthSchema>,
     /// Use of pointer authentication intrinsics.
@@ -177,6 +179,7 @@ impl PointerAuthConfig {
             aarch64_jump_table_hardening: true,
             // C function pointers must use Clang's IA/zero convention for interoperability.
             function_pointers: Some(PointerAuthSchema::function_pointers_default(target)),
+            covers_all_abis: true,
             init_fini: None,
             intrinsics: true,
             typeinfo_vt_ptr_discrimination: false,
@@ -194,6 +197,7 @@ impl PointerAuthConfig {
             elf_got: false,
             aarch64_jump_table_hardening: true,
             function_pointers: Some(PointerAuthSchema::function_pointers_default(target)),
+            covers_all_abis: false,
             init_fini: Some(PointerAuthSchema::init_fini_default(target)),
             intrinsics: true,
             typeinfo_vt_ptr_discrimination: true,
@@ -1301,6 +1305,10 @@ impl Session {
 
     pub fn pointer_authentication_functions(&self) -> Option<&PointerAuthSchema> {
         self.pointer_auth_config.as_ref().and_then(|cfg| cfg.function_pointers.as_ref())
+    }
+
+    pub fn pointer_authentication_covers_all_abis(&self) -> bool {
+        self.pointer_auth_config.as_ref().is_some_and(|cfg| cfg.covers_all_abis)
     }
 
     pub fn pointer_authentication_init_fini(&self) -> Option<&PointerAuthSchema> {

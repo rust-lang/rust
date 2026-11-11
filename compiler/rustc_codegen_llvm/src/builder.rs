@@ -2156,9 +2156,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> Option<llvm::OperandBundleBox<'ll>> {
         let schema = self.sess().pointer_authentication_functions()?;
 
-        // Pointer authentication support is currently limited to extern "C" calls; filter out other
-        // ABIs.
-        if fn_abi?.conv != CanonAbi::C {
+        if self.sess().pointer_authentication_covers_all_abis() {
+            // A bare function symbol was never signed, so authenticating it would be invalid.
+            if !unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) } {
+                return None;
+            }
+        } else if fn_abi?.conv != CanonAbi::C {
             return None;
         }
         // Filter out LLVM intrinsics.

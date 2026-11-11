@@ -214,7 +214,8 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
                 // Decide if the initializer needs to be signed
                 if cx.sess().pointer_authentication_functions().is_some()
-                    && matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. })
+                    && (cx.sess().pointer_authentication_covers_all_abis()
+                        || matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. }))
                 {
                     should_sign = true;
                 }
