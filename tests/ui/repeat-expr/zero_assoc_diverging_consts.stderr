@@ -1,15 +1,14 @@
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/zero_assoc_diverging_consts.rs:23:14
    |
-LL | fn ex_nihilo<T: Trait>() -> u32
-...
-LL |     [const { panic!() } as !; T::ZERO];
-   |              ^^^^^^^^ evaluation of `ex_nihilo::<()>::{constant#1}` failed here
+LL | fn ex_nihilo<T: Trait>() -> u32 {
+LL |     [const { panic!() } as !; gca!(T::ZERO)];
+   |              ^^^^^^^^ evaluation of `ex_nihilo::<()>::{constant#0}` failed here
 
 note: erroneous constant encountered
   --> $DIR/zero_assoc_diverging_consts.rs:23:6
    |
-LL |     [const { panic!() } as !; T::ZERO];
+LL |     [const { panic!() } as !; gca!(T::ZERO)];
    |      ^^^^^^^^^^^^^^^^^^
 
 note: the above error was encountered while instantiating `fn ex_nihilo::<()>`

@@ -1,4 +1,3 @@
-//@ ignore-backends: gcc
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl, const_cmp)]
 

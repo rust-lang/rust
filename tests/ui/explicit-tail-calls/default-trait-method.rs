@@ -3,7 +3,6 @@
 // in a path determining whether the method in question is marked as `#[track_caller]`.
 //
 //@ run-pass
-//@ ignore-backends: gcc
 
 #![feature(explicit_tail_calls)]
 #![expect(incomplete_features)]

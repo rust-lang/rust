@@ -6,7 +6,6 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: --crate-type=lib --check-cfg=cfg()
 //@ compile-flags: -Zunstable-options --target={{src-base}}/check-cfg/my-awesome-platform.json
-//@ ignore-backends: gcc
 
 #![feature(lang_items, no_core, auto_traits, rustc_attrs)]
 #![no_core]

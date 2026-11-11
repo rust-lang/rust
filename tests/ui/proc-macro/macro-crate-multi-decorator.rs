@@ -3,7 +3,6 @@
 
 //@ check-pass
 //@ proc-macro: duplicate.rs
-//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate duplicate;

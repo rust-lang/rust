@@ -74,7 +74,7 @@ use rustc_lint_defs::{LintId, StableLintExpectationId};
 use rustc_macros::rustc_queries;
 use rustc_middle::middle::resolve::TypeRelativeDelegationRes;
 use rustc_session::Limits;
-use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::config::{EntryFnType, OutputFilenames, SymbolManglingVersion};
 use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
@@ -1229,7 +1229,7 @@ rustc_queries! {
     }
 
     /// Return dead-code liveness summary for the crate.
-    query live_symbols_and_ignored_derived_traits(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
+    query live_symbols_and_trivial_usage_sites(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }
@@ -2486,10 +2486,6 @@ rustc_queries! {
 
     query codegen_unit(sym: Symbol) -> &'tcx CodegenUnit<'tcx> {
         desc { "getting codegen unit `{sym}`" }
-    }
-
-    query backend_optimization_level(_: ()) -> OptLevel {
-        desc { "optimization level used by backend" }
     }
 
     /// Return the filenames where output artefacts shall be stored.

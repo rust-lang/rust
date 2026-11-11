@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry::*;
 
 use object::pe;
-use rustc_abi::{CanonAbi, X86Call};
+use rustc_abi::CanonAbi;
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
 use rustc_crate_store::CrateDepKind;
 use rustc_data_structures::fx::FxHashSet;
@@ -758,9 +758,31 @@ fn calling_convention_for_symbol<'tcx>(
         .unwrap_or((CanonAbi::Rust, &[]))
 }
 
+/// Names used to preserve an exported symbol during LTO.
+///
+/// The restriction pass matches LLVM IR names, which retain the `\x01`
+/// marker for explicitly decorated symbols. ThinLTO GUIDs instead use
+/// the identifier without that marker, so preserve both spellings.
+pub(crate) fn symbol_names_for_lto<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+    instantiating_crate: CrateNum,
+) -> Vec<String> {
+    let name = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
+    let (callconv, args) = calling_convention_for_symbol(tcx, symbol);
+
+    if let Some(decorated) =
+        crate::common::windows_calling_convention_name(&tcx.sess.target, callconv, &name, args)
+    {
+        vec![format!("\x01{decorated}"), decorated]
+    } else {
+        vec![name]
+    }
+}
 /// This is the symbol name of the given instance as seen by the linker.
 ///
-/// On 32-bit Windows symbols are decorated according to their calling conventions.
+/// On Windows, symbols are decorated according to their calling conventions.
+/// Vectorcall symbols are also decorated on non-Windows targets.
 pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
@@ -777,8 +799,15 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
 
     let target = &tcx.sess.target;
     if !target.is_like_windows {
+        let (callconv, args) = calling_convention_for_symbol(tcx, symbol);
+        if let Some(name) =
+            crate::common::windows_calling_convention_name(target, callconv, &undecorated, args)
+        {
+            return name;
+        }
+
         // Mach-O has a global "_" suffix and `object` crate will handle it.
-        // ELF does not have any symbol decorations.
+        // Other calling conventions do not need decoration here.
         return undecorated;
     }
 
@@ -791,27 +820,26 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
         _ => return undecorated,
     };
 
+    // LLVM treats names beginning with '\x01' as already mangled and strips that prefix.
+    // Names beginning with '?' are left undecorated by LLVM; the prefix is kept.
+    if let Some(name) = undecorated.strip_prefix('\x01') {
+        return name.to_string();
+    }
+    if undecorated.starts_with('?') {
+        return undecorated;
+    }
     let (callconv, args) = calling_convention_for_symbol(tcx, symbol);
 
-    // Decorate symbols with prefixes, suffixes and total number of bytes of arguments.
-    // Reference: https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=msvc-170
-    let (prefix, suffix) = match callconv {
-        CanonAbi::X86(X86Call::Fastcall) => ("@", "@"),
-        CanonAbi::X86(X86Call::Stdcall) => ("_", "@"),
-        CanonAbi::X86(X86Call::Vectorcall) => ("", "@@"),
-        _ => {
-            if let Some(prefix) = prefix {
-                undecorated.insert(0, prefix);
-            }
-            return undecorated;
-        }
-    };
+    if let Some(name) =
+        crate::common::windows_calling_convention_name(target, callconv, &undecorated, args)
+    {
+        return name;
+    }
 
-    let args_in_bytes: u64 = args
-        .iter()
-        .map(|abi| abi.layout.size.bytes().next_multiple_of(target.pointer_width as u64 / 8))
-        .sum();
-    format!("{prefix}{undecorated}{suffix}{args_in_bytes}")
+    if let Some(prefix) = prefix {
+        undecorated.insert(0, prefix);
+    }
+    undecorated
 }
 
 pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(

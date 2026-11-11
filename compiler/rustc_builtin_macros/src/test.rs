@@ -30,7 +30,7 @@ pub(crate) fn expand_test_case(
     anno_item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
-    warn_on_duplicate_attribute(ecx, &anno_item, sym::test_case);
+    warn_on_duplicate_attribute(ecx, &anno_item, attr_sp, sym::test_case);
 
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let (mut item, is_stmt) = match anno_item {
@@ -88,7 +88,7 @@ pub(crate) fn expand_test(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::test);
-    warn_on_duplicate_attribute(cx, &item, sym::test);
+    warn_on_duplicate_attribute(cx, &item, attr_sp, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
@@ -99,7 +99,7 @@ pub(crate) fn expand_bench(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::bench);
-    warn_on_duplicate_attribute(cx, &item, sym::bench);
+    warn_on_duplicate_attribute(cx, &item, attr_path_sp, sym::bench);
     expand_test_or_bench(cx, attr_path_sp, item, true)
 }
 

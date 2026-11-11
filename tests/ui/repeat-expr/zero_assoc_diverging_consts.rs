@@ -6,21 +6,21 @@
 // Issue: <https://github.com/rust-lang/rust/issues/165323>
 //
 //@ build-fail
-#![feature(generic_const_exprs)]
+#![feature(gca_min_const_items)]
+
+use std::gca;
 
 trait Trait {
+    #[rustc_always_gca]
     const ZERO: usize;
 }
 
 impl Trait for () {
-    const ZERO: usize = 0;
+    const ZERO: usize = gca!(0);
 }
 
-fn ex_nihilo<T: Trait>() -> u32
-where
-    [(); T::ZERO]:,
-{
-    [const { panic!() } as !; T::ZERO];
+fn ex_nihilo<T: Trait>() -> u32 {
+    [const { panic!() } as !; gca!(T::ZERO)];
     //~^ error: evaluation panicked: explicit panic
 }
 

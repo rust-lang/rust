@@ -1,10 +1,14 @@
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::ffi::OsStr;
+use std::hash::{BuildHasher, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
 
-use rustc_index::bit_set::{self, DenseBitSet};
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_hashes::{Hash64, Hash128};
+use rustc_index::{Idx, IndexSlice, IndexVec, bit_set};
 use rustc_macros::StableHash;
+pub use rustc_stable_hash::{
+    FromStableHash, SipHasher128Hash as StableHasherHash, StableSipHasher128 as StableHasher,
+};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
@@ -12,11 +16,6 @@ use crate::fingerprint::Fingerprint;
 
 #[cfg(test)]
 mod tests;
-
-use rustc_hashes::{Hash64, Hash128};
-pub use rustc_stable_hash::{
-    FromStableHash, SipHasher128Hash as StableHasherHash, StableSipHasher128 as StableHasher,
-};
 
 /// This trait lets `StableHash` and `derive(StableHash)` be used in
 /// this crate (and other crates upstream of `rustc_middle`), while leaving
@@ -186,29 +185,20 @@ impl<T: StableOrd> StableCompare for T {
     }
 }
 
-/// Implement StableHash by just calling `Hash::hash()`. Also implement `StableOrd` for the type
-/// since that has the same requirements.
-///
-/// **WARNING** This is only valid for types that *really* don't need any context for fingerprinting.
-/// But it is easy to misuse this macro (see [#96013](https://github.com/rust-lang/rust/issues/96013)
-/// for examples). Therefore this macro is not exported and should only be used in the limited cases
-/// here in this module.
-///
-/// Use `#[derive(StableHash)]` instead.
-macro_rules! impl_stable_traits_for_trivial_type {
-    ($t:ty) => {
-        impl $crate::stable_hash::StableHash for $t {
+/// Implements [`StableHash`] and [`StableOrd`] for a primitive integer type.
+/// The stable-hash impl calls the corresponding `Hasher::write_*` method.
+macro_rules! impl_stable_traits_for_int {
+    (
+        $ty:ty, $write_ty_method:ident
+    ) => {
+        impl StableHash for $ty {
             #[inline]
-            fn stable_hash<Hcx>(
-                &self,
-                _: &mut Hcx,
-                hasher: &mut $crate::stable_hash::StableHasher,
-            ) {
-                ::std::hash::Hash::hash(self, hasher);
+            fn stable_hash<Hcx>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
+                hasher.$write_ty_method(*self);
             }
         }
 
-        impl $crate::stable_hash::StableOrd for $t {
+        impl StableOrd for $ty {
             const CAN_USE_UNSTABLE_SORT: bool = true;
 
             // Encoding and decoding doesn't change the bytes of trivial types
@@ -218,34 +208,42 @@ macro_rules! impl_stable_traits_for_trivial_type {
     };
 }
 
-pub(crate) use impl_stable_traits_for_trivial_type;
+impl_stable_traits_for_int!(u8, write_u8);
+impl_stable_traits_for_int!(u16, write_u16);
+impl_stable_traits_for_int!(u32, write_u32);
+impl_stable_traits_for_int!(u64, write_u64);
+impl_stable_traits_for_int!(u128, write_u128);
+impl_stable_traits_for_int!(usize, write_usize);
 
-impl_stable_traits_for_trivial_type!(i8);
-impl_stable_traits_for_trivial_type!(i16);
-impl_stable_traits_for_trivial_type!(i32);
-impl_stable_traits_for_trivial_type!(i64);
-impl_stable_traits_for_trivial_type!(isize);
+impl_stable_traits_for_int!(i8, write_i8);
+impl_stable_traits_for_int!(i16, write_i16);
+impl_stable_traits_for_int!(i32, write_i32);
+impl_stable_traits_for_int!(i64, write_i64);
+impl_stable_traits_for_int!(i128, write_i128);
+impl_stable_traits_for_int!(isize, write_isize);
 
-impl_stable_traits_for_trivial_type!(u8);
-impl_stable_traits_for_trivial_type!(u16);
-impl_stable_traits_for_trivial_type!(u32);
-impl_stable_traits_for_trivial_type!(u64);
-impl_stable_traits_for_trivial_type!(usize);
+impl StableHash for char {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        u32::from(*self).stable_hash(hcx, hasher);
+    }
+}
 
-impl_stable_traits_for_trivial_type!(u128);
-impl_stable_traits_for_trivial_type!(i128);
+impl StableHash for () {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
+        // No need to hash anything for the unit type.
+    }
+}
 
-impl_stable_traits_for_trivial_type!(char);
-impl_stable_traits_for_trivial_type!(());
+impl StableHash for Hash64 {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.as_u64().stable_hash(hcx, hasher);
+    }
+}
 
-impl_stable_traits_for_trivial_type!(Hash64);
-
-// We need a custom impl as the default hash function will only hash half the bits. For stable
-// hashing we want to hash the full 128-bit hash.
 impl StableHash for Hash128 {
     #[inline]
-    fn stable_hash<Hcx>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
-        self.as_u128().hash(hasher);
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.as_u128().stable_hash(hcx, hasher);
     }
 }
 
@@ -394,7 +392,7 @@ impl<T: StableHash> StableHash for Vec<T> {
 
 impl<K, V, R> StableHash for indexmap::IndexMap<K, V, R>
 where
-    K: StableHash + Eq + Hash,
+    K: StableHash,
     V: StableHash,
     R: BuildHasher,
 {
@@ -409,7 +407,7 @@ where
 
 impl<K, R> StableHash for indexmap::IndexSet<K, R>
 where
-    K: StableHash + Eq + Hash,
+    K: StableHash,
     R: BuildHasher,
 {
     #[inline]
@@ -609,19 +607,23 @@ where
     }
 }
 
-impl<I: Idx> StableHash for DenseBitSet<I> {
+impl<I: Idx> StableHash for bit_set::DenseBitSet<I> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
+        bit_set::DenseBitSet::stable_hash_inner(self, hasher);
     }
 }
 
 impl<R: Idx, C: Idx> StableHash for bit_set::BitMatrix<R, C> {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
+        bit_set::BitMatrix::stable_hash_inner(self, hasher);
     }
 }
 
-impl_stable_traits_for_trivial_type!(::std::ffi::OsStr);
+impl StableHash for OsStr {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.as_encoded_bytes().stable_hash(hcx, hasher);
+    }
+}
 
 impl StableHash for std::path::Path {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {

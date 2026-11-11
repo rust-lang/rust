@@ -16,6 +16,7 @@ use rustc_abi::{
     WrappingRange,
 };
 use rustc_ast::Mutability;
+use rustc_attr_ir::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::{
@@ -896,6 +897,17 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         ExpectedKind::Int
                     },
                 )?;
+                if self.reset_provenance_and_padding {
+                    self.ecx.clear_provenance(value)?;
+                    self.add_data_range_place(value);
+                }
+                interp_ok(true)
+            }
+            ty::Adt(adt_def, _)
+                if self.ecx.tcx.is_lang_item(adt_def.did(), LangItem::X87F80Raw) =>
+            {
+                // The x87_f80_raw lang item is effectively a primitive.
+                self.read_scalar(value, ExpectedKind::Float)?;
                 if self.reset_provenance_and_padding {
                     self.ecx.clear_provenance(value)?;
                     self.add_data_range_place(value);

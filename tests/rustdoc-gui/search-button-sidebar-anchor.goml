@@ -1,0 +1,15 @@
+// This test ensures that clicking on a sidebar anchor while the search is open closes the
+// search, resets the search button and removes the search query from the URL.
+include: "utils.goml"
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+
+call-function: ("open-search", {})
+assert-text: ("#search-button a span.label", "Exit")
+assert-document-property: ({"URL": "struct.Foo.html?search="}, CONTAINS)
+
+click: "//*[@class='sidebar']//a[@href='#method.must_use']"
+wait-for: "#not-displayed #search"
+assert-attribute: ("#main-content", {"class": "content"})
+assert-text: ("#search-button a span.label", "Search")
+assert-document-property: ({"URL": "struct.Foo.html#method.must_use"}, ENDS_WITH)
