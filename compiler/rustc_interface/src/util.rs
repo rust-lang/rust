@@ -270,12 +270,6 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     let current_gcx2 = current_gcx.clone();
 
     let proxy = Proxy::new();
-    // Stop the jobserver helper once the thread pool has stopped (also when unwinding),
-    // so that no thread of this process is reading the jobserver when the process exits.
-    let _stop_jobserver_helper = defer({
-        let proxy = Arc::clone(&proxy);
-        move || proxy.stop_helper()
-    });
     let proxy_ = Arc::clone(&proxy);
 
     let builder = rustc_thread_pool::ThreadPoolBuilder::new()

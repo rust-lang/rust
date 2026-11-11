@@ -82,10 +82,6 @@ struct ProxyData {
     /// If the proxy releases a token it can immediately give it to one of these threads
     /// without going through the real jobserver.
     pending: u16,
-
-    /// The number of token requests sent to the helper thread and not answered yet.
-    /// Always `>= pending`, so every waiting thread has a request behind it.
-    requested: u16,
 }
 
 /// A wrapper around jobserver client used for two purposes:
@@ -97,8 +93,7 @@ pub struct Proxy {
     /// The wrapped jobserver client.
     client: Client,
     /// Helper thread associated with the wrapped client.
-    /// `None` once `stop_helper` has run.
-    helper: Mutex<Option<HelperThread>>,
+    helper: OnceLock<HelperThread>,
     /// The proxy's own data.
     data: Mutex<ProxyData>,
     /// Threads which are currently waiting for a token will wait on this condvar.
@@ -110,26 +105,30 @@ impl Proxy {
         let proxy = Arc::new(Proxy {
             client: client(),
             // Assume that the main thread is actively doing work when it creates the proxy.
-            data: Mutex::new(ProxyData { used: 1, pending: 0, requested: 0 }),
+            data: Mutex::new(ProxyData { used: 1, pending: 0 }),
             wake_pending: Condvar::new(),
-            helper: Mutex::new(None),
+            helper: OnceLock::new(),
         });
-        let proxy_ = Arc::clone(&proxy);
+        // Use weak reference as if we will clone `Arc` then `Proxy` will never be
+        // dropped as helper thread will have a strong reference to it, this may
+        // result in not all tokens returned to the job server, see #165506.
+        let weak_proxy = Arc::downgrade(&proxy);
         let helper = proxy
             .client
             .clone()
             .into_helper_thread(move |token| {
                 // Reminder: this callback runs when the helper acquires a token.
-                let mut data = proxy_.data.lock();
-                data.requested = data.requested.saturating_sub(1);
-                if let Ok(token) = token {
+                if let Ok(token) = token
+                    && let Some(proxy) = weak_proxy.upgrade()
+                {
+                    let mut data = proxy.data.lock();
                     if data.pending > 0 {
                         // The token is still needed, give it to one of the waiting threads.
                         token.drop_without_releasing();
                         assert!(data.used > 0);
                         data.used += 1;
                         data.pending -= 1;
-                        proxy_.wake_pending.notify_one();
+                        proxy.wake_pending.notify_one();
                     } else {
                         // The token is no longer needed, release it by dropping.
                         drop(data);
@@ -138,7 +137,7 @@ impl Proxy {
                 }
             })
             .expect("failed to spawn helper thread");
-        *proxy.helper.lock() = Some(helper);
+        proxy.helper.set(helper).unwrap();
         proxy
     }
 
@@ -155,19 +154,8 @@ impl Proxy {
         } else {
             // Request a token from the helper thread, this is a non-blocking operation.
             // Then wait until this or some other request succeeds.
-            //
-            // A waiting thread can also get its token from `release_thread`, which leaves
-            // its request with the helper. Reuse such a request instead of queueing
-            // another one, so the helper does not keep taking tokens nobody waits for.
+            self.helper.get().unwrap().request_token();
             data.pending += 1;
-            if data.requested < data.pending {
-                data.requested += 1;
-                self.helper
-                    .lock()
-                    .as_ref()
-                    .expect("jobserver helper used after `stop_helper`")
-                    .request_token();
-            }
             self.wake_pending.wait(&mut data);
         }
     }
@@ -179,8 +167,6 @@ impl Proxy {
 
         if data.pending > 0 {
             // Immediately give the released token to one of the waiting threads.
-            // Its helper request stays queued and serves the next thread that has to wait
-            // (see `ProxyData::requested`).
             data.pending -= 1;
             self.wake_pending.notify_one();
         } else {
@@ -192,18 +178,5 @@ impl Proxy {
                 self.client.release_raw().ok();
             }
         }
-    }
-
-    /// Stops and joins the helper thread. Call this once no thread can call
-    /// `acquire_thread` any more, before the process exits.
-    ///
-    /// A helper that is still serving requests at exit can read a token from the
-    /// jobserver and be killed before it writes the token back. That token is then lost
-    /// for every process sharing the jobserver, for as long as the jobserver lives.
-    /// Dropping the `HelperThread` interrupts a blocked read and waits for the helper,
-    /// which writes back any token it has already read.
-    pub fn stop_helper(&self) {
-        let helper = self.helper.lock().take();
-        drop(helper);
     }
 }
