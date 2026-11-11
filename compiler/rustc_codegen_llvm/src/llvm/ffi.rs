@@ -2280,6 +2280,14 @@ unsafe extern "C" {
         ValueLen: size_t,
     );
 
+    pub(crate) fn LLVMRustAddModuleFlagMetadata<'ll>(
+        M: Module<'ll>,
+        MergeBehavior: ModuleFlagMergeBehavior,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        Value: &'ll Metadata,
+    );
+
     /// We can't use LLVM-C's `LLVMDIBuilderCreateCompileUnit` because it hardcodes
     /// `DICompileUnit::DebugNameTableKind::Default`, but we want to be able to
     /// pass other values.
