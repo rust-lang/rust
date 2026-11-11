@@ -760,9 +760,8 @@ fn calling_convention_for_symbol<'tcx>(
 
 /// Names used to preserve an exported symbol during LTO.
 ///
-/// The restriction pass matches LLVM IR names, which retain the `\x01`
-/// marker for explicitly decorated symbols. ThinLTO GUIDs instead use
-/// the identifier without that marker, so preserve both spellings.
+/// The restriction pass matches LLVM IR names, which may carry a leading
+/// `\x01` marker that ThinLTO GUIDs omit; return both spellings.
 pub(crate) fn symbol_names_for_lto<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,
@@ -775,6 +774,9 @@ pub(crate) fn symbol_names_for_lto<'tcx>(
         crate::common::windows_calling_convention_name(&tcx.sess.target, callconv, &name, args)
     {
         vec![format!("\x01{decorated}"), decorated]
+    } else if let Some(stripped) = name.strip_prefix('\x01') {
+        let stripped = stripped.to_string();
+        vec![name, stripped]
     } else {
         vec![name]
     }
