@@ -89,7 +89,11 @@ jobs:
 
             gh pr comment ${HEAD_PR} -F output.log
           else
-            echo "Nothing to publish"
+            echo "Nothing was published. Either there is no version update or some error has occurred."
           fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          # Running `gh` commands in a submodule would cause it to load data from the submodule's
+          # repo. So we override it here to `rust-lang/rust`.
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
