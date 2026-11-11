@@ -2,7 +2,7 @@
 //@ compile-flags: -Zmir-enable-passes=+Inline
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(try_trait_v2, pattern_type_macro, pattern_types)]
+#![feature(try_trait_v2, pattern_types)]
 #![feature(custom_mir, core_intrinsics, rustc_attrs)]
 
 use std::intrinsics::mir::*;
