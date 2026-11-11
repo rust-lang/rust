@@ -30,31 +30,34 @@ split across multiple files in the [`rustc_ast_lowering`] crate such as `item.rs
 `expr.rs`, `pat.rs`, `path.rs`, and others, but they all share the same [`LoweringContext`]
 state and ID‑lowering machinery.
 
-Each owner is lowered in its own [`with_hir_id_owner`] scope.
-This is why the
-`HirId` invariants below matter: `lower_node_id` maps AST `NodeId`s into the
-current owner, while `next_id` creates fresh HIR-only nodes introduced during
-desugaring.
+Each owner is lowered in its own [`LoweringContext`] context.
+Each Lowering owner gets a new lowering context inside `lower_to_hir`,
+specifically `with_lctx` helper function.
+This is why the `HirId` invariants below matter: `lower_node_id` allocates a new `HirId` for
+the given `NodeId`, while `next_id` creates fresh `HirId` introduced during desugaring.
 
 Lowering needs to uphold several invariants in order to not trigger the
 sanity checks in [`compiler/rustc_passes/src/hir_id_validator.rs`][hir_id_validator]:
 
-1. A `HirId` must be used if created.
-   So, if you use the `lower_node_id`,
-   you *must* use the resulting `NodeId` or `HirId` (either is fine, since
-   any `NodeId`s in the `HIR` are checked for existing `HirId`s).
+1. A `HirId` must be used if created,
+   therefore the `ItemLocalId`s set of local IDs associated with the owner’s nodes
+   form a dense range of integers starting at zero as IDs are allocated
+   consecutively starting at one, zero is reserved for the owner.
+
 2. Lowering a `HirId` must be done in the scope of the *owning* item.
-   This means you need to use `with_hir_id_owner` if you are creating parts
-   of an item other than the one being currently lowered.
-   This happens, for example, during the lowering of existential `impl Trait`.
-3. A `NodeId` that will be placed into a HIR structure must be lowered,
-   even if its `HirId` is unused.
-   Calling `let _ = self.lower_node_id(node_id);` is perfectly legitimate.
-4. If you are creating new nodes that didn't exist in the `AST`, you *must*
-   create new ids for them.
-   This is done by calling the `next_id` method,
-   which produces both a new `NodeId` as well as automatically lowering it
-   for you so you also get the `HirId`.
+   And this is done by creating a new `LoweringContext` for each owner.
+
+3. When lowering an AST node,
+   the compiler can create HIR nodes that don't exist in the AST tree during desugaring
+   such as the loop instead of the for loop.
+   These HIR nodes must have a `HirId` and this is done by `next_id`.
+
+4. There's always at least one entry for the owning item itself.
+   The owner node has local ID zero, so the owner’s collection is nonempty.
+
+5. When traversing an item with a nested item,
+   the owner part of the nested item's definition parent `HirId` must match
+   the enclosing HIR owner currently being traversed.
 
 [`rustc_ast_lowering`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/index.html
 [`lower_to_hir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/fn.lower_to_hir.html
@@ -62,7 +65,6 @@ sanity checks in [`compiler/rustc_passes/src/hir_id_validator.rs`][hir_id_valida
 [`hir::Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/struct.Crate.html
 [`ItemLowerer::lower_node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/item/struct.ItemLowerer.html
 [`LoweringContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/struct.LoweringContext.html
-[`with_hir_id_owner`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/struct.LoweringContext.html#method.with_hir_id_owner
 [hir_id_validator]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_passes/src/hir_id_validator.rs
 
 If you are creating new `DefId`s, since each `DefId` needs to have a
