@@ -22,11 +22,11 @@
    LL|      0|            Err(should_return) => should_return,
    LL|       |        };
    LL|      0|        match should_return {
-   LL|  18.4E|            false => continue,
-   LL|      1|            true => return,
+   LL|      0|            false => continue,
+   LL|      0|            true => return,
    LL|       |        }
    LL|       |    }
-   LL|      1|}
+   LL|      0|}
    LL|       |
    LL|      1|fn inescapable_loop() -> ! {
    LL|      1|    let mut count = 0;
