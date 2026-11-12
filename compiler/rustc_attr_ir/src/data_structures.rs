@@ -987,6 +987,10 @@ pub enum AttributeKind {
     /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
     LintCheck(ThinVec<LintCheck>),
 
+    /// Represents `#[lint::must_match_exhaustively]` (used by the
+    /// `rustc::must_match_exhaustively` lint).
+    LintMustMatchExhaustively(Span),
+
     /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
     LintNeverReturnsNullPtr,
 
@@ -1403,10 +1407,6 @@ pub enum AttributeKind {
         attr_span: Span,
         fn_names: ThinVec<Ident>,
     },
-
-    /// Represents `#[rustc_must_match_exhaustively]`
-    RustcMustMatchExhaustively(Span),
-
     /// Represents `#[rustc_no_implicit_bounds]`
     RustcNoImplicitBounds,
 

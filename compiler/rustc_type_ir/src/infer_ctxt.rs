@@ -57,7 +57,7 @@ impl TypingModeErasedStatus for MayBeErased {}
 /// Hence, `TypingMode` does not implement `Eq`, though [`TypingModeEqWrapper`] is available
 /// in the rare case that you do need this. Most cases where this currently matters is
 /// where we pass typing modes through the query system and want to cache based on it.
-/// See also `#[rustc_must_match_exhaustively]`, which tries to detect non-exhaustive
+/// See also `#[lint::must_match_exhaustively]`, which tries to detect non-exhaustive
 /// matches.
 ///
 /// Since matching on typing mode to single out `Coherence` is so common, and `Coherence`
@@ -67,7 +67,11 @@ impl TypingModeErasedStatus for MayBeErased {}
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
 )]
-#[cfg_attr(feature = "nightly", rustc_must_match_exhaustively)]
+#[cfg_attr(
+    feature = "nightly",
+    cfg_attr(bootstrap, rustc_must_match_exhaustively),
+    cfg_attr(not(bootstrap), lint::must_match_exhaustively)
+)]
 pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us

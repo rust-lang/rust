@@ -2,10 +2,13 @@
 //@ ignore-stage1
 
 #![feature(rustc_private)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
-#![deny(rustc::rustc_must_match_exhaustively)]
+#![register_tool(lint)]
 
-#[rustc_must_match_exhaustively]
+#![deny(rustc::must_match_exhaustively)]
+
+#[lint::must_match_exhaustively]
 #[derive(Copy, Clone)]
 enum Foo {
     A { field: u32 },

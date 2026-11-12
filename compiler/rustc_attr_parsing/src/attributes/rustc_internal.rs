@@ -1132,10 +1132,10 @@ impl NoArgsAttributeParser for RustcIntrinsicConstStableIndirectParser {
 pub(crate) struct RustcExhaustiveParser;
 
 impl NoArgsAttributeParser for RustcExhaustiveParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_must_match_exhaustively];
+    const PATH: &'static [Symbol] = &[sym::lint, sym::must_match_exhaustively];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::LintMustMatchExhaustively;
 }
 
 pub(crate) struct RustcCanonicalSymbolParser;

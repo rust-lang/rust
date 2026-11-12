@@ -376,7 +376,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_no_mir_inline,
     sym::rustc_force_inline,
     sym::rustc_scalable_vector,
-    sym::rustc_must_match_exhaustively,
     sym::rustc_no_writable,
 
     // ==========================================================================
