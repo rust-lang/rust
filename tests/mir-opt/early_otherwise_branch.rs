@@ -1,5 +1,5 @@
 //@ test-mir-pass: EarlyOtherwiseBranch
-//@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching
+//@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching,+GVN
 
 #![feature(custom_mir, core_intrinsics)]
 
