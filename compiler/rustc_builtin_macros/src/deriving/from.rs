@@ -27,7 +27,7 @@ pub(crate) fn expand_derive_from(
     let field = match &item.kind {
         ItemKind::Struct(_, _, data) => {
             if let [field] = data.fields() {
-                Ok(field.clone())
+                Ok((field.clone(), data))
             } else {
                 let guar = cx.dcx().emit_err(diagnostics::DeriveFromWrongFieldCount {
                     span: err_span(),
@@ -47,7 +47,7 @@ pub(crate) fn expand_derive_from(
     };
 
     let from_type = match field {
-        Ok(ref field) => field.ty.clone(),
+        Ok((ref field, _)) => field.ty.clone(),
         Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
     };
 
@@ -83,17 +83,10 @@ pub(crate) fn expand_derive_from(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            body: MethodBody::SubstructureFunc(Box::new(|cx, span, substructure| {
-                let field = match field {
-                    Ok(ref field) => field,
-                    Err(guar) => {
-                        return BlockOrExpr::new_expr(DummyResult::raw_expr(span, Some(guar)));
-                    }
-                };
-
-                let self_kw = Ident::new(kw::SelfUpper, span);
-                let expr: Box<ast::Expr> = match substructure {
-                    StaticStruct(variant) => match variant {
+            body: MethodBody::Directly(BlockOrExpr::new_expr(match field {
+                Ok((field, variant)) => {
+                    let self_kw = Ident::new(kw::SelfUpper, span);
+                    match variant {
                         // Self { field: value }
                         VariantData::Struct { .. } => cx.expr_struct_ident(
                             span,
@@ -113,10 +106,9 @@ pub(crate) fn expand_derive_from(
                         variant => {
                             cx.dcx().bug(format!("Invalid derive(From) ADT variant: {variant:?}"));
                         }
-                    },
-                    _ => cx.dcx().bug("Invalid derive(From) ADT input"),
-                };
-                BlockOrExpr::new_expr(expr)
+                    }
+                }
+                Err(guar) => DummyResult::raw_expr(span, Some(guar)),
             })),
         }],
         is_const,

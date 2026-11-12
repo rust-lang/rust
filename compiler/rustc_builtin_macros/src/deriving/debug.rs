@@ -28,6 +28,7 @@ pub(crate) fn expand_derive_debug(
         }
         _ => false,
     };
+    let ident = item.kind.ident().unwrap();
 
     let trait_def = TraitDef {
         span,
@@ -47,12 +48,22 @@ pub(crate) fn expand_derive_debug(
                 cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            body: MethodBody::SubstructureFunc(Box::new(|cx, span, substr| debug_body(
-                cx,
-                span,
-                substr,
-                item.kind.ident().unwrap()
-            ))),
+            body: match &item.kind {
+                _ if cx.sess.opts.unstable_opts.fmt_debug == FmtDebug::None => {
+                    MethodBody::Directly(BlockOrExpr::new_expr(
+                        cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())),
+                    ))
+                }
+                ast::ItemKind::Enum(_, _, def)
+                    if def.variants.len() > 1
+                        && def.variants.iter().all(|v| v.data.fields().is_empty()) =>
+                {
+                    MethodBody::Directly(debug_fieldless_enum(cx, span, def, ident))
+                }
+                _ => MethodBody::SubstructureFunc(Box::new(|cx, span, substr| {
+                    debug_body(cx, span, substr, ident)
+                })),
+            },
         }],
         is_const,
         ..
@@ -67,14 +78,10 @@ fn debug_body(
     type_ident: Ident,
 ) -> BlockOrExpr {
     let fmt_detail = cx.sess.opts.unstable_opts.fmt_debug;
-    if fmt_detail == FmtDebug::None {
-        return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
-    }
 
     let (ident, vdata, fields) = match substr {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        StaticEnum(enum_def) => return debug_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 

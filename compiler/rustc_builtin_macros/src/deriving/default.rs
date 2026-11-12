@@ -1,7 +1,7 @@
 use core::ops::ControlFlow;
 
 use rustc_ast::visit::{Visitor, WalkItemKind, visit_opt};
-use rustc_ast::{self as ast, EnumDef, VariantData, attr};
+use rustc_ast::{self as ast, EnumDef, ItemKind, VariantData, attr};
 use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
@@ -35,21 +35,18 @@ pub(crate) fn expand_derive_default(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            body: MethodBody::SubstructureFunc(Box::new(|cx, trait_span, substr| {
-                match substr {
-                    StaticStruct(variant_data) => default_struct_body(
-                        cx,
-                        trait_span,
-                        variant_data,
-                        // We cannot use `Self` here, see https://github.com/rust-lang/rust/issues/163800
-                        item.kind.ident().unwrap(),
-                    ),
-                    StaticEnum(enum_def) => default_enum_body(cx, trait_span, enum_def, item.span),
-                    _ => cx
-                        .dcx()
-                        .span_bug(trait_span, "unexpected substructure in `derive(Default)`"),
-                }
-            })),
+            body: MethodBody::Directly(match &item.kind {
+                ItemKind::Struct(ident, _, variant_data)
+                | ItemKind::Union(ident, _, variant_data) => default_struct_body(
+                    cx,
+                    span,
+                    variant_data,
+                    // We cannot use `Self` here, see https://github.com/rust-lang/rust/issues/163800
+                    *ident,
+                ),
+                ItemKind::Enum(_, _, enum_def) => default_enum_body(cx, span, enum_def, item.span),
+                _ => unreachable!(),
+            }),
         }],
         is_const,
         ..
