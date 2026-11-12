@@ -100,10 +100,10 @@ impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenZero;
 }
 
-pub(crate) struct RustcNoImplicitAutorefsParser;
+pub(crate) struct LintNoImplicitAutorefsParser;
 
-impl NoArgsAttributeParser for RustcNoImplicitAutorefsParser {
-    const PATH: &[Symbol] = &[sym::rustc_no_implicit_autorefs];
+impl NoArgsAttributeParser for LintNoImplicitAutorefsParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::no_implicit_autorefs];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -113,7 +113,7 @@ impl NoArgsAttributeParser for RustcNoImplicitAutorefsParser {
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitAutorefs;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintNoImplicitAutorefs;
 }
 
 pub(crate) struct RustcLegacyConstGenericsParser;
