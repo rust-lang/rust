@@ -314,6 +314,12 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
 
+    /// A type is a `FnStatic` if it is of `FnDef` type.
+    fn consider_builtin_fn_static_trait_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+
     /// A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
     /// family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
@@ -679,6 +685,13 @@ where
                 }
                 Some(SolverTraitLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
+                }
+                Some(SolverTraitLangItem::FnAddrTrait) => {
+                    if matches!(goal.predicate.self_ty().kind(), ty::FnDef(..)) {
+                        G::consider_builtin_fn_static_trait_candidate(self, goal)
+                    } else {
+                        G::consider_builtin_fn_ptr_trait_candidate(self, goal)
+                    }
                 }
                 Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)

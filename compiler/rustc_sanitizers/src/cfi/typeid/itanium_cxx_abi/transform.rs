@@ -657,11 +657,11 @@ pub(crate) fn transform_instance<'tcx>(
         // (i.e., type ids are encoded for them as is).
         ty::InstanceKind::Shim(ty::ShimKind::Clone(..)) => instance,
 
-        // FnPtrAsPtrShims and FnPtrFromPtrShims (i.e., compiler-generated `<T as FnPtr>::as_ptr`
+        // FnAddrAsPtrShims and FnPtrFromPtrShims (i.e., compiler-generated `<T as FnPtr>::as_ptr`
         // and `<T as FnPtr>::from_ptr` implementations): the FnPtr trait is not dyn compatible, so
         // they can not be called through a vtable and are not transformed (i.e., type ids are
         // encoded for them as is).
-        ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..) | ty::ShimKind::FnPtrFromPtr(..)) => {
+        ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..) | ty::ShimKind::FnPtrFromPtr(..)) => {
             instance
         }
 
