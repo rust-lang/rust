@@ -82,11 +82,6 @@ struct ProxyData {
     /// If the proxy releases a token it can immediately give it to one of these threads
     /// without going through the real jobserver.
     pending: u16,
-    /// Counts external tokens that are really obtained from job server
-    /// (excluding one token that we already hold). Used to understand whether
-    /// we should release a token when we release a thread, as we do not want to
-    /// release that one special token.
-    external_tokens: u16,
 }
 
 /// A wrapper around jobserver client used for two purposes:
@@ -110,7 +105,7 @@ impl Proxy {
         let proxy = Arc::new(Proxy {
             client: client(),
             // Assume that the main thread is actively doing work when it creates the proxy.
-            data: Mutex::new(ProxyData { used: 1, pending: 0, external_tokens: 0 }),
+            data: Mutex::new(ProxyData { used: 1, pending: 0 }),
             wake_pending: Condvar::new(),
             helper: OnceLock::new(),
         });
@@ -133,8 +128,7 @@ impl Proxy {
                         assert!(data.used > 0);
                         data.used += 1;
                         data.pending -= 1;
-                        data.external_tokens += 1;
-                        proxy_.wake_pending.notify_one();
+                        proxy.wake_pending.notify_one();
                     } else {
                         // The token is no longer needed, release it by dropping.
                         drop(data);
@@ -179,8 +173,7 @@ impl Proxy {
             data.used -= 1;
 
             // Release the token to the wrapped jobserver, unless it's the last one in the process.
-            if data.external_tokens > 0 {
-                data.external_tokens -= 1;
+            if data.used > 0 {
                 drop(data);
                 self.client.release_raw().ok();
             }
