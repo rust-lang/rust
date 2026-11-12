@@ -2083,6 +2083,7 @@ fn get_index_type_id(
                 None
             }
         }
+        clean::View(ref path, _) => Some(RenderTypeId::DefId(path.def_id())),
         // Not supported yet
         clean::Type::Pat(..)
         | clean::Type::FieldOf(..)

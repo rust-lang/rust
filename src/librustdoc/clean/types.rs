@@ -35,7 +35,7 @@ use tracing::{debug, trace};
 
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
+    RawPointer, SelfTy, Slice, Tuple, UnsafeBinder, View,
 };
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
@@ -1406,6 +1406,8 @@ pub(crate) enum Type {
     /// A qualified path to an associated item: `<Type as Trait>::Name`
     QPath(Box<QPathData>),
 
+    View(Box<Path>, Box<str>),
+
     /// A type that is inferred: `_`
     Infer,
 
@@ -1600,6 +1602,7 @@ impl Type {
             BorrowedRef { type_: Generic(..), .. } => None,
             BorrowedRef { type_, .. } => type_.real_def_id(),
             QPath(QPathData { self_type, .. }) => self_type.real_def_id(),
+            View(path, _) => Some(path.def_id()),
             DynTrait(..)
             | Primitive(..)
             | Tuple(..)
@@ -1641,6 +1644,7 @@ impl Type {
             Type::FieldOf(..) => PrimitiveType::FieldOf,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(QPathData { self_type, .. }) => return self_type.def_id(cache),
+            Type::View(path, _) => return Some(path.def_id()),
             Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
@@ -1782,6 +1786,7 @@ impl PrimitiveType {
             | ty::Dynamic(..)
             | ty::Error(..)
             | ty::Foreign(..)
+            | ty::View(..)
             | ty::Infer(..)
             | ty::Param(..)
             | ty::Placeholder(..)
