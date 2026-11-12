@@ -548,7 +548,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                     | InstanceKind::Shim(ShimKind::DropGlue(..))
                     | InstanceKind::Shim(ShimKind::Clone(..))
                     | InstanceKind::Shim(ShimKind::ThreadLocal(..))
-                    | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+                    | InstanceKind::Shim(ShimKind::FnAddrAsPtr(..))
                     | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..))
                     | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
                     | InstanceKind::Shim(ShimKind::FutureDropPoll(..))

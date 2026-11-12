@@ -126,7 +126,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         }
         ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),
         ty::ShimKind::Clone(def_id, ty) => build_clone_shim(tcx, def_id, ty),
-        ty::ShimKind::FnPtrAsPtr(def_id, ty) => build_fn_ptr_as_ptr_shim(tcx, def_id, ty),
+        ty::ShimKind::FnAddrAsPtr(def_id, ty) => build_fn_addr_as_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FnPtrFromPtr(def_id, ty) => build_fn_ptr_from_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty) => {
             let mut body =
@@ -1095,12 +1095,16 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 ///     }
 /// }
 /// ```
-fn build_fn_ptr_as_ptr_shim<'tcx>(
+fn build_fn_addr_as_ptr_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     self_ty: Ty<'tcx>,
 ) -> Body<'tcx> {
-    assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
+    assert_matches!(
+        self_ty.kind(),
+        ty::FnPtr(..) | ty::FnDef(..),
+        "expected fn ptr or function def, found {self_ty}"
+    );
 
     let span = tcx.def_span(def_id);
     let nonnull_did = tcx.require_lang_item(LangItem::NonNull, span);
@@ -1116,7 +1120,7 @@ fn build_fn_ptr_as_ptr_shim<'tcx>(
     let Some(sig) =
         tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_norm_wip().no_bound_vars()
     else {
-        span_bug!(span, "FnPtr::as_ptr with bound vars for `{self_ty}`");
+        span_bug!(span, "FnAddr::as_ptr with bound vars for `{self_ty}`");
     };
     let mut locals = local_decls_for_sig(&sig, span);
 
@@ -1126,8 +1130,36 @@ fn build_fn_ptr_as_ptr_shim<'tcx>(
     // FIXME: use `expose_provenance` once we figure out whether function pointers have meaningful
     // provenance.
     let raw_unit_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
-    let cast_to_raw_rvalue =
-        Rvalue::Cast(CastKind::FnPtrToPtr, Operand::Move(Place::from(Local::arg(0))), raw_unit_ptr);
+
+    let fn_ptr_operand = match self_ty.kind() {
+        ty::FnDef(..) => {
+            let fn_sig = self_ty.fn_sig(tcx);
+            let fn_ptr_ty = Ty::new_fn_ptr(tcx, fn_sig);
+            let fn_ptr =
+                Place::from(locals.push(LocalDecl::with_source_info(fn_ptr_ty, source_info)));
+
+            statements.push(Statement::new(
+                source_info,
+                StatementKind::Assign(Box::new((
+                    fn_ptr,
+                    Rvalue::Cast(
+                        CastKind::PointerCoercion(
+                            ty::adjustment::PointerCoercion::ReifyFnPointer(fn_sig.safety()),
+                            CoercionSource::Implicit,
+                        ),
+                        Operand::Move(Place::from(Local::arg(0))),
+                        fn_ptr_ty,
+                    ),
+                ))),
+            ));
+
+            Operand::Move(fn_ptr)
+        }
+        _ => Operand::Move(Place::from(Local::arg(0))),
+    };
+
+    let cast_to_raw_rvalue = Rvalue::Cast(CastKind::FnPtrToPtr, fn_ptr_operand, raw_unit_ptr);
+
     let raw_ptr = locals.push(LocalDecl::with_source_info(raw_unit_ptr, source_info)).into();
     statements.push(Statement::new(
         source_info,
@@ -1146,7 +1178,7 @@ fn build_fn_ptr_as_ptr_shim<'tcx>(
         Terminator { source_info, kind: TerminatorKind::Return },
         false,
     );
-    let source = MirSource::from_shim(ty::ShimKind::FnPtrAsPtr(def_id, self_ty));
+    let source = MirSource::from_shim(ty::ShimKind::FnAddrAsPtr(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 
