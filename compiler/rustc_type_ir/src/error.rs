@@ -21,7 +21,11 @@ impl<T> ExpectedFound<T> {
 // Data structures used in type unification
 #[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable)]
-#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
+#[cfg_attr(
+    feature = "nightly",
+    cfg_attr(bootstrap, rustc_pass_by_value),
+    cfg_attr(not(bootstrap), lint::pass_by_value)
+)]
 pub enum TypeError<I: Interner> {
     Mismatch,
     PolarityMismatch(#[type_visitable(ignore)] ExpectedFound<ty::ClausePolarity>),

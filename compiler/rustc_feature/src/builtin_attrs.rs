@@ -350,7 +350,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Internal attributes, Misc:
     // ==========================================================================
     sym::lang,
-    sym::rustc_pass_by_value,
     sym::rustc_no_implicit_autorefs,
     sym::rustc_coherence_is_core,
     sym::rustc_coinductive,

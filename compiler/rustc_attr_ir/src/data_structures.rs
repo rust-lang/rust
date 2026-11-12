@@ -990,6 +990,9 @@ pub enum AttributeKind {
     /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
     LintNeverReturnsNullPtr,
 
+    /// Represents `#[lint::pass_by_value)]` (used by the `rustc::disallowed_pass_by_ref` lint).
+    LintPassByValue,
+
     /// Represents `#[lint::should_not_be_called_on_const_items]` (used by the
     /// `const_item_interior_mutations` lint).
     LintShouldNotBeCalledOnConstItems,
@@ -1437,9 +1440,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar,
-
-    /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
-    RustcPassByValue,
 
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),

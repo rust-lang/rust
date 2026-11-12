@@ -1,9 +1,11 @@
 //@ compile-flags: -Z unstable-options
-//@ ignore-stage1 (this can be removed when nightly goes to 1.96)
+//@ ignore-stage1 (this can be removed in 2027)
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
+#![feature(register_tool)]
 #![deny(rustc::disallowed_pass_by_ref)]
 #![allow(unused)]
+#![register_tool(lint)]
 
 extern crate rustc_middle;
 
@@ -62,7 +64,7 @@ impl Foo {
     //~^^ ERROR passing `TyCtxt<'_>` by reference
 }
 
-#[rustc_pass_by_value]
+#[lint::pass_by_value]
 enum CustomEnum {
     A,
     B,
@@ -76,12 +78,12 @@ impl CustomEnum {
     }
 }
 
-#[rustc_pass_by_value]
+#[lint::pass_by_value]
 struct CustomStruct {
     s: u8,
 }
 
-#[rustc_pass_by_value]
+#[lint::pass_by_value]
 type CustomAlias<'a> = &'a CustomStruct; //~ ERROR passing `CustomStruct` by reference
 
 impl CustomStruct {
@@ -98,7 +100,7 @@ impl CustomStruct {
     }
 }
 
-#[rustc_pass_by_value]
+#[lint::pass_by_value]
 struct WithParameters<T, const N: usize, M = u32> {
     slice: [T; N],
     m: M,
