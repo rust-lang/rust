@@ -183,6 +183,11 @@ impl Bootstrap {
         self
     }
 
+    pub fn with_download_ci_llvm(mut self) -> Self {
+        self.cmd = self.cmd.arg("--set").arg("llvm.download-ci-llvm=if-unchanged");
+        self
+    }
+
     pub fn workaround_cc_segfaults(mut self) -> Self {
         // The PGO flags passed to rustc are forwarded to the underlying host Clang when building
         // native dependencies, mixing rustc's LLVM profiling runtime with the host LLVM profiling

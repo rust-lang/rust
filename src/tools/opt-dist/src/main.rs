@@ -277,6 +277,9 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .run_tests(false) // tmp
                 .fast_try_build(is_fast_try_build)
                 .build_llvm(true)
+                .download_ci_llvm(true) // tmp: for the first throwaway LLVM, in case the segfault
+                // workaround busts the sccache and makes the LLVM build take 5 hours multime times.
+                // Also to see what it does on CI.
                 .optimize_cargo(optimize_tools)
                 .optimize_clippy(optimize_tools)
                 .optimize_cranelift(optimize_tools)
@@ -342,6 +345,13 @@ fn execute_pipeline(
                 // overrides below.
                 if env.host_tuple() == "aarch64-apple-darwin" {
                     builder = builder.workaround_cc_segfaults();
+
+                    // The first LLVM we build is thrown away so we can use the one already built by
+                    // CI??? Then we will build LLVM regularly, without any overrides and without
+                    // busting the sccache.
+                    if env.download_ci_llvm {
+                        builder = builder.with_download_ci_llvm();
+                    }
                 }
 
                 if optimize_cargo {
@@ -407,6 +417,12 @@ fn execute_pipeline(
             );
             stage.section(&section_label, |section| {
                 let mut cmd = Bootstrap::build(env).rustc_pgo_optimize(&rustc_profile);
+
+                // If we're building LLVM in the next stage, we don't need to build it here.
+                if env.build_llvm() && env.download_ci_llvm {
+                    cmd = cmd.with_download_ci_llvm();
+                }
+
                 if optimize_cargo {
                     cmd = cmd.with_cargo().cargo_pgo_optimize(&rustc_profile);
                 }
@@ -434,8 +450,10 @@ fn execute_pipeline(
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = if env.build_llvm() {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
-            // Remove the previous, uninstrumented build of LLVM.
-            clear_llvm_files(env)?;
+            if !env.download_ci_llvm {
+                // Remove the previous, uninstrumented build of LLVM.
+                clear_llvm_files(env)?;
+            }
 
             let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
