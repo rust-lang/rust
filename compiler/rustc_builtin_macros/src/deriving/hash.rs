@@ -72,6 +72,5 @@ fn hash_body(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrE
             )];
             BlockOrExpr::new_mixed(stmts, match_expr)
         }
-        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Hash)`"),
     }
 }

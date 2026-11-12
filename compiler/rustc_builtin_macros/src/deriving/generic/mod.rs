@@ -1,152 +1,3 @@
-//! Some code that abstracts away much of the boilerplate of writing
-//! `derive` instances for traits. Among other things it manages getting
-//! access to the fields of the 4 different sorts of structs and enum
-//! variants, as well as creating the method and impl ast instances.
-//!
-//! Supported features (fairly exhaustive):
-//!
-//! - Methods taking any number of parameters of any type and returning
-//!   any type.
-//! - Generating `impl`s for types with type parameters and lifetimes
-//!   (e.g., `Option<T>`), the parameters are automatically given the
-//!   current trait as a bound. (This includes separate type parameters
-//!   and lifetimes for methods.)
-//! - Additional bounds on the type parameters (`TraitDef.additional_bounds`)
-//!
-//! The most important thing for implementors is the `Substructure` objects.
-//! The latter groups 5 possibilities of the arguments:
-//!
-//! - `Struct`, when `Self` is a struct (including tuple structs, e.g
-//!   `struct T(i32, char)`).
-//! - `EnumMatching`, when `Self` is an enum and all the arguments are the
-//!   same variant of the enum (e.g., `Some(1)`, `Some(3)` and `Some(4)`)
-//! - `EnumDiscr` when `Self` is an enum, for comparing the enum discriminants.
-//! - `StaticEnum` and `StaticStruct` for static methods, where the type
-//!   being derived upon is either an enum or struct respectively. (Any
-//!   argument with type Self is just grouped among the non-self
-//!   arguments.)
-//!
-//! In the first two cases, the values from the corresponding fields in
-//! all the arguments are grouped together.
-//!
-//! The non-static cases have `Option<Ident>` in several places associated
-//! with field `expr`s. This represents the name of the field it is
-//! associated with. It is only not `None` when the associated field has
-//! an identifier in the source code. For example, the `x`s in the
-//! following snippet
-//!
-//! ```rust
-//! struct A {
-//!     x: i32,
-//! }
-//!
-//! struct B(i32);
-//!
-//! enum C {
-//!     C0(i32),
-//!     C1 { x: i32 }
-//! }
-//! ```
-//!
-//! The `i32`s in `B` and `C0` don't have an identifier, so the
-//! `Option<Ident>`s would be `None` for them.
-//!
-//! # Examples
-//!
-//! The following simplified `PartialEq` is used for in-code examples:
-//!
-//! ```rust
-//! trait PartialEq {
-//!     fn eq(&self, other: &Self) -> bool;
-//! }
-//!
-//! impl PartialEq for i32 {
-//!     fn eq(&self, other: &i32) -> bool {
-//!         *self == *other
-//!     }
-//! }
-//! ```
-//!
-//! Some examples of the values of `Substructure` follow, using the
-//! above `PartialEq`, `A`, `B` and `C`.
-//!
-//! ## Structs
-//!
-//! When generating the `expr` for the `A` impl, the `Substructure` is
-//!
-//! ```text
-//! Struct(vec![FieldInfo {
-//!     span: <span of x>,
-//!     name: Some(<ident of x>),
-//!     self_expr: <expr for &self.x>,
-//!     other_selflike_expr: Some(<expr for &other.x>),
-//! }])
-//! ```
-//!
-//! For the `B` impl, called with `B(a)` and `B(b)`,
-//!
-//! ```text
-//! Struct(vec![FieldInfo {
-//!     span: <span of i32>,
-//!     name: None,
-//!     self_expr: <expr for &a>,
-//!     other_selflike_expr: Some(<expr for &b>),
-//! }])
-//! ```
-//!
-//! ## Enums
-//!
-//! When generating the `expr` for a call with `self == C0(a)` and `other
-//! == C0(b)`, the Substructure is
-//!
-//! ```text
-//! EnumMatching(
-//!     <ast::Variant for C0>,
-//!     vec![FieldInfo {
-//!         span: <span of i32>,
-//!         name: None,
-//!         self_expr: <expr for &a>,
-//!         other_selflike_expr: Some(<expr for &b>),
-//!     }],
-//! )
-//! ```
-//!
-//! For `C1 {x}` and `C1 {x}`,
-//!
-//! ```text
-//! EnumMatching(
-//!     <ast::Variant for C1>,
-//!     vec![FieldInfo {
-//!         span: <span of x>,
-//!         name: Some(<ident of x>),
-//!         self_expr: <expr for &self.x>,
-//!         other_selflike_expr: Some(<expr for &other.x>),
-//!     }],
-//! )
-//! ```
-//!
-//! For the discriminants,
-//!
-//! ```text
-//! EnumDiscr(<expr to combine with>)
-//! ```
-//!
-//! Note that this setup doesn't allow for the brute-force "match every variant
-//! against every other variant" approach, which is bad because it produces a
-//! quadratic amount of code (see #15375).
-//!
-//! ## Static
-//!
-//! A static method on the types above would result in,
-//!
-//! ```text
-//! StaticStruct(<ast::VariantData of A>)
-//!
-//! StaticStruct(<ast::VariantData of B>)
-//!
-//! StaticEnum(<ast::EnumDef of C>)
-//! ```
-
 use std::ops::Not;
 
 pub(crate) use Substructure::*;
@@ -242,30 +93,27 @@ pub(crate) struct FieldInfo<'a> {
     pub def: &'a ast::FieldDef,
 }
 
-/// A summary of the possible sets of fields.
-/// If the trait supports unions, they are treated like structs here.
+/// A helper that makes the code for several derive macros easier to write
+/// as they all have a similar base structure.
 pub(crate) enum Substructure<'a> {
-    /// A non-static method where `Self` is a struct.
+    /// A non-static method where `Self` is a struct, including tuple structs.
     Struct(&'a ast::VariantData, Vec<FieldInfo<'a>>),
 
-    /// Matching variants of the enum: ast::Variant,
-    /// fields: the field name is only non-`None` in the case of a struct
-    /// variant.
+    /// Matching variants of the enum: ast::Variant, fields.
+    /// Created when `Self` is an enum and all the arguments are the
+    /// same variant of the enum.
     EnumMatching(&'a ast::Variant, Vec<FieldInfo<'a>>),
 
     /// The discriminant of an enum. The field is the expression to combine the
     /// discriminant expression with; it will be `None` if no match is necessary.
     EnumDiscr(Option<Box<Expr>>),
-
-    /// A static method where `Self` is a struct.
-    StaticStruct(&'a ast::VariantData),
-
-    /// A static method where `Self` is an enum.
-    StaticEnum(&'a ast::EnumDef),
 }
 
 pub(crate) enum MethodBody<'a> {
+    /// See the documentation on [`Substructure`] for when this is used.
     SubstructureFunc(Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>),
+    /// The common case.
+    /// If you are adding a new macro, you most likely want to use this.
     Directly(BlockOrExpr),
 }
 
@@ -403,16 +251,6 @@ impl<'a> TraitDef<'a> {
         item: &'a ast::Item,
         push: &mut dyn FnMut(Box<ast::Item>),
     ) {
-        self.expand_ext(cx, item, push, false);
-    }
-
-    pub(crate) fn expand_ext(
-        self,
-        cx: &ExtCtxt<'_>,
-        item: &'a ast::Item,
-        push: &mut dyn FnMut(Box<ast::Item>),
-        from_scratch: bool,
-    ) {
         let span = self.span;
         let is_packed = matches!(
             AttributeParser::parse_limited_sym(cx.sess, &item.attrs, &[sym::repr]),
@@ -435,8 +273,6 @@ impl<'a> TraitDef<'a> {
                     .filter_map(|mut method_def| {
                         let body = if let MethodBody::Directly(body) = &mut method_def.body {
                             body.take()
-                        } else if from_scratch || method_def.is_static() {
-                            method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
                         } else {
                             method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
                         };
@@ -462,8 +298,6 @@ impl<'a> TraitDef<'a> {
                     .filter_map(|mut method_def| {
                         let body = if let MethodBody::Directly(body) = &mut method_def.body {
                             body.take()
-                        } else if from_scratch || method_def.is_static() {
-                            method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
                         } else {
                             method_def.expand_enum_method_body(cx, span, enum_def)
                         };
@@ -673,10 +507,6 @@ impl<'a> MethodDef<'a> {
             MethodBody::SubstructureFunc(ref func) => (func)(cx, span, fields),
             MethodBody::Directly(_) => unreachable!(),
         }
-    }
-
-    fn is_static(&self) -> bool {
-        !self.explicit_self
     }
 
     fn create_method(

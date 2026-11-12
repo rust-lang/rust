@@ -103,7 +103,7 @@ pub(crate) fn expand_derive_clone(
         ..
     };
 
-    trait_def.expand_ext(cx, item, push, is_simple)
+    trait_def.expand(cx, item, push);
 }
 
 fn clone_simple_body(
