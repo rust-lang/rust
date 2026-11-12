@@ -80,20 +80,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol> {
-        use SyntheticAttr::*;
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.name(),
-            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
-            AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => match generated.path() {
-                [name] => Some(*name),
-                _ => None,
-            },
-        }
-    }
-
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
             AttrKind::Normal(normal) => {
@@ -837,10 +823,6 @@ impl MetaItemLit {
 }
 
 pub trait AttributeExt: Debug + 'static {
-    /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
-    /// return the name of the attribute; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol>;
-
     /// Gets the value literal, as string, when using `#[attr = value]`
     fn value_str(&self) -> Option<Symbol>;
 
@@ -866,13 +848,7 @@ pub trait AttributeExt: Debug + 'static {
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
 }
 
-// FIXME(fn_delegation): use function delegation instead of manually forwarding
-
 impl Attribute {
-    pub fn name(&self) -> Option<Symbol> {
-        AttributeExt::name(self)
-    }
-
     pub fn value_str(&self) -> Option<Symbol> {
         AttributeExt::value_str(self)
     }
@@ -901,6 +877,20 @@ impl Attribute {
             AttrKind::Normal(..) | AttrKind::Synthetic(..) => false,
             AttrKind::DocComment(..) => true,
             AttrKind::Generated(generated) => generated.is_doc_comment(),
+        }
+    }
+
+    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    pub fn name(&self) -> Option<Symbol> {
+        use SyntheticAttr::*;
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.name(),
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
+            AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => match generated.path() {
+                [name] => Some(*name),
+                _ => None,
+            },
         }
     }
 
