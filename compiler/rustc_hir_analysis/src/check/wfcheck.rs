@@ -2439,7 +2439,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             let mut r = Ok(());
 
             let mut validate_and = |and: &And<TyCtxt<'_>, _>| {
-                for c in and.0.iter() {
+                for c in and.iter() {
                     match c {
                         LeafRegionConstraint::Ambiguity(_)
                         | LeafRegionConstraint::RegionOutlives(..)
@@ -2464,7 +2464,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             };
 
             validate_and(&constraint.and_constraint);
-            for and in constraint.or_constraint.0.iter() {
+            for and in constraint.or_constraint.iter() {
                 validate_and(and);
             }
 
@@ -2568,12 +2568,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         expected: &SolverRegionConstraint<'tcx>,
         actual: &SolverRegionConstraint<'tcx>,
     ) {
-        let span_of_and = |c: &And<_, _>| {
-            c.0.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span))
-        };
+        let span_of_and =
+            |c: &And<_, _>| c.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span));
 
         let span_of_or = |c: &Or<_, _>| {
-            c.0.iter().flat_map(|and| span_of_and(and)).reduce(|span, acc| acc.to(span))
+            c.iter().flat_map(|and| span_of_and(and)).reduce(|span, acc| acc.to(span))
         };
 
         let check_leaf_constraint =
@@ -2599,10 +2598,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             };
 
         let check_and_constraint = |expected: &And<_, _>, actual: &And<_, _>| {
-            if expected.0.len() != actual.0.len() {
+            if expected.len() != actual.len() {
                 Err((span_of_and(expected), span_of_and(actual)))
             } else {
-                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                for (expected, actual) in expected.iter().zip(actual) {
                     check_leaf_constraint(expected, actual)?;
                 }
                 Ok(())
@@ -2610,10 +2609,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         };
 
         let check_or_constraint = |expected: &Or<_, _>, actual: &Or<_, _>| {
-            if expected.0.len() != actual.0.len() {
+            if expected.len() != actual.len() {
                 Err((span_of_or(expected), span_of_or(actual)))
             } else {
-                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                for (expected, actual) in expected.iter().zip(actual) {
                     check_and_constraint(expected, actual)?;
                 }
                 Ok(())

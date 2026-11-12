@@ -303,12 +303,11 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-        for c in constraint.and_constraint.0.into_iter().chain(
+        for c in constraint.and_constraint.into_iter().chain(
             constraint
                 .or_constraint
-                .0
                 .into_iter()
-                .flat_map(|and_constraint| and_constraint.0.into_iter()),
+                .flat_map(|and_constraint| and_constraint.into_iter()),
         ) {
             match c {
                 Ambiguity(span) => {
