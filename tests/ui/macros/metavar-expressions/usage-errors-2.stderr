@@ -1,0 +1,22 @@
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/usage-errors-2.rs:16:49
+   |
+LL |     ( $i:ident ) => { count($i) };
+   |                             -- due to this macro variable
+...
+LL | const _: u32 = no_curly__rhs_dollar__no_round! (a);
+   |                                                 ^ not found in this scope
+
+error[E0425]: cannot find function `count` in this scope
+  --> $DIR/usage-errors-2.rs:13:23
+   |
+LL | macro_rules! no_curly__rhs_dollar__no_round {
+LL |     ( $i:ident ) => { count($i) };
+   |                       ^^^^^ not found in this scope
+...
+LL | const _: u32 = no_curly__rhs_dollar__no_round! (a);
+   |                ----------------------------------- in this macro invocation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

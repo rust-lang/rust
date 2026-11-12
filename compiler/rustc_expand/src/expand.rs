@@ -86,13 +86,23 @@ macro_rules! ast_fragments {
                 }
             }
 
-            fn make_from(self, result: Box<dyn MacResult + '_>) -> Option<AstFragment> {
+            fn make_from(self, result: Box<dyn MacResult + '_>) -> Option<Result<AstFragment, AstFragment>> {
                 match self {
-                    AstFragmentKind::OptExpr =>
-                        result.make_expr().map(Some).map(AstFragment::OptExpr),
-                    AstFragmentKind::MethodReceiverExpr =>
-                        result.make_expr().map(AstFragment::MethodReceiverExpr),
-                    $(AstFragmentKind::$Kind => result.$make_ast().map(AstFragment::$Kind),)*
+                    AstFragmentKind::OptExpr => match result.make_expr() {
+                        Some(Ok(e)) => Some(Ok(AstFragment::OptExpr(Some(e)))),
+                        Some(Err(e)) => Some(Err(AstFragment::OptExpr(Some(e)))),
+                        None => None,
+                    },
+                    AstFragmentKind::MethodReceiverExpr => match result.make_expr() {
+                        Some(Ok(e)) => Some(Ok(AstFragment::MethodReceiverExpr(e))),
+                        Some(Err(e)) => Some(Err(AstFragment::MethodReceiverExpr(e))),
+                        _ => None,
+                    },
+                    $(AstFragmentKind::$Kind => match result.$make_ast() {
+                        Some(Ok(e)) => Some(Ok(AstFragment::$Kind(e))),
+                        Some(Err(e)) => Some(Err(AstFragment::$Kind(e))),
+                        _ => None,
+                    },)*
                 }
             }
         }
@@ -163,9 +173,11 @@ macro_rules! ast_fragments {
         }
 
         impl<'a, 'b> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a, 'b> {
-            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a, 'b>>)
-                           -> Option<$AstTy> {
-                Some(self.make(AstFragmentKind::$Kind).$make_ast())
+            $(fn $make_ast(
+                self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a, 'b>>,
+            ) -> Option<Result<$AstTy, $AstTy>> {
+                let mapper = |node: AstFragment| node.$make_ast();
+                Some(self.make(AstFragmentKind::$Kind).map(mapper).map_err(mapper))
             })*
         }
     }
@@ -271,7 +283,12 @@ pub enum SupportsMacroExpansion {
 
 impl AstFragmentKind {
     pub(crate) fn dummy(self, span: Span, guar: ErrorGuaranteed) -> AstFragment {
-        self.make_from(DummyResult::any(span, guar)).expect("couldn't create a dummy AST fragment")
+        match self
+            .make_from(DummyResult::any(span, guar))
+            .expect("couldn't create a dummy AST fragment")
+        {
+            Ok(fragment) | Err(fragment) => fragment,
+        }
     }
 
     pub fn supports_macro_expansion(self) -> SupportsMacroExpansion {
@@ -691,6 +708,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         span: Span,
     ) -> ErrorGuaranteed {
         let name = pprust::path_to_string(&mac.path);
+        // FIXME(estebank): consider delaying this as bug if other macro errors are present.
         let guar = self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name });
         self.cx.macro_error_and_trace_macros_diag();
         guar
@@ -753,6 +771,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                     };
                     if let Some(fragment) = fragment_kind.make_from(tok_result) {
+                        if fragment.is_err() {
+                            // Do not emit resolve errors as the failed but recovered macro
+                            // expansion might have otherwise introduced the missing item.
+                            self.cx
+                                .resolver
+                                .mark_scope_with_compile_error(invoc.expansion_data.lint_node_id);
+                        }
+                        let (Ok(fragment) | Err(fragment)) = fragment;
                         if macro_stats {
                             update_bang_macro_stats(self.cx, fragment_kind, span, mac, &fragment);
                         }

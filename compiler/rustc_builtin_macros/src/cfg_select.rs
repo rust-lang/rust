@@ -38,7 +38,7 @@ fn tts_to_mac_result<'cx, 'sess>(
 
 macro_rules! forward_to_parser_any_macro {
     ($method_name:ident, $ret_ty:ty, $other:expr, $selected:expr) => {
-        fn $method_name(self: Box<Self>) -> Option<$ret_ty> {
+        fn $method_name(self: Box<Self>) -> Option<Result<$ret_ty, $ret_ty>> {
             let CfgSelectResult { ecx, site_span, selected_tts, selected_span, cfg_entry, .. } =
                 *self;
 
@@ -81,7 +81,7 @@ impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
         |ecx: &mut ExtCtxt<'_>,
          cfg_entry: CfgEntry,
          _span: Span,
-         items: Option<SmallVec<[Box<ast::Item>; 1]>>| if let Some(items) = items {
+         items: Option<Result<SmallVec<[Box<ast::Item>; 1]>, SmallVec<[Box<ast::Item>; 1]>>>| if let Some(Ok(items)) = items {
             // Register item names that were not selected for error reporting. We do this
             // for `#[cfg]` too.
             for item in items {
@@ -95,14 +95,17 @@ impl<'cx, 'sess> MacResult for CfgSelectResult<'cx, 'sess> {
                 }
             }
         },
-        |ecx: &mut ExtCtxt<'_>, cfg_entry: CfgEntry, items: SmallVec<[Box<ast::Item>; 1]>| {
-            items
+        |ecx: &mut ExtCtxt<'_>, cfg_entry: CfgEntry, items: Result<SmallVec<[Box<ast::Item>; 1]>, SmallVec<[Box<ast::Item>; 1]>>| {
+            let items = match items {
+                Ok(items) | Err(items) => items,
+            };
+            Ok(items
                 .into_iter()
                 .map(|mut item| {
                     item.attrs.push(mk_attr(&ecx.sess.psess.attr_id_generator, cfg_entry.clone()));
                     item
                 })
-                .collect()
+                .collect())
         }
     );
 
