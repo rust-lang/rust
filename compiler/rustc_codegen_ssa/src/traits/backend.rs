@@ -8,7 +8,7 @@ use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::config::{OutputFilenames, PrintRequest};
+use rustc_session::config::OutputFilenames;
 use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
 use rustc_span::Symbol;
 use rustc_structures::CrateType;
@@ -16,6 +16,7 @@ use rustc_structures::CrateType;
 use super::CodegenObject;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
+use crate::target_features::rustc_target_features;
 use crate::{CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
@@ -34,6 +35,18 @@ pub trait BackendTypes {
     type DIVariable: Copy;
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TargetCpuInfo {
+    pub name: String,
+    pub remark: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct TargetFeaturesInfo {
+    pub rustc_features: Vec<(&'static str, &'static str)>,
+    pub backend_features: Vec<(&'static str, &'static str)>,
+}
+
 pub trait CodegenBackend {
     fn name(&self) -> &'static str;
 
@@ -41,7 +54,16 @@ pub trait CodegenBackend {
         Default::default()
     }
 
-    fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
+    fn printable_target_cpus(&self, _sess: &Session) -> Vec<TargetCpuInfo> {
+        vec![]
+    }
+
+    fn printable_target_features(&self, sess: &Session) -> TargetFeaturesInfo {
+        TargetFeaturesInfo {
+            rustc_features: rustc_target_features(sess, |_| Some("")),
+            backend_features: vec![],
+        }
+    }
 
     /// Collect target-specific options that should be set in `cfg(...)`, including
     /// `target_feature` and support for unstable float types.
