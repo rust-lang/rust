@@ -42,9 +42,7 @@ pub(crate) fn expand_derive_clone(
                     .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
             {
                 is_simple = true;
-                body = MethodBody::SubstructureFunc(Box::new(|c, s, sub| {
-                    clone_simple_body(c, s, sub, false)
-                }));
+                body = MethodBody::Directly(clone_simple_body(cx, span, item, false));
             } else {
                 is_simple = false;
                 body = MethodBody::SubstructureFunc(Box::new(|c, s, sub| {
@@ -55,9 +53,7 @@ pub(crate) fn expand_derive_clone(
         ItemKind::Union(..) => {
             bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
-            body = MethodBody::SubstructureFunc(Box::new(|c, s, sub| {
-                clone_simple_body(c, s, sub, true)
-            }));
+            body = MethodBody::Directly(clone_simple_body(cx, span, item, true));
         }
         _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
@@ -113,7 +109,7 @@ pub(crate) fn expand_derive_clone(
 fn clone_simple_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
-    substr: Substructure<'_>,
+    item: &ast::Item,
     is_union: bool,
 ) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
@@ -154,16 +150,16 @@ fn clone_simple_body(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match substr {
-            StaticStruct(vdata, ..) => {
+        match &item.kind {
+            ast::ItemKind::Struct(.., vdata) => {
                 process_variant(vdata);
             }
-            StaticEnum(enum_def, ..) => {
+            ast::ItemKind::Enum(.., enum_def) => {
                 for variant in &enum_def.variants {
                     process_variant(&variant.data);
                 }
             }
-            _ => cx.dcx().span_bug(trait_span, "unexpected substructure in simple `derive(Clone)`"),
+            _ => unreachable!(),
         }
     }
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
