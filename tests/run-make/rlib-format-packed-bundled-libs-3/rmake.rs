@@ -22,7 +22,7 @@ fn main() {
     build_native_static_lib("native_dep_2");
     build_native_static_lib("native_dep_3");
     build_native_static_lib("native_dep_4");
-    // Test cfg with packed bundle.
+    // Test which native libraries are included based on cfg
     rustc().input("rust_dep_cfg.rs").crate_type("rlib").run();
     rustc()
         .input("main.rs")
@@ -30,17 +30,17 @@ fn main() {
         .crate_type("staticlib")
         .cfg("should_add")
         .run();
-    // Only static libraries should appear, no object files at all.
+    // Native libraries are stored as object files in the rlib not package archives.
+    // When building the staticlib, we keep native_dep_1 and remove native_dep_2
+    // because its cfg is disabled.
     llvm_ar()
         .arg("t")
         .arg(rust_lib_name("rust_dep_cfg"))
         .run()
-        .assert_stdout_contains(static_lib_name("native_dep_1"));
-    llvm_ar()
-        .arg("t")
-        .arg(rust_lib_name("rust_dep_cfg"))
-        .run()
-        .assert_stdout_contains(static_lib_name("native_dep_2"));
+        .assert_stdout_contains("native_dep_1.o")
+        .assert_stdout_contains("native_dep_2.o")
+        .assert_stdout_not_contains(static_lib_name("native_dep_1"))
+        .assert_stdout_not_contains(static_lib_name("native_dep_2"));
     llvm_ar().arg("t").arg(static_lib_name("main")).run().assert_stdout_contains("native_dep_1.o");
     llvm_ar()
         .arg("t")
