@@ -995,6 +995,9 @@ pub enum AttributeKind {
     /// Represents `#[lint::no_implicit_autorefs]` (used by the `dangerous_implicit_autorefs` lint).
     LintNoImplicitAutorefs,
 
+    /// Represents `#[lint::panics_when_zero]` (used by the `unconditional_panic` lint).
+    LintPanicsWhenZero,
+
     /// Represents `#[lint::pass_by_value)]` (used by the `rustc::disallowed_pass_by_ref` lint).
     LintPassByValue,
 
@@ -1457,9 +1460,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
-
-    /// Represents `#[rustc_panics_when_zero]` (used for linting).
-    RustcPanicsWhenZero,
 
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar,

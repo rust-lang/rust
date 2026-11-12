@@ -1336,7 +1336,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     #[track_caller]
-    pub const unsafe fn as_chunks_unchecked<#[rustc_panics_when_zero] const N: usize>(
+    pub const unsafe fn as_chunks_unchecked<#[lint::panics_when_zero] const N: usize>(
         &self,
     ) -> &[[T; N]] {
         assert_unsafe_precondition!(
@@ -1396,7 +1396,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_chunks<#[rustc_panics_when_zero] const N: usize>(&self) -> (&[[T; N]], &[T]) {
+    pub const fn as_chunks<#[lint::panics_when_zero] const N: usize>(&self) -> (&[[T; N]], &[T]) {
         assert!(N != 0, "chunk size must be non-zero");
         let len_rounded_down = self.len() / N * N;
         // SAFETY: The rounded-down value is always the same or smaller than the
@@ -1443,7 +1443,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_rchunks<#[rustc_panics_when_zero] const N: usize>(&self) -> (&[T], &[[T; N]]) {
+    pub const fn as_rchunks<#[lint::panics_when_zero] const N: usize>(&self) -> (&[T], &[[T; N]]) {
         assert!(N != 0, "chunk size must be non-zero");
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at(self.len() - len * N);
@@ -1498,7 +1498,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     #[track_caller]
-    pub const unsafe fn as_chunks_unchecked_mut<#[rustc_panics_when_zero] const N: usize>(
+    pub const unsafe fn as_chunks_unchecked_mut<#[lint::panics_when_zero] const N: usize>(
         &mut self,
     ) -> &mut [[T; N]] {
         assert_unsafe_precondition!(
@@ -1554,7 +1554,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_chunks_mut<#[rustc_panics_when_zero] const N: usize>(
+    pub const fn as_chunks_mut<#[lint::panics_when_zero] const N: usize>(
         &mut self,
     ) -> (&mut [[T; N]], &mut [T]) {
         assert!(N != 0, "chunk size must be non-zero");
@@ -1609,7 +1609,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     #[must_use]
-    pub const fn as_rchunks_mut<#[rustc_panics_when_zero] const N: usize>(
+    pub const fn as_rchunks_mut<#[lint::panics_when_zero] const N: usize>(
         &mut self,
     ) -> (&mut [T], &mut [[T; N]]) {
         assert!(N != 0, "chunk size must be non-zero");
@@ -1652,7 +1652,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub const fn array_windows<#[rustc_panics_when_zero] const N: usize>(
+    pub const fn array_windows<#[lint::panics_when_zero] const N: usize>(
         &self,
     ) -> ArrayWindows<'_, T, N> {
         assert!(N != 0, "window size must be non-zero");

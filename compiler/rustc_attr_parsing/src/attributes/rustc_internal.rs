@@ -89,15 +89,15 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
     }
 }
 
-pub(crate) struct RustcPanicsWhenZeroParser;
+pub(crate) struct LintPanicsWhenZeroParser;
 
-impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
-    const PATH: &[Symbol] = &[sym::rustc_panics_when_zero];
+impl NoArgsAttributeParser for LintPanicsWhenZeroParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::panics_when_zero];
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::ConstParam)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenZero;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintPanicsWhenZero;
 }
 
 pub(crate) struct LintNoImplicitAutorefsParser;

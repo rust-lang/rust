@@ -240,7 +240,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_objc_selector,
     sym::rustc_offload_kernel,
     sym::rustc_on_unimplemented,
-    sym::rustc_panics_when_zero,
     sym::rustc_paren_sugar,
     sym::rustc_partition_codegened,
     sym::rustc_partition_reused,
