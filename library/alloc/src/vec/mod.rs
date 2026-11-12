@@ -2351,7 +2351,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v.try_remove(0), Some(1));
     /// assert_eq!(v.try_remove(2), None);
     /// ```
-    #[stable(feature = "vec_try_remove", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_try_remove", since = "1.101.0")]
     #[rustc_confusables("delete", "take", "remove")]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
@@ -3836,32 +3836,24 @@ const fn dedup_simd_chunk_size<T>() -> Option<usize> {
             if size == 8 { None } else { Some(SIMD_WIDTH) }
         }
 
-        all(target_arch = "aarch64", target_feature = "neon") => {
+        all(target_arch = "aarch64", target_feature = "neon") => Some(SIMD_WIDTH),
+
+        all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse4.1") => {
             Some(SIMD_WIDTH)
         }
 
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "sse4.1"
-        ) => Some(SIMD_WIDTH),
-
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "sse2"
-        ) => {
+        all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2") => {
             // Packed 64-bit integer lane equality is only available on sse4.1
             if size == 8 { None } else { Some(SIMD_WIDTH) }
         }
 
-        all(
-            any(target_arch = "riscv32", target_arch = "riscv64"),
-            target_feature = "v"
-        ) => Some(SIMD_WIDTH),
+        all(any(target_arch = "riscv32", target_arch = "riscv64"), target_feature = "v") => {
+            Some(SIMD_WIDTH)
+        }
 
-        all(
-            any(target_arch = "loongarch32", target_arch = "loongarch64"),
-            target_feature = "lsx"
-        ) => Some(SIMD_WIDTH),
+        all(any(target_arch = "loongarch32", target_arch = "loongarch64"), target_feature = "lsx") => {
+            Some(SIMD_WIDTH)
+        }
 
         _ => None,
     };
@@ -3951,7 +3943,7 @@ fn find_first_duplicate<T: PartialEq>(v: &[T], chunk_size: usize) -> Option<usiz
 #[stable(feature = "rust1", since = "1.0.0")]
 // NOTE: the real deprecation version is the same as the stabilization version.
 // I.e. it should never have been used even in version 1.0.
-#[deprecated(since = "CURRENT_RUSTC_VERSION", note = "use the `vec!` macro instead")]
+#[deprecated(since = "1.101.0", note = "use the `vec!` macro instead")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     vec![elem; n]
 }

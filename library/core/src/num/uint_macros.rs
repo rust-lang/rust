@@ -632,8 +632,8 @@ macro_rules! uint_impl {
         /// # }
         /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[rustc_inherit_overflow_checks]
@@ -699,8 +699,8 @@ macro_rules! uint_impl {
         /// # }
         /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[rustc_inherit_overflow_checks]
@@ -723,8 +723,8 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shl`](Self::funnel_shl) would panic.
         ///
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
@@ -750,8 +750,8 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shr`](Self::funnel_shr) would panic.
         ///
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
