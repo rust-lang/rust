@@ -1,6 +1,5 @@
 use crate::{is_in_const_context, span_of_clippy_attr, sym};
 use rustc_ast::Attribute;
-use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::{RustcVersion, StabilityLevel, StableSince};
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
@@ -143,7 +142,7 @@ impl Msrv {
     fn for_attrs(self, tcx: TyCtxt<'_>, node: HirId) -> Option<RustcVersion> {
         once(node)
             .chain(tcx.hir_parent_id_iter(node))
-            .find_map(|id| parse_attrs(tcx.hir_attrs(id)))
+            .find_map(|id| parse_hir_attrs(tcx.hir_attrs(id)))
             .or(self.0)
     }
 
@@ -246,28 +245,36 @@ impl MsrvStack {
     }
 
     pub fn check_attributes(&mut self, attrs: &[Attribute]) {
-        if let Some(version) = parse_attrs(attrs) {
+        if let Some(version) = parse_ast_attrs(attrs) {
             SEEN_MSRV_ATTR.store(true, Ordering::Relaxed);
             self.stack.push(version);
         }
     }
 
     pub fn check_attributes_post(&mut self, attrs: &[Attribute]) {
-        if parse_attrs(attrs).is_some() {
+        if parse_ast_attrs(attrs).is_some() {
             self.stack.pop();
         }
     }
 }
 
-fn parse_attrs(attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+fn parse_ast_attrs(attrs: &[Attribute]) -> Option<RustcVersion> {
     let msrv_attr = attrs.iter().find(|attr| attr.path_matches(&[sym::clippy, sym::msrv]))?;
+    parse_version(msrv_attr.value_str()?)
+}
 
-    let msrv = msrv_attr.value_str()?;
-
+fn parse_hir_attrs(attrs: &[rustc_attr_ir::Attribute]) -> Option<RustcVersion> {
+    let msrv = attrs.iter().find_map(|attr|
+        if let rustc_attr_ir::Attribute::Tool(item) = attr && let [sym::clippy, sym::msrv] = item.path.segments {
+            attr.value_lit().and_then(|lit| lit.value_as_str())
+        } else {
+            None
+        }
+    )?;
     parse_version(msrv)
 }
 
-pub fn check_attrs(sess: &Session, attrs: &[impl AttributeExt]) {
+pub fn check_attrs(sess: &Session, attrs: &[Attribute]) {
     let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
     let Some(msrv_attr) = msrv_attrs.next() else {
