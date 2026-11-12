@@ -139,7 +139,8 @@
 //! The width can also be provided dynamically by referencing another argument
 //! with a `$` suffix. Use `{:N$}` to reference the Nth positional argument
 //! (where N is an integer), or `{:name$}` to reference a named argument. The
-//! referenced argument must be of type [`usize`].
+//! referenced argument must be of type [`usize`]. Currently formatting will
+//! panic if the width exceeds [`u16::MAX`].
 //!
 //! Referring to an argument with the dollar syntax does not affect the "next
 //! argument" counter, so it's usually a good idea to refer to arguments by
