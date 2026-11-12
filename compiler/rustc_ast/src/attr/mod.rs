@@ -80,23 +80,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    fn path_matches(&self, name: &[Symbol]) -> bool {
-        match &self.kind {
-            AttrKind::Normal(normal) => {
-                normal.item.path.segments.len() == name.len()
-                    && normal
-                        .item
-                        .path
-                        .segments
-                        .iter()
-                        .zip(name)
-                        .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
-            }
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
-            AttrKind::Generated(generated) => generated.path() == name,
-        }
-    }
-
     /// Returns the string value in:
     ///
     /// ```text
@@ -826,11 +809,6 @@ pub trait AttributeExt: Debug + 'static {
     /// Gets the value literal, as string, when using `#[attr = value]`
     fn value_str(&self) -> Option<Symbol>;
 
-    /// Checks whether the path of this attribute matches the name.
-    ///
-    /// Matches one segment of the path to each element in `name`
-    fn path_matches(&self, name: &[Symbol]) -> bool;
-
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
@@ -866,7 +844,20 @@ impl Attribute {
     }
 
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        AttributeExt::path_matches(self, name)
+        match &self.kind {
+            AttrKind::Normal(normal) => {
+                normal.item.path.segments.len() == name.len()
+                    && normal
+                        .item
+                        .path
+                        .segments
+                        .iter()
+                        .zip(name)
+                        .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
+            }
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.path() == name,
+        }
     }
 
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).

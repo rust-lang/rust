@@ -152,14 +152,6 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn path_matches(&self, name: &[Symbol]) -> bool {
-        match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => n.path.segments.iter().eq(name),
-            _ => false,
-        }
-    }
-
-    #[inline]
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, span, .. }) => {
