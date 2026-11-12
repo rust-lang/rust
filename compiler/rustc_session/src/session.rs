@@ -676,6 +676,7 @@ impl Session {
         if self.opts.unstable_opts.print_type_sizes
             || self.opts.unstable_opts.query_dep_graph
             || self.opts.unstable_opts.dump_mir.is_some()
+            || !matches!(self.opts.unstable_opts.dump_mono_mir, SwitchWithOptPath::Disabled)
             || self.opts.unstable_opts.unpretty.is_some()
             || self.prof.is_args_recording_enabled()
             || self.opts.output_types.contains_key(&OutputType::Mir)

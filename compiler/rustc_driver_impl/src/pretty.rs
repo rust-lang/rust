@@ -4,14 +4,18 @@ use std::cell::Cell;
 use std::fmt::Write;
 use std::fs::File;
 use std::io;
+use std::path::PathBuf;
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust as pprust_ast;
+use rustc_data_structures::fx::{FxBuildHasher, FxIndexSet};
 use rustc_hir::intravisit;
 use rustc_hir_pretty as pprust_hir;
 use rustc_hir_pretty::PpAnn;
+use rustc_middle::mir::pretty::MirWriter;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::mono::{MonoItem, MonoItemPartitions};
+use rustc_middle::ty::{self, EarlyBinder, TyCtxt, TypingEnv};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
 use rustc_public::rustc_internal::pretty::write_smir_pretty;
 use rustc_session::Session;
@@ -360,5 +364,39 @@ pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {
             }
         }
     }
+    Ok(())
+}
+
+// Implementation of -Zdump-mono-mir
+pub fn emit_mono_mir(tcx: TyCtxt<'_>, opt: &Option<PathBuf>) -> io::Result<()> {
+    let MonoItemPartitions { codegen_units, .. } = tcx.collect_and_partition_mono_items(());
+    let mut instance_set = FxIndexSet::with_hasher(FxBuildHasher);
+    for cgu in codegen_units {
+        for (mono_item, _) in cgu.items_in_deterministic_order(tcx) {
+            match mono_item {
+                MonoItem::Fn(instance) if instance.def_id().is_local() => {
+                    instance_set.insert(instance);
+                }
+                _ => (),
+            }
+        }
+    }
+    let mono_writer = MirWriter::new(tcx);
+    let mut w: Box<dyn io::Write> = match opt {
+        None => Box::new(io::stdout().lock()),
+        Some(path) => Box::new(File::create_buffered(path)?),
+    };
+    for instance in instance_set {
+        let body = tcx.instance_mir(instance.def);
+        let mono = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(tcx, body.clone()),
+        );
+        writeln!(&mut w, "// {}", instance)?;
+        mono_writer.write_mir_fn(&mono, &mut w)?;
+        writeln!(&mut w)?;
+    }
+    w.flush()?;
     Ok(())
 }

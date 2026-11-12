@@ -51,8 +51,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
-    UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
+    CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, SwitchWithOptPath,
+    Sysroot, UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::output::invalid_output_for_target;
@@ -331,6 +331,16 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             if sess.opts.output_types.contains_key(&OutputType::Mir) {
                 if let Err(error) = pretty::emit_mir(tcx) {
+                    tcx.dcx().emit_fatal(CantEmitMIR { error });
+                }
+            }
+
+            if sess.opts.unstable_opts.dump_mono_mir.enabled() {
+                let SwitchWithOptPath::Enabled(ref opt) = sess.opts.unstable_opts.dump_mono_mir
+                else {
+                    unreachable!()
+                };
+                if let Err(error) = pretty::emit_mono_mir(tcx, opt) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
             }
