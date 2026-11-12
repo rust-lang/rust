@@ -26,7 +26,7 @@ use crate::llvm::{
 };
 use crate::{attributes, llvm_util};
 
-pub(crate) fn apply_to_llfn<'ll>(llfn: Value<'ll>, idx: AttributePlace, attrs: &[&'ll Attribute]) {
+pub(crate) fn apply_to_llfn<'ll>(llfn: Value<'ll>, idx: AttributePlace, attrs: &[Attribute<'ll>]) {
     if !attrs.is_empty() {
         llvm::AddFunctionAttributes(llfn, idx, attrs);
     }
@@ -35,7 +35,7 @@ pub(crate) fn apply_to_llfn<'ll>(llfn: Value<'ll>, idx: AttributePlace, attrs: &
 pub(crate) fn apply_to_callsite<'ll>(
     callsite: Value<'ll>,
     idx: AttributePlace,
-    attrs: &[&'ll Attribute],
+    attrs: &[Attribute<'ll>],
 ) {
     if !attrs.is_empty() {
         llvm::AddCallSiteAttributes(callsite, idx, attrs);
@@ -57,7 +57,7 @@ pub(crate) fn inline_attr<'tcx, 'll>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     codegen_fn_attrs: &CodegenFnAttrs,
-) -> Option<&'ll Attribute> {
+) -> Option<Attribute<'ll>> {
     if !tcx.sess.opts.unstable_opts.inline_llvm {
         // disable LLVM inlining
         return Some(AttributeKind::NoInline.create_attr(cx.llcx));
@@ -99,7 +99,7 @@ fn patchable_function_entry_attrs<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
     attr: Option<PatchableFunctionEntry>,
-) -> SmallVec<[&'ll Attribute; 2]> {
+) -> SmallVec<[Attribute<'ll>; 2]> {
     let mut attrs = SmallVec::new();
 
     let mut entry = sess.opts.unstable_opts.patchable_function_entry.entry();
@@ -153,7 +153,7 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     sanitizer_fn_attr: SanitizerFnAttrs,
     instance: Option<ty::Instance<'tcx>>,
     sanitizer_ignorelist: Option<&SanitizerIgnoreList>,
-) -> SmallVec<[&'ll Attribute; 4]> {
+) -> SmallVec<[Attribute<'ll>; 4]> {
     let mut attrs = SmallVec::new();
     let mut enabled = tcx.sess.sanitizers() - sanitizer_fn_attr.disabled;
     if let Some(ignorelist) = sanitizer_ignorelist {
@@ -219,7 +219,7 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
 pub(crate) fn uwtable_attr<'ll>(
     llcx: llvm::Context<'ll>,
     use_sync_unwind: Option<bool>,
-) -> &'ll Attribute {
+) -> Attribute<'ll> {
     // NOTE: We should determine if we even need async unwind tables, as they
     // take have more overhead and if we can use sync unwind tables we
     // probably should.
@@ -244,7 +244,7 @@ pub(crate) fn frame_pointer(sess: &Session) -> FramePointer {
 pub(crate) fn frame_pointer_type_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
-) -> Option<&'ll Attribute> {
+) -> Option<Attribute<'ll>> {
     let fp = frame_pointer(sess);
     let attr_value = match fp {
         FramePointer::Always => "all",
@@ -254,7 +254,7 @@ pub(crate) fn frame_pointer_type_attr<'ll>(
     Some(llvm::CreateAttrStringValue(cx.llcx, "frame-pointer", attr_value))
 }
 
-fn function_return_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+fn function_return_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<Attribute<'ll>> {
     let function_return_attr = match sess.opts.unstable_opts.function_return {
         FunctionReturn::Keep => return None,
         FunctionReturn::ThunkExtern => AttributeKind::FnRetThunkExtern,
@@ -269,7 +269,7 @@ fn instrument_function_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
     instrument_fn: Option<InstrumentFnAttr>,
-) -> SmallVec<[&'ll Attribute; 4]> {
+) -> SmallVec<[Attribute<'ll>; 4]> {
     let mut attrs = SmallVec::new();
     if sess.opts.unstable_opts.instrument_mcount != InstrumentMcount::Disabled {
         // Similar to `clang -pg` behavior. Handled by the
@@ -359,7 +359,7 @@ fn instrument_function_attr<'ll>(
     attrs
 }
 
-fn nojumptables_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+fn nojumptables_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<Attribute<'ll>> {
     if sess.opts.cg.jump_tables {
         return None;
     }
@@ -367,7 +367,7 @@ fn nojumptables_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Att
     Some(llvm::CreateAttrStringValue(cx.llcx, "no-jump-tables", "true"))
 }
 
-fn probestack_attr<'ll, 'tcx>(cx: &SimpleCx<'ll>, tcx: TyCtxt<'tcx>) -> Option<&'ll Attribute> {
+fn probestack_attr<'ll, 'tcx>(cx: &SimpleCx<'ll>, tcx: TyCtxt<'tcx>) -> Option<Attribute<'ll>> {
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
@@ -400,7 +400,7 @@ fn probestack_attr<'ll, 'tcx>(cx: &SimpleCx<'ll>, tcx: TyCtxt<'tcx>) -> Option<&
     Some(llvm::CreateAttrStringValue(cx.llcx, "probe-stack", attr_value))
 }
 
-fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<Attribute<'ll>> {
     let sspattr = match sess.stack_protector() {
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
@@ -414,7 +414,7 @@ fn packed_stack_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
     function_attributes: &Vec<TargetFeature>,
-) -> Option<&'ll Attribute> {
+) -> Option<Attribute<'ll>> {
     if sess.target.arch != Arch::S390x {
         return None;
     }
@@ -440,12 +440,12 @@ fn packed_stack_attr<'ll>(
     Some(llvm::CreateAttrString(cx.llcx, "packed-stack"))
 }
 
-pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
+pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Attribute<'ll> {
     let target_cpu = llvm_util::target_cpu(sess);
     llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
 }
 
-pub(crate) fn tune_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+pub(crate) fn tune_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<Attribute<'ll>> {
     llvm_util::tune_cpu(sess)
         .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu))
 }
@@ -455,7 +455,7 @@ pub(crate) fn target_features_attr<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
     function_features: Vec<String>,
-) -> Option<&'ll Attribute> {
+) -> Option<Attribute<'ll>> {
     let global_features = tcx.sess.global_backend_features.iter().map(String::as_str);
     let function_features = function_features.iter().map(String::as_str);
     let target_features =
@@ -469,7 +469,7 @@ pub(crate) fn target_features_attr<'ll, 'tcx>(
 pub(crate) fn non_lazy_bind_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
-) -> Option<&'ll Attribute> {
+) -> Option<Attribute<'ll>> {
     // Don't generate calls through PLT if it's not necessary
     if !sess.needs_plt() { Some(AttributeKind::NonLazyBind.create_attr(cx.llcx)) } else { None }
 }
@@ -479,7 +479,7 @@ pub(crate) fn non_lazy_bind_attr<'ll>(
 pub(crate) fn default_optimisation_attrs<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
-) -> SmallVec<[&'ll Attribute; 2]> {
+) -> SmallVec<[Attribute<'ll>; 2]> {
     let mut attrs = SmallVec::new();
     // Either attribute satisfies LLVM's combined size predicate, but the software pipeliner reads
     // `optsize` alone, so a `z` build needs both.
@@ -496,7 +496,7 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     attrs
 }
 
-fn create_alloc_family_attr<'ll>(llcx: llvm::Context<'ll>) -> &'ll llvm::Attribute {
+fn create_alloc_family_attr<'ll>(llcx: llvm::Context<'ll>) -> llvm::Attribute<'ll> {
     llvm::CreateAttrStringValue(llcx, "alloc-family", "__rust_alloc")
 }
 
