@@ -70,14 +70,14 @@ use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
 use crate::diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
-    ParsedDescription, UnusedDuplicate,
+    ParsedDescription,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
     RefPathParser,
 };
 use crate::target_checking::AllowedTargets;
-use crate::{AttributeParser, AttributeTemplate, EmitAttribute};
+use crate::{AttributeParser, AttributeTemplate, DuplicateAttribute, EmitAttribute};
 
 type GroupType = LazyLock<GroupTypeInner>;
 
@@ -475,10 +475,15 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         (self.emit_lint)(LintId::of(lint), span.into(), kind);
     }
 
-    pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
+    pub(crate) fn warn_unused_duplicate(
+        &mut self,
+        used_span: Span,
+        unused_span: Span,
+        name: Symbol,
+    ) {
         self.emit_lint(
             UNUSED_ATTRIBUTES,
-            UnusedDuplicate { this: unused_span, other: used_span, warning: false },
+            DuplicateAttribute { this: unused_span, other: used_span, name, warning: false },
             unused_span,
         )
     }
@@ -487,10 +492,11 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         &mut self,
         used_span: Span,
         unused_span: Span,
+        name: Symbol,
     ) {
         self.emit_lint(
             UNUSED_ATTRIBUTES,
-            UnusedDuplicate { this: unused_span, other: used_span, warning: true },
+            DuplicateAttribute { this: unused_span, other: used_span, name, warning: true },
             unused_span,
         )
     }

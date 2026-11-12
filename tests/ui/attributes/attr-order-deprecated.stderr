@@ -1,4 +1,4 @@
-error: multiple `deprecated` attributes
+error: duplicate `deprecated` attributes
   --> $DIR/attr-order-deprecated.rs:3:1
    |
 LL | #[deprecated = "BBB"]

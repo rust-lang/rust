@@ -221,7 +221,7 @@ impl AttributeParser for NakedParser {
 
             if let Some(earlier) = this.span {
                 let span = cx.attr_span;
-                cx.warn_unused_duplicate(earlier, span);
+                cx.warn_unused_duplicate(earlier, span, sym::naked);
             } else {
                 this.span = Some(cx.attr_span);
             }
@@ -505,14 +505,14 @@ impl AttributeParser for UsedParser {
                 UsedBy::Compiler => &mut group.first_compiler,
                 UsedBy::Linker => {
                     if let Some(prev) = group.first_default {
-                        cx.warn_unused_duplicate(prev, attr_span);
+                        cx.warn_unused_duplicate(prev, attr_span, sym::used);
                         return;
                     }
                     &mut group.first_linker
                 }
                 UsedBy::Default => {
                     if let Some(prev) = group.first_linker {
-                        cx.warn_unused_duplicate(prev, attr_span);
+                        cx.warn_unused_duplicate(prev, attr_span, sym::used);
                         return;
                     }
                     &mut group.first_default
@@ -520,7 +520,7 @@ impl AttributeParser for UsedParser {
             };
 
             if let Some(prev) = *target {
-                cx.warn_unused_duplicate(prev, attr_span);
+                cx.warn_unused_duplicate(prev, attr_span, sym::used);
             } else {
                 *target = Some(attr_span);
             }

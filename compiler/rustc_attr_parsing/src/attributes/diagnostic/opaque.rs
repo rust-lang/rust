@@ -2,7 +2,7 @@ use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::target::Target;
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::diagnostic::gate_diagnostic_attr;
 use crate::attributes::{AcceptMapping, AttributeParser};
@@ -52,7 +52,8 @@ impl OpaqueParser {
     fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser) {
         let attr_span = cx.attr_span;
         if let Some(earlier_span) = self.attr_span {
-            cx.warn_unused_duplicate(earlier_span, attr_span);
+            let attr_path_interned = Symbol::intern(&cx.attr_path.to_string());
+            cx.warn_unused_duplicate(earlier_span, attr_span, attr_path_interned);
         }
         self.attr_span = Some(attr_span);
 
