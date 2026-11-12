@@ -364,9 +364,7 @@ impl ast::PathSegment {
                 _ => PathSegmentKind::Name(name_ref),
             }
         } else {
-            let anchor = self.type_anchor()?;
-            let type_ref = anchor.self_ty();
-            let trait_ref = anchor.trait_();
+            let (type_ref, trait_ref) = self.type_anchor()?.target();
             PathSegmentKind::Type { type_ref, trait_ref }
         };
         Some(res)
@@ -572,15 +570,6 @@ impl ast::TypeAnchor {
             _ => None,
         });
         (self_ty, trait_)
-    }
-}
-
-// [#15778](https://github.com/rust-lang/rust-analyzer/issues/15778)
-impl ast::PathSegment {
-    pub fn qualifying_trait(&self) -> Option<ast::PathType> {
-        let mut path_types = support::children(self.type_anchor()?.syntax());
-        let first = path_types.next()?;
-        path_types.next().or(Some(first))
     }
 }
 
