@@ -212,6 +212,7 @@ The following directives will check rustc build settings and target settings:
 - `needs-backends` — only runs the test if current codegen backend is listed.
 - `needs-offload` — ignores if our LLVM backend was not built with offload support.
 - `needs-enzyme` — ignores if our Enzyme submodule was not built.
+- `needs-tpde` — ignores if the TPDE-LLVM codegen backend was not built
 
 The following directives will check LLVM support:
 
