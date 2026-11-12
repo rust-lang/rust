@@ -270,6 +270,14 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     let current_gcx2 = current_gcx.clone();
 
     let proxy = Proxy::new();
+
+    // Explicitly drop and join helper thread before rustc exits,
+    // so all job server tokens are returned.
+    let _drop_helper_thread = defer({
+        let proxy = Arc::clone(&proxy);
+        move || proxy.drop_helper_thread()
+    });
+
     let proxy_ = Arc::clone(&proxy);
 
     let builder = rustc_thread_pool::ThreadPoolBuilder::new()
