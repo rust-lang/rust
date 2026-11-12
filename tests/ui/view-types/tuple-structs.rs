@@ -1,7 +1,7 @@
 //@ run-pass
 
-#![feature(view_types)]
-#![allow(unused)]
+ #![feature(view_types)]
+ #![allow(unused)]
 
 use std::view::view_type;
 

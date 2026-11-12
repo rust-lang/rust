@@ -1754,6 +1754,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::Alias(..)
                 | ty::Param(_)
                 | ty::Placeholder(_) => true,
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
         ty_may_have_ref_inner(self.tcx, ty, 0)

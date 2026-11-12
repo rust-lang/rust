@@ -202,6 +202,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Placeholder(_)
             | ty::Infer(_)
             | ty::Error(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

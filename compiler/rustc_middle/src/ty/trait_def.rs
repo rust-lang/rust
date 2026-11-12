@@ -175,7 +175,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::Coroutine(_, _)
             | ty::Never
             | ty::Tuple(_)
-            | ty::UnsafeBinder(_) => {
+            | ty::UnsafeBinder(_)
+            | ty::View(_, _, _) => {
                 let simp = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
