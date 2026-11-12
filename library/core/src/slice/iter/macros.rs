@@ -154,6 +154,7 @@ macro_rules! iterator {
             type Item = $elem;
 
             #[inline]
+            #[rustc_nounwind]
             fn next(&mut self) -> Option<$elem> {
                 // intentionally not using the helpers because this is
                 // one of the most mono'd things in the library.

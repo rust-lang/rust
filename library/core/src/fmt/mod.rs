@@ -793,6 +793,7 @@ impl<'a> Arguments<'a> {
     // SAFETY: The caller must ensure that the provided template and args encode a valid
     // fmt::Arguments, as documented above.
     #[inline]
+    #[rustc_nounwind]
     pub unsafe fn new<const N: usize, const M: usize>(
         template: &'a [u8; N],
         args: &'a [rt::Argument<'a>; M],
@@ -878,6 +879,7 @@ impl<'a> Arguments<'a> {
     ///
     /// Formatting this `fmt::Arguments` will just produce the string as-is.
     #[inline]
+    #[rustc_nounwind]
     #[unstable(feature = "fmt_arguments_from_str", issue = "148905")]
     pub const fn from_str(s: &'static str) -> Arguments<'a> {
         // SAFETY: This is the "static str" representation of fmt::Arguments; see above.

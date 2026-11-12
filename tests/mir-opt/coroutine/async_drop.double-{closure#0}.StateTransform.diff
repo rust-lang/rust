@@ -238,7 +238,7 @@
 -         StorageLive(_7);
 -         _7 = yield(const ()) -> [resume: bb17, drop: bb18];
 +         _20 = &mut (((*_42) as variant#4).4: impl std::future::Future<Output = ()>);
-+         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb18, unwind: bb10];
++         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb18, unwind unreachable];
       }
   
       bb20: {
@@ -251,7 +251,7 @@
 -         _9 = discriminant(_8);
 -         switchInt(move _9) -> [0: bb14, 1: bb19, otherwise: bb20];
 +         _22 = &mut (((*_42) as variant#4).3: AsyncInt);
-+         _21 = Pin::<&mut AsyncInt>::new_unchecked(move _22) -> [return: bb20, unwind: bb5];
++         _21 = Pin::<&mut AsyncInt>::new_unchecked(move _22) -> [return: bb20, unwind unreachable];
       }
   
       bb22: {
@@ -270,7 +270,7 @@
   
       bb24: {
 -         _13 = &mut _6;
--         _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb23, unwind: bb15];
+-         _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb23, unwind unreachable];
 +         assert(const false, "`async fn` resumed after async drop") -> [success: bb24, unwind: bb23];
       }
   
@@ -324,9 +324,9 @@
   
       bb31: {
 -         _20 = &mut _6;
--         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb30, unwind: bb15];
+-         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb30, unwind unreachable];
 +         _37 = &mut (((*_42) as variant#6).3: impl std::future::Future<Output = ()>);
-+         _34 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _37) -> [return: bb30, unwind: bb23];
++         _34 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _37) -> [return: bb30, unwind unreachable];
       }
   
       bb32: {
@@ -338,9 +338,9 @@
   
       bb33: {
 -         _22 = &mut _5;
--         _21 = Pin::<&mut AsyncInt>::new_unchecked(move _22) -> [return: bb32, unwind: bb9];
+-         _21 = Pin::<&mut AsyncInt>::new_unchecked(move _22) -> [return: bb32, unwind unreachable];
 +         _39 = &mut (((*_42) as variant#6).2: AsyncInt);
-+         _38 = Pin::<&mut AsyncInt>::new_unchecked(move _39) -> [return: bb32, unwind: bb6];
++         _38 = Pin::<&mut AsyncInt>::new_unchecked(move _39) -> [return: bb32, unwind unreachable];
       }
   
 -     bb34: {
@@ -413,7 +413,7 @@
 - 
 -     bb44: {
 -         _30 = &mut _23;
--         _27 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _30) -> [return: bb43, unwind: bb36];
+-         _27 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _30) -> [return: bb43, unwind unreachable];
 -     }
 - 
 -     bb45: {
@@ -449,7 +449,7 @@
 - 
 -     bb51: {
 -         _37 = &mut _23;
--         _34 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _37) -> [return: bb50, unwind: bb36];
+-         _34 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _37) -> [return: bb50, unwind unreachable];
 -     }
 - 
 -     bb52: {
@@ -459,7 +459,7 @@
 - 
 -     bb53: {
 -         _39 = &mut _4;
--         _38 = Pin::<&mut AsyncInt>::new_unchecked(move _39) -> [return: bb52, unwind: bb10];
+-         _38 = Pin::<&mut AsyncInt>::new_unchecked(move _39) -> [return: bb52, unwind unreachable];
 +         nop;
 +         (((*_42) as variant#6).1: SyncInt) = SyncInt(const 0_i32);
 +         nop;

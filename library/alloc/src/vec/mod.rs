@@ -470,6 +470,7 @@ impl<T> Vec<T> {
     #[rustc_diagnostic_item = "vec_new"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
+    #[rustc_nounwind]
     pub const fn new() -> Self {
         Vec { buf: RawVec::new(), len: 0 }
     }
@@ -3159,6 +3160,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
+    #[rustc_nounwind]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     #[rustc_confusables("length", "size")]
@@ -3187,6 +3189,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "vec_is_empty"]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
+    #[rustc_nounwind]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -4088,6 +4091,7 @@ const impl<T, A: Allocator> ops::Deref for Vec<T, A> {
     type Target = [T];
 
     #[inline]
+    #[rustc_nounwind]
     fn deref(&self) -> &[T] {
         self.as_slice()
     }
@@ -4097,6 +4101,7 @@ const impl<T, A: Allocator> ops::Deref for Vec<T, A> {
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 const impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     #[inline]
+    #[rustc_nounwind]
     fn deref_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
     }

@@ -147,7 +147,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
 
     bb17: {
         _13 = &mut (((*_42) as variant#4).4: impl std::future::Future<Output = ()>);
-        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb16, unwind: bb10];
+        _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb16, unwind unreachable];
     }
 
     bb18: {
@@ -197,7 +197,7 @@ fn double::{closure#0}(_1: Pin<&mut {async fn body of double()}>, _2: &mut Conte
 
     bb26: {
         _30 = &mut (((*_42) as variant#6).3: impl std::future::Future<Output = ()>);
-        _27 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _30) -> [return: bb25, unwind: bb20];
+        _27 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _30) -> [return: bb25, unwind unreachable];
     }
 
     bb27: {

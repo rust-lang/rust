@@ -185,7 +185,7 @@
 -         _9 = discriminant(_8);
 -         switchInt(move _9) -> [0: bb10, 1: bb15, otherwise: bb16];
 +         _20 = &mut (((*_25) as variant#4).2: impl std::future::Future<Output = ()>);
-+         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb16, unwind: bb8];
++         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb16, unwind unreachable];
       }
   
       bb18: {
@@ -198,12 +198,12 @@
 -         _12 = move _2;
 -         _11 = std::future::get_context::<'_, '_>(move _12) -> [return: bb18, unwind: bb11];
 +         _22 = &mut (((*_25) as variant#4).1: [AsyncInt; 2]);
-+         _21 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _22) -> [return: bb18, unwind: bb5];
++         _21 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _22) -> [return: bb18, unwind unreachable];
       }
   
 -     bb20: {
 -         _13 = &mut _6;
--         _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb19, unwind: bb11];
+-         _10 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _13) -> [return: bb19, unwind unreachable];
 +     bb20 (cleanup): {
 +         discriminant((*_25)) = 2;
 +         resume;
@@ -250,7 +250,7 @@
 - 
 -     bb27: {
 -         _20 = &mut _6;
--         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb26, unwind: bb11];
+-         _17 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _20) -> [return: bb26, unwind unreachable];
 -     }
 - 
 -     bb28: {
@@ -260,7 +260,7 @@
 - 
 -     bb29: {
 -         _22 = &mut _3;
--         _21 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _22) -> [return: bb28, unwind: bb7];
+-         _21 = Pin::<&mut [AsyncInt; 2]>::new_unchecked(move _22) -> [return: bb28, unwind unreachable];
 +         nop;
 +         StorageLive(_4);
 +         _4 = AsyncInt(const 1_i32);

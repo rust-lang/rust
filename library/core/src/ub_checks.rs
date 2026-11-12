@@ -167,7 +167,7 @@ pub(crate) const fn maybe_is_nonoverlapping(
         @capture { src: *const (), dst: *const (), size: usize, count: usize } -> bool:
         if const {
             true
-        } else {
+        } else #[rustc_nounwind] {
             let src_usize = src.addr();
             let dst_usize = dst.addr();
             let Some(size) = size.checked_mul(count) else {

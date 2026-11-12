@@ -108,7 +108,7 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = &mut _2;
--         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}>::new_unchecked(move _5) -> [return: bb2, unwind: bb5];
+-         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}>::new_unchecked(move _5) -> [return: bb2, unwind unreachable];
 -     }
 - 
 -     bb2: {

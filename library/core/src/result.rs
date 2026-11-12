@@ -2173,11 +2173,13 @@ const impl<T, E> ops::Try for Result<T, E> {
     type Residual = Result<!, E>;
 
     #[inline]
+    #[rustc_nounwind]
     fn from_output(output: Self::Output) -> Self {
         Ok(output)
     }
 
     #[inline]
+    #[rustc_nounwind]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Ok(v) => ControlFlow::Continue(v),

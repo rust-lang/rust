@@ -116,7 +116,7 @@
 -         _10 = &raw mut (*_5)[_7];
 -         _7 = Add(move _7, const 1_usize);
 -         _21 = &mut (*_10);
--         _20 = Pin::<&mut AsyncInt>::new_unchecked(move _21) -> [return: bb18, unwind: bb4];
+-         _20 = Pin::<&mut AsyncInt>::new_unchecked(move _21) -> [return: bb18, unwind unreachable];
 +     bb5 (cleanup): {
 +         nop;
 +         goto -> bb4;
@@ -149,7 +149,7 @@
 +         _22 = &raw mut (*_45)[_7];
 +         (((*_43) as variant#5).2: usize) = Add(move (((*_43) as variant#5).2: usize), const 1_usize);
 +         _40 = &mut (*_22);
-+         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb21, unwind: bb4];
++         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb21, unwind unreachable];
       }
   
       bb10: {
@@ -208,7 +208,7 @@
   
       bb17: {
 -         _19 = &mut _12;
--         _16 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _19) -> [return: bb16, unwind: bb8];
+-         _16 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _19) -> [return: bb16, unwind unreachable];
 +         _34 = discriminant(_33);
 +         switchInt(move _34) -> [0: bb11, 1: bb16, otherwise: bb8];
       }
@@ -223,7 +223,7 @@
 -         _22 = &raw mut (*_5)[_7];
 -         _7 = Add(move _7, const 1_usize);
 -         _40 = &mut (*_22);
--         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb39, unwind: bb4];
+-         _39 = Pin::<&mut AsyncInt>::new_unchecked(move _40) -> [return: bb39, unwind unreachable];
 +         _37 = move _46;
 +         _36 = copy (_37.0: std::ptr::NonNull<std::task::Context<'_>>) as &mut std::task::Context<'_> (Transmute);
 +         goto -> bb18;
@@ -233,7 +233,7 @@
 -         _23 = Eq(copy _7, copy _6);
 -         switchInt(move _23) -> [0: bb19, otherwise: bb1];
 +         _38 = &mut (((*_43) as variant#5).3: impl std::future::Future<Output = ()>);
-+         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _38) -> [return: bb19, unwind: bb12];
++         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _38) -> [return: bb19, unwind unreachable];
       }
   
       bb21: {
@@ -306,7 +306,7 @@
 - 
 -     bb31: {
 -         _31 = &mut _24;
--         _28 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _31) -> [return: bb30, unwind: bb23];
+-         _28 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _31) -> [return: bb30, unwind unreachable];
 -     }
 - 
 -     bb32: {
@@ -342,7 +342,7 @@
 - 
 -     bb38: {
 -         _38 = &mut _24;
--         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _38) -> [return: bb37, unwind: bb23];
+-         _35 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _38) -> [return: bb37, unwind unreachable];
 -     }
 - 
 -     bb39: {

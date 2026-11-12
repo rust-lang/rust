@@ -3538,6 +3538,7 @@ macro_rules! atomic_int {
             #[cfg(any($cfg_cas, doc))]
             #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             #[lint::should_not_be_called_on_const_items]
+            #[rustc_nounwind]
             pub const fn fetch_add(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_add(self.as_ptr(), val, order) }

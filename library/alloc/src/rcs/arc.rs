@@ -2560,6 +2560,7 @@ impl<T: ?Sized, A: Allocator> Deref for Arc<T, A> {
     type Target = T;
 
     #[inline]
+    #[rustc_nounwind]
     fn deref(&self) -> &T {
         &self.inner().data
     }

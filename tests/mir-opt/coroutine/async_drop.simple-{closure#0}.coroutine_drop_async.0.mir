@@ -116,7 +116,7 @@ fn simple::{closure#0}(_1: Pin<&mut {async fn body of simple()}>, _2: &mut Conte
 
     bb15: {
         _12 = &mut (((*_24) as variant#4).3: impl std::future::Future<Output = ()>);
-        _9 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _12) -> [return: bb14, unwind: bb8];
+        _9 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _12) -> [return: bb14, unwind unreachable];
     }
 
     bb16: {

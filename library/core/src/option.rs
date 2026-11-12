@@ -630,6 +630,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
+    #[rustc_nounwind]
     pub const fn is_some(&self) -> bool {
         matches!(*self, Some(_))
     }
@@ -679,6 +680,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
+    #[rustc_nounwind]
     pub const fn is_none(&self) -> bool {
         !self.is_some()
     }
@@ -740,6 +742,7 @@ impl<T> Option<T> {
     #[expect(clippy::match_as_ref, reason = "implements as_ref")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_nounwind]
     pub const fn as_ref(&self) -> Option<&T> {
         match *self {
             Some(ref x) => Some(x),
@@ -1899,6 +1902,7 @@ impl<T> Option<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
     #[expect(clippy::mem_replace_option_with_none, reason = "implements Option::take")]
+    #[rustc_nounwind]
     pub const fn take(&mut self) -> Option<T> {
         // FIXME(const-hack) replace `mem::replace` by `mem::take` when the latter is const ready
         mem::replace(self, None)
@@ -2867,11 +2871,13 @@ const impl<T> ops::Try for Option<T> {
     type Residual = Option<!>;
 
     #[inline]
+    #[rustc_nounwind]
     fn from_output(output: Self::Output) -> Self {
         Some(output)
     }
 
     #[inline]
+    #[rustc_nounwind]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),

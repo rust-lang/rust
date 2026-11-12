@@ -653,6 +653,7 @@ impl ops::Index<ops::RangeFull> for OsString {
     type Output = OsStr;
 
     #[inline]
+    #[rustc_nounwind]
     fn index(&self, _index: ops::RangeFull) -> &OsStr {
         OsStr::from_inner(self.inner.as_slice())
     }
@@ -661,6 +662,7 @@ impl ops::Index<ops::RangeFull> for OsString {
 #[stable(feature = "mut_osstr", since = "1.44.0")]
 impl ops::IndexMut<ops::RangeFull> for OsString {
     #[inline]
+    #[rustc_nounwind]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut OsStr {
         OsStr::from_inner_mut(self.inner.as_mut_slice())
     }
@@ -671,6 +673,7 @@ impl ops::Deref for OsString {
     type Target = OsStr;
 
     #[inline]
+    #[rustc_nounwind]
     fn deref(&self) -> &OsStr {
         &self[..]
     }
@@ -679,6 +682,7 @@ impl ops::Deref for OsString {
 #[stable(feature = "mut_osstr", since = "1.44.0")]
 impl ops::DerefMut for OsString {
     #[inline]
+    #[rustc_nounwind]
     fn deref_mut(&mut self) -> &mut OsStr {
         &mut self[..]
     }
@@ -1336,6 +1340,7 @@ impl OsStr {
     #[must_use = "this does not display the `OsStr`; \
                   it returns an object that can be displayed"]
     #[inline]
+    #[rustc_nounwind]
     pub fn display(&self) -> Display<'_> {
         Display { os_str: self }
     }
