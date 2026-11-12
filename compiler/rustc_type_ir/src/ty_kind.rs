@@ -361,10 +361,6 @@ pub enum TyKind<I: Interner> {
 impl<I: Interner> Eq for TyKind<I> {}
 
 impl<I: Interner> TyKind<I> {
-    pub fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
-        self.unnormalized_fn_sig(interner).skip_normalization()
-    }
-
     pub fn unnormalized_fn_sig(self, interner: I) -> Unnormalized<I, ty::Binder<I, ty::FnSig<I>>> {
         match self {
             ty::FnPtr(sig_tys, hdr) => Unnormalized::new_wip(sig_tys.with(hdr)),
@@ -379,6 +375,28 @@ impl<I: Interner> TyKind<I> {
                 "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
             ),
             _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self),
+        }
+    }
+
+    pub fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
+        self.unnormalized_fn_sig(interner).skip_normalization()
+    }
+
+    pub fn fn_sig_abi(self, interner: I) -> ExternAbi {
+        match self {
+            ty::FnPtr(_, hdr) => hdr.abi(),
+            ty::FnDef(def_id, _) => interner.fn_sig(def_id).skip_binder().abi(),
+            ty::Error(_) => FnSig::<I>::dummy().abi(),
+            _ => panic!("`fn_sig_abi` called on non-fn type: {:?}", self),
+        }
+    }
+
+    pub fn fn_sig_safety(self, interner: I) -> I::Safety {
+        match self {
+            ty::FnPtr(_, hdr) => hdr.safety(),
+            ty::FnDef(def_id, _) => interner.fn_sig(def_id).skip_binder().safety(),
+            ty::Error(_) => FnSig::<I>::dummy().safety(),
+            _ => panic!("`fn_sig_safety` called on non-fn type: {:?}", self),
         }
     }
 

@@ -5534,9 +5534,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && tcx.is_fn_trait(trait_ref.def_id)
             && let [self_ty, found_ty] = trait_ref.args.as_slice()
             && let Some(fn_ty) = self_ty.as_type().filter(|ty| ty.is_fn())
-            && let fn_sig @ ty::FnSig {
-                ..
-            } = fn_ty.fn_sig(tcx).skip_binder()
+            // njn: move this cleanup to a separate commit
+            && let fn_sig = fn_ty.fn_sig(tcx).skip_binder()
             // FIXME(splat): this might need to change if the Fn* traits start using/supporting splat
             && fn_sig.is_fn_trait_compatible()
 
