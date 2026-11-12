@@ -1,0 +1,16 @@
+error: expected one of `->`, `where`, or `{`, found `}`
+  --> $DIR/parse_lint.rs:5:22
+   |
+LL | #[feature({fn a(...) })]
+   |               -      ^ expected one of `->`, `where`, or `{`
+   |               |
+   |               while parsing this `fn`
+
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
+  --> $DIR/parse_lint.rs:5:11
+   |
+LL | #[feature({fn a(...) })]
+   |           ^^^^^^^^^^^^ expressions are not allowed here
+
+error: aborting due to 2 previous errors
+
