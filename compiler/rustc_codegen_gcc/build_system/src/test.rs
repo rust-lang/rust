@@ -769,7 +769,10 @@ const LIBRSVG: Project = Project::new("https://gitlab.gnome.org/GNOME/librsvg")
 /// Sorted from the slowest to the fastest in the CI, so that `projects_part` balances the parts.
 const PROJECTS: &[Project] = &[
     Project::new("https://github.com/marshallpierce/rust-base64"),
-    Project::new("https://github.com/serde-rs/serde"),
+    // The `ui` test compares against the diagnostics of the compiler it was blessed with, so it
+    // fails if the serde has created the snapshot with the different toolchain from ours.
+    Project::new("https://github.com/serde-rs/serde")
+        .test_harness_arguments(&["--skip", "ui", "--exact"]),
     Project::new("https://github.com/rayon-rs/rayon"),
     // regex 1.12.2, the version rustc depends on.
     Project::new("https://github.com/rust-lang/regex")
