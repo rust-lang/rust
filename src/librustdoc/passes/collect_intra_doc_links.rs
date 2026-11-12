@@ -1074,6 +1074,22 @@ fn preprocessed_markdown_links(s: &str) -> MarkdownLinks<PreprocessedMarkdownLin
     })
 }
 
+/// Compare lowercase labels so case differences are less likely to hide a typo,
+/// but return the original candidate to preserve its spelling in suggestions.
+fn find_best_match_for_reference_label(candidates: &[Symbol], lookup: Symbol) -> Option<Symbol> {
+    let normalize = |name: Symbol| Symbol::intern(&name.as_str().to_lowercase());
+
+    let normalized_lookup = normalize(lookup);
+    let normalized_candidates =
+        candidates.iter().map(|&candidate| normalize(candidate)).collect::<Vec<_>>();
+
+    let best = find_best_match_for_name(&normalized_candidates, normalized_lookup, None)?;
+
+    let index = normalized_candidates.iter().position(|&candidate| candidate == best)?;
+
+    Some(candidates[index])
+}
+
 /// Returns a source span for replacing a Markdown reference label.
 /// Returns `None` when the source or replacement is unsuitable for a direct edit.
 fn reference_label_suggestion_span(
@@ -1081,7 +1097,7 @@ fn reference_label_suggestion_span(
     diag_info: &DiagnosticInfo<'_>,
     replacement: &str,
 ) -> Option<rustc_span::Span> {
-    let MarkdownLinkRange::Destination(range) = &diag_info.link_range else {
+    let MarkdownLinkRange::Destination(label_range) = &diag_info.link_range else {
         return None;
     };
 
@@ -1089,21 +1105,22 @@ fn reference_label_suggestion_span(
         return None;
     }
 
-    let (span, from_expansion) = source_span_for_markdown_range(
+    let (label_span, _) = source_span_for_markdown_range(
         tcx,
         diag_info.dox,
-        range,
+        label_range,
         &diag_info.item.attrs.doc_strings,
     )?;
 
-    if from_expansion {
+    let source_map = tcx.sess.source_map();
+    if label_span.in_external_macro(source_map) || source_map.is_imported(label_span) {
         return None;
     }
 
-    let original_label = diag_info.dox.get(range.clone())?;
-    let source = tcx.sess.source_map().span_to_snippet(span).ok()?;
+    let original_label = diag_info.dox.get(label_range.clone())?;
+    let source = source_map.span_to_snippet(label_span).ok()?;
 
-    (source.as_str() == original_label).then_some(span)
+    (source.as_str() == original_label).then_some(label_span)
 }
 
 impl LinkCollector<'_, '_> {
@@ -1255,7 +1272,7 @@ impl LinkCollector<'_, '_> {
         item_id: DefId,
         module_id: ModId,
         PreprocessedMarkdownLink(pp_link, ori_link): &PreprocessedMarkdownLink,
-        reference_labels: &[String],
+        refdef_labels: &[String],
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
 
@@ -1271,9 +1288,9 @@ impl LinkCollector<'_, '_> {
         let disambiguator = *disambiguator;
         // A missing Markdown definition might indicate a misspelled label.
         // The link might still resolve to a Rust item, so don't diagnose it yet.
-        let reference_labels = match ori_link.kind {
+        let refdef_labels = match ori_link.kind {
             LinkType::ShortcutUnknown | LinkType::CollapsedUnknown | LinkType::ReferenceUnknown => {
-                Some(reference_labels)
+                Some(refdef_labels)
             }
             _ => None,
         };
@@ -1292,7 +1309,7 @@ impl LinkCollector<'_, '_> {
             // time so they are not cached.
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
             // Borrowed labels, available if Rust-item resolution fails.
-            reference_labels,
+            refdef_labels,
         )?;
 
         if resolved.len() > 1 {
@@ -1609,7 +1626,7 @@ impl LinkCollector<'_, '_> {
         // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
         cache_errors: bool,
-        reference_labels: Option<&[String]>,
+        refdef_labels: Option<&[String]>,
     ) -> Option<Vec<(Res, Option<UrlFragment>)>> {
         if let Some(res) = self.links.visited.get(&key)
             && (res.is_some() || cache_errors)
@@ -1617,7 +1634,7 @@ impl LinkCollector<'_, '_> {
             return res.clone().map(|r| vec![r]);
         }
 
-        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), reference_labels);
+        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), refdef_labels);
 
         // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
         // However I'm not sure how to check that across crates.
@@ -1670,7 +1687,7 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: &ResolutionInfo,
         diag: DiagnosticInfo<'_>,
-        reference_labels: Option<&[String]>,
+        refdef_labels: Option<&[String]>,
     ) -> Vec<(Res, Option<DefId>)> {
         let disambiguator = key.dis;
         let path_str = &key.path_str;
@@ -1705,7 +1722,7 @@ impl LinkCollector<'_, '_> {
                             path_str,
                             disambiguator,
                             smallvec![err],
-                            reference_labels,
+                            refdef_labels,
                         );
                         vec![]
                     }
@@ -1746,7 +1763,7 @@ impl LinkCollector<'_, '_> {
                         path_str,
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
-                        reference_labels,
+                        refdef_labels,
                     );
                     vec![]
                 } else if len == 1 {
@@ -2172,7 +2189,7 @@ fn resolution_failure(
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
-    reference_labels: Option<&[String]>,
+    refdef_labels: Option<&[String]>,
 ) {
     let tcx = collector.cx.tcx;
     report_diagnostic(
@@ -2209,12 +2226,12 @@ fn resolution_failure(
                 {
                     use DefKind::*;
 
-                    // Match the original link label, rather than the path produced by
-                    // Rust-specific preprocessing.
-                    let reference_candidate = reference_labels.and_then(|labels| {
+                    let reference_candidate = refdef_labels.and_then(|labels| {
+                        // Match the original link label, rather than the path produced by
+                        // Rust-specific preprocessing.
                         let label = diag_info.ori_link;
 
-                        if labels.is_empty() || label.chars().nth(1).is_none() {
+                        if labels.is_empty() || label.is_empty() {
                             return None;
                         }
 
@@ -2222,15 +2239,14 @@ fn resolution_failure(
                         let candidates = labels
                             .iter()
                             .map(|reference_label| Symbol::intern(reference_label))
-                            .filter(|&candidate| candidate != lookup)
                             .collect::<Vec<_>>();
 
-                        find_best_match_for_name(&candidates, lookup, None)
+                        find_best_match_for_reference_label(&candidates, lookup)
                     });
 
                     // Both a replacement and plain help count as reference-label advice.
                     // Suppress the Rust-item typo and bracket-escaping fallbacks after either.
-                    let suggested_reference_label = if let Some(candidate) = reference_candidate {
+                    let refdef_label_was_suggested = reference_candidate.is_some_and(|candidate| {
                         let replacement = candidate.as_str();
                         let message =
                             format!("there is a similarly named reference label `{replacement}`");
@@ -2249,9 +2265,7 @@ fn resolution_failure(
                         }
 
                         true
-                    } else {
-                        false
-                    };
+                    });
 
                     let item_id = *item_id;
                     let module_id = *module_id;
@@ -2335,7 +2349,7 @@ fn resolution_failure(
 
                         // Prefer a concrete correction over generic advice about external links.
                         let suggested_item = !path_is_invalid
-                            && !suggested_reference_label
+                            && !refdef_label_was_suggested
                             && suggest_path_name_typo(
                                 collector,
                                 diag,
@@ -2361,7 +2375,7 @@ fn resolution_failure(
                                     "`macro_rules` named `{path_str}` exists in this crate, \
                                      but it is not in scope at this link's location"
                                 ));
-                            } else if !suggested_reference_label {
+                            } else if !refdef_label_was_suggested {
                                 // If the link has `::` in it, assume it was meant to be an
                                 // intra-doc link. Otherwise, the `[]` might be unrelated.
                                 diag.help(

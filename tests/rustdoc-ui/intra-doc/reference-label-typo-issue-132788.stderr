@@ -36,5 +36,29 @@ help: there is a similarly named reference label `configuration`
 LL | /// [Read][configuration].
    |                  +
 
-error: aborting due to 3 previous errors
+error: unresolved link to `CONFIGRATION`
+  --> $DIR/reference-label-typo-issue-132788.rs:20:6
+   |
+LL | /// [CONFIGRATION].
+   |      ^^^^^^^^^^^^ no item named `CONFIGRATION` in scope
+   |
+help: there is a similarly named reference label `configuration`
+   |
+LL - /// [CONFIGRATION].
+LL + /// [configuration].
+   |
+
+error: unresolved link to `configration`
+  --> $DIR/reference-label-typo-issue-132788.rs:27:6
+   |
+LL | /// [configration].
+   |      ^^^^^^^^^^^^ no item named `configration` in scope
+   |
+help: there is a similarly named reference label `CONFIGURATION`
+   |
+LL - /// [configration].
+LL + /// [CONFIGURATION].
+   |
+
+error: aborting due to 5 previous errors
 
