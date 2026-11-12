@@ -15,19 +15,21 @@ use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryConfig,
     TargetMachineFactoryFn, ThinLtoInput,
 };
-use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
+use rustc_codegen_ssa::traits::{
+    CodegenBackend, ExtraBackendMethods, TargetCpuInfo, TargetFeaturesInfo, WriteBackendMethods,
+};
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{LtoCli, OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{LtoCli, OptLevel, OutputFilenames};
 use rustc_session::{
     BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
 };
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{RelocModel, SplitDebuginfo, TlsModel};
+use rustc_target::spec::SplitDebuginfo;
 
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::write::{create_informational_target_machine, create_target_machine};
@@ -294,59 +296,12 @@ impl CodegenBackend for LlvmCodegenBackend {
         }
     }
 
-    fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {
-        use std::fmt::Write;
-        match req.kind {
-            PrintKind::RelocationModels => {
-                writeln!(out, "Available relocation models:").unwrap();
-                for name in RelocModel::ALL.iter().map(RelocModel::desc).chain(["default"]) {
-                    writeln!(out, "    {name}").unwrap();
-                }
-                writeln!(out).unwrap();
-            }
-            PrintKind::CodeModels => {
-                writeln!(out, "Available code models:").unwrap();
-                for name in &["tiny", "small", "kernel", "medium", "large"] {
-                    writeln!(out, "    {name}").unwrap();
-                }
-                writeln!(out).unwrap();
-            }
-            PrintKind::TlsModels => {
-                writeln!(out, "Available TLS models:").unwrap();
-                for name in TlsModel::ALL.iter().map(TlsModel::desc) {
-                    writeln!(out, "    {name}").unwrap();
-                }
-                writeln!(out).unwrap();
-            }
-            PrintKind::StackProtectorStrategies => {
-                writeln!(
-                    out,
-                    r#"Available stack protector strategies:
-    all
-        Generate stack canaries in all functions.
+    fn printable_target_cpus(&self, sess: &Session) -> Vec<TargetCpuInfo> {
+        llvm_util::printable_target_cpus(sess)
+    }
 
-    strong
-        Generate stack canaries in a function if it either:
-        - has a local variable of `[T; N]` type, regardless of `T` and `N`
-        - takes the address of a local variable.
-
-          (Note that a local variable being borrowed is not equivalent to its
-          address being taken: e.g. some borrows may be removed by optimization,
-          while by-value argument passing may be implemented with reference to a
-          local stack variable in the ABI.)
-
-    basic
-        Generate stack canaries in functions with local variables of `[T; N]`
-        type, where `T` is byte-sized and `N` >= 8.
-
-    none
-        Do not generate stack canaries.
-"#
-                )
-                .unwrap();
-            }
-            _other => llvm_util::print(req, out, sess),
-        }
+    fn printable_target_features(&self, sess: &Session) -> TargetFeaturesInfo {
+        llvm_util::printable_target_features(sess)
     }
 
     fn print_passes(&self) {

@@ -7,8 +7,8 @@ use rustc_lint_defs::builtin::{AARCH64_SOFTFLOAT_NEON, X86_SOFTFLOAT_SSE};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::EarlySession;
 use rustc_session::diagnostics::feature_err;
+use rustc_session::{EarlySession, Session};
 use rustc_span::{Span, Symbol, edit_distance, sym};
 use rustc_target::spec::{Arch, SanitizerSet, Target};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
@@ -594,4 +594,31 @@ pub(crate) fn provide(providers: &mut Providers) {
         asm_target_features,
         ..*providers
     }
+}
+
+pub fn rustc_target_features(
+    sess: &Session,
+    mut find_desc: impl FnMut(&'static str) -> Option<&'static str>,
+) -> Vec<(&'static str, &'static str)> {
+    let mut rustc_target_features = sess
+        .target
+        .rust_target_features()
+        .iter()
+        .filter_map(|(feature, gate, _implied)| {
+            // Only list (experimentally) supported features.
+            if !gate.in_cfg() {
+                return None;
+            }
+            let desc = find_desc(feature)?;
+            Some((*feature, desc))
+        })
+        .collect::<Vec<_>>();
+
+    rustc_target_features.extend_from_slice(&[(
+        "crt-static",
+        "Enables C Run-time Libraries to be statically linked",
+    )]);
+    rustc_target_features.sort();
+
+    rustc_target_features
 }

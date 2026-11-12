@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::ffi::{CStr, CString};
-use std::fmt::Write;
 use std::path::Path;
 use std::sync::Once;
 use std::{ptr, slice, str};
@@ -11,11 +10,12 @@ use rustc_abi::Endian;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::target_features::internal_target_features;
+use rustc_codegen_ssa::traits::{TargetCpuInfo, TargetFeaturesInfo};
 use rustc_codegen_ssa::{TargetConfig, target_features};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
-use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
+use rustc_session::config::NATIVE_CPU;
 use rustc_session::{EarlySession, Session};
 use rustc_span::{bug, sym};
 use rustc_target::spec::{
@@ -485,7 +485,7 @@ pub(crate) fn print_passes() {
     }
 }
 
-fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
+fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&'static str, &'static str)> {
     let len = unsafe { llvm::LLVMRustGetTargetFeaturesCount(tm) };
     let mut ret = Vec::with_capacity(len);
     for i in 0..len {
@@ -508,39 +508,28 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
     ret
 }
 
-pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
+pub(crate) fn printable_target_cpus(sess: &Session) -> Vec<TargetCpuInfo> {
     require_inited();
     let tm = create_informational_target_machine(sess);
-    match req.kind {
-        PrintKind::TargetCPUs => print_target_cpus(sess, tm.raw(), out),
-        PrintKind::TargetFeatures => print_target_features(sess, tm.raw(), out),
-        _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
-    }
-}
 
-fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
     let cpu_names = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustPrintTargetCPUs(tm, s);
+        llvm::LLVMRustPrintTargetCPUs(tm.raw(), s);
     })
     .unwrap();
 
-    struct Cpu<'a> {
-        cpu_name: &'a str,
-        remark: String,
-    }
-    // Compare CPU against current target to label the default. Do not print it if
+    // Compare CPU against current target to label the default. Do not label it if
     // `need_explicit_cpu` is set, because in that case the concept of default makes less sense.
     let target_cpu = handle_native(&sess.target.cpu);
     let make_remark = |cpu_name| {
         if cpu_name == target_cpu && !sess.target.need_explicit_cpu {
-            // FIXME(#132514): This prints the LLVM target string, which can be
+            // FIXME(#132514): This uses the LLVM target string, which can be
             // different from the Rust target string. Is that intended?
             let target = &sess.target.llvm_target;
-            format!(
-                " - This is the default target CPU for the current build target (currently {target})."
-            )
+            Some(format!(
+                "This is the default target CPU for the current build target (currently {target})."
+            ))
         } else {
-            "".to_owned()
+            None
         }
     };
     let mut cpus = cpu_names
@@ -548,92 +537,53 @@ fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String)
         .filter(|cpu_name| {
             !sess.target.unsupported_cpus.contains(&std::borrow::Cow::Borrowed(*cpu_name))
         })
-        .map(|cpu_name| Cpu { cpu_name, remark: make_remark(cpu_name) })
+        .map(|cpu_name| TargetCpuInfo { name: cpu_name.to_owned(), remark: make_remark(cpu_name) })
         .collect::<VecDeque<_>>();
 
-    // Only print the "native" entry when host and target are the same arch,
+    // Only add the "native" entry when host and target are the same arch,
     // since otherwise it could be wrong or misleading.
-    // Also do not print it if `requires_consistent_cpu` is set, because in this case
+    // Also do not add it if `requires_consistent_cpu` is set, because in this case
     // "native" would be rejected.
     if sess.host.arch == sess.target.arch && !sess.target.requires_consistent_cpu {
         let host = get_host_cpu_name();
-        cpus.push_front(Cpu {
-            cpu_name: NATIVE_CPU,
-            remark: format!(" - Select the CPU of the current host (currently {host})."),
+        cpus.push_front(TargetCpuInfo {
+            name: NATIVE_CPU.to_owned(),
+            remark: Some(format!("Select the CPU of the current host (currently {host}).")),
         });
     }
 
-    let max_name_width = cpus.iter().map(|cpu| cpu.cpu_name.len()).max().unwrap_or(0);
-    writeln!(out, "Available CPUs for this target:").unwrap();
-    for Cpu { cpu_name, remark } in cpus {
-        // Only pad the CPU name if there's a remark to print after it.
-        let width = if remark.is_empty() { 0 } else { max_name_width };
-        writeln!(out, "    {cpu_name:<width$}{remark}").unwrap();
-    }
+    cpus.into()
 }
 
-fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
-    let mut llvm_target_features = llvm_target_features(tm);
+pub(crate) fn printable_target_features(sess: &Session) -> TargetFeaturesInfo {
+    require_inited();
+    let tm = create_informational_target_machine(sess);
+
+    let mut llvm_target_features = llvm_target_features(tm.raw());
     let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
-    let mut rustc_target_features = sess
-        .target
-        .rust_target_features()
-        .iter()
-        .filter_map(|(feature, gate, _implied)| {
-            if !gate.in_cfg() {
-                // Only list (experimentally) supported features.
-                return None;
+
+    let rustc_target_features = target_features::rustc_target_features(sess, |feature| {
+        // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
+        // strings.
+        let llvm_feature = to_llvm_features(&sess.target, feature)?.llvm_feature_name;
+        let desc = match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok()
+        {
+            Some(index) => {
+                known_llvm_target_features.insert(llvm_feature);
+                llvm_target_features[index].1
             }
-            // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
-            // strings.
-            let llvm_feature = to_llvm_features(&sess.target, feature)?.llvm_feature_name;
-            let desc =
-                match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
-                    Some(index) => {
-                        known_llvm_target_features.insert(llvm_feature);
-                        llvm_target_features[index].1
-                    }
-                    None => "",
-                };
+            None => "",
+        };
 
-            Some((*feature, desc))
-        })
-        .collect::<Vec<_>>();
-
-    // Since we add this at the end ...
-    rustc_target_features.extend_from_slice(&[(
-        "crt-static",
-        "Enables C Run-time Libraries to be statically linked",
-    )]);
-    // ... we need to sort the list again.
-    rustc_target_features.sort();
+        Some(desc)
+    });
 
     llvm_target_features.retain(|(f, _d)| !known_llvm_target_features.contains(f));
 
-    let max_feature_len = llvm_target_features
-        .iter()
-        .chain(rustc_target_features.iter())
-        .map(|(feature, _desc)| feature.len())
-        .max()
-        .unwrap_or(0);
-
-    writeln!(out, "Features supported by rustc for this target:").unwrap();
-    for (feature, desc) in &rustc_target_features {
-        writeln!(out, "    {feature:max_feature_len$} - {desc}.").unwrap();
+    TargetFeaturesInfo {
+        rustc_features: rustc_target_features,
+        backend_features: llvm_target_features,
     }
-    writeln!(out, "\nCode-generation features supported by LLVM for this target:").unwrap();
-    for (feature, desc) in &llvm_target_features {
-        writeln!(out, "    {feature:max_feature_len$} - {desc}.").unwrap();
-    }
-    if llvm_target_features.is_empty() {
-        writeln!(out, "    Target features listing is not supported by this LLVM version.")
-            .unwrap();
-    }
-    writeln!(out, "\nUse +feature to enable a feature, or -feature to disable it.").unwrap();
-    writeln!(out, "For example, rustc -C target-cpu=mycpu -C target-feature=+feature1,-feature2\n")
-        .unwrap();
-    writeln!(out, "Code-generation features cannot be used in cfg or #[target_feature],").unwrap();
-    writeln!(out, "and may be renamed or removed in a future version of LLVM or rustc.\n").unwrap();
 }
 
 /// Returns the host CPU name, according to LLVM.

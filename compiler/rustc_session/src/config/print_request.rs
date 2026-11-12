@@ -131,7 +131,7 @@ pub enum PrintCategory {
 }
 
 impl PrintKind {
-    fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         use PrintKind::*;
         match self {
             // tidy-alphabetical-start

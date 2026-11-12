@@ -38,7 +38,7 @@ use tracing::debug;
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
 use crate::config::native_libs::parse_native_libs;
 pub use crate::config::print_request::{
-    PrintCategory, PrintKind, PrintRequest, collect_print_requests,
+    PrintCategory, PrintKind, PrintOutputFormat, PrintRequest, collect_print_requests,
 };
 use crate::diagnostics::FileWriteFail;
 use crate::macros::AllVariants;
