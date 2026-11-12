@@ -37,7 +37,7 @@ pub(crate) fn expand_derive_eq(
                 cx.generated_attr(span, ast::GeneratedAttr::CoverageOff),
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            body: Box::new(assert_fields_eq_body),
+            body: MethodBody::SubstructureFunc(Box::new(assert_fields_eq_body)),
         }],
         is_const,
         ..

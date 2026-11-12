@@ -47,12 +47,12 @@ pub(crate) fn expand_derive_debug(
                 cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            body: Box::new(|cx, span, substr| debug_body(
+            body: MethodBody::SubstructureFunc(Box::new(|cx, span, substr| debug_body(
                 cx,
                 span,
                 substr,
                 item.kind.ident().unwrap()
-            )),
+            ))),
         }],
         is_const,
         ..
