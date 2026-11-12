@@ -21,12 +21,27 @@ use minicore::*;
 #[rustc_intrinsic]
 pub unsafe fn nontemporal_store<T>(ptr: *mut T, val: T);
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn a(a: &mut u32, b: u32) {
     // CHECK-LABEL: define{{.*}}void @a
     // with_nontemporal: store i32 %b, ptr %a, align 4, !nontemporal
     // without_nontemporal-NOT: nontemporal
     unsafe {
         nontemporal_store(a, b);
+    }
+}
+
+// Ensure that we don't use an LLVM aggregate to store Rust aggregates.
+
+pub struct AnAggregate(u16, u16, u16, u8, u8, u8);
+
+impl Copy for AnAggregate {}
+
+#[unsafe(no_mangle)]
+pub fn b(dest: &mut AnAggregate, value: &AnAggregate) {
+    // CHECK-LABEL: define{{.*}}void @b
+    // CHECK-NOT: store {{[\[\{%].*}}
+    unsafe {
+        nontemporal_store(dest, *value);
     }
 }
