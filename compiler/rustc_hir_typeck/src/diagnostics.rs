@@ -1409,7 +1409,7 @@ pub(crate) struct FieldNotPartOfView<'tcx> {
     pub(crate) field: Symbol,
     #[primary_span]
     pub(crate) span: Span,
-    #[note("this expression has type {$ty}, of which only {$fields} can be accessed")]
+    #[note("this expression has type `{$ty}`, of which only {$fields} can be accessed")]
     pub(crate) note: Span,
     pub(crate) ty: Ty<'tcx>,
     pub(crate) fields: DiagSymbolList,
