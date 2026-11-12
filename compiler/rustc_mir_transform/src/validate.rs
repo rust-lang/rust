@@ -453,7 +453,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     }
                 }
 
-                if let ty::FnDef(did, ..) = *func.ty(&self.body.local_decls, self.tcx).kind()
+                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
                     && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
                     && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
                 {
@@ -699,7 +699,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+                    ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                         self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().kind()
                     }
                     kind => kind,
@@ -714,7 +714,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         check_equal(self, location, *f_ty);
                     }
                     // Debug info is allowed to project into pattern types
-                    ty::Pat(base, _) => check_equal(self, location, *base),
+                    ty::Pat(base, _) => check_equal(self, location, base),
                     ty::Adt(adt_def, args) => {
                         if !adt_def.can_project_fields(self.tcx) {
                             let message =
@@ -736,7 +736,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             fail_out_of_bounds(self, location);
                             return;
                         };
-                        check_equal(self, location, field.ty(self.tcx, *args).skip_norm_wip());
+                        check_equal(self, location, field.ty(self.tcx, args).skip_norm_wip());
                     }
                     ty::Closure(_, args) => {
                         let args = args.as_closure();
@@ -754,7 +754,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Coroutine(def_id, args) => {
+                    ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             // If we're currently validating an inlined copy of this body,
                             // then it will no longer be parameterized over the original
@@ -889,7 +889,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
                 let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
-                let ty::UnsafeBinder(binder_ty) = *binder_ty.ty.kind() else {
+                let ty::UnsafeBinder(binder_ty) = binder_ty.ty.kind() else {
                     self.fail(
                         location,
                         format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
@@ -1124,7 +1124,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let data_ptr_ty = data_ptr.ty(self.body, self.tcx);
                         let metadata_ty = metadata.ty(self.body, self.tcx);
                         if let ty::RawPtr(in_pointee, in_mut) = data_ptr_ty.kind() {
-                            if *in_mut != mutability {
+                            if in_mut != mutability {
                                 self.fail(location, "input and output mutability must match");
                             }
 
@@ -1460,7 +1460,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             Rvalue::WrapUnsafeBinder(op, ty) => {
                 let unwrapped_ty = op.ty(self.body, self.tcx);
-                let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
+                let ty::UnsafeBinder(binder_ty) = ty.kind() else {
                     self.fail(
                         location,
                         format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),

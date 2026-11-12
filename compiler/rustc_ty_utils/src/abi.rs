@@ -43,7 +43,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     }
 
     let ty = instance.ty(tcx, typing_env);
-    match *ty.kind() {
+    match ty.kind() {
         ty::FnDef(def_id, args) => {
             let mut sig = tcx.instantiate_bound_regions_with_erased(
                 tcx.fn_sig(def_id).instantiate(tcx, args.no_bound_vars().unwrap()).skip_norm_wip(),
@@ -159,7 +159,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
                             let expected_adt =
                                 tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
-                            assert_eq!(*resume_ty_adt, expected_adt);
+                            assert_eq!(resume_ty_adt, expected_adt);
                         } else {
                             panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
                         };
@@ -195,7 +195,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                         if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
                             let expected_adt =
                                 tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
-                            assert_eq!(*resume_ty_adt, expected_adt);
+                            assert_eq!(resume_ty_adt, expected_adt);
                         } else {
                             panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
                         };

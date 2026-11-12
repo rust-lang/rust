@@ -171,10 +171,10 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         };
 
         let (a, b) = match (a.kind(), b.kind()) {
-            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _) => {
+            (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }), _) => {
                 (a, enable_subtyping(b, true)?)
             }
-            (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
+            (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
                 (enable_subtyping(a, false)?, b)
             }
             _ => unreachable!(
@@ -394,15 +394,15 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
             return Ok(a);
         }
 
-        match (a.kind(), b.kind()) {
-            (_, &ty::Infer(ty::TyVar(_))) => {
+        match (a.kind_ref(), b.kind_ref()) {
+            (_, ty::Infer(ty::TyVar(_))) => {
                 span_bug!(
                     self.span(),
                     "should not be relating type variables on the right in MIR typeck"
                 );
             }
 
-            (&ty::Alias(ty::IsRigid::No, _), _) | (_, &ty::Alias(ty::IsRigid::No, _))
+            (ty::Alias(ty::IsRigid::No, _), _) | (_, ty::Alias(ty::IsRigid::No, _))
                 if infcx.next_trait_solver() =>
             {
                 // NOTE(khyperia): If this turns out to be possible, either the caller should
@@ -420,8 +420,8 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
             }
 
             (
-                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
-                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
                 super_combine_tys(&infcx.infcx, self, a, b).map(|_| ()).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
@@ -435,8 +435,8 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
                     if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
                 })?;
             }
-            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
-            | (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+            (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
+            | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
                 if def_id.is_local() && !self.type_checker.infcx.next_trait_solver() =>
             {
                 self.relate_opaques(a, b)?;

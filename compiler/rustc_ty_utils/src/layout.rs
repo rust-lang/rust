@@ -237,7 +237,7 @@ fn layout_of_uncached<'tcx>(
     };
     debug_assert!(!ty.has_non_region_infer());
 
-    Ok(match *ty.kind() {
+    Ok(match ty.kind() {
         ty::Pat(ty, pat) => {
             let layout = cx.layout_of(ty)?.layout;
             let mut layout = LayoutData::clone(&layout.0);
@@ -654,7 +654,7 @@ fn layout_of_uncached<'tcx>(
                 .is_struct()
                 .then(|| &def.variant(FIRST_VARIANT).fields)
                 .filter(|fields| fields.len() == 1)
-                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip().kind())
+                .map(|fields| fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip().kind())
             else {
                 // Invalid SIMD types should have been caught by typeck by now.
                 let guar = tcx.dcx().delayed_bug("#[repr(simd)] was applied to an invalid ADT");
@@ -918,7 +918,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tc
         );
     };
 
-    match *layout.ty.kind() {
+    match layout.ty.kind() {
         ty::Adt(adt_def, _) => {
             debug!("print-type-size t: `{:?}` process adt", layout.ty);
             let adt_kind = adt_def.adt_kind();

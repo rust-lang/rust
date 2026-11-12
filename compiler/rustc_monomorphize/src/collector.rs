@@ -786,7 +786,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Closure(source_ty));
                 let source_ty = self.monomorphize(source_ty);
-                if let ty::Closure(def_id, args) = *source_ty.kind() {
+                if let ty::Closure(def_id, args) = source_ty.kind() {
                     let instance =
                         Instance::resolve_closure(self.tcx, def_id, args, ty::ClosureKind::FnOnce);
                     if self.tcx.should_codegen_locally(instance) {
@@ -845,7 +845,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // post-mono MIR optimizations, which we don't yet have.
                 let force_indirect_call =
                     if matches!(terminator.kind, mir::TerminatorKind::TailCall { .. })
-                        && let &ty::FnDef(def_id, args) = callee_ty.kind()
+                        && let ty::FnDef(def_id, args) = callee_ty.kind()
                         && let instance = ty::Instance::expect_resolve(
                             self.tcx,
                             ty::TypingEnv::fully_monomorphized(),
@@ -868,7 +868,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     &mut self.used_items,
                 );
 
-                if let ty::FnDef(def_id, _) = *callee_ty.kind()
+                if let ty::FnDef(def_id, _) = callee_ty.kind()
                     && self.tcx.is_intrinsic(def_id, rustc_span::sym::offload)
                     && let Some(kernel) = args.first()
                 {
@@ -967,7 +967,7 @@ fn visit_fn_use<'tcx>(
     source: Span,
     output: &mut MonoItems<'tcx>,
 ) {
-    if let ty::FnDef(def_id, args) = *ty.kind() {
+    if let ty::FnDef(def_id, args) = ty.kind() {
         let args = args.no_bound_vars().unwrap();
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(
@@ -1171,12 +1171,12 @@ fn find_tails_for_unsizing<'tcx>(
     debug_assert!(!target_ty.has_param(), "{target_ty} should be fully monomorphic");
 
     match (source_ty.kind(), target_ty.kind()) {
-        (&ty::Pat(source, _), &ty::Pat(target, _)) => find_tails_for_unsizing(tcx, source, target),
+        (ty::Pat(source, _), ty::Pat(target, _)) => find_tails_for_unsizing(tcx, source, target),
         (
-            &ty::Ref(_, source_pointee, _),
-            &ty::Ref(_, target_pointee, _) | &ty::RawPtr(target_pointee, _),
+            ty::Ref(_, source_pointee, _),
+            ty::Ref(_, target_pointee, _) | ty::RawPtr(target_pointee, _),
         )
-        | (&ty::RawPtr(source_pointee, _), &ty::RawPtr(target_pointee, _)) => {
+        | (ty::RawPtr(source_pointee, _), ty::RawPtr(target_pointee, _)) => {
             tcx.struct_lockstep_tails_for_codegen(source_pointee, target_pointee, typing_env)
         }
 
@@ -1189,7 +1189,7 @@ fn find_tails_for_unsizing<'tcx>(
             tcx.struct_lockstep_tails_for_codegen(source_boxed, target_boxed, typing_env)
         }
 
-        (&ty::Adt(source_adt_def, source_args), &ty::Adt(target_adt_def, target_args)) => {
+        (ty::Adt(source_adt_def, source_args), ty::Adt(target_adt_def, target_args)) => {
             assert_eq!(source_adt_def, target_adt_def);
             let CustomCoerceUnsized::Struct(coerce_index) =
                 match crate::custom_coerce_unsize_info(tcx, source_ty, target_ty) {
@@ -1416,7 +1416,7 @@ fn visit_mentioned_item<'tcx>(
 ) {
     match *item {
         MentionedItem::Fn(ty) => {
-            if let ty::FnDef(def_id, args) = *ty.kind() {
+            if let ty::FnDef(def_id, args) = ty.kind() {
                 let args = args.no_bound_vars().unwrap();
                 let instance = Instance::expect_resolve(
                     tcx,
@@ -1446,7 +1446,7 @@ fn visit_mentioned_item<'tcx>(
             }
         }
         MentionedItem::Closure(source_ty) => {
-            if let ty::Closure(def_id, args) = *source_ty.kind() {
+            if let ty::Closure(def_id, args) = source_ty.kind() {
                 let instance =
                     Instance::resolve_closure(tcx, def_id, args, ty::ClosureKind::FnOnce);
                 if tcx.should_codegen_locally(instance) {
@@ -1694,7 +1694,7 @@ impl<'v> RootCollector<'_, 'v> {
             DefKind::Closure => {
                 // for 'pub async fn foo(..)' also trying to monomorphize foo::{closure}
                 let is_pub_fn_coroutine =
-                    match *self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
+                    match self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
                         ty::Coroutine(cor_id, _args) => {
                             let tcx = self.tcx;
                             let parent_id = tcx.parent(cor_id);
@@ -1711,7 +1711,7 @@ impl<'v> RootCollector<'_, 'v> {
                         .generics_of(self.tcx.typeck_root_def_id_local(def_id))
                         .requires_monomorphization(self.tcx)
                 {
-                    let instance = match *self
+                    let instance = match self
                         .tcx
                         .type_of(def_id)
                         .instantiate_identity()

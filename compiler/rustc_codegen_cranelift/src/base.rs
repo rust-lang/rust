@@ -714,7 +714,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                 ) => {
                     let from_ty = fx.monomorphize(operand.ty(&fx.mir.local_decls, fx.tcx));
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
-                    match *from_ty.kind() {
+                    match from_ty.kind() {
                         ty::FnDef(def_id, args) => {
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(
@@ -803,7 +803,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     _to_ty,
                 ) => {
                     let operand = codegen_operand(fx, operand);
-                    match *operand.layout().ty.kind() {
+                    match operand.layout().ty.kind() {
                         ty::Closure(def_id, args) => {
                             let instance = Instance::resolve_closure(
                                 fx.tcx,
@@ -946,7 +946,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
             }) => {
                 let dst = codegen_operand(fx, dst);
 
-                let &ty::RawPtr(pointee, _) = dst.layout().ty.kind() else {
+                let ty::RawPtr(pointee, _) = dst.layout().ty.kind() else {
                     bug!("expected pointer")
                 };
                 let pointee_layout = fx
@@ -972,7 +972,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
 }
 
 fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx>) -> Value {
-    match *place.layout().ty.kind() {
+    match place.layout().ty.kind() {
         ty::Array(_elem_ty, len) => {
             let len = fx
                 .monomorphize(len)
@@ -1028,16 +1028,16 @@ pub(crate) fn codegen_place<'tcx>(
                 match cplace.layout().ty.kind() {
                     ty::Array(elem_ty, _len) => {
                         assert!(!from_end, "array subslices are never `from_end`");
-                        let elem_layout = fx.layout_of(*elem_ty);
+                        let elem_layout = fx.layout_of(elem_ty);
                         let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
-                            fx.layout_of(Ty::new_array(fx.tcx, *elem_ty, to - from)),
+                            fx.layout_of(Ty::new_array(fx.tcx, elem_ty, to - from)),
                         );
                     }
                     ty::Slice(elem_ty) => {
                         assert!(from_end, "slice subslices should be `from_end`");
-                        let elem_layout = fx.layout_of(*elem_ty);
+                        let elem_layout = fx.layout_of(elem_ty);
                         let (ptr, len) = cplace.to_ptr_unsized();
                         cplace = CPlace::for_ptr_with_extra(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),

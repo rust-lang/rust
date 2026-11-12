@@ -455,7 +455,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     // and only use it for placeholders. We need to handle the
                     // `sub_root` of type inference variables which would make this
                     // more involved. They are also a lot rarer than region variables.
-                    if let ty::Bound(index_kind, b) = *result_value.kind()
+                    if let ty::Bound(index_kind, b) = result_value.kind()
                         && !matches!(
                             query_response.var_kinds[b.var.as_usize()],
                             CanonicalVarKind::Ty { .. }

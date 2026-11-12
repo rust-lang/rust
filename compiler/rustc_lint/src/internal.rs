@@ -179,7 +179,7 @@ fn get_callee_span_generic_args_and_args<'tcx>(
         && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()
     {
         return Some((
-            *callee_def_id,
+            callee_def_id,
             callee.span,
             generic_args.no_bound_vars().unwrap(),
             None,
@@ -748,7 +748,7 @@ fn is_rustc_must_match_exhaustively(cx: &LateContext<'_>, id: HirId) -> Option<S
 
     let ty = res.node_type(id);
 
-    let ty = if let ty::Ref(_, ty, _) = ty.kind() { *ty } else { ty };
+    let ty = if let ty::Ref(_, inner_ty, _) = ty.kind() { inner_ty } else { ty };
 
     if let Some(adt_def) = ty.ty_adt_def()
         && adt_def.is_enum()

@@ -264,9 +264,9 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let t = arg.layout.ty;
                     let t = match t.kind() {
                         ty::Array(ct, _)
-                            if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
+                            if (ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() =>
                         {
-                            Ty::new_imm_ptr(cx.tcx, *ct)
+                            Ty::new_imm_ptr(cx.tcx, ct)
                         }
                         _ => t,
                     };

@@ -125,7 +125,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Convert discriminant to variant index. The tag may pass the layout range
                 // check above but still not match any actual variant discriminant (e.g.,
                 // non-contiguous discriminants with a wrapping valid_range).
-                let index = match *ty.kind() {
+                let index = match ty.kind() {
                     ty::Adt(adt, _) => {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }

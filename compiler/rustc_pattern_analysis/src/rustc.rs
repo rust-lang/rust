@@ -126,7 +126,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
         fn reveal_inner<'tcx>(cx: &RustcPatCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
             debug_assert!(!cx.tcx.next_trait_solver_globally());
-            let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
+            let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.kind()
             else {
                 bug!()
             };
@@ -192,7 +192,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> {
         let ty::Adt(_, args) = ty.kind() else { bug!() };
         variant.fields.iter().map(move |field| {
-            let ty = field.ty(self.tcx, *args);
+            let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty =
                 self.tcx.try_normalize_erasing_regions(self.typing_env, ty).unwrap_or_else(|e| {
@@ -246,7 +246,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => reveal_and_alloc(cx, fs.iter()),
                 ty::Adt(adt, _) => {
-                    let variant = &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
+                    let variant = &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, adt));
                     let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
                         let is_visible =
                             adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
@@ -259,7 +259,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
             Ref => match ty.kind() {
-                ty::Ref(_, rty, _) => reveal_and_alloc(cx, once(*rty)),
+                ty::Ref(_, rty, _) => reveal_and_alloc(cx, once(rty)),
                 _ => bug!("Unexpected type for `Ref` constructor: {ty:?}"),
             },
             Slice(slice) => match ty.builtin_index() {
@@ -286,7 +286,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => fs.len(),
                 ty::Adt(adt, ..) => {
-                    let variant_idx = RustcPatCtxt::variant_index_for_adt(&ctor, *adt);
+                    let variant_idx = RustcPatCtxt::variant_index_for_adt(&ctor, adt);
                     adt.variant(variant_idx).fields.len()
                 }
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
@@ -328,7 +328,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     range_2: Some(make_uint_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
                 }
             }
-            &ty::Int(ity) => {
+            ty::Int(ity) => {
                 let range = if ty.is_ptr_sized_integral() {
                     // The min/max values of `isize` are not allowed to be observed.
                     IntRange {
@@ -345,7 +345,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 };
                 ConstructorSet::Integers { range_1: range, range_2: None }
             }
-            &ty::Uint(uty) => {
+            ty::Uint(uty) => {
                 let range = if ty.is_ptr_sized_integral() {
                     // The max value of `usize` is not allowed to be observed.
                     let lo = MaybeInfiniteInt::new_finite_uint(0);
@@ -359,13 +359,13 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             ty::Slice(sub_ty) => ConstructorSet::Slice {
                 array_len: None,
-                subtype_is_empty: cx.is_uninhabited(*sub_ty),
+                subtype_is_empty: cx.is_uninhabited(sub_ty),
             },
             ty::Array(sub_ty, len) => {
                 // We treat arrays of a constant but unknown length like slices.
                 ConstructorSet::Slice {
                     array_len: len.try_to_target_usize(cx.tcx).map(|l| l as usize),
-                    subtype_is_empty: cx.is_uninhabited(*sub_ty),
+                    subtype_is_empty: cx.is_uninhabited(sub_ty),
                 }
             }
             ty::Adt(def, args) if def.is_enum() => {
@@ -380,7 +380,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         // Visibly uninhabited variants.
                         let is_inhabited = v
                             .inhabited_predicate(cx.tcx)
-                            .instantiate(cx.tcx, *args)
+                            .instantiate(cx.tcx, args)
                             .apply_revealing_opaque(cx.tcx, cx.typing_env, cx.module, &|key| {
                                 cx.reveal_opaque_key(key)
                             });
@@ -444,7 +444,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
             PatRangeBoundary::Finite(value) => {
                 let bits = value.to_leaf().to_bits_unchecked();
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Int(ity) => {
                         let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
                         MaybeInfiniteInt::new_finite_int(bits, size)
@@ -517,8 +517,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             PatKind::Variant { variant_index, .. } => Variant(variant_index),
                             _ => bug!(),
                         };
-                        let variant =
-                            &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, *adt));
+                        let variant = &adt.variant(RustcPatCtxt::variant_index_for_adt(&ctor, adt));
                         arity = variant.fields.len();
                         fields = subpatterns
                             .iter()
@@ -543,7 +542,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = {
                             let bits = value.to_leaf().to_bits_unchecked();
-                            let x = match *ty.kind() {
+                            let x = match ty.kind() {
                                 ty::Int(ity) => {
                                     let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
                                     MaybeInfiniteInt::new_finite_int(bits, size)
@@ -722,7 +721,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             NegInfinity => PatRangeBoundary::NegInfinity,
             Finite(_) => {
                 let size = ty.primitive_size(tcx);
-                let bits = match *ty.kind() {
+                let bits = match ty.kind() {
                     ty::Int(_) => miint.as_finite_int(size.bits()).unwrap(),
                     _ => miint.as_finite_uint().unwrap(),
                 };
@@ -788,7 +787,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Str(s) => s.to_string(),
             IntRange(range) => return self.print_pat_range(range, *pat.ty()),
             Struct | Variant(_) | UnionField => {
-                let enum_info = match *pat.ty().kind() {
+                let enum_info = match pat.ty().kind() {
                     ty::Adt(adt_def, _) if adt_def.is_enum() => EnumInfo::Enum {
                         adt_def,
                         variant_index: RustcPatCtxt::variant_index_for_adt(pat.ctor(), adt_def),
@@ -921,7 +920,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
         ty: &Self::Ty,
     ) -> fmt::Result {
         if let ty::Adt(adt, _) = ty.kind() {
-            let variant = adt.variant(Self::variant_index_for_adt(ctor, *adt));
+            let variant = adt.variant(Self::variant_index_for_adt(ctor, adt));
             write!(f, "{}", variant.name)?;
         }
         Ok(())

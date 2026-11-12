@@ -219,7 +219,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
             return Ok(*ty);
         }
 
-        let &ty::Alias(_, data) = ty.kind() else {
+        let ty::Alias(_, data) = ty.kind() else {
             let res = ty.try_super_fold_with(self)?;
             self.cache.insert(ty, res);
             return Ok(res);

@@ -184,7 +184,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let enum_type = unique_type_id.expect_ty();
-    let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
+    let ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
     };
 
@@ -267,7 +267,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
 ) -> DINodeCreationResult<'ll> {
     let coroutine_type = unique_type_id.expect_ty();
     let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
-        let &ty::Coroutine(coroutine_def_id, _) = coroutine_type.kind() else {
+        let ty::Coroutine(coroutine_def_id, _) = coroutine_type.kind() else {
             bug!("build_coroutine_di_node() called with non-coroutine type: `{:?}`", coroutine_type)
         };
         Some(file_metadata_from_def_id(cx, Some(coroutine_def_id)))
@@ -715,7 +715,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
     };
 
     let (coroutine_def_id, coroutine_args) = match coroutine_type_and_layout.ty.kind() {
-        &ty::Coroutine(def_id, args) => (def_id, args.as_coroutine()),
+        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine()),
         _ => unreachable!(),
     };
 

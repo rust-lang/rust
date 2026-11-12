@@ -183,7 +183,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let &ty::Infer(infer_ty) = ty.kind() {
+        if let ty::Infer(infer_ty) = ty.kind() {
             match infer_ty {
                 ty::TyVar(vid) => {
                     if self.snapshot_vars.type_vars.0.contains(&vid) {

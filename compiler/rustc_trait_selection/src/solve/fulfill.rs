@@ -290,7 +290,7 @@ where
             // infer var, some unification happened, so the goal is no longer
             // stalled. Include it to be re-evaluated downstream.
             stalled_on.stalled_vars.iter().filter_map(|arg| arg.as_type(infcx.tcx)).any(|ty| {
-                match *infcx.shallow_resolve(ty).kind() {
+                match infcx.shallow_resolve(ty).kind() {
                     ty::Infer(ty::TyVar(tv)) => infcx.sub_unification_table_root_var(tv) == vid,
                     _ => true,
                 }

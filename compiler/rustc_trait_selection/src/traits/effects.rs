@@ -185,7 +185,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
             kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
             ..
         },
-    ) = *consider_ty.kind()
+    ) = consider_ty.kind()
     {
         if tcx.is_conditionally_const(def_id) {
             for clause in elaborate(
@@ -281,7 +281,7 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
             kind: kind @ (ty::Projection { def_id } | ty::Opaque { def_id }),
             ..
         },
-    ) = *consider_ty.kind()
+    ) = consider_ty.kind()
     {
         for clause in tcx
             .item_bounds(def_id)
@@ -353,7 +353,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     let tcx = selcx.tcx();
     let self_ty = obligation.predicate.self_ty();
-    let constituent_tys = match *self_ty.kind() {
+    let constituent_tys = match self_ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
         ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
@@ -451,7 +451,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
     let destruct_def_id = tcx.require_lang_item(LangItem::Destruct, obligation.cause.span);
     let self_ty = obligation.predicate.self_ty();
 
-    let const_conditions = match *self_ty.kind() {
+    let const_conditions = match self_ty.kind() {
         // `ManuallyDrop` is trivially `[const] Destruct` as we do not run any drop glue on it.
         ty::Adt(adt_def, _) if adt_def.is_manually_drop() => thin_vec![],
 
@@ -549,7 +549,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
     let tcx = selcx.tcx();
     let self_ty = obligation.predicate.self_ty();
 
-    let (def, args) = match *self_ty.kind() {
+    let (def, args) = match self_ty.kind() {
         ty::FnDef(def, args) => (def, args),
 
         // We may support function pointers at some point in the future

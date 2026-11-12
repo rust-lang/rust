@@ -149,7 +149,7 @@ pub fn is_ty_must_use<'tcx>(
     let is_uninhabited =
         |t: Ty<'tcx>| !t.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env());
 
-    match *ty.kind() {
+    match ty.kind() {
         _ if is_uninhabited(ty) => IsTyMustUse::Trivial,
         ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => {
             is_ty_must_use(cx, boxed, expr).map(|inner| MustUsePath::Boxed(Box::new(inner)))
@@ -305,7 +305,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             && let ty = cx.typeck_results().expr_ty(await_expr)
             && let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: future_def_id }, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
-            && let async_fn_def_id = cx.tcx.parent(*future_def_id)
+            && let async_fn_def_id = cx.tcx.parent(future_def_id)
             && matches!(cx.tcx.def_kind(async_fn_def_id), DefKind::Fn | DefKind::AssocFn)
             // Check that this `impl Future` actually comes from an `async fn`
             && cx.tcx.asyncness(async_fn_def_id).is_async()

@@ -184,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                         if are_zsts_allowed
                             && cx
                                 .tcx
-                                .layout_of(typing_env.as_query_input(*ty))
+                                .layout_of(typing_env.as_query_input(ty))
                                 .is_ok_and(|layout| layout.is_1zst())
                         {
                             break;

@@ -298,7 +298,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
 
     let ty_to_impl_span = |ty: Ty<'_>| {
         if let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }) = ty.kind()
-            && let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(def_id)
+            && let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&def_id)
             && let Some(impl_item) =
                 items.iter().find(|item| item.owner_id.to_def_id() == impl_item_id)
         {
@@ -781,7 +781,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
         let tcx = self.tcx();
 
-        match *t.kind() {
+        match t.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -1266,7 +1266,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
                             self.out.extend(elem_vals.iter().map(|&elem_val| {
                                 let predicate = ty::PredicateKind::Clause(
-                                    ty::ClauseKind::ConstArgHasType(elem_val, *elem_ty),
+                                    ty::ClauseKind::ConstArgHasType(elem_val, elem_ty),
                                 );
                                 traits::Obligation::with_depth(
                                     tcx,

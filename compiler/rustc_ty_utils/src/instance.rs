@@ -38,7 +38,7 @@ fn resolve_instance_raw<'tcx>(
 
             let shim = if ty.needs_drop(tcx, typing_env) {
                 debug!(" => nontrivial drop glue");
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Coroutine(coroutine_def_id, ..) => {
                         // FIXME: sync drop of coroutine with async drop (generate both versions?)
                         // Currently just ignored
@@ -68,7 +68,7 @@ fn resolve_instance_raw<'tcx>(
             let ty = args.type_at(0);
 
             if ty.needs_async_drop(tcx, typing_env) {
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Closure(..)
                     | ty::CoroutineClosure(..)
                     | ty::Coroutine(..)
@@ -336,7 +336,7 @@ fn resolve_associated_item<'tcx>(
                         tcx.item_name(trait_item_id)
                     )
                 }
-                match *rcvr_args.type_at(0).kind() {
+                match rcvr_args.type_at(0).kind() {
                     ty::Closure(closure_def_id, args) => {
                         Some(Instance::resolve_closure(tcx, closure_def_id, args, target_kind))
                     }
@@ -374,7 +374,7 @@ fn resolve_associated_item<'tcx>(
                 }
             } else if let Some(target_kind) = tcx.async_fn_trait_kind_from_def_id(trait_ref.def_id)
             {
-                match *rcvr_args.type_at(0).kind() {
+                match rcvr_args.type_at(0).kind() {
                     ty::CoroutineClosure(coroutine_closure_def_id, args) => {
                         if target_kind == ClosureKind::FnOnce
                             && args.as_coroutine_closure().kind() != ClosureKind::FnOnce

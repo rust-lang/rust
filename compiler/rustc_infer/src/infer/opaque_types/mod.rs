@@ -43,7 +43,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
-            ty_op: |ty| match *ty.kind() {
+            ty_op: |ty| match ty.kind() {
                 ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })
                     if self.can_define_opaque_ty(def_id) && !ty.has_escaping_bound_vars() =>
                 {
@@ -83,7 +83,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, TypeError<'tcx>> {
         debug_assert!(!self.next_trait_solver());
-        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
+        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match a.kind() {
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. })
                 if def_id.is_local() =>
             {
@@ -136,7 +136,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }) =
-                    *b.kind()
+                    b.kind()
                 {
                     // We could accept this, but there are various ways to handle this situation,
                     // and we don't want to make a decision on it right now. Likely this case is so
@@ -318,7 +318,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let replace_opaques_in = |clause: ty::Clause<'tcx>, goals: &mut Vec<_>| {
             clause.fold_with(&mut BottomUpFolder {
                 tcx,
-                ty_op: |ty| match *ty.kind() {
+                ty_op: |ty| match ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
                     // FIXME(RPITIT): Don't replace RPITITs with inference vars.

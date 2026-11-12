@@ -520,7 +520,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
     fn kind(self) -> TyKind<'tcx> {
-        *self.kind()
+        self.kind()
     }
 }
 
@@ -689,7 +689,7 @@ impl<'tcx> Term<'tcx> {
 
     pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
-            TermKind::Ty(ty) => match *ty.kind() {
+            TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(_, alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
@@ -1994,7 +1994,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If we have a `Coroutine` that comes from an coroutine-closure,
             // then it may be a by-move or by-ref body.
             let ty::Coroutine(_, identity_args) =
-                *self.type_of(def_id).instantiate_identity().skip_norm_wip().kind()
+                self.type_of(def_id).instantiate_identity().skip_norm_wip().kind()
             else {
                 unreachable!();
             };

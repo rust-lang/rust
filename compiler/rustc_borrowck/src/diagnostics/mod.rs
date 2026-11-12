@@ -250,7 +250,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             args,
             ..
         } = &terminator.kind
-            && let ty::FnDef(id, _) = *const_.ty().kind()
+            && let ty::FnDef(id, _) = const_.ty().kind()
         {
             debug!("add_moved_or_invoked_closure_note: id={:?}", id);
             if self.infcx.tcx.is_lang_item(self.infcx.tcx.parent(id), LangItem::FnOnce) {
@@ -493,7 +493,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             // If the type is a box, the field is described from the boxed type
             self.describe_field_from_ty(boxed_ty, field, variant_index, including_tuple_field)
         } else {
-            match *ty.kind() {
+            match ty.kind() {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
@@ -965,7 +965,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
     }
 
     fn from_call(func: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<Self> {
-        match *func.kind() {
+        match func.kind() {
             ty::FnDef(def_id, args) => {
                 let trait_id = tcx.trait_of_assoc(def_id)?;
 
@@ -1276,7 +1276,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     // LL | blk();
                     //    | ----- this value implements `FnOnce`, which causes it to be moved when called
                     // ```
-                    if let ty::Param(param_ty) = *self_ty.kind()
+                    if let ty::Param(param_ty) = self_ty.kind()
                         && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
                         && let param = generics.type_param(param_ty, self.infcx.tcx)
                         && let Some(hir_generics) = self.infcx.tcx.hir_get_generics(

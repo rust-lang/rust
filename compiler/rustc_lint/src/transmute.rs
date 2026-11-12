@@ -161,7 +161,7 @@ fn check_int_to_ptr_transmute<'tcx>(
         return;
     }
     // bail-out if the inner type is a ZST
-    let Ok(layout_inner_ty) = cx.tcx.layout_of(cx.typing_env().as_query_input(*inner_ty)) else {
+    let Ok(layout_inner_ty) = cx.tcx.layout_of(cx.typing_env().as_query_input(inner_ty)) else {
         return;
     };
     if layout_inner_ty.is_1zst() {
@@ -180,7 +180,7 @@ fn check_int_to_ptr_transmute<'tcx>(
                 (Some(krate), true) if dst.is_ref() => {
                     Some(IntegerToPtrTransmutesSuggestion::ToRef {
                         krate,
-                        dst: *inner_ty,
+                        dst: inner_ty,
                         suffix,
                         ref_mutbl: mutbl.prefix_str(),
                         start_call: expr.span.shrink_to_lo().until(arg.span),
@@ -188,7 +188,7 @@ fn check_int_to_ptr_transmute<'tcx>(
                 }
                 (Some(krate), true) => Some(IntegerToPtrTransmutesSuggestion::ToPtr {
                     krate,
-                    dst: *inner_ty,
+                    dst: inner_ty,
                     suffix,
                     start_call: expr.span.shrink_to_lo().until(arg.span),
                 }),
@@ -250,7 +250,7 @@ fn check_unnecessary_transmute<'tcx>(
         // dont check the length; transmute does that for us.
         // [u8; _] => primitive
         (ty::Array(t, _), ty::Uint(_) | ty::Float(_) | ty::Int(_))
-            if *t.kind() == ty::Uint(ty::UintTy::U8) =>
+            if t.kind() == ty::Uint(ty::UintTy::U8) =>
         {
             (
                 Some(vec![(callee_span, format!("{dst}::from_ne_bytes"))]),
@@ -261,7 +261,7 @@ fn check_unnecessary_transmute<'tcx>(
         }
         // primitive => [u8; _]
         (ty::Uint(_) | ty::Float(_) | ty::Int(_), ty::Array(t, _))
-            if *t.kind() == ty::Uint(ty::UintTy::U8) =>
+            if t.kind() == ty::Uint(ty::UintTy::U8) =>
         {
             (
                 Some(vec![(callee_span, format!("{src}::to_ne_bytes"))]),

@@ -116,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
 
             // verify that we have a pointer type
             let inner_ty = match ty.kind() {
-                ty::RawPtr(inner_ty, _) => *inner_ty,
+                ty::RawPtr(inner_ty, _) => inner_ty,
                 _ => return,
             };
 

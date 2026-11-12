@@ -1721,7 +1721,7 @@ pub fn find_self_call<'tcx>(
     if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
         &body[block].terminator
         && let Operand::Constant(ConstOperand { const_, .. }) = func
-        && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()
+        && let ty::FnDef(def_id, fn_args) = const_.ty().kind()
         && let Some(item) = tcx.opt_associated_item(def_id)
         && item.is_method()
         && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =

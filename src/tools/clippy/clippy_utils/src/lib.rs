@@ -641,7 +641,7 @@ pub fn is_default_equivalent_call(
                     func: Operand::Constant(c),
                     ..
                 } if let rustc_ty::FnDef(did, _args) = c.ty().kind()
-                    && *did == repl_def_id =>
+                    && did == repl_def_id =>
                 {
                     return true;
                 },
@@ -649,7 +649,7 @@ pub fn is_default_equivalent_call(
                     func: Operand::Constant(c),
                     ..
                 } if let rustc_ty::FnDef(did, _args) = c.ty().kind()
-                    && *did == repl_def_id =>
+                    && did == repl_def_id =>
                 {
                     return true;
                 },
@@ -867,7 +867,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             .get(child_id)
             .map_or(&[][..], |x| &**x)
             && let rustc_ty::RawPtr(_, mutability) | rustc_ty::Ref(_, _, mutability) =
-                *adjust.last().map_or(target, |a| a.target).kind()
+                adjust.last().map_or(target, |a| a.target).kind()
         {
             return CaptureKind::Ref(mutability);
         }
@@ -2139,10 +2139,10 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
-        rustc_ty::Slice(element_type) => is_recursively_primitive_type(*element_type),
-        rustc_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &rustc_ty::Slice(_)) => {
+        rustc_ty::Slice(element_type) => is_recursively_primitive_type(element_type),
+        rustc_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), rustc_ty::Slice(_)) => {
             if let rustc_ty::Slice(element_type) = inner_ty.kind() {
-                is_recursively_primitive_type(*element_type)
+                is_recursively_primitive_type(element_type)
             } else {
                 unreachable!()
             }
@@ -3499,7 +3499,7 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
                 v_def
                     .fields
                     .iter()
-                    .any(|field| field.ty(cx.tcx, *generic_args).has_type_flags(TypeFlags::HAS_TY_PARAM))
+                    .any(|field| field.ty(cx.tcx, generic_args).has_type_flags(TypeFlags::HAS_TY_PARAM))
             } else {
                 false
             }

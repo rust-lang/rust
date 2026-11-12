@@ -359,7 +359,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match a.kind {
                 Adjust::NeverToAny => {
                     if let ty::Infer(ty::TyVar(a_id)) = a.target.kind() {
-                        self.diverging_type_vars.borrow_mut().push(*a_id);
+                        self.diverging_type_vars.borrow_mut().push(a_id);
                         debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
                     }
                 }
@@ -608,8 +608,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(super) fn user_args_for_adt(ty: LoweredTy<'tcx>) -> UserArgs<'tcx> {
         match (ty.raw.kind(), ty.normalized.kind()) {
-            (&ty::Adt(_, args), _) => UserArgs { args, user_self_ty: None },
-            (_, &ty::Adt(ref adt, args)) => UserArgs {
+            (ty::Adt(_, args), _) => UserArgs { args, user_self_ty: None },
+            (_, ty::Adt(ref adt, args)) => UserArgs {
                 args,
                 user_self_ty: Some(UserSelfTy { impl_def_id: adt.did(), self_ty: ty.raw }),
             },

@@ -91,16 +91,16 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
         let mut self_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
         let mut self_is_ref = false;
         if let ty::Ref(_, ty, _) = self_ty.kind() {
-            self_ty = *ty;
+            self_ty = ty;
             self_is_ref = true;
         }
 
         let (capture_kind, args) = match self_ty.kind() {
             ty::Closure(_, args) => {
-                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(*args))
+                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(args))
             }
-            &ty::Coroutine(_, args) => (CaptureKind::Coroutine, ty::UpvarArgs::Coroutine(args)),
-            &ty::CoroutineClosure(_, args) => {
+            ty::Coroutine(_, args) => (CaptureKind::Coroutine, ty::UpvarArgs::Coroutine(args)),
+            ty::CoroutineClosure(_, args) => {
                 (CaptureKind::CoroutineClosure, ty::UpvarArgs::CoroutineClosure(args))
             }
             _ => bug!("expected closure or generator, found {:?}", self_ty),
@@ -974,7 +974,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 impl<'tcx> Visitor<'tcx> for LiteralFinder {
                     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, _: Location) {
                         if let ty::Ref(_, ref_ty, _) = constant.ty().kind()
-                            && ref_ty.kind() == &ty::Str
+                            && ref_ty.kind() == ty::Str
                         {
                             let rendered_constant = constant.const_.to_string();
                             self.found.push((constant.span, rendered_constant));

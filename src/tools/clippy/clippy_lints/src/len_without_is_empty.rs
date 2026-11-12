@@ -154,7 +154,7 @@ fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&
             kind: ty::Opaque { def_id },
             ..
         },
-    ) = *ty.kind()
+    ) = ty.kind()
         && let Some(Node::OpaqueTy(opaque)) = cx.tcx.hir_get_if_local(def_id)
         && let OpaqueTyOrigin::AsyncFn { .. } = opaque.origin
         && let [GenericBound::Trait(trait_ref)] = &opaque.bounds
@@ -214,7 +214,7 @@ impl LenOutput {
             return None;
         }
 
-        match *sig.output().kind() {
+        match sig.output().kind() {
             ty::Int(_) | ty::Uint(_) => Some(Self::Integral),
             ty::Adt(adt, subs) => match cx.tcx.get_diagnostic_name(adt.did()) {
                 Some(sym::Option) => subs.type_at(0).is_integral().then(|| Self::Option(adt.did())),
@@ -236,9 +236,9 @@ impl LenOutput {
         }
 
         match (self, is_empty_output.kind()) {
-            (_, &ty::Bool) => true,
-            (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
-            (Self::Result(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
+            (_, ty::Bool) => true,
+            (Self::Option(id), ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
+            (Self::Result(id), ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
             _ => false,
         }
     }

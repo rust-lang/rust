@@ -574,7 +574,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     // (mid-retcon-commit-chain comment:)
                     // this is the original fallback behavior, which is wrong
                     if let ty::Adt(def, args) = ty.kind() {
-                        self.visit_struct_or_union(state, ty, *def, *args)
+                        self.visit_struct_or_union(state, ty, def, args)
                     } else if cfg!(debug_assertions) {
                         bug!("ImproperCTypes: this retcon commit was badly written")
                     } else {
@@ -793,7 +793,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return FfiSafe;
         }
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Adt(def, args) => {
                 if let Some(inner_ty) = ty.boxed_ty() {
                     return self.visit_indirection(state, ty, inner_ty, IndirectionKind::Box);

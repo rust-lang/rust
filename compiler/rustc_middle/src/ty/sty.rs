@@ -1130,12 +1130,15 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
-    // It would be nicer if this returned the value instead of a reference,
-    // like how `Predicate::kind` and `Region::kind` do. (It would result in
-    // many fewer subsequent dereferences.) But that gives a small but
-    // noticeable performance hit. See #126069 for details.
     #[inline(always)]
-    pub fn kind(self) -> &'tcx TyKind<'tcx> {
+    pub fn kind(self) -> TyKind<'tcx> {
+        **self.0.0
+    }
+
+    // Like `kind`, but returns a reference. `kind` is preferable everywhere except a few very hot
+    // functions where `kind_ref` gives slightly better performance.
+    #[inline(always)]
+    pub fn kind_ref(self) -> &'tcx TyKind<'tcx> {
         self.0.0
     }
 
@@ -1196,7 +1199,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ty_vid(self) -> Option<ty::TyVid> {
         match self.kind() {
-            &Infer(TyVar(vid)) => Some(vid),
+            Infer(TyVar(vid)) => Some(vid),
             _ => None,
         }
     }
@@ -1204,7 +1207,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn float_vid(self) -> Option<ty::FloatVid> {
         match self.kind() {
-            &Infer(FloatVar(vid)) => Some(vid),
+            Infer(FloatVar(vid)) => Some(vid),
             _ => None,
         }
     }
@@ -1226,13 +1229,13 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_bool(self) -> bool {
-        *self.kind() == Bool
+        self.kind() == Bool
     }
 
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(self) -> bool {
-        *self.kind() == Str
+        self.kind() == Str
     }
 
     /// Returns true if this type is `&str`. The reference's lifetime is ignored.
@@ -1286,7 +1289,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
-            Array(ty, _) | Slice(ty) => *ty,
+            Array(ty, _) | Slice(ty) => ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
@@ -1300,11 +1303,11 @@ impl<'tcx> Ty<'tcx> {
             return None;
         };
         let (num_vectors, vec_def) = match def.repr().scalable? {
-            ScalableElt::ElementCount(_) => (NumScalableVectors::for_non_tuple(), *def),
+            ScalableElt::ElementCount(_) => (NumScalableVectors::for_non_tuple(), def),
             ScalableElt::Container => (
                 NumScalableVectors::from_field_count(def.non_enum_variant().fields.len())?,
                 def.non_enum_variant().fields[FieldIdx::ZERO]
-                    .ty(tcx, *args)
+                    .ty(tcx, args)
                     .skip_norm_wip()
                     .ty_adt_def()?,
             ),
@@ -1314,7 +1317,7 @@ impl<'tcx> Ty<'tcx> {
         };
         let variant = vec_def.non_enum_variant();
         assert_eq!(variant.fields.len(), 1);
-        let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, *args);
+        let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
         Some((element_count, field_ty.skip_norm_wip(), num_vectors))
     }
 
@@ -1325,7 +1328,7 @@ impl<'tcx> Ty<'tcx> {
         assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
         let variant = def.non_enum_variant();
         assert_eq!(variant.fields.len(), 1);
-        let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, *args);
+        let field_ty = variant.fields[FieldIdx::ZERO].ty(tcx, args);
         let Array(f0_elem_ty, f0_len) = field_ty.skip_norm_wip().kind() else {
             bug!("Simd type has non-array field type {field_ty:?}")
         };
@@ -1337,7 +1340,7 @@ impl<'tcx> Ty<'tcx> {
             f0_len
                 .try_to_target_usize(tcx)
                 .expect("expected SIMD field to have definite array size"),
-            *f0_elem_ty,
+            f0_elem_ty,
         )
     }
 
@@ -1350,7 +1353,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ref_mutability(self) -> Option<hir::Mutability> {
         match self.kind() {
-            Ref(_, _, mutability) => Some(*mutability),
+            Ref(_, _, mutability) => Some(mutability),
             _ => None,
         }
     }
@@ -1423,11 +1426,11 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             Adt(def, args)
                 if def.is_pin()
-                    && let &ty::Ref(region, ty, mutbl) = args.type_at(0).kind() =>
+                    && let ty::Ref(region, ty, mutbl) = args.type_at(0).kind() =>
             {
                 Some((ty, ty::Pinnedness::Pinned, mutbl, region))
             }
-            &Ref(region, ty, mutbl) => Some((ty, ty::Pinnedness::Not, mutbl, region)),
+            Ref(region, ty, mutbl) => Some((ty, ty::Pinnedness::Not, mutbl, region)),
             _ => None,
         }
     }
@@ -1588,7 +1591,7 @@ impl<'tcx> Ty<'tcx> {
             let ty::Coroutine(def_id, args) = ty.kind() else { return cor_ty };
             cor_ty = ty;
             f(ty);
-            if !tcx.is_async_drop_in_place_coroutine(*def_id) {
+            if !tcx.is_async_drop_in_place_coroutine(def_id) {
                 return cor_ty;
             }
             ty = args.first().unwrap().expect_ty();
@@ -1600,7 +1603,7 @@ impl<'tcx> Ty<'tcx> {
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
-        match *self.kind() {
+        match self.kind() {
             _ if let Some(boxed) = self.boxed_ty() => Some(boxed),
             Ref(_, ty, _) => Some(ty),
             RawPtr(ty, _) if explicit => Some(ty),
@@ -1611,7 +1614,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of `ty[i]`.
     pub fn builtin_index(self) -> Option<Ty<'tcx>> {
         match self.kind() {
-            Array(ty, _) | Slice(ty) => Some(*ty),
+            Array(ty, _) | Slice(ty) => Some(ty),
             _ => None,
         }
     }
@@ -1644,7 +1647,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {
-            Adt(adt, _) => Some(*adt),
+            Adt(adt, _) => Some(adt),
             _ => None,
         }
     }
@@ -1676,9 +1679,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn variant_range(self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind() {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Coroutine(def_id, args) => {
-                Some(args.as_coroutine().variant_range(*def_id, tcx))
-            }
+            TyKind::Coroutine(def_id, args) => Some(args.as_coroutine().variant_range(def_id, tcx)),
             TyKind::UnsafeBinder(bound_ty) => {
                 tcx.instantiate_bound_regions_with_erased((*bound_ty).into()).variant_range(tcx)
             }
@@ -1701,7 +1702,7 @@ impl<'tcx> Ty<'tcx> {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
             TyKind::Coroutine(def_id, args) => {
-                Some(args.as_coroutine().discriminant_for_variant(*def_id, tcx, variant_index))
+                Some(args.as_coroutine().discriminant_for_variant(def_id, tcx, variant_index))
             }
             TyKind::UnsafeBinder(bound_ty) => tcx
                 .instantiate_bound_regions_with_erased((*bound_ty).into())
@@ -2069,7 +2070,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     pub fn is_trivially_wf(self, tcx: TyCtxt<'tcx>) -> bool {
-        match *self.kind() {
+        match self.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -2136,7 +2137,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn is_async_drop_in_place_coroutine(self, tcx: TyCtxt<'_>) -> bool {
         match self.kind() {
-            ty::Coroutine(def, ..) => tcx.is_async_drop_in_place_coroutine(*def),
+            ty::Coroutine(def, ..) => tcx.is_async_drop_in_place_coroutine(def),
             _ => false,
         }
     }

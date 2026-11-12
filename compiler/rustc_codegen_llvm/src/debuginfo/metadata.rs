@@ -105,7 +105,7 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
         bug!("build_fixed_size_array_di_node() called with non-ty::Array type `{:?}`", array_type)
     };
 
-    let element_type_di_node = spanned_type_di_node(cx, *element_type, span);
+    let element_type_di_node = spanned_type_di_node(cx, element_type, span);
 
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
@@ -156,7 +156,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
 
     let pointee_type_di_node = match pointee_type.kind() {
         // `&[T]` will look like `{ data_ptr: *const T, length: usize }`
-        ty::Slice(element_type) => spanned_type_di_node(cx, *element_type, span),
+        ty::Slice(element_type) => spanned_type_di_node(cx, element_type, span),
         // `&str` will look like `{ data_ptr: *const u8, length: usize }`
         ty::Str => type_di_node(cx, cx.tcx.types.u8),
 
@@ -409,7 +409,7 @@ fn build_slice_type_di_node<'ll, 'tcx>(
     span: Span,
 ) -> DINodeCreationResult<'ll> {
     let element_type = match slice_type.kind() {
-        ty::Slice(element_type) => *element_type,
+        ty::Slice(element_type) => element_type,
         ty::Str => cx.tcx.types.u8,
         _ => {
             bug!(
@@ -459,7 +459,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
 
     debug!("type_di_node: {:?} kind: {:?}", t, t.kind());
 
-    let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
+    let DINodeCreationResult { di_node, already_stored_in_typemap } = match t.kind() {
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
             build_basic_type_di_node(cx, t)
         }
@@ -888,7 +888,7 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
 ) -> DINodeCreationResult<'ll> {
     debug!("build_foreign_type_di_node: {:?}", t);
 
-    let &ty::Foreign(def_id) = unique_type_id.expect_ty().kind() else {
+    let ty::Foreign(def_id) = unique_type_id.expect_ty().kind() else {
         bug!(
             "build_foreign_type_di_node() called with unexpected type: {:?}",
             unique_type_id.expect_ty()
@@ -1122,7 +1122,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             cx,
             unique_type_id,
             name,
-            *adt_def,
+            adt_def,
             parts,
             struct_type_and_layout.layout,
             def_location,
@@ -1284,7 +1284,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_coroutine_ty: Ty<'tcx>,
     closure_or_coroutine_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
-    let (&def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
+    let (def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
         ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().upvar_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         ty::CoroutineClosure(def_id, args) => (def_id, args.as_coroutine_closure().upvar_tys()),
@@ -1328,7 +1328,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let tuple_type = unique_type_id.expect_ty();
-    let &ty::Tuple(component_types) = tuple_type.kind() else {
+    let ty::Tuple(component_types) = tuple_type.kind() else {
         bug!("build_tuple_type_di_node() called with non-tuple-type: {:?}", tuple_type)
     };
 
@@ -1376,8 +1376,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let closure_env_type = unique_type_id.expect_ty();
-    let &(ty::Closure(def_id, _) | ty::CoroutineClosure(def_id, _)) = closure_env_type.kind()
-    else {
+    let (ty::Closure(def_id, _) | ty::CoroutineClosure(def_id, _)) = closure_env_type.kind() else {
         bug!("build_closure_env_di_node() called with non-closure-type: {:?}", closure_env_type)
     };
     let containing_scope = get_namespace_for_item(cx, def_id);
@@ -1475,7 +1474,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
 ) -> SmallVec<Option<&'ll DIType>> {
-    if let ty::Adt(def, args) = *ty.kind() {
+    if let ty::Adt(def, args) = ty.kind() {
         // FIXME: also do consts?
         if args.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did());

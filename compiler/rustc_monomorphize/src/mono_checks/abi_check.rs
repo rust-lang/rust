@@ -230,7 +230,7 @@ fn check_call_site_abi<'tcx>(
         typing_env,
         ty::EarlyBinder::bind(tcx, callee),
     );
-    let callee_abi = match *callee.kind() {
+    let callee_abi = match callee.kind() {
         ty::FnPtr(..) => {
             let sig = callee.fn_sig(tcx);
             match tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((sig, ty::List::empty()))) {

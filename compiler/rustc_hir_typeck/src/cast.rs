@@ -120,7 +120,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let t = self.deeply_resolve_ignoring_regions_with_obligations(t);
 
-        Ok(match *t.kind() {
+        Ok(match t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(tty, _) => Some(PointerKind::VTable(tty)),
             ty::Adt(def, args) if def.is_struct() => match def.non_enum_variant().tail_opt() {
@@ -319,8 +319,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                 if self.cast_ty.is_integral() {
                     if !matches!(self.expr.kind, ExprKind::AddrOf(..))
-                        && let ty::Ref(_, inner_ty, _) = *self.expr_ty.kind()
-                        && let ty::Adt(adt_def, _) = *inner_ty.kind()
+                        && let ty::Ref(_, inner_ty, _) = self.expr_ty.kind()
+                        && let ty::Adt(adt_def, _) = inner_ty.kind()
                         && adt_def.is_enum()
                         && adt_def.is_payloadfree()
                     {
@@ -479,15 +479,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                 let mut sugg = None;
                 let mut sugg_mutref = false;
-                if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
-                    if let ty::RawPtr(expr_ty, _) = *self.expr_ty.kind()
+                if let ty::Ref(reg, cast_ty, mutbl) = self.cast_ty.kind() {
+                    if let ty::RawPtr(expr_ty, _) = self.expr_ty.kind()
                         && fcx.may_coerce(
                             Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, expr_ty, mutbl),
                             self.cast_ty,
                         )
                     {
                         sugg = Some((format!("&{}*", mutbl.prefix_str()), cast_ty == expr_ty));
-                    } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
+                    } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
                         && fcx.may_coerce(Ty::new_mut_ref(fcx.tcx, expr_reg, expr_ty), self.cast_ty)
@@ -504,7 +504,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     {
                         sugg = Some((format!("&{}", mutbl.prefix_str()), false));
                     }
-                } else if let ty::RawPtr(_, mutbl) = *self.cast_ty.kind()
+                } else if let ty::RawPtr(_, mutbl) = self.cast_ty.kind()
                     && fcx.may_coerce(
                         Ty::new_ref(fcx.tcx, fcx.tcx.lifetimes.re_erased, self.expr_ty, mutbl),
                         self.cast_ty,
@@ -563,7 +563,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .must_apply_modulo_regions()
                         {
                             let to_ty = if let ty::Adt(def, args) = self.cast_ty.kind() {
-                                fcx.tcx.value_path_str_with_args(def.did(), *args)
+                                fcx.tcx.value_path_str_with_args(def.did(), args)
                             } else {
                                 self.cast_ty.to_string()
                             };
@@ -935,7 +935,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
-                match *self.expr_ty.kind() {
+                match self.expr_ty.kind() {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
                         let f = fcx.normalize(
@@ -963,7 +963,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // a cast.
                     ty::Ref(_, inner_ty, mutbl) => {
                         return match t_cast {
-                            Int | CEnum | Bool | Char | Float => match *inner_ty.kind() {
+                            Int | CEnum | Bool | Char | Float => match inner_ty.kind() {
                                 ty::Int(_)
                                 | ty::Uint(_)
                                 | ty::Float(_)
@@ -987,7 +987,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             _ => return Err(CastError::NonScalar),
         };
-        if let ty::Adt(adt_def, _) = *self.expr_ty.kind()
+        if let ty::Adt(adt_def, _) = self.expr_ty.kind()
             && !adt_def.did().is_local()
             && adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive)
         {
@@ -1225,7 +1225,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         if m_expr.mutbl >= m_cast.mutbl
             && let ty::Array(ety, _) = m_expr.ty.kind()
-            && fcx.can_eq(fcx.param_env, *ety, m_cast.ty)
+            && fcx.can_eq(fcx.param_env, ety, m_cast.ty)
         {
             // Due to historical reasons we allow directly casting references of
             // arrays into raw pointers of their element type.
@@ -1242,7 +1242,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 });
 
             // this will report a type mismatch if needed
-            fcx.demand_eqtype(self.span, *ety, m_cast.ty);
+            fcx.demand_eqtype(self.span, ety, m_cast.ty);
             return Ok(CastKind::ArrayPtrCast);
         }
 

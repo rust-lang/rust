@@ -96,7 +96,7 @@ pub(super) fn check<'tcx>(
                     (from_ty.kind(), to_ty.kind())
                     && from_def == to_def
                 {
-                    if same_except_params(*from_subs, *to_subs) {
+                    if same_except_params(from_subs, to_subs) {
                         return false;
                     }
                     Some(from_def.did())
@@ -192,21 +192,21 @@ fn reduce_refs<'tcx>(cx: &LateContext<'tcx>, mut from_ty: Ty<'tcx>, mut to_ty: T
     let (from_fat_ptr, to_fat_ptr) = loop {
         break match (from_ty.kind(), to_ty.kind()) {
             (
-                &(ty::Ref(_, from_sub_ty, _) | ty::RawPtr(from_sub_ty, _)),
-                &(ty::Ref(_, to_sub_ty, _) | ty::RawPtr(to_sub_ty, _)),
+                ty::Ref(_, from_sub_ty, _) | ty::RawPtr(from_sub_ty, _),
+                ty::Ref(_, to_sub_ty, _) | ty::RawPtr(to_sub_ty, _),
             ) => {
-                from_raw_ptr = matches!(*from_ty.kind(), ty::RawPtr(_, _));
+                from_raw_ptr = matches!(from_ty.kind(), ty::RawPtr(_, _));
                 from_ty = from_sub_ty;
-                to_raw_ptr = matches!(*to_ty.kind(), ty::RawPtr(_, _));
+                to_raw_ptr = matches!(to_ty.kind(), ty::RawPtr(_, _));
                 to_ty = to_sub_ty;
                 continue;
             },
-            (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)), _)
+            (ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _), _)
                 if !unsized_ty.is_sized(cx.tcx, cx.typing_env()) =>
             {
                 (true, false)
             },
-            (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _)))
+            (_, ty::Ref(_, unsized_ty, _) | ty::RawPtr(unsized_ty, _))
                 if !unsized_ty.is_sized(cx.tcx, cx.typing_env()) =>
             {
                 (false, true)
@@ -244,7 +244,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
             .tcx
             .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
             .unwrap_or(ty);
-        return match *ty.kind() {
+        return match ty.kind() {
             ty::Pat(base, _) => {
                 ty = base;
                 continue;
@@ -312,7 +312,7 @@ fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 fn is_size_pair(ty: Ty<'_>) -> bool {
-    if let ty::Tuple(tys) = *ty.kind()
+    if let ty::Tuple(tys) = ty.kind()
         && let [ty1, ty2] = &**tys
     {
         matches!(ty1.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
@@ -327,7 +327,7 @@ fn same_except_params<'tcx>(subs1: ty::GenericArgs<'tcx>, subs2: ty::GenericArgs
         match (t1.kind(), t2.kind()) {
             (ty::TermKind::Ty(ty1), ty::TermKind::Ty(ty2)) => match (ty1.kind(), ty2.kind()) {
                 (ty::Param(_), _) | (_, ty::Param(_)) => (),
-                (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(*subs1, *subs2) => {
+                (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(subs1, subs2) => {
                     ()
                 },
                 _ => return false,

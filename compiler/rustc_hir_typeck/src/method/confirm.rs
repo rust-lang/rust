@@ -234,7 +234,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
                 if unsize {
                     let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
-                        Ty::new_slice(self.tcx, *elem_ty)
+                        Ty::new_slice(self.tcx, elem_ty)
                     } else {
                         bug!(
                             "AutorefOrPtrAdjustment's unsize flag should only be set for array ty, found {}",
@@ -250,7 +250,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
-                    &ty::RawPtr(ty, mutbl) => {
+                    ty::RawPtr(ty, mutbl) => {
                         assert!(mutbl.is_mut());
                         Ty::new_imm_ptr(self.tcx, ty)
                     }
@@ -269,7 +269,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 target = match target.kind() {
                     ty::Adt(pin, args) if self.tcx.is_lang_item(pin.did(), LangItem::Pin) => {
                         let inner_ty = match args[0].expect_ty().kind() {
-                            ty::Ref(_, ty, _) => *ty,
+                            ty::Ref(_, ty, _) => ty,
                             _ => bug!("Expected a reference type for argument to Pin"),
                         };
                         adjustments.push(Adjustment {

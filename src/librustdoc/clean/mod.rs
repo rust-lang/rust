@@ -1427,7 +1427,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     .skip_binder();
                 if self_param_ty == self_ty {
                     decl.inputs[0].type_ = SelfTy;
-                } else if let ty::Ref(_, ty, _) = *self_param_ty.kind()
+                } else if let ty::Ref(_, ty, _) = self_param_ty.kind()
                     && ty == self_ty
                 {
                     match decl.inputs[0].type_ {
@@ -2140,7 +2140,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
     container: Option<ContainerTy<'_, 'tcx>>,
 ) -> Type {
     let bound_ty = normalize(cx, bound_ty).unwrap_or(bound_ty);
-    match *bound_ty.skip_binder().kind() {
+    match bound_ty.skip_binder().kind() {
         ty::Never => Primitive(PrimitiveType::Never),
         ty::Bool => Primitive(PrimitiveType::Bool),
         ty::Char => Primitive(PrimitiveType::Char),
@@ -2532,7 +2532,7 @@ pub(crate) fn clean_variant_def(variant: &ty::VariantDef, cx: &mut DocContext<'_
 
 pub(crate) fn clean_variant_def_with_args<'tcx>(
     variant: &ty::VariantDef,
-    args: &ty::GenericArgs<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Item {
     let discriminant = match variant.discr {

@@ -215,7 +215,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                     .collect();
                 let ty = Ty::new_adt(
                     self.cx(),
-                    *def,
+                    def,
                     self.cx().mk_args_from_iter(generics.into_iter().zip(args.iter()).map(
                         |(has_default, arg)| {
                             if arg.has_infer() {
@@ -373,7 +373,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         match term.kind() {
             TermKind::Ty(ty) => {
-                if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
+                if let ty::Infer(ty::TyVar(ty_vid)) = ty.kind() {
                     let var_origin = self.infcx.type_var_origin(ty_vid);
                     if let Some(def_id) = var_origin.param_def_id
                         // The `Self` param of a trait has the def-id of the trait,
@@ -967,7 +967,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
             fn ty_cost(self, ty: Ty<'tcx>) -> usize {
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Closure(..) => 1000,
                     ty::FnDef(..) => 150,
                     ty::FnPtr(..) => 30,
@@ -1059,7 +1059,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             (GenericArgKind::Type(inner_ty), TermKind::Ty(target_ty)) => {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
-                    (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
+                    (Infer(TyVar(a_vid)), Infer(TyVar(b_vid))) => {
                         self.tecx.sub_unification_table_root_var(a_vid)
                             == self.tecx.sub_unification_table_root_var(b_vid)
                     }
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 if let Some(ty) = self.opt_node_type(expr.hir_id)
                     && let ty::Adt(_, args) = ty.kind()
                 {
-                    return Box::new(self.resolved_path_inferred_arg_iter(path, *args));
+                    return Box::new(self.resolved_path_inferred_arg_iter(path, args));
                 }
             }
             hir::ExprKind::MethodCall(segment, ..) => {
@@ -1304,8 +1304,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                                 }
                             } else {
                                 return Box::new(
-                                    self.resolved_path_inferred_arg_iter(path, *args)
-                                        .chain(segment),
+                                    self.resolved_path_inferred_arg_iter(path, args).chain(segment),
                                 );
                             }
                         }

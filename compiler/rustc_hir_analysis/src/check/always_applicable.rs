@@ -59,7 +59,7 @@ pub(crate) fn check_drop_impl(
                 tcx,
                 drop_impl_did,
                 adt_def.did(),
-                *adt_to_impl_args,
+                adt_to_impl_args,
             )?;
 
             ensure_all_fields_are_const_destruct(tcx, drop_impl_did, adt_def.did())?;
@@ -68,7 +68,7 @@ pub(crate) fn check_drop_impl(
                 tcx,
                 drop_impl_did,
                 adt_def.did(),
-                *adt_to_impl_args,
+                adt_to_impl_args,
             )?;
 
             check_drop_xor_pin_drop(tcx, adt_def.did(), drop_impl_did)?;
@@ -107,14 +107,14 @@ pub(crate) fn check_negative_auto_trait_impl<'tcx>(
                 tcx,
                 impl_def_id,
                 adt_def.did(),
-                *adt_to_impl_args,
+                adt_to_impl_args,
             )?;
 
             ensure_impl_predicates_are_implied_by_item_defn(
                 tcx,
                 impl_def_id,
                 adt_def.did(),
-                *adt_to_impl_args,
+                adt_to_impl_args,
             )
         }
         _ => {

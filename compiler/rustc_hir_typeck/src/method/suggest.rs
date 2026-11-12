@@ -124,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(arg_ty) = args[0].as_type() else {
                     return false;
                 };
-                let ty::Param(param) = *arg_ty.kind() else {
+                let ty::Param(param) = arg_ty.kind() else {
                     return false;
                 };
                 // Is `generic_param` the same as the arg for this trait predicate?
@@ -156,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        match *ty.peel_refs().kind() {
+        match ty.peel_refs().kind() {
             ty::Param(param) => {
                 let generics = self.tcx.generics_of(self.body_def_id);
                 let generic_param = generics.type_param(param, self.tcx);
@@ -441,8 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
-                        let trait_type =
-                            Ty::new_ref(self.tcx, *region, *t_type, mutability.invert());
+                        let trait_type = Ty::new_ref(self.tcx, region, t_type, mutability.invert());
                         let msg = format!("you need `{trait_type}` instead of `{rcvr_ty}`");
                         let mut kind = &self_expr.kind;
                         while let hir::ExprKind::AddrOf(_, _, expr)
@@ -993,7 +992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             )),
                             _ => arg,
                         }));
-                    let rcvr_ty = Ty::new_adt(tcx, *def, new_args);
+                    let rcvr_ty = Ty::new_adt(tcx, def, new_args);
                     if let Ok(method) = self.lookup_method_for_diagnostic(
                         rcvr_ty,
                         &item_segment,
@@ -1819,7 +1818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
                     bound_spans
-                        .get_mut_or_insert_default(OrdSpan(tcx.def_span(*def_id)))
+                        .get_mut_or_insert_default(OrdSpan(tcx.def_span(def_id)))
                         .push(format!("`{quiet}`"));
                 }
                 _ => {}
@@ -2206,9 +2205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
                         pred.kind().skip_binder()
                     {
-                        self.suggest_hashmap_on_unsatisfied_hashset_buildhasher(
-                            err, &pred, *adt_def,
-                        )
+                        self.suggest_hashmap_on_unsatisfied_hashset_buildhasher(err, &pred, adt_def)
                     } else {
                         false
                     }
@@ -2398,7 +2395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .rebase_onto(
                                     self.tcx,
                                     inherent_method.container_id(self.tcx),
-                                    *adt_args,
+                                    adt_args,
                                 );
                         let fn_sig = self
                             .tcx
@@ -2836,7 +2833,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let variant = &def.non_enum_variant();
                     tcx.find_field_index(item_name, variant).map(|index| {
                         let field = &variant.fields[index];
-                        let field_ty = field.ty(tcx, *args).skip_norm_wip();
+                        let field_ty = field.ty(tcx, args).skip_norm_wip();
                         (field, field_ty)
                     })
                 }
@@ -3294,7 +3291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let [field] = &variant.fields.raw[..] else {
                             return None;
                         };
-                        let field_ty = field.ty(tcx, *args).skip_norm_wip();
+                        let field_ty = field.ty(tcx, args).skip_norm_wip();
 
                         // Skip `_`, since that'll just lead to ambiguity.
                         if self.deeply_resolve_ignoring_regions(field_ty).is_ty_var() {
@@ -3329,7 +3326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match &matching_variants[..] {
                     [(_, field, pick)] => {
-                        let self_ty = field.ty(tcx, *args).skip_norm_wip();
+                        let self_ty = field.ty(tcx, args).skip_norm_wip();
                         err.span_note(
                             tcx.def_span(pick.item.def_id),
                             format!("the method `{item_name}` exists on the type `{self_ty}`"),
@@ -3858,7 +3855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
-            ty::Adt(def, args) => self.tcx.value_path_str_with_args(def.did(), *args),
+            ty::Adt(def, args) => self.tcx.value_path_str_with_args(def.did(), args),
             _ => self.ty_to_string(ty),
         }
     }
@@ -3945,7 +3942,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         // on pointers, check if the method would exist on a reference
         if let SelfSource::MethodCall(rcvr_expr) = source
-            && let ty::RawPtr(ty, ptr_mutbl) = *rcvr_ty.kind()
+            && let ty::RawPtr(ty, ptr_mutbl) = rcvr_ty.kind()
             && let Ok(pick) = self.lookup_probe_for_diagnostic(
                 item_ident,
                 Ty::new_ref(tcx, ty::Region::new_error_misc(tcx), ty, ptr_mutbl),
@@ -3953,7 +3950,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ProbeScope::TraitsInScope,
                 None,
             )
-            && let ty::Ref(_, _, sugg_mutbl) = *pick.self_ty.kind()
+            && let ty::Ref(_, _, sugg_mutbl) = pick.self_ty.kind()
             && (sugg_mutbl.is_not() || ptr_mutbl.is_mut())
         {
             let (method, method_anchor) = match sugg_mutbl {
@@ -4520,9 +4517,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sort_by_key(|&info| (!info.def_id.is_local(), self.tcx.def_path_str(info.def_id)));
             candidates.dedup();
 
-            let param_type = match *rcvr_ty.kind() {
+            let param_type = match rcvr_ty.kind() {
                 ty::Param(param) => Some(param),
-                ty::Ref(_, ty, _) => match *ty.kind() {
+                ty::Ref(_, ty, _) => match ty.kind() {
                     ty::Param(param) => Some(param),
                     _ => None,
                 },

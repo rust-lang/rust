@@ -995,7 +995,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
                     bound_spans
-                        .get_mut_or_insert_default(OrdSpan(tcx.def_span(*def_id)))
+                        .get_mut_or_insert_default(OrdSpan(tcx.def_span(def_id)))
                         .push(format!("`{quiet}`"));
                 }
                 _ => {}
@@ -1963,7 +1963,7 @@ fn generics_args_err_extend<'a>(
         GenericsArgsErrExtend::SelfTyAlias { def_id, span } => {
             let ty = tcx.at(span).type_of(def_id).instantiate_identity().skip_norm_wip();
             let span_of_impl = tcx.span_of_impl(def_id);
-            let ty::Adt(self_def, _) = *ty.kind() else { return };
+            let ty::Adt(self_def, _) = ty.kind() else { return };
             let def_id = self_def.did();
 
             let type_name = tcx.item_name(def_id);

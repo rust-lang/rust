@@ -108,7 +108,7 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
     }
 
-    let lit_ty = match *ty.kind() {
+    let lit_ty = match ty.kind() {
         ty::Pat(base, _) => base,
         _ => ty,
     };
@@ -157,7 +157,7 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
             trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() })
         }
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            parse_float_into_constval(n, *fty, neg).unwrap()
+            parse_float_into_constval(n, fty, neg).unwrap()
         }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(c)),

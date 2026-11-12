@@ -603,8 +603,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
                         let primitive_b = scalar_b.primitive();
                         let scalar_b = if let rustc_abi::Primitive::Int(int, false) = primitive_b
-                            && let ty::Ref(_, pointee_ty, _) = *arg.layout.ty.kind()
-                            && let ty::Slice(element_ty) = *pointee_ty.kind()
+                            && let ty::Ref(_, pointee_ty, _) = arg.layout.ty.kind()
+                            && let ty::Slice(element_ty) = pointee_ty.kind()
                             && let elem_size = cx.layout_of(element_ty).size
                             && elem_size != rustc_abi::Size::ZERO
                         {

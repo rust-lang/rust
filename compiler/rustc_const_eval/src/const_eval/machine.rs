@@ -628,7 +628,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 let ty = ecx.read_type_id(&args[0])?;
                 let is_mutable = matches!(
                     ty.kind(),
-                    ty::RawPtr(_, Mutability::Mut) | &ty::Ref(_, _, Mutability::Mut)
+                    ty::RawPtr(_, Mutability::Mut) | ty::Ref(_, _, Mutability::Mut)
                 );
                 ecx.write_scalar(Scalar::from_bool(is_mutable), dest)?;
             }
@@ -656,7 +656,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     let (variant_idx, variant_place) =
                         ecx.project_downcast_named(dest, sym::Some)?;
                     let type_id_field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    ecx.write_type_id(*ty, &type_id_field_place)?;
+                    ecx.write_type_id(ty, &type_id_field_place)?;
                     variant_idx
                 } else {
                     ecx.project_downcast_named(dest, sym::None)?.0
@@ -742,7 +742,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
                     let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
                     let sig = sig.skip_binder(); // FIXME: handle lifetime bounds
-                    ecx.write_fn_ptr_type_info(field_place, &sig, fn_header)?;
+                    ecx.write_fn_ptr_type_info(field_place, &sig, &fn_header)?;
                     variant
                 } else {
                     ecx.project_downcast_named(dest, sym::None)?.0
@@ -756,7 +756,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 {
                     let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
                     let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
-                    ecx.write_type_id(*pointee_ty, &field_place)?;
+                    ecx.write_type_id(pointee_ty, &field_place)?;
                     variant
                 } else {
                     ecx.project_downcast_named(dest, sym::None)?.0
@@ -821,7 +821,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
                 {
                     (base, variant_idx, field_idx)
                 } else {
@@ -841,7 +841,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let field_name = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { name, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
                 {
                     name
                 } else {
@@ -862,7 +862,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
                 {
                     (base, variant_idx, field_idx)
                 } else {
@@ -882,7 +882,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { ty, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, *args)
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
                 {
                     ecx.tcx.erase_and_anonymize_regions(ty)
                 } else {
@@ -1136,7 +1136,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         // the analysis for which destructors may be invoked relies on `&impl Freeze` references not
         // being able to change what gets dropped.
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
-            && *mutbl == Mutability::Not
+            && mutbl == Mutability::Not
             && val.to_scalar_and_meta().0.to_pointer(ecx).provenance.is_some_and(|p| !p.immutable())
         {
             // That next check is expensive, that's why we have all the guards above.

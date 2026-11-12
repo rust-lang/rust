@@ -79,10 +79,10 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         ty::ShimKind::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(&ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
+            if let Some(ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
                 let coroutine_body = tcx.optimized_mir(coroutine_def_id);
 
-                let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+                let ty::Coroutine(_, id_args) = tcx.type_of(coroutine_def_id).skip_binder().kind()
                 else {
                     bug!()
                 };
@@ -303,7 +303,7 @@ pub fn build_drop_shim<'tcx>(
 
     let dropee_ptr = Place::from(Local::arg(0));
 
-    if let ty::Array(ety, _len) = *ty.kind() {
+    if let ty::Array(ety, _len) = ty.kind() {
         // Don't write out the elaboration for each array type.
         // Instead, just delegate to the slice version.
         let slice_ty = Ty::new_slice(tcx, ety);
@@ -523,8 +523,8 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
         ty::Coroutine(coroutine_def_id, args) => {
-            assert_eq!(tcx.coroutine_movability(*coroutine_def_id), hir::Movability::Movable);
-            builder.coroutine_shim(dest, src, *coroutine_def_id, args.as_coroutine())
+            assert_eq!(tcx.coroutine_movability(coroutine_def_id), hir::Movability::Movable);
+            builder.coroutine_shim(dest, src, coroutine_def_id, args.as_coroutine())
         }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
@@ -1043,7 +1043,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // return;
     debug!("build_ctor: variant_index={:?}", variant_index);
 
-    let kind = AggregateKind::Adt(adt_def.did(), variant_index, *args, None, None);
+    let kind = AggregateKind::Adt(adt_def.did(), variant_index, args, None, None);
     let variant = adt_def.variant(variant_index);
     let statement = Statement::new(
         source_info,
@@ -1192,7 +1192,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
 ) -> Body<'tcx> {
     let mut self_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity().skip_norm_wip();
     let mut self_local: Place<'tcx> = Local::arg(0).into();
-    let ty::CoroutineClosure(_, args) = *self_ty.kind() else {
+    let ty::CoroutineClosure(_, args) = self_ty.kind() else {
         bug!();
     };
 
@@ -1222,7 +1222,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         )
     });
     let sig = tcx.liberate_late_bound_regions(coroutine_closure_def_id, poly_sig);
-    let ty::Coroutine(coroutine_def_id, coroutine_args) = *sig.output().kind() else {
+    let ty::Coroutine(coroutine_def_id, coroutine_args) = sig.output().kind() else {
         bug!();
     };
 

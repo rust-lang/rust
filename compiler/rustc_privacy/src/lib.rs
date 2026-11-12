@@ -180,7 +180,7 @@ where
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
         // in `super_visit_with`.
-        let ty_kind = *ty.kind();
+        let ty_kind = ty.kind();
         match ty_kind {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)

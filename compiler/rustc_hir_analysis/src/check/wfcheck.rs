@@ -729,7 +729,7 @@ impl<'tcx> GATArgsCollector<'tcx> {
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
-            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
                 if def_id == self.gat =>
             {
                 for (idx, arg) in args.iter().enumerate() {
@@ -883,10 +883,10 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
                             match ty.kind() {
                                 ty::Adt(adt_def, ..) => adt_def.did().is_local(),
                                 // Arrays and slices use the inner type's `ConstParamTy`.
-                                ty::Array(ty, ..) | ty::Slice(ty) => ty_is_local(*ty),
+                                ty::Array(ty, ..) | ty::Slice(ty) => ty_is_local(ty),
                                 // `&` references use the inner type's `ConstParamTy`.
                                 // `&mut` are not supported.
-                                ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(*ty),
+                                ty::Ref(_, ty, ast::Mutability::Not) => ty_is_local(ty),
                                 // Say that a tuple is local if any of its components are local.
                                 // This is not strictly correct, but it's likely that the user can fix the local component.
                                 ty::Tuple(tys) => tys.iter().any(|ty| ty_is_local(ty)),
@@ -2142,7 +2142,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasErrorDeep<'tcx> {
     type Result = ControlFlow<ErrorGuaranteed>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Adt(def, _) => {
                 if self.seen.insert(def.did()) {
                     for field in def.all_fields() {

@@ -510,7 +510,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If `ty` is an inference variable that was created by being adjusted from the never type,
             // We demand the type to be equal to the never type, so we can probe the never type for methods
             // (see https://github.com/rust-lang/rust/issues/143349)
-            } else if let ty::Infer(ty::TyVar(ty_id)) = *ty.kind()
+            } else if let ty::Infer(ty::TyVar(ty_id)) = ty.kind()
                 && let ty_id = self.sub_unification_table_root_var(ty_id)
                 && self
                     .diverging_type_vars
@@ -526,7 +526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 self.demand_eqtype(span, ty, self.tcx.types.never);
             } else {
-                let guar = match *ty.kind() {
+                let guar = match ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
                         // We want to get the variable name that the method
@@ -667,7 +667,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
     // chain to support recursive calls. We do error if the final
     // infer var is not an opaque.
     let self_ty_is_opaque = |ty: Ty<'_>| {
-        if let &ty::Infer(ty::TyVar(vid)) = ty.kind() {
+        if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
             infcx.has_opaques_with_sub_unified_hidden_type(vid)
         } else {
             false
@@ -772,7 +772,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             steps.push(CandidateStep {
                 self_ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
-                    Ty::new_slice(infcx.tcx, *elem_ty),
+                    Ty::new_slice(infcx.tcx, elem_ty),
                     prev_opaque_entries,
                 ),
                 self_ty_is_opaque: false,
@@ -888,7 +888,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         receiver_steps: usize,
     ) {
         let raw_self_ty = self_ty.value.value;
-        match *raw_self_ty.kind() {
+        match raw_self_ty.kind() {
             ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
                 // Subtle: we can't use `instantiate_query_response` here: using it will
                 // commit to all of the type equalities assumed by inference going through
@@ -1578,7 +1578,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
 
-                match *step.self_ty.value.value.kind() {
+                match step.self_ty.value.value.kind() {
                     // Insert a `&*` or `&mut *` if this is a reference type:
                     ty::Ref(_, _, mutbl) => {
                         pick.autoderefs += 1;
@@ -1595,7 +1595,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // make sure this is a pinned reference (and not a `Pin<Box>` or something)
                         if let ty::Ref(_, _, mutbl) = args[0].expect_ty().kind() {
                             pick.autoref_or_ptr_adjustment =
-                                Some(AutorefOrPtrAdjustment::ReborrowPin(*mutbl));
+                                Some(AutorefOrPtrAdjustment::ReborrowPin(mutbl));
                         }
                     }
 
@@ -1661,7 +1661,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let inner_ty = match self_ty.kind() {
             ty::Adt(def, args) if self.tcx.is_lang_item(def.did(), LangItem::Pin) => {
                 match args[0].expect_ty().kind() {
-                    ty::Ref(_, ty, hir::Mutability::Mut) => *ty,
+                    ty::Ref(_, ty, hir::Mutability::Mut) => ty,
                     _ => {
                         return None;
                     }
@@ -1699,7 +1699,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return None;
         }
 
-        let &ty::RawPtr(ty, hir::Mutability::Mut) = self_ty.kind() else {
+        let ty::RawPtr(ty, hir::Mutability::Mut) = self_ty.kind() else {
             return None;
         };
 
@@ -2107,7 +2107,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         // HACK: opaque types will match anything for which their bounds hold.
                         // Thus we need to prevent them from trying to match the `&_` autoref
                         // candidates that get created for `&self` trait methods.
-                        &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })
+                        ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })
                             if !self.next_trait_solver()
                                 && self.infcx.can_define_opaque_ty(def_id)
                                 && !xform_self_ty.is_ty_var() =>

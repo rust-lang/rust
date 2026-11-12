@@ -386,7 +386,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 let impl_ty = cx.tcx.type_of(parent).instantiate_identity().skip_norm_wip();
                 let outerdef = match impl_ty.kind() {
                     ty::Adt(def, _) => Some(def.did()),
-                    ty::Foreign(def_id) => Some(*def_id),
+                    ty::Foreign(def_id) => Some(def_id),
                     _ => None,
                 };
                 let is_hidden = match outerdef {
@@ -964,7 +964,7 @@ declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if let Some((&ty::Ref(_, _, from_mutbl), &ty::Ref(_, _, to_mutbl))) =
+        if let Some((ty::Ref(_, _, from_mutbl), ty::Ref(_, _, to_mutbl))) =
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if from_mutbl < to_mutbl {
@@ -2494,7 +2494,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             adt_def.non_enum_variant(),
-                            *args,
+                            args,
                             "struct field",
                             init,
                         );
@@ -2504,7 +2504,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
                             .inhabited_predicate(cx.tcx)
-                            .instantiate(cx.tcx, *args)
+                            .instantiate(cx.tcx, args)
                             .apply_any_module(cx.tcx, cx.typing_env())
                         {
                             // Entirely skip uninhabited variants.
@@ -2529,7 +2529,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             first_variant.0,
-                            *args,
+                            args,
                             "field of the only potentially inhabited enum variant",
                             init,
                         );
@@ -2560,7 +2560,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 ty::Array(ty, len) => {
                     if matches!(len.try_to_target_usize(cx.tcx), Some(v) if v > 0) {
                         // Array length known at array non-empty -- recurse.
-                        ty_find_init_error(cx, *ty, init)
+                        ty_find_init_error(cx, ty, init)
                     } else {
                         // Empty array or size unknown.
                         None
@@ -2641,7 +2641,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
             let ty::RawPtr(pointee, _) = pointer_ty.kind() else {
                 return false;
             };
-            if let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(*pointee)) {
+            if let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(pointee)) {
                 if layout.layout.size() == rustc_abi::Size::ZERO {
                     return false;
                 }

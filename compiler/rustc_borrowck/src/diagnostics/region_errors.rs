@@ -439,7 +439,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             tcx,
             typing_env,
-            *def_id,
+            def_id,
             self.infcx.deeply_resolve_ignoring_regions(args.no_bound_vars().unwrap()),
         ) else {
             return;
@@ -480,7 +480,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             //            ^^^^^^^^^^^^^
             // ```
             if let ty::Ref(region, _, _) = rcvr.kind()
-                && *region == tcx.lifetimes.re_static
+                && region == tcx.lifetimes.re_static
                 && let Some(assoc) = tcx.opt_associated_item(def_id)
                 && assoc.is_method()
             {
@@ -504,7 +504,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             if let DefKind::Impl { .. } = tcx.def_kind(parent)
                 && let ty = tcx.type_of(parent).instantiate_identity().skip_norm_wip()
                 && let ty::Dynamic(_, region) = ty.kind()
-                && *region == tcx.lifetimes.re_static
+                && region == tcx.lifetimes.re_static
             {
                 // We have a call into a method of either `impl dyn Trait {}` or
                 // `impl dyn Trait + 'static {}`.
@@ -678,14 +678,14 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             ty::VarianceDiagInfo::Invariant { ty, param_index } => {
                 let (desc, note) = match ty.kind() {
                     ty::RawPtr(ty, mutbl) => {
-                        assert_eq!(*mutbl, hir::Mutability::Mut);
+                        assert_eq!(mutbl, hir::Mutability::Mut);
                         (
                             format!("a mutable pointer to `{}`", ty),
                             "mutable pointers are invariant over their type parameter".to_string(),
                         )
                     }
                     ty::Ref(_, inner_ty, mutbl) => {
-                        assert_eq!(*mutbl, hir::Mutability::Mut);
+                        assert_eq!(mutbl, hir::Mutability::Mut);
                         (
                             format!("a mutable reference to `{inner_ty}`"),
                             "mutable references are invariant over their type parameter"
@@ -696,7 +696,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         let generic_arg = args[param_index as usize];
                         let identity_args =
                             GenericArgs::identity_for_item(self.infcx.tcx, adt.did());
-                        let base_ty = Ty::new_adt(self.infcx.tcx, *adt, identity_args);
+                        let base_ty = Ty::new_adt(self.infcx.tcx, adt, identity_args);
                         let base_generic_arg = identity_args[param_index as usize];
                         let adt_desc = adt.descr();
 
@@ -709,8 +709,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         (desc, note)
                     }
                     ty::FnDef(def_id, _) => {
-                        let name = self.infcx.tcx.item_name(*def_id);
-                        let identity_args = GenericArgs::identity_for_item(self.infcx.tcx, *def_id);
+                        let name = self.infcx.tcx.item_name(def_id);
+                        let identity_args = GenericArgs::identity_for_item(self.infcx.tcx, def_id);
                         let desc = format!("the function item type defined by `{name}`");
                         let note = format!(
                             "the function `{name}` is invariant over the parameter `{}`",
@@ -773,7 +773,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *output_ty.kind() {
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = output_ty.kind() {
             output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
         };
 
@@ -782,7 +782,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let err = FnMutError {
             span: *span,
             ty_err: match output_ty.kind() {
-                ty::Coroutine(def, ..) if self.infcx.tcx.coroutine_is_async(*def) => {
+                ty::Coroutine(def, ..) if self.infcx.tcx.coroutine_is_async(def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
                 }
                 _ if output_ty.contains_closure() => {
@@ -1274,7 +1274,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let tcx = self.infcx.tcx;
 
         let ConstraintCategory::CallArgument(Some(func_ty)) = category else { return };
-        let ty::FnDef(fn_did, args) = *func_ty.kind() else { return };
+        let ty::FnDef(fn_did, args) = func_ty.kind() else { return };
         debug!(?fn_did, ?args);
 
         // Only suggest this on function calls, not closures
@@ -1401,7 +1401,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             return;
         };
         let ty::Closure(_, args) =
-            *tcx.type_of(closure_def_id).instantiate_identity().skip_norm_wip().kind()
+            tcx.type_of(closure_def_id).instantiate_identity().skip_norm_wip().kind()
         else {
             return;
         };
@@ -1423,7 +1423,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let liberated_sig = tcx.liberate_late_bound_regions(closure_def_id.to_def_id(), args.sig());
         let mut peeled_ty = liberated_sig.output();
         let mut count = 0;
-        while let ty::Ref(_, ref_ty, _) = *peeled_ty.kind() {
+        while let ty::Ref(_, ref_ty, _) = peeled_ty.kind() {
             peeled_ty = ref_ty;
             count += 1;
         }

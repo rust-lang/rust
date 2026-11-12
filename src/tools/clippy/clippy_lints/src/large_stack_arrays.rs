@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
             && !self.is_from_vec_macro(cx, expr.span)
             && let ty::Array(element_type, cst) = cx.typeck_results().expr_ty(expr).kind()
             && let Some(element_count) = cst.try_to_target_usize(cx.tcx)
-            && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
+            && let Ok(element_size) = cx.layout_of(element_type).map(|l| l.size.bytes())
             && !cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, node)| {
                 matches!(
                     node,

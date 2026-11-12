@@ -59,7 +59,7 @@ fn push_debuginfo_type_name<'tcx>(
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
 
-    match *t.kind() {
+    match t.kind() {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
         ty::Str => {
@@ -707,7 +707,7 @@ fn push_debuginfo_const_name<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, outpu
                     let bits = cv
                         .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in codegen");
-                    let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                    let val = Integer::from_int_ty(&tcx, ity).size().sign_extend(bits) as i128;
                     write!(output, "{val}")
                 }
                 ty::Uint(_) => {

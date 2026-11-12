@@ -830,7 +830,7 @@ where
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args: proj_args, .. }) =
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args: proj_args, .. }) =
             ty.kind()
             && self.cx().is_impl_trait_in_trait(def_id)
         {
@@ -934,7 +934,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         } else {
             let guar = match region.opt_param_def_id(self.tcx, self.impl_m_def_id) {
                 Some(def_id) => {
-                    let return_span = if let &ty::Alias(
+                    let return_span = if let ty::Alias(
                         _,
                         ty::AliasTy { kind: ty::Opaque { def_id: opaque_ty_def_id }, .. },
                     ) = self.ty.kind()
@@ -987,7 +987,7 @@ where
     if is_self_ty(self_arg_ty) {
         "self".to_owned()
     } else if let ty::Ref(_, ty, mutbl) = self_arg_ty.kind()
-        && is_self_ty(*ty)
+        && is_self_ty(ty)
     {
         match mutbl {
             hir::Mutability::Not => "&self".to_owned(),
@@ -1094,7 +1094,7 @@ fn report_trait_method_mismatch<'tcx>(
         // The expected type corresponds to a type parameter, which migh thave a default type or
         // have been explicitly set in the `impl` with a different type.
         && let generics = tcx.generics_of(trait_m.def_id)
-        && let param = generics.type_param(*param, tcx)
+        && let param = generics.type_param(param, tcx)
         && let GenericParamDefKind::Type { has_default: true, .. } = param.kind
     {
         context.push(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
@@ -2865,7 +2865,7 @@ fn param_env_with_gat_bounds<'tcx>(
         let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
 
         match normalize_impl_ty.kind() {
-            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
                 if def_id == trait_ty.def_id && args == rebased_args =>
             {
                 // Don't include this predicate if the projected type is
@@ -2909,7 +2909,7 @@ fn try_report_async_mismatch<'tcx>(
     }
 
     let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id: async_future_def_id }, .. }) =
-        *tcx.fn_sig(trait_m.def_id).skip_binder().skip_binder().output().kind()
+        tcx.fn_sig(trait_m.def_id).skip_binder().skip_binder().output().kind()
     else {
         bug!("expected `async fn` to return an RPITIT");
     };

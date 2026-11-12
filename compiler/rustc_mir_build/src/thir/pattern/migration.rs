@@ -150,7 +150,7 @@ impl<'a> PatMigration<'a> {
         // Implicitly dereferencing references changes the default binding mode, but implicit derefs
         // of smart pointers do not. Thus, we only consider implicit derefs of reference types.
         let implicit_deref_mutbls = adjustments.iter().filter_map(|adjust| {
-            if let &ty::Ref(_, _, mutbl) = adjust.source.kind() { Some(mutbl) } else { None }
+            if let ty::Ref(_, _, mutbl) = adjust.source.kind() { Some(mutbl) } else { None }
         });
 
         if !self.info.suggest_eliding_modes {

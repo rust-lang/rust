@@ -413,7 +413,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         assert!(mask.layout.size.bits() >= bitmask_len);
                         self.read_scalar(mask)?.to_bits(mask.layout.size)?.try_into().unwrap()
                     }
-                    ty::Array(elem, _len) if elem == &self.tcx.types.u8 => {
+                    ty::Array(elem, _len) if elem == self.tcx.types.u8 => {
                         // The array must have exactly the right size.
                         assert_eq!(mask.layout.size.bits(), bitmask_len);
                         // Read the raw bytes.
@@ -480,7 +480,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         assert!(dest.layout.size.bits() >= bitmask_len);
                         self.write_scalar(Scalar::from_uint(res, dest.layout.size), &dest)?;
                     }
-                    ty::Array(elem, _len) if elem == &self.tcx.types.u8 => {
+                    ty::Array(elem, _len) if elem == self.tcx.types.u8 => {
                         // The array must have exactly the right size.
                         assert_eq!(dest.layout.size.bits(), bitmask_len);
                         // We have to write the result byte-for-byte.

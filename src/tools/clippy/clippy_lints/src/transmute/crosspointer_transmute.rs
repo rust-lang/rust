@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Ty};
 /// Checks for `crosspointer_transmute` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> bool {
-    match (*from_ty.kind(), *to_ty.kind()) {
+    match (from_ty.kind(), to_ty.kind()) {
         (ty::RawPtr(from_ptr_ty, _), _) if from_ptr_ty == to_ty => {
             span_lint(
                 cx,

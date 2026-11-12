@@ -126,7 +126,7 @@ impl<'tcx> PlaceTy<'tcx> {
         f: FieldIdx,
     ) -> Unnormalized<'tcx, Ty<'tcx>> {
         if let Some(variant_index) = variant_idx {
-            match *self_ty.kind() {
+            match self_ty.kind() {
                 ty::Adt(adt_def, args) if adt_def.is_enum() => {
                     adt_def.variant(variant_index).fields[f].ty(tcx, args)
                 }
@@ -145,7 +145,7 @@ impl<'tcx> PlaceTy<'tcx> {
         } else {
             match self_ty.kind() {
                 ty::Adt(adt_def, args) if !adt_def.is_enum() => {
-                    adt_def.non_enum_variant().fields[f].ty(tcx, *args)
+                    adt_def.non_enum_variant().fields[f].ty(tcx, args)
                 }
                 ty::Closure(_, args) => Unnormalized::dummy(
                     args.as_closure()
@@ -230,13 +230,13 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
-                    ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
+                    ty::Array(inner, _) if !from_end => Ty::new_array(tcx, inner, to - from),
                     ty::Array(inner, size) if from_end => {
                         let size = size
                             .try_to_target_usize(tcx)
                             .expect("expected subslice projection on fixed-size array");
                         let len = size - from - to;
-                        Ty::new_array(tcx, *inner, len)
+                        Ty::new_array(tcx, inner, len)
                     }
                     _ => bug!("cannot subslice non-array type: `{:?}`", self),
                 })
@@ -448,7 +448,7 @@ impl<'tcx> Place<'tcx> {
         let ty = self.ty(local_decls, tcx).ty;
         let ty::Adt(adt, args) = ty.kind() else { panic!("projecting to field of non-ADT {ty}") };
         let field = &adt.non_enum_variant().fields[idx];
-        let field_ty = field.ty(tcx, *args).skip_norm_wip();
+        let field_ty = field.ty(tcx, args).skip_norm_wip();
         self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
     }
 
@@ -713,7 +713,7 @@ impl<'tcx> Operand<'tcx> {
     /// find as the `func` in a [`TerminatorKind::Call`].
     pub fn const_fn_def(&self) -> Option<(DefId, GenericArgs<'tcx>)> {
         let const_ty = self.constant()?.const_.ty();
-        if let ty::FnDef(def_id, args) = *const_ty.kind() {
+        if let ty::FnDef(def_id, args) = const_ty.kind() {
             Some((def_id, args.no_bound_vars().unwrap()))
         } else {
             None

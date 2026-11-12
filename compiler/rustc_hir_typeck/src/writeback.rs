@@ -222,7 +222,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         if let hir::ExprKind::Index(base, index, _) = e.kind {
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
             let base_ty = self.typeck_results.expr_ty_adjusted(base);
-            if let ty::Ref(_, base_ty_inner, _) = *base_ty.kind() {
+            if let ty::Ref(_, base_ty_inner, _) = base_ty.kind() {
                 let index_ty = self.typeck_results.expr_ty_adjusted(index);
                 if self.is_builtin_index(e, base_ty_inner, index_ty) {
                     // Remove the method call record
@@ -584,7 +584,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
-            if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+            if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                 hidden_type.ty.kind()
                 && def_id == opaque_type_key.def_id.to_def_id()
                 && args == opaque_type_key.args
@@ -1078,7 +1078,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
     type Result = ControlFlow<()>;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
-        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *t.kind()
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = t.kind()
             && let Some(def_id) = def_id.as_local()
         {
             if self.def_id == def_id {
