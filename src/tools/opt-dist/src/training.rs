@@ -70,6 +70,8 @@ enum LlvmProfdata {
     Host,
     /// Use llvm-profdata from the target toolchain (i.e. from LLVM built from `src/llvm-project`).
     Target,
+    /// Use llvm-profdata from the target toolchain built by CI, when not building LLVM.
+    CI,
 }
 
 fn merge_llvm_profiles(
@@ -86,6 +88,10 @@ fn merge_llvm_profiles(
             .build_artifacts()
             .join("llvm")
             .join("build")
+            .join(format!("bin/llvm-profdata{}", executable_extension())),
+        LlvmProfdata::CI => env
+            .build_artifacts()
+            .join("ci-llvm")
             .join(format!("bin/llvm-profdata{}", executable_extension())),
     };
 
@@ -225,7 +231,15 @@ pub fn gather_pgo_profiles(
     let merged_profile = env.artifact_dir().join(format!("{name}-pgo.profdata"));
     log::info!("Merging {name} PGO profiles to {merged_profile}");
 
-    let llvm_profdata = if env.build_llvm() { LlvmProfdata::Target } else { LlvmProfdata::Host };
+    // When not building LLVM with opt-dist, we use download-ci-llvm, and thus need CI's
+    // llvm-profdata. Otherwise the host will be used, on the target's profiles... A big no no.
+    let llvm_profdata = if env.download_ci_llvm {
+        LlvmProfdata::CI
+    } else if env.build_llvm() {
+        LlvmProfdata::Target
+    } else {
+        LlvmProfdata::Host
+    };
 
     merge_llvm_profiles(env, &merged_profile, profile_root, llvm_profdata)?;
     log_profile_stats(name, &merged_profile, profile_root)?;
