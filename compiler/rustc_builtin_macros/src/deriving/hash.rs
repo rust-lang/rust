@@ -43,7 +43,7 @@ pub(crate) fn expand_derive_hash(
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            body: Box::new(hash_body),
+            body: MethodBody::SubstructureFunc(Box::new(hash_body)),
         }],
         is_const,
         ..

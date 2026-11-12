@@ -215,7 +215,7 @@ pub(crate) struct MethodDef<'a> {
 
     pub fieldless_variants_strategy: FieldlessVariantsStrategy,
 
-    pub body: MethodBodyFunc<'a>,
+    pub body: MethodBody<'a>,
 }
 
 /// How to handle fieldless enum variants.
@@ -264,10 +264,10 @@ pub(crate) enum Substructure<'a> {
     StaticEnum(&'a ast::EnumDef),
 }
 
-/// Combine the values of all the fields together. The last argument is
-/// all the fields of all the structures.
-pub(crate) type MethodBodyFunc<'a> =
-    Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>;
+pub(crate) enum MethodBody<'a> {
+    SubstructureFunc(Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>),
+    Directly(BlockOrExpr),
+}
 
 struct TypeParameter {
     bound_generic_params: ThinVec<ast::GenericParam>,
@@ -320,6 +320,10 @@ impl BlockOrExpr {
             // Multiple statements and/or expressions.
             cx.expr_block(self.into_block(cx, span))
         }
+    }
+
+    fn take(&mut self) -> BlockOrExpr {
+        std::mem::replace(self, BlockOrExpr::new_stmts(ThinVec::new()))
     }
 }
 
@@ -428,8 +432,10 @@ impl<'a> TraitDef<'a> {
                 methods = self
                     .methods
                     .into_iter()
-                    .filter_map(|method_def| {
-                        let body = if from_scratch || method_def.is_static() {
+                    .filter_map(|mut method_def| {
+                        let body = if let MethodBody::Directly(body) = &mut method_def.body {
+                            body.take()
+                        } else if from_scratch || method_def.is_static() {
                             method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
                         } else {
                             method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
@@ -453,8 +459,10 @@ impl<'a> TraitDef<'a> {
                 methods = self
                     .methods
                     .into_iter()
-                    .filter_map(|method_def| {
-                        let body = if from_scratch || method_def.is_static() {
+                    .filter_map(|mut method_def| {
+                        let body = if let MethodBody::Directly(body) = &mut method_def.body {
+                            body.take()
+                        } else if from_scratch || method_def.is_static() {
                             method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
                         } else {
                             method_def.expand_enum_method_body(cx, span, enum_def)
@@ -661,7 +669,10 @@ impl<'a> MethodDef<'a> {
         span: Span,
         fields: Substructure<'_>,
     ) -> BlockOrExpr {
-        (self.body)(cx, span, fields)
+        match self.body {
+            MethodBody::SubstructureFunc(ref func) => (func)(cx, span, fields),
+            MethodBody::Directly(_) => unreachable!(),
+        }
     }
 
     fn is_static(&self) -> bool {
