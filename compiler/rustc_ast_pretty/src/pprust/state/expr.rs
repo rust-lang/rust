@@ -888,6 +888,9 @@ impl<'a> State<'a> {
                 self.print_expr(expr, FixupContext::default());
                 self.pclose()
             }
+
+            // FIXME(scrabsha):
+            ast::ExprKind::ViewProjection(..) => unimplemented!(),
         }
 
         self.ann.post(self, AnnNode::Expr(expr));

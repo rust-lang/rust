@@ -161,6 +161,9 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Gca(..)
             | Err(..)
             | Dummy => return false,
+
+            // FIXME(scrabsha):
+            ViewProjection(..) => unimplemented!(),
         }
     }
 }
@@ -249,6 +252,9 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Dummy => {
                 break None;
             }
+
+            // FIXME(scrabsha):
+            ViewProjection(..) => unimplemented!(),
         }
     }
 }

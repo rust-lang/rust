@@ -1117,6 +1117,9 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!(vis, expr),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
+
+                // FIXME(scrabsha):
+                ExprKind::ViewProjection(..) => unimplemented!(),
             }
 
             visit_visitable!(vis, span);

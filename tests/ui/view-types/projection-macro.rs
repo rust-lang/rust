@@ -29,18 +29,14 @@ fn legal() {
 
     let _foo_a: &view_type!(Foo.{ a }) = &view_projection!(foo.{ a });
     let _through_deref: &view_type!(Foo.{ a }) = &view_projection!(foo_ref.{ a });
-    //[legal]~^ ERROR expected expression, found `k#view_projection`
     let _through_deref_impl: &view_type!(Foo.{ a }) = &view_projection!(bar.{ a });
-    //[legal]~^ ERROR expected expression, found `k#view_projection`
     let _inferred = &view_projection!(foo.{ a });
-    //[legal]~^ ERROR expected expression, found `k#view_projection`
 }
 
 #[cfg(field_mismatch)]
 fn field_mismatch() {
     let foo = Foo { a: (), b: () };
     let _field_mismatch: &view_type!(Foo.{ a }) = &view_projection!(foo.{ b });
-    //[field_mismatch]~^ ERROR expected expression, found `k#view_projection`
 }
 
 #[cfg(unknown_field)]
@@ -48,7 +44,6 @@ fn unknown_field() {
     let foo = Foo { a: (), b: () };
 
     let _unknown_field = &view_projection!(foo.{ c });
-    //[unknown_field]~^ ERROR expected expression, found `k#view_projection`
 }
 
 fn main() {}

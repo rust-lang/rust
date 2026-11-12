@@ -142,6 +142,7 @@ symbols! {
         TypeAscribe:        "type_ascribe",
         Union:              "union",
         UnwrapBinder:       "unwrap_binder",
+        ViewProjection:     "view_projection",
         ViewType:           "view_type",
         WrapBinder:         "wrap_binder",
         Yeet:               "yeet",

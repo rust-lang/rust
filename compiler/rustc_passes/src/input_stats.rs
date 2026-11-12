@@ -669,7 +669,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, Move, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Gen, UnsafeBinderCast, Gca, Err, Dummy
+                Become, IncludedBytes, Gen, UnsafeBinderCast, Gca, ViewProjection, Err, Dummy
             ]
         );
         ast_visit::walk_expr(self, e)

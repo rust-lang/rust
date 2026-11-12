@@ -1277,6 +1277,8 @@ impl<'a> Parser<'a> {
                 this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)
             } else if this.eat_forced_keyword_noexpect(kw::UnwrapBinder) {
                 this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)
+            } else if this.eat_forced_keyword_noexpect(kw::ViewProjection) {
+                this.parse_expr_view_projection(lo)
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 let at_async = this.check_keyword(exp!(Async));
@@ -1773,6 +1775,21 @@ impl<'a> Parser<'a> {
         self.expect(exp!(CloseParen))?;
         self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
+    }
+
+    pub(crate) fn parse_expr_view_projection(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr_path_start()?;
+        self.expect(exp!(Dot))?;
+
+        let (fields, _) = self
+            .parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| p.parse_field_name())?;
+        self.expect(exp!(CloseParen))?;
+        let span = lo.to(self.prev_token.span);
+
+        self.psess.gated_spans.gate(sym::internal_syntax, span);
+
+        Ok(self.mk_expr(span, ExprKind::ViewProjection(expr, fields)))
     }
 
     fn parse_expr_unsafe_binder_cast(
@@ -4119,6 +4136,9 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Dummy => {
                 // These would forbid any let expressions they contain already.
             }
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         }
         self.depth -= 1;
     }

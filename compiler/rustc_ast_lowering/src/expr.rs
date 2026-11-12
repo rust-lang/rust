@@ -548,6 +548,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let e = self.emit_bad_gca_macro(e.span, expr, "expression");
                 hir::ExprKind::Err(e)
             }
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         };
 
         hir::Expr { hir_id: expr_hir_id, kind, span }

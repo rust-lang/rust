@@ -279,6 +279,9 @@ impl<'a> Sugg<'a> {
                 snippet(lhs.span),
                 snippet(ty.span),
             ),
+
+            // FIXME(scrabsha):
+            ast::ExprKind::ViewProjection(.. ) => unimplemented!(),
         }
     }
 
