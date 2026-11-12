@@ -1,5 +1,6 @@
 #![crate_type = "lib"]
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 // `eii` expands to, among other things, `macro eii() {}`.
 // If we have two eiis named the same thing, we have a duplicate definition
 // for that macro. The compiler happily continues compiling on duplicate
