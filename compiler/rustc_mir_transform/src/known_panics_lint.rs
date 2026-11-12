@@ -777,11 +777,11 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                             let param_def = generics.param_at(index, self.tcx);
 
                             if let GenericParamDefKind::Const { .. } = param_def.kind
-                                && find_attr!(self.tcx, param_def.def_id, RustcPanicsWhenZero)
+                                && find_attr!(self.tcx, param_def.def_id, LintPanicsWhenZero)
                                 && let Some(0) = ct.try_to_target_usize(self.tcx)
                             {
                                 // We managed to figure-out that the value of a
-                                // `#[rustc_panics_when_zero]` const-generic parameter is zero.
+                                // `#[lint::panics_when_zero]` const-generic parameter is zero.
                                 //
                                 // Let's report it as an unconditional panic.
                                 let source_info = self.body.source_info(location);

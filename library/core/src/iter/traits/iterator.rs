@@ -1775,7 +1775,7 @@ pub const trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iter_map_windows", issue = "87155")]
-    fn map_windows<F, R, #[rustc_panics_when_zero] const N: usize>(
+    fn map_windows<F, R, #[lint::panics_when_zero] const N: usize>(
         self,
         f: F,
     ) -> MapWindows<Self, F, N>
@@ -3650,7 +3650,7 @@ pub const trait Iterator {
     /// ```
     #[track_caller]
     #[unstable(feature = "iter_array_chunks", issue = "100450")]
-    fn array_chunks<#[rustc_panics_when_zero] const N: usize>(self) -> ArrayChunks<Self, N>
+    fn array_chunks<#[lint::panics_when_zero] const N: usize>(self) -> ArrayChunks<Self, N>
     where
         Self: Sized,
     {
