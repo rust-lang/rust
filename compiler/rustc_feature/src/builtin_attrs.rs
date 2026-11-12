@@ -81,28 +81,17 @@ pub enum AttributeStability {
 /// Attributes that have a special meaning to rustc or rustdoc.
 #[rustfmt::skip]
 pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
-    // ==========================================================================
-    // Stable attributes:
-    // ==========================================================================
-
-    // Conditional compilation:
     sym::cfg,
     sym::cfg_attr,
-
-    // Testing:
     sym::ignore,
     sym::should_panic,
-
-    // Macros:
     sym::automatically_derived,
     sym::macro_use,
-    sym::macro_escape, // Deprecated synonym for `macro_use`.
+    sym::macro_escape,
     sym::macro_export,
     sym::proc_macro,
     sym::proc_macro_derive,
     sym::proc_macro_attribute,
-
-    // Lints:
     sym::warn,
     sym::allow,
     sym::expect,
@@ -111,17 +100,12 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::must_use,
     sym::must_not_suspend,
     sym::deprecated,
-
-    // Crate properties:
     sym::crate_name,
     sym::crate_type,
-
-    // ABI, linking, symbols, and FFI
     sym::link,
     sym::link_name,
     sym::no_link,
     sym::repr,
-    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     sym::rustc_align,
     sym::rustc_align_static,
     sym::export_name,
@@ -130,28 +114,17 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::used,
     sym::link_ordinal,
     sym::naked,
-    // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
     sym::rustc_pass_indirectly_in_non_rustic_abis,
-
-    // Limits:
     sym::recursion_limit,
     sym::type_length_limit,
     sym::move_size_limit,
-
-    // Entry point:
     sym::no_main,
-
-    // Modules, prelude, and resolution:
     sym::path,
     sym::no_std,
     sym::no_implicit_prelude,
     sym::non_exhaustive,
-
-    // Runtime
     sym::windows_subsystem,
-    sym::panic_handler, // RFC 2070
-
-    // Code generation:
+    sym::panic_handler,
     sym::inline,
     sym::cold,
     sym::no_builtins,
@@ -162,87 +135,31 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::sanitize,
     sym::coverage,
     sym::optimize,
-
     sym::doc,
-
-    // Debugging
     sym::debugger_visualizer,
     sym::collapse_debuginfo,
-
-    // ==========================================================================
-    // Unstable attributes:
-    // ==========================================================================
-
-    // Linking:
     sym::export_stable,
-
-    // Testing:
     sym::test_runner,
-
     sym::reexport_test_harness_main,
-
-    // RFC #1268
     sym::marker,
     sym::thread_local,
     sym::no_core,
-
     sym::ffi_pure,
     sym::ffi_const,
     sym::register_attribute_tool,
     sym::register_lint_tool,
     sym::register_tool,
-    // `#[cfi_encoding = ""]`
     sym::cfi_encoding,
-
-    // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
     sym::coroutine,
-
-    // RFC 3543
-    // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
     sym::patchable_function_entry,
-
-    // The `#[loop_match]` and `#[const_continue]` attributes are part of the
-    // lang experiment for RFC 3720 tracked in:
-    //
-    // - https://github.com/rust-lang/rust/issues/132306
     sym::const_continue,
     sym::loop_match,
-
-    // The `#[pin_v2]` attribute is part of the `pin_ergonomics` experiment
-    // that allows structurally pinning, tracked in:
-    //
-    // - https://github.com/rust-lang/rust/issues/130494
     sym::pin_v2,
-
-    // The `#[rustc_splat]` attribute is part of the `splat` experiment
-    // that improves the ergonomics of function overloading, tracked in:
-    //
-    // - https://github.com/rust-lang/rust/issues/153629
     sym::rustc_splat,
-
-    // The `#[rustc_unroll]` attribute.
-    //
-    // - https://github.com/rust-lang/rust/pull/156816
-    //
-    // FIXME(#159429): temporarily renamed to mitigate `#[unroll]` nameres ambiguity
     sym::rustc_unroll,
-
-    // `#[instrument_fn = "on|off"]` to insert or inhibit instrumentation function
-    // calls inside a function, usually around the prologue.
-    //
-    // - https://github.com/rust-lang/rust/issues/157081
     sym::instrument_fn,
-
-    // The attribute is part of feature `checked_type_aliases`. Its name is but a placeholder.
-    // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
     sym::rustc_unchecked_type_alias,
-
-    // ==========================================================================
-    // Internal attributes: Stability, deprecation, and unsafe:
-    // ==========================================================================
-
     sym::feature,
-    // DuplicatesOk since it has its own validation
     sym::stable,
     sym::unstable,
     sym::unstable_feature_bound,
@@ -256,18 +173,8 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_allowed_through_unstable_modules,
     sym::rustc_deprecated_safe_2024,
     sym::rustc_pub_transparent,
-
-    // ==========================================================================
-    // Internal attributes: Type system related:
-    // ==========================================================================
-
     sym::fundamental,
     sym::may_dangle,
-
-    // ==========================================================================
-    // Internal attributes: Runtime related:
-    // ==========================================================================
-
     sym::rustc_allocator,
     sym::rustc_nounwind,
     sym::rustc_reallocator,
@@ -280,75 +187,34 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::needs_panic_runtime,
     sym::compiler_builtins,
     sym::profiler_runtime,
-
-    // ==========================================================================
-    // Internal attributes, Linkage:
-    // ==========================================================================
-
     sym::linkage,
     sym::rustc_std_internal_symbol,
     sym::rustc_objc_class,
     sym::rustc_objc_selector,
-
-    // ==========================================================================
-    // Internal attributes, Macro related:
-    // ==========================================================================
-
     sym::rustc_builtin_macro,
     sym::rustc_proc_macro_decls,
     sym::rustc_macro_transparency,
     sym::rustc_autodiff,
     sym::rustc_offload_kernel,
-
-    // ==========================================================================
-    // Internal attributes, Diagnostics related:
-    // ==========================================================================
-
     sym::rustc_on_unimplemented,
     sym::rustc_confusables,
-    // Enumerates "identity-like" conversion methods to suggest on type mismatch.
     sym::rustc_conversion_suggestion,
-    // Prevents field reads in the marked trait or method to be considered
-    // during dead code analysis.
     sym::rustc_trivial_field_reads,
-    // Used by the `rustc::potential_query_instability` lint to warn methods which
-    // might not be stable during incremental compilation.
     sym::rustc_lint_query_instability,
-    // Used by the `rustc::untracked_query_information` lint to warn methods which
-    // might not be stable during incremental compilation.
     sym::rustc_lint_untracked_query_information,
-    // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
-    // types (as well as any others in future).
     sym::rustc_lint_opt_ty,
-    // Used by the `rustc::bad_opt_access` lint on fields
-    // types (as well as any others in future).
     sym::rustc_lint_opt_deny_field_access,
     sym::rustc_diagnostic_opaque,
     sym::rustc_assert_variance,
-
-    // ==========================================================================
-    // Internal attributes, Const related:
-    // ==========================================================================
-
     sym::rustc_always_gca,
     sym::rustc_promotable,
     sym::rustc_legacy_const_generics,
-    // Do not const-check this function's body. It will always get replaced during CTFE via `hook_special_const_fn`.
     sym::rustc_do_not_const_check,
     sym::rustc_const_stable_indirect,
     sym::rustc_intrinsic_const_stable_indirect,
     sym::rustc_allow_const_fn_unstable,
-
-    // ==========================================================================
-    // Internal attributes, Layout related:
-    // ==========================================================================
-
     sym::rustc_simd_monomorphize_lane_limit,
     sym::rustc_nonnull_optimization_guaranteed,
-
-    // ==========================================================================
-    // Internal attributes, Misc:
-    // ==========================================================================
     sym::lang,
     sym::rustc_pass_by_value,
     sym::rustc_no_implicit_autorefs,
@@ -362,7 +228,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_has_incoherent_inherent_impls,
     sym::rustc_non_const_trait_method,
     sym::rustc_panics_when_zero,
-
     sym::rustc_canonical_symbol,
     sym::rustc_diagnostic_item,
     sym::prelude_import,
@@ -381,11 +246,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_scalable_vector,
     sym::rustc_must_match_exhaustively,
     sym::rustc_no_writable,
-
-    // ==========================================================================
-    // Internal attributes, Testing:
-    // ==========================================================================
-
     sym::rustc_show_spans,
     sym::rustc_effective_visibility,
     sym::rustc_dump_inferred_outlives,
