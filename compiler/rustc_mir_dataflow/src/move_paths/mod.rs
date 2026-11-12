@@ -330,7 +330,7 @@ pub struct MovePathLookup<'tcx> {
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FxHashMap<(MovePathIndex, MoveSubPath), MovePathIndex>,
+    projections: FxHashMap<(MovePathIndex, MoveSubPath<'tcx>), MovePathIndex>,
 
     un_derefer: UnDerefer<'tcx>,
 }
@@ -429,24 +429,26 @@ impl<'tcx> MoveData<'tcx> {
 
 /// A projection into a move path producing a child path
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-enum MoveSubPath {
+enum MoveSubPath<'tcx> {
     Deref,
     Field(FieldIdx),
+    #[expect(unused, reason = "will be used in next commit :sparkles:")]
+    Fields(&'tcx [FieldIdx]),
     ConstantIndex(u64),
     Downcast(VariantIdx),
     UnwrapUnsafeBinder,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum MoveSubPathResult {
-    One(MoveSubPath),
+enum MoveSubPathResult<'tcx> {
+    One(MoveSubPath<'tcx>),
     Subslice { from: u64, to: u64 },
     Skip,
     Stop,
 }
 
-impl MoveSubPath {
-    fn of(elem: ProjectionKind) -> MoveSubPathResult {
+impl<'tcx> MoveSubPath<'tcx> {
+    fn of(elem: ProjectionKind<'tcx>) -> MoveSubPathResult<'tcx> {
         let subpath = match elem {
             // correspond to a MoveSubPath
             ProjectionKind::Deref => MoveSubPath::Deref,
@@ -479,6 +481,8 @@ impl MoveSubPath {
             ProjectionKind::Subslice { from, to, from_end: false } => {
                 return MoveSubPathResult::Subslice { from, to };
             }
+
+            ProjectionKind::View(_) => unimplemented!(),
         };
 
         MoveSubPathResult::One(subpath)

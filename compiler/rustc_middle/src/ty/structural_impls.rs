@@ -5,7 +5,7 @@
 
 use std::fmt::{self, Debug};
 
-use rustc_abi::TyAndLayout;
+use rustc_abi::{FieldIdx, TyAndLayout};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Spanned;
@@ -775,4 +775,5 @@ list_fold! {
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
     &'tcx ty::List<ty::ArgOutlivesClause<'tcx>> : mk_outlives,
     &'tcx ty::List<ty::Const<'tcx>> : mk_const_list,
+    &'tcx ty::List<FieldIdx> : mk_fields,
 }

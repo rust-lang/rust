@@ -428,6 +428,9 @@ where
                 self.project_constant_index(base, offset, min_length, from_end)?
             }
             Subslice { from, to, from_end } => self.project_subslice(base, from, to, from_end)?,
+
+            // FIXME(scrabsha):
+            View(_) => unimplemented!(),
         })
     }
 

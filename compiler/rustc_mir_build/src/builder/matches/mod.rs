@@ -2801,7 +2801,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mode: BindingMode,
         var_id: LocalVarId,
         var_ty: Ty<'tcx>,
-        user_ty: Option<Box<UserTypeProjections>>,
+        user_ty: Option<Box<UserTypeProjections<'tcx>>>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,

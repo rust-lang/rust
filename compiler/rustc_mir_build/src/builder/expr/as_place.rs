@@ -111,6 +111,9 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 // We can stop here as arrays are captured completely.
                 break;
             }
+
+            // FIXME(scrabsha):
+            ProjectionElem::View(_) => unimplemented!(),
         };
         variant = None;
         hir_projections.push(hir_projection);
@@ -812,6 +815,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::UnwrapUnsafeBinder(_) => (),
+
+                    // FIXME(scrabsha):
+                    ProjectionElem::View(_) => unimplemented!(),
                 }
             }
         }

@@ -979,10 +979,10 @@ pub enum TrackElem {
     DerefLen,
 }
 
-impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
+impl<'tcx, V, T> TryFrom<ProjectionElem<'tcx, V, T>> for TrackElem {
     type Error = ();
 
-    fn try_from(value: ProjectionElem<V, T>) -> Result<Self, Self::Error> {
+    fn try_from(value: ProjectionElem<'tcx, V, T>) -> Result<Self, Self::Error> {
         match value {
             ProjectionElem::Field(field, _) => Ok(TrackElem::Field(field)),
             ProjectionElem::Downcast(_, idx) => Ok(TrackElem::Variant(idx)),

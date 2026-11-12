@@ -156,7 +156,7 @@ macro_rules! make_mir_visitor {
                 &mut self,
                 place: & $($mutability)? Place<'tcx>,
                 variance: $(& $mutability)? ty::Variance,
-                user_ty: & $($mutability)? UserTypeProjection,
+                user_ty: & $($mutability)? UserTypeProjection<'tcx>,
                 location: Location,
             ) {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
@@ -223,7 +223,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_user_type_projection(
                 &mut self,
-                ty: & $($mutability)? UserTypeProjection,
+                ty: & $($mutability)? UserTypeProjection<'tcx>,
             ) {
                 self.super_user_type_projection(ty);
             }
@@ -842,7 +842,7 @@ macro_rules! make_mir_visitor {
                 &mut self,
                 place: & $($mutability)? Place<'tcx>,
                 variance: $(& $mutability)? ty::Variance,
-                user_ty: & $($mutability)? UserTypeProjection,
+                user_ty: & $($mutability)? UserTypeProjection<'tcx>,
                 location: Location)
             {
                 self.visit_place(
@@ -969,7 +969,7 @@ macro_rules! make_mir_visitor {
                 self.visit_source_scope($(& $mutability)? *scope);
             }
 
-            fn super_user_type_projection(&mut self, _ty: & $($mutability)? UserTypeProjection) {}
+            fn super_user_type_projection(&mut self, _ty: & $($mutability)? UserTypeProjection<'tcx>) {}
 
             fn super_user_type_annotation(
                 &mut self,
@@ -1179,6 +1179,9 @@ macro_rules! visit_place_fns {
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
                 | PlaceElem::Downcast(..) => None,
+
+                // FIXME(scrabsha):
+                PlaceElem::View(_) => unimplemented!(),
             }
         }
     };
@@ -1264,6 +1267,10 @@ macro_rules! visit_place_fns {
                 | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
                 | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
                 | ProjectionElem::Downcast(_, _) => {}
+
+                ProjectionElem::View(_) => {
+                    // FIXME(scrabsha): should we add a `visit_fields` method or sth?
+                }
             }
         }
     };

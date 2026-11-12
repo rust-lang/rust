@@ -1,5 +1,6 @@
 use std::marker::PointeeSized;
 
+use rustc_abi::FieldIdx;
 use rustc_serialize::Decodable;
 
 use crate::ty::codec::TyDecoder;
@@ -80,6 +81,15 @@ impl<'tcx> RefDecodable<'tcx> for ty::ListWithCachedTypeInfo<ty::Clause<'tcx>> {
     }
 }
 
+impl<'tcx> RefDecodable<'tcx> for ty::List<FieldIdx> {
+    fn decode(decoder: &mut impl TyDecoder<'tcx>) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder
+            .interner()
+            .mk_fields_from_iter((0..len).map::<FieldIdx, _>(|_| Decodable::decode(decoder)))
+    }
+}
+
 /// Implements [`Decodable`] for `&'tcx T`, where [`T: RefDecodable`](RefDecodable)
 /// and T is defined in this crate (`rustc_middle`).
 ///
@@ -114,6 +124,7 @@ impl_decodable_via_ref_decodable_for_local_types! {
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx traits::specialization_graph::Graph,
     &'tcx ty::List<Ty<'tcx>>,
+    &'tcx ty::List<rustc_abi::FieldIdx>,
     &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     &'tcx ty::List<ty::Const<'tcx>>,
     &'tcx ty::List<ty::Pattern<'tcx>>,

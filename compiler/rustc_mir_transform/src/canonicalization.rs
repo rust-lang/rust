@@ -23,7 +23,7 @@ pub(super) fn canonicalize_binary_operations<'tcx, 'body>(
         }
     }
 
-    fn projection_rank<'tcx>(proj: &ProjectionElem<Local, Ty<'tcx>>) -> usize {
+    fn projection_rank<'tcx>(proj: &ProjectionElem<'tcx, Local, Ty<'tcx>>) -> usize {
         match proj {
             ProjectionElem::Deref => 0,
             ProjectionElem::Field(..) => 1,
@@ -34,6 +34,9 @@ pub(super) fn canonicalize_binary_operations<'tcx, 'body>(
             ProjectionElem::OpaqueCast(_) => 6,
             ProjectionElem::UnwrapUnsafeBinder(_) => 7,
             ProjectionElem::PhantomDeref => 8,
+
+            // FIXME(scrabsha):
+            ProjectionElem::View(_) => unimplemented!(),
         }
     }
 

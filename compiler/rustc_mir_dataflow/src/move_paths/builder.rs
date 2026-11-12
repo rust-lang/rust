@@ -229,6 +229,9 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                         },
                         MoveSubPath::Downcast(_) => (),
                         MoveSubPath::UnwrapUnsafeBinder => (),
+
+                        // FIXME(scrabsha):
+                        MoveSubPath::Fields(_) => unimplemented!(),
                     };
 
                     move_elem
@@ -307,7 +310,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn add_move_path(
         &mut self,
         base: MovePathIndex,
-        elem: MoveSubPath,
+        elem: MoveSubPath<'tcx>,
         mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
     ) -> MovePathIndex {
         let MoveDataBuilder {

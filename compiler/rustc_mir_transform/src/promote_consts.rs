@@ -358,6 +358,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                     return Err(Unpromotable);
                 }
             }
+
+            // FIXME(scrabsha):
+            ProjectionElem::View(..) => unimplemented!(),
         }
 
         self.validate_place(place_base)

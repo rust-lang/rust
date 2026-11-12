@@ -260,7 +260,7 @@ enum Value<'a, 'tcx> {
         base: AddressBase,
         // We do not use a plain `Place` as we want to be able to reason about indices.
         // This does not contain any `Deref` projection.
-        projection: &'a [ProjectionElem<VnIndex, Ty<'tcx>>],
+        projection: &'a [ProjectionElem<'tcx, VnIndex, Ty<'tcx>>],
         kind: AddressKind,
         /// Give each borrow and pointer a different provenance, so we don't merge them.
         provenance: VnOpaque,
@@ -268,7 +268,7 @@ enum Value<'a, 'tcx> {
 
     // Extractions.
     /// This is the *value* obtained by projecting another value.
-    Projection(VnIndex, ProjectionElem<VnIndex, ()>),
+    Projection(VnIndex, ProjectionElem<'tcx, VnIndex, ()>),
     /// Discriminant of the given value.
     Discriminant(VnIndex),
 
@@ -797,7 +797,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     fn dereference_address(
         &mut self,
         base: AddressBase,
-        projection: &[ProjectionElem<VnIndex, Ty<'tcx>>],
+        projection: &[ProjectionElem<'tcx, VnIndex, Ty<'tcx>>],
     ) -> Option<VnIndex> {
         let (mut place_ty, mut value) = match base {
             // The base is a local, so we take the local's value and project from it.
@@ -823,7 +823,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         &mut self,
         place_ty: PlaceTy<'tcx>,
         value: VnIndex,
-        proj: ProjectionElem<VnIndex, Ty<'tcx>>,
+        proj: ProjectionElem<'tcx, VnIndex, Ty<'tcx>>,
     ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
         let proj = match proj {
@@ -919,6 +919,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
             ProjectionElem::OpaqueCast(_) => ProjectionElem::OpaqueCast(()),
             ProjectionElem::UnwrapUnsafeBinder(_) => ProjectionElem::UnwrapUnsafeBinder(()),
+
+            // FIXME(scrabsha):
+            ProjectionElem::View(_) => unimplemented!(),
         };
 
         let value = self.insert(projection_ty.ty, Value::Projection(value, proj));
@@ -1146,7 +1149,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     fn try_as_place_elem(
         &mut self,
         ty: Ty<'tcx>,
-        proj: ProjectionElem<VnIndex, ()>,
+        proj: ProjectionElem<'tcx, VnIndex, ()>,
         loc: Location,
     ) -> Option<PlaceElem<'tcx>> {
         proj.try_map(
