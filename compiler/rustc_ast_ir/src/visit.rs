@@ -27,12 +27,14 @@ impl VisitorResult for () {
 impl<T> VisitorResult for ControlFlow<T> {
     type Residual = T;
 
+    #[inline]
     fn output() -> Self {
         ControlFlow::Continue(())
     }
     fn from_residual(residual: Self::Residual) -> Self {
         ControlFlow::Break(residual)
     }
+    #[inline]
     fn from_branch(b: Self) -> Self {
         b
     }
