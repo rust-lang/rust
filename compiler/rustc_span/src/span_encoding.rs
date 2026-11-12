@@ -88,7 +88,8 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 /// accesses to `lo` and `hi` must introduce a dependency to the parent definition's span.
 /// This is performed using the callback `SPAN_TRACK` to access the query engine.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 #[repr(packed(4))]
 pub struct Span(u64);
 

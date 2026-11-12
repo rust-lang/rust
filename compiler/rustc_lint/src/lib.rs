@@ -25,7 +25,9 @@
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
+#![feature(register_tool)]
 #![feature(try_blocks)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 mod async_closures;
