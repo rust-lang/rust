@@ -169,19 +169,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
-        // Some calling conventions (such as fastcall and vectorcall) decorate
-        // symbols with the argument byte count. Use rustc's original argument
-        // layouts and prefix the decorated name with `\x01` so LLVM does not
-        // decorate it a second time.
-        let decorated_name = rustc_codegen_ssa::common::windows_calling_convention_name(
-            &self.tcx.sess.target,
-            fn_abi.conv,
-            name,
-            &fn_abi.args,
-        )
-        .map(|name| format!("\x01{name}"));
-
-        let name = decorated_name.as_deref().unwrap_or(name);
 
         // Function addresses in Rust are never significant, allowing functions to
         // be merged.
