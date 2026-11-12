@@ -147,11 +147,6 @@ impl Attribute {
 
 impl AttributeExt for Attribute {
     #[inline]
-    fn value_str(&self) -> Option<Symbol> {
-        self.value_lit().and_then(|x| x.value_as_str())
-    }
-
-    #[inline]
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, span, .. }) => {

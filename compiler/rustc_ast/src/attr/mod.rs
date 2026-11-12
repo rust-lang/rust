@@ -80,30 +80,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    /// Returns the string value in:
-    ///
-    /// ```text
-    /// #[attribute = "value"]
-    ///               ^^^^^^^
-    /// ```
-    ///
-    /// It returns `None` in any other cases, including doc comments if they
-    /// are not under the form `#[doc = "..."]`.
-    ///
-    /// It also returns `None` for:
-    ///
-    /// ```text
-    /// #[attr("value")]
-    /// ```
-    fn value_str(&self) -> Option<Symbol> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.value_str(),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => generated.value_str(),
-        }
-    }
-
     /// Returns the documentation, its kind if this is a doc comment or a sugared doc comment
     /// and the span of the entire comment (or the entire attribute if raw - see the span in
     /// [`DocFragmentKind`] for the literal span.)
@@ -806,9 +782,6 @@ impl MetaItemLit {
 }
 
 pub trait AttributeExt: Debug + 'static {
-    /// Gets the value literal, as string, when using `#[attr = value]`
-    fn value_str(&self) -> Option<Symbol>;
-
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
@@ -827,8 +800,28 @@ pub trait AttributeExt: Debug + 'static {
 }
 
 impl Attribute {
+    /// Returns the string value in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases, including doc comments if they
+    /// are not under the form `#[doc = "..."]`.
+    ///
+    /// It also returns `None` for:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
     pub fn value_str(&self) -> Option<Symbol> {
-        AttributeExt::value_str(self)
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.value_str(),
+            AttrKind::Synthetic(..) => unreachable!(),
+            AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_str(),
+        }
     }
 
     /// Gets the span of the value literal, as string, when using `#[attr = value]`
