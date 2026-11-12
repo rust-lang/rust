@@ -9,7 +9,7 @@ fn multisplat_fn_bad(#[rustc_splat] (_a, _b): (u32, i8), #[rustc_splat] (_c, _d)
 fn multisplat_arg_bad(
     #[rustc_splat]
     #[rustc_splat]
-    //~^ ERROR  multiple `rustc_splat` attributes
+    //~^ ERROR duplicate `rustc_splat` attributes
     (_a, _b): (u32, i8),
 ) {
 }
@@ -18,7 +18,7 @@ fn multisplat_arg_fn_bad(
     #[rustc_splat]
     //~^ ERROR multiple `#[rustc_splat]`s are not allowed in the same function argument list
     #[rustc_splat]
-    //~^ ERROR  multiple `rustc_splat` attributes
+    //~^ ERROR duplicate `rustc_splat` attributes
     (_a, _b): (u32, i8),
     #[rustc_splat] (_c, _d): (u32, i8),
 ) {
@@ -69,14 +69,14 @@ fn main() {
     let multisplat_arg_bad_: fn(
         #[rustc_splat]
         #[rustc_splat]
-        //~^ ERROR multiple `rustc_splat` attributes
+        //~^ ERROR duplicate `rustc_splat` attributes
         (u32, i8),
     ) = multisplat_arg_bad;
     let multisplat_arg_fn_bad_: fn(
         #[rustc_splat]
         //~^ ERROR multiple `#[rustc_splat]`s are not allowed in the same function argument list
         #[rustc_splat]
-        //~^ ERROR multiple `rustc_splat` attributes
+        //~^ ERROR duplicate `rustc_splat` attributes
         (u32, i8),
         #[rustc_splat] (u32, i8),
     ) = multisplat_arg_fn_bad;

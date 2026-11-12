@@ -68,7 +68,7 @@ LL - #![no_core("bar")]
 LL + #![no_core]
    |
 
-error: multiple `no_core` attributes
+error: duplicate `no_core` attributes
   --> $DIR/malformed-no-std.rs:13:1
    |
 LL | #![no_core("bar")]
@@ -94,7 +94,7 @@ LL - #![no_core(foo = "bar")]
 LL + #![no_core]
    |
 
-error: multiple `no_core` attributes
+error: duplicate `no_core` attributes
   --> $DIR/malformed-no-std.rs:16:1
    |
 LL | #![no_core(foo = "bar")]
@@ -118,7 +118,7 @@ note: this attribute does not have an `!`, which means it is applied to this ext
 LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^
 
-warning: unused attribute
+warning: duplicate `no_std` attributes
   --> $DIR/malformed-no-std.rs:5:1
    |
 LL | #![no_std("bar")]
@@ -131,7 +131,7 @@ LL | #![no_std = "foo"]
    | ^^^^^^^^^^^^^^^^^^
    = note: requested on the command line with `-W unused-attributes`
 
-warning: unused attribute
+warning: duplicate `no_std` attributes
   --> $DIR/malformed-no-std.rs:8:1
    |
 LL | #![no_std(foo = "bar")]

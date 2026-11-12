@@ -1,6 +1,6 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
-use rustc_attr_parsing::{AttributeTemplate, UnusedMultiple, validate_attr};
+use rustc_attr_parsing::{AttributeTemplate, DuplicateAttribute, validate_attr};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
@@ -51,7 +51,7 @@ pub(crate) fn warn_on_duplicate_attribute(
             DUPLICATE_MACRO_ATTRIBUTES,
             attr.span,
             ecx.current_expansion.lint_node_id,
-            UnusedMultiple { this: attr.span, other: span, name },
+            DuplicateAttribute { this: attr.span, other: span, name, warning: false },
         );
     }
 }

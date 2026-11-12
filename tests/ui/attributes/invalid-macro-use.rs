@@ -32,7 +32,7 @@ extern crate std as s4;
 extern crate std as s5;
 
 #[macro_use(a)]
-//~^ ERROR unused attribute
+//~^ ERROR duplicate `macro_use` attributes
 #[macro_use]
 //~^ NOTE attribute also specified here
 extern crate std as s6;
@@ -40,13 +40,13 @@ extern crate std as s6;
 #[macro_use]
 //~^ NOTE attribute also specified here
 #[macro_use(a)]
-//~^ ERROR unused attribute
+//~^ ERROR duplicate `macro_use` attributes
 extern crate std as s7;
 
 #[macro_use]
 //~^ NOTE attribute also specified here
 #[macro_use]
-//~^ ERROR unused attribute
+//~^ ERROR duplicate `macro_use` attributes
 extern crate std as s8;
 
 // This is fine, both are importing different names

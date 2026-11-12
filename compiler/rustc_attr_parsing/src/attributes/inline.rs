@@ -3,7 +3,7 @@ use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{ILL_FORMED_ATTRIBUTE_INPUT, UNUSED_ATTRIBUTES};
 
 use super::prelude::*;
-use crate::diagnostics::{InlineForceInlineConflict, InlineIgnoredForExported, UnusedMultiple};
+use crate::diagnostics::{DuplicateAttribute, InlineForceInlineConflict, InlineIgnoredForExported};
 
 #[derive(Default)]
 pub(crate) struct InlineParser(Option<(InlineAttr, Span)>);
@@ -70,7 +70,11 @@ impl AttributeParser for InlineParser {
                         cx.emit_err(InlineForceInlineConflict { inline_span, force_inline_span });
                     }
                     Some((_, first_inline_span)) => {
-                        cx.warn_unused_duplicate_future_error(first_inline_span, inline_span);
+                        cx.warn_unused_duplicate_future_error(
+                            first_inline_span,
+                            inline_span,
+                            sym::inline,
+                        );
                     }
                 }
             },
@@ -108,10 +112,11 @@ impl AttributeParser for InlineParser {
                 match this.0 {
                     None => this.0 = Some((attr, force_inline_span)),
                     Some((InlineAttr::Force { .. }, first_force_inline_span)) => {
-                        cx.emit_err(UnusedMultiple {
+                        cx.emit_err(DuplicateAttribute {
                             this: force_inline_span,
                             other: first_force_inline_span,
                             name: sym::rustc_force_inline,
+                            warning: false,
                         });
                     }
                     Some((_, inline_span)) => {

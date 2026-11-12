@@ -58,14 +58,14 @@ impl AttributeParser for MacroUseParser {
                                 "State is UseAll is some so this is not the first attribute",
                             );
                             // Since there is a `#[macro_use]` import already, give a warning
-                            cx.warn_unused_duplicate(first_span, span);
+                            cx.warn_unused_duplicate(first_span, span, sym::macro_use);
                         }
                         MacroUseArgs::UseSpecific(_) => {
                             group.state = MacroUseArgs::UseAll;
                             group.first_span = Some(span);
                             // If there is a `#[macro_use]` attribute, warn on all `#[macro_use(...)]` attributes since everything is already imported
                             for specific_use in group.uses_attr_spans.drain(..) {
-                                cx.warn_unused_duplicate(span, specific_use);
+                                cx.warn_unused_duplicate(span, specific_use, sym::macro_use);
                             }
                         }
                     }
@@ -81,7 +81,7 @@ impl AttributeParser for MacroUseParser {
                             let first_span = group.first_span.expect(
                                 "State is UseAll is some so this is not the first attribute",
                             );
-                            cx.warn_unused_duplicate(first_span, span);
+                            cx.warn_unused_duplicate(first_span, span, sym::macro_use);
                         }
                         MacroUseArgs::UseSpecific(arguments) => {
                             // Store here so if we encounter a `UseAll` later we can still lint this attribute
