@@ -1,17 +1,17 @@
 error: only structs can be viewed
-  --> $DIR/must-be-struct.rs:11:9
+  --> $DIR/must-be-struct.rs:10:9
    |
 LL | fn f(_: view_type!(Foo.{})) {}
    |         ^^^^^^^^^^^^^^^^^^ `Foo` is an enum, it cannot be viewed
 
 error: only structs can be viewed
-  --> $DIR/must-be-struct.rs:13:9
+  --> $DIR/must-be-struct.rs:12:9
    |
 LL | fn g(_: view_type!(u8.{})) {}
    |         ^^^^^^^^^^^^^^^^^ type `u8` cannot be viewed
 
 error: only structs can be viewed
-  --> $DIR/must-be-struct.rs:15:9
+  --> $DIR/must-be-struct.rs:14:9
    |
 LL | fn h(_: view_type!(char.{})) {}
    |         ^^^^^^^^^^^^^^^^^^^ type `char` cannot be viewed

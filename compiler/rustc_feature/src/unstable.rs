@@ -318,8 +318,6 @@ declare_features! (
     (internal, needs_panic_runtime, "1.10.0", Some(32837)),
     /// Allows using the `#![panic_runtime]` attribute.
     (internal, panic_runtime, "1.10.0", Some(32837)),
-    /// Allows using pattern types.
-    (internal, pattern_types, "1.79.0", Some(123646)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (internal, repr_simd, "1.4.0", Some(27731)),
     /// Allows using compiler's own crates.
@@ -784,8 +782,6 @@ declare_features! (
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
-    /// Allows view types.
-    (unstable, view_types, "1.97.0", Some(155938)),
     /// Target features on wasm.
     (unstable, wasm_target_feature, "1.30.0", Some(150260)),
     /// Allows use of attributes in `where` clauses.

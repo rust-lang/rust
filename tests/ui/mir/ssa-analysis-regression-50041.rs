@@ -2,7 +2,7 @@
 //@ compile-flags: -Z mir-opt-level=4
 
 #![crate_type = "lib"]
-#![feature(lang_items, pattern_type_macro, pattern_types)]
+#![feature(lang_items, pattern_types)]
 #![no_std]
 
 struct NonNull<T: ?Sized>(pattern_type!(*const T is !null));

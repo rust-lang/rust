@@ -76,7 +76,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[rustc_nonnull_optimization_guaranteed]
 #[lang = "non_null"]
 pub struct NonNull<#[rustc_assert_variance(covariant)] T: PointeeSized> {
-    pointer: crate::pattern_type!(*const T is !null),
+    pointer: crate::pat::pattern_type!(*const T is !null),
 }
 
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
