@@ -1030,6 +1030,11 @@ fn contains_illegal_impl_trait_in_trait<'tcx>(
     fn_def_id: DefId,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
 ) -> Option<MethodViolation> {
+    if !ty.has_aliases() {
+        // RPITIT is a projection, short-circuit if none exist.
+        return None;
+    }
+
     let ty = tcx.liberate_late_bound_regions(fn_def_id, ty);
 
     if tcx.asyncness(fn_def_id).is_async() {
