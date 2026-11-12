@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_lint::{LateContext, unerased_lint_store};
-use rustc_span::{BytePos, Pos as _, SourceFile, Span, SyntaxContext};
+use rustc_span::{BytePos, Pos as _, SourceFile, Span, Symbol, SyntaxContext};
 use std::ops::Range;
 use std::path::Path;
 use toml::Spanned;
@@ -52,14 +52,14 @@ impl<'a> LintConfig<'a> {
     }
 }
 
-fn check_table(cx: &LateContext<'_>, table: &DeTable<'_>, known_groups: &FxHashSet<&str>, file: &SourceFile) {
+fn check_table(cx: &LateContext<'_>, table: &DeTable<'_>, known_groups: &FxHashSet<Symbol>, file: &SourceFile) {
     let mut lints = Vec::new();
     let mut groups = Vec::new();
     for (name, config) in table {
         if name.get_ref() != "warnings"
             && let Some(config) = LintConfig::parse(config)
         {
-            if known_groups.contains(&**name.get_ref()) {
+            if known_groups.contains(&Symbol::intern(name.get_ref())) {
                 groups.push((name, config));
             } else {
                 lints.push((name, config));
@@ -136,12 +136,12 @@ pub fn check(cx: &LateContext<'_>) {
         let mut rustc_groups = FxHashSet::default();
         let mut clippy_groups = FxHashSet::default();
         for group in unerased_lint_store(cx.tcx.sess).get_all_group_names() {
-            match group.split_once("::") {
+            match group.tool {
                 None => {
-                    rustc_groups.insert(group);
+                    rustc_groups.insert(group.name);
                 },
-                Some(("clippy", group)) => {
-                    clippy_groups.insert(group);
+                Some(rustc_span::sym::clippy) => {
+                    clippy_groups.insert(group.name);
                 },
                 _ => {},
             }
