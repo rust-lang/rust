@@ -163,7 +163,7 @@ pub(crate) fn layout_of<'tcx>(
                     let TaggedQueryKey::layout_of(frame_key) = frame.tagged_key else {
                         continue;
                     };
-                    let &ty::Coroutine(frame_def_id, _) = frame_key.value.kind() else {
+                    let ty::Coroutine(frame_def_id, _) = frame_key.value.kind() else {
                         continue;
                     };
                     let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {

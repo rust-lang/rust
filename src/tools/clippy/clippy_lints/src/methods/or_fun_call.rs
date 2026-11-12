@@ -168,7 +168,7 @@ fn check_unwrap_or_default(
 
     let output_type_implements_default = |fun| {
         let fun_ty = cx.typeck_results().expr_ty(fun);
-        if let ty::FnDef(def_id, args) = *fun_ty.kind() {
+        if let ty::FnDef(def_id, args) = fun_ty.kind() {
             let output_ty = cx
                 .tcx
                 .fn_sig(def_id)

@@ -286,7 +286,7 @@ impl<'tcx> BestObligation<'tcx> {
     ) -> ControlFlow<PredicateObligation<'tcx>> {
         assert!(!self.consider_ambiguities);
         let tcx = goal.infcx().tcx;
-        if let ty::Alias(_, alias) = *self_ty.kind() {
+        if let ty::Alias(_, alias) = self_ty.kind() {
             let infer_term = goal.infcx().next_ty_var(self.obligation.cause.span);
             let pred =
                 ty::ProjectionClause { projection_term: alias.into(), term: infer_term.into() };

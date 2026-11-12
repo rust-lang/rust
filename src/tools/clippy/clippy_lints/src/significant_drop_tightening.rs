@@ -175,12 +175,12 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
         match ty.kind() {
             rustc_middle::ty::Adt(a, b) => {
                 for f in a.all_fields() {
-                    let ty = f.ty(self.cx.tcx, *b).skip_norm_wip();
+                    let ty = f.ty(self.cx.tcx, b).skip_norm_wip();
                     if self.has_sig_drop_attr(ty, depth) {
                         return true;
                     }
                 }
-                for generic_arg in *b {
+                for generic_arg in b {
                     if let GenericArgKind::Type(ty) = generic_arg.kind()
                         && self.has_sig_drop_attr(ty, depth)
                     {
@@ -192,7 +192,7 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
             rustc_middle::ty::Array(ty, _)
             | rustc_middle::ty::RawPtr(ty, _)
             | rustc_middle::ty::Ref(_, ty, _)
-            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(*ty, depth),
+            | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr(ty, depth),
             _ => false,
         }
     }

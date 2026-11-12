@@ -344,11 +344,11 @@ fn exported_generic_symbols_provider_local<'tcx>(
         let is_local_to_current_crate = |ty: Ty<'_>| {
             let no_refs = ty.peel_refs();
             let root_def_id = match no_refs.kind() {
-                ty::Closure(closure, _) => *closure,
-                ty::FnDef(def_id, _) => *def_id,
-                ty::Coroutine(def_id, _) => *def_id,
-                ty::CoroutineClosure(def_id, _) => *def_id,
-                ty::CoroutineWitness(def_id, _) => *def_id,
+                ty::Closure(closure, _) => closure,
+                ty::FnDef(def_id, _) => def_id,
+                ty::Coroutine(def_id, _) => def_id,
+                ty::CoroutineClosure(def_id, _) => def_id,
+                ty::CoroutineWitness(def_id, _) => def_id,
                 _ => return false,
             };
             let Some(root_def_id) = root_def_id.as_local() else {
@@ -441,8 +441,8 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
                     // Drop glue did is always going to be non-local outside of libcore, thus we don't need to check it's locality (which includes invoking `type_of` query).
                     let should_export = match ty.kind() {
-                        ty::Adt(_, args) => is_instantiable_downstream(None, *args),
-                        ty::Closure(_, args) => is_instantiable_downstream(None, *args),
+                        ty::Adt(_, args) => is_instantiable_downstream(None, args),
+                        ty::Closure(_, args) => is_instantiable_downstream(None, args),
                         _ => true,
                     };
 

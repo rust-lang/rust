@@ -505,7 +505,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let b_lane = b.value_lane(fx, lane).load_scalar(fx);
                 let c_lane = c.value_lane(fx, lane).load_scalar(fx);
 
-                let res_lane = if *lane_ty.kind() == ty::Float(FloatTy::F16) {
+                let res_lane = if lane_ty.kind() == ty::Float(FloatTy::F16) {
                     codegen_f16_f128::fma_f16(fx, a_lane, b_lane, c_lane)
                 } else {
                     fx.bcx.ins().fma(a_lane, b_lane, c_lane)

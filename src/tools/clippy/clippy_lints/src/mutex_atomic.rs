@@ -165,7 +165,7 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty_ascription: &T
             }
             diag.help("if you just want the locking behavior and not the internal type, consider using `Mutex<()>`");
         };
-        match *mutex_param.kind() {
+        match mutex_param.kind() {
             ty::Uint(t) if t != UintTy::Usize => span_lint_and_then(cx, MUTEX_INTEGER, expr.span, msg, diag),
             ty::Int(t) if t != IntTy::Isize => span_lint_and_then(cx, MUTEX_INTEGER, expr.span, msg, diag),
             _ => span_lint_and_then(cx, MUTEX_ATOMIC, expr.span, msg, diag),

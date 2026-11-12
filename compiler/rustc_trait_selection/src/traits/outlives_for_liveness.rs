@@ -378,7 +378,7 @@ fn live_args_for_outlives_clause<'tcx>(
     // N.B. it's okay to skip the binder here (and in the rest of the function),
     // because all variables under binders do not escape
     let ty::Alias(_, ty::AliasTy { kind: clause_alias_kind, args: clause_args, .. }) =
-        *outlives.skip_binder().0.kind()
+        outlives.skip_binder().0.kind()
     else {
         return no_restriction();
     };
@@ -524,7 +524,7 @@ where
             return;
         }
 
-        match *ty.kind() {
+        match ty.kind() {
             // We can prove that an alias is live two ways:
             // 1. All the components are live.
             // 2. There is a known outlives bound or where-clause, and that

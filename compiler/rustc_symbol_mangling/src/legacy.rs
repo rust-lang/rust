@@ -265,7 +265,7 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
-        match *ty.kind() {
+        match ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::Alias(
                 _,

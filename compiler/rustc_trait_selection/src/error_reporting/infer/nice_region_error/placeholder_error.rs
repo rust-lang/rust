@@ -357,10 +357,10 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         });
 
         let actual_self_ty_has_vid =
-            self.tcx().any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
+            self.tcx().any_free_region_meets(actual_trait_ref.self_ty(), |r| Some(r) == vid);
 
         let expected_self_ty_has_vid =
-            self.tcx().any_free_region_meets(&expected_trait_ref.self_ty(), |r| Some(r) == vid);
+            self.tcx().any_free_region_meets(expected_trait_ref.self_ty(), |r| Some(r) == vid);
 
         let any_self_ty_has_vid = actual_self_ty_has_vid || expected_self_ty_has_vid;
 
@@ -428,7 +428,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                     if let ty::Coroutine(def_id, _) | ty::CoroutineWitness(def_id, _) =
                         self_ty.kind()
                     {
-                        coroutine_def_id = Some(*def_id);
+                        coroutine_def_id = Some(def_id);
                         break;
                     }
 
@@ -459,7 +459,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             let actual_self_ty = self.cx.deeply_resolve_ignoring_regions(
                 ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, actual_args).self_ty(),
             );
-            if let ty::Closure(closure_def_id, _) = *actual_self_ty.kind()
+            if let ty::Closure(closure_def_id, _) = actual_self_ty.kind()
                 && let Some(local_def_id) = closure_def_id.as_local()
                 && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
                     self.tcx().hir_node_by_def_id(local_def_id)
@@ -467,7 +467,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 let body = self.tcx().hir_body(closure.body);
                 // For Fn traits, args[1] is the tupled input types (e.g. `(&mut [u8],)`).
                 let expected_input_tys = expected_args.type_at(1);
-                if let ty::Tuple(input_tys) = *expected_input_tys.kind() {
+                if let ty::Tuple(input_tys) = expected_input_tys.kind() {
                     let suggestions: Vec<_> = body
                         .params
                         .iter()

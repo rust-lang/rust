@@ -118,7 +118,7 @@ fn is_needs_drop_and_init<'tcx>(
                     let downcast =
                         move_path_children_matching(move_data, mpi, |x| x.is_downcast_to(vid));
                     let Some(dc_mpi) = downcast else {
-                        return variant_needs_drop(tcx, typing_env, *args, variant);
+                        return variant_needs_drop(tcx, typing_env, args, variant);
                     };
 
                     dc_mpi
@@ -131,7 +131,7 @@ fn is_needs_drop_and_init<'tcx>(
                     .iter()
                     .enumerate()
                     .map(|(f, field)| {
-                        (FieldIdx::from_usize(f), field.ty(tcx, *args).skip_norm_wip(), mpi)
+                        (FieldIdx::from_usize(f), field.ty(tcx, args).skip_norm_wip(), mpi)
                     })
                     .any(field_needs_drop_and_init)
             })

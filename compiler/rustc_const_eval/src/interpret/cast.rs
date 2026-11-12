@@ -135,7 +135,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ensure_monomorphic_enough(src.layout.ty)?;
 
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match src.layout.ty.kind() {
                     ty::FnDef(def_id, args) => {
                         let instance = {
                             let _trace = enter_trace_span!(M, resolve::resolve_for_fn_ptr, ?def_id);
@@ -171,7 +171,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ensure_monomorphic_enough(src.layout.ty)?;
 
                 // The src operand does not matter, just its type
-                match *src.layout.ty.kind() {
+                match src.layout.ty.kind() {
                     ty::Closure(def_id, args) => {
                         let instance = {
                             let _trace = enter_trace_span!(M, resolve::resolve_closure, ?def_id);
@@ -342,10 +342,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => span_bug!(self.cur_span(), "invalid int-like cast from {}", src_layout.ty),
         };
 
-        interp_ok(match *cast_ty.kind() {
+        interp_ok(match cast_ty.kind() {
             // int -> int
             ty::Int(_) | ty::Uint(_) => {
-                let size = match *cast_ty.kind() {
+                let size = match cast_ty.kind() {
                     ty::Int(t) => Integer::from_int_ty(self, t).size(),
                     ty::Uint(t) => Integer::from_uint_ty(self, t).size(),
                     _ => bug!(),
@@ -390,7 +390,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             + FloatConvert<Double>
             + FloatConvert<Quad>,
     {
-        match *dest_ty.kind() {
+        match dest_ty.kind() {
             // float -> uint
             ty::Uint(t) => {
                 let size = Integer::from_uint_ty(self, t).size();
@@ -443,7 +443,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.tcx.struct_lockstep_tails_for_codegen(source_ty, cast_ty, self.typing_env);
 
         match (src_pointee_ty.kind(), dest_pointee_ty.kind()) {
-            (&ty::Array(_, length), &ty::Slice(_)) => {
+            (ty::Array(_, length), ty::Slice(_)) => {
                 let ptr = self.read_pointer(src)?;
                 let val = Immediate::new_slice(
                     ptr,
@@ -504,7 +504,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let new_vptr = self.get_vtable_ptr(ty, data_b)?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
-            (_, &ty::Dynamic(data, _)) => {
+            (_, ty::Dynamic(data, _)) => {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable_ptr(src_pointee_ty, data)?;
                 let ptr = self.read_pointer(src)?;
@@ -535,15 +535,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
         match (src.layout.ty.kind(), cast_ty.ty.kind()) {
-            (&ty::Pat(_, s_pat), &ty::Pat(cast_ty, c_pat)) if s_pat == c_pat => {
+            (ty::Pat(_, s_pat), ty::Pat(cast_ty, c_pat)) if s_pat == c_pat => {
                 let src = self.project_field(src, FieldIdx::ZERO)?;
                 let dest = self.project_field(dest, FieldIdx::ZERO)?;
                 let cast_ty = self.layout_of(cast_ty)?;
                 self.unsize_into(&src, cast_ty, &dest)
             }
-            (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(c, _))
-            | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, s, c),
-            (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+            (ty::Ref(_, s, _), ty::Ref(_, c, _) | ty::RawPtr(c, _))
+            | (ty::RawPtr(s, _), ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, s, c),
+            (ty::Adt(def_a, _), ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b); // implies same number of fields
 
                 // Unsizing of generic struct with pointer fields, like `Arc<T>` -> `Arc<Trait>`.

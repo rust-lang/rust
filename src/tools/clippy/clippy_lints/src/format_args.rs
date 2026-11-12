@@ -853,7 +853,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         let ty = tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty));
         match ty.kind() {
             ty::RawPtr(..) | ty::FnPtr(..) | ty::FnDef(..) => true,
-            ty::Ref(_, t, _) | ty::Slice(t) | ty::Array(t, _) => self.has_pointer_debug(*t, depth),
+            ty::Ref(_, t, _) | ty::Slice(t) | ty::Array(t, _) => self.has_pointer_debug(t, depth),
             ty::Tuple(ts) => ts.iter().any(|t| self.has_pointer_debug(t, depth)),
             ty::Adt(adt, args) => {
                 match self.has_pointer_format.entry(ty) {
@@ -885,7 +885,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 };
                 let pointer_debug = derived_debug
                     && adt.all_fields().any(|f| {
-                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, *args)), depth)
+                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)), depth)
                     });
                 self.has_pointer_format.insert(ty, pointer_debug);
                 pointer_debug

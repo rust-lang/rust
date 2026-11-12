@@ -414,7 +414,7 @@ fn optimize_use_clone<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // doing DefId lookups to figure out what we're actually calling.
             let arg_ty = arg.node.ty(&mir.local_decls, tcx);
 
-            let ty::Ref(_region, inner_ty, mir::Mutability::Not) = *arg_ty.kind() else { continue };
+            let ty::Ref(_region, inner_ty, mir::Mutability::Not) = arg_ty.kind() else { continue };
 
             if !tcx.type_is_copy_modulo_regions(cx.typing_env(), inner_ty) {
                 continue;
@@ -681,7 +681,7 @@ fn find_cold_blocks<'tcx>(
             // If a BB ends with a call to a cold function, mark it as cold.
             mir::TerminatorKind::Call { ref func, .. }
             | mir::TerminatorKind::TailCall { ref func, .. }
-                if let ty::FnDef(def_id, ..) = *func.ty(local_decls, tcx).kind()
+                if let ty::FnDef(def_id, ..) = func.ty(local_decls, tcx).kind()
                     && let attrs = tcx.codegen_fn_attrs(def_id)
                     && attrs.flags.contains(CodegenFnAttrFlags::COLD) =>
             {

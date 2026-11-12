@@ -478,7 +478,7 @@ fn can_cast(
         // although this may not be practical in real-world scenarios.
         _ => return false,
     };
-    let size = match *cast_ty.kind() {
+    let size = match cast_ty.kind() {
         ty::Int(t) => Integer::from_int_ty(&tcx, t).size(),
         ty::Uint(t) => Integer::from_uint_ty(&tcx, t).size(),
         _ => return false,

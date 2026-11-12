@@ -93,7 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.shallow_resolve(ty);
         debug!(?ty);
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Infer(ty::TyVar(found_vid)) => match subtyping {
                 UseSubtyping::No => self.root_var(expected_vid) == self.root_var(found_vid),
                 UseSubtyping::Yes => {
@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 trait_ref,
             }))) if trait_ref.def_id == from_trait
                 && self.shallow_resolve(trait_ref.self_ty()).kind()
-                    == &ty::Float(ty::FloatTy::F32) =>
+                    == ty::Float(ty::FloatTy::F32) =>
             {
                 self.root_float_vid(trait_ref.args.type_at(1))
             }

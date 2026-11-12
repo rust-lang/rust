@@ -235,7 +235,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         // doing DefId lookups to figure out what we're actually calling.
         let arg_ty = arg.node.ty(self.local_decls, self.tcx);
 
-        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
+        let ty::Ref(_region, inner_ty, Mutability::Not) = arg_ty.kind() else { return };
 
         if !self.tcx.is_lang_item(fn_def_id, LangItem::CloneFn)
             || !inner_ty.is_trivially_pure_clone_copy()
@@ -292,7 +292,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             let ty = if generic_ty.is_sized(self.tcx, self.typing_env) {
                 generic_ty
             } else if let LangItem::AlignOf = lang_item
-                && let ty::Slice(elem_ty) = *generic_ty.kind()
+                && let ty::Slice(elem_ty) = generic_ty.kind()
             {
                 elem_ty
             } else {
@@ -463,7 +463,7 @@ fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, GenericArgs<'tcx>)> {
-    let ty::FnDef(def_id, args) = *func_ty.kind() else { return None };
+    let ty::FnDef(def_id, args) = func_ty.kind() else { return None };
     let intrinsic = tcx.intrinsic(def_id)?;
     Some((intrinsic.name, args.no_bound_vars().unwrap()))
 }

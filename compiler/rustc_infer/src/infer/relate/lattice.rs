@@ -148,18 +148,18 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             // is (e.g.) `Box<i32>`. A more obvious solution might be to
             // iterate on the subtype obligations that are returned, but I
             // think this suffices. -nmatsakis
-            (&ty::Infer(TyVar(..)), _) => {
+            (ty::Infer(TyVar(..)), _) => {
                 let v = infcx.next_ty_var(self.trace.cause.span);
                 self.relate_bound(v, b, a)?;
                 Ok(v)
             }
-            (_, &ty::Infer(TyVar(..))) => {
+            (_, ty::Infer(TyVar(..))) => {
                 let v = infcx.next_ty_var(self.trace.cause.span);
                 self.relate_bound(v, a, b)?;
                 Ok(v)
             }
 
-            (&ty::Alias(ty::IsRigid::No, _), _) | (_, &ty::Alias(ty::IsRigid::No, _))
+            (ty::Alias(ty::IsRigid::No, _), _) | (_, ty::Alias(ty::IsRigid::No, _))
                 if infcx.next_trait_solver() =>
             {
                 // NOTE(khyperia): If this turns out to be possible, either the caller should
@@ -173,12 +173,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             }
 
             (
-                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
-                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id => super_combine_tys(infcx, self, a, b),
 
-            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
-            | (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+            (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
+            | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
                 if def_id.is_local() && !infcx.next_trait_solver() =>
             {
                 self.register_goals(infcx.handle_opaque_type(

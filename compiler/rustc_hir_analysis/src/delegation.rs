@@ -757,7 +757,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
     };
 
     for i in 0..sig.len() {
-        let to_replace = Ty::new_adt(tcx, *def, parent_args);
+        let to_replace = Ty::new_adt(tcx, def, parent_args);
         let replacement = match def_kind {
             FnKind::Free => unreachable!(),
 

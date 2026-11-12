@@ -86,7 +86,7 @@ fn is_union_with_two_non_zst_fields<'tcx>(cx: &LateContext<'tcx>, item: &Item<'t
             .skip_norm_wip()
             .kind()
     {
-        adt_def.all_fields().filter(|f| !is_zst(cx, f, *args)).count() >= 2
+        adt_def.all_fields().filter(|f| !is_zst(cx, f, args)).count() >= 2
     } else {
         false
     }

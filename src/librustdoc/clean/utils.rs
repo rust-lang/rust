@@ -368,7 +368,7 @@ pub(crate) fn print_const(tcx: TyCtxt<'_>, n: ty::Const<'_>) -> String {
             }
         }
         // array lengths are obviously usize
-        ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
+        ty::ConstKind::Value(cv) if cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
             cv.to_leaf().to_string()
         }
         _ => n.to_string(),
@@ -384,8 +384,8 @@ pub(crate) fn print_evaluated_const(
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
         match (val, ty.kind()) {
-            (_, &ty::Ref(..)) => None,
-            (mir::ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
+            (_, ty::Ref(..)) => None,
+            (mir::ConstValue::Scalar(_), ty::Adt(_, _)) => None,
             (mir::ConstValue::Scalar(_), _) => {
                 let const_ = mir::Const::from_value(val, ty);
                 Some(print_const_with_custom_print_scalar(tcx, const_, with_underscores, with_type))

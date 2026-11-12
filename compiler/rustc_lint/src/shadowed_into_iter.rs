@@ -90,10 +90,10 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
             [receiver_ty].into_iter().chain(adjustments.iter().map(|adj| adj.target)).collect();
 
         fn is_ref_to_array(ty: Ty<'_>) -> bool {
-            if let ty::Ref(_, pointee_ty, _) = *ty.kind() { pointee_ty.is_array() } else { false }
+            if let ty::Ref(_, pointee_ty, _) = ty.kind() { pointee_ty.is_array() } else { false }
         }
         fn is_ref_to_boxed_slice(ty: Ty<'_>) -> bool {
-            if let ty::Ref(_, pointee_ty, _) = *ty.kind() {
+            if let ty::Ref(_, pointee_ty, _) = ty.kind() {
                 pointee_ty.boxed_ty().is_some_and(Ty::is_slice)
             } else {
                 false

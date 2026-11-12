@@ -60,7 +60,7 @@ fn sizedness_constraint_for_ty<'tcx>(
         ty::Foreign(..) => Some(ty),
 
         // Recursive cases
-        ty::Pat(ty, _) => sizedness_constraint_for_ty(tcx, sizedness, *ty),
+        ty::Pat(ty, _) => sizedness_constraint_for_ty(tcx, sizedness, ty),
 
         ty::Tuple(tys) => {
             tys.last().and_then(|&ty| sizedness_constraint_for_ty(tcx, sizedness, ty))
@@ -226,7 +226,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(_, unshifted_alias_ty) = *ty.kind()
+        if let ty::Alias(_, unshifted_alias_ty) = ty.kind()
             && let Some(unshifted_alias_ty) = unshifted_alias_ty.try_to_projection()
             && let Some(
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. }

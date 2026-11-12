@@ -416,7 +416,7 @@ fn emit_orphan_check_error<'tcx>(
                 let is_foreign =
                     !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);
 
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Slice(_) => {
                         if is_foreign {
                             diag.subdiagnostic(diagnostics::OnlyCurrentTraitsForeign { span });
@@ -509,7 +509,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyParamCollector<'_, 'tcx> {
         if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
             return;
         }
-        let ty::Infer(ty::TyVar(vid)) = *ty.kind() else {
+        let ty::Infer(ty::TyVar(vid)) = ty.kind() else {
             return ty.super_visit_with(self);
         };
         let origin = self.infcx.type_var_origin(vid);

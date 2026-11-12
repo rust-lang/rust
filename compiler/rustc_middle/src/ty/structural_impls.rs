@@ -81,7 +81,7 @@ impl fmt::Debug for ty::LateParamRegionKind {
 
 impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths!(fmt::Debug::fmt(self.kind(), f))
+        with_no_trimmed_paths!(fmt::Debug::fmt(&self.kind(), f))
     }
 }
 
@@ -331,7 +331,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let kind = match *self.kind() {
+        let kind = match *self.kind_ref() {
             ty::RawPtr(ty, mutbl) => ty::RawPtr(ty.try_fold_with(folder)?, mutbl),
             ty::Array(typ, sz) => ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?),
             ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
@@ -375,11 +375,11 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::View(..) => unimplemented!(),
         };
 
-        Ok(if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) })
+        Ok(if *self.kind_ref() == kind { self } else { folder.cx().mk_ty_from_kind(kind) })
     }
 
     fn super_fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        let kind = match *self.kind() {
+        let kind = match *self.kind_ref() {
             ty::RawPtr(ty, mutbl) => ty::RawPtr(ty.fold_with(folder), mutbl),
             ty::Array(typ, sz) => ty::Array(typ.fold_with(folder), sz.fold_with(folder)),
             ty::Slice(typ) => ty::Slice(typ.fold_with(folder)),
@@ -417,13 +417,13 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Foreign(..) => return self,
         };
 
-        if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) }
+        if *self.kind_ref() == kind { self } else { folder.cx().mk_ty_from_kind(kind) }
     }
 }
 
 impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn super_visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
-        match self.kind() {
+        match self.kind_ref() {
             ty::RawPtr(ty, _mutbl) => ty.visit_with(visitor),
             ty::Array(typ, sz) => {
                 try_visit!(typ.visit_with(visitor));

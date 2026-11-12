@@ -885,7 +885,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
                                 // We only allow a `ty::BoundVarIndexKind::Canonical` index in generic parameters.
-                                assert_eq!(*debruijn, ty::BoundVarIndexKind::Canonical);
+                                assert_eq!(debruijn, ty::BoundVarIndexKind::Canonical);
                                 cvar == b.var
                             }
                             _ => false,

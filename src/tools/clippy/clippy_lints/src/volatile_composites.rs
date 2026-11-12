@@ -91,7 +91,7 @@ fn is_struct_repr_transparent<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> boo
         && let [fieldty] = adt_def
             .all_fields()
             .filter_map(|field| {
-                let fty = field.ty(cx.tcx, *args).skip_norm_wip();
+                let fty = field.ty(cx.tcx, args).skip_norm_wip();
                 if is_zero_sized_ty(cx, fty) { None } else { Some(fty) }
             })
             .collect::<Vec<_>>()
@@ -153,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for VolatileComposites {
                 let self_ty = cx.typeck_results().expr_ty(self_arg);
                 match self_ty.kind() {
                     // Raw pointers
-                    ty::RawPtr(innerty, _) => report_volatile_safe(cx, expr, *innerty),
+                    ty::RawPtr(innerty, _) => report_volatile_safe(cx, expr, innerty),
                     // std::ptr::NonNull
                     ty::Adt(_, args) if self_ty.is_lang_item(cx, LangItem::NonNull) => {
                         report_volatile_safe(cx, expr, args.type_at(0));
@@ -172,7 +172,7 @@ impl<'tcx> LateLintPass<'tcx> for VolatileComposites {
                     )
                     && let ty::RawPtr(ptrty, _) = cx.typeck_results().expr_ty_adjusted(arg_ptr).kind()
                 {
-                    report_volatile_safe(cx, expr, *ptrty);
+                    report_volatile_safe(cx, expr, ptrty);
                 }
             },
             _ => {},

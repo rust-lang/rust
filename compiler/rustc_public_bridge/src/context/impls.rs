@@ -575,7 +575,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     /// Obtain the kind of a type.
-    pub fn ty_kind(&self, ty: Ty<'tcx>) -> &'tcx TyKind<'tcx> {
+    pub fn ty_kind(&self, ty: Ty<'tcx>) -> TyKind<'tcx> {
         ty.kind()
     }
 

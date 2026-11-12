@@ -281,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if matches!(op, Op::AssignOp(_)) || by_ref_binop {
                     if let ty::Ref(_, _, mutbl) = method.sig.inputs()[0].kind() {
-                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+                        let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
                         let autoref = Adjustment {
                             kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                             target: method.sig.inputs()[0],
@@ -293,7 +293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let ty::Ref(_, _, mutbl) = method.sig.inputs()[1].kind() {
                             // Allow two-phase borrows for binops in initial deployment
                             // since they desugar to methods
-                            let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+                            let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
                             let autoref = Adjustment {
                                 kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                                 target: method.sig.inputs()[1],
@@ -583,7 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let ty::Ref(region, lhs_deref_ty, mutbl) = lhs_ty.kind()
             && matches!(op, Op::BinOp(_))
         {
-            if self.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty) {
+            if self.type_is_copy_modulo_regions(self.param_env, lhs_deref_ty) {
                 self.suggest_deref_binop(
                     lhs_expr,
                     rhs_expr,
@@ -591,11 +591,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected,
                     rhs_ty,
                     err,
-                    *lhs_deref_ty,
+                    lhs_deref_ty,
                 );
             } else {
                 let lhs_inv_mutbl = mutbl.invert();
-                let lhs_inv_mutbl_ty = Ty::new_ref(self.tcx, *region, *lhs_deref_ty, lhs_inv_mutbl);
+                let lhs_inv_mutbl_ty = Ty::new_ref(self.tcx, region, lhs_deref_ty, lhs_inv_mutbl);
 
                 self.suggest_different_borrow(
                     lhs_expr,
@@ -612,7 +612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Ref(region, rhs_deref_ty, mutbl) = rhs_ty.kind() {
                     let rhs_inv_mutbl = mutbl.invert();
                     let rhs_inv_mutbl_ty =
-                        Ty::new_ref(self.tcx, *region, *rhs_deref_ty, rhs_inv_mutbl);
+                        Ty::new_ref(self.tcx, region, rhs_deref_ty, rhs_inv_mutbl);
 
                     self.suggest_different_borrow(
                         lhs_expr,
@@ -878,7 +878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let string_type = self.tcx.lang_items().string();
         let is_std_string =
             |ty: Ty<'tcx>| ty.ty_adt_def().is_some_and(|def| Some(def.did()) == string_type);
-        let is_str_like = |ty: Ty<'tcx>| *ty.kind() == ty::Str || is_std_string(ty);
+        let is_str_like = |ty: Ty<'tcx>| ty.kind() == ty::Str || is_std_string(ty);
 
         // Returns (suggestion_span, Some(replacement)) or (span, None) if lhs is a borrow to remove.
         let lhs_owned_sugg = |lhs_expr: &Expr<'_>| {
@@ -889,7 +889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let (&ty::Ref(_, l_ty, _), rhs_kind) = (lhs_ty.kind(), rhs_ty.kind()) else {
+        let (ty::Ref(_, l_ty, _), rhs_kind) = (lhs_ty.kind(), rhs_ty.kind()) else {
             return false;
         };
         if !is_str_like(l_ty) {
@@ -898,9 +898,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match rhs_kind {
             // &str or &String + &str, &String, or &&str
-            &ty::Ref(_, r_ty, _)
+            ty::Ref(_, r_ty, _)
                 if is_str_like(r_ty)
-                    || matches!(r_ty.kind(), ty::Ref(_, inner, _) if *inner.kind() == ty::Str) =>
+                    || matches!(r_ty.kind(), ty::Ref(_, inner, _) if inner.kind() == ty::Str) =>
             {
                 // Do not supply this message if `&str += &str`
                 if let Op::BinOp(_) = op {
@@ -1059,7 +1059,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             }
                             ty::Str | ty::Never | ty::Char | ty::Tuple(_) | ty::Array(_, _) => {}
-                            ty::Ref(_, lty, _) if *lty.kind() == ty::Str => {}
+                            ty::Ref(_, lty, _) if lty.kind() == ty::Str => {}
                             _ => {
                                 self.note_unmet_impls_on_type(&mut err, &errors, true);
                             }
@@ -1306,7 +1306,7 @@ impl Op {
 /// Dereferences a single level of immutable referencing.
 fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
     match ty.kind() {
-        ty::Ref(_, ty, hir::Mutability::Not) => *ty,
+        ty::Ref(_, ty, hir::Mutability::Not) => ty,
         _ => ty,
     }
 }

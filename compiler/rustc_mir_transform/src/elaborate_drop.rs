@@ -284,8 +284,8 @@ where
             // For async gen, we need `yield Poll<OptRet>::Pending`.
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => {
                 let full_yield_ty = self.elaborator.body().yield_ty().unwrap();
-                let ty::Adt(_poll_adt, args) = *full_yield_ty.kind() else { bug!() };
-                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                let ty::Adt(_poll_adt, args) = full_yield_ty.kind() else { bug!() };
+                let ty::Adt(_option_adt, args) = args.type_at(0).kind() else { bug!() };
                 let yield_ty = args.type_at(0);
                 Operand::unevaluated_constant(
                     tcx,
@@ -1499,13 +1499,13 @@ where
             // See librustc_body/transform/coroutine.rs for more details.
             ty::Coroutine(_, args) => self.open_drop_for_tuple(args.as_coroutine().upvar_tys()),
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
-            ty::Adt(def, args) => self.open_drop_for_adt(*def, *args),
+            ty::Adt(def, args) => self.open_drop_for_adt(def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_to_target_usize(self.tcx());
-                self.open_drop_for_array(ty, *ety, size)
+                self.open_drop_for_array(ty, ety, size)
             }
-            ty::Slice(ety) => self.drop_loop_trio_for_slice(*ety),
+            ty::Slice(ety) => self.drop_loop_trio_for_slice(ety),
 
             ty::UnsafeBinder(_) => {
                 // Unsafe binders may elaborate drops if their inner type isn't copy.

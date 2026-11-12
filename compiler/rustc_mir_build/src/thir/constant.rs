@@ -46,7 +46,7 @@ pub(crate) fn lit_to_const<'tcx>(
             } else {
                 let array_ty =
                     Ty::new_array(tcx, tcx.types.u8, byte_sym.as_byte_str().len() as u64);
-                Ty::new_ref(tcx, *region, array_ty, *mutbl)
+                Ty::new_ref(tcx, region, array_ty, mutbl)
             };
             (ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str()), valtree_ty)
         }
@@ -94,15 +94,15 @@ pub(crate) fn lit_to_const<'tcx>(
             (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_int(tcx, i))
         }
         (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), Some(ty::Uint(ui))) if !neg => {
-            let scalar_int = trunc(n.get(), *ui);
-            (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_uint(tcx, *ui))
+            let scalar_int = trunc(n.get(), ui);
+            (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_uint(tcx, ui))
         }
         (ast::LitKind::Int(n, ast::LitIntType::Unsuffixed), Some(ty::Int(i))) => {
             // Unsigned "negation" has the same bitwise effect as signed negation,
             // which gets the result we want without additional casts.
             let scalar_int =
                 trunc(if neg { u128::wrapping_neg(n.get()) } else { n.get() }, i.to_unsigned());
-            (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_int(tcx, *i))
+            (ty::ValTree::from_scalar_int(tcx, scalar_int), Ty::new_int(tcx, i))
         }
         (ast::LitKind::Bool(b), _) => (ty::ValTree::from_scalar_int(tcx, b.into()), tcx.types.bool),
         (ast::LitKind::Float(n, ast::LitFloatType::Suffixed(fty)), _) => {
@@ -116,8 +116,8 @@ pub(crate) fn lit_to_const<'tcx>(
             (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, fty))
         }
         (ast::LitKind::Float(n, ast::LitFloatType::Unsuffixed), Some(ty::Float(fty))) => {
-            let bits = parse_float_into_scalar(n, *fty, neg)?;
-            (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, *fty))
+            let bits = parse_float_into_scalar(n, fty, neg)?;
+            (ty::ValTree::from_scalar_int(tcx, bits), Ty::new_float(tcx, fty))
         }
         (ast::LitKind::Char(c), _) => (ty::ValTree::from_scalar_int(tcx, c.into()), tcx.types.char),
         (ast::LitKind::Err(_), _) => return None,

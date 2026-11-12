@@ -864,7 +864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let ty::Ref(_, inner, hir::Mutability::Not) = expected.kind()
 
             // The difference between the expected and found values is one level of borrowing.
-            && self.can_eq(self.param_env, *inner, expr_ty)
+            && self.can_eq(self.param_env, inner, expr_ty)
 
             // We have an `ident = expr;` assignment.
             && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. }) =
@@ -1017,7 +1017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (mutability, ty) = match rcvr_ty.kind() {
                     ty::Ref(_, ty, hir::Mutability::Mut) => ("&mut ", ty),
                     ty::Ref(_, ty, _) => ("&", ty),
-                    _ => ("", &rcvr_ty),
+                    _ => ("", rcvr_ty),
                 };
                 let path = match self.tcx.assoc_parent(m.def_id) {
                     Some((_, DefKind::Impl { of_trait: true })) => {
@@ -1237,7 +1237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         *span,
                         "use the type name directly",
-                        self.tcx.value_path_str_with_args(e_def.did(), *e_args),
+                        self.tcx.value_path_str_with_args(e_def.did(), e_args),
                         Applicability::MaybeIncorrect,
                     );
                 }

@@ -338,7 +338,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     pub(crate) fn cast_pat_ty_to_base(self, layout: TyAndLayout<'tcx>) -> Self {
-        let ty::Pat(base, _) = *self.layout().ty.kind() else {
+        let ty::Pat(base, _) = self.layout().ty.kind() else {
             panic!("not a pattern type: {:#?}", self.layout())
         };
         assert_eq!(layout.ty, base);
@@ -789,7 +789,7 @@ impl<'tcx> CPlace<'tcx> {
     ) -> CPlace<'tcx> {
         let (elem_layout, ptr) = match self.layout().ty.kind() {
             ty::Array(elem_ty, _) => {
-                let elem_layout = fx.layout_of(*elem_ty);
+                let elem_layout = fx.layout_of(elem_ty);
                 match self.inner {
                     CPlaceInner::Addr(addr, None) => (elem_layout, addr),
                     CPlaceInner::Var(_, _)
@@ -797,7 +797,7 @@ impl<'tcx> CPlace<'tcx> {
                     | CPlaceInner::VarPair(_, _, _) => bug!("Can't index into {self:?}"),
                 }
             }
-            ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_unsized().0),
+            ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_ptr_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
 
@@ -855,10 +855,10 @@ pub(crate) fn assert_assignable<'tcx>(
     }
     match (from_ty.kind(), to_ty.kind()) {
         (ty::Ref(_, a, _), ty::Ref(_, b, _)) | (ty::RawPtr(a, _), ty::RawPtr(b, _)) => {
-            assert_assignable(fx, *a, *b, limit - 1);
+            assert_assignable(fx, a, b, limit - 1);
         }
         (ty::Ref(_, a, _), ty::RawPtr(b, _)) | (ty::RawPtr(a, _), ty::Ref(_, b, _)) => {
-            assert_assignable(fx, *a, *b, limit - 1);
+            assert_assignable(fx, a, b, limit - 1);
         }
         (ty::FnPtr(..), ty::FnPtr(..)) => {
             let from_sig = fx
@@ -884,7 +884,7 @@ pub(crate) fn assert_assignable<'tcx>(
             );
             // fn(&T) -> for<'l> fn(&'l T) is allowed
         }
-        (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
+        (ty::Dynamic(from_traits, _), ty::Dynamic(to_traits, _)) => {
             for (from, to) in from_traits.iter().zip(to_traits) {
                 let from = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), from);
                 let to = fx.tcx.normalize_erasing_late_bound_regions(fx.typing_env(), to);
@@ -896,7 +896,7 @@ pub(crate) fn assert_assignable<'tcx>(
             }
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
-        (&ty::Tuple(types_a), &ty::Tuple(types_b)) => {
+        (ty::Tuple(types_a), ty::Tuple(types_b)) => {
             let mut types_a = types_a.iter();
             let mut types_b = types_b.iter();
             loop {
@@ -907,7 +907,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::Adt(adt_def_a, args_a), &ty::Adt(adt_def_b, args_b))
+        (ty::Adt(adt_def_a, args_a), ty::Adt(adt_def_b, args_b))
             if adt_def_a.did() == adt_def_b.did() =>
         {
             let mut types_a = args_a.types();
@@ -920,8 +920,19 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b, limit - 1),
-        (&ty::Closure(def_id_a, args_a), &ty::Closure(def_id_b, args_b))
+        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, a, b, limit - 1),
+        (ty::Closure(def_id_a, args_a), ty::Closure(def_id_b, args_b)) if def_id_a == def_id_b => {
+            let mut types_a = args_a.types();
+            let mut types_b = args_b.types();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
+        (ty::Coroutine(def_id_a, args_a), ty::Coroutine(def_id_b, args_b))
             if def_id_a == def_id_b =>
         {
             let mut types_a = args_a.types();
@@ -934,20 +945,7 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::Coroutine(def_id_a, args_a), &ty::Coroutine(def_id_b, args_b))
-            if def_id_a == def_id_b =>
-        {
-            let mut types_a = args_a.types();
-            let mut types_b = args_b.types();
-            loop {
-                match (types_a.next(), types_b.next()) {
-                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
-                    (None, None) => return,
-                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
-                }
-            }
-        }
-        (&ty::CoroutineWitness(def_id_a, args_a), &ty::CoroutineWitness(def_id_b, args_b))
+        (ty::CoroutineWitness(def_id_a, args_a), ty::CoroutineWitness(def_id_b, args_b))
             if def_id_a == def_id_b =>
         {
             let mut types_a = args_a.types();

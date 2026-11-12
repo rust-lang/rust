@@ -219,7 +219,7 @@ impl Constant {
         match (left, right) {
             (Self::Str(ls), Self::Str(rs)) => Some(ls.cmp(rs)),
             (Self::Char(l), Self::Char(r)) => Some(l.cmp(r)),
-            (&Self::Int(l), &Self::Int(r)) => match *cmp_type.kind() {
+            (&Self::Int(l), &Self::Int(r)) => match cmp_type.kind() {
                 ty::Int(int_ty) => Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty))),
                 ty::Uint(_) => Some(l.cmp(&r)),
                 _ => bug!("Not an int type"),
@@ -227,7 +227,7 @@ impl Constant {
             (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
             (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
             (Self::Bool(l), Self::Bool(r)) => Some(l.cmp(r)),
-            (Self::Tuple(l), Self::Tuple(r)) if l.len() == r.len() => match *cmp_type.kind() {
+            (Self::Tuple(l), Self::Tuple(r)) if l.len() == r.len() => match cmp_type.kind() {
                 ty::Tuple(tys) if tys.len() == l.len() => l
                     .iter()
                     .zip(r)
@@ -247,7 +247,7 @@ impl Constant {
             (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {
                 match Self::partial_cmp(
                     tcx,
-                    match *cmp_type.kind() {
+                    match cmp_type.kind() {
                         ty::Array(ty, _) => ty,
                         _ => return None,
                     },
@@ -260,7 +260,7 @@ impl Constant {
             },
             (Self::Ref(lb), Self::Ref(rb)) => Self::partial_cmp(
                 tcx,
-                match *cmp_type.kind() {
+                match cmp_type.kind() {
                     ty::Ref(_, ty, _) => ty,
                     _ => return None,
                 },
@@ -275,7 +275,7 @@ impl Constant {
     /// Returns the integer value or `None` if `self` or `val_type` is not integer type.
     pub fn int_value(&self, tcx: TyCtxt<'_>, val_type: Ty<'_>) -> Option<FullInt> {
         if let Constant::Int(const_int) = *self {
-            match *val_type.kind() {
+            match val_type.kind() {
                 ty::Int(ity) => Some(FullInt::S(sext(tcx, const_int, ity))),
                 ty::Uint(_) => Some(FullInt::U(const_int)),
                 _ => None,
@@ -308,7 +308,7 @@ impl Constant {
     /// Create a constant representing the minimum value of the type described by `ty`, if one
     /// is defined.
     pub fn new_numeric_min<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Self> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Uint(_) => Some(Self::Int(0)),
             ty::Int(ty) => {
                 let val = match ty.normalize(tcx.sess.target.pointer_width) {
@@ -331,7 +331,7 @@ impl Constant {
     /// Create a constant representing the maximum value of the type described by `ty`, if one
     /// is defined.
     pub fn new_numeric_max<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Self> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Uint(ty) => Some(Self::Int(match ty.normalize(tcx.sess.target.pointer_width) {
                 UintTy::U8 => u128::from(u8::MAX),
                 UintTy::U16 => u128::from(u16::MAX),
@@ -362,8 +362,8 @@ impl Constant {
     /// of that type.
     pub fn is_numeric_min<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         match (self, ty.kind()) {
-            (&Self::Int(x), &ty::Uint(_)) => x == 0,
-            (&Self::Int(x), &ty::Int(ty)) => {
+            (&Self::Int(x), ty::Uint(_)) => x == 0,
+            (&Self::Int(x), ty::Int(ty)) => {
                 let limit = match ty.normalize(tcx.sess.target.pointer_width) {
                     IntTy::I8 => i128::from(i8::MIN),
                     IntTy::I16 => i128::from(i16::MIN),
@@ -374,9 +374,9 @@ impl Constant {
                 };
                 x.cast_signed() == limit
             },
-            (&Self::Char(x), &ty::Char) => x == char::MIN,
-            (&Self::F32(x), &ty::Float(FloatTy::F32)) => x == f32::NEG_INFINITY,
-            (&Self::F64(x), &ty::Float(FloatTy::F64)) => x == f64::NEG_INFINITY,
+            (&Self::Char(x), ty::Char) => x == char::MIN,
+            (&Self::F32(x), ty::Float(FloatTy::F32)) => x == f32::NEG_INFINITY,
+            (&Self::F64(x), ty::Float(FloatTy::F64)) => x == f64::NEG_INFINITY,
             _ => false,
         }
     }
@@ -385,7 +385,7 @@ impl Constant {
     /// of that type.
     pub fn is_numeric_max<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         match (self, ty.kind()) {
-            (&Self::Int(x), &ty::Uint(ty)) => {
+            (&Self::Int(x), ty::Uint(ty)) => {
                 let limit = match ty.normalize(tcx.sess.target.pointer_width) {
                     UintTy::U8 => u128::from(u8::MAX),
                     UintTy::U16 => u128::from(u16::MAX),
@@ -396,7 +396,7 @@ impl Constant {
                 };
                 x == limit
             },
-            (&Self::Int(x), &ty::Int(ty)) => {
+            (&Self::Int(x), ty::Int(ty)) => {
                 let limit = match ty.normalize(tcx.sess.target.pointer_width) {
                     IntTy::I8 => i128::from(i8::MAX),
                     IntTy::I16 => i128::from(i16::MAX),
@@ -407,9 +407,9 @@ impl Constant {
                 };
                 x.cast_signed() == limit
             },
-            (&Self::Char(x), &ty::Char) => x == char::MAX,
-            (&Self::F32(x), &ty::Float(FloatTy::F32)) => x == f32::INFINITY,
-            (&Self::F64(x), &ty::Float(FloatTy::F64)) => x == f64::INFINITY,
+            (&Self::Char(x), ty::Char) => x == char::MAX,
+            (&Self::F32(x), ty::Float(FloatTy::F32)) => x == f32::INFINITY,
+            (&Self::F64(x), ty::Float(FloatTy::F64)) => x == f64::INFINITY,
             _ => false,
         }
     }
@@ -543,7 +543,7 @@ pub fn eval_int(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<FullInt> {
             Some(FullInt::S(val.0.cast_signed().wrapping_neg()))
         },
         _ if let ty = cx.typeck_results().expr_ty(e)
-            && let ty::Int(_) | ty::Uint(_) = *ty.kind() =>
+            && let ty::Int(_) | ty::Uint(_) = ty.kind() =>
         {
             ConstEvalCtxt::new(cx).eval(e).and_then(|x| x.int_value(cx.tcx, ty))
         },
@@ -723,7 +723,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                         [.., a] => a.target == base_ty,
                     }
                     && let Some(Constant::Adt(constant)) = self.expr(base)
-                    && let ty::Adt(adt_def, _) = *base_ty.kind()
+                    && let ty::Adt(adt_def, _) = base_ty.kind()
                     && adt_def.is_struct()
                     && let Some((desired_field, ty)) =
                         field_of_struct(adt_def, self.tcx, constant, base_ty, field.name) =>
@@ -772,7 +772,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             Bool(b) => Some(Bool(!b)),
             Int(value) => {
                 let value = !value;
-                match *ty.kind() {
+                match ty.kind() {
                     ty::Int(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
                     ty::Uint(ity) => Some(Int(clip(self.tcx, value, ity))),
                     _ => None,
@@ -786,7 +786,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         use self::Constant::{F32, F64, Int};
         match *o {
             Int(value) => {
-                let ty::Int(ity) = *ty.kind() else { return None };
+                let ty::Int(ity) = ty.kind() else { return None };
                 let (min, _) = ity.min_max()?;
                 // sign extend
                 let value = sext(self.tcx, value, ity);
@@ -1027,7 +1027,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck.expr_ty_opt(left)?.kind() {
+            (Constant::Int(l), Some(Constant::Int(r))) => match self.typeck.expr_ty_opt(left)?.kind() {
                 ty::Int(ity) => {
                     let (ty_min_value, _) = ity.min_max()?;
                     let bits = ity.bits();
@@ -1160,7 +1160,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
 /// Otherwise, returns `None`.
 pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue, ty: Ty<'tcx>) -> Option<Constant> {
     match (val, ty.kind()) {
-        (_, &ty::Adt(adt_def, _)) if adt_def.is_struct() => Some(Constant::Adt(val)),
+        (_, ty::Adt(adt_def, _)) if adt_def.is_struct() => Some(Constant::Adt(val)),
         (ConstValue::Scalar(Scalar::Int(int)), _) => match ty.kind() {
             ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.to_bits(int.size()))),

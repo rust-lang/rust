@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     let collect_output_adjusted_type = cx.typeck_results().expr_ty_adjusted(join_self_arg);
     if let ty::Ref(_, ref_type, _) = collect_output_adjusted_type.kind()
         // the turbofish for collect is ::<Vec<String>>
-        && let ty::Slice(slice) = *ref_type.kind()
+        && let ty::Slice(slice) = ref_type.kind()
         && slice.is_lang_item(cx, LangItem::String)
         // the argument for join is ""
         && let ExprKind::Lit(spanned) = &join_arg.kind

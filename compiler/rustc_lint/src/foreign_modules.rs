@@ -219,7 +219,7 @@ fn structurally_same_type_impl<'tcx>(
     // type unless the newtype makes the type non-null.
     let non_transparent_ty = |mut ty: Ty<'tcx>| -> Ty<'tcx> {
         loop {
-            if let ty::Adt(def, args) = *ty.kind() {
+            if let ty::Adt(def, args) = ty.kind() {
                 let is_transparent = def.repr().transparent();
                 let is_non_null = types::nonnull_optimization_guaranteed(tcx, def);
                 debug!(?ty, is_transparent, is_non_null);
@@ -255,7 +255,7 @@ fn structurally_same_type_impl<'tcx>(
             |ty: Ty<'tcx>| ty.is_primitive() || matches!(ty.kind(), ty::RawPtr(..) | ty::Ref(..));
 
         match (a.kind(), b.kind()) {
-            (&ty::Adt(a_def, a_gen_args), &ty::Adt(b_def, b_gen_args)) => {
+            (ty::Adt(a_def, a_gen_args), ty::Adt(b_def, b_gen_args)) => {
                 // Only `repr(C)` types can be compared structurally.
                 if !(a_def.repr().c() && b_def.repr().c()) {
                     return false;
@@ -288,19 +288,19 @@ fn structurally_same_type_impl<'tcx>(
             (ty::Array(a_ty, a_len), ty::Array(b_ty, b_len)) => {
                 // For arrays, we also check the length.
                 a_len == b_len
-                    && structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty)
+                    && structurally_same_type_impl(seen_types, tcx, typing_env, a_ty, b_ty)
             }
             (ty::Slice(a_ty), ty::Slice(b_ty)) => {
-                structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty)
+                structurally_same_type_impl(seen_types, tcx, typing_env, a_ty, b_ty)
             }
             (ty::RawPtr(a_ty, a_mutbl), ty::RawPtr(b_ty, b_mutbl)) => {
                 a_mutbl == b_mutbl
-                    && structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty)
+                    && structurally_same_type_impl(seen_types, tcx, typing_env, a_ty, b_ty)
             }
             (ty::Ref(_a_region, a_ty, a_mut), ty::Ref(_b_region, b_ty, b_mut)) => {
                 // For structural sameness, we don't need the region to be same.
                 a_mut == b_mut
-                    && structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty)
+                    && structurally_same_type_impl(seen_types, tcx, typing_env, a_ty, b_ty)
             }
             (ty::FnDef(..), ty::FnDef(..)) => {
                 let a_poly_sig = a.fn_sig(tcx);

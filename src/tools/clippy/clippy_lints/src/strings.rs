@@ -210,8 +210,8 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 );
             },
             ExprKind::Index(base, ..)
-                if let ty::Ref(_, ty, _) = *cx.typeck_results().expr_ty_adjusted(base).kind()
-                    && match *ty.kind() {
+                if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(base).kind()
+                    && match ty.kind() {
                         ty::Adt(def, _) => def.is_lang_item(cx, LangItem::String),
                         ty::Str => true,
                         _ => false,

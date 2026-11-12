@@ -237,7 +237,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
             },
 
             ExprKind::Call(path_expr, _) => {
-                let opt_sig = match *self.typeck_results.expr_ty_adjusted(path_expr).kind() {
+                let opt_sig = match self.typeck_results.expr_ty_adjusted(path_expr).kind() {
                     ty::FnDef(id, _) => Some(self.tcx.fn_sig(id).skip_binder()),
                     ty::FnPtr(sig_tys, hdr) => Some(sig_tys.with(hdr)),
                     _ => None,

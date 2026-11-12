@@ -489,7 +489,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                     hir::TestBinderBoundTypeConstraint { span, hir_id, params: _, lhs, rhs },
             } => {
                 let bound_vars = self.tcx.late_bound_vars(*hir_id);
-                let &ty::Alias(_, lhs) = self.lower_ty(lhs).kind() else {
+                let ty::Alias(_, lhs) = self.lower_ty(lhs).kind() else {
                     self.dcx().span_err(lhs.span, "bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)");
                     return SolverRegionConstraint::new_true();
                 };
@@ -1475,7 +1475,7 @@ pub fn suggest_impl_trait<'tcx>(
          item_ty: Ty<'tcx>| {
             let trait_name = tcx.item_name(trait_def_id);
             let args_tuple = args.type_at(1);
-            let ty::Tuple(types) = *args_tuple.kind() else {
+            let ty::Tuple(types) = args_tuple.kind() else {
                 return None;
             };
             let types = types.make_suggestable(tcx, false, None)?;

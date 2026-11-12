@@ -538,7 +538,7 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     // FIXME(explicit_tail_calls): figure out if we can inline tail calls
     if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
         let func_ty = func.ty(caller_body, tcx);
-        if let ty::FnDef(def_id, args) = *func_ty.kind() {
+        if let ty::FnDef(def_id, args) = func_ty.kind() {
             if !inliner.should_inline_for_callee(def_id) {
                 debug!("not enabled");
                 return None;
@@ -662,7 +662,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         let arg_tys = if callee_body.spread_arg.is_some() {
             std::slice::from_ref(&arg_tuple_ty)
         } else {
-            let ty::Tuple(arg_tuple_tys) = *arg_tuple_ty.kind() else {
+            let ty::Tuple(arg_tuple_tys) = arg_tuple_ty.kind() else {
                 bug!("Closure arguments are not passed as a tuple");
             };
             arg_tuple_tys.as_slice()
@@ -1355,7 +1355,7 @@ fn try_instance_mir<'tcx>(
     {
         let fields = def.all_fields();
         for field in fields {
-            let field_ty = field.ty(tcx, *args);
+            let field_ty = field.ty(tcx, args);
             if field_ty.has_param() && field_ty.has_aliases() {
                 return Err("cannot build drop shim for polymorphic type");
             }

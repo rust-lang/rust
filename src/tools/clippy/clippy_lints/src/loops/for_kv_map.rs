@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
             _ => (arg, cx.typeck_results().expr_ty(arg)),
         };
 
-        let (new_pat_span, kind, ty, mutbl) = match *arg_ty.kind() {
+        let (new_pat_span, kind, ty, mutbl) = match arg_ty.kind() {
             ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
                 (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", ty, mutbl),
                 (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", ty, Mutability::Not),

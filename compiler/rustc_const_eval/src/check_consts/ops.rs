@@ -270,8 +270,8 @@ fn build_error_for_const_call<'tcx>(
             let kind = ccx.const_kind();
             let note = match self_ty.kind() {
                 FnDef(def_id, ..) => {
-                    let span = tcx.def_span(*def_id);
-                    if ccx.tcx.is_const_fn(*def_id) {
+                    let span = tcx.def_span(def_id);
+                    if ccx.tcx.is_const_fn(def_id) {
                         span_bug!(span, "calling const FnDef errored when it shouldn't");
                     }
 
@@ -314,7 +314,7 @@ fn build_error_for_const_call<'tcx>(
                             let mut tmp_ty = self_ty;
                             while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
                                 num_refs += 1;
-                                tmp_ty = *inner_ty;
+                                tmp_ty = inner_ty;
                             }
                             let deref = "*".repeat(num_refs);
 

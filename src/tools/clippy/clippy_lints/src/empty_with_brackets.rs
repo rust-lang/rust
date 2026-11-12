@@ -304,7 +304,7 @@ fn check_expr_for_enum_as_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> Opt
         {
             let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             if let ty::FnDef(ctor_def_id, _) = ty.kind() {
-                def_id = *ctor_def_id;
+                def_id = ctor_def_id;
             }
 
             def_id.as_local().map(|id| (id, qpath.span().with_lo(expr.span.hi())))
@@ -325,7 +325,7 @@ fn check_pat_for_enum_as_function(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option
         {
             let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             if let ty::FnDef(ctor_def_id, _) = ty.kind() {
-                def_id = *ctor_def_id;
+                def_id = ctor_def_id;
             }
 
             def_id.as_local().map(|id| (id, qpath.span().with_lo(pat.span.hi())))

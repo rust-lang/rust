@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
 ) -> bool {
-    match (*from_ty.kind(), *to_ty.kind()) {
+    match (from_ty.kind(), to_ty.kind()) {
         _ if from_ty == to_ty && !from_ty.has_erased_regions() => {
             span_lint(
                 cx,
