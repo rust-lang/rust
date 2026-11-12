@@ -612,6 +612,7 @@ pub enum RustcShowSpansKind {
     Expr,
     Ty,
     Path,
+    GenericArgs,
 }
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]

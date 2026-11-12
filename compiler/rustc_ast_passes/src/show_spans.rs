@@ -19,6 +19,7 @@ struct ShowSpanKinds {
     expr: bool,
     ty: bool,
     path: bool,
+    generic_args: bool,
 }
 
 impl<'a> Visitor<'a> for ShowSpans<'a> {
@@ -34,6 +35,7 @@ impl<'a> Visitor<'a> for ShowSpans<'a> {
                     RustcShowSpansKind::Expr => self.kinds.expr = true,
                     RustcShowSpansKind::Ty => self.kinds.ty = true,
                     RustcShowSpansKind::Path => self.kinds.path = true,
+                    RustcShowSpansKind::GenericArgs => self.kinds.generic_args = true,
                 }
             }
         }
@@ -65,6 +67,15 @@ impl<'a> Visitor<'a> for ShowSpans<'a> {
             self.sess.dcx().emit_note(diagnostics::ShowSpan { span: p.span, kind: "path" });
         }
         visit::walk_path(self, p);
+    }
+
+    fn visit_generic_args(&mut self, g: &'a ast::GenericArgs) {
+        if self.kinds.generic_args {
+            self.sess
+                .dcx()
+                .emit_note(diagnostics::ShowSpan { span: g.span(), kind: "generic_args" });
+        }
+        visit::walk_generic_args(self, g);
     }
 }
 

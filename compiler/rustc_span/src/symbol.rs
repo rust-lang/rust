@@ -1091,6 +1091,7 @@ symbols! {
         generator_clone,
         generators,
         generic_arg_infer,
+        generic_args,
         generic_assert,
         generic_associated_types,
         generic_associated_types_extended,

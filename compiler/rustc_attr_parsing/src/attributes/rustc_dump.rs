@@ -331,9 +331,12 @@ impl SingleAttributeParser for RustcShowSpans {
                 sym::expr => RustcShowSpansKind::Expr,
                 sym::ty => RustcShowSpansKind::Ty,
                 sym::path => RustcShowSpansKind::Path,
+                sym::generic_args => RustcShowSpansKind::GenericArgs,
                 _ => {
-                    cx.adcx()
-                        .expected_specific_argument(ident.span, &[sym::expr, sym::ty, sym::path]);
+                    cx.adcx().expected_specific_argument(
+                        ident.span,
+                        &[sym::expr, sym::ty, sym::path, sym::generic_args],
+                    );
                     continue;
                 }
             };
