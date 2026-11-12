@@ -27,7 +27,6 @@ pub(crate) fn expand_derive_eq(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![],
-            has_other_selflike_arg: false,
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.

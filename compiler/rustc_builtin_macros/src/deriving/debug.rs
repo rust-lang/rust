@@ -35,7 +35,6 @@ pub(crate) fn expand_derive_debug(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![(sym::f, fmtr)],
-            has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![
                 cx.generated_attr(span, ast::GeneratedAttr::Inline),
@@ -53,10 +52,11 @@ pub(crate) fn expand_derive_debug(
                 {
                     MethodBody::Directly(debug_fieldless_enum(cx, span, def, ident))
                 }
-                _ => MethodBody::SubstructureFunc(
-                    Box::new(|cx, span, substr| debug_body(cx, span, substr, ident)),
-                    FieldlessVariantsStrategy::Default
-                ),
+                _ => MethodBody::SubstructureFunc {
+                    body_func: Box::new(|cx, span, substr| debug_body(cx, span, substr, ident)),
+                    strategy: FieldlessVariantsStrategy::Default,
+                    has_other_selflike_arg: false,
+                },
             },
         }],
         is_const,

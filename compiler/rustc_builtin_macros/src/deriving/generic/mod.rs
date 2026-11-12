@@ -56,9 +56,6 @@ pub(crate) struct MethodDef<'a> {
     /// Arguments other than the self argument.
     pub nonself_args: SmallVec<[(Symbol, Box<ast::Ty>); 1]>,
 
-    /// Whether this method has another arg of type `&self`.
-    pub has_other_selflike_arg: bool,
-
     /// Returns type
     pub ret_ty: Box<ast::Ty>,
 
@@ -109,10 +106,11 @@ pub(crate) enum Substructure<'a> {
 
 pub(crate) enum MethodBody<'a> {
     /// See the documentation on [`Substructure`] for when this is used.
-    SubstructureFunc(
-        Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>,
-        FieldlessVariantsStrategy,
-    ),
+    SubstructureFunc {
+        body_func: Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>,
+        strategy: FieldlessVariantsStrategy,
+        has_other_selflike_arg: bool,
+    },
     /// The common case.
     /// If you are adding a new macro, you most likely want to use this.
     Directly(BlockOrExpr),
@@ -592,6 +590,10 @@ impl<'a> MethodDef<'a> {
         struct_def: &'b VariantData,
         is_packed: bool,
     ) -> BlockOrExpr {
+        let MethodBody::SubstructureFunc { body_func, has_other_selflike_arg, .. } = &self.body
+        else {
+            unreachable!()
+        };
         let selflike_fields = struct_def
             .fields()
             .iter()
@@ -625,18 +627,13 @@ impl<'a> MethodDef<'a> {
                 };
 
                 let self_expr = expr_for_selflike_arg(cx.expr_self(span));
-                let other_selflike_expr = self
-                    .has_other_selflike_arg
-                    .then(|| expr_for_selflike_arg(cx.expr_name(span, self.nonself_args[0].0)));
+                let other_selflike_expr = has_other_selflike_arg
+                    .then(|| expr_for_selflike_arg(cx.expr_name(span, sym::other)));
                 FieldInfo { span: field_span, self_expr, other_selflike_expr, def: struct_field }
             })
             .collect();
 
-        if let MethodBody::SubstructureFunc(func, ..) = &self.body {
-            (func)(cx, span, Struct(struct_def, selflike_fields))
-        } else {
-            unreachable!()
-        }
+        body_func(cx, span, Struct(struct_def, selflike_fields))
     }
 
     /// ```
@@ -683,13 +680,13 @@ impl<'a> MethodDef<'a> {
         // There are some special cases involving fieldless enums where no
         // match is necessary.
         let all_fieldless = variants.iter().all(|v| v.data.fields().is_empty());
-        // Traits that unify fieldless variants always use the discriminant(s).
-        let MethodBody::SubstructureFunc(body_func, fieldless_variants_strategy) = &self.body
+        let MethodBody::SubstructureFunc { body_func, strategy, has_other_selflike_arg } =
+            &self.body
         else {
             unreachable!()
         };
-        let unify_fieldless_variants =
-            *fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
+        // Traits that unify fieldless variants always use the discriminant(s).
+        let unify_fieldless_variants = *strategy == FieldlessVariantsStrategy::Unify;
 
         match variants.as_slice() {
             [] => {
@@ -718,7 +715,7 @@ impl<'a> MethodDef<'a> {
         // (Variant1, Variant1) => Body1
         // (Variant2, Variant2) => Body2
         // ...
-        // where each tuple has length 2 if `self.has_other_selflike_arg` and 1 otherwise
+        // where each tuple has length 2 if `has_other_selflike_arg` and 1 otherwise
         let mut match_arms: ThinVec<ast::Arm> = variants
             .iter()
             .filter(|&v| !(unify_fieldless_variants && v.data.fields().is_empty()))
@@ -764,7 +761,7 @@ impl<'a> MethodDef<'a> {
                 };
 
                 // `(VariantK, VariantK)` or just `VariantK`.
-                let single_pat = if self.has_other_selflike_arg {
+                let single_pat = if *has_other_selflike_arg {
                     cx.pat_tuple(span, thin_vec![pat_for_field("__self"), pat_for_field("__arg1"),])
                 } else {
                     pat_for_field("__self")
@@ -784,7 +781,7 @@ impl<'a> MethodDef<'a> {
 
                         let self_expr = expr_for_field("__self");
                         let other_selflike_expr =
-                            self.has_other_selflike_arg.then(|| expr_for_field("__arg1"));
+                            has_other_selflike_arg.then(|| expr_for_field("__arg1"));
                         FieldInfo { span, self_expr, other_selflike_expr, def: struct_field }
                     })
                     .collect();
@@ -810,7 +807,7 @@ impl<'a> MethodDef<'a> {
                 // We need a default case that handles all the fieldless variants.
                 Some(body_func(cx, span, EnumMatching(v, Vec::new())).into_expr(cx, span))
             }
-            _ if variants.len() > 1 && self.has_other_selflike_arg => {
+            _ if variants.len() > 1 && *has_other_selflike_arg => {
                 // Because we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsic as the
                 // result of the default which should help llvm in optimizing it.
@@ -832,8 +829,8 @@ impl<'a> MethodDef<'a> {
         //      }
 
         let self_expr = cx.expr_self(span);
-        let match_arg = if self.has_other_selflike_arg {
-            cx.expr_tuple(span, thin_vec![self_expr, cx.expr_name(span, self.nonself_args[0].0)])
+        let match_arg = if *has_other_selflike_arg {
+            cx.expr_tuple(span, thin_vec![self_expr, cx.expr_name(span, sym::other)])
         } else {
             self_expr
         };
