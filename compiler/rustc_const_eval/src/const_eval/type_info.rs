@@ -159,6 +159,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         | ty::Placeholder(_)
                         | ty::Infer(..)
                         | ty::Error(_) => self.project_downcast_named(&field_dest, sym::Other)?.0,
+
+                        // FIXME(scrabsha)
+                        ty::View(..) => unimplemented!(),
                     };
                     self.write_discriminant(variant_index, &field_dest)?
                 }
@@ -263,6 +266,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             ty::Closure(_, args) => ty::Binder::dummy(args),
             ty::CoroutineClosure(_, args) => ty::Binder::dummy(args),
             ty::Coroutine(_, args) => ty::Binder::dummy(args),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         // FIXME(type_info): also provide the late bound vars to reflection
