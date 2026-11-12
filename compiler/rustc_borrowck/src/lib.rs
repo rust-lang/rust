@@ -1948,6 +1948,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Placeholder(_) => {
                         bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
                     }
+
+                    // FIXME(scrabsha)
+                    ty::View(..) => unimplemented!(),
                 },
                 ProjectionElem::Field(_, _) => match place_ty.ty.kind() {
                     ty::Adt(adt, _) => {
@@ -1990,6 +1993,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Placeholder(_) => bug!(
                         "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
                     ),
+
+                    // FIXME(scrabsha)
+                    ty::View(..) => unimplemented!(),
                 },
                 ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                     match place_ty.ty.kind() {

@@ -759,6 +759,9 @@ where
                             | ty::Closure(..)
                             | ty::CoroutineClosure(..)
                             | ty::Coroutine(..) => LowerAvailableDepth::Yes,
+
+                            // FIXME(scrabsha)
+                            ty::View(..) => unimplemented!(),
                         }
                     } else {
                         LowerAvailableDepth::Yes

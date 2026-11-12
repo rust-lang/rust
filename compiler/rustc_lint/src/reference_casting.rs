@@ -316,6 +316,9 @@ fn is_ty_fully_unsafe_celled<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 
             // FIXME: How to handle unsafe binders?
             ty::UnsafeBinder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
