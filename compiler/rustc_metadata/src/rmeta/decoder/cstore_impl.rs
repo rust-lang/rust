@@ -409,6 +409,7 @@ provide! { tcx, def_id, other, cdata,
     }
 
     used_crate_source => { Arc::clone(&cdata.source) }
+    crate_has_rlib_or_rmeta => { cdata.source.rlib.is_some() || cdata.source.rmeta.is_some() }
     debugger_visualizers => { cdata.get_debugger_visualizers(tcx) }
 
     exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx)) }

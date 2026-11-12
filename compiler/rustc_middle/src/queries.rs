@@ -2366,6 +2366,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query crate_has_rlib_or_rmeta(_: CrateNum) -> bool {
+        eval_always
+        desc { "seeing if an rlib or rmeta entry is present for this crate" }
+        separate_provide_extern
+    }
+
     /// Returns the debugger visualizers defined for this crate.
     /// NOTE: This query has to be marked `eval_always` because it reads data
     ///       directly from disk that is not tracked anywhere else. I.e. it

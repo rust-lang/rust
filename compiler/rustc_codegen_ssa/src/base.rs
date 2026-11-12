@@ -645,10 +645,7 @@ pub fn collect_debugger_visualizers_transitive(
         .chain(
             tcx.crates(())
                 .iter()
-                .filter(|&cnum| {
-                    let used_crate_source = tcx.used_crate_source(*cnum);
-                    used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some()
-                })
+                .filter(|&cnum| tcx.crate_has_rlib_or_rmeta(*cnum))
                 .flat_map(|&cnum| tcx.debugger_visualizers(cnum)),
         )
         .filter(|visualizer| visualizer.visualizer_type == visualizer_type)
