@@ -684,6 +684,7 @@ pub(super) fn complete_name(
     match kind {
         NameKind::Const => {
             item_list::trait_impl::complete_trait_impl_const(acc, ctx, name);
+            item_list::complete_keywords_after_const(acc, ctx);
         }
         NameKind::Function => {
             item_list::trait_impl::complete_trait_impl_fn(acc, ctx, name);
