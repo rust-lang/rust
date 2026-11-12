@@ -262,9 +262,12 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for attributes that appear two or more times.
     ///
+    /// Only lint-level attributes are checked, as other attributes'
+    /// (e.g. proc-macro attributes) repetition can have a meaning.
+    ///
     /// ### Why is this bad?
-    /// Repeating an attribute on the same item (or globally on the same crate)
-    /// is unnecessary and doesn't have an effect.
+    /// Naming a lint repeatedly on the same item (or globally on the same
+    /// crate) is unnecessary and doesn't have an effect.
     ///
     /// ### Example
     /// ```no_run

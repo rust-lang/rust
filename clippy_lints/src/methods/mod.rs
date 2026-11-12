@@ -3060,7 +3060,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// None
     /// ```
-    #[clippy::version = "1.99.0"]
+    #[clippy::version = "1.100.0"]
     pub OPTION_ZIP_NONE,
     suspicious,
     "calling `.zip(None)` on an `Option` always returns `None`"
@@ -6093,7 +6093,7 @@ impl Methods {
 
             // Those methods do their own method name checking as they deal with multiple methods.
             or_fun_call::check(cx, expr, method_span, path.ident.name, recv, args, self.msrv);
-            unnecessary_to_owned::check(cx, expr, path.ident.name, recv, args, self.msrv);
+            unnecessary_to_owned::check(cx, expr, path.ident.name, call_span, recv, args, self.msrv);
 
             match (path.ident.name, args) {
                 (sym::clone, []) => {

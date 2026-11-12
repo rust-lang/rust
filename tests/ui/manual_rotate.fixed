@@ -1,3 +1,5 @@
+// TODO(@Jarcho): Check why this doesn't trigger after rustfix
+#![allow(arithmetic_overflow)]
 #![warn(clippy::manual_rotate)]
 fn main() {
     let (x_u8, x_u16, x_u32, x_u64) = (1u8, 1u16, 1u32, 1u64);

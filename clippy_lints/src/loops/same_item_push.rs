@@ -4,13 +4,13 @@ use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{msrvs, std_or_core, sym};
+use clippy_utils::{msrvs, sym};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 use rustc_span::SyntaxContext;
 
 /// Detects for loop pushing the same item into a Vec
