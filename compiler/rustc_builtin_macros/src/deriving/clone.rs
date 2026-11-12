@@ -92,8 +92,7 @@ pub(crate) fn expand_derive_clone(
         methods: smallvec![MethodDef {
             name: sym::clone,
             generics: cx.empty_generics(span),
-            explicit_self: true,
-            nonself_args: SmallVec::new(),
+            args: thin_vec![cx.param_self_ref(span)],
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![
                 cx.generated_attr(span, ast::GeneratedAttr::Inline),

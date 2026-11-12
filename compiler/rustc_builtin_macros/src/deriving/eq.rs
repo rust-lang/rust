@@ -25,8 +25,7 @@ pub(crate) fn expand_derive_eq(
         methods: smallvec![MethodDef {
             name: sym::assert_fields_are_eq,
             generics: cx.empty_generics(span),
-            explicit_self: true,
-            nonself_args: smallvec![],
+            args: thin_vec![cx.param_self_ref(span)],
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.

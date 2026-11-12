@@ -29,8 +29,7 @@ pub(crate) fn expand_derive_default(
         methods: smallvec![MethodDef {
             name: kw::Default,
             generics: cx.empty_generics(span),
-            explicit_self: false,
-            nonself_args: SmallVec::new(),
+            args: ThinVec::new(),
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             body: MethodBody::Directly(match &item.kind {

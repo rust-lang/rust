@@ -77,8 +77,7 @@ pub(crate) fn expand_derive_from(
         methods: smallvec![MethodDef {
             name: sym::from,
             generics: cx.empty_generics(span),
-            explicit_self: false,
-            nonself_args: smallvec![(sym::value, from_type)],
+            args: thin_vec![cx.param(span, sym::value, from_type)],
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             body: MethodBody::Directly(BlockOrExpr::new_expr(match field {

@@ -51,8 +51,7 @@ pub(crate) fn expand_derive_partial_ord(
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
         generics: cx.empty_generics(span),
-        explicit_self: true,
-        nonself_args: smallvec![(sym::other, cx.ty_self_ref(span))],
+        args: thin_vec![cx.param_self_ref(span), cx.param(span, sym::other, cx.ty_self_ref(span))],
         ret_ty,
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
         body: if is_simple {
