@@ -660,14 +660,6 @@ impl UnixSocketFileDescription for TcpSocket {
         let is_non_block = is_non_block || self.is_non_block.get();
         let deadline = socket_action_deadline(ecx, is_non_block, self.read_timeout.get());
 
-        let finish = callback!(
-            @capture<'tcx> {
-                finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
-            } |ecx, result: Result<u64, IoError>| {
-                // The source address of the data isn't available for stream-based sockets.
-                finish.call(ecx, result.map(|bytes| (bytes, None)))
-            }
-        );
         let socket = self;
         ecx.ensure_connected(
             socket.clone(),
@@ -681,7 +673,7 @@ impl UnixSocketFileDescription for TcpSocket {
                     len: u64,
                     is_peek: bool,
                     is_non_block: bool,
-                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+                    finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
                 } |ecx, result: Result<(), ()>| {
                     if result.is_err() {
                         return finish.call(ecx, Err(LibcError("ENOTCONN")))
@@ -691,11 +683,18 @@ impl UnixSocketFileDescription for TcpSocket {
                         // We have a non-blocking operation or a non-blocking socket and
                         // thus don't want to block until we can receive.
                         let result = ecx.try_non_block_recv(&socket, ptr, len, is_peek)?;
-                        finish.call(ecx, result)
+                        finish.call(ecx, result.map(|bytes| (bytes, /* source_addr */ None)))
                     } else {
                         // The socket is in blocking mode and thus the receive call should block
                         // until we can receive some bytes from the socket or the timeout exceeded.
-                        ecx.block_for_recv(socket, deadline, ptr, len, is_peek, finish)
+                        ecx.block_for_recv(socket, deadline, ptr, len, is_peek, callback!(
+                            @capture<'tcx> {
+                                finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
+                            } |ecx, result: Result<u64, IoError>| {
+                                // The source address of the data isn't available for stream-based sockets.
+                                finish.call(ecx, result.map(|bytes| (bytes, /* source_addr */ None)))
+                            }
+                        ))
                     }
                 }
             ),

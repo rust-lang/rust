@@ -1,5 +1,5 @@
 //@ignore-target: windows # No libc socket on Windows
-//@compile-flags: -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
 //@run-native
 
 #[path = "../../utils/libc.rs"]
@@ -7,13 +7,93 @@ mod libc_utils;
 #[path = "../../utils/mod.rs"]
 mod utils;
 
+use std::thread;
+use std::time::Duration;
+
 use libc_utils::*;
 
+const TEST_BYTES: &[u8] = b"these are some test bytes!";
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(20));
+    }
+}
+
 fn main() {
+    test_send_peek_recv();
+
     test_getsockname_ipv4_connect();
 
     test_getpeername_ipv4();
     test_getpeername_ipv6();
+}
+
+/// Test sending bytes into a transmitting UDP socket and then peeking and receiving
+/// them from the receiving UDP socket.
+/// We especially want to test that the peeking doesn't remove the bytes from
+/// the queue.
+fn test_send_peek_recv() {
+    let (rx_sockfd, addr) = net::make_local_ipv4(libc::SOCK_DGRAM).unwrap();
+    let tx_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0)).unwrap() };
+
+    // Set the default destination address of the transmitting socket.
+    net::connect_ipv4(tx_sockfd, addr).unwrap();
+
+    // Spawn the transmitter thread.
+    let tx_thread = thread::spawn(move || {
+        // Yield back to the main thread to ensure that the receiver
+        // is blocked on the sender.
+        yield_now();
+
+        // Write the bytes into the stream.
+        let bytes_sent = unsafe {
+            errno_result(libc::send(
+                tx_sockfd,
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                /* flags */ 0,
+            ))
+            .unwrap()
+        };
+        assert_eq!(bytes_sent as usize, TEST_BYTES.len());
+    });
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_received = unsafe {
+        errno_result(libc::recv(
+            rx_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc::MSG_PEEK,
+        ))
+        .unwrap()
+    } as usize;
+    assert_eq!(bytes_received as usize, TEST_BYTES.len());
+    assert_eq!(&buffer, TEST_BYTES);
+
+    // Since the bytes aren't removed from the queue by peeking, we should be
+    // able to read the same bytes again into a new buffer.
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_received = unsafe {
+        errno_result(libc::recv(
+            rx_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            /* flags */ 0,
+        ))
+        .unwrap()
+    } as usize;
+    assert_eq!(bytes_received as usize, TEST_BYTES.len());
+    assert_eq!(&buffer, TEST_BYTES);
+
+    tx_thread.join().unwrap();
 }
 
 /// Test the `getsockname` syscall on a IPv4 UDP socket for which the default

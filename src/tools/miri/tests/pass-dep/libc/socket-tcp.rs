@@ -327,6 +327,10 @@ fn test_send_peek_recv() {
     let server_thread = thread::spawn(move || {
         let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
 
+        // Yield back to the main thread to ensure that the client
+        // is blocked with receiving until the server sent some data.
+        yield_now();
+
         // Write the bytes into the stream.
         unsafe {
             libc_utils::write_all_generic(

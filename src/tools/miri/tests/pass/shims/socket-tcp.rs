@@ -240,8 +240,12 @@ fn test_sockopt_read_timeout() {
     let err = stream.read(&mut buffer).unwrap_err();
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
     // Ensure that we blocked at least for `short_read_timeout`. The upper bound on the
-    // blocking time is really pessimistic to account for slow CI runners.
-    assert!(before.elapsed() >= short_read_timeout && before.elapsed() < short_read_timeout * 250);
+    // blocking time is pessimistic to account for slow CI runners.
+    let duration = before.elapsed();
+    assert!(
+        duration >= short_read_timeout && duration < short_read_timeout * 20,
+        "operation blocked for {duration:?}"
+    );
 }
 
 /// Test setting and reading the RCVTIMEO socket option.
