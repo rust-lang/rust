@@ -19,10 +19,9 @@ use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_session::config::{
-    self, ErrorOutputType, Input, OutputType, OutputTypes, ResolveDocLinks,
-};
+use rustc_session::config::{self, Input};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
+use rustc_session::output::{ErrorOutputType, OutputType, OutputTypes, ResolveDocLinks};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_structures::CrateType;

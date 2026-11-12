@@ -37,11 +37,12 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, DebugInfo,
-    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli,
-    NATIVE_CPU, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli, NATIVE_CPU, OutFileName,
+    PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
+use crate::output::{ErrorOutputType, OutputType};
 use crate::parse::ParseSess;
 use crate::search_paths::SearchPath;
 use crate::{diagnostics, filesearch, lint};
@@ -1309,7 +1310,7 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
     let source_map = if sopts.unstable_opts.link_only { None } else { Some(source_map) };
 
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
+        ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { no_graphics, short, unicode } => {
                 let emitter = AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .sm(source_map)
@@ -1326,7 +1327,7 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
-        config::ErrorOutputType::Json { pretty, json_rendered, color_config } => Box::new(
+        ErrorOutputType::Json { pretty, json_rendered, color_config } => Box::new(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
@@ -1963,7 +1964,7 @@ impl EarlyDiagCtxt {
 
 fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
+        ErrorOutputType::HumanReadable { kind, color_config } => match kind {
             HumanReadableErrorType { no_graphics, short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
@@ -1971,7 +1972,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
                     .no_graphics(no_graphics),
             ),
         },
-        config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
+        ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 Some(Arc::new(SourceMap::new(FilePathMapping::empty()))),

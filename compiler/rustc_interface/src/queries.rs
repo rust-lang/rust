@@ -9,7 +9,8 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, OutputFilenames, OutputType};
+use rustc_session::config::{self, OutputFilenames};
+use rustc_session::output::OutputType;
 use rustc_session::{IncrCompSession, Session};
 
 use crate::diagnostics::FailedWritingFile;

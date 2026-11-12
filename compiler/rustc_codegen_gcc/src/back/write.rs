@@ -8,7 +8,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::link_or_copy;
 use rustc_log::tracing::debug;
-use rustc_session::config::OutputType;
+use rustc_session::output::OutputType;
 use rustc_target::spec::SplitDebuginfo;
 
 use crate::diagnostics::CopyBitcode;

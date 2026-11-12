@@ -51,11 +51,11 @@ use rustc_middle::ty::TyCtxt;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, Sysroot, UnstableOptions,
-    Z_OPTIONS, nightly_options, parse_target_triple,
+    CG_OPTIONS, Input, OptionDesc, OutFileName, Sysroot, UnstableOptions, Z_OPTIONS,
+    nightly_options, parse_target_triple,
 };
 use rustc_session::getopts::{self, Matches};
-use rustc_session::output::invalid_output_for_target;
+use rustc_session::output::{ErrorOutputType, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, FileName};
