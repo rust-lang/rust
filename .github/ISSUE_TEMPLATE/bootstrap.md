@@ -6,6 +6,8 @@ labels: C-bug, T-bootstrap
 
 <!--
 Thank you for submitting a bootstrap report! Please provide detailed information to help us reproduce and diagnose the issue.
+
+DO NOT POST LLM-GENERATED TEXT without clearly marking it.
 -->
 
 ### Summary

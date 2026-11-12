@@ -12,6 +12,8 @@ Remember to add team labels to the tracking issue.
 For something that affects the language, this would be `T-lang`, and for libs
 it would be `T-libs`.
 Also check for any `A-` labels to add.
+
+DO NOT POST LLM-GENERATED TEXT without clearly marking it.
 -->
 
 This is the **tracking issue** for the `YOUR_LINT_NAME_HERE` future-compatibility warning and other related errors. The goal of this page is to describe why this change was made and how you can fix code that is affected by it. It also provides a place to ask questions or register a complaint if you feel the change should not be made. For more information on the policy around future-compatibility warnings, see our [breaking change policy guidelines][guidelines].
