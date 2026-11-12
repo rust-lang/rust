@@ -1026,7 +1026,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[must_not_suspend]`
-    MustNotSupend {
+    MustNotSuspend {
         reason: Option<Symbol>,
     },
 

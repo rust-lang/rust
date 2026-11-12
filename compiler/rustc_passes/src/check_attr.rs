@@ -266,7 +266,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MacroUse { .. } => (),
             AttributeKind::Marker => (),
             AttributeKind::MoveSizeLimit { .. } => (),
-            AttributeKind::MustNotSupend { .. } => (),
+            AttributeKind::MustNotSuspend { .. } => (),
             AttributeKind::MustUse { .. } => (),
             AttributeKind::Naked(..) => (),
             AttributeKind::NeedsAllocator => (),
