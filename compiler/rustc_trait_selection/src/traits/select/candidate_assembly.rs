@@ -127,8 +127,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
                 }
                 Some(LangItem::FnAddrTrait) => {
-                    self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
-                    self.assemble_candidates_for_fn_static_trait(obligation, &mut candidates);
+                    self.assemble_candidates_for_fn_addr_trait(obligation, &mut candidates);
                 }
                 Some(LangItem::BikeshedGuaranteedNoDrop) => {
                     self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
@@ -1420,7 +1419,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn assemble_candidates_for_fn_static_trait(
+    fn assemble_candidates_for_fn_addr_trait(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
@@ -1428,11 +1427,43 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.deeply_resolve_ignoring_regions(obligation.self_ty());
 
         match *self_ty.skip_binder().kind() {
-            ty::FnDef(_, _) => candidates.vec.push(BuiltinCandidate),
+            ty::FnDef(_, _) | ty::FnPtr(_, _) => candidates.vec.push(BuiltinCandidate),
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(..)
+            | ty::Foreign(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Pat(..)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(..)
+            | ty::Placeholder(..)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::UnsafeBinder(_)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::Alias(..)
+            | ty::Param(..)
+            | ty::Bound(..)
+            | ty::Error(_)
+            | ty::Infer(
+                ty::InferTy::IntVar(_)
+                | ty::InferTy::FloatVar(_)
+                | ty::InferTy::FreshIntTy(_)
+                | ty::InferTy::FreshFloatTy(_),
+            ) => {}
+
             ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
                 candidates.ambiguous = true;
             }
-            _ => {}
         }
     }
 

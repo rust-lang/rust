@@ -368,30 +368,33 @@ where
         }
     }
 
-    fn consider_builtin_fn_static_trait_candidate(
+    fn consider_builtin_fn_addr_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let self_ty = goal.predicate.self_ty();
         match goal.predicate.polarity {
-            // impl FnStatic for FnDef {}
+            // impl FnAddr for FnDef {}
             ty::ClausePolarity::Positive => match self_ty.kind() {
-                ty::FnDef(_, _) => {
+                ty::FnDef(_, _) | ty::FnPtr(_, _) => {
                     ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                 }
                 _ => Err(NoSolution.into()),
             },
-            //  impl !FnStatic for T where T != FnDef && T is rigid {}
-            ty::ClausePolarity::Negative => match self_ty.kind() {
-                ty::FnDef(_, _) if self_ty.is_known_rigid() => {
+            //  impl !FnAddr for T where T != FnDef && T != FnPtr && T is rigid {}
+            ty::ClausePolarity::Negative => {
+                if !matches!(self_ty.kind(), ty::FnDef(_, _) | ty::FnPtr(_, _))
+                    && self_ty.is_known_rigid()
+                {
                     ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
+                } else {
+                    Err(NoSolution.into())
                 }
-                _ => Err(NoSolution.into()),
-            },
+            }
         }
     }
 

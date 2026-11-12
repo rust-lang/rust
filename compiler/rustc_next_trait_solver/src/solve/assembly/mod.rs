@@ -315,7 +315,7 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
 
     /// A type is a `FnStatic` if it is of `FnDef` type.
-    fn consider_builtin_fn_static_trait_candidate(
+    fn consider_builtin_fn_addr_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
@@ -687,11 +687,7 @@ where
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::FnAddrTrait) => {
-                    if matches!(goal.predicate.self_ty().kind(), ty::FnDef(..)) {
-                        G::consider_builtin_fn_static_trait_candidate(self, goal)
-                    } else {
-                        G::consider_builtin_fn_ptr_trait_candidate(self, goal)
-                    }
+                    G::consider_builtin_fn_addr_trait_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
