@@ -1466,9 +1466,6 @@ pub enum AttributeKind {
         element_count: Option<u16>,
     },
 
-    /// Represents `#[rustc_should_not_be_called_on_const_items]`
-    RustcShouldNotBeCalledOnConstItems,
-
     /// Represents `#[rustc_show_spans]`
     RustcShowSpans(ThinVec<RustcShowSpansKind>),
 

@@ -189,7 +189,6 @@ impl AttributeKind {
             RustcReallocator => No,
             RustcRegions => No,
             RustcScalableVector { .. } => Yes,
-            RustcShouldNotBeCalledOnConstItems => Yes,
             RustcShowSpans(_) => No,
             RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate
             RustcSkipDuringMethodDispatch { .. } => No,
@@ -408,7 +407,6 @@ impl AttributeKind {
             RustcReallocator => false,
             RustcRegions => false,
             RustcScalableVector { .. } => false,
-            RustcShouldNotBeCalledOnConstItems => false,
             RustcShowSpans(_) => false,
             RustcSimdMonomorphizeLaneLimit(..) => false,
             RustcSkipDuringMethodDispatch { .. } => false,
