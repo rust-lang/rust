@@ -1138,9 +1138,6 @@ impl CrateError {
                             span,
                             path,
                             crate_name,
-                        });
-                        dcx.emit_err(diagnostics::LibFilenameForm {
-                            span,
                             dll_prefix: &locator.dll_prefix,
                             dll_suffix: &locator.dll_suffix,
                         });
@@ -1250,11 +1247,7 @@ impl CrateError {
                     };
                     // The diagnostic for missing core is very good, but it is followed by a lot of
                     // other diagnostics that do not add information.
-                    if missing_core {
-                        dcx.emit_fatal(error);
-                    } else {
-                        dcx.emit_err(error);
-                    }
+                    dcx.emit_err(error);
                 }
             }
             CrateError::NotFound(crate_name) => {
@@ -1276,11 +1269,7 @@ impl CrateError {
                 };
                 // The diagnostic for missing core is very good, but it is followed by a lot of
                 // other diagnostics that do not add information.
-                if missing_core {
-                    dcx.emit_fatal(error);
-                } else {
-                    dcx.emit_err(error);
-                }
+                dcx.emit_err(error);
             }
         }
     }

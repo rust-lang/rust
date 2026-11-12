@@ -212,8 +212,7 @@ static mut TLS: u8 = 42;
 //~| WARN this was previously accepted by the compiler
 #[macro_use = 1]
 //~^ ERROR malformed
-extern crate wloop;
-//~^ ERROR can't find crate for `wloop` [E0463]
+extern crate core;
 
 #[macro_export = 18]
 //~^ ERROR malformed

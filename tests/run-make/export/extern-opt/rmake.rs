@@ -21,5 +21,5 @@ fn main() {
         .extern_("libr", "interface.rs") // wrong interface format
         .extern_("libr", dynamic_lib_name("libr"))
         .run_fail()
-        .assert_stderr_contains("extern location for libr does not exist");
+        .assert_stderr_contains("extern location for `libr` does not exist");
 }
