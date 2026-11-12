@@ -39,13 +39,13 @@ pub(crate) fn expand_derive_hash(
             generics,
             explicit_self: true,
             nonself_args: smallvec![(sym::state, cx.ty_ref(span, arg, None, Mutability::Mut))],
-            has_other_selflike_arg: false,
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
-            body: MethodBody::SubstructureFunc(
-                Box::new(hash_body),
-                FieldlessVariantsStrategy::Unify
-            ),
+            body: MethodBody::SubstructureFunc {
+                body_func: Box::new(hash_body),
+                strategy: FieldlessVariantsStrategy::Unify,
+                has_other_selflike_arg: false,
+            },
         }],
         is_const,
         ..
