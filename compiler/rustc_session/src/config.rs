@@ -1060,6 +1060,23 @@ impl OutputTypes {
         })
     }
 
+    pub fn metadata_output_type(&self) -> OutputType {
+        self.iter()
+            .fold(None, |acc, (&out, _)| match acc {
+                Some(OutputType::Metadata) => Some(OutputType::Metadata),
+                Some(OutputType::Validation)
+                    if matches!(out, OutputType::Metadata | OutputType::FullAnalysis) =>
+                {
+                    Some(out)
+                }
+                Some(OutputType::Validation) => acc,
+                Some(OutputType::FullAnalysis) if matches!(out, OutputType::Metadata) => Some(out),
+                Some(OutputType::FullAnalysis) => acc,
+                _ => Some(out),
+            })
+            .unwrap_or(OutputType::Metadata)
+    }
+
     pub fn needs_mir(&self) -> bool {
         self.0.keys().any(|k| k == &OutputType::Mir)
     }

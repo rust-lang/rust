@@ -382,7 +382,6 @@ impl<'a> CrateLocator<'a> {
         {
             return Ok(library);
         }
-
         self.find_library_crate(crate_rejections, "", &mut seen_paths)
     }
 
