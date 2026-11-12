@@ -3060,7 +3060,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// None
     /// ```
-    #[clippy::version = "1.99.0"]
+    #[clippy::version = "1.100.0"]
     pub OPTION_ZIP_NONE,
     suspicious,
     "calling `.zip(None)` on an `Option` always returns `None`"
