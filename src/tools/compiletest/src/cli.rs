@@ -43,6 +43,15 @@ struct Args {
     /// Path to rustc to use for compiling.
     #[arg(long)]
     rustc_path: Utf8PathBuf,
+    /// Path to the aux-lint rustc driver.
+    #[arg(long)]
+    rustc_lint_driver_path: Option<Utf8PathBuf>,
+    /// Path to the aux-lint rustc driver libdir.
+    #[arg(long)]
+    rustc_lint_driver_lib_path: Option<Utf8PathBuf>,
+    /// Path to the aux-lint rustc driver sysroot.
+    #[arg(long)]
+    rustc_lint_driver_sysroot: Option<Utf8PathBuf>,
     /// Path to python to use for doc tests.
     #[arg(long)]
     python: String,
@@ -494,6 +503,9 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         run_make_support_rmeta: args.run_make_support_rmeta,
         runner: args.runner,
         rust_randomized_layout: args.rust_randomized_layout,
+        rustc_lint_driver_lib_path: args.rustc_lint_driver_lib_path,
+        rustc_lint_driver_path: args.rustc_lint_driver_path,
+        rustc_lint_driver_sysroot: args.rustc_lint_driver_sysroot,
         rustc_path: args.rustc_path,
         rustdoc_path: args.rustdoc_path,
         rustfix_coverage: args.rustfix_coverage,
