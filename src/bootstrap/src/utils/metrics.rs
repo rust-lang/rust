@@ -58,7 +58,8 @@ impl BuildMetrics {
 
             system_info: System::new_with_specifics(
                 RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()),
-            ),
+            )
+            .ok(),
             timer_start: None,
             invocation_timer_start: Instant::now(),
             invocation_start: SystemTime::now(),
@@ -80,7 +81,9 @@ impl BuildMetrics {
             self.collect_stats(&mut state);
         }
 
-        state.system_info.refresh_cpu_usage();
+        if let Some(ref mut system_info) = state.system_info {
+            system_info.refresh_cpu_usage();
+        }
         state.timer_start = Some(Instant::now());
 
         state.running_steps.push(StepMetrics {
@@ -113,7 +116,9 @@ impl BuildMetrics {
             state.running_steps.last_mut().unwrap().children.push(step);
 
             // Start collecting again for the parent step.
-            state.system_info.refresh_cpu_usage();
+            if let Some(ref mut system_info) = state.system_info {
+                system_info.refresh_cpu_usage();
+            }
             state.timer_start = Some(Instant::now());
         }
     }
@@ -151,9 +156,11 @@ impl BuildMetrics {
         let elapsed = state.timer_start.unwrap().elapsed();
         step.duration_excluding_children_sec += elapsed;
 
-        state.system_info.refresh_cpu_usage();
-        let cpu = state.system_info.cpus().iter().map(|p| p.cpu_usage()).sum::<f32>();
-        step.cpu_usage_time_sec += cpu as f64 / 100.0 * elapsed.as_secs_f64();
+        if let Some(ref mut system_info) = state.system_info {
+            system_info.refresh_cpu_usage();
+            let cpu = system_info.cpus().iter().map(|p| p.usage()).sum::<f32>();
+            step.cpu_usage_time_sec += cpu as f64 / 100.0 * elapsed.as_secs_f64();
+        }
     }
 
     pub(crate) fn persist(&self, sess: &Session) {
@@ -162,18 +169,26 @@ impl BuildMetrics {
 
         let dest = sess.out.join("metrics.json");
 
-        let mut system = System::new_with_specifics(
+        let system_stats = if let Ok(mut system) = System::new_with_specifics(
             RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()),
-        );
-        system.refresh_cpu_usage();
-        system.refresh_memory();
+        ) {
+            system.refresh_cpu_usage();
+            system.refresh_memory();
+            JsonInvocationSystemStats {
+                cpu_threads_count: system.cpus().len(),
+                cpu_model: system.cpus()[0].brand().into(),
 
-        let system_stats = JsonInvocationSystemStats {
-            cpu_threads_count: system.cpus().len(),
-            cpu_model: system.cpus()[0].brand().into(),
+                memory_total_bytes: system.total_memory(),
+            }
+        } else {
+            JsonInvocationSystemStats {
+                cpu_threads_count: 0,
+                cpu_model: String::new(),
 
-            memory_total_bytes: system.total_memory(),
+                memory_total_bytes: 0,
+            }
         };
+
         let steps = std::mem::take(&mut state.finished_steps);
 
         // Some of our CI builds consist of multiple independent CI invocations. Ensure all the
@@ -265,7 +280,7 @@ struct MetricsState {
     finished_steps: Vec<StepMetrics>,
     running_steps: Vec<StepMetrics>,
 
-    system_info: System,
+    system_info: Option<System>,
     timer_start: Option<Instant>,
     invocation_timer_start: Instant,
     invocation_start: SystemTime,
