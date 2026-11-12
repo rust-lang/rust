@@ -270,7 +270,7 @@ fn place_components_conflict<'tcx>(
                 }
 
                 // FIXME(scrabsha):
-                (ProjectionElem::View(_), _, _) => unimplemented!(),
+                (ProjectionElem::View(_), _, _) => {}
             }
         }
     }

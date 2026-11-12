@@ -359,8 +359,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
             }
 
-            // FIXME(scrabsha):
-            ProjectionElem::View(..) => unimplemented!(),
+            ProjectionElem::View(..) => {
+                // FIXME(scrabsha): i don't think we need to check anything here?
+            }
         }
 
         self.validate_place(place_base)

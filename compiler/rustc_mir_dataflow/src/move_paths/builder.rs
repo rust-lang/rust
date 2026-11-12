@@ -220,6 +220,11 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             // FIXME(scrabsha)
                             ty::View(..) => unimplemented!(),
                         },
+
+                        MoveSubPath::Fields(_) => {
+                            // FIXME(scrabsha): what the hell is going on
+                            return;
+                        }
                         MoveSubPath::ConstantIndex(_) => match place_ty.kind() {
                             ty::Slice(_) => {
                                 return;
@@ -229,9 +234,6 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                         },
                         MoveSubPath::Downcast(_) => (),
                         MoveSubPath::UnwrapUnsafeBinder => (),
-
-                        // FIXME(scrabsha):
-                        MoveSubPath::Fields(_) => unimplemented!(),
                     };
 
                     move_elem

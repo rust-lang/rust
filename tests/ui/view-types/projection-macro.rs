@@ -1,4 +1,5 @@
 //@ revisions: legal field_mismatch unknown_field
+//@[legal] run-pass
 
 #![feature(view_types)]
 #![allow(unused)]
@@ -37,6 +38,7 @@ fn legal() {
 fn field_mismatch() {
     let foo = Foo { a: (), b: () };
     let _field_mismatch: &view_type!(Foo.{ a }) = &view_projection!(foo.{ b });
+    //[field_mismatch]~^ ERROR mismatched type
 }
 
 #[cfg(unknown_field)]
@@ -44,6 +46,7 @@ fn unknown_field() {
     let foo = Foo { a: (), b: () };
 
     let _unknown_field = &view_projection!(foo.{ c });
+    //[unknown_field]~^ ERROR field `c` cannot be viewed from type `Foo`
 }
 
 fn main() {}

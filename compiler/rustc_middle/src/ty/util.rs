@@ -1560,7 +1560,8 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Char
         | ty::RawPtr(_, _)
         | ty::Ref(..)
-        | ty::Str => Ok(SmallVec::new()),
+        | ty::Str
+        | ty::View(_, _, _) => Ok(SmallVec::new()),
 
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
@@ -1608,9 +1609,6 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Ok(smallvec![ty]),
-
-        // FIXME(scrabsha)
-        ty::View(..) => unimplemented!(),
     }
 }
 

@@ -1053,7 +1053,7 @@ pub(crate) fn codegen_place<'tcx>(
             }
 
             // FIXME(scrabsha):
-            PlaceElem::View(fields) => unimplemented!(),
+            PlaceElem::View(_) => unimplemented!(),
         }
     }
 

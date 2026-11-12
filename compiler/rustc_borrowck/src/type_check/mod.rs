@@ -1944,8 +1944,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 )
                 .unwrap();
             }
-            // FIXME(scrabsha):
-            ProjectionElem::View(_) => unimplemented!(),
+            ProjectionElem::View(_) => {
+                // FIXME(scrabsha): should we `self.visit_fields()` here or sth?
+            }
         }
     }
 }
@@ -2477,12 +2478,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. }
-                | ProjectionElem::UnwrapUnsafeBinder(_) => {
+                | ProjectionElem::UnwrapUnsafeBinder(_)
+                | ProjectionElem::View(_) => {
                     // other field access
                 }
-
-                // FIXME(scrabsha):
-                ProjectionElem::View(_) => unimplemented!(),
             }
         }
     }

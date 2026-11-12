@@ -1178,10 +1178,8 @@ macro_rules! visit_place_fns {
                 | PlaceElem::PhantomDeref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
-                | PlaceElem::Downcast(..) => None,
-
-                // FIXME(scrabsha):
-                PlaceElem::View(_) => unimplemented!(),
+                | PlaceElem::Downcast(..)
+                | PlaceElem::View(..) => None,
             }
         }
     };

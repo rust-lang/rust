@@ -347,7 +347,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::VarRef { .. }
             | ExprKind::UpvarRef { .. }
             | ExprKind::Scope { .. }
-            | ExprKind::Cast { .. } => {}
+            | ExprKind::Cast { .. }
+            | ExprKind::ViewProjection { .. } => {}
 
             ExprKind::RawBorrow { .. }
             | ExprKind::Adt { .. }
@@ -400,9 +401,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 // than one child.
                 self.assignment_info = None;
             }
-
-            // FIXME(scrabsha):
-            ExprKind::ViewProjection { .. } => unimplemented!(),
         };
         match expr.kind {
             ExprKind::Scope { value, hir_id, region_scope: _ } => {

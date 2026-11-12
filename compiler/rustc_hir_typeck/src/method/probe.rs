@@ -973,10 +973,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Infer(..)
             | ty::Pat(..)
             | ty::Placeholder(..)
-            | ty::UnsafeBinder(..) => {}
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
+            | ty::UnsafeBinder(..)
+            | ty::View(..) => {}
         }
     }
 

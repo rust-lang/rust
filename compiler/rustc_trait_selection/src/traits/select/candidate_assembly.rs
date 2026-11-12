@@ -1176,7 +1176,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::UnsafeBinder(_) => {}
 
             // Not `Sized`, which is a supertrait of `Copy`/`Clone`.
-            ty::Dynamic(..) | ty::Str | ty::Slice(..) | ty::Foreign(..) => {}
+            ty::Dynamic(..) | ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::View(..) => {}
 
             // Not `Copy` or `Clone` by design.
             ty::Ref(_, _, hir::Mutability::Mut) => {}
@@ -1243,9 +1243,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
-
-            // FIXME(scrabsha)
-            ty::View(..) => unimplemented!(),
         }
     }
 

@@ -432,7 +432,6 @@ impl<'tcx> MoveData<'tcx> {
 enum MoveSubPath<'tcx> {
     Deref,
     Field(FieldIdx),
-    #[expect(unused, reason = "will be used in next commit :sparkles:")]
     Fields(&'tcx [FieldIdx]),
     ConstantIndex(u64),
     Downcast(VariantIdx),
@@ -482,7 +481,7 @@ impl<'tcx> MoveSubPath<'tcx> {
                 return MoveSubPathResult::Subslice { from, to };
             }
 
-            ProjectionKind::View(_) => unimplemented!(),
+            ProjectionKind::View(fields) => MoveSubPath::Fields(fields),
         };
 
         MoveSubPathResult::One(subpath)

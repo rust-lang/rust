@@ -332,6 +332,9 @@ fn check_place<'tcx>(
             | ProjectionElem::Index(_)
             | ProjectionElem::UnwrapUnsafeBinder(_)
             | ProjectionElem::PhantomDeref => {},
+
+            // FIXME(scrabsha):
+            ProjectionElem::View(_) => unimplemented!(),
         }
     }
 

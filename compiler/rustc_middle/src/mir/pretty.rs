@@ -1376,9 +1376,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::PhantomDeref => {
                 write!(fmt, "reborrow!(")?;
             }
-
-            // FIXME(scrabsha):
-            ProjectionElem::View(_) => unimplemented!(),
+            ProjectionElem::View(_) => {
+                write!(fmt, "view!(")?;
+            }
         }
     }
 
@@ -1427,9 +1427,11 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
                 write!(fmt, "; {ty})")?;
             }
-
-            // FIXME(scrabsha):
-            ProjectionElem::View(_) => unimplemented!(),
+            ProjectionElem::View(fields) => {
+                with_no_trimmed_paths! {
+                    write!(fmt, ".{{ {fields:?} }}")
+                }?;
+            }
         }
     }
 

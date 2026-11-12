@@ -305,10 +305,8 @@ where
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::Index(_)
-            | ProjectionElem::UnwrapUnsafeBinder(_) => {}
-
-            // FIXME(scrabsha):
-            ProjectionElem::View(_) => unimplemented!(),
+            | ProjectionElem::UnwrapUnsafeBinder(_)
+            | ProjectionElem::View(_) => {}
         }
 
         let base_ty = place_base.ty(cx.body, cx.tcx);

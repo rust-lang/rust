@@ -1,11 +1,11 @@
 error: field `c` cannot be viewed from type `Foo`
-  --> $DIR/projection-macro.rs:46:27
+  --> $DIR/projection-macro.rs:48:27
    |
 LL |     let _unknown_field = &view_projection!(foo.{ c });
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this expression has type `Foo`, which does not have such field
-  --> $DIR/projection-macro.rs:46:44
+  --> $DIR/projection-macro.rs:48:44
    |
 LL |     let _unknown_field = &view_projection!(foo.{ c });
    |                                            ^^^
