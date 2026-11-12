@@ -52,7 +52,6 @@ pub use rustc_index::static_assert_size;
 pub use {either, indexmap, smallvec, thin_vec};
 pub mod aligned;
 pub mod base_n;
-pub mod binary_search_util;
 pub mod fingerprint;
 pub mod flat_map_in_place;
 pub mod flock;
