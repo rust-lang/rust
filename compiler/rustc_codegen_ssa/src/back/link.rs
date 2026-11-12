@@ -286,9 +286,7 @@ fn find_bundled_library(
 ) -> Option<Symbol> {
     if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive, .. } = lib.kind
         && crate_types.iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
-        && (sess.opts.unstable_opts.packed_bundled_libs
-            || lib.cfg.is_some()
-            || whole_archive == Some(true))
+        && (sess.opts.unstable_opts.packed_bundled_libs || whole_archive == Some(true))
     {
         return find_native_static_library(lib.name.as_str(), lib.verbatim, sess)
             .file_name()
@@ -553,10 +551,9 @@ fn link_rlib<'a>(
 ) -> Box<dyn ArchiveBuilder + 'a> {
     let mut ab = archive_builder_builder.new_archive_builder(sess);
 
-    // Pre-compute the list of Rust object filenames and materialize the rmeta-link
-    // wrapper file before any `add_file` calls. This lets the rmeta-link member be
-    // placed immediately after metadata in the archive, so consumers can find
-    // it without iterating every archive member.
+    // We reserve the rmeta-link file position early just after metadata.
+    // We write its content later when all archive member positions are known.
+    // This also lets consumers find it without scanning the whole archive.
     let rust_object_files: Vec<String> = compiled_modules
         .modules
         .iter()
@@ -568,20 +565,16 @@ fn link_rlib<'a>(
     let native_lib_filenames: Vec<Option<Symbol>> = crate_info
         .used_libraries
         .iter()
-        .map(|lib| find_bundled_library(lib, sess, &crate_info.crate_types))
+        .map(|lib| {
+            if flavor == RlibFlavor::StaticlibBase && !relevant_lib(sess, lib) {
+                return None;
+            }
+            find_bundled_library(lib, sess, &crate_info.crate_types)
+        })
         .collect();
 
-    let metadata_link_file = if matches!(flavor, RlibFlavor::Normal) {
-        let native_lib_filenames: Vec<Option<String>> =
-            native_lib_filenames.iter().map(|f| f.map(|s| s.to_string())).collect();
-        let metadata_link = rmeta_link::RmetaLink { rust_object_files, native_lib_filenames };
-        let metadata_link_data = metadata_link.encode();
-        let (wrapper, _) =
-            create_wrapper_file(sess, rmeta_link::SECTION.to_string(), &metadata_link_data);
-        Some(emit_wrapper_file(sess, &wrapper, tmpdir.as_ref(), rmeta_link::FILENAME))
-    } else {
-        None
-    };
+    let metadata_link_file =
+        matches!(flavor, RlibFlavor::Normal).then(|| tmpdir.as_ref().join(rmeta_link::FILENAME));
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
@@ -641,26 +634,16 @@ fn link_rlib<'a>(
     // Used if packed_bundled_libs flag enabled.
     let mut packed_bundled_libs = Vec::new();
 
-    // Note that in this loop we are ignoring the value of `lib.cfg`. That is,
-    // we may not be configured to actually include a static library if we're
-    // adding it here. That's because later when we consume this rlib we'll
-    // decide whether we actually needed the static library or not.
-    //
-    // To do this "correctly" we'd need to keep track of which libraries added
-    // which object files to the archive. We don't do that here, however. The
-    // #[link(cfg(..))] feature is unstable, though, and only intended to get
-    // liblibc working. In that sense the check below just indicates that if
-    // there are any libraries we want to omit object files for at link time we
-    // just exclude all custom object files.
-    //
-    // Eventually if we want to stabilize or flesh out the #[link(cfg(..))]
-    // feature then we'll need to figure out how to record what objects were
-    // loaded from the libraries found here and then encode that into the
-    // metadata of the rlib we're generating somehow.
+    // When building an rlib we include native libraries even if cfg is disabled.
+    // We record their archive member positions in lib.rmeta-link.
+    // Later on, we skip a member only if none of its libaries are enabled.
     for (i, lib) in crate_info.used_libraries.iter().enumerate() {
         let NativeLibKind::Static { bundle: None | Some(true), .. } = lib.kind else {
             continue;
         };
+        if flavor == RlibFlavor::StaticlibBase && !relevant_lib(sess, lib) {
+            continue;
+        }
         if flavor == RlibFlavor::Normal
             && let Some(filename) = native_lib_filenames[i]
         {
@@ -673,7 +656,7 @@ fn link_rlib<'a>(
             packed_bundled_libs.push(wrapper_file);
         } else {
             let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
-            ab.add_archive(&path, AddArchiveKind::Other).unwrap_or_else(|error| {
+            ab.add_archive(&path, AddArchiveKind::NativeLib(i)).unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(diagnostics::AddNativeLibrary { library_path: path, error })
             });
         }
@@ -737,6 +720,22 @@ fn link_rlib<'a>(
         ab.add_file(&lib, ArchiveEntryKind::Other)
     }
 
+    if metadata_link_file.is_some() {
+        let native_lib_members = ab.native_lib_member_positions(crate_info.used_libraries.len());
+        let metadata_link = rmeta_link::RmetaLink {
+            rust_object_files,
+            native_lib_filenames: native_lib_filenames
+                .iter()
+                .map(|f| f.map(|s| s.to_string()))
+                .collect(),
+            native_lib_members,
+        };
+        let metadata_link_data = metadata_link.encode();
+        let (wrapper, _) =
+            create_wrapper_file(sess, rmeta_link::SECTION.to_string(), &metadata_link_data);
+        emit_wrapper_file(sess, &wrapper, tmpdir.as_ref(), rmeta_link::FILENAME);
+    }
+
     ab
 }
 
@@ -792,9 +791,15 @@ fn link_staticlib(
             .enumerate()
             .filter_map(|(i, _)| bundled_filenames.get(i).copied().flatten())
             .collect();
+        let disabled_native_members = rmeta_link_cache.disabled_native_lib_member_positions(
+            &sess.target,
+            path,
+            native_libs,
+            |lib| relevant_lib(sess, lib),
+        );
         ab.add_archive(
             path,
-            AddArchiveKind::Rlib(rmeta_link_cache, &|fname: &str, entry_kind| {
+            AddArchiveKind::Rlib(rmeta_link_cache, &|fname: &str, entry_kind, position| {
                 // Ignore metadata and rmeta-link files.
                 if fname == METADATA_FILENAME || fname == rmeta_link::FILENAME {
                     return true;
@@ -807,6 +812,10 @@ fn link_staticlib(
 
                 // Skip objects for bundled libs.
                 if bundled_libs.contains(&Symbol::intern(fname)) {
+                    return true;
+                }
+
+                if disabled_native_members.contains(&position) {
                     return true;
                 }
 
@@ -3733,9 +3742,9 @@ fn rehome_lib_path(sess: &Session, path: &Path) -> PathBuf {
 // their bytecode wasn't included. The object files in those libraries must
 // still be passed to the linker.
 //
-// Note, however, that if we're not doing LTO we can just pass the rlib
-// blindly to the linker (fast) because it's fine if it's not actually
-// included as we're at the end of the dependency chain.
+// If LTO does not cover this crate and no native members need to be
+// removed because of cfg, we can pass the rlib directly to the linker.
+// Otherwise, we rebuild the archive to remove the unneeded members.
 fn add_static_crate(
     cmd: &mut dyn Linker,
     sess: &Session,
@@ -3752,8 +3761,16 @@ fn add_static_crate(
     let mut link_upstream =
         |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), false);
 
-    if !are_upstream_rust_objects_already_included(sess) || ignored_for_lto(sess, crate_info, cnum)
-    {
+    let lto_covers_rust_objects = are_upstream_rust_objects_already_included(sess)
+        && !ignored_for_lto(sess, crate_info, cnum);
+    let disabled_native_members = rmeta_link_cache.disabled_native_lib_member_positions(
+        &sess.target,
+        cratepath,
+        &crate_info.native_libraries[&cnum],
+        |lib| relevant_lib(sess, lib),
+    );
+
+    if !lto_covers_rust_objects && disabled_native_members.is_empty() {
         link_upstream(cratepath);
         return;
     }
@@ -3764,14 +3781,12 @@ fn add_static_crate(
     let bundled_lib_file_names = bundled_lib_file_names.clone();
 
     sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
-        let upstream_rust_objects_already_included =
-            are_upstream_rust_objects_already_included(sess);
         let is_builtins = sess.target.no_builtins || !crate_info.is_no_builtins.contains(&cnum);
 
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(
             cratepath,
-            AddArchiveKind::Rlib(rmeta_link_cache, &|f, entry_kind| {
+            AddArchiveKind::Rlib(rmeta_link_cache, &|f, entry_kind, position| {
                 if f == METADATA_FILENAME || f == rmeta_link::FILENAME {
                     return true;
                 }
@@ -3780,9 +3795,7 @@ fn add_static_crate(
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                if upstream_rust_objects_already_included
-                    && entry_kind == ArchiveEntryKind::RustObj
-                    && is_builtins
+                if lto_covers_rust_objects && entry_kind == ArchiveEntryKind::RustObj && is_builtins
                 {
                     return true;
                 }
@@ -3793,6 +3806,10 @@ fn add_static_crate(
                 // 2. We can't allow it to be a single remaining entry in archive
                 //    as some linkers may complain on that.
                 if bundled_lib_file_names.contains(&Symbol::intern(f)) {
+                    return true;
+                }
+
+                if disabled_native_members.contains(&position) {
                     return true;
                 }
 

@@ -6,7 +6,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use object::read::archive::ArchiveFile;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{MAGIC_END_BYTES, MemDecoder};
@@ -19,6 +19,9 @@ use tracing::debug;
 use super::metadata::{get_metadata_xcoff, search_for_section};
 use crate::NativeLib;
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) const FILENAME: &str = "lib.rmeta-link";
 pub(crate) const SECTION: &str = ".rmeta-link";
 
@@ -27,6 +30,7 @@ pub struct RmetaLink {
     /// Positionally aligned with `native_libraries` in regular metadata: index `i` is the
     /// bundled filename for native library `i`, or `None` if that library needs no bundling.
     pub native_lib_filenames: Vec<Option<String>>,
+    pub native_lib_members: Vec<Vec<u32>>,
 }
 
 impl RmetaLink {
@@ -34,6 +38,7 @@ impl RmetaLink {
         let mut encoder = MemEncoder::new();
         self.rust_object_files.encode(&mut encoder);
         self.native_lib_filenames.encode(&mut encoder);
+        self.native_lib_members.encode(&mut encoder);
         let mut data = encoder.finish();
         data.extend_from_slice(MAGIC_END_BYTES);
         data
@@ -43,7 +48,14 @@ impl RmetaLink {
         let mut decoder = MemDecoder::new(data, 0).ok()?;
         let rust_object_files = Vec::<String>::decode(&mut decoder);
         let native_lib_filenames = Vec::<Option<String>>::decode(&mut decoder);
-        Some(RmetaLink { rust_object_files, native_lib_filenames })
+        if decoder.remaining() == 0 {
+            return None;
+        }
+        let native_lib_members = Vec::<Vec<u32>>::decode(&mut decoder);
+        if decoder.remaining() != 0 {
+            return None;
+        }
+        Some(RmetaLink { rust_object_files, native_lib_filenames, native_lib_members })
     }
 }
 
@@ -109,6 +121,42 @@ impl RmetaLinkCache {
                 rl.native_lib_filenames.iter().map(|f| f.as_deref().map(Symbol::intern)).collect()
             })
             .unwrap_or_default()
+    }
+
+    pub fn native_lib_members(&mut self, target: &Target, rlib_path: &Path) -> Option<&[Vec<u32>]> {
+        self.get_or_insert_with(rlib_path, || read_from_path(rlib_path, target.is_like_aix))
+            .map(|rl| rl.native_lib_members.as_slice())
+    }
+
+    pub fn disabled_native_lib_member_positions(
+        &mut self,
+        target: &Target,
+        rlib_path: &Path,
+        native_libs: &[NativeLib],
+        is_enabled: impl Fn(&NativeLib) -> bool,
+    ) -> FxHashSet<usize> {
+        let any_disabled_bundled_lib = native_libs.iter().any(|lib| {
+            matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
+                && !is_enabled(lib)
+        });
+        if !any_disabled_bundled_lib {
+            return FxHashSet::default();
+        }
+
+        let native_lib_members = self.native_lib_members(target, rlib_path).unwrap();
+        assert_eq!(native_lib_members.len(), native_libs.len());
+
+        let owners = || std::iter::zip(native_libs, native_lib_members);
+        let enabled: FxHashSet<u32> = owners()
+            .filter(|(lib, _)| is_enabled(lib))
+            .flat_map(|(_, members)| members.iter().copied())
+            .collect();
+        owners()
+            .filter(|(lib, _)| !is_enabled(lib))
+            .flat_map(|(_, members)| members.iter().copied())
+            .filter(|position| !enabled.contains(position))
+            .map(|position| position as usize)
+            .collect()
     }
 }
 
