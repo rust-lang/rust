@@ -1936,10 +1936,6 @@ pub struct TypeAnchor {
 }
 impl TypeAnchor {
     #[inline]
-    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
-    #[inline]
-    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
-    #[inline]
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
     #[inline]
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
