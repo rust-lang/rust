@@ -241,11 +241,25 @@ impl PartialEq for ExternAbi {
 
 impl Eq for ExternAbi {}
 
+impl ExternAbi {
+    /// Common implementation for `Hash` and `StableHash`.
+    fn stable_hash_inner(&self, hasher: &mut impl Hasher) {
+        // To avoid staging inconsistencies in stable hashing, we must not rely
+        // on any stdlib-provided or stdlib-derived impl of `Hash`.
+        // See <https://github.com/rust-lang/rust/issues/164734> for context.
+
+        // Hardcoded copy of the unstable `Hasher::write_str`, with an explicit terminator.
+        hasher.write(self.as_str().as_bytes());
+        hasher.write_u8(0xFF);
+
+        // double-assurance of a prefix breaker
+        hasher.write_u32(u32::from_be_bytes(*b"ABI\0"));
+    }
+}
+
 impl Hash for ExternAbi {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.as_str().hash(state);
-        // double-assurance of a prefix breaker
-        u32::from_be_bytes(*b"ABI\0").hash(state);
+        self.stable_hash_inner(state);
     }
 }
 
@@ -253,7 +267,7 @@ impl Hash for ExternAbi {
 impl StableHash for ExternAbi {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
-        Hash::hash(self, hasher);
+        self.stable_hash_inner(hasher);
     }
 }
 

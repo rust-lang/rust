@@ -2837,7 +2837,7 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.length
@@ -2857,7 +2857,7 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }

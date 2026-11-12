@@ -2,7 +2,7 @@
 
 //@ check-pass
 
-#![feature(pattern_type_macro, pattern_types)]
+#![feature(pattern_types)]
 
 use std::pat::pattern_type;
 

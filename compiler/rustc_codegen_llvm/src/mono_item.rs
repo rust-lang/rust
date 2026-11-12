@@ -82,7 +82,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         linkage: Linkage,
         visibility: Visibility,
         symbol_name: &str,
-    ) -> &'ll llvm::Value {
+    ) -> llvm::Value<'ll> {
         let fn_abi: &FnAbi<'tcx, Ty<'tcx>> = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
         llvm::set_linkage(lldecl, base::linkage_to_llvm(linkage));
@@ -132,7 +132,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// So, this function is for static aliases. See [`add_function_aliases`](Self::add_function_aliases) for the alternative.
     fn add_static_aliases(
         &self,
-        aliasee: &'ll llvm::Value,
+        aliasee: llvm::Value<'ll>,
         aliases: &[(DefId, Linkage, Visibility)],
     ) {
         let ty = self.get_type_of_global(aliasee);
@@ -166,7 +166,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     fn add_function_aliases(
         &self,
         aliasee_instance: Instance<'tcx>,
-        aliasee: &'ll llvm::Value,
+        aliasee: llvm::Value<'ll>,
         attrs: &Cow<'_, CodegenFnAttrs>,
         aliases: &[(DefId, Linkage, Visibility)],
     ) {
@@ -233,7 +233,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// A definition or declaration can be assumed to be local to a group of
     /// libraries that form a single DSO or executable.
     /// Marks the local as DSO if so.
-    pub(crate) fn assume_dso_local(&self, llval: &llvm::Value, is_declaration: bool) -> bool {
+    pub(crate) fn assume_dso_local(&self, llval: llvm::Value<'ll>, is_declaration: bool) -> bool {
         let assume = self.should_assume_dso_local(llval, is_declaration);
         if assume {
             llvm::set_dso_local(llval);
@@ -241,7 +241,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         assume
     }
 
-    fn set_visibility(&self, lldecl: &llvm::Value, linkage: Linkage, visibility: Visibility) {
+    fn set_visibility(&self, lldecl: llvm::Value<'ll>, linkage: Linkage, visibility: Visibility) {
         // If we're compiling the compiler-builtins crate, i.e., the equivalent of
         // compiler-rt, then we want to implicitly compile everything with hidden
         // visibility as we're going to link this object all over the place but
@@ -253,7 +253,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn should_assume_dso_local(&self, llval: &llvm::Value, is_declaration: bool) -> bool {
+    fn should_assume_dso_local(&self, llval: llvm::Value<'ll>, is_declaration: bool) -> bool {
         let linkage = llvm::get_linkage(llval);
         let visibility = llvm::get_visibility(llval);
 

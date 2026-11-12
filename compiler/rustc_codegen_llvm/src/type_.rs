@@ -56,7 +56,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMScalableVectorType(ty, count as c_uint) }
     }
 
-    pub(crate) fn add_func(&self, name: &str, ty: Type<'ll>) -> &'ll Value {
+    pub(crate) fn add_func(&self, name: &str, ty: Type<'ll>) -> Value<'ll> {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMAddFunction(self.llmod(), name.as_ptr(), ty) }
     }
@@ -274,7 +274,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
         }
     }
 
-    fn val_ty(&self, v: &'ll Value) -> Type<'ll> {
+    fn val_ty(&self, v: Value<'ll>) -> Type<'ll> {
         common::val_ty(v)
     }
 }
@@ -320,24 +320,24 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> TypeMembershipCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn add_type_metadata(&self, function: &'ll Value, typeid: &[u8]) {
+    fn add_type_metadata(&self, function: Value<'ll>, typeid: &[u8]) {
         let typeid_metadata = self.create_metadata(typeid);
         let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
         self.global_add_metadata_node(function, llvm::MD_type, &v);
     }
 
-    fn set_type_metadata(&self, function: &'ll Value, typeid: &[u8]) {
+    fn set_type_metadata(&self, function: Value<'ll>, typeid: &[u8]) {
         let typeid_metadata = self.create_metadata(typeid);
         let v = [llvm::LLVMValueAsMetadata(self.const_usize(0)), typeid_metadata];
         self.global_set_metadata_node(function, llvm::MD_type, &v);
     }
 
-    fn add_kcfi_type_metadata(&self, function: &'ll Value, kcfi_typeid: u32) {
+    fn add_kcfi_type_metadata(&self, function: Value<'ll>, kcfi_typeid: u32) {
         let kcfi_type_metadata = [llvm::LLVMValueAsMetadata(self.const_u32(kcfi_typeid))];
         self.global_add_metadata_node(function, llvm::MD_kcfi_type, &kcfi_type_metadata);
     }
 
-    fn set_kcfi_type_metadata(&self, function: &'ll Value, kcfi_typeid: u32) {
+    fn set_kcfi_type_metadata(&self, function: Value<'ll>, kcfi_typeid: u32) {
         let kcfi_type_metadata = [llvm::LLVMValueAsMetadata(self.const_u32(kcfi_typeid))];
         self.global_set_metadata_node(function, llvm::MD_kcfi_type, &kcfi_type_metadata);
     }

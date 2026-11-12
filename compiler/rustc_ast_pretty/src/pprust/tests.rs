@@ -80,6 +80,6 @@ fn test_field_view() {
         };
 
         let ty_str = ty_to_string(&ty);
-        assert_eq!(ty_str, "(/*DUMMY*/).{ milhouse, apu }");
+        assert_eq!(ty_str, "k#view_type((/*DUMMY*/).{ milhouse, apu })");
     });
 }

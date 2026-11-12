@@ -52,7 +52,7 @@ pub(crate) trait DIBuilderExt<'ll> {
         line_number: c_uint,
         ty: &'ll llvm::Metadata,
         is_local_to_unit: bool,
-        val: &'ll llvm::Value,
+        val: llvm::Value<'ll>,
         decl: Option<&'ll llvm::Metadata>,
         align: Option<Align>,
     ) -> &'ll llvm::Metadata {

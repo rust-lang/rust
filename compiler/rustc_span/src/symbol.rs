@@ -133,6 +133,7 @@ symbols! {
         FieldOf:            "field_of",
         MacroRules:         "macro_rules",
         OffsetOf:           "offset_of",
+        PatternType:        "pattern_type",
         Pin:                "pin",
         Raw:                "raw",
         Reuse:              "reuse",
@@ -140,6 +141,7 @@ symbols! {
         TypeAscribe:        "type_ascribe",
         Union:              "union",
         UnwrapBinder:       "unwrap_binder",
+        ViewType:           "view_type",
         WrapBinder:         "wrap_binder",
         Yeet:               "yeet",
         // tidy-alphabetical-end
@@ -1018,6 +1020,9 @@ symbols! {
         fmul_algebraic,
         fmul_fast,
         fmuladd,
+        fn_addr_addr_fn,
+        fn_addr_as_ptr,
+        fn_addr_trait,
         fn_align,
         fn_body,
         fn_delegation,
@@ -1025,7 +1030,6 @@ symbols! {
         fn_mut,
         fn_once,
         fn_once_output,
-        fn_ptr_as_ptr,
         fn_ptr_from_ptr,
         fn_ptr_trait,
         fn_static,
@@ -1609,7 +1613,6 @@ symbols! {
         path,
         pattern_complexity_limit,
         pattern_parentheses,
-        pattern_type,
         pattern_type_range_trait,
         pattern_types,
         phantom_data,
@@ -2390,7 +2393,6 @@ symbols! {
         vgpr384,
         vgpr512,
         vgpr1024,
-        view_type,
         view_types,
         vis,
         visible_private_types,
@@ -3003,19 +3005,9 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[cfg_attr(
-    bootstrap,
-    diagnostic::on_unknown(
-        label = "`{Unresolved}` is not a pre-interned symbol",
-        note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
-    )
-)]
-#[cfg_attr(
-    not(bootstrap),
-    diagnostic::on_unknown(
-        label = "`{unresolved}` is not a pre-interned symbol",
-        note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
-    )
+#[diagnostic::on_unknown(
+    label = "`{unresolved}` is not a pre-interned symbol",
+    note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
 )]
 pub mod sym {
     use super::Symbol;

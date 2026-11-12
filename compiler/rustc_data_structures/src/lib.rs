@@ -10,8 +10,8 @@
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
+#![cfg_attr(bootstrap, feature(pattern_type_macro))]
 #![cfg_attr(bootstrap, feature(ptr_alignment_type))]
-#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_ext)]
@@ -27,7 +27,6 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(nonzero_internals)]
-#![feature(pattern_type_macro)]
 #![feature(pattern_types)]
 #![feature(rustc_attrs)]
 #![feature(sized_hierarchy)]
@@ -53,7 +52,6 @@ pub use rustc_index::static_assert_size;
 pub use {either, indexmap, smallvec, thin_vec};
 pub mod aligned;
 pub mod base_n;
-pub mod binary_search_util;
 pub mod fingerprint;
 pub mod flat_map_in_place;
 pub mod flock;
