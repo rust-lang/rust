@@ -809,4 +809,14 @@ impl<'a> ExtCtxt<'a> {
             style: ast::AttrStyle::Outer,
         }
     }
+
+    pub fn synthetic_attr(&self, span: Span, synthetic: ast::SyntheticAttr) -> ast::Attribute {
+        let id = self.sess.psess.attr_id_generator.mk_attr_id();
+        ast::Attribute {
+            kind: ast::AttrKind::Synthetic(Box::new(synthetic)),
+            id,
+            span,
+            style: ast::AttrStyle::Outer,
+        }
+    }
 }
