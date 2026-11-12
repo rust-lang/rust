@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `std::view::view_projection`
+  --> $DIR/projection-macro.rs:7:17
+   |
+LL | use std::view::{view_projection, view_type};
+   |                 ^^^^^^^^^^^^^^^ no `view_projection` in `view`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.
