@@ -1,11 +1,14 @@
-error: expected expression, found `k#view_projection`
-  --> $DIR/projection-macro.rs:51:27
+error: field `c` cannot be viewed from type `Foo`
+  --> $DIR/projection-macro.rs:46:27
    |
 LL |     let _unknown_field = &view_projection!(foo.{ c });
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           |
-   |                           expected expression
-   |                           in this macro invocation
+   |
+note: this expression has type `Foo`, which does not have such field
+  --> $DIR/projection-macro.rs:46:44
+   |
+LL |     let _unknown_field = &view_projection!(foo.{ c });
+   |                                            ^^^
 
 error: aborting due to 1 previous error
 

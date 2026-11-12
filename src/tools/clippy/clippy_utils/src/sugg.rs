@@ -190,6 +190,9 @@ impl<'a> Sugg<'a> {
             ExprKind::Cast(lhs, ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
             ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::Cast, get_snippet(lhs.span), get_snippet(ty.span)),
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection { .. } => unimplemented!(),
         }
     }
 

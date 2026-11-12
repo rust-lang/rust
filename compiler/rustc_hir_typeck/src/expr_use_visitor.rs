@@ -568,6 +568,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             hir::ExprKind::Yield(value, _) => {
                 self.consume_expr(value)?;
             }
+
+            // FIXME(scrabsha):
+            hir::ExprKind::ViewProjection(..) => unimplemented!(),
         }
 
         Ok(())
@@ -1387,6 +1390,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | hir::ExprKind::OffsetOf(..)
             | hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, ..)
             | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr_ty)),
+
+            // FIXME(scrabsha):
+            hir::ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 

@@ -99,6 +99,9 @@ impl Category {
             {
                 Some(Category::Rvalue(RvalueFunc::Into))
             }
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection { .. } => unimplemented!(),
         }
     }
 }

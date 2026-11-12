@@ -932,6 +932,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection { .. } => unimplemented!(),
         };
 
         if !expr_is_block_or_scope {

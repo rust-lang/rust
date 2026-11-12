@@ -566,6 +566,14 @@ pub enum ExprKind<'tcx> {
         mutability: Mutability,
         target: Ty<'tcx>,
     },
+
+    /// View projection, ie: `view_projection!(my_struct.{ a, b })`.
+    ///
+    /// We don't need to store the set of viewed fields in this variant because this expression
+    /// evaluates to a `ty::View`, which already encodes the set of viewed fields.
+    ViewProjection {
+        base: ExprId,
+    },
 }
 
 /// Represents the association of a field identifier and an expression.

@@ -1243,6 +1243,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
+            hir::ExprKind::ViewProjection(base, _) => {
+                ExprKind::ViewProjection { base: self.mirror_expr(base) }
+            }
+
             hir::ExprKind::Yield(v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
             hir::ExprKind::Err(_) => unreachable!("cannot lower a `hir::ExprKind::Err` to THIR"),
         };

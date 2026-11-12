@@ -549,8 +549,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ExprKind::Err(e)
             }
 
-            // FIXME(scrabsha):
-            ExprKind::ViewProjection(..) => unimplemented!(),
+            ExprKind::ViewProjection(base, fields) => {
+                let expr = self.lower_expr(&base);
+                let fields = self.arena.alloc_slice(fields);
+                hir::ExprKind::ViewProjection(expr, fields)
+            }
         };
 
         hir::Expr { hir_id: expr_hir_id, kind, span }

@@ -642,6 +642,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.ident(field_name);
                 self.expr(object);
             },
+            ExprKind::ViewProjection(base, fields) => {
+                bind!(self, base);
+                kind!("ViewProjection({base}, {fields:?})");
+                self.expr(base);
+            },
             ExprKind::Index(object, index, _) => {
                 bind!(self, object, index);
                 kind!("Index({object}, {index})");

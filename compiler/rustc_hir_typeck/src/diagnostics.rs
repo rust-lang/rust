@@ -1414,3 +1414,15 @@ pub(crate) struct FieldNotPartOfView<'tcx> {
     pub(crate) ty: Ty<'tcx>,
     pub(crate) fields: DiagSymbolList,
 }
+
+#[derive(Diagnostic)]
+#[diag("field{$fields_plural} {$fields} cannot be viewed from type `{$ty}`")]
+pub(crate) struct InvalidViewedFieldSet<'tcx> {
+    pub(crate) fields: DiagSymbolList<Ident>,
+    pub(crate) ty: Ty<'tcx>,
+    #[primary_span]
+    pub(crate) span: Span,
+    #[note("this expression has type `{$ty}`, which does not have such field{$fields_plural}")]
+    pub(crate) base_span: Span,
+    pub(crate) fields_plural: &'static str,
+}

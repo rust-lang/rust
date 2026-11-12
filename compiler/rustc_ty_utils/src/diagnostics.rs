@@ -69,6 +69,8 @@ pub(crate) enum GenericConstantTooComplexSub {
     InlineAsmNotSupported(#[primary_span] Span),
     #[label("unsupported operation in generic constants")]
     OperationNotSupported(#[primary_span] Span),
+    #[label("view projection is not supported in generic constants")]
+    ViewProjection(#[primary_span] Span),
 }
 
 #[derive(Diagnostic)]

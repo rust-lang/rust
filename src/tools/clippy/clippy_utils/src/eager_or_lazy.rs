@@ -385,6 +385,9 @@ impl<'tcx> Visitor<'tcx> for ExprEagernessVisitor<'tcx> {
             // Blocks with multiple statements might be expensive, so don't eagerly evaluate.
             // TODO: Actually check if either of these are true here.
             ExprKind::Assign(..) | ExprKind::AssignOp(..) | ExprKind::Block(..) => self.eagerness |= NoChange,
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection { .. } => unimplemented!(),
         }
         walk_expr(self, e)
     }

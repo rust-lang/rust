@@ -1,38 +1,14 @@
-error: expected expression, found `k#view_projection`
-  --> $DIR/projection-macro.rs:30:43
-   |
-LL |     let _foo_a: &view_type!(Foo.{ a }) = &view_projection!(foo.{ a });
-   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                           |
-   |                                           expected expression
-   |                                           in this macro invocation
-
-error: expected expression, found `k#view_projection`
-  --> $DIR/projection-macro.rs:32:51
-   |
-LL |     let _through_deref: &view_type!(Foo.{ a }) = &view_projection!(foo.{ a });
-   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                                   |
-   |                                                   expected expression
-   |                                                   in this macro invocation
-
-error: expected expression, found `k#view_projection`
+error: field `a` cannot be viewed from type `Bar`
   --> $DIR/projection-macro.rs:34:56
    |
 LL |     let _through_deref_impl: &view_type!(Foo.{ a }) = &view_projection!(bar.{ a });
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                                        |
-   |                                                        expected expression
-   |                                                        in this macro invocation
-
-error: expected expression, found `k#view_projection`
-  --> $DIR/projection-macro.rs:36:22
    |
-LL |     let _inferred = &view_projection!(foo.{ a });
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                      |
-   |                      expected expression
-   |                      in this macro invocation
+note: this expression has type `Bar`, which does not have such field
+  --> $DIR/projection-macro.rs:34:73
+   |
+LL |     let _through_deref_impl: &view_type!(Foo.{ a }) = &view_projection!(bar.{ a });
+   |                                                                         ^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 1 previous error
 

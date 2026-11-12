@@ -2276,6 +2276,9 @@ impl Expr<'_> {
             | ExprKind::Err(_) => prefix_attrs_precedence(),
 
             ExprKind::DropTemps(expr, ..) => expr.precedence(has_attr),
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 
@@ -2307,7 +2310,9 @@ impl Expr<'_> {
 
             ExprKind::Unary(UnOp::Deref, _) => true,
 
-            ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _, _) => {
+            ExprKind::Field(ref base, _)
+            | ExprKind::Index(ref base, _, _)
+            | ExprKind::ViewProjection(ref base, _) => {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
             }
 
@@ -2434,6 +2439,9 @@ impl Expr<'_> {
             | ExprKind::Yield(..)
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Err(_) => false,
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 
@@ -2551,6 +2559,9 @@ impl Expr<'_> {
             | ExprKind::Yield(..)
             | ExprKind::DropTemps(..)
             | ExprKind::Err(_) => true,
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection(..) => unimplemented!(),
         }
     }
 
@@ -2788,6 +2799,9 @@ pub enum ExprKind<'hir> {
     /// Operators which can be used to interconvert `unsafe` binder types.
     /// e.g. `unsafe<'a> &'a i32` <=> `&i32`.
     UnsafeBinderCast(UnsafeBinderCastKind, &'hir Expr<'hir>, Option<&'hir Ty<'hir>>),
+
+    /// A view projection: `view_projection!(base.{ field })`.
+    ViewProjection(&'hir Expr<'hir>, &'hir [Ident]),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),

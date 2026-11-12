@@ -224,6 +224,9 @@ fn recurse_build<'tcx>(
         ExprKind::Reborrow { .. } => {
             unimplemented!();
         }
+        ExprKind::ViewProjection { .. } => {
+            error(GenericConstantTooComplexSub::ViewProjection(node.span))?
+        }
     })
 }
 
@@ -320,7 +323,8 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::StaticRef { .. }
             | thir::ExprKind::InlineAsm(_)
             | thir::ExprKind::ThreadLocalRef(_)
-            | thir::ExprKind::Yield { .. } => false,
+            | thir::ExprKind::Yield { .. }
+            | thir::ExprKind::ViewProjection { .. } => false,
             thir::ExprKind::Reborrow { .. } => {
                 unimplemented!();
             }

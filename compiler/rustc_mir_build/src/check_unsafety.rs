@@ -400,6 +400,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 // than one child.
                 self.assignment_info = None;
             }
+
+            // FIXME(scrabsha):
+            ExprKind::ViewProjection { .. } => unimplemented!(),
         };
         match expr.kind {
             ExprKind::Scope { value, hir_id, region_scope: _ } => {
