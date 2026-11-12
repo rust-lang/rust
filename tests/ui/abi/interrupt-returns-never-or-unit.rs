@@ -30,6 +30,8 @@ This test uses `cfg` because it is not testing whether these ABIs work on the pl
     abi_riscv_interrupt
 )]
 
+#![allow(improper_ctypes_definitions)]
+
 extern crate minicore;
 use minicore::*;
 
@@ -56,7 +58,7 @@ extern "riscv-interrupt-s" fn riscv_s_ret_never() -> ! {
 }
 
 #[cfg(any(x64, i686))]
-extern "x86-interrupt" fn x86_ret_never(_p: *const u8) -> ! {
+extern "x86-interrupt" fn x86_ret_never(_p: [usize; 5]) -> ! {
     loop {}
 }
 
@@ -83,7 +85,7 @@ extern "riscv-interrupt-s" fn riscv_s_ret_unit() -> () {
 }
 
 #[cfg(any(x64, i686))]
-extern "x86-interrupt" fn x86_ret_unit(_x: *const u8) -> () {
+extern "x86-interrupt" fn x86_ret_unit(_x: [usize; 5]) -> () {
     ()
 }
 
@@ -102,4 +104,4 @@ fn riscv_m_ptr(_f: extern "riscv-interrupt-m" fn() -> !) {}
 fn riscv_s_ptr(_f: extern "riscv-interrupt-s" fn() -> !) {}
 
 #[cfg(any(x64, i686))]
-fn x86_ptr(_f: extern "x86-interrupt" fn(*const u8) -> !) {}
+fn x86_ptr(_f: extern "x86-interrupt" fn([usize; 5]) -> !) {}
