@@ -1,9 +1,38 @@
-error[E0432]: unresolved import `std::view::view_projection`
-  --> $DIR/projection-macro.rs:7:17
+error: expected expression, found `k#view_projection`
+  --> $DIR/projection-macro.rs:30:43
    |
-LL | use std::view::{view_projection, view_type};
-   |                 ^^^^^^^^^^^^^^^ no `view_projection` in `view`
+LL |     let _foo_a: &view_type!(Foo.{ a }) = &view_projection!(foo.{ a });
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                           |
+   |                                           expected expression
+   |                                           in this macro invocation
 
-error: aborting due to 1 previous error
+error: expected expression, found `k#view_projection`
+  --> $DIR/projection-macro.rs:32:51
+   |
+LL |     let _through_deref: &view_type!(Foo.{ a }) = &view_projection!(foo.{ a });
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                   |
+   |                                                   expected expression
+   |                                                   in this macro invocation
 
-For more information about this error, try `rustc --explain E0432`.
+error: expected expression, found `k#view_projection`
+  --> $DIR/projection-macro.rs:34:56
+   |
+LL |     let _through_deref_impl: &view_type!(Foo.{ a }) = &view_projection!(bar.{ a });
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                        |
+   |                                                        expected expression
+   |                                                        in this macro invocation
+
+error: expected expression, found `k#view_projection`
+  --> $DIR/projection-macro.rs:36:22
+   |
+LL |     let _inferred = &view_projection!(foo.{ a });
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      |
+   |                      expected expression
+   |                      in this macro invocation
+
+error: aborting due to 4 previous errors
+

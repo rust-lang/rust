@@ -1,9 +1,11 @@
-error[E0432]: unresolved import `std::view::view_projection`
-  --> $DIR/projection-macro.rs:7:17
+error: expected expression, found `k#view_projection`
+  --> $DIR/projection-macro.rs:43:52
    |
-LL | use std::view::{view_projection, view_type};
-   |                 ^^^^^^^^^^^^^^^ no `view_projection` in `view`
+LL |     let _field_mismatch: &view_type!(Foo.{ a }) = &view_projection!(foo.{ b });
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                    |
+   |                                                    expected expression
+   |                                                    in this macro invocation
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0432`.
