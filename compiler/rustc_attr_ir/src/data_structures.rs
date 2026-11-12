@@ -1450,7 +1450,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_proc_macro_decls]`
     RustcProcMacroDecls,
 
-    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
+    /// Represents `#[rustc_pub_transparent]` (used to mark a type as "publicly" transparent, for
+    /// semver and documentation purposes).
     RustcPubTransparent(Span),
 
     /// Represents `#[rustc_reallocator]`
