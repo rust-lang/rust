@@ -34,7 +34,6 @@ pub(crate) fn expand_derive_default(
             has_other_selflike_arg: false,
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             body: MethodBody::Directly(match &item.kind {
                 ItemKind::Struct(ident, _, variant_data)
                 | ItemKind::Union(ident, _, variant_data) => default_struct_body(

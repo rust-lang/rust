@@ -64,8 +64,6 @@ pub(crate) struct MethodDef<'a> {
 
     pub attributes: ast::AttrVec,
 
-    pub fieldless_variants_strategy: FieldlessVariantsStrategy,
-
     pub body: MethodBody<'a>,
 }
 
@@ -111,7 +109,10 @@ pub(crate) enum Substructure<'a> {
 
 pub(crate) enum MethodBody<'a> {
     /// See the documentation on [`Substructure`] for when this is used.
-    SubstructureFunc(Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>),
+    SubstructureFunc(
+        Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>,
+        FieldlessVariantsStrategy,
+    ),
     /// The common case.
     /// If you are adding a new macro, you most likely want to use this.
     Directly(BlockOrExpr),
@@ -504,7 +505,7 @@ impl<'a> MethodDef<'a> {
         fields: Substructure<'_>,
     ) -> BlockOrExpr {
         match self.body {
-            MethodBody::SubstructureFunc(ref func) => (func)(cx, span, fields),
+            MethodBody::SubstructureFunc(ref func, ..) => (func)(cx, span, fields),
             MethodBody::Directly(_) => unreachable!(),
         }
     }
@@ -690,8 +691,11 @@ impl<'a> MethodDef<'a> {
         // match is necessary.
         let all_fieldless = variants.iter().all(|v| v.data.fields().is_empty());
         // Traits that unify fieldless variants always use the discriminant(s).
+        let MethodBody::SubstructureFunc(_, fieldless_variants_strategy) = &self.body else {
+            unreachable!()
+        };
         let unify_fieldless_variants =
-            self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
+            *fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
         match variants.as_slice() {
             [] => {

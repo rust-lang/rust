@@ -45,9 +45,10 @@ pub(crate) fn expand_derive_clone(
                 body = MethodBody::Directly(clone_simple_body(cx, span, item, false));
             } else {
                 is_simple = false;
-                body = MethodBody::SubstructureFunc(Box::new(|c, s, sub| {
-                    clone_body(c, s, sub, item.kind.ident().unwrap())
-                }));
+                body = MethodBody::SubstructureFunc(
+                    Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap())),
+                    FieldlessVariantsStrategy::Default,
+                );
             }
         }
         ItemKind::Union(..) => {
@@ -96,7 +97,6 @@ pub(crate) fn expand_derive_clone(
                 cx.generated_attr(span, ast::GeneratedAttr::Inline),
                 cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
             ],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             body,
         }],
         is_const,

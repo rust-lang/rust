@@ -41,7 +41,6 @@ pub(crate) fn expand_derive_debug(
                 cx.generated_attr(span, ast::GeneratedAttr::Inline),
                 cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
             ],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             body: match &item.kind {
                 _ if cx.sess.opts.unstable_opts.fmt_debug == FmtDebug::None => {
                     MethodBody::Directly(BlockOrExpr::new_expr(
@@ -54,9 +53,10 @@ pub(crate) fn expand_derive_debug(
                 {
                     MethodBody::Directly(debug_fieldless_enum(cx, span, def, ident))
                 }
-                _ => MethodBody::SubstructureFunc(Box::new(|cx, span, substr| {
-                    debug_body(cx, span, substr, ident)
-                })),
+                _ => MethodBody::SubstructureFunc(
+                    Box::new(|cx, span, substr| debug_body(cx, span, substr, ident)),
+                    FieldlessVariantsStrategy::Default
+                ),
             },
         }],
         is_const,
