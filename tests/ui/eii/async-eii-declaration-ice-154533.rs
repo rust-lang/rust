@@ -9,6 +9,7 @@
 //@[next] compile-flags: -Znext-solver
 
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 #[eii]
 async fn hello_impl() {}

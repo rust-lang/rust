@@ -2,6 +2,7 @@
 //@ ignore-windows-gnu
 // Tests that one item can't both define and impl an EII at the same time
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 #[eii]
 fn a(x: u64);

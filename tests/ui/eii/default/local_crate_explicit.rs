@@ -5,6 +5,7 @@
 // Tests EIIs with default implementations.
 // In the same crate, the explicit implementation should get priority.
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 #[eii(eii1)]
 pub fn decl1(x: u64) {
