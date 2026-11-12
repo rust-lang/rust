@@ -75,7 +75,7 @@ fn inclusive_start_end<T: Idx>(
 /// will panic if the bitsets have differing domain sizes.
 ///
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
-#[derive(Eq, PartialEq, Hash)]
+#[derive(Eq, PartialEq)]
 pub struct DenseBitSet<T> {
     domain_size: usize,
     words: Box<[Word]>,
@@ -112,6 +112,14 @@ impl<T: Idx> DenseBitSet<T> {
         };
         result.clear_excess_bits();
         result
+    }
+
+    /// Should only be called by `impl StableHash for DenseBitSet`.
+    pub fn stable_hash_inner(this: &Self, hasher: &mut impl std::hash::Hasher) {
+        let &DenseBitSet { domain_size, ref words, marker: PhantomData } = this;
+        hasher.write_usize(domain_size);
+        // No need to hash `words.len()`, since it is derived from the domain size.
+        words.iter().for_each(|&word| hasher.write_u64(word));
     }
 
     /// Clear all elements.
@@ -1306,7 +1314,7 @@ impl<T: Idx> GrowableBitSet<T> {
 /// All operations that involve a row and/or column index will panic if the
 /// index exceeds the relevant bound.
 #[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
@@ -1339,6 +1347,15 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
             words: iter::repeat_n(&row.words, num_rows).flatten().cloned().collect(),
             marker: PhantomData,
         }
+    }
+
+    /// Should only be called by `impl StableHash for BitMatrix`.
+    pub fn stable_hash_inner(this: &Self, hasher: &mut impl std::hash::Hasher) {
+        let &BitMatrix { num_rows, num_columns, ref words, marker: PhantomData } = this;
+        hasher.write_usize(num_rows);
+        hasher.write_usize(num_columns);
+        // No need to hash `words.len()`, since it is derived from the matrix dimensions.
+        words.iter().for_each(|&word| hasher.write_u64(word));
     }
 
     pub fn rows(&self) -> impl Iterator<Item = R> {
