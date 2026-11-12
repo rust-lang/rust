@@ -232,7 +232,7 @@ impl<'tcx> PrintExtra<'tcx> {
 
 pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
     if ppm.needs_analysis() {
-        ex.tcx().ensure_ok().required_analysis(());
+        rustc_interface::passes::full_analysis(ex.tcx());
     }
 
     let (src, src_name) = get_source(sess);

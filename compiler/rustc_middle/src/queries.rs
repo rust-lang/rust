@@ -405,7 +405,7 @@ rustc_queries! {
     query required_analysis(key: ()) {
         eval_always
         desc {
-            "running only the required analysis passes on crate `{}`",
+            "running required analysis passes on crate `{}`",
             tcx.crate_name(LOCAL_CRATE),
         }
     }

@@ -1,5 +1,5 @@
 //! The NAMED_ASM_LABELS late lint runs after name resolution, so it shouldn't
-//! lint here when using `-Zgo-to-stage=nameres`
+//! lint here when using `--emit=validation`
 
 #![deny(named_asm_labels)]
 

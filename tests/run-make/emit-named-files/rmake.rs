@@ -6,7 +6,7 @@ use run_make_support::{rfs, rustc};
 fn emit_and_check(out_dir: &Path, out_file: &str, format: &str, extra_args: &[&str]) {
     let out_file = out_dir.join(out_file);
     rustc().input("foo.rs").emit(format!("{format}={}", out_file.display())).args(extra_args).run();
-    assert!(dbg!(out_file).is_file());
+    assert!(out_file.is_file());
 }
 
 fn main() {
