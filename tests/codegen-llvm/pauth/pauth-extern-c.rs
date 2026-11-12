@@ -49,17 +49,17 @@ extern "C" {
     fn external_c_callee(a: i32, b: i32) -> i32;
 }
 
-// O0_PAUTH-CHECK: attributes #[[ATTR_O0_1]] = { {{.*}}"aarch64-jump-table-hardening"
-// O0_PAUTH-CHECK-SAME: "ptrauth-auth-traps"
-// O0_PAUTH-CHECK-SAME: "ptrauth-calls"
-// O0_PAUTH-CHECK-SAME: "ptrauth-indirect-gotos"
-// O0_PAUTH-CHECK-SAME: "ptrauth-returns"
+// O0_PAUTH: attributes #[[ATTR_O0_1]] = { {{.*}}"aarch64-jump-table-hardening"
+// O0_PAUTH-SAME: "ptrauth-auth-traps"
+// O0_PAUTH-SAME: "ptrauth-calls"
+// O0_PAUTH-SAME: "ptrauth-indirect-gotos"
+// O0_PAUTH-SAME: "ptrauth-returns"
 
-// O3_PAUTH-CHECK: attributes #[[ATTR_O3_1]] = { {{.*}}"aarch64-jump-table-hardening"
-// O3_PAUTH-CHECK-SAME: "ptrauth-auth-traps"
-// O3_PAUTH-CHECK-SAME: "ptrauth-calls"
-// O3_PAUTH-CHECK-SAME: "ptrauth-indirect-gotos"
-// O3_PAUTH-CHECK-SAME: "ptrauth-returns"
+// O3_PAUTH: attributes #[[ATTR_O3_1]] = { {{.*}}"aarch64-jump-table-hardening"
+// O3_PAUTH-SAME: "ptrauth-auth-traps"
+// O3_PAUTH-SAME: "ptrauth-calls"
+// O3_PAUTH-SAME: "ptrauth-indirect-gotos"
+// O3_PAUTH-SAME: "ptrauth-returns"
 
 // O0_PAUTH-ELF-GOT: !{{[0-9]+}} = !{i32 1, !"ptrauth-elf-got", i32 1}
 // O0_PAUTH-NOT: !{{[0-9]+}} = !{i32 1, !"ptrauth-elf-got", i32 1}
