@@ -513,7 +513,8 @@ pub struct CReaderCacheKey {
 /// Use this rather than `TyKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, StableHash)]
 #[rustc_diagnostic_item = "Ty"]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
 impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
