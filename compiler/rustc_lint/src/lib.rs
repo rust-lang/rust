@@ -304,9 +304,9 @@ late_lint_methods!(
             BadOptAccess: BadOptAccess,
             DefaultHashTypes: DefaultHashTypes,
             DisallowedPassByRef: DisallowedPassByRef,
+            LintMustMatchExhaustively: LintMustMatchExhaustively,
             MissingGenericTypeVisitableDerive: MissingGenericTypeVisitableDerive,
             QueryStability: QueryStability,
-            RustcMustMatchExhaustively: RustcMustMatchExhaustively,
             SymbolInternStringLiteral: SymbolInternStringLiteral,
             TyTyKind: TyTyKind,
             TypeIr: TypeIr,
@@ -773,8 +773,8 @@ fn register_internals(store: &mut LintStore) {
             // `warn(symbol_intern_string_literal)` is used.
             // LintId::of(SYMBOL_INTERN_STRING_LITERAL),
             //
-            // Late pass: RustcMustMatchExhaustively
-            LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
+            // Late pass: LintMustMatchExhaustively
+            LintId::of(MUST_MATCH_EXHAUSTIVELY),
             // Late pass: MissingGenericTypeVisitableDerive
             // Note: this one is not included so that it doesn't become effectively warn-by-default
             // (since `rustc::internal` is warn-by-default). Instead, it's enabled manually in
