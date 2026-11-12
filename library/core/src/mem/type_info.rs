@@ -658,18 +658,20 @@ impl TypeId {
     }
 
     /// Given given a `TypeId`, which represents a structure, enum or union returns a list of attributes.
-    /// Only the attributes of the tool `reflection_placeholder` are returned, all other attributes are excluded.
+    /// Only the attributes of tools marked as `reflect` are returned, all other attributes are excluded.
     /// The attributes are in a string representation.
     ///
     /// ```
     /// #![feature(type_info)]
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo(reflect))]
     /// # use std::any::TypeId;
     ///
-    /// #[reflection_placeholder::a(1, false)]
-    /// #[reflection_placeholder::foo=123]
+    /// #[foo::a(1, false)]
+    /// #[foo::bar=123]
     /// struct A;
     ///
-    /// assert_eq!(const { TypeId::of::<A>().reflected_attrs() }, ["#[reflection_placeholder::a(1, false)]", "#[reflection_placeholder::foo = 123]"]);
+    /// assert_eq!(const { TypeId::of::<A>().reflected_attrs() }, ["#[foo::a(1, false)]", "#[foo::bar = 123]"]);
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
@@ -728,21 +730,23 @@ impl VariantId {
     }
 
     /// Given given a `VariantId` returns a list of attributes.
-    /// Only the attributes of the tool `reflection_placeholder` are returned, all other attributes are excluded.
+    /// Only the attributes of tools marked as `reflect` are returned, all other attributes are excluded.
     /// The attributes are in a string representation.
     ///
     /// ```
     /// #![feature(type_info)]
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo(reflect))]
     /// # use std::any::TypeId;
     ///
     /// enum A {
-    ///     #[reflection_placeholder::a(1, false)]
-    ///     #[reflection_placeholder::foo=123]
+    ///     #[foo::a(1, false)]
+    ///     #[foo::bar=123]
     ///     VarA,
     ///     VarB,
     /// }
     ///
-    /// assert_eq!(const { TypeId::of::<A>().variant(0).reflected_attrs() }, &["#[reflection_placeholder::a(1, false)]", "#[reflection_placeholder::foo = 123]"]);
+    /// assert_eq!(const { TypeId::of::<A>().variant(0).reflected_attrs() }, &["#[foo::a(1, false)]", "#[foo::bar = 123]"]);
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
@@ -835,20 +839,22 @@ impl FieldId {
     }
 
     /// Given given a `FieldId` returns a list of attributes.
-    /// Only the attributes of the tool `reflection_placeholder` are returned, all other attributes are excluded.
+    /// Only the attributes of tools marked as `reflect` are returned, all other attributes are excluded.
     /// The attributes are in a string representation.
     ///
     /// ```
     /// #![feature(type_info)]
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo(reflect))]
     /// # use std::any::TypeId;
     ///
     /// struct A {
-    ///     #[reflection_placeholder::a(1, false)]
-    ///     #[reflection_placeholder::foo=123]
+    ///     #[foo::a(1, false)]
+    ///     #[foo::bar=123]
     ///     first: u8,
     /// }
     ///
-    /// assert_eq!(const { TypeId::of::<A>().field(0, 0).reflected_attrs() }, &["#[reflection_placeholder::a(1, false)]", "#[reflection_placeholder::foo = 123]"]);
+    /// assert_eq!(const { TypeId::of::<A>().field(0, 0).reflected_attrs() }, &["#[foo::a(1, false)]", "#[foo::bar = 123]"]);
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]

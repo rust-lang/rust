@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use std::fmt::Display;
 
 use rustc_ast::attr::version::RustcVersion;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::HirId;
@@ -18,6 +18,7 @@ use rustc_span::{AttrId, Ident, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
+use crate::Reflectiveness::{NonReflective, Reflective};
 
 pub mod builtin;
 
@@ -603,7 +604,36 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-pub type RegisteredTools = FxIndexSet<Ident>;
+/// Tool attributes from this tool can be queried using reflection
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(StableHash)]
+pub enum Reflectiveness {
+    NonReflective,
+    Reflective,
+}
+
+/// Configured options for a registered tool
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(StableHash)]
+pub struct ToolOptions {
+    pub reflectiveness: Reflectiveness,
+}
+
+impl ToolOptions {
+    pub fn union(self, other: ToolOptions) -> Self {
+        ToolOptions {
+            reflectiveness: if self.reflectiveness == Reflective
+                || other.reflectiveness == Reflective
+            {
+                Reflective
+            } else {
+                NonReflective
+            },
+        }
+    }
+}
+
+pub type RegisteredTools = FxIndexMap<Ident, ToolOptions>;
 
 /// Declares a static item of type `&'static Lint`.
 ///

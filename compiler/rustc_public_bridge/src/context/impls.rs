@@ -310,9 +310,9 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         };
         attrs_iter
             .filter_map(|attribute| {
-                if let Attribute::Tool(u) = attribute {
+                if let Attribute::Tool { item, .. } = attribute {
                     let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
-                    Some((attr_str, u.span))
+                    Some((attr_str, item.span))
                 } else {
                     None
                 }
