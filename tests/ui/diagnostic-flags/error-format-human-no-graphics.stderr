@@ -1,0 +1,13 @@
+error E0308: mismatched types
+ at $DIR/error-format-human-no-graphics.rs:9:9: expected `u32`, found `String`
+  on line 9: arguments to this function are incorrect
+note: function defined here
+ at $DIR/error-format-human-no-graphics.rs:6:4
+
+error E0599: no method named `salut` found for type `u32` in the current scope
+ at $DIR/error-format-human-no-graphics.rs:11:7: method not found in `u32`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.

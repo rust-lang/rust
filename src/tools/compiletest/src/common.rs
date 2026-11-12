@@ -1282,7 +1282,6 @@ pub(crate) fn expected_output_path(
 pub(crate) const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR,
     UI_SVG,
-    UI_WINDOWS_SVG,
     UI_STDOUT,
     UI_FIXED,
     UI_RUN_STDERR,
@@ -1295,7 +1294,6 @@ pub(crate) const UI_EXTENSIONS: &[&str] = &[
 ];
 pub(crate) const UI_STDERR: &str = "stderr";
 pub(crate) const UI_SVG: &str = "svg";
-pub(crate) const UI_WINDOWS_SVG: &str = "windows.svg";
 pub(crate) const UI_STDOUT: &str = "stdout";
 pub(crate) const UI_FIXED: &str = "fixed";
 pub(crate) const UI_RUN_STDERR: &str = "run.stderr";

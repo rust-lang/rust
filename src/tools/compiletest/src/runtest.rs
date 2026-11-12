@@ -16,7 +16,7 @@ use tracing::*;
 use crate::common::{
     CompareMode, Config, Debugger, ForcePassMode, PassFailMode, RunResult, TestMode, TestPaths,
     TestSuite, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
-    UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
+    expected_output_path, incremental_dir, output_base_dir, output_base_name,
 };
 use crate::directives::{AuxCrate, TestProps};
 use crate::edition::Edition;
@@ -2465,13 +2465,7 @@ impl<'test> TestCx<'test> {
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
                 if self.force_color_svg() {
-                    if self.config.target.contains("windows") {
-                        // We single out Windows here because some of the CLI coloring is
-                        // specifically changed for Windows.
-                        UI_WINDOWS_SVG
-                    } else {
-                        UI_SVG
-                    }
+                    UI_SVG
                 } else if self.props.stderr_per_bitwidth {
                     &stderr_bits
                 } else {

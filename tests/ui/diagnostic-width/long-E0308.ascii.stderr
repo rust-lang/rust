@@ -26,13 +26,13 @@ LL |  |     ))))))))))))))))))))))))))))));
 error[E0308]: mismatched types
   --> $DIR/long-E0308.rs:58:26
    |
-LL |       ))))))))))))))))) == Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(O...
-   |  __________________________^
-LL | |         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(...
-LL | |             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
-LL | |         ))))))))))))))))))))))))))))))
-LL | |     ))))))))))))))))))))))));
-   | |____________________________^ expected `Option<Result<Option<Option<_>>, _>>`, found `Result<Result<Result<_, _>, _>, _>`
+LL |   ...))))))))))))) == Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(...
+   |  _____________________^
+LL | | ...Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok...
+LL | | ...    Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
+LL | | ...))))))))))))))))))))))))))))))
+LL | | ...))))))))))))))))))));
+   | |_______________________^ expected `Option<Result<Option<Option<_>>, _>>`, found `Result<Result<Result<_, _>, _>, _>`
    |
    = note: expected enum `Option<Result<Option...>>>>>>, _>>`
               found enum `Result<Result..._>, _>, _>`
