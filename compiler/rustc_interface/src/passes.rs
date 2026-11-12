@@ -1214,7 +1214,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>, (): ()) {
 pub fn full_analysis(tcx: TyCtxt<'_>) {
     tcx.ensure_ok().required_analysis(());
 
-    if !tcx.sess.opts.output_types.requires_full_analysis() {
+    if !tcx.sess.opts.output_types.needs_full_analysis() {
         return;
     }
 

@@ -315,7 +315,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
 
             passes::write_interface(tcx);
 
-            if output_types.stop_before_analysis() {
+            if !output_types.needs_required_analysis() {
                 return None;
             }
 
@@ -335,7 +335,7 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
                 }
             }
 
-            if output_types.stop_before_codegen() {
+            if !output_types.needs_codegen() {
                 let _metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
                 return None;
             }

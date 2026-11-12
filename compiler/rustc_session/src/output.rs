@@ -479,7 +479,7 @@ impl OutputTypes {
         })
     }
 
-    pub fn requires_full_analysis(&self) -> bool {
+    pub fn needs_full_analysis(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Validation | OutputType::DepInfo => false,
             OutputType::Exe
@@ -496,11 +496,11 @@ impl OutputTypes {
         })
     }
 
-    pub fn stop_before_codegen(&self) -> bool {
-        self.0.keys().all(|k| match *k {
+    pub fn needs_codegen(&self) -> bool {
+        self.0.keys().any(|k| match *k {
             OutputType::Validation
             | OutputType::DepInfo
-            | OutputType::FullAnalysis => true,
+            | OutputType::FullAnalysis => false,
             OutputType::Exe
             | OutputType::Bitcode
             | OutputType::Object
@@ -510,13 +510,13 @@ impl OutputTypes {
             | OutputType::Mir
             // FIXME: Metadata does not technically need it,
             // this is just to keep behaviour
-            | OutputType::Metadata => false,
+            | OutputType::Metadata => true,
         })
     }
 
-    pub fn stop_before_analysis(&self) -> bool {
-        self.0.keys().all(|k| match *k {
-            OutputType::DepInfo => true,
+    pub fn needs_required_analysis(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::DepInfo => false,
             OutputType::Exe
             | OutputType::Bitcode
             | OutputType::Object
@@ -528,7 +528,7 @@ impl OutputTypes {
             | OutputType::Validation
             // FIXME: Metadata does not technically need it,
             // this is just to keep behaviour
-            | OutputType::Metadata => false,
+            | OutputType::Metadata => true,
         })
     }
 
