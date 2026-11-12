@@ -82,7 +82,6 @@ pub(crate) fn expand_derive_from(
             has_other_selflike_arg: false,
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             body: MethodBody::Directly(BlockOrExpr::new_expr(match field {
                 Ok((field, variant)) => {
                     let self_kw = Ident::new(kw::SelfUpper, span);
