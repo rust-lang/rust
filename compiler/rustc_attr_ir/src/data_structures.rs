@@ -992,6 +992,9 @@ pub enum AttributeKind {
     /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
     LintNeverReturnsNullPtr,
 
+    /// Represents `#[lint::no_implicit_autorefs]` (used by the `dangerous_implicit_autorefs` lint).
+    LintNoImplicitAutorefs,
+
     /// Represents `#[lint::pass_by_value)]` (used by the `rustc::disallowed_pass_by_ref` lint).
     LintPassByValue,
 
@@ -1423,9 +1426,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_must_match_exhaustively]`
     RustcMustMatchExhaustively(Span),
-
-    /// Represents `#[rustc_no_implicit_autorefs]`
-    RustcNoImplicitAutorefs,
 
     /// Represents `#[rustc_no_implicit_bounds]`
     RustcNoImplicitBounds,
