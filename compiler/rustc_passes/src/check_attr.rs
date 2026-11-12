@@ -239,7 +239,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::DefaultLibAllocator => (),
             AttributeKind::Deprecated { .. } => (),
             AttributeKind::DoNotRecommend => (),
-            // `#[doc]` is actually a lot more than just doc comments, so is checked below
             AttributeKind::DocComment { .. } => (),
             AttributeKind::EiiDeclaration { .. } => (),
             AttributeKind::ExportName { .. } => (),
