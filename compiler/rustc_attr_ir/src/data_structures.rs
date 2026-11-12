@@ -1490,6 +1490,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
 
+    /// Represents the trace attribute of the `test` macro.
+    RustcTestEntrypointMarker,
+
     /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),
 
