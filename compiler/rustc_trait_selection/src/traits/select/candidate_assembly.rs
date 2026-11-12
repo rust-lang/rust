@@ -903,8 +903,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.vec.push(AutoImplCandidate);
                 }
 
-                // FIXME(scrabsha)
-                ty::View(..) => unimplemented!(),
+                ty::View(..) => {
+                    // FIXME(scrabsha)
+                    return
+                },
             }
         }
     }

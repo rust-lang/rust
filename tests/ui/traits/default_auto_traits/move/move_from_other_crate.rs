@@ -4,8 +4,6 @@
 //
 // FIXME: this should all raise errors but it doesn't because in this crate we assume everything is
 // move. At the very least we should disallow importing `other` to be sound.
-// v add check pass, but this test should really fail.
-//@ check-pass
 
 extern crate other;
 
@@ -14,13 +12,19 @@ fn foo(f: other::NotMove) {}
 fn main() {
     let x = other::NotMove;
     let y = x;
-    //^ FIXME this should raise an error
+    //~^ ERROR values of type `NotMove` may not be movable
 
     let x = other::NotMove;
     foo(x);
-    //^ FIXME this should raise an error
+    //~^ ERROR values of type `NotMove` may not be movable
+    //~| ERROR values of type `NotMove` may not be movable
+    //^ FIXME this should raise one error.
+}
 
+// Unfortunately the errors in main don't trigger if there's a
+// non-borrowck trait bound error.
+fn other_func() {
     let x = other::NotMove;
     other::requires_move(x);
-    //^ FIXME this should raise an error
+    //~^ ERROR values of type `NotMove` may not be movable
 }

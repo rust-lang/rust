@@ -50,6 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
                 .iter_identity_copied()
                 .map(Unnormalized::skip_norm_wip)
                 .filter_map(|(clause, _)| clause.as_trait_clause())
+                // TODO
                 .filter(|pred| !cx.tcx.is_lang_item(pred.def_id(), LangItem::MetaSized))
                 .filter(|pred| {
                     !cx.tcx.is_implicit_trait(pred.def_id(), ExcludeImplicitBounds::sized())

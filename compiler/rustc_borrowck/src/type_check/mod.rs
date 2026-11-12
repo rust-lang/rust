@@ -1879,42 +1879,40 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             self.prove_trait_ref(trait_ref, location.to_locations(), ConstraintCategory::CopyBound);
         }
 
-        if tcx.features().move_trait() {
-            match context {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
-                | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
-                    let trait_ref = ty::TraitRef::new(
-                        tcx,
-                        tcx.require_lang_item(LangItem::Move, self.last_span),
-                        [place_ty.ty],
-                    );
-                    self.prove_fallible_predicate(
-                        trait_ref,
-                        location.to_locations(),
-                        ConstraintCategory::MoveBound,
-                    );
-                }
-                PlaceContext::NonUse(_)
-                | PlaceContext::NonMutatingUse(
-                    NonMutatingUseContext::FakeBorrow
-                    | NonMutatingUseContext::Inspect
-                    | NonMutatingUseContext::PlaceMention
-                    | NonMutatingUseContext::Projection
-                    | NonMutatingUseContext::RawBorrow
-                    | NonMutatingUseContext::SharedBorrow,
-                )
-                | PlaceContext::MutatingUse(
-                    MutatingUseContext::Store
-                    | MutatingUseContext::SetDiscriminant
-                    | MutatingUseContext::AsmOutput
-                    | MutatingUseContext::Call
-                    | MutatingUseContext::Yield
-                    | MutatingUseContext::Drop
-                    | MutatingUseContext::Borrow
-                    | MutatingUseContext::RawBorrow
-                    | MutatingUseContext::Projection,
-                ) => {}
+        match context {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
+            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Move, self.last_span),
+                    [place_ty.ty],
+                );
+                self.prove_fallible_predicate(
+                    trait_ref,
+                    location.to_locations(),
+                    ConstraintCategory::MoveBound,
+                );
             }
+            PlaceContext::NonUse(_)
+            | PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::FakeBorrow
+                | NonMutatingUseContext::Inspect
+                | NonMutatingUseContext::PlaceMention
+                | NonMutatingUseContext::Projection
+                | NonMutatingUseContext::RawBorrow
+                | NonMutatingUseContext::SharedBorrow,
+            )
+            | PlaceContext::MutatingUse(
+                MutatingUseContext::Store
+                | MutatingUseContext::SetDiscriminant
+                | MutatingUseContext::AsmOutput
+                | MutatingUseContext::Call
+                | MutatingUseContext::Yield
+                | MutatingUseContext::Drop
+                | MutatingUseContext::Borrow
+                | MutatingUseContext::RawBorrow
+                | MutatingUseContext::Projection,
+            ) => {}
         }
     }
 
