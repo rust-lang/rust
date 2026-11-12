@@ -27,9 +27,9 @@ pub(crate) fn covfun_section_name<'ll>(llmod: llvm::Module<'ll>) -> CString {
 }
 
 pub(crate) fn create_pgo_func_name_var<'ll>(
-    llfn: &'ll llvm::Value,
+    llfn: llvm::Value<'ll>,
     mangled_fn_name: &str,
-) -> &'ll llvm::Value {
+) -> llvm::Value<'ll> {
     unsafe {
         llvm::LLVMRustCoverageCreatePGOFuncNameVar(
             llfn,

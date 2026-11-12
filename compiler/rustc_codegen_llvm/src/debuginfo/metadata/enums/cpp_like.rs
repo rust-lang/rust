@@ -982,7 +982,7 @@ fn create_static_member_type<'ll>(
     line_number: c_uint,
     ty: &'ll llvm::Metadata,
     flags: DIFlags,
-    value: Option<&'ll llvm::Value>,
+    value: Option<llvm::Value<'ll>>,
     align: Align,
 ) -> &'ll llvm::Metadata {
     unsafe {
