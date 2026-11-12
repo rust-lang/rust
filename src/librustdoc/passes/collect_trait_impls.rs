@@ -201,6 +201,7 @@ impl SelfTyHead {
             // but clean_middle_ty doesn't handle this correctly yet either
             ty::UnsafeBinder(_) => Self::Other,
             ty::Adt(def, _) => Self::Item(def.did()),
+            ty::View(def, _, _) => Self::Item(def.did()),
             ty::Foreign(did) => Self::Item(did),
             ty::Dynamic(obj, _) => {
                 // HACK: pick the first `did` as the `did` of the trait object. Someone
