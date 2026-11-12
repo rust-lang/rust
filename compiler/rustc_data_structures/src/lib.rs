@@ -11,7 +11,6 @@
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![cfg_attr(bootstrap, feature(ptr_alignment_type))]
-#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_ext)]

@@ -101,8 +101,7 @@ declare_lint! {
     /// of at end of scope, which is typically incorrect.
     ///
     /// ### Example
-    #[cfg_attr(bootstrap, doc = "```rust")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// use std::mem::DropGuard;
     ///
     /// // The closure runs immediately instead of at the end of the scope,
@@ -110,8 +109,7 @@ declare_lint! {
     /// let _ = DropGuard::new((), |_| {
     ///     println!("cleaning up");
     /// });
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///

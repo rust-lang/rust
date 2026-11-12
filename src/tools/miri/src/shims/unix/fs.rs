@@ -740,14 +740,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return ecx.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
 
-                let Some(fd) = ecx.machine.fds.insert_new(DirHandle {
-                    dir,
-                    #[cfg(bootstrap)]
-                    fallback: match &dirfd {
-                        Some(dirfd) => dirfd.fallback.join(&path).canonicalize().unwrap(),
-                        None => path.canonicalize().unwrap(),
-                    },
-                }) else {
+                let Some(fd) = ecx.machine.fds.insert_new(DirHandle { dir }) else {
                     return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
                 };
                 interp_ok(Scalar::from_i32(fd))
@@ -1413,20 +1406,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(read_dir) => {
                 // Create an underlying FD as well, in case someone calls `dirfd` later.
                 // (We could do this lazily but that does not seem worth it.)
-                #[cfg(not(bootstrap))]
-                let dir = read_dir.dir();
-                #[cfg(bootstrap)]
-                let dir = fs::Dir::open(&name);
-                let Ok(dir) = dir else {
+                let Ok(dir) = read_dir.dir() else {
                     throw_unsup_format!(
                         "cannot `opendir` this directory: failed to create directory handle"
                     );
                 };
-                let dir = this.machine.fds.new_ref(DirHandle {
-                    dir,
-                    #[cfg(bootstrap)]
-                    fallback: name.canonicalize().unwrap(),
-                });
+                let dir = this.machine.fds.new_ref(DirHandle { dir });
                 let dir_fd_id = dir.id();
                 let Some(dir_fd_num) = this.machine.fds.insert(dir) else {
                     return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
@@ -2418,17 +2403,10 @@ impl FileMetadata {
             // (https://github.com/rust-lang/rust/issues/163032)
             let path =
                 if cfg!(windows) && path.to_str() == Some(".") { Path::new("") } else { path };
-            #[cfg(not(bootstrap))]
             let metadata = if symlink_nofollow_flag {
                 dir.dir.symlink_metadata(path)
             } else {
                 dir.dir.metadata(path)
-            };
-            #[cfg(bootstrap)]
-            let metadata = if symlink_nofollow_flag {
-                dir.fallback.join(path).symlink_metadata()
-            } else {
-                dir.fallback.join(path).metadata()
             };
             FileMetadata::from_host(ecx, metadata)
         }

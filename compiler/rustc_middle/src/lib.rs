@@ -27,7 +27,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
-#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![cfg_attr(bootstrap, feature(ptr_alignment_type))]
 #![cfg_attr(doc, feature(intra_doc_pointers))]
 #![feature(allocator_ext)]
