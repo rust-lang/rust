@@ -28,12 +28,14 @@
 #![feature(negative_impls)]
 #![feature(nonzero_internals)]
 #![feature(pattern_types)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![feature(sized_hierarchy)]
 #![feature(thread_id_value)]
 #![feature(trait_alias)]
 #![feature(trusted_len)]
 #![feature(type_alias_impl_trait)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 // This allows derive macros to reference this crate

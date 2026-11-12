@@ -15,7 +15,9 @@
 // tidy-alphabetical-start
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![feature(extend_one)]
+#![feature(register_tool)]
 #![recursion_limit = "512"] // For rustdoc
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 mod diagnostics;

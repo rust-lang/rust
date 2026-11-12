@@ -23,8 +23,10 @@
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![feature(trait_alias)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to

@@ -245,7 +245,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_paren_sugar,
     sym::rustc_partition_codegened,
     sym::rustc_partition_reused,
-    sym::rustc_pass_by_value,
     sym::rustc_pass_indirectly_in_non_rustic_abis,
     sym::rustc_preserve_ub_checks,
     sym::rustc_proc_macro_decls,
