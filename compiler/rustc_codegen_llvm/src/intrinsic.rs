@@ -1724,7 +1724,7 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
 
     if cx.sess().pointer_authentication() {
         let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
-        let attrs: Vec<&Attribute> =
+        let attrs: Vec<Attribute<'ll>> =
             cfg.fn_attrs().into_iter().map(|name| llvm::CreateAttrString(cx.llcx, name)).collect();
 
         let (_ty, rust_try_fn) = rust_try;
