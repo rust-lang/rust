@@ -534,16 +534,14 @@ impl OutputTypes {
 
     pub fn metadata_output_type(&self) -> OutputType {
         self.iter()
-            .fold(None, |acc, (&out, _)| match acc {
-                Some(OutputType::Metadata) => Some(OutputType::Metadata),
-                Some(OutputType::Validation)
-                    if matches!(out, OutputType::Metadata | OutputType::FullAnalysis) =>
-                {
+            .fold(None, |acc, (&out, _)| match (acc, out) {
+                (Some(OutputType::Validation), OutputType::Metadata | OutputType::FullAnalysis) => {
                     Some(out)
                 }
-                Some(OutputType::Validation) => acc,
-                Some(OutputType::FullAnalysis) if matches!(out, OutputType::Metadata) => Some(out),
-                Some(OutputType::FullAnalysis) => acc,
+                (Some(OutputType::Validation), _) => acc,
+                (Some(OutputType::FullAnalysis), OutputType::Metadata) => Some(out),
+                (Some(OutputType::FullAnalysis), _) => acc,
+                (Some(OutputType::Metadata), _) => Some(OutputType::Metadata),
                 _ => Some(out),
             })
             .unwrap_or(OutputType::Metadata)
