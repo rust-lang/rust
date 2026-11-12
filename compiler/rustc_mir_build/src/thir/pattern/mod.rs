@@ -218,11 +218,11 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
         };
         let (min, max): (i128, u128) = match ty.kind() {
             ty::Int(ity) => {
-                let size = Integer::from_int_ty(&self.tcx, *ity).size();
+                let size = Integer::from_int_ty(&self.tcx, ity).size();
                 (size.signed_int_min(), size.signed_int_max() as u128)
             }
             ty::Uint(uty) => {
-                let size = Integer::from_uint_ty(&self.tcx, *uty).size();
+                let size = Integer::from_uint_ty(&self.tcx, uty).size();
                 (0, size.unsigned_int_max())
             }
             _ => {
@@ -387,11 +387,11 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                     match pinnedness {
                         hir::Pinnedness::Pinned
                             if let Some(pty) = ty.pinned_ty()
-                                && let &ty::Ref(_, rty, _) = pty.kind() =>
+                                && let ty::Ref(_, rty, _) = pty.kind() =>
                         {
                             thir_pat_ty = rty;
                         }
-                        hir::Pinnedness::Not if let &ty::Ref(_, rty, _) = ty.kind() => {
+                        hir::Pinnedness::Not if let ty::Ref(_, rty, _) = ty.kind() => {
                             thir_pat_ty = rty;
                         }
                         _ => bug!("`ref {}` has wrong type {}", ident, ty),
@@ -543,13 +543,13 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
                         ty::FnDef(_, args) => args.no_bound_vars().unwrap(),
-                        ty::Adt(_, args) => *args,
+                        ty::Adt(_, args) => args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
                             return Box::new(Pat {
                                 ty,
                                 span,
-                                kind: PatKind::Error(*e),
+                                kind: PatKind::Error(e),
                                 extra: None,
                             });
                         }

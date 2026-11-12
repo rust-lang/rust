@@ -99,7 +99,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
         }
 
         // Allow large moves into container types that themselves are cheap to move
-        let ty::FnDef(def_id, _) = *callee_ty.kind() else {
+        let ty::FnDef(def_id, _) = callee_ty.kind() else {
             return;
         };
         if should_skip_fn(self.tcx, def_id) {

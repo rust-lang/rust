@@ -366,7 +366,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     && let operand_ty = operand.ty(self.local_decls, self.tcx)
                     && let Some(operand_ty) = operand_ty.builtin_deref(true)
                     && let ty::Array(_, len) = operand_ty.kind()
-                    && let Some(len) = Const::Ty(self.tcx.types.usize, *len)
+                    && let Some(len) = Const::Ty(self.tcx.types.usize, len)
                         .try_eval_scalar_int(self.tcx, self.typing_env)
                 {
                     state.insert_value_idx(target_len, FlatSet::Elem(len.into()), &self.map);
@@ -844,7 +844,7 @@ fn try_write_constant<'tcx>(
             };
 
             for (i, field) in variant_def.fields.iter_enumerated() {
-                let ty = field.ty(*ecx.tcx, *args).skip_norm_wip();
+                let ty = field.ty(*ecx.tcx, args).skip_norm_wip();
                 let Some(field) = map.apply(variant_place, TrackElem::Field(i)) else {
                     throw_machine_stop_str!("missing field in ADT")
                 };

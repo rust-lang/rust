@@ -107,7 +107,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         let b = infcx.shallow_resolve(b);
 
         match (a.kind(), b.kind()) {
-            (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
+            (ty::Infer(TyVar(a_id)), ty::Infer(TyVar(b_id))) => {
                 match self.ambient_variance {
                     ty::Covariant => {
                         // can't make progress on `A <: B` if both A and B are
@@ -146,10 +146,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
                 }
             }
 
-            (&ty::Infer(TyVar(a_vid)), _) => {
+            (ty::Infer(TyVar(a_vid)), _) => {
                 infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?;
             }
-            (_, &ty::Infer(TyVar(b_vid))) => {
+            (_, ty::Infer(TyVar(b_vid))) => {
                 infcx.instantiate_ty_var(
                     self,
                     false,
@@ -160,14 +160,14 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
             }
 
             (
-                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
-                &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: a_def_id }, .. }),
+                ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: b_def_id }, .. }),
             ) if a_def_id == b_def_id => {
                 super_combine_tys(infcx, self, a, b)?;
             }
 
-            (&ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
-            | (_, &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
+            (ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }), _)
+            | (_, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }))
                 if self.define_opaque_types == DefineOpaqueTypes::Yes && def_id.is_local() =>
             {
                 self.register_goals(infcx.handle_opaque_type(

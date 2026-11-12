@@ -15,7 +15,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
             let terminator = &mut block.terminator;
             if let TerminatorKind::Call { func, args, destination, target, .. } =
                 &mut terminator.kind
-                && let ty::FnDef(def_id, generic_args) = *func.ty(local_decls, tcx).kind()
+                && let ty::FnDef(def_id, generic_args) = func.ty(local_decls, tcx).kind()
                 && let Some(intrinsic) = tcx.intrinsic(def_id)
                 && let Intrinsic::Rustc(name) = intrinsic.name
             {
@@ -263,7 +263,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         );
 
                         let ret_ty = generic_args.type_at(0);
-                        let rvalue = match *ret_ty.kind() {
+                        let rvalue = match ret_ty.kind() {
                             ty::RawPtr(_, Mutability::Not) => {
                                 Rvalue::RawPtr(RawPtrKind::Const, updated_place)
                             }
@@ -322,7 +322,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         let target = target.unwrap();
                         let pointer_ty = generic_args.type_at(0);
                         let kind = if let ty::RawPtr(pointee_ty, mutability) = pointer_ty.kind() {
-                            AggregateKind::RawPtr(*pointee_ty, *mutability)
+                            AggregateKind::RawPtr(pointee_ty, mutability)
                         } else {
                             span_bug!(
                                 terminator.source_info.span,

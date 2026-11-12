@@ -53,7 +53,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 let ty: Ty<'tcx> = self.read_type_id(&args[0])?;
                 let is_mutable = matches!(
                     ty.kind(),
-                    ty::RawPtr(_, Mutability::Mut) | &ty::Ref(_, _, Mutability::Mut)
+                    ty::RawPtr(_, Mutability::Mut) | ty::Ref(_, _, Mutability::Mut)
                 );
                 self.write_scalar(Scalar::from_bool(is_mutable), dest)?;
             }
@@ -79,7 +79,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         _ => None,
                     },
                     dest,
-                    |ecx, place, ty| ecx.write_type_id(*ty, &place),
+                    |ecx, place, ty| ecx.write_type_id(ty, &place),
                 )?
             }
 
@@ -167,8 +167,8 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     dest,
                     |ecx, place, (sig, fn_header)| {
                         // FIXME: handle lifetime bounds
-                        let sig = ecx.tcx.instantiate_bound_regions_with_erased(*sig);
-                        ecx.write_fn_ptr_type_info(place, &sig, fn_header)
+                        let sig = ecx.tcx.instantiate_bound_regions_with_erased(sig);
+                        ecx.write_fn_ptr_type_info(place, &sig, &fn_header)
                     },
                 )?
             }
@@ -181,7 +181,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         _ => None,
                     },
                     dest,
-                    |ecx, place, (p, r)| ecx.write_dyn_trait_type_info(place, *p, *r),
+                    |ecx, place, (p, r)| ecx.write_dyn_trait_type_info(place, p, r),
                 )?
             }
 
@@ -193,7 +193,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         _ => None,
                     },
                     dest,
-                    |ecx, place, pointee_ty| ecx.write_type_id(*pointee_ty, &place),
+                    |ecx, place, pointee_ty| ecx.write_type_id(pointee_ty, &place),
                 )?
             }
 
@@ -275,7 +275,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                 let field_name = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { name, .. }) =
-                        def.field_representing_type_info(self.tcx.tcx, *args)
+                        def.field_representing_type_info(self.tcx.tcx, args)
                 {
                     name
                 } else {
@@ -296,7 +296,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                        def.field_representing_type_info(self.tcx.tcx, *args)
+                        def.field_representing_type_info(self.tcx.tcx, args)
                 {
                     (base, variant_idx, field_idx)
                 } else {
@@ -316,7 +316,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
                     && let Some(FieldInfo { ty, .. }) =
-                        def.field_representing_type_info(self.tcx.tcx, *args)
+                        def.field_representing_type_info(self.tcx.tcx, args)
                 {
                     self.tcx.erase_and_anonymize_regions(ty)
                 } else {
@@ -330,7 +330,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 let attrs = match ty.kind() {
                     ty::Adt(def, args)
                         if let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                            def.field_representing_type_info(self.tcx(), *args) =>
+                            def.field_representing_type_info(self.tcx(), args) =>
                     {
                         match base.kind() {
                             ty::Adt(base_def, _) => {
@@ -356,7 +356,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 let attrs = match ty.kind() {
                     ty::Adt(def, args)
                         if let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
-                            def.field_representing_type_info(self.tcx(), *args) =>
+                            def.field_representing_type_info(self.tcx(), args) =>
                     {
                         match base.kind() {
                             ty::Adt(base_def, _) => {

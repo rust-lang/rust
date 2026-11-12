@@ -11,7 +11,7 @@ use super::CHAR_LIT_AS_U8;
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from_expr: &Expr<'_>, cast_to: Ty<'_>) {
     if let ExprKind::Lit(l) = &cast_from_expr.kind
         && let LitKind::Char(c) = l.node
-        && ty::Uint(UintTy::U8) == *cast_to.kind()
+        && ty::Uint(UintTy::U8) == cast_to.kind()
     {
         let mut applicability = Applicability::MachineApplicable;
         let snippet = snippet_with_applicability(cx, cast_from_expr.span, "'x'", &mut applicability);

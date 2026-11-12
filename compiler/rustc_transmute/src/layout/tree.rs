@@ -336,28 +336,28 @@ pub(crate) mod rustc {
                     let FieldsShape::Array { stride, count } = &layout.fields else {
                         return Err(Err::NotYetSupported);
                     };
-                    let inner_layout = layout_of(cx, *inner_ty)?;
+                    let inner_layout = layout_of(cx, inner_ty)?;
                     assert_eq!(*stride, inner_layout.size);
-                    let elt = Tree::from_ty(*inner_ty, cx)?;
+                    let elt = Tree::from_ty(inner_ty, cx)?;
                     Ok(std::iter::repeat_n(elt, *count as usize)
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
                 ty::Adt(adt_def, _args_ref) if !ty.is_box() => match adt_def.adt_kind() {
-                    AdtKind::Struct => Self::from_struct((ty, layout), *adt_def, cx),
-                    AdtKind::Enum => Self::from_enum((ty, layout), *adt_def, cx),
-                    AdtKind::Union => Self::from_union((ty, layout), *adt_def, cx),
+                    AdtKind::Struct => Self::from_struct((ty, layout), adt_def, cx),
+                    AdtKind::Enum => Self::from_enum((ty, layout), adt_def, cx),
+                    AdtKind::Union => Self::from_union((ty, layout), adt_def, cx),
                 },
 
                 ty::Ref(region, ty, mutability) => {
-                    let layout = layout_of(cx, *ty)?;
+                    let layout = layout_of(cx, ty)?;
                     let referent_align = layout.align.bytes_usize();
                     let referent_size = layout.size.bytes_usize();
 
                     Ok(Tree::Ref(Reference {
-                        region: *region,
+                        region,
                         is_mut: mutability.is_mut(),
-                        referent: *ty,
+                        referent: ty,
                         referent_align,
                         referent_size,
                     }))
@@ -600,7 +600,7 @@ pub(crate) mod rustc {
                 match layout.variants {
                     Variants::Single { index } => {
                         let field = &def.variant(index).fields[i];
-                        field.ty(cx.tcx(), *args).skip_norm_wip()
+                        field.ty(cx.tcx(), args).skip_norm_wip()
                     }
                     Variants::Empty => panic!("there is no field in Variants::Empty types"),
                     // Discriminant field for enums (where applicable).

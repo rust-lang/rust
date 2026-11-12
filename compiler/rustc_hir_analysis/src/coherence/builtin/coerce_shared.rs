@@ -262,7 +262,7 @@ pub(super) fn coerce_shared_info<'tcx>(
     assert!(!source.has_escaping_bound_vars());
 
     match (source.kind(), target.kind()) {
-        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+        (ty::Adt(def_a, args_a), ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
             let lifetimes_count = generic_lifetime_params_count(args_a.as_slice());
@@ -516,9 +516,9 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
 
             if matches!(
                 (source.ty.kind(), target.ty.kind()),
-                (&ty::Ref(_, _, ty::Mutability::Mut), &ty::Ref(_, _, ty::Mutability::Not))
-                    | (&ty::Alias(..), _)
-                    | (_, &ty::Alias(..))
+                (ty::Ref(_, _, ty::Mutability::Mut), ty::Ref(_, _, ty::Mutability::Not))
+                    | (ty::Alias(..), _)
+                    | (_, ty::Alias(..))
             ) && field_tys_satisfy_relation_after_normalization_and_resolution(
                 tcx,
                 impl_did,
@@ -586,9 +586,9 @@ fn validate_coerce_shared_field<'tcx>(
     let tcx = infcx.tcx;
     if matches!(
         (source.ty.kind(), target.ty.kind()),
-        (&ty::Ref(_, _, ty::Mutability::Mut), &ty::Ref(_, _, ty::Mutability::Not))
-            | (&ty::Alias(..), _)
-            | (_, &ty::Alias(..))
+        (ty::Ref(_, _, ty::Mutability::Mut), ty::Ref(_, _, ty::Mutability::Not))
+            | (ty::Alias(..), _)
+            | (_, ty::Alias(..))
     ) && field_tys_satisfy_relation_after_normalization_and_resolution(
         tcx,
         impl_did,
@@ -774,8 +774,8 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
         }
         FieldRelation::MutRefToSharedRef => {
             let (
-                &ty::Ref(source_region, source_referent_ty, ty::Mutability::Mut),
-                &ty::Ref(target_region, target_referent_ty, ty::Mutability::Not),
+                ty::Ref(source_region, source_referent_ty, ty::Mutability::Mut),
+                ty::Ref(target_region, target_referent_ty, ty::Mutability::Not),
             ) = (source_ty.kind(), target_ty.kind())
             else {
                 return false;

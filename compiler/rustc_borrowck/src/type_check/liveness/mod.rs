@@ -92,7 +92,7 @@ pub(super) fn generate<'tcx>(
                 // The polonius-relevant locals are the ones whose types do not only contain
                 // universal regions.
                 if boring_nll_locals.contains(&local)
-                    && !tcx.all_free_regions_meet(&decl.ty, |r| {
+                    && !tcx.all_free_regions_meet(decl.ty, |r| {
                         universal_regions.is_universal_region(r.as_var())
                     })
                 {
@@ -139,7 +139,7 @@ fn compute_relevant_live_locals<'tcx>(
 ) -> (Vec<Local>, Vec<Local>) {
     let (boring_locals, relevant_live_locals): (Vec<_>, Vec<_>) =
         body.local_decls.iter_enumerated().partition_map(|(local, local_decl)| {
-            if tcx.all_free_regions_meet(&local_decl.ty, |r| free_regions.contains(&r.as_var())) {
+            if tcx.all_free_regions_meet(local_decl.ty, |r| free_regions.contains(&r.as_var())) {
                 Either::Left(local)
             } else {
                 Either::Right(local)

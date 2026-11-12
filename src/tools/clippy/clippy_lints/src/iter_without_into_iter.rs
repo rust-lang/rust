@@ -133,7 +133,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
             && !item.span.in_external_macro(cx.sess().source_map())
-            && let &ty::Ref(_, ty, mtbl) = cx
+            && let ty::Ref(_, ty, mtbl) = cx
                 .tcx
                 .type_of(item.owner_id)
                 .instantiate_identity()

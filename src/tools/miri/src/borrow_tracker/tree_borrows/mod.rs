@@ -478,7 +478,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         mode: RetagMode,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
         let ecx = self.eval_context_mut();
-        let new_perm = match *ty.kind() {
+        let new_perm = match ty.kind() {
             _ if ty.is_box_global(*ecx.tcx) => {
                 // The `None` marks this as a Box.
                 NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, ecx)

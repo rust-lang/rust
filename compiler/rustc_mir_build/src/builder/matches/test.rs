@@ -204,7 +204,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // replace. Comparing bytes agrees with structural equality because
                 // the element types are restricted to primitives without padding
                 // (see `is_bytewise_comparable`).
-                match *value.ty.kind() {
+                match value.ty.kind() {
                     ty::Array(..) => self.array_raw_eq(
                         block,
                         success_block,
@@ -239,7 +239,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut actual_value_place = place;
 
                 match value.ty.kind() {
-                    &ty::Pat(base, _) => {
+                    ty::Pat(base, _) => {
                         assert!(base.is_trivially_pure_clone_copy());
 
                         let transmuted_place = self.temp(base, test.span);

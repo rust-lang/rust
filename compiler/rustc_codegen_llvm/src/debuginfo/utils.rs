@@ -75,7 +75,7 @@ pub(crate) fn wide_pointer_kind<'ll, 'tcx>(
         return None;
     }
 
-    match *pointee_tail_ty.kind() {
+    match pointee_tail_ty.kind() {
         ty::Str | ty::Slice(_) => Some(WidePtrKind::Slice),
         ty::Dynamic(..) => Some(WidePtrKind::Dyn),
         ty::Foreign(_) => {

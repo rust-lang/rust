@@ -178,7 +178,7 @@ impl SelfTyHead {
     // this should invoke normalization where needed (e.g. if the head is an Alias).
     // we'll need to fetch the param_env too.
     fn of<'tcx>(bound_ty: ty::Binder<'tcx, Ty<'tcx>>, tcx: TyCtxt<'tcx>, parent: DefId) -> Self {
-        match *bound_ty.skip_binder().kind() {
+        match bound_ty.skip_binder().kind() {
             ty::Never
             | ty::Bool
             | ty::Char

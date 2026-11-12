@@ -716,8 +716,8 @@ fn ty_inherits_doc_hidden<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
             })
             .unwrap_or(false),
         ty::Adt(adt, _) => inherits_doc_hidden(tcx, adt.did()),
-        ty::Foreign(def_id) => inherits_doc_hidden(tcx, *def_id),
-        ty::Ref(_, ty, _) => ty_inherits_doc_hidden(tcx, *ty),
+        ty::Foreign(def_id) => inherits_doc_hidden(tcx, def_id),
+        ty::Ref(_, ty, _) => ty_inherits_doc_hidden(tcx, ty),
         // For now we consider that everything doesn't inherit `#[doc(hidden)]`. To be confirmed
         // later.
         _ => false,

@@ -606,7 +606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let mut err = self.no_such_field_err(ident, base_ty, expr);
 
-        match *base_ty.peel_refs().kind() {
+        match base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
                 self.maybe_suggest_array_indexing(&mut err, base, ident, len);
             }
@@ -858,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
 
                         let ty_str = match base_ty.peel_refs().kind() {
-                            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), *args),
+                            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
                             _ => base_ty.peel_refs().to_string(),
                         };
                         err.multipart_suggestion(
@@ -1064,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && inherent
                 {
                     // We want the arguments of the *type* to be passed to the `impl ReceiverType`.
-                    *args
+                    args
                 } else {
                     // We want to use the `ReceiverType` for `Self` on trait impls.
                     GenericArgs::for_item(self.tcx, def_id, |param, _| {
@@ -1112,7 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fresh_args_for_item(expr.span, parent).rebase_onto(
                             self.tcx,
                             def.did(),
-                            *args,
+                            args,
                         )
                     } else {
                         self.fresh_args_for_item(expr.span, def_id)
@@ -1222,7 +1222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .map(|field_def| {
                                     (
                                         field_def.ident(self.tcx).normalize_to_macros_2_0(),
-                                        field_def.ty(self.tcx, *args).skip_norm_wip(),
+                                        field_def.ty(self.tcx, args).skip_norm_wip(),
                                     )
                                 })
                                 .collect::<Vec<_>>(),

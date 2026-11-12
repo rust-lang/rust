@@ -157,11 +157,11 @@ impl Id<'_> {
             Self::LocalDef(id) => id,
             Self::TyRel => cx.typeck_results().type_dependent_def_id(e.hir_id)?.as_local()?,
             Self::FieldOf(e)
-                if let ty::Adt(adt, _) = *cx.typeck_results().expr_ty_adjusted(e).kind()
+                if let ty::Adt(adt, _) = cx.typeck_results().expr_ty_adjusted(e).kind()
                     && adt.did().is_local()
                     && let [variant] = &adt.variants().raw
                     && let Some(f) = variant.fields.iter().find(|&f| f.name == name)
-                    && match *cx.tcx.type_of(f.did).instantiate_identity().skip_normalization().kind() {
+                    && match cx.tcx.type_of(f.did).instantiate_identity().skip_normalization().kind() {
                         ty::Adt(adt, _) => !adt.is_phantom_data(),
                         _ => true,
                     }
@@ -250,7 +250,7 @@ fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 // Everything else uses takes a mutable borrow of the lhs.
                 ExprKind::AssignOp(_, lhs, _)
                     if child == lhs.hir_id
-                        && let ty::Int(_) | ty::Uint(_) | ty::Float(_) = *typeck.node_type(child).kind() =>
+                        && let ty::Int(_) | ty::Uint(_) | ty::Float(_) = typeck.node_type(child).kind() =>
                 {
                     return false;
                 },

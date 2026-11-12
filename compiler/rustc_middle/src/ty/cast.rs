@@ -26,7 +26,7 @@ impl<'tcx> CastTy<'tcx> {
     /// Returns `Some` for integral/pointer casts.
     /// Casts like unsizing casts will return `None`.
     pub fn from_ty(t: Ty<'tcx>) -> Option<CastTy<'tcx>> {
-        match *t.kind() {
+        match t.kind() {
             ty::Bool => Some(CastTy::Bool),
             ty::Char => Some(CastTy::Char),
             ty::Int(_) | ty::Uint(_) | ty::Infer(ty::InferTy::IntVar(_)) => Some(CastTy::Int),

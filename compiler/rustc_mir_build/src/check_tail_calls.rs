@@ -91,7 +91,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             self.report_op(ty, args, fn_span, expr);
         }
 
-        if let &ty::FnDef(did, args) = ty.kind() {
+        if let ty::FnDef(did, args) = ty.kind() {
             let args = args.no_bound_vars().unwrap();
             // Closures in thir look something akin to
             // `for<'a> extern "rust-call" fn(&'a [closure@...], ()) -> <[closure@...] as FnOnce<()>>::Output {<[closure@...] as Fn<()>>::call}`
@@ -229,7 +229,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         let mut err =
             self.tcx.dcx().struct_span_err(fn_span, "`become` does not support operators");
 
-        if let &ty::FnDef(did, _substs) = fun_ty.kind()
+        if let ty::FnDef(did, _substs) = fun_ty.kind()
             && let parent = self.tcx.parent(did)
             && matches!(self.tcx.def_kind(parent), DefKind::Trait)
             && let Some(method) = op_trait_as_method_name(self.tcx, parent)

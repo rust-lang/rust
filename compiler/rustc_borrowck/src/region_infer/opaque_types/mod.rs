@@ -367,7 +367,7 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
             // the hidden type becomes the opaque type itself. In this case, this was an opaque
             // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
             // writeback.
-            if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+            if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                 hidden_type.ty.skip_binder().kind()
                 && def_id == opaque_type_key.def_id.to_def_id()
                 && args == opaque_type_key.args
@@ -486,7 +486,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
         }
 
         let tcx = self.cx();
-        Ok(match *ty.kind() {
+        Ok(match ty.kind() {
             ty::Closure(def_id, args) => {
                 Ty::new_closure(tcx, def_id, self.fold_closure_args(def_id, args)?)
             }
@@ -540,7 +540,7 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     for &(key, hidden_type) in opaque_types {
         let Some(expected) = hidden_types.get(&key.def_id) else {
             if !tcx.use_typing_mode_post_typeck_through_borrowck() {
-                if let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+                if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
                     hidden_type.ty.kind()
                     && def_id == key.def_id.to_def_id()
                     && args == key.args

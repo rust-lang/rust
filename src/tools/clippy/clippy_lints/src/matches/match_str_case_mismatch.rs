@@ -59,7 +59,7 @@ impl MatchExprVisitor<'_, '_> {
         if let Some(case_method) = get_case_method(segment_ident) {
             let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();
 
-            if ty.is_lang_item(self.cx, LangItem::String) || ty.kind() == &ty::Str {
+            if ty.is_lang_item(self.cx, LangItem::String) || ty.kind() == ty::Str {
                 return ControlFlow::Break(case_method);
             }
         }

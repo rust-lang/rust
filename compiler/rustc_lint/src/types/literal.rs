@@ -418,7 +418,7 @@ pub(crate) fn lint_literal<'tcx>(
     lit: &hir::Lit,
     surrounding_negation: Option<Span>,
 ) {
-    match *cx.typeck_results().node_type(hir_id).kind() {
+    match cx.typeck_results().node_type(hir_id).kind() {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {

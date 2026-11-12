@@ -398,7 +398,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             return ty;
         }
 
-        let ty::Alias(_, data) = *ty.kind() else { return ty.super_fold_with(self) };
+        let ty::Alias(_, data) = ty.kind() else { return ty.super_fold_with(self) };
 
         // We try to be a little clever here as a performance optimization in
         // cases where there are nested projections under binders.

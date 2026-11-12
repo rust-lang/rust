@@ -128,7 +128,7 @@ fn dump_abi_of_fn_type(
             let abi =
                 unwrap_fn_abi(
                     tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
-                        sig_tys.with(*hdr),
+                        sig_tys.with(hdr),
                         /* extra_args */ ty::List::empty(),
                     ))),
                     tcx,
@@ -145,7 +145,7 @@ fn dump_abi_of_fn_type(
                     "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
                 );
             };
-            let [field1, field2] = ***fields else {
+            let [field1, field2] = **fields else {
                 span_bug!(
                     attr_span,
                     "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
@@ -159,7 +159,7 @@ fn dump_abi_of_fn_type(
             };
             let abi1 = unwrap_fn_abi(
                 tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
-                    sig_tys1.with(*hdr1),
+                    sig_tys1.with(hdr1),
                     /* extra_args */ ty::List::empty(),
                 ))),
                 tcx,
@@ -173,7 +173,7 @@ fn dump_abi_of_fn_type(
             };
             let abi2 = unwrap_fn_abi(
                 tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((
-                    sig_tys2.with(*hdr2),
+                    sig_tys2.with(hdr2),
                     /* extra_args */ ty::List::empty(),
                 ))),
                 tcx,

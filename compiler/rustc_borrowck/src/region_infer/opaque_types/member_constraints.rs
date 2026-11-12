@@ -171,7 +171,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectMemberConstraintsVisitor<'_, '_,
             return;
         }
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.visit_closure_args(def_id, args),

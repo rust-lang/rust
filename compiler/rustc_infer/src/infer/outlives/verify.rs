@@ -108,7 +108,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let env_bounds = self.approx_declared_bounds_from_env(alias_ty).into_iter().map(|binder| {
             // FIXME(#155345): We probably want to assert the alias is rigid here.
             if let Some(ty::OutlivesClause(ty, r)) = binder.no_bound_vars()
-                && let ty::Alias(_, alias_ty_from_bound) = *ty.kind()
+                && let ty::Alias(_, alias_ty_from_bound) = ty.kind()
                 && alias_ty_from_bound == alias_ty
             {
                 // Micro-optimize if this is an exact match (this
@@ -238,10 +238,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             match (&p, erased_ty.kind()) {
                 // In outlive routines, all types are expected to be fully normalized.
                 // And therefore we can safely use structural equality for alias types.
-                (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
-                (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
+                (GenericKind::Param(p1), ty::Param(p2)) if *p1 == p2 => {}
+                (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if *p1 == p2 => {}
                 (GenericKind::Alias(a1), ty::Alias(is_rigid, a2)) if a1.kind == a2.kind => {
-                    debug_assert_eq!(*is_rigid, ty::IsRigid::yes_if_next_solver(self.tcx));
+                    debug_assert_eq!(is_rigid, ty::IsRigid::yes_if_next_solver(self.tcx));
                 }
                 _ => return None,
             }

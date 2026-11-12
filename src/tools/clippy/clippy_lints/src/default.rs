@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // only when assigning `... = Default::default()`
                 && is_expr_default(cx, expr)
                 && let binding_type = cx.typeck_results().node_type(binding_id)
-                && let ty::Adt(adt, args) = *binding_type.kind()
+                && let ty::Adt(adt, args) = binding_type.kind()
                 && adt.is_struct()
                 && let variant = adt.non_enum_variant()
                 && !variant.field_list_has_applicable_non_exhaustive()

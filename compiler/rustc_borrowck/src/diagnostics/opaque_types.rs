@@ -217,7 +217,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         // If we find an opaque in a local ty, then for each of its captured regions,
         // try to find a path between that captured regions and our borrow region...
-        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
+        if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.kind()
             && let hir::OpaqueTyOrigin::FnReturn { parent, in_trait_or_impl: None } =
                 self.tcx.opaque_ty_origin(def_id)
         {
@@ -245,7 +245,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
                     for constraint in path {
                         // If we find a call in this path, then check if it defines the opaque.
                         if let ConstraintCategory::CallArgument(Some(call_ty)) = constraint.category
-                            && let ty::FnDef(call_def_id, _) = *call_ty.kind()
+                            && let ty::FnDef(call_def_id, _) = call_ty.kind()
                             // This function defines the opaque :D
                             && call_def_id == parent
                             && let Locations::Single(location) = constraint.locations
@@ -273,7 +273,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CheckExplicitRegionMentionAndCollectGen
     type Result = ControlFlow<(), ()>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 if self.seen_opaques.insert(def_id) {
                     for (bound, _) in self

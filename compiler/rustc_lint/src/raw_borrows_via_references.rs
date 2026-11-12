@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for RawBorrowsViaReferences {
                         matches!(
                             borrow_ty.kind(),
                             ty::Ref(_, referent, ref_mutbl)
-                                if cast_ty == Ty::new_ptr(cx.tcx, *referent, *ref_mutbl)
+                                if cast_ty == Ty::new_ptr(cx.tcx, referent, ref_mutbl)
                         )
                     })
                 });

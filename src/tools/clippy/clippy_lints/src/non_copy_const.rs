@@ -285,7 +285,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                 if ty.is_freeze(tcx, typing_env) {
                     return IsFreeze::Yes;
                 }
-                let is_freeze = match *ty.kind() {
+                let is_freeze = match ty.kind() {
                     ty::Adt(adt, _) if adt.is_unsafe_cell() => {
                         *e = IsFreeze::No;
                         return IsFreeze::No;

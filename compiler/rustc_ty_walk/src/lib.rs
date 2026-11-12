@@ -96,7 +96,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             };
             for field in def.all_fields() {
                 let span = tcx.def_ident_span(field.did).unwrap();
-                let ty = field.ty(tcx, *args);
+                let ty = field.ty(tcx, args);
                 try_visit!(visitor.visit(span, ty));
             }
             for (clause, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {

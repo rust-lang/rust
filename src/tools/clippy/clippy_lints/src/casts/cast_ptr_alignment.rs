@@ -26,8 +26,8 @@ pub(super) fn check_cast_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
 }
 
 fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
-    if let ty::RawPtr(from_ptr_ty, _) = *cast_from.kind()
-        && let ty::RawPtr(to_ptr_ty, _) = *cast_to.kind()
+    if let ty::RawPtr(from_ptr_ty, _) = cast_from.kind()
+        && let ty::RawPtr(to_ptr_ty, _) = cast_to.kind()
         && let Ok(from_layout) = cx.layout_of(from_ptr_ty)
         && let Ok(to_layout) = cx.layout_of(to_ptr_ty)
         && from_layout.align < to_layout.align

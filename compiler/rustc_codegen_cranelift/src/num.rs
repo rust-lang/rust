@@ -358,7 +358,7 @@ pub(crate) fn codegen_float_binop<'tcx>(
 
     // FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings have
     // been added to Cranelift.
-    let (lhs, rhs) = if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
+    let (lhs, rhs) = if in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
         (codegen_f16_f128::f16_to_f32(fx, lhs), codegen_f16_f128::f16_to_f32(fx, rhs))
     } else {
         (lhs, rhs)
@@ -367,7 +367,7 @@ pub(crate) fn codegen_float_binop<'tcx>(
         // FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings
         // have been added to Cranelift.
         BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div
-            if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F128) =>
+            if in_lhs.layout().ty.kind() == ty::Float(FloatTy::F128) =>
         {
             codegen_f16_f128::codegen_f128_binop(fx, bin_op, lhs, rhs)
         }
@@ -421,7 +421,7 @@ pub(crate) fn codegen_float_binop<'tcx>(
 
     // FIXME(bytecodealliance/wasmtime#8312): Remove once backend lowerings have
     // been added to Cranelift.
-    let res = if *in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
+    let res = if in_lhs.layout().ty.kind() == ty::Float(FloatTy::F16) {
         codegen_f16_f128::f32_to_f16(fx, res)
     } else {
         res

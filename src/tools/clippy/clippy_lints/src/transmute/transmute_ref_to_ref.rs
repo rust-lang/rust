@@ -19,10 +19,10 @@ pub(super) fn check<'tcx>(
     msrv: Msrv,
 ) -> bool {
     let arg_sugg = || Sugg::hir_with_context(cx, arg, e.span.ctxt(), "..", &mut Applicability::Unspecified);
-    if let ty::Ref(_, ty_from, from_mutbl) = *from_ty.kind()
-        && let ty::Ref(_, ty_to, to_mutbl) = *to_ty.kind()
+    if let ty::Ref(_, ty_from, from_mutbl) = from_ty.kind()
+        && let ty::Ref(_, ty_to, to_mutbl) = to_ty.kind()
     {
-        if let ty::Slice(slice_ty) = *ty_from.kind()
+        if let ty::Slice(slice_ty) = ty_from.kind()
             && ty_to.is_str()
             && let ty::Uint(ty::UintTy::U8) = slice_ty.kind()
             && from_mutbl == to_mutbl

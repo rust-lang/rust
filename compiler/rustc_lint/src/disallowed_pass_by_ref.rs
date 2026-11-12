@@ -53,7 +53,7 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
                     cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
                 {
                     if find_attr!(cx.tcx, adt.did(), LintPassByValue) {
-                        return Some(cx.tcx.def_path_str_with_args(adt.did(), *args));
+                        return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
                     }
                 }
             }

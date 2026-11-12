@@ -153,7 +153,7 @@ impl PassByRefOrValue {
                 _ => (),
             }
 
-            match *ty.skip_binder().kind() {
+            match ty.skip_binder().kind() {
                 ty::Ref(lt, ty, Mutability::Not) => {
                     match lt.kind() {
                         RegionKind::ReBound(BoundVarIndexKind::Bound(index), region)

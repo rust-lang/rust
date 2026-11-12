@@ -466,12 +466,12 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
     let ty::Coroutine(poll_def_id, proxy_args) = first_cor.kind() else {
         bug!();
     };
-    let poll_def_id = *poll_def_id;
+    let poll_def_id = poll_def_id;
     let mut child_ty = cor_ty;
     loop {
         if let ty::Coroutine(child_def, child_args) = child_ty.kind() {
             cor_ty = child_ty;
-            if *child_def == poll_def_id {
+            if child_def == poll_def_id {
                 child_ty = child_args.first().unwrap().expect_ty();
                 continue;
             } else {
@@ -481,7 +481,7 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
                         first_cor,
                         cor_ty,
                     )),
-                    args: *proxy_args,
+                    args: proxy_args,
                 };
             }
         } else {
@@ -495,12 +495,12 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
                         first_cor,
                         cor_ty,
                     )),
-                    args: *proxy_args,
+                    args: proxy_args,
                 };
             } else {
                 return Instance {
                     def: ty::InstanceKind::Shim(ShimKind::AsyncDropGlue(poll_def_id, cor_ty)),
-                    args: *child_args,
+                    args: child_args,
                 };
             }
         }
@@ -866,7 +866,7 @@ impl<'tcx> Instance<'tcx> {
         trait_id: DefId,
         rcvr_args: ty::GenericArgs<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = rcvr_args.type_at(0).kind() else {
             return None;
         };
         let coroutine_kind = tcx.coroutine_kind(coroutine_def_id).unwrap();
@@ -900,7 +900,7 @@ impl<'tcx> Instance<'tcx> {
             if tcx.is_async_drop_in_place_coroutine(coroutine_def_id) {
                 return Some(resolve_async_drop_poll(rcvr_args.type_at(0)));
             }
-            let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
+            let ty::Coroutine(_, id_args) = tcx.type_of(coroutine_def_id).skip_binder().kind()
             else {
                 bug!()
             };

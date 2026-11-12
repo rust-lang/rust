@@ -104,7 +104,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.single_field();
-                    let sole_field_ty = sole_field.ty(self.tcx, *args).skip_norm_wip();
+                    let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
                         let variant_path =
                             with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
@@ -350,7 +350,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .fields
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
-                .map(|field| (field.name, field.ty(self.tcx, *expected_args).skip_norm_wip()))
+                .map(|field| (field.name, field.ty(self.tcx, expected_args).skip_norm_wip()))
                 .find(|(_, ty)| self.same_type_modulo_infer(*ty, exp_found.found))
                 && let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code()
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
@@ -475,16 +475,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
                 let args = args.no_bound_vars().unwrap();
 
-                let sig = sig_tys.with(*hdr);
+                let sig = sig_tys.with(hdr);
                 let expected_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig));
                 let found_sig =
-                    self.normalize_fn_sig(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
+                    self.normalize_fn_sig(self.tcx.fn_sig(did).instantiate(self.tcx, args));
 
-                let fn_name = self.tcx.def_path_str_with_args(*did, args);
+                let fn_name = self.tcx.def_path_str_with_args(did, args);
 
                 if !self.same_type_modulo_infer(found_sig, expected_sig)
                     || !sig.is_suggestable(self.tcx, true)
-                    || self.tcx.intrinsic(*did).is_some()
+                    || self.tcx.intrinsic(did).is_some()
                 {
                     return;
                 }
@@ -517,9 +517,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let args2 = args2.no_bound_vars().unwrap();
 
                 let expected_sig =
-                    self.normalize_fn_sig(self.tcx.fn_sig(*did1).instantiate(self.tcx, args1));
+                    self.normalize_fn_sig(self.tcx.fn_sig(did1).instantiate(self.tcx, args1));
                 let found_sig =
-                    self.normalize_fn_sig(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
+                    self.normalize_fn_sig(self.tcx.fn_sig(did2).instantiate(self.tcx, args2));
 
                 let expected_sig_anon = self.tcx.anonymize_bound_vars(expected_sig);
                 let found_sig_anon = self.tcx.anonymize_bound_vars(found_sig);
@@ -530,13 +530,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if !self.same_type_modulo_infer(found_sig, expected_sig)
                     || !found_sig.is_suggestable(self.tcx, true)
                     || !expected_sig.is_suggestable(self.tcx, true)
-                    || self.tcx.intrinsic(*did1).is_some()
-                    || self.tcx.intrinsic(*did2).is_some()
+                    || self.tcx.intrinsic(did1).is_some()
+                    || self.tcx.intrinsic(did2).is_some()
                 {
                     return;
                 }
 
-                let fn_name = self.tcx.def_path_str_with_args(*did2, args2);
+                let fn_name = self.tcx.def_path_str_with_args(did2, args2);
 
                 let Some(span) = span else {
                     diag.subdiagnostic(FnConsiderCastingBoth { sig: expected_sig });
@@ -564,14 +564,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let args = args.no_bound_vars().unwrap();
 
                 let expected_sig =
-                    self.normalize_fn_sig(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
-                let found_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig_tys.with(*hdr)));
+                    self.normalize_fn_sig(self.tcx.fn_sig(did).instantiate(self.tcx, args));
+                let found_sig = self.normalize_fn_sig(Unnormalized::new_wip(sig_tys.with(hdr)));
 
                 if !self.same_type_modulo_infer(found_sig, expected_sig) {
                     return;
                 }
 
-                let fn_name = self.tcx.def_path_str_with_args(*did, args);
+                let fn_name = self.tcx.def_path_str_with_args(did, args);
 
                 let casting = if expected.is_ref() {
                     format!("&({fn_name} as {found_sig})")
@@ -611,9 +611,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> Option<SuggestAsRefKind> {
         if let (ty::Adt(exp_def, exp_args), ty::Ref(_, found_ty, _)) =
             (expected.kind(), found.kind())
-            && let ty::Adt(found_def, found_args) = *found_ty.kind()
+            && let ty::Adt(found_def, found_args) = found_ty.kind()
         {
-            if exp_def == &found_def {
+            if exp_def == found_def {
                 let have_as_ref = &[
                     (sym::Option, SuggestAsRefKind::Option),
                     (sym::Result, SuggestAsRefKind::Result),
@@ -623,7 +623,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }) {
                     let mut show_suggestion = true;
                     for (exp_ty, found_ty) in std::iter::zip(exp_args.types(), found_args.types()) {
-                        match *exp_ty.kind() {
+                        match exp_ty.kind() {
                             ty::Ref(_, exp_ty, _) => {
                                 match (exp_ty.kind(), found_ty.kind()) {
                                     (_, ty::Param(_))

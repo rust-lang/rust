@@ -465,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
-                if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
+                if oprnd_t.is_integral() || oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
                 let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
@@ -491,9 +491,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Places may legitimately have unsized types.
                         // For example, dereferences of a wide pointer and
                         // the last field of a struct can be unsized.
-                        ExpectHasType(*ty)
+                        ExpectHasType(ty)
                     } else {
-                        Expectation::rvalue_hint(self, *ty)
+                        Expectation::rvalue_hint(self, ty)
                     }
                 }
                 _ => NoExpectation,
@@ -645,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if let ty::FnDef(did, args) = *ty.kind() {
+        if let ty::FnDef(did, args) = ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
 
             if tcx.is_rustc_intrinsic(did, sym::transmute) {
@@ -1566,7 +1566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
 
                 let binder_ty = self.structurally_resolve_type(inner_expr.span, binder_ty);
-                let hint_ty = match *binder_ty.kind() {
+                let hint_ty = match binder_ty.kind() {
                     ty::UnsafeBinder(binder) => self.instantiate_binder_with_fresh_vars(
                         inner_expr.span,
                         infer::BoundRegionConversionTime::HigherRankedType,
@@ -1603,7 +1603,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Unwrap the binder. This will be ambiguous if it's an infer var, and will error
                 // if it's not an unsafe binder.
                 let binder_ty = self.structurally_resolve_type(inner_expr.span, binder_ty);
-                match *binder_ty.kind() {
+                match binder_ty.kind() {
                     ty::UnsafeBinder(binder) => self.instantiate_binder_with_fresh_vars(
                         inner_expr.span,
                         infer::BoundRegionConversionTime::HigherRankedType,
@@ -1932,7 +1932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
                         }
 
-                        Ok(self.field_ty(field.span, v_field, *args))
+                        Ok(self.field_ty(field.span, v_field, args))
                     } else {
                         error_happened = true;
                         let guar = if let Some(prev_span) = seen_fields.get(&ident) {
@@ -1974,7 +1974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Err(diag) = diag {
                 if idx == hir_fields.len() - 1 {
                     if remaining_fields.is_empty() {
-                        self.suggest_fru_from_range_and_emit(field, variant, *args, diag);
+                        self.suggest_fru_from_range_and_emit(field, variant, args, diag);
                     } else {
                         diag.stash(field.span, StashKey::MaybeFruTypo);
                     }
@@ -2082,12 +2082,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Adt(adt, args) if adt.is_struct() => variant
                         .fields
                         .iter()
-                        .map(|f| self.normalize(span, f.ty(self.tcx, *args)))
+                        .map(|f| self.normalize(span, f.ty(self.tcx, args)))
                         .collect(),
                     ty::Adt(adt, args) if adt.is_enum() => variant
                         .fields
                         .iter()
-                        .map(|f| self.normalize(span, f.ty(self.tcx, *args)))
+                        .map(|f| self.normalize(span, f.ty(self.tcx, args)))
                         .collect(),
                     _ => {
                         self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct { span });
@@ -2122,7 +2122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let ident =
                                     self.tcx.adjust_ident(f.ident(self.tcx), variant.def_id);
                                 if let Some(_) = remaining_fields.remove(&ident) {
-                                    let target_ty = self.field_ty(base_expr.span, f, *args);
+                                    let target_ty = self.field_ty(base_expr.span, f, args);
                                     let cause = self.misc(base_expr.span);
                                     if let Err(diag) =
                                         self.demand_suptype_diag(cause.span, target_ty, fru_ty)
@@ -2151,7 +2151,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // `MyStruct<'a, _, F2, C>`, as opposed to just `_`...
                         // This is important to allow coercions to happen in
                         // `other_struct` itself. See `coerce-in-base-expr.rs`.
-                        let fresh_base_ty = Ty::new_adt(self.tcx, *adt, fresh_args);
+                        let fresh_base_ty = Ty::new_adt(self.tcx, adt, fresh_args);
                         self.check_expr_has_type_or_error(
                             base_expr,
                             self.deeply_resolve_ignoring_regions(fresh_base_ty),
@@ -2185,7 +2185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::Adt(adt, args) if adt.is_struct() => variant
                             .fields
                             .iter()
-                            .map(|f| self.normalize(expr.span, f.ty(self.tcx, *args)))
+                            .map(|f| self.normalize(expr.span, f.ty(self.tcx, args)))
                             .collect(),
                         _ => {
                             self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct {
@@ -2242,7 +2242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             remaining_fields,
                             variant,
                             hir_fields,
-                            *args,
+                            args,
                         );
                     }
                 }
@@ -2478,7 +2478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (ident, def_scope) =
                     self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
 
-                let Some((idx, field)) = self.find_adt_field(*base_def, ident) else {
+                let Some((idx, field)) = self.find_adt_field(base_def, ident) else {
                     return ControlFlow::Continue(None);
                 };
 
@@ -2490,7 +2490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
 
-                (self.field_ty(expr.span, field, *args), idx)
+                (self.field_ty(expr.span, field, args), idx)
             }
 
             ty::Tuple(tys) => {
@@ -2523,7 +2523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 match ty.kind() {
                     ty::Adt(base_def_, args_)
                         if let Some(frt) =
-                            base_def_.field_representing_type_info(self.tcx(), *args_) =>
+                            base_def_.field_representing_type_info(self.tcx(), args_) =>
                     {
                         // sanity check: view types on enums are not a thing.
                         debug_assert!(frt.variant.is_none());
@@ -2783,7 +2783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function.
         if is_input {
             let ty = self.structurally_resolve_type(expr.span, ty);
-            match *ty.kind() {
+            match ty.kind() {
                 ty::FnDef(..) => {
                     let fnptr_ty = Ty::new_fn_ptr(self.tcx, ty.fn_sig(self.tcx));
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);
@@ -2952,7 +2952,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         break;
                     };
 
-                    let field_ty = self.field_ty(expr.span, field, *args);
+                    let field_ty = self.field_ty(expr.span, field, args);
 
                     // Enums are anyway always sized. But just to safeguard against future
                     // language extensions, let's double-check.
@@ -2991,7 +2991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     {
-                        let field_ty = self.field_ty(expr.span, field, *args);
+                        let field_ty = self.field_ty(expr.span, field, args);
 
                         if self.tcx.features().offset_of_slice() {
                             self.require_type_has_static_alignment(field_ty, expr.span);

@@ -34,7 +34,7 @@ fn check_representability(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 fn check_representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) {
-    match *ty.kind() {
+    match ty.kind() {
         // This one must be a query rather than a vanilla `check_representability_adt_ty` call. See
         // the comment on `check_representability_adt_ty` below for why.
         ty::Adt(..) => {
@@ -103,7 +103,7 @@ fn params_in_repr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DenseBitSet<u32> {
 }
 
 fn params_in_repr_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, params_in_repr: &mut DenseBitSet<u32>) {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(adt, args) => {
             let inner_params_in_repr = tcx.params_in_repr(adt.did());
             for (i, arg) in args.iter().enumerate() {

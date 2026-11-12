@@ -736,7 +736,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 let fn_ty = func.ty(body, tcx);
 
-                let (callee, fn_args) = match *fn_ty.kind() {
+                let (callee, fn_args) = match fn_ty.kind() {
                     ty::FnDef(def_id, fn_args) => (def_id, fn_args.no_bound_vars().unwrap()),
 
                     ty::FnPtr(..) => {

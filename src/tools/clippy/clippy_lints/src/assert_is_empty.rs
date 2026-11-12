@@ -287,7 +287,7 @@ fn type_is_printable_and_comparable<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) 
 /// for unsupported receiver types.
 fn collection_element_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.kind() {
-        ty::Array(ty, _) | ty::Slice(ty) => Some(*ty),
+        ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
         ty::Adt(_, args) if matches!(ty.opt_diag_name(cx), Some(sym::Vec | sym::VecDeque | sym::BinaryHeap)) => {
             args.types().next()
         },
