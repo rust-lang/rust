@@ -42,7 +42,7 @@ pub(crate) fn expand_derive_eq(
         is_const,
         ..
     };
-    trait_def.expand_ext(cx, item, push, true)
+    trait_def.expand(cx, item, push);
 }
 
 fn assert_fields_eq_body(cx: &ExtCtxt<'_>, item: &ast::Item) -> BlockOrExpr {

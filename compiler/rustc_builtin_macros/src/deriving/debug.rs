@@ -22,12 +22,6 @@ pub(crate) fn expand_derive_debug(
         ast::Mutability::Mut,
     );
 
-    let all_fieldless = match &item.kind {
-        ast::ItemKind::Enum(_, _, def) => {
-            def.variants.len() > 1 && def.variants.iter().all(|v| v.data.fields().is_empty())
-        }
-        _ => false,
-    };
     let ident = item.kind.ident().unwrap();
 
     let trait_def = TraitDef {
@@ -68,7 +62,7 @@ pub(crate) fn expand_derive_debug(
         is_const,
         ..
     };
-    trait_def.expand_ext(cx, item, push, all_fieldless);
+    trait_def.expand(cx, item, push);
 }
 
 fn debug_body(

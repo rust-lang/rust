@@ -76,7 +76,7 @@ pub(crate) fn expand_derive_partial_ord(
         is_const,
         ..
     };
-    trait_def.expand_ext(cx, item, push, is_simple)
+    trait_def.expand(cx, item, push);
 }
 
 pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
@@ -244,6 +244,5 @@ pub(crate) fn cmp_body(
                 discr_check_expr
             }
         }
-        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive`"),
     }
 }

@@ -152,7 +152,6 @@ fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>)
             // fields.
             cx.expr_binary(span, BinOpKind::And, lhs, match_expr)
         }
-        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(PartialEq)`"),
     })
 }
 
