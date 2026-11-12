@@ -2857,12 +2857,14 @@ rustc_queries! {
     query experimental_comptime_fetch_file(key: (CrateNum, Symbol)) -> Result<Option<&'tcx [u8]>, ReadFileError<'tcx>> {
         desc { "fetch file {} from crate {}", key.1, key.0 }
         separate_provide_extern
+        eval_always
     }
 
     /// Query list of files available during const evaluation
     query experimental_comptime_list_files(key: CrateNum) -> &'tcx [Symbol] {
         desc { "fetch const eval file list from crate {}", key }
         separate_provide_extern
+        eval_always
     }
 
     //-----------------------------------------------------------------------------
