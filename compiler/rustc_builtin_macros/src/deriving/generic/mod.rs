@@ -2,7 +2,7 @@ use std::ops::Not;
 
 pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
-use rustc_ast::{EnumDef, Expr, GenericParamKind, Generics, Safety, VariantData};
+use rustc_ast::{EnumDef, Expr, GenericParamKind, Generics, Param, Safety, VariantData};
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ExtCtxt;
@@ -50,11 +50,7 @@ pub(crate) struct MethodDef<'a> {
     /// List of generics, e.g., `R: rand::Rng`
     pub generics: Generics,
 
-    /// Is there is a `&self` argument? If not, it is a static function.
-    pub explicit_self: bool,
-
-    /// Arguments other than the self argument.
-    pub nonself_args: SmallVec<[(Symbol, Box<ast::Ty>); 1]>,
+    pub args: ThinVec<Param>,
 
     /// Returns type
     pub ret_ty: Box<ast::Ty>,
@@ -507,17 +503,6 @@ impl<'a> MethodDef<'a> {
             return None;
         }
 
-        let self_arg = self.explicit_self.then(|| {
-            let infer_ty = cx.ty(span, ast::TyKind::ImplicitSelf);
-            let ty = cx.ty_ref(span, infer_ty, None, ast::Mutability::Not);
-            (kw::SelfLower, ty)
-        });
-        let args = self_arg
-            .into_iter()
-            .chain(self.nonself_args)
-            .map(|(name, ty)| cx.param(span, name, ty))
-            .collect();
-
         let ret_type = if self.ret_ty.kind.is_unit() {
             ast::FnRetTy::Default(span)
         } else {
@@ -525,7 +510,7 @@ impl<'a> MethodDef<'a> {
         };
 
         let method_ident = Ident::new(self.name, span);
-        let fn_decl = cx.fn_decl(args, ret_type);
+        let fn_decl = cx.fn_decl(self.args, ret_type);
         let body_block = body.into_block(cx, span);
 
         let trait_lo_sp = span.shrink_to_lo();

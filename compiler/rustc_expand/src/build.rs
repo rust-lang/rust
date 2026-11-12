@@ -634,6 +634,21 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    pub fn param_self_ref(&self, span: Span) -> ast::Param {
+        let infer_ty = self.ty(span, ast::TyKind::ImplicitSelf);
+        let ty = self.ty_ref(span, infer_ty, None, ast::Mutability::Not);
+        let pat = Box::new(self.pat_name(span, kw::SelfLower));
+        ast::Param {
+            attrs: AttrVec::default(),
+            id: ast::DUMMY_NODE_ID,
+            pat,
+            span,
+            ty,
+            is_placeholder: false,
+            has_const_keyword: false,
+        }
+    }
+
     // `self` is unused but keep it as method for the convenience use.
     pub fn fn_decl(&self, inputs: ThinVec<ast::Param>, output: ast::FnRetTy) -> Box<ast::FnDecl> {
         Box::new(ast::FnDecl { inputs, output })
