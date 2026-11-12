@@ -761,6 +761,7 @@ pub(super) fn complete_name_ref<'db>(
                         | TypeLocation::TypeBound
                         | TypeLocation::ImplTarget
                         | TypeLocation::ImplTrait
+                        | TypeLocation::AnchorTrait
                         | TypeLocation::Other => (),
                     }
                 }

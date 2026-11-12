@@ -42,7 +42,7 @@ PathSegment =
 | TypeAnchor
 
 TypeAnchor =
-  '<' Type ('as' PathType)? '>'
+  '<' self_ty:Type ('as' trait:PathType)? '>'
 
 ReturnTypeSyntax =
   '(' '..' ')'
