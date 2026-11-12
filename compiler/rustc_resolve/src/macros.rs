@@ -666,7 +666,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Report errors for the resolved macro.
         for (idx, segment) in path.segments.iter().enumerate() {
             if let Some(args) = &segment.args {
-                self.dcx().emit_err(diagnostics::GenericArgumentsInMacroPath { span: args.span() });
+                let span = match **args {
+                    ast::GenericArgs::Parenthesized(_) => segment.span(),
+                    _ => args.span(),
+                };
+                self.dcx().emit_err(diagnostics::GenericArgumentsInMacroPath { span });
             }
             if kind == MacroKind::Attr && segment.ident.as_str().starts_with("rustc") {
                 if idx == 0 {

@@ -354,7 +354,7 @@ impl From<ParenthesizedArgs> for Box<GenericArgs> {
 pub struct ParenthesizedArgs {
     /// ```text
     /// Foo(A, B) -> C
-    /// ^^^^^^^^^^^^^^
+    ///    ^^^^^^^^^^^
     /// ```
     pub span: Span,
 

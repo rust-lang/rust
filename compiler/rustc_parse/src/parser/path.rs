@@ -488,19 +488,18 @@ impl<'a> Parser<'a> {
                         Err(error) => return Err(error),
                     };
                     let inputs_span = lo.to(self.prev_token.span);
+                    let mut span = inputs_span;
+                    if self.token == token::RArrow {
+                        span = span.to(self.token.span);
+                    }
                     let output =
                         self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
-                    let span = ident.span.to(self.prev_token.span);
+                    if let ast::FnRetTy::Ty(ret_ty) = &output {
+                        span = span.to(ret_ty.span);
+                    }
                     ParenthesizedArgs { span, inputs, inputs_span, output }.into()
                 };
-
-                match &args {
-                    GenericArgs::Parenthesized(data) => {
-                        chain_span(path_span, data.inputs_span);
-                        chain_span(path_span, data.output.span());
-                    }
-                    _ => chain_span(path_span, args.span()),
-                }
+                chain_span(path_span, args.span());
 
                 PathSegment { ident, args: Some(args), id: ast::DUMMY_NODE_ID }
             } else {
