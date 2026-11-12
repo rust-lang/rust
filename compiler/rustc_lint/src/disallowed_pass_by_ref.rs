@@ -8,13 +8,13 @@ use crate::diagnostics::DisallowedPassByRefDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_tool_lint! {
-    /// The `disallowed_pass_by_ref` lint detects if types marked with `#[rustc_pass_by_value]` are
+    /// The `disallowed_pass_by_ref` lint detects if types marked with `#[lint::pass_by_value)]` are
     /// passed by reference. Types with this marker are usually thin wrappers around references, so
     /// there is no benefit to an extra layer of indirection. (Example: `Ty` which is a reference
     /// to an `Interned<TyKind>`)
     pub rustc::DISALLOWED_PASS_BY_REF,
     Warn,
-    "pass by reference of a type flagged as `#[rustc_pass_by_value]`",
+    "pass by reference of a type flagged as `lint::pass_by_value)]`",
     report_in_external_macro: true
 }
 
@@ -27,7 +27,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
                 if cx.tcx.trait_impl_of_assoc(ty.hir_id.owner.to_def_id()).is_some() {
                     return;
                 }
-                if let Some(t) = path_for_rustc_pass_by_value(cx, inner_ty) {
+                if let Some(t) = path_for_pass_by_value(cx, inner_ty) {
                     cx.emit_span_lint(
                         DISALLOWED_PASS_BY_REF,
                         ty.span,
@@ -40,10 +40,10 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedPassByRef {
     }
 }
 
-fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
+fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
-            Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, RustcPassByValue) => {
+            Res::Def(_, def_id) if find_attr!(cx.tcx, def_id, LintPassByValue) => {
                 let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
@@ -52,7 +52,7 @@ fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Optio
                 if let ty::Adt(adt, args) =
                     cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
                 {
-                    if find_attr!(cx.tcx, adt.did(), RustcPassByValue) {
+                    if find_attr!(cx.tcx, adt.did(), LintPassByValue) {
                         return Some(cx.tcx.def_path_str_with_args(adt.did(), *args));
                     }
                 }

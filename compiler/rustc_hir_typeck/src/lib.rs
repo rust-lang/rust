@@ -4,6 +4,8 @@
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
 #![feature(option_reference_flattening)]
+#![feature(register_tool)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 mod _match;
