@@ -498,18 +498,6 @@ impl<'a> TraitDef<'a> {
 }
 
 impl<'a> MethodDef<'a> {
-    fn call_substructure_method(
-        &self,
-        cx: &ExtCtxt<'_>,
-        span: Span,
-        fields: Substructure<'_>,
-    ) -> BlockOrExpr {
-        match self.body {
-            MethodBody::SubstructureFunc(ref func, ..) => (func)(cx, span, fields),
-            MethodBody::Directly(_) => unreachable!(),
-        }
-    }
-
     fn create_method(
         self,
         cx: &ExtCtxt<'_>,
@@ -643,7 +631,12 @@ impl<'a> MethodDef<'a> {
                 FieldInfo { span: field_span, self_expr, other_selflike_expr, def: struct_field }
             })
             .collect();
-        self.call_substructure_method(cx, span, Struct(struct_def, selflike_fields))
+
+        if let MethodBody::SubstructureFunc(func, ..) = &self.body {
+            (func)(cx, span, Struct(struct_def, selflike_fields))
+        } else {
+            unreachable!()
+        }
     }
 
     /// ```
@@ -691,7 +684,8 @@ impl<'a> MethodDef<'a> {
         // match is necessary.
         let all_fieldless = variants.iter().all(|v| v.data.fields().is_empty());
         // Traits that unify fieldless variants always use the discriminant(s).
-        let MethodBody::SubstructureFunc(_, fieldless_variants_strategy) = &self.body else {
+        let MethodBody::SubstructureFunc(body_func, fieldless_variants_strategy) = &self.body
+        else {
             unreachable!()
         };
         let unify_fieldless_variants =
@@ -709,13 +703,13 @@ impl<'a> MethodDef<'a> {
             [variant] if all_fieldless => {
                 // If there is a single variant, we don't need an operation on
                 // the discriminant(s). Just use the most degenerate result.
-                return self.call_substructure_method(cx, span, EnumMatching(variant, Vec::new()));
+                return body_func(cx, span, EnumMatching(variant, Vec::new()));
             }
             _ if all_fieldless && unify_fieldless_variants => {
                 // If the type is fieldless and the trait uses the discriminant and
                 // there are multiple variants, we need just an operation on
                 // the discriminant(s).
-                return self.call_substructure_method(cx, span, EnumDiscr(None));
+                return body_func(cx, span, EnumDiscr(None));
             }
             _ => (),
         }
@@ -802,9 +796,8 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let arm_expr = self
-                    .call_substructure_method(cx, span, EnumMatching(variant, fields))
-                    .into_expr(cx, span);
+                let arm_expr =
+                    body_func(cx, span, EnumMatching(variant, fields)).into_expr(cx, span);
 
                 cx.arm(span, single_pat, arm_expr)
             })
@@ -815,10 +808,7 @@ impl<'a> MethodDef<'a> {
         let default = match first_fieldless {
             Some(v) if unify_fieldless_variants => {
                 // We need a default case that handles all the fieldless variants.
-                Some(
-                    self.call_substructure_method(cx, span, EnumMatching(v, Vec::new()))
-                        .into_expr(cx, span),
-                )
+                Some(body_func(cx, span, EnumMatching(v, Vec::new())).into_expr(cx, span))
             }
             _ if variants.len() > 1 && self.has_other_selflike_arg => {
                 // Because we know that all the arguments will match if we reach
@@ -854,7 +844,7 @@ impl<'a> MethodDef<'a> {
         // is enough.
         if unify_fieldless_variants && variants.len() > 1 {
             // Combine a discriminant check with the match.
-            self.call_substructure_method(cx, span, EnumDiscr(Some(match_expr)))
+            body_func(cx, span, EnumDiscr(Some(match_expr)))
         } else {
             BlockOrExpr::new_expr(match_expr)
         }
