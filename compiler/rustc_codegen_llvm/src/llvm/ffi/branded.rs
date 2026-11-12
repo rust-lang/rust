@@ -89,3 +89,17 @@ unsafe extern "C" {
     /// Pointee type of the raw pointer wrapped by [`Value`].
     type ValueRaw;
 }
+
+/// Corresponds to `LLVMAttributeRef`.
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+#[rustc_pass_by_value]
+pub(crate) struct Attribute<'ll> {
+    llattr_raw: ptr::NonNull<AttributeRaw>,
+    _invariant_ll: PhantomInvariantLifetime<'ll>,
+}
+
+unsafe extern "C" {
+    /// Pointee type of the raw pointer wrapped by [`Attribute`].
+    type AttributeRaw;
+}
