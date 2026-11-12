@@ -347,7 +347,7 @@ fn stem_start(slice: &[u8]) -> usize {
         .unwrap_or(slice.len().min(MAX_LEADING_DOTS))
 }
 
-// basic workhorse for splitting stem and extension
+/// Splits the given file name into stem and extension (e.g. "file.rs" => ("file", "rs"))
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     let slice = file.as_encoded_bytes();
     let start = stem_start(slice);
@@ -3179,19 +3179,26 @@ impl Path {
     fn _with_extension(&self, extension: &OsStr) -> PathBuf {
         validate_extension(extension);
 
-        let self_bytes = self.as_os_str().as_encoded_bytes();
+        // Trim away any trailing separators and dots
+        let trimmed_path = self.iter().as_path();
+        let trimmed_path_bytes = trimmed_path.as_os_str().as_encoded_bytes();
 
         // Like `set_extension`, keep everything up to and including the file
         // stem and replace the rest. A path with no file stem has no extension
         // to set, and is copied unchanged.
-        let (slice_to_copy, set_extension) = match self.file_stem() {
-            None => (self_bytes, false),
-            Some(file_stem) => {
-                let file_stem = file_stem.as_encoded_bytes();
-                let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
-                let start = self_bytes.as_ptr().addr();
-                (&self_bytes[..end_file_stem.wrapping_sub(start)], true)
+        let file_name = trimmed_path.file_name();
+        let (slice_to_copy, set_extension) = if let Some(file_name) = file_name {
+            let file_name_len = file_name.len();
+            match rsplit_file_at_dot(file_name) {
+                (Some(file_stem), _) => (
+                    &trimmed_path_bytes
+                        [..trimmed_path_bytes.len() - file_name_len + file_stem.len()],
+                    true,
+                ),
+                _ => (trimmed_path_bytes, false),
             }
+        } else {
+            (trimmed_path_bytes, false)
         };
 
         let add_dot_and_extension = set_extension && !extension.is_empty();
