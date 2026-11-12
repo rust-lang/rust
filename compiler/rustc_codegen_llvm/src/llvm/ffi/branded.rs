@@ -75,3 +75,17 @@ unsafe extern "C" {
     /// Pointee type of the raw pointer wrapped by [`Type`].
     type TypeRaw;
 }
+
+/// Corresponds to `LLVMValueRef`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+#[rustc_pass_by_value]
+pub(crate) struct Value<'ll> {
+    llval_raw: ptr::NonNull<ValueRaw>,
+    _invariant_ll: PhantomInvariantLifetime<'ll>,
+}
+
+unsafe extern "C" {
+    /// Pointee type of the raw pointer wrapped by [`Value`].
+    type ValueRaw;
+}

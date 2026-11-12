@@ -28,9 +28,9 @@ use crate::llvm::{
 pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     cx: &CodegenCx<'ll, '_>,
     instance: Instance<'tcx>,
-    llfn: &'ll llvm::Value,
+    llfn: llvm::Value<'ll>,
     schema: &PointerAuthSchema,
-) -> &'ll llvm::Value {
+) -> llvm::Value<'ll> {
     if cx.tcx.sess.pointer_authentication_functions().is_none() {
         return llfn;
     }
@@ -106,16 +106,16 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
 /// annotated with which landing pad it's a part of. This is accomplished via
 /// the `OperandBundleDef` value created for MSVC landing pads.
 pub(crate) struct Funclet<'ll> {
-    cleanuppad: &'ll Value,
+    cleanuppad: Value<'ll>,
     operand: llvm::OperandBundleBox<'ll>,
 }
 
 impl<'ll> Funclet<'ll> {
-    pub(crate) fn new(cleanuppad: &'ll Value) -> Self {
+    pub(crate) fn new(cleanuppad: Value<'ll>) -> Self {
         Funclet { cleanuppad, operand: llvm::OperandBundleBox::new("funclet", &[cleanuppad]) }
     }
 
-    pub(crate) fn cleanuppad(&self) -> &'ll Value {
+    pub(crate) fn cleanuppad(&self) -> Value<'ll> {
         self.cleanuppad
     }
 
@@ -126,11 +126,11 @@ impl<'ll> Funclet<'ll> {
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
-    type Function = &'ll Value;
+    type Function = Value<'ll>;
     type BasicBlock = &'ll BasicBlock;
     type Funclet = Funclet<'ll>;
 
-    type Value = &'ll Value;
+    type Value = Value<'ll>;
     type Type = Type<'ll>;
     type FunctionSignature = Type<'ll>;
 
@@ -140,20 +140,20 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
-    pub(crate) fn const_array(&self, ty: Type<'ll>, elts: &[&'ll Value]) -> &'ll Value {
+    pub(crate) fn const_array(&self, ty: Type<'ll>, elts: &[Value<'ll>]) -> Value<'ll> {
         let len = u64::try_from(elts.len()).expect("LLVMConstArray2 elements len overflow");
         unsafe { llvm::LLVMConstArray2(ty, elts.as_ptr(), len) }
     }
 
-    pub(crate) fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
+    pub(crate) fn const_bytes(&self, bytes: &[u8]) -> Value<'ll> {
         bytes_in_context(self.llcx(), bytes)
     }
 
-    pub(crate) fn null_terminate_const_bytes(&self, bytes: &[u8]) -> &'ll Value {
+    pub(crate) fn null_terminate_const_bytes(&self, bytes: &[u8]) -> Value<'ll> {
         null_terminate_bytes_in_context(self.llcx(), bytes)
     }
 
-    pub(crate) fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
+    pub(crate) fn const_get_elt(&self, v: Value<'ll>, idx: u64) -> Value<'ll> {
         unsafe {
             let idx = c_uint::try_from(idx).expect("LLVMGetAggregateElement index overflow");
             let r = llvm::LLVMGetAggregateElement(v, idx).unwrap();
@@ -164,11 +164,11 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    pub(crate) fn const_null(&self, t: Type<'ll>) -> &'ll Value {
+    pub(crate) fn const_null(&self, t: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMConstNull(t) }
     }
 
-    pub(crate) fn const_struct(&self, elts: &[&'ll Value], packed: bool) -> &'ll Value {
+    pub(crate) fn const_struct(&self, elts: &[Value<'ll>], packed: bool) -> Value<'ll> {
         struct_in_context(self.llcx(), elts, packed)
     }
 }
@@ -179,7 +179,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         global_alloc: GlobalAlloc<'tcx>,
         need_symbol_name: bool,
         schema: Option<&PointerAuthSchema>,
-    ) -> Result<&'ll Value, u64> {
+    ) -> Result<Value<'ll>, u64> {
         let alloc = match global_alloc {
             GlobalAlloc::Function { instance, .. } => {
                 return Ok(self.get_fn_addr(instance, schema));
@@ -262,39 +262,39 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
-    fn const_null(&self, t: Type<'ll>) -> &'ll Value {
+    fn const_null(&self, t: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMConstNull(t) }
     }
 
-    fn const_undef(&self, t: Type<'ll>) -> &'ll Value {
+    fn const_undef(&self, t: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMGetUndef(t) }
     }
 
-    fn const_poison(&self, t: Type<'ll>) -> &'ll Value {
+    fn const_poison(&self, t: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMGetPoison(t) }
     }
 
-    fn const_bool(&self, val: bool) -> &'ll Value {
+    fn const_bool(&self, val: bool) -> Value<'ll> {
         self.const_uint(self.type_i1(), val as u64)
     }
 
-    fn const_i8(&self, i: i8) -> &'ll Value {
+    fn const_i8(&self, i: i8) -> Value<'ll> {
         self.const_int(self.type_i8(), i as i64)
     }
 
-    fn const_i16(&self, i: i16) -> &'ll Value {
+    fn const_i16(&self, i: i16) -> Value<'ll> {
         self.const_int(self.type_i16(), i as i64)
     }
 
-    fn const_i32(&self, i: i32) -> &'ll Value {
+    fn const_i32(&self, i: i32) -> Value<'ll> {
         self.const_int(self.type_i32(), i as i64)
     }
 
-    fn const_i64(&self, i: i64) -> &'ll Value {
+    fn const_i64(&self, i: i64) -> Value<'ll> {
         self.const_int(self.type_i64(), i as i64)
     }
 
-    fn const_int(&self, t: Type<'ll>, i: i64) -> &'ll Value {
+    fn const_int(&self, t: Type<'ll>, i: i64) -> Value<'ll> {
         debug_assert!(
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_int"
@@ -302,23 +302,23 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstInt(t, i as u64, TRUE) }
     }
 
-    fn const_u8(&self, i: u8) -> &'ll Value {
+    fn const_u8(&self, i: u8) -> Value<'ll> {
         self.const_uint(self.type_i8(), i as u64)
     }
 
-    fn const_u32(&self, i: u32) -> &'ll Value {
+    fn const_u32(&self, i: u32) -> Value<'ll> {
         self.const_uint(self.type_i32(), i as u64)
     }
 
-    fn const_u64(&self, i: u64) -> &'ll Value {
+    fn const_u64(&self, i: u64) -> Value<'ll> {
         self.const_uint(self.type_i64(), i)
     }
 
-    fn const_u128(&self, i: u128) -> &'ll Value {
+    fn const_u128(&self, i: u128) -> Value<'ll> {
         self.const_uint_big(self.type_i128(), i)
     }
 
-    fn const_usize(&self, i: u64) -> &'ll Value {
+    fn const_usize(&self, i: u64) -> Value<'ll> {
         let bit_size = self.data_layout().pointer_size().bits();
         if bit_size < 64 {
             // make sure it doesn't overflow
@@ -328,7 +328,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.isize_ty, i)
     }
 
-    fn const_uint(&self, t: Type<'ll>, i: u64) -> &'ll Value {
+    fn const_uint(&self, t: Type<'ll>, i: u64) -> Value<'ll> {
         debug_assert!(
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_uint"
@@ -336,7 +336,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstInt(t, i, FALSE) }
     }
 
-    fn const_uint_big(&self, t: Type<'ll>, u: u128) -> &'ll Value {
+    fn const_uint_big(&self, t: Type<'ll>, u: u128) -> Value<'ll> {
         debug_assert!(
             self.type_kind(t) == TypeKind::Integer,
             "only allows integer types in const_uint_big"
@@ -347,11 +347,11 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn const_real(&self, t: Type<'ll>, val: f64) -> &'ll Value {
+    fn const_real(&self, t: Type<'ll>, val: f64) -> Value<'ll> {
         unsafe { llvm::LLVMConstReal(t, val) }
     }
 
-    fn const_str(&self, s: &str) -> (&'ll Value, &'ll Value) {
+    fn const_str(&self, s: &str) -> (Value<'ll>, Value<'ll>) {
         let mut const_str_cache = self.const_str_cache.borrow_mut();
         let str_global = const_str_cache.get(s).copied().unwrap_or_else(|| {
             let sc = self.const_bytes(s.as_bytes());
@@ -374,16 +374,16 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         (str_global, self.const_usize(len as u64))
     }
 
-    fn const_struct(&self, elts: &[&'ll Value], packed: bool) -> &'ll Value {
+    fn const_struct(&self, elts: &[Value<'ll>], packed: bool) -> Value<'ll> {
         struct_in_context(self.llcx, elts, packed)
     }
 
-    fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
+    fn const_vector(&self, elts: &[Value<'ll>]) -> Value<'ll> {
         let len = c_uint::try_from(elts.len()).expect("LLVMConstVector elements len overflow");
         unsafe { llvm::LLVMConstVector(elts.as_ptr(), len) }
     }
 
-    fn const_to_opt_uint(&self, v: &'ll Value) -> Option<u64> {
+    fn const_to_opt_uint(&self, v: Value<'ll>) -> Option<u64> {
         try_as_const_integral(v).and_then(|v| unsafe {
             let mut i = 0u64;
             let success = llvm::LLVMRustConstIntGetZExtValue(v, &mut i);
@@ -391,7 +391,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         })
     }
 
-    fn const_to_opt_u128(&self, v: &'ll Value, sign_ext: bool) -> Option<u128> {
+    fn const_to_opt_u128(&self, v: Value<'ll>, sign_ext: bool) -> Option<u128> {
         try_as_const_integral(v).and_then(|v| unsafe {
             let (mut lo, mut hi) = (0u64, 0u64);
             let success = llvm::LLVMRustConstInt128Get(v, sign_ext, &mut hi, &mut lo);
@@ -405,7 +405,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         layout: abi::Scalar,
         llty: Type<'ll>,
         schema: Option<&PointerAuthSchema>,
-    ) -> &'ll Value {
+    ) -> Value<'ll> {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
             Scalar::Int(int) => {
@@ -464,31 +464,31 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
 }
 
 /// Get the [LLVM type][Type] of a [`Value`].
-pub(crate) fn val_ty<'ll>(v: &'ll Value) -> Type<'ll> {
+pub(crate) fn val_ty<'ll>(v: Value<'ll>) -> Type<'ll> {
     unsafe { llvm::LLVMTypeOf(v) }
 }
 
-pub(crate) fn bytes_in_context<'ll>(llcx: llvm::Context<'ll>, bytes: &[u8]) -> &'ll Value {
+pub(crate) fn bytes_in_context<'ll>(llcx: llvm::Context<'ll>, bytes: &[u8]) -> Value<'ll> {
     unsafe { llvm::LLVMConstStringInContext2(llcx, bytes.as_ptr(), bytes.len(), TRUE) }
 }
 
 pub(crate) fn null_terminate_bytes_in_context<'ll>(
     llcx: llvm::Context<'ll>,
     bytes: &[u8],
-) -> &'ll Value {
+) -> Value<'ll> {
     unsafe { llvm::LLVMConstStringInContext2(llcx, bytes.as_ptr(), bytes.len(), FALSE) }
 }
 
-pub(crate) fn named_struct<'ll>(ty: Type<'ll>, elts: &[&'ll Value]) -> &'ll Value {
+pub(crate) fn named_struct<'ll>(ty: Type<'ll>, elts: &[Value<'ll>]) -> Value<'ll> {
     let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
     unsafe { llvm::LLVMConstNamedStruct(ty, elts.as_ptr(), len) }
 }
 
 fn struct_in_context<'ll>(
     llcx: llvm::Context<'ll>,
-    elts: &[&'ll Value],
+    elts: &[Value<'ll>],
     packed: bool,
-) -> &'ll Value {
+) -> Value<'ll> {
     let len = c_uint::try_from(elts.len()).expect("LLVMConstStructInContext elements len overflow");
     unsafe { llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), len, packed.to_llvm_bool()) }
 }
@@ -498,7 +498,7 @@ fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
 }
 
-fn try_as_const_integral(v: &Value) -> Option<&ConstantInt> {
+fn try_as_const_integral<'ll>(v: Value<'ll>) -> Option<&'ll ConstantInt> {
     unsafe { llvm::LLVMIsAConstantInt(v) }
 }
 
