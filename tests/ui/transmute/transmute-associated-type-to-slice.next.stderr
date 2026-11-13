@@ -5,7 +5,7 @@ LL |     unsafe { std::mem::transmute(a) }
    |              ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `&ArrayPeano<T>` (N bits)
-   = note: target type: `&[T]` (N bits)
+   = note: target type: `&[T]` (N bits, pointer to `[T]`)
 
 error: aborting due to 1 previous error
 
