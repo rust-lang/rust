@@ -1633,7 +1633,8 @@ where
                         // Since there is no generic parameter, we can just drop the environment
                         // to prevent query cycle.
                         let typing_env = TypingEnv::fully_monomorphized();
-                        let args = alias_const.args;
+                        let args =
+                            ty::set_aliases_to_non_rigid(cx, alias_const.args).skip_normalization();
 
                         Ok((typing_env, args))
                     }
