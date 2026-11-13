@@ -899,6 +899,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ZstLiteral { .. }
+            | ExprKind::UnitEnum { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. }

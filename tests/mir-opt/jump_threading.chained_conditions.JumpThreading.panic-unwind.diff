@@ -205,7 +205,7 @@
       }
   
       bb3: {
-          _1 = chained_conditions::BacktraceStyle::Off;
+          _1 = const chained_conditions::BacktraceStyle::Off;
 -         goto -> bb19;
 +         goto -> bb33;
       }
@@ -263,7 +263,7 @@
           StorageLive(_5);
           _23 = const false;
           _5 = move ((_2 as Some).0: std::string::String);
-          _1 = chained_conditions::BacktraceStyle::Full;
+          _1 = const chained_conditions::BacktraceStyle::Full;
           drop(_5) -> [return: bb7, unwind: bb22];
       }
   
@@ -332,7 +332,7 @@
           StorageLive(_12);
           _23 = const false;
           _12 = move ((_2 as Some).0: std::string::String);
-          _1 = chained_conditions::BacktraceStyle::Off;
+          _1 = const chained_conditions::BacktraceStyle::Off;
           drop(_12) -> [return: bb10, unwind: bb22];
       }
   
@@ -342,7 +342,7 @@
           StorageDead(_15);
           StorageDead(_14);
           StorageDead(_13);
-          _1 = chained_conditions::BacktraceStyle::Short;
+          _1 = const chained_conditions::BacktraceStyle::Short;
 -         goto -> bb19;
 +         goto -> bb33;
       }

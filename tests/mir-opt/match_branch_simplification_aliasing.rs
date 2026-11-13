@@ -25,8 +25,8 @@ fn aliasing_locals(init: Foo) -> Foo {
     // CHECK: _4 = discriminant((*_3));
     // CHECK-NOT: copy (*_3);
     // CHECK: switchInt
-    // CHECK: _2 = Foo::A;
-    // CHECK: _2 = Foo::B;
+    // CHECK: _2 = const Foo::A;
+    // CHECK: _2 = const Foo::B;
     // CHECK: _0 = copy _2;
     mir! {
         let x: Foo;
@@ -74,8 +74,8 @@ fn union_fields(init: Foo) -> Foo {
     // CHECK: _3 = discriminant((_2.1: Foo));
     // CHECK-NOT: copy(_2.1: Foo);
     // CHECK: switchInt
-    // CHECK: (_2.0: Foo) = Foo::A;
-    // CHECK: (_2.0: Foo) = Foo::B;
+    // CHECK: (_2.0: Foo) = const Foo::A;
+    // CHECK: (_2.0: Foo) = const Foo::B;
     // CHECK: _0 = copy (_2.0: Foo);
     mir! {
         let u: U;

@@ -20,9 +20,9 @@
 +         _6 = const false;
           StorageLive(_1);
 +         _6 = const true;
-          _1 = S;
+          _1 = const S;
           StorageLive(_2);
-          _2 = S;
+          _2 = const S;
           StorageLive(_3);
           StorageLive(_4);
           _4 = move _2;

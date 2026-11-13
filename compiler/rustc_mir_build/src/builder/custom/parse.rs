@@ -57,6 +57,12 @@ macro_rules! parse_by_kind {
                     $self.tcx.is_diagnostic_item(rustc_span::sym::$adt, adt_def.did()) &&
                     adt_def.variants()[*variant_index].name == rustc_span::sym::$variant
                 } => $variant_expr,
+
+                ExprKind::UnitEnum { variant_index, .. } if
+                    let Some(adt_def) = expr.ty.ty_adt_def() &&
+                    $self.tcx.is_diagnostic_item(rustc_span::sym::$adt, adt_def.did()) &&
+                    adt_def.variants()[*variant_index].name == rustc_span::sym::$variant
+                 => $variant_expr,
             )*
             $(
                 $pat $(if $guard)? => $expr,

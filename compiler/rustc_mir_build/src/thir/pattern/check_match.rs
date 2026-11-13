@@ -333,6 +333,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // These evaluate to a value.
             RawBorrow { .. }
             | Adt { .. }
+            | UnitEnum { .. }
             | Array { .. }
             | Binary { .. }
             | Block { .. }

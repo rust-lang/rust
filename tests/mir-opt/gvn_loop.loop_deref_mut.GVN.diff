@@ -15,7 +15,6 @@
       let _13: ();
       let mut _14: bool;
       let mut _15: !;
-      let mut _16: Value;
       scope 1 {
           debug val_alias => _3;
           let mut _5: bool;
@@ -80,12 +79,7 @@
       bb6: {
           StorageDead(_14);
           _5 = const true;
-          StorageLive(_16);
--         _16 = Value::V1;
--         (*_1) = move _16;
-+         _16 = const Value::V1;
-+         (*_1) = const Value::V1;
-          StorageDead(_16);
+          (*_1) = const Value::V1;
           StorageDead(_11);
           goto -> bb4;
       }

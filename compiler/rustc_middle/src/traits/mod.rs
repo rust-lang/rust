@@ -249,9 +249,9 @@ pub enum ObligationCauseCode<'tcx> {
     SizedCoroutineInterior(LocalDefId),
     /// `[expr; N]` requires `type_of(expr): Copy`.
     RepeatElementCopy {
-        /// If element is a `const fn` or const ctor we display a help message suggesting
+        /// If element is a call to a `const fn` we display a help message suggesting
         /// to move it to a new `const` item while saying that `T` doesn't implement `Copy`.
-        is_constable: IsConstable,
+        is_constable: bool,
 
         /// Span of the repeat element.
         ///
@@ -434,17 +434,6 @@ pub enum ObligationCauseCode<'tcx> {
         external_impl: LocalDefId,
         declaration: DefId,
     },
-}
-
-/// Whether a value can be extracted into a const.
-/// Used for diagnostics around array repeat expressions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
-pub enum IsConstable {
-    No,
-    /// Call to a const fn
-    Fn,
-    /// Use of a const ctor
-    Ctor,
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.

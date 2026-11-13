@@ -3,21 +3,13 @@
   
   fn d2() -> () {
       let mut _0: ();
--     let mut _1: E;
--     let mut _2: (i32, E);
--     let mut _3: E;
+-     let mut _1: (i32, E);
   
       bb0: {
 -         StorageLive(_1);
--         _1 = E::B;
--         StorageLive(_2);
--         StorageLive(_3);
--         _3 = E::A;
--         _2 = (const 10_i32, move _3);
--         StorageDead(_3);
--         (_2.1: E) = move _1;
+-         _1 = (const 10_i32, const E::A);
+-         (_1.1: E) = const E::B;
 -         StorageDead(_1);
--         StorageDead(_2);
           _0 = const ();
           return;
       }

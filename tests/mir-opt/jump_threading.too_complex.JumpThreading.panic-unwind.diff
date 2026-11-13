@@ -69,7 +69,7 @@
       bb5: {
           StorageLive(_11);
           _11 = copy ((_2 as Break).0: usize);
-          _0 = Option::<i32>::None;
+          _0 = const Option::<i32>::None;
           StorageDead(_11);
           goto -> bb7;
       }
