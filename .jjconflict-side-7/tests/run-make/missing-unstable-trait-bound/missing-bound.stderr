@@ -1,0 +1,13 @@
+error[E0277]: `std::ops::Range<T>` is not an iterator
+ --> missing-bound.rs:2:14
+  |
+2 |     for _ in t {}
+  |              ^ `Range<T>` is not an iterator
+  |
+  = note: `Range` only implements `Iterator` for select types in the standard library, particularly integers; to see the full list of types, see the documentation for the unstable `Step` trait
+  = note: required for `std::ops::Range<T>` to implement `Iterator`
+  = note: required for `std::ops::Range<T>` to implement `IntoIterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,10 @@
+error: cannot determine resolution for the attribute macro `derive`
+  --> $DIR/derive-deadlock.rs:3:3
+   |
+LL | #[derive(Default)]
+   |   ^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to 1 previous error
+

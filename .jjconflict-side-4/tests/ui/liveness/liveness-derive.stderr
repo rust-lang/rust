@@ -1,0 +1,21 @@
+warning: unused variable: `a`
+  --> $DIR/liveness-derive.rs:15:13
+   |
+LL |         let a = 0;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: the lint level is defined here
+  --> $DIR/liveness-derive.rs:6:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `b`
+  --> $DIR/liveness-derive.rs:20:13
+   |
+LL |         let b = 16;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+warning: 2 warnings emitted
+

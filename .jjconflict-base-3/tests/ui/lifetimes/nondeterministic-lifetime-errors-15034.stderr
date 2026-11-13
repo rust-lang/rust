@@ -1,0 +1,14 @@
+error[E0621]: explicit lifetime required in the type of `lexer`
+  --> $DIR/nondeterministic-lifetime-errors-15034.rs:19:9
+   |
+LL |         Parser { lexer: lexer }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `lexer`
+   |
+LL |     pub fn new(lexer: &'a mut Lexer<'a>) -> Parser<'a> {
+   |                                    ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

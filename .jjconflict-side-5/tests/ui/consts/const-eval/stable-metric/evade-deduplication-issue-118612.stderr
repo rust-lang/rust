@@ -1,0 +1,72 @@
+warning: constant evaluation is taking a long time
+  --> $DIR/evade-deduplication-issue-118612.rs:8:5
+   |
+LL | /     loop {
+...  |
+LL | |     }
+   | |_____^ the const evaluator is currently interpreting this expression
+   |
+help: the constant being evaluated
+  --> $DIR/evade-deduplication-issue-118612.rs:6:1
+   |
+LL | const FOO: () = {
+   | ^^^^^^^^^^^^^
+
+warning: constant evaluation is taking a long time
+  --> $DIR/evade-deduplication-issue-118612.rs:8:5
+   |
+LL | /     loop {
+...  |
+LL | |     }
+   | |_____^ the const evaluator is currently interpreting this expression
+   |
+help: the constant being evaluated
+  --> $DIR/evade-deduplication-issue-118612.rs:6:1
+   |
+LL | const FOO: () = {
+   | ^^^^^^^^^^^^^
+
+warning: constant evaluation is taking a long time
+  --> $DIR/evade-deduplication-issue-118612.rs:8:5
+   |
+LL | /     loop {
+...  |
+LL | |     }
+   | |_____^ the const evaluator is currently interpreting this expression
+   |
+help: the constant being evaluated
+  --> $DIR/evade-deduplication-issue-118612.rs:6:1
+   |
+LL | const FOO: () = {
+   | ^^^^^^^^^^^^^
+
+warning: constant evaluation is taking a long time
+  --> $DIR/evade-deduplication-issue-118612.rs:8:5
+   |
+LL | /     loop {
+...  |
+LL | |     }
+   | |_____^ the const evaluator is currently interpreting this expression
+   |
+help: the constant being evaluated
+  --> $DIR/evade-deduplication-issue-118612.rs:6:1
+   |
+LL | const FOO: () = {
+   | ^^^^^^^^^^^^^
+
+warning: constant evaluation is taking a long time
+  --> $DIR/evade-deduplication-issue-118612.rs:8:5
+   |
+LL | /     loop {
+...  |
+LL | |     }
+   | |_____^ the const evaluator is currently interpreting this expression
+   |
+help: the constant being evaluated
+  --> $DIR/evade-deduplication-issue-118612.rs:6:1
+   |
+LL | const FOO: () = {
+   | ^^^^^^^^^^^^^
+
+warning: 5 warnings emitted
+

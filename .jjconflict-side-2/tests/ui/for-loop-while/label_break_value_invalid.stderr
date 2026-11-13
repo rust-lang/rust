@@ -1,0 +1,32 @@
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/label_break_value_invalid.rs:6:19
+   |
+LL |     macro_rules! mac2 {
+LL |         ($val:expr) => {
+LL |             break 'a $val;
+   |                   ^^ undeclared label `'a`
+...
+LL |                 mac2!(2);
+   |                 -------- in this macro invocation
+
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/label_break_value_invalid.rs:28:19
+   |
+LL |     let x: u8 = mac3!('b: {
+   |                       -- a label with a similar name is reachable
+LL |         if true {
+LL |             break 'a 3;
+   |                   ^^
+   |                   |
+   |                   undeclared label `'a`
+   |                   help: try using similarly named label: `'b`
+
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/label_break_value_invalid.rs:33:29
+   |
+LL |     let x: u8 = mac3!(break 'a 4);
+   |                             ^^ undeclared label `'a`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0426`.

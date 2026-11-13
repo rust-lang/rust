@@ -1,0 +1,67 @@
+- // MIR for `f_copy_nonoverlapping` before LowerIntrinsics
++ // MIR for `f_copy_nonoverlapping` after LowerIntrinsics
+  
+  fn f_copy_nonoverlapping() -> () {
+      let mut _0: ();
+      let _1: ();
+      let _3: ();
+      let mut _4: *const i32;
+      let mut _5: *const ();
+      let mut _6: *const ();
+      let _7: &();
+      let mut _8: *mut i32;
+      let mut _9: *mut ();
+      let mut _10: *mut ();
+      let mut _11: &mut ();
+      scope 1 {
+          debug src => _1;
+          let mut _2: ();
+          scope 2 {
+              debug dst => _2;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = ();
+          StorageLive(_2);
+          _2 = ();
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &_1;
+          _6 = &raw const (*_7);
+          _5 = copy _6;
+          _4 = move _5 as *const i32 (PtrToPtr);
+          StorageDead(_5);
+          StorageLive(_8);
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = &mut _2;
+          _10 = &raw mut (*_11);
+          _9 = copy _10;
+          _8 = move _9 as *mut i32 (PtrToPtr);
+          StorageDead(_9);
+-         _3 = std::intrinsics::copy_nonoverlapping::<i32>(move _4, move _8, const 0_usize) -> [return: bb1, unwind unreachable];
++         copy_nonoverlapping(dst = move _8, src = move _4, count = const 0_usize);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_8);
+          StorageDead(_4);
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_3);
+          _0 = const ();
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

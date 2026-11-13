@@ -1,0 +1,17 @@
+error[E0072]: recursive type `A` has infinite size
+  --> $DIR/issue-74224.rs:1:1
+   |
+LL | struct A<T> {
+   | ^^^^^^^^^^^
+...
+LL |     y: A<A<T>>,
+   |        ------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     y: Box<A<A<T>>>,
+   |        ++++       +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

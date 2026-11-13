@@ -1,0 +1,26 @@
+error: unexpected `...`
+  --> $DIR/issue-70388-without-witness.rs:7:13
+   |
+LL |     let Foo(...) = Foo(0);
+   |             ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL -     let Foo(...) = Foo(0);
+LL +     let Foo(..) = Foo(0);
+   |
+
+error: unexpected `...`
+  --> $DIR/issue-70388-without-witness.rs:8:13
+   |
+LL |     let [_, ..., _] = [0, 1];
+   |             ^^^ not a valid pattern
+   |
+help: for a rest pattern, use `..` instead of `...`
+   |
+LL -     let [_, ..., _] = [0, 1];
+LL +     let [_, .., _] = [0, 1];
+   |
+
+error: aborting due to 2 previous errors
+

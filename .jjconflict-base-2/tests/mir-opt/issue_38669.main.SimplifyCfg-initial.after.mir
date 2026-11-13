@@ -1,0 +1,52 @@
+// MIR for `main` after SimplifyCfg-initial
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: bool;
+    let mut _2: ();
+    let _3: ();
+    let mut _4: bool;
+    let mut _5: !;
+    scope 1 {
+        debug should_break => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const false;
+        FakeRead(ForLet(None), _1);
+        goto -> bb1;
+    }
+
+    bb1: {
+        falseUnwind -> [real: bb2, unwind: bb5];
+    }
+
+    bb2: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = copy _1;
+        switchInt(move _4) -> [0: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        _0 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_1);
+        return;
+    }
+
+    bb4: {
+        _3 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        _1 = const true;
+        _2 = const ();
+        goto -> bb1;
+    }
+
+    bb5 (cleanup): {
+        resume;
+    }
+}

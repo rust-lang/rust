@@ -1,0 +1,41 @@
+error: `0 as *const _` detected
+  --> tests/ui/zero_ptr.rs:4:13
+   |
+LL |     let _ = 0 as *const usize;
+   |             ^^^^^^^^^^^^^^^^^ help: try: `std::ptr::null::<usize>()`
+   |
+   = note: `-D clippy::zero-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::zero_ptr)]`
+
+error: `0 as *mut _` detected
+  --> tests/ui/zero_ptr.rs:6:13
+   |
+LL |     let _ = 0 as *mut f64;
+   |             ^^^^^^^^^^^^^ help: try: `std::ptr::null_mut::<f64>()`
+
+error: `0 as *const _` detected
+  --> tests/ui/zero_ptr.rs:8:24
+   |
+LL |     let _: *const u8 = 0 as *const _;
+   |                        ^^^^^^^^^^^^^ help: try: `std::ptr::null()`
+
+error: `0 as *const _` detected
+  --> tests/ui/zero_ptr.rs:12:9
+   |
+LL |     foo(0 as *const _, 0 as *mut _);
+   |         ^^^^^^^^^^^^^ help: try: `std::ptr::null()`
+
+error: `0 as *mut _` detected
+  --> tests/ui/zero_ptr.rs:12:24
+   |
+LL |     foo(0 as *const _, 0 as *mut _);
+   |                        ^^^^^^^^^^^ help: try: `std::ptr::null_mut()`
+
+error: `0 as *const _` detected
+  --> tests/ui/zero_ptr.rs:24:27
+   |
+LL |     let _: *const usize = 0 as *const _;
+   |                           ^^^^^^^^^^^^^ help: try: `std::ptr::null()`
+
+error: aborting due to 6 previous errors
+

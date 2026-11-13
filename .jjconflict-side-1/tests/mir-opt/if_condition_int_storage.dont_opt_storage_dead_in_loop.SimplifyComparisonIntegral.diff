@@ -1,0 +1,29 @@
+- // MIR for `dont_opt_storage_dead_in_loop` before SimplifyComparisonIntegral
++ // MIR for `dont_opt_storage_dead_in_loop` after SimplifyComparisonIntegral
+  
+  fn dont_opt_storage_dead_in_loop(_1: u32) -> () {
+      let mut _0: ();
+      let mut _2: u32;
+      let mut _3: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+          goto -> bb1;
+      }
+  
+      bb1: {
+          goto -> bb2;
+      }
+  
+      bb2: {
+          _3 = Eq(copy _2, const 123_u32);
+          StorageDead(_2);
+          switchInt(move _3) -> [1: bb1, otherwise: bb3];
+      }
+  
+      bb3: {
+          return;
+      }
+  }
+  

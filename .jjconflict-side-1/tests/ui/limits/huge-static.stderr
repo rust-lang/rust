@@ -1,0 +1,15 @@
+error[E0080]: values of the type `[u8; 2305843009213693952]` are too big for the target architecture
+  --> $DIR/huge-static.rs:18:1
+   |
+LL | static MY_TOO_BIG_ARRAY_1: TooBigArray = TooBigArray::new();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MY_TOO_BIG_ARRAY_1` failed here
+
+error[E0080]: values of the type `[u8; 2305843009213693952]` are too big for the target architecture
+  --> $DIR/huge-static.rs:20:1
+   |
+LL | static MY_TOO_BIG_ARRAY_2: [u8; HUGE_SIZE] = [0x00; HUGE_SIZE];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MY_TOO_BIG_ARRAY_2` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

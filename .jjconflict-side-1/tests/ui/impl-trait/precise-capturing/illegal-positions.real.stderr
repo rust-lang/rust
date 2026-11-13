@@ -1,0 +1,57 @@
+error: `use<...>` precise capturing syntax not allowed in supertrait bounds
+  --> $DIR/illegal-positions.rs:6:12
+   |
+LL | trait Foo: use<> {
+   |            ^^^^^
+
+error: `use<...>` precise capturing syntax not allowed in bounds
+  --> $DIR/illegal-positions.rs:8:33
+   |
+LL |     type Assoc: use<> where (): use<>;
+   |                                 ^^^^^
+
+error: `use<...>` precise capturing syntax not allowed in bounds
+  --> $DIR/illegal-positions.rs:8:17
+   |
+LL |     type Assoc: use<> where (): use<>;
+   |                 ^^^^^
+
+error: `use<...>` precise capturing syntax not allowed in bounds
+  --> $DIR/illegal-positions.rs:14:11
+   |
+LL | fn fun<T: use<>>(_: impl use<>) where (): use<> {}
+   |           ^^^^^
+
+error: `use<...>` precise capturing syntax not allowed in bounds
+  --> $DIR/illegal-positions.rs:14:43
+   |
+LL | fn fun<T: use<>>(_: impl use<>) where (): use<> {}
+   |                                           ^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/illegal-positions.rs:14:21
+   |
+LL | fn fun<T: use<>>(_: impl use<>) where (): use<> {}
+   |                     ^^^^^^^^^^
+
+error: `use<...>` precise capturing syntax not allowed in `dyn` trait object bounds
+  --> $DIR/illegal-positions.rs:21:25
+   |
+LL | fn dynamic() -> Box<dyn use<>> {}
+   |                         ^^^^^
+
+error: `use<...>` precise capturing syntax not allowed in argument-position `impl Trait`
+  --> $DIR/illegal-positions.rs:14:26
+   |
+LL | fn fun<T: use<>>(_: impl use<>) where (): use<> {}
+   |                          ^^^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/illegal-positions.rs:21:21
+   |
+LL | fn dynamic() -> Box<dyn use<>> {}
+   |                     ^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

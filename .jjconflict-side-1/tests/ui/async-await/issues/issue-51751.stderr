@@ -1,0 +1,12 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-51751.rs:9:27
+   |
+LL | fn main() {
+   | --------- this is not `async`
+LL |     let result = inc(10000);
+LL |     let finished = result.await;
+   |                           ^^^^^ only allowed inside `async` functions and blocks
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0728`.

@@ -1,0 +1,21 @@
+- // MIR for `caller` before ForceInline
++ // MIR for `caller` after ForceInline
+  
+  fn caller() -> () {
+      let mut _0: ();
+      let _1: ();
++     scope 1 (inlined Foo::callee_forced) {
++     }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = Foo::callee_forced() -> [return: bb1, unwind continue];
+-     }
+- 
+-     bb1: {
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

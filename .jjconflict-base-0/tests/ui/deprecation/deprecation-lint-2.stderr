@@ -1,0 +1,15 @@
+error: use of deprecated function `deprecation_lint::deprecated`: text
+  --> $DIR/deprecation-lint-2.rs:11:5
+   |
+LL |     macro_test!();
+   |     ^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deprecation-lint-2.rs:3:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+   = note: this error originates in the macro `macro_test` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

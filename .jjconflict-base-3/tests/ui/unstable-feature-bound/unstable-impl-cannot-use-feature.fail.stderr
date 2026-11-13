@@ -1,0 +1,17 @@
+error: unstable feature `feat_foo` is used without being enabled.
+  --> $DIR/unstable-impl-cannot-use-feature.rs:26:5
+   |
+LL |     Bar::foo();
+   |     ^^^
+   |
+   = help: The feature can be enabled by marking the current item with `#[unstable_feature_bound(feat_foo)]`
+note: required for `Bar` to implement `Foo`
+  --> $DIR/unstable-impl-cannot-use-feature.rs:20:6
+   |
+LL | #[unstable_feature_bound(feat_foo)]
+   | ----------------------------------- unsatisfied trait bound introduced here
+LL | impl Foo for Bar {
+   |      ^^^     ^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,5 @@
+//@ run-rustfix
+fn main() {
+    let x = 32;
+    dbg!(x); //~ ERROR invalid format string: python's f-string debug
+}

@@ -1,0 +1,36 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              MACRO_TYPE
+                MACRO_CALL
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "syn"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Token"
+                  BANG "!"
+                  TOKEN_TREE
+                    L_BRACK "["
+                    UNDERSCORE "_"
+                    R_BRACK "]"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

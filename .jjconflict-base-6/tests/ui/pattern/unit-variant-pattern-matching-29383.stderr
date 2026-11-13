@@ -1,0 +1,21 @@
+error[E0532]: expected tuple struct or tuple variant, found unit variant `E::A`
+  --> $DIR/unit-variant-pattern-matching-29383.rs:10:14
+   |
+LL |     A,
+   |     - `E::A` defined here
+...
+LL |         Some(E::A(..)) => {}
+   |              ^^^^^^^^ help: use this syntax instead: `E::A`
+
+error[E0532]: expected tuple struct or tuple variant, found unit variant `E::B`
+  --> $DIR/unit-variant-pattern-matching-29383.rs:12:14
+   |
+LL |     B,
+   |     - `E::B` defined here
+...
+LL |         Some(E::B(..)) => {}
+   |              ^^^^^^^^ help: use this syntax instead: `E::B`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

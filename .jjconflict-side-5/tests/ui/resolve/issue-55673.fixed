@@ -1,0 +1,21 @@
+//@ run-rustfix
+#![allow(dead_code)]
+trait Foo {
+    type Bar;
+}
+
+fn foo<T: Foo>()
+where
+    T::Bar: std::fmt::Debug,
+    //~^ ERROR associated type `Baa` not found for `T`
+{
+}
+
+fn bar<T>()
+where
+    T::Bar: std::fmt::Debug, T: Foo
+    //~^ ERROR associated type `Baa` not found for `T`
+{
+}
+
+fn main() {}

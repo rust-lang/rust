@@ -1,0 +1,14 @@
+error[E0616]: field `foo` of struct `S` is private
+  --> $DIR/issue-90483-inaccessible-field-adjustment.rs:11:18
+   |
+LL |   || s.foo() + s.foo;
+   |                  ^^^ private field
+   |
+help: a method `foo` also exists, call it with parentheses
+   |
+LL |   || s.foo() + s.foo();
+   |                     ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0616`.

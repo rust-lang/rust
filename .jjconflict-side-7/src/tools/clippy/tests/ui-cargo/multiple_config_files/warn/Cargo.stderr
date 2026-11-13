@@ -1,0 +1,2 @@
+warning: using config file `$DIR/tests/ui-cargo/multiple_config_files/warn/.clippy.toml`, `$DIR/tests/ui-cargo/multiple_config_files/warn/clippy.toml` will be ignored
+

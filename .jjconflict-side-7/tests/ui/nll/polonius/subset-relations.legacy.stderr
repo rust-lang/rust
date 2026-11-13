@@ -1,0 +1,14 @@
+error: lifetime may not live long enough
+  --> $DIR/subset-relations.rs:13:5
+   |
+LL | fn missing_subset<'a, 'b>(x: &'a u32, y: &'b u32) -> &'a u32 {
+   |                   --  -- lifetime `'b` defined here
+   |                   |
+   |                   lifetime `'a` defined here
+LL |     y
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,98 @@
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:3:17
+   |
+LL | #[rustc_dummy = 1usize]
+   |                 ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:4:17
+   |
+LL | #[rustc_dummy = 1u8]
+   |                 ^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:5:17
+   |
+LL | #[rustc_dummy = 1u16]
+   |                 ^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:6:17
+   |
+LL | #[rustc_dummy = 1u32]
+   |                 ^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:7:17
+   |
+LL | #[rustc_dummy = 1u64]
+   |                 ^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:8:17
+   |
+LL | #[rustc_dummy = 1isize]
+   |                 ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:9:17
+   |
+LL | #[rustc_dummy = 1i8]
+   |                 ^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:10:17
+   |
+LL | #[rustc_dummy = 1i16]
+   |                 ^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:11:17
+   |
+LL | #[rustc_dummy = 1i32]
+   |                 ^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:12:17
+   |
+LL | #[rustc_dummy = 1i64]
+   |                 ^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:13:17
+   |
+LL | #[rustc_dummy = 1.0f32]
+   |                 ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/suffixed-literal-meta.rs:14:17
+   |
+LL | #[rustc_dummy = 1.0f64]
+   |                 ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: aborting due to 12 previous errors
+

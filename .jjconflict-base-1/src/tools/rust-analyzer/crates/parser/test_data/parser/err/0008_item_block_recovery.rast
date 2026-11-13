@@ -1,0 +1,82 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "bar"
+  ERROR
+    L_PAREN "("
+  ERROR
+    R_PAREN ")"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    WHITESPACE "\n    "
+    IF_EXPR
+      IF_KW "if"
+      WHITESPACE " "
+      LITERAL
+        TRUE_KW "true"
+      WHITESPACE " "
+      BLOCK_EXPR
+        STMT_LIST
+          L_CURLY "{"
+          WHITESPACE "\n        "
+          LITERAL
+            INT_NUMBER "1"
+          WHITESPACE "\n    "
+          R_CURLY "}"
+      WHITESPACE " "
+      ELSE_KW "else"
+      WHITESPACE " "
+      BLOCK_EXPR
+        STMT_LIST
+          L_CURLY "{"
+          WHITESPACE "\n        "
+          BIN_EXPR
+            LITERAL
+              INT_NUMBER "2"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "3"
+          WHITESPACE "\n    "
+          R_CURLY "}"
+    WHITESPACE "\n"
+    R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "baz"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 17: expected an item
+error 17: expected an item
+error 18: expected an item
+error 20: expected an item

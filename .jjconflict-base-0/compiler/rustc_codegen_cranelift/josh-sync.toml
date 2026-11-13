@@ -1,0 +1,3 @@
+repo = "rustc_codegen_cranelift"
+filter = ":~(history=\"keep-trivial-merges,no-splice\")[:rev(<=5e120485964f4857f1ad70f7d661fd244d087668:prefix=compiler/rustc_codegen_cranelift,<=7bd21608dfab11ea536f7be8936cc7dfac5864fb:SQUASH)]:/compiler/rustc_codegen_cranelift"
+filter-version = 2

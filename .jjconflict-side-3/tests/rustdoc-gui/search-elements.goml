@@ -1,0 +1,15 @@
+// This test ensures that the search elements are not created in the DOM before being needed.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+store-value: (search_selector, "#search")
+
+// This selector is not supposed to exist yet.
+assert-false: |search_selector|
+
+// It should be generated when the search "begins".
+click: "#search-button"
+wait-for: |search_selector|
+
+// When we arrive on a page with a search query parameter, the element should also be present.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a"
+wait-for: |search_selector|

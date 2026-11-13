@@ -1,0 +1,41 @@
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo)]`
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:16:41
+   |
+LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
+   |                                         ^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const unsafe fn bar() -> u32 { unsafe { foo() } }
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:25:42
+   |
+LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
+   |                                          ^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const unsafe fn bar2() -> u32 { unsafe { foo2() } }
+   |
+
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(foo2)]`
+  --> $DIR/min_const_unsafe_fn_libstd_stability.rs:35:48
+   |
+LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
+   |                                                ^^^^^^^^^^^^
+   |
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
+help: if the caller is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const unsafe fn bar2_gated() -> u32 { unsafe { foo2_gated() } }
+   |
+
+error: aborting due to 3 previous errors
+

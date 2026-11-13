@@ -1,0 +1,18 @@
+error: visibility `pub(crate)` is not followed by an item
+  --> $DIR/pub-restricted-error-fn.rs:1:1
+   |
+LL | pub(crate) () fn foo() {}
+   | ^^^^^^^^^^ the visibility
+   |
+   = help: you likely meant to define an item, e.g., `pub(crate) fn foo() {}`
+
+error: expected item, found `(`
+  --> $DIR/pub-restricted-error-fn.rs:1:12
+   |
+LL | pub(crate) () fn foo() {}
+   |            ^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 2 previous errors
+

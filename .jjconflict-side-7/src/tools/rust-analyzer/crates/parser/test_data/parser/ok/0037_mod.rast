@@ -1,0 +1,17 @@
+SOURCE_FILE
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/issues/357"
+  WHITESPACE "\n\n"
+  DOC_COMMENT
+    INNER_DOC_COMMENT "//! docs"
+  WHITESPACE "\n"
+  MODULE
+    COMMENT "// non-docs"
+    WHITESPACE "\n"
+    MOD_KW "mod"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    WHITESPACE " "
+    ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"

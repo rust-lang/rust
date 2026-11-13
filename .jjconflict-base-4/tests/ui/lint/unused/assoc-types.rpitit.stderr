@@ -1,0 +1,15 @@
+error: unused implementer of `Future` that must be used
+  --> $DIR/assoc-types.rs:19:5
+   |
+LL |     T::foo();
+   |     ^^^^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+note: the lint level is defined here
+  --> $DIR/assoc-types.rs:4:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,47 @@
+error: `feature = "cargo-clippy"` was replaced by `clippy`
+  --> tests/ui/cfg_attr_cargo_clippy.rs:3:13
+   |
+LL | #![cfg_attr(feature = "cargo-clippy", doc = "a")]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
+   |
+   = note: `-D clippy::deprecated-clippy-cfg-attr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::deprecated_clippy_cfg_attr)]`
+
+error: `feature = "cargo-clippy"` was replaced by `clippy`
+  --> tests/ui/cfg_attr_cargo_clippy.rs:6:12
+   |
+LL | #[cfg_attr(feature = "cargo-clippy", derive(Debug))]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
+
+error: `feature = "cargo-clippy"` was replaced by `clippy`
+  --> tests/ui/cfg_attr_cargo_clippy.rs:8:16
+   |
+LL | #[cfg_attr(not(feature = "cargo-clippy"), derive(Debug))]
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
+
+error: `feature = "cargo-clippy"` was replaced by `clippy`
+  --> tests/ui/cfg_attr_cargo_clippy.rs:10:7
+   |
+LL | #[cfg(feature = "cargo-clippy")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
+
+error: `feature = "cargo-clippy"` was replaced by `clippy`
+  --> tests/ui/cfg_attr_cargo_clippy.rs:12:11
+   |
+LL | #[cfg(not(feature = "cargo-clippy"))]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
+
+error: `feature = "cargo-clippy"` was replaced by `clippy`
+  --> tests/ui/cfg_attr_cargo_clippy.rs:14:11
+   |
+LL | #[cfg(any(feature = "cargo-clippy"))]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
+
+error: `feature = "cargo-clippy"` was replaced by `clippy`
+  --> tests/ui/cfg_attr_cargo_clippy.rs:16:11
+   |
+LL | #[cfg(all(feature = "cargo-clippy"))]
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `clippy`
+
+error: aborting due to 7 previous errors
+

@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/move-out-of-non-copy.rs:10:13
+   |
+LL | fn id<T>(x: unsafe<> T) -> T {
+   |             ^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn id<T: std::marker::Copy>(x: unsafe<> T) -> T {
+   |        +++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

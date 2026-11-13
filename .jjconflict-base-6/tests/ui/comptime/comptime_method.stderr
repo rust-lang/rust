@@ -1,0 +1,8 @@
+error: comptime fns can only be called at compile time
+  --> $DIR/comptime_method.rs:15:5
+   |
+LL |     Bar.boo();
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -e
+# We want to call the binary directly, so we need to know where it ends up.
+ROOT_DIR="$(dirname "$0")"
+TARGET_DIR="$ROOT_DIR"/miri-script/target
+# Prepare cargo invocation.
+# We have to overwrite the toolchain since `+miri` might be activated and not installed.
+TOOLCHAIN="+stable"
+CARGO_FLAGS=("-q")
+# If we are being invoked for RA, use JSON output and the default toolchain (to make proc-macros
+# work in RA). This needs a different target dir to avoid mixing up the builds.
+# Also set `-Zroot-dir` so that RA can identify where the error occurred.
+if [ -n "$MIRI_IN_RA" ]; then
+  TOOLCHAIN=""
+  CARGO_FLAGS+=("--message-format=json" "-Zroot-dir=$ROOT_DIR")
+  TARGET_DIR="$ROOT_DIR"/target
+fi
+
+# Run cargo.
+${CARGO:-cargo} $TOOLCHAIN build --manifest-path "$ROOT_DIR"/miri-script/Cargo.toml \
+  --target-dir "$TARGET_DIR" "${CARGO_FLAGS[@]}" || \
+  ( echo "Failed to build miri-script. Is the 'stable' toolchain installed?"; exit 1 )
+# Instead of doing just `cargo run --manifest-path .. $@`, we invoke miri-script binary directly.
+# Invoking `cargo run` goes through rustup (that sets it's own environmental variables), which is
+# undesirable.
+"$TARGET_DIR"/debug/miri-script "$@"

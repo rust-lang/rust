@@ -1,0 +1,13 @@
+warning: method `into_iter` is never used
+  --> $DIR/associated-types-nested-projections.rs:15:8
+   |
+LL | trait IntoIterator {
+   |       ------------ method in this trait
+...
+LL |     fn into_iter(self) -> Self::Iter;
+   |        ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

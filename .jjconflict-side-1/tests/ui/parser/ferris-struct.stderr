@@ -1,0 +1,8 @@
+error: Ferris cannot be used as an identifier
+  --> $DIR/ferris-struct.rs:1:8
+   |
+LL | struct 🦀 {}
+   |        ^^ help: try using their name instead: `Ferris`
+
+error: aborting due to 1 previous error
+

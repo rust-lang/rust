@@ -1,0 +1,10 @@
+error: encountered `const_allocate` pointer in final value that was not made global
+  --> $DIR/ptr_not_made_global_mut.rs:8:1
+   |
+LL | const BAR: *mut i32 = unsafe { intrinsics::const_allocate(4, 4) as *mut i32 };
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: use `const_make_global` to turn allocated pointers into immutable globals before returning
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,24 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/regions-static-bound-on-type-param.rs:5:5
+   |
+LL | fn err_is<T: Error + 'static>(err: &dyn Error) -> bool {
+   |                               ---  - let's call the lifetime of this reference `'1`
+   |                               |
+   |                               `err` is only valid in the function body
+LL |     err.is::<T>()
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `err` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
+   |
+note: `'static` lifetime requirement from `<(dyn std::error::Error + 'static)>::is` introduced here
+  --> $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+  ::: $SRC_DIR/core/src/error.rs:LL:COL
+   |
+   = note: lifetime requirement introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

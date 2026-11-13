@@ -1,0 +1,14 @@
+warning: unused import: `foo::foo1`
+  --> $DIR/use-redundant-issue-78894.rs:44:13
+   |
+LL |         use foo::foo1;
+   |             ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/use-redundant-issue-78894.rs:4:9
+   |
+LL | #![warn(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

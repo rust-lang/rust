@@ -1,0 +1,108 @@
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:14:22
+   |
+LL |     m!(0u8, 20..=30, 30..=40);
+   |             -------  ^^^^^^^ ... with this range
+   |             |
+   |             this range overlaps on `30_u8`...
+   |
+   = note: you likely meant to write mutually exclusive ranges
+note: the lint level is defined here
+  --> $DIR/overlapping_range_endpoints.rs:1:9
+   |
+LL | #![deny(overlapping_range_endpoints)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:15:22
+   |
+LL |     m!(0u8, 30..=40, 20..=30);
+   |             -------  ^^^^^^^ ... with this range
+   |             |
+   |             this range overlaps on `30_u8`...
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:18:21
+   |
+LL |     m!(0u8, 20..30, 29..=40);
+   |             ------  ^^^^^^^ ... with this range
+   |             |
+   |             this range overlaps on `29_u8`...
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:22:22
+   |
+LL |     m!(0u8, 20..=30, 30..=31);
+   |             -------  ^^^^^^^ ... with this range
+   |             |
+   |             this range overlaps on `30_u8`...
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:26:22
+   |
+LL |     m!(0u8, 20..=30, 19..=20);
+   |             -------  ^^^^^^^ ... with this range
+   |             |
+   |             this range overlaps on `20_u8`...
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:38:9
+   |
+LL |         0..=10 => {}
+   |         ------ this range overlaps on `10_u8`...
+LL |         20..=30 => {}
+LL |         10..=20 => {}
+   |         ^^^^^^^ ... with this range
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:38:9
+   |
+LL |         20..=30 => {}
+   |         ------- this range overlaps on `20_u8`...
+LL |         10..=20 => {}
+   |         ^^^^^^^ ... with this range
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:45:10
+   |
+LL |         (0..=10, true) => {}
+   |          ------ this range overlaps on `10_u8`...
+LL |         (10..20, true) => {}
+   |          ^^^^^^ ... with this range
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:51:16
+   |
+LL |         (true, 0..=10) => {}
+   |                ------ this range overlaps on `10_u8`...
+LL |         (true, 10..20) => {}
+   |                ^^^^^^ ... with this range
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: multiple patterns overlap on their endpoints
+  --> $DIR/overlapping_range_endpoints.rs:57:14
+   |
+LL |         Some(0..=10) => {}
+   |              ------ this range overlaps on `10_u8`...
+LL |         Some(10..20) => {}
+   |              ^^^^^^ ... with this range
+   |
+   = note: you likely meant to write mutually exclusive ranges
+
+error: aborting due to 10 previous errors
+

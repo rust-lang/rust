@@ -1,0 +1,29 @@
+error: there is no argument named `a`
+  --> $DIR/format-args-capture-first-literal-is-macro.rs:15:26
+   |
+LL |     format!(identity_pm!("{a}"));
+   |                          ^^^^^
+   |
+   = note: did you intend to capture a variable `a` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: there is no argument named `a`
+  --> $DIR/format-args-capture-first-literal-is-macro.rs:17:27
+   |
+LL |     format!(identity_mbe!("{a}"));
+   |                           ^^^^^
+   |
+   = note: did you intend to capture a variable `a` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: there is no argument named `a`
+  --> $DIR/format-args-capture-first-literal-is-macro.rs:19:13
+   |
+LL |     format!(concat!("{a}"));
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: did you intend to capture a variable `a` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: aborting due to 3 previous errors
+

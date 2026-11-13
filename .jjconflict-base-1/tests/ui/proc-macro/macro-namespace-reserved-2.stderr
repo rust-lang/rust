@@ -1,0 +1,141 @@
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:25:5
+   |
+LL |     my_macro!();
+   |     ^^^^^^^^
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:29:5
+   |
+LL |     crate::my_macro_attr!();
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: expected macro, found attribute macro `crate::my_macro_attr`
+  --> $DIR/macro-namespace-reserved-2.rs:29:5
+   |
+LL |     crate::my_macro_attr!();
+   |     ^^^^^^^^^^^^^^^^^^^^ not a macro
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:34:5
+   |
+LL |     crate::MyTrait!();
+   |     ^^^^^^^^^^^^^^
+
+error: expected macro, found derive macro `crate::MyTrait`
+  --> $DIR/macro-namespace-reserved-2.rs:34:5
+   |
+LL |     crate::MyTrait!();
+   |     ^^^^^^^^^^^^^^ not a macro
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:42:3
+   |
+LL | #[my_macro_attr]
+   |   ^^^^^^^^^^^^^
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:44:3
+   |
+LL | #[MyTrait]
+   |   ^^^^^^^
+
+error: expected attribute, found derive macro `MyTrait`
+  --> $DIR/macro-namespace-reserved-2.rs:44:3
+   |
+LL | #[MyTrait]
+   |   ^^^^^^^ not an attribute
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:53:10
+   |
+LL | #[derive(my_macro_attr)]
+   |          ^^^^^^^^^^^^^
+
+error: expected derive macro, found attribute macro `my_macro_attr`
+  --> $DIR/macro-namespace-reserved-2.rs:53:10
+   |
+LL | #[derive(my_macro_attr)]
+   |          ^^^^^^^^^^^^^ not a derive macro
+   |
+help: remove from the surrounding `derive()`
+  --> $DIR/macro-namespace-reserved-2.rs:53:10
+   |
+LL | #[derive(my_macro_attr)]
+   |          ^^^^^^^^^^^^^
+   = help: add as non-Derive macro
+           `#[my_macro_attr]`
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:56:10
+   |
+LL | #[derive(MyTrait)]
+   |          ^^^^^^^
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:39:3
+   |
+LL | #[crate::my_macro]
+   |   ^^^^^^^^^^^^^^^
+
+error: expected attribute, found macro `crate::my_macro`
+  --> $DIR/macro-namespace-reserved-2.rs:39:3
+   |
+LL | #[crate::my_macro]
+   |   ^^^^^^^^^^^^^^^ not an attribute
+
+error: can't use a procedural macro from the same crate that defines it
+  --> $DIR/macro-namespace-reserved-2.rs:50:10
+   |
+LL | #[derive(crate::my_macro)]
+   |          ^^^^^^^^^^^^^^^
+
+error: expected derive macro, found macro `crate::my_macro`
+  --> $DIR/macro-namespace-reserved-2.rs:50:10
+   |
+LL | #[derive(crate::my_macro)]
+   |          ^^^^^^^^^^^^^^^ not a derive macro
+
+error: cannot find macro `my_macro_attr` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:28:5
+   |
+LL |     my_macro_attr!();
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `my_macro_attr` is in scope, but it is an attribute: `#[my_macro_attr]`
+
+error: cannot find macro `MyTrait` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:33:5
+   |
+LL |     MyTrait!();
+   |     ^^^^^^^
+   |
+   = note: `MyTrait` is in scope, but it is a derive macro: `#[derive(MyTrait)]`
+
+error: cannot find attribute `my_macro` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:38:3
+   |
+LL | #[my_macro]
+   |   ^^^^^^^^
+   |
+   = note: `my_macro` is in scope, but it is a function-like macro
+
+error: cannot find derive macro `my_macro` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:48:10
+   |
+LL | #[derive(my_macro)]
+   |          ^^^^^^^^
+   |
+   = note: `my_macro` is in scope, but it is a function-like macro
+
+error: cannot find derive macro `my_macro` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:48:10
+   |
+LL | #[derive(my_macro)]
+   |          ^^^^^^^^
+   |
+   = note: `my_macro` is in scope, but it is a function-like macro
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 20 previous errors
+

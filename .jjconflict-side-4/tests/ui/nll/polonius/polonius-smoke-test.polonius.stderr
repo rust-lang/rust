@@ -1,0 +1,59 @@
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/polonius-smoke-test.rs:10:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/polonius-smoke-test.rs:16:13
+   |
+LL |     let y = &mut x;
+   |             ------ `x` is borrowed here
+LL |     let z = x;
+   |             ^ use of borrowed `x`
+LL |     let w = y;
+   |             - borrow later used here
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/polonius-smoke-test.rs:22:13
+   |
+LL | pub fn use_while_mut_fr(x: &mut i32) -> &mut i32 {
+   |                         -  - let's call the lifetime of this reference `'1`
+   |                         |
+   |                         binding `x` declared here
+LL |     let y = &mut *x;
+   |             ------- borrow of `*x` occurs here
+LL |     let z = x;
+   |             ^ move out of `x` occurs here
+LL |     y
+   |     - returning this value requires that `*x` is borrowed for `'1`
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let y = &mut *x;
+LL +     let y = &mut x.clone();
+   |
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/polonius-smoke-test.rs:46:5
+   |
+LL |     let s = &mut 1;
+   |         - binding `s` declared here
+LL |     let r = &mut *s;
+   |             ------- borrow of `*s` occurs here
+LL |     let tmp = foo(&r);
+LL |     s;
+   |     ^ move out of `s` occurs here
+LL |     tmp;
+   |     --- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -     let r = &mut *s;
+LL +     let r = &mut s.clone();
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0503, E0505, E0515.
+For more information about an error, try `rustc --explain E0503`.

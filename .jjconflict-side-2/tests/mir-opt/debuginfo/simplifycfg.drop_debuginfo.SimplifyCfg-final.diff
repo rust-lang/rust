@@ -1,0 +1,26 @@
+- // MIR for `drop_debuginfo` before SimplifyCfg-final
++ // MIR for `drop_debuginfo` after SimplifyCfg-final
+  
+  fn drop_debuginfo(_1: &Foo, _2: bool) -> i32 {
+      debug foo_a => _3;
+      debug foo_b => _4;
+      let mut _0: i32;
+      let mut _3: &i32;
+      let mut _4: &i64;
+  
+      bb0: {
+-         switchInt(copy _2) -> [1: bb1, otherwise: bb2];
+-     }
+- 
+-     bb1: {
+-         // DBG: _3 = &((*_1).0: i32);
+-         goto -> bb2;
+-     }
+- 
+-     bb2: {
+          // DBG: _4 = &((*_1).1: i64);
+          _0 = copy ((*_1).2: i32);
+          return;
+      }
+  }
+  

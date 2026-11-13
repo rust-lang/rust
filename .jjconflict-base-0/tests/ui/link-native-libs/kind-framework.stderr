@@ -1,0 +1,9 @@
+error[E0455]: link kind `framework` is only supported on Apple targets
+  --> $DIR/kind-framework.rs:3:29
+   |
+LL | #[link(name = "foo", kind = "framework")]
+   |                             ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0455`.

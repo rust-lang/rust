@@ -1,0 +1,21 @@
+error: `mut` must precede `dyn`
+  --> $DIR/recover-ref-dyn-mut.rs:5:12
+   |
+LL |     let r: &dyn mut Trait;
+   |            ^^^^^^^^
+   |
+help: place `mut` before `dyn`
+   |
+LL -     let r: &dyn mut Trait;
+LL +     let r: &mut dyn Trait;
+   |
+
+error[E0405]: cannot find trait `Trait` in this scope
+  --> $DIR/recover-ref-dyn-mut.rs:5:21
+   |
+LL |     let r: &dyn mut Trait;
+   |                     ^^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

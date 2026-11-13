@@ -1,0 +1,24 @@
+error[E0282]: type annotations needed
+  --> $DIR/unbounded-type-param-in-fn-with-assoc-type.rs:8:5
+   |
+LL |     foo();
+   |     ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
+   |
+help: consider specifying the generic arguments
+   |
+LL |     foo::<T, U>();
+   |        ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.
+Future incompatibility report: Future breakage diagnostic:
+warning: defaults for generic parameters are not allowed here
+  --> $DIR/unbounded-type-param-in-fn-with-assoc-type.rs:3:11
+   |
+LL | fn foo<T, U = u64>() -> (T, U) {
+   |           ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+

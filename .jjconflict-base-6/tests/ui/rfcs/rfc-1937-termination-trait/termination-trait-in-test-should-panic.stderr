@@ -1,0 +1,12 @@
+error: functions using `#[should_panic]` must return `()`
+  --> $DIR/termination-trait-in-test-should-panic.rs:11:1
+   |
+LL | / fn not_a_num() -> Result<(), ParseIntError> {
+LL | |
+LL | |     let _: u32 = "abc".parse()?;
+LL | |     Ok(())
+LL | | }
+   | |_^
+
+error: aborting due to 1 previous error
+

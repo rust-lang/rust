@@ -1,0 +1,31 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/wf-in-fn-ret.rs:10:16
+   |
+LL | fn bar<T>() -> MustBeCopy<T>
+   |                ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |
+note: required by a bound in `MustBeCopy`
+  --> $DIR/wf-in-fn-ret.rs:6:22
+   |
+LL | struct MustBeCopy<T: Copy> {
+   |                      ^^^^ required by this bound in `MustBeCopy`
+help: consider restricting type parameter `T` with trait `Copy`
+   |
+LL | fn bar<T: std::marker::Copy>() -> MustBeCopy<T>
+   |         +++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/wf-in-fn-ret.rs:10:16
+   |
+LL | fn bar<T>() -> MustBeCopy<T>
+   |    ---         ^^^^^^^^^^^^^ expected `MustBeCopy<T>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected struct `MustBeCopy<T>`
+           found unit type `()`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

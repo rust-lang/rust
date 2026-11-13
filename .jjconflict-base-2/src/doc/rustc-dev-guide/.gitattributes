@@ -1,0 +1,10 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto eol=lf
+
+# git grep shouldn't match entries in huge minified javascript
+*.min.js binary
+
+# Older git versions try to fix line endings on images, this prevents it.
+*.png binary
+*.jpg binary
+*.ico binary

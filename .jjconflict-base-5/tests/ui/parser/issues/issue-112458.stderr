@@ -1,0 +1,15 @@
+error: unexpected token: `)`
+  --> $DIR/issue-112458.rs:2:22
+   |
+LL |     println!("{}", x.);
+   |                      ^
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-112458.rs:2:20
+   |
+LL |     println!("{}", x.);
+   |                    ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

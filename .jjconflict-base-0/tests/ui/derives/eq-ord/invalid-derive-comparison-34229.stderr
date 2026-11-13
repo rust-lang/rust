@@ -1,0 +1,17 @@
+error[E0277]: can't compare `Comparable` with `Comparable`
+  --> $DIR/invalid-derive-comparison-34229.rs:2:46
+   |
+LL | #[derive(PartialEq, PartialOrd)] struct Nope(Comparable);
+   |                     ----------               ^^^^^^^^^^ no implementation for `Comparable < Comparable` and `Comparable > Comparable`
+   |                     |
+   |                     in this derive macro expansion
+   |
+   = help: the trait `PartialOrd` is not implemented for `Comparable`
+help: consider annotating `Comparable` with `#[derive(PartialOrd)]`
+   |
+LL | #[derive(PartialEq)] #[derive(PartialOrd)]
+   |                      +++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

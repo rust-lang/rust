@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/trivial-anon-const-use-cases.rs:14:12
+   |
+LL |     stuff: [u8; { S + 1 }], // `S + 1` is NOT a valid const expression in this context.
+   |            ^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | struct Y<const S: usize> where [(); { S + 1 }]: {
+   |                          ++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+

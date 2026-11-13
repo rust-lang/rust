@@ -1,0 +1,27 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-80779.rs:10:28
+   |
+LL | pub fn g(_: T<'static>) -> _ {}
+   |                            ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - pub fn g(_: T<'static>) -> _ {}
+LL + pub fn g(_: T<'static>) -> () {}
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-80779.rs:5:29
+   |
+LL | pub fn f<'a>(val: T<'a>) -> _ {
+   |                             ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - pub fn f<'a>(val: T<'a>) -> _ {
+LL + pub fn f<'a>(val: T<'a>) -> () {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

@@ -1,0 +1,21 @@
+error[E0307]: invalid `self` parameter type: `Bar<Foo>`
+  --> $DIR/method_resolution4.rs:25:18
+   |
+LL |     fn foo(self: Bar<Foo>) {
+   |                  ^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error[E0307]: invalid `self` parameter type: `&Bar<Foo>`
+  --> $DIR/method_resolution4.rs:29:20
+   |
+LL |     fn foomp(self: &Bar<Foo>) {
+   |                    ^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or some type implementing `Receiver`
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0307`.

@@ -1,0 +1,18 @@
+error: const blocks cannot be used as patterns
+  --> $DIR/reject-const-block-pat-pre-expansion.rs:9:24
+   |
+LL | fn scope() { let const { 0 }; }
+   |                        ^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: const blocks cannot be used as patterns
+  --> $DIR/reject-const-block-pat-pre-expansion.rs:5:16
+   |
+LL | analyze!(const { 0 });
+   |                ^^^^^
+   |
+   = help: use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead
+
+error: aborting due to 2 previous errors
+

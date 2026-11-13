@@ -1,0 +1,14 @@
+error: cannot find macro `something_later` in this scope
+  --> $DIR/defined-later-issue-121061.rs:2:5
+   |
+LL |     something_later!();
+   |     ^^^^^^^^^^^^^^^ consider moving the definition of `something_later` before this call
+   |
+note: a macro with the same name exists, but it appears later
+  --> $DIR/defined-later-issue-121061.rs:5:14
+   |
+LL | macro_rules! something_later {
+   |              ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

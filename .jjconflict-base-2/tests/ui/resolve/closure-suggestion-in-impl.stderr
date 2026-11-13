@@ -1,0 +1,23 @@
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/closure-suggestion-in-impl.rs:10:25
+   |
+LL |                 let _ = x;
+   |                         ^
+
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/closure-suggestion-in-impl.rs:20:25
+   |
+LL |                 let _ = bar;
+   |                         ^^^
+   |
+   = help: use the `|| { ... }` closure form instead
+
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/closure-suggestion-in-impl.rs:22:25
+   |
+LL |                 let _ = x;
+   |                         ^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0434`.

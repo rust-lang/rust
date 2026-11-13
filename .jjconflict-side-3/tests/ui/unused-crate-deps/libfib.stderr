@@ -1,0 +1,11 @@
+warning: extern crate `bar` is unused in crate `libfib`
+  --> $DIR/libfib.rs:7:1
+   |
+LL | pub fn fib(n: u32) -> Vec<u32> {
+   | ^
+   |
+   = help: remove the dependency or add `use bar as _;` to the crate root
+   = note: requested on the command line with `-W unused-crate-dependencies`
+
+warning: 1 warning emitted
+

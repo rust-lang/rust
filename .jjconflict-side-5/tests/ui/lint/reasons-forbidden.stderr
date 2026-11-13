@@ -1,0 +1,31 @@
+error[E0453]: allow(unsafe_code) incompatible with previous forbid
+  --> $DIR/reasons-forbidden.rs:23:13
+   |
+LL |     unsafe_code,
+   |     ----------- `forbid` level set here
+...
+LL |     #[allow(unsafe_code)]
+   |             ^^^^^^^^^^^ overruled by previous forbid
+   |
+   = note: our errors & omissions insurance policy doesn't cover unsafe Rust
+
+error: usage of an `unsafe` block
+  --> $DIR/reasons-forbidden.rs:27:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |
+LL | |         *a_billion_dollar_mistake
+LL | |     }
+   | |_____^
+   |
+   = note: our errors & omissions insurance policy doesn't cover unsafe Rust
+note: the lint level is defined here
+  --> $DIR/reasons-forbidden.rs:12:5
+   |
+LL |     unsafe_code,
+   |     ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0453`.

@@ -1,0 +1,8 @@
+error: missing type for `const` item
+  --> $DIR/function-local-item-type-suggestion-issue-146786.rs:7:16
+   |
+LL |     const ERROR = Error;
+   |                ^ help: provide a type for the constant: `: Error`
+
+error: aborting due to 1 previous error
+

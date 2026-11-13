@@ -1,0 +1,6 @@
+error: `crate` cannot be a raw identifier
+  |
+  = note: this occurred on the command line: `--cfg=r#crate`
+
+error: invalid `--cfg` argument: `r#crate` (expected `key` or `key="value"`)
+

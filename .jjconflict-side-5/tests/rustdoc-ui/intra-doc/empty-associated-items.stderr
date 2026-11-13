@@ -1,0 +1,14 @@
+error: unresolved link to `String::`
+  --> $DIR/empty-associated-items.rs:6:7
+   |
+LL | /// [`String::`]
+   |       ^^^^^^^^ the struct `String` has no field or associated item named ``
+   |
+note: the lint level is defined here
+  --> $DIR/empty-associated-items.rs:4:8
+   |
+LL | #[deny(rustdoc::broken_intra_doc_links)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

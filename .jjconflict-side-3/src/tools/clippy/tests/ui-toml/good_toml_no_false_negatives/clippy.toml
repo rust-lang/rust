@@ -1,0 +1,3 @@
+# that one is white-listed
+[third-party]
+clippy-feature = "nightly"

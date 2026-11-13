@@ -1,0 +1,36 @@
+- // MIR for `aliasing_locals` before MatchBranchSimplification
++ // MIR for `aliasing_locals` after MatchBranchSimplification
+  
+  fn aliasing_locals(_1: Foo) -> Foo {
+      let mut _0: Foo;
+      let mut _2: Foo;
+      let mut _3: *const Foo;
+      let mut _4: u8;
+  
+      bb0: {
+          _2 = copy _1;
+          _3 = &raw const _2;
+          _4 = discriminant((*_3));
+          switchInt(copy _4) -> [0: bb2, 1: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _2 = Foo::A;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _2 = Foo::B;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          _0 = copy _2;
+          return;
+      }
+  }
+  

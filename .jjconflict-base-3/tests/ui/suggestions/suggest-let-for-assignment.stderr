@@ -1,0 +1,95 @@
+error[E0425]: cannot find value `demo` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:4:5
+   |
+LL |     demo = 1;
+   |     ^^^^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let demo = 1;
+   |     +++
+
+error[E0425]: cannot find value `demo` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:5:10
+   |
+LL |     dbg!(demo);
+   |          ^^^^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:7:5
+   |
+LL |     x = "x";
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let x = "x";
+   |     +++
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:8:23
+   |
+LL |     println!("x: {}", x);
+   |                       ^ not found in this scope
+
+error[E0425]: cannot find value `let_some_variable` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:10:5
+   |
+LL |     let_some_variable = 6;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL -     let_some_variable = 6;
+LL +     let some_variable = 6;
+   |
+
+error[E0425]: cannot find value `some_variable` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:11:35
+   |
+LL |     println!("some_variable: {}", some_variable);
+   |                                   ^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `letother_variable` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:13:5
+   |
+LL |     letother_variable = 6;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let other_variable = 6;
+   |        +
+
+error[E0425]: cannot find value `other_variable` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:14:36
+   |
+LL |     println!("other_variable: {}", other_variable);
+   |                                    ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:16:8
+   |
+LL |     if x == "x" {
+   |        ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:21:5
+   |
+LL |     y = 1 + 2;
+   |     ^
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let y = 1 + 2;
+   |     +++
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/suggest-let-for-assignment.rs:22:23
+   |
+LL |     println!("y: {}", y);
+   |                       ^ not found in this scope
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

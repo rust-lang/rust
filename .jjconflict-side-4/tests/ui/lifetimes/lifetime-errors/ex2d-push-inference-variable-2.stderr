@@ -1,0 +1,17 @@
+error: lifetime may not live long enough
+  --> $DIR/ex2d-push-inference-variable-2.rs:6:33
+   |
+LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+   |            --  -- lifetime `'c` defined here
+   |            |
+   |            lifetime `'b` defined here
+LL |     let a: &mut Vec<Ref<i32>> = x;
+   |                                 ^ assignment requires that `'c` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'c: 'b`
+   = note: requirement occurs because of a mutable reference to `Vec<Ref<'_, i32>>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

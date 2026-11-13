@@ -1,0 +1,44 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "A"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    DYN_TRAIT_TYPE
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          FOR_TYPE
+            FOR_BINDER
+              FOR_KW "for"
+              GENERIC_PARAM_LIST
+                L_ANGLE "<"
+                LIFETIME_PARAM
+                  LIFETIME
+                    LIFETIME_IDENT "'a"
+                R_ANGLE ">"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Test"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    LIFETIME_ARG
+                      LIFETIME
+                        LIFETIME_IDENT "'a"
+                    R_ANGLE ">"
+        WHITESPACE " "
+        PLUS "+"
+        WHITESPACE " "
+        TYPE_BOUND
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Send"
+    SEMICOLON ";"
+  WHITESPACE "\n"

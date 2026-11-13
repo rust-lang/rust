@@ -1,0 +1,18 @@
+error: invalid suffix `is` for number literal
+  --> $DIR/old-suffixes-are-really-forbidden.rs:2:13
+   |
+LL |     let a = 1_is;
+   |             ^^^^ invalid suffix `is`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `us` for number literal
+  --> $DIR/old-suffixes-are-really-forbidden.rs:3:13
+   |
+LL |     let b = 2_us;
+   |             ^^^^ invalid suffix `us`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to 2 previous errors
+

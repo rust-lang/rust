@@ -1,0 +1,17 @@
+error[E0107]: struct takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/typeck_type_placeholder_lifetime_2.rs:9:12
+   |
+LL |     let c: Foo<_, usize> = Foo { r: &5 };
+   |            ^^^  ------- help: remove the unnecessary generic argument
+   |            |
+   |            expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/typeck_type_placeholder_lifetime_2.rs:4:8
+   |
+LL | struct Foo<'a, T:'a> {
+   |        ^^^     -
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

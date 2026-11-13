@@ -1,0 +1,8 @@
+error: bounds cannot be used in this context
+  --> $DIR/bounds-on-type-binders.rs:10:12
+   |
+LL |     for<T: Trait> ():,
+   |            ^^^^^
+
+error: aborting due to 1 previous error
+

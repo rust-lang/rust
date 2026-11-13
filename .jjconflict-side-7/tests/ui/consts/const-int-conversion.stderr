@@ -1,0 +1,80 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-conversion.rs:2:28
+   |
+LL |     let x: &'static i32 = &(5_i32.reverse_bits());
+   |            ------------    ^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-conversion.rs:4:28
+   |
+LL |     let y: &'static i32 = &(i32::from_be_bytes([0x12, 0x34, 0x56, 0x78]));
+   |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-conversion.rs:6:28
+   |
+LL |     let z: &'static i32 = &(i32::from_le_bytes([0x12, 0x34, 0x56, 0x78]));
+   |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-conversion.rs:8:28
+   |
+LL |     let a: &'static i32 = &(i32::from_be(i32::from_ne_bytes([0x80, 0, 0, 0])));
+   |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-conversion.rs:10:29
+   |
+LL |     let b: &'static [u8] = &(0x12_34_56_78_i32.to_be_bytes());
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-conversion.rs:12:29
+   |
+LL |     let c: &'static [u8] = &(0x12_34_56_78_i32.to_le_bytes());
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-conversion.rs:14:29
+   |
+LL |     let d: &'static [u8] = &(i32::MIN.to_be().to_ne_bytes());
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

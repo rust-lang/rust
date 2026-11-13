@@ -1,0 +1,35 @@
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/nested-rtn-error-recovery-issue-133613.rs:8:16
+   |
+LL | struct Wrapper<'a, 'b, 'c, 'd>();
+   |                ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'b` is never used
+  --> $DIR/nested-rtn-error-recovery-issue-133613.rs:8:20
+   |
+LL | struct Wrapper<'a, 'b, 'c, 'd>();
+   |                    ^^ unused lifetime parameter
+   |
+   = help: consider removing `'b`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'c` is never used
+  --> $DIR/nested-rtn-error-recovery-issue-133613.rs:8:24
+   |
+LL | struct Wrapper<'a, 'b, 'c, 'd>();
+   |                        ^^ unused lifetime parameter
+   |
+   = help: consider removing `'c`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: lifetime parameter `'d` is never used
+  --> $DIR/nested-rtn-error-recovery-issue-133613.rs:8:28
+   |
+LL | struct Wrapper<'a, 'b, 'c, 'd>();
+   |                            ^^ unused lifetime parameter
+   |
+   = help: consider removing `'d`, referring to it in a field, or using a marker such as `PhantomData`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

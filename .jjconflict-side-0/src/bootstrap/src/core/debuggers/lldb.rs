@@ -1,0 +1,30 @@
+use std::path::PathBuf;
+
+use crate::core::builder::Builder;
+use crate::core::config::DebuggerPath;
+use crate::utils::exec::command;
+
+pub(crate) struct Lldb {
+    pub(crate) lldb_exe: PathBuf,
+    pub(crate) lldb_version: String,
+}
+
+pub(crate) fn discover_lldb(builder: &Builder<'_>) -> Option<Lldb> {
+    // If a path to a LLDB binary was provided, it has to exist and return some version, to avoid
+    // silent failures.
+    let (lldb_exe, explicitly_set_lldb) = match &builder.config.lldb {
+        Some(DebuggerPath::Path(path)) => (path.clone(), true),
+        Some(DebuggerPath::Discover) => (PathBuf::from("lldb"), false),
+        None => return None,
+    };
+
+    let mut cmd = command(&lldb_exe);
+    cmd.arg("--version");
+
+    if !explicitly_set_lldb {
+        cmd = cmd.allow_failure();
+    }
+    let lldb_version = cmd.run_capture(builder).stdout_if_ok().filter(|v| !v.trim().is_empty())?;
+
+    Some(Lldb { lldb_exe, lldb_version })
+}

@@ -1,0 +1,16 @@
+error: trait method `poll` will become ambiguous in Rust 2024
+  --> $DIR/future-poll-not-future-pinned.rs:17:5
+   |
+LL |     core::pin::pin!(()).poll();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `Meow::poll(&core::pin::pin!(()))`
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/prelude.html>
+note: the lint level is defined here
+  --> $DIR/future-poll-not-future-pinned.rs:7:9
+   |
+LL | #![deny(rust_2024_prelude_collisions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,261 @@
+# Linker-plugin-based LTO
+
+The `-C linker-plugin-lto` flag allows for deferring the LTO optimization
+to the actual linking step, which in turn allows for performing
+interprocedural optimizations across programming language boundaries if
+all the object files being linked were created by LLVM-based toolchains
+using the **same** LTO mode: either thin LTO or fat LTO.
+The examples would be linking Rust code together with
+Clang-compiled C/C++ code and LLVM Flang-compiled Fortran code.
+
+## Usage
+
+There are two main cases how linker-plugin-based LTO can be used:
+
+ - compiling a Rust `staticlib` that is used as a C ABI dependency
+ - compiling a Rust binary where `rustc` invokes the linker
+
+In both cases, the Rust code must be compiled with `-C linker-plugin-lto`.
+By default, this enables thin LTO, so any interoperable language code must
+also be compiled in thin LTO mode. To use fat LTO with linker-plugin-based LTO,
+the `rustc` compiler requires the additional `-C lto=fat` flag, and the
+interoperable language must likewise be compiled in fat LTO mode. Note that
+interoperable language must be compiled using the LLVM infrastructure
+(see more details in [toolchain compability](#toolchain-compatibility)).
+
+The following table summarizes how to enable thin LTO and fat LTO in
+different compilers:
+
+| Compiler | Thin LTO         | Fat LTO        |
+|:---------|-----------------:|---------------:|
+| rustc    | -Clto=thin       | -Clto=fat      |
+| clang    | -flto=thin       | -flto=full     |
+| clang++  | -flto=thin       | -flto=full     |
+| flang    | -flto=thin (WIP) | -flto=full     |
+
+### Rust `staticlib` as dependency in C/C++ program
+
+In this case the Rust compiler just has to make sure that the object files in
+the `staticlib` are in the right format. For linking, a linker with the
+LLVM plugin must be used (e.g. LLD).
+
+Using `rustc` directly:
+
+```bash
+# Compile the Rust staticlib
+rustc --crate-type=staticlib -Clinker-plugin-lto -Copt-level=2 ./lib.rs
+# Compile the C code with `-flto=thin`
+clang -c -O2 -flto=thin -o cmain.o ./cmain.c
+# Link everything, making sure that we use an appropriate linker
+clang -flto=thin -fuse-ld=lld -L . -l"name-of-your-rust-lib" -o main -O2 ./cmain.o
+```
+
+Using `cargo`:
+
+```bash
+# Compile the Rust staticlib
+RUSTFLAGS="-Clinker-plugin-lto" cargo build --release
+# Compile the C code with `-flto=thin`
+clang -c -O2 -flto=thin -o cmain.o ./cmain.c
+# Link everything, making sure that we use an appropriate linker
+clang -flto=thin -fuse-ld=lld -L . -l"name-of-your-rust-lib" -o main -O2 ./cmain.o
+```
+
+### C/C++ code as a dependency in Rust
+
+In this case the linker will be invoked by `rustc`. We again have to make sure
+that an appropriate linker is used.
+
+Using `rustc` directly:
+
+```bash
+# Compile C code with `-flto=thin`
+clang ./clib.c -flto=thin -c -o ./clib.o -O2
+# Create a static library from the C code
+ar crus ./libxyz.a ./clib.o
+
+# Invoke `rustc` with the additional arguments
+rustc -Clinker-plugin-lto -L. -Copt-level=2 -Clinker=clang -Clink-arg=-fuse-ld=lld ./main.rs
+```
+
+Using `cargo` directly:
+
+```bash
+# Compile C code with `-flto=thin`
+clang ./clib.c -flto=thin -c -o ./clib.o -O2
+# Create a static library from the C code
+ar crus ./libxyz.a ./clib.o
+
+# Set the linking arguments via RUSTFLAGS
+RUSTFLAGS="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld" cargo build --release
+```
+
+### Fortran code as a dependency in Rust
+
+Rust code can also be linked together with Fortran code compiled by LLVM `flang`.
+The following examples demonstrate fat LTO usage, as LLVM `flang` has WIP status for
+thin LTO. The same approach can be applied to compile C and C++ code with fat LTO.
+
+Using `rustc` directly:
+
+```bash
+# Compile Fortran code with `-flto=full`
+flang ./ftnlib.f90 -flto=full -c -o ./ftnlib.f90.o -O3
+# Create a static library from the Fortran code
+ar crus ./libftn.a ./ftnlib.f90.o
+
+# Invoke `rustc` with the additional arguments, `-Clto=fat` is mandatory
+rustc -Clinker-plugin-lto -Clto=fat -Clink-arg=path/to/libftn.a -Copt-level=3 -Clinker=flang -C default-linker-libraries=yes -Clink-arg=-fuse-ld=lld ./main.rs
+```
+
+Using `cargo` directly:
+
+```bash
+# Compile Fortran code with `-flto=full`
+flang ./ftnlib.f90 -flto=full -c -o ./ftnlib.f90.o -O3
+# Create a static library from the Fortran code
+ar crus ./libftn.a ./ftnlib.f90.o
+
+# Set the linking arguments via RUSTFLAGS, `-Clto=fat` is mandatory
+RUSTFLAGS="-Clinker-plugin-lto -Clto=fat -Clink-arg=path/to/libftn.a -Clinker=flang -C default-linker-libraries=yes -Clink-arg=-fuse-ld=lld" cargo build --release
+```
+
+Note, LLVM `flang` can be used as a linker driver starting from flang 21.1.8.
+The `-C default-linker-libraries=yes` option may be omitted if the Fortran
+runtime is not required; however, most Fortran code depends on the runtime,
+so enabling default linker libraries is usually necessary.
+
+### Explicitly specifying the linker plugin to be used by `rustc`
+
+If one wants to use a linker other than LLD, the LLVM linker plugin has to be
+specified explicitly. Otherwise the linker cannot read the object files. The
+path to the plugin is passed as an argument to the `-Clinker-plugin-lto`
+option:
+
+```bash
+rustc -Clinker-plugin-lto="/path/to/LLVMgold.so" -L. -Copt-level=2 ./main.rs
+```
+
+### Usage with clang-cl and x86_64-pc-windows-msvc
+
+Cross language LTO can be used with the x86_64-pc-windows-msvc target, but this requires using the
+clang-cl compiler instead of the MSVC cl.exe included with Visual Studio Build Tools, and linking
+with lld-link. Both clang-cl and lld-link can be downloaded from [LLVM's download page](https://releases.llvm.org/download.html).
+Note that most crates in the ecosystem are likely to assume you are using cl.exe if using this target
+and that some things, like for example vcpkg, [don't work very well with clang-cl](https://github.com/microsoft/vcpkg/issues/2087).
+
+You will want to make sure your rust major LLVM version matches your installed LLVM tooling version,
+otherwise it is likely you will get linker errors:
+
+```bat
+rustc -V --verbose
+clang-cl --version
+```
+
+If you are compiling any proc-macros, you will get this error:
+
+```bash
+error: Linker plugin based LTO is not supported together with `-C prefer-dynamic` when
+targeting Windows-like targets
+```
+
+This is fixed if you explicitly set the target, for example
+`cargo build --target x86_64-pc-windows-msvc`
+Without an explicit --target the flags will be passed to all compiler invocations (including build
+scripts and proc macros), see [cargo docs on rustflags](../cargo/reference/config.html#buildrustflags)
+
+If you have dependencies using the `cc` crate, you will need to set these
+environment variables:
+```bat
+set CC=clang-cl
+set CXX=clang-cl
+set CFLAGS=/clang:-flto=thin /clang:-fuse-ld=lld-link
+set CXXFLAGS=/clang:-flto=thin /clang:-fuse-ld=lld-link
+REM Needed because msvc's lib.exe crashes on LLVM LTO .obj files
+set AR=llvm-lib
+```
+
+If you are specifying lld-link as your linker by setting `linker = "lld-link.exe"` in your cargo config,
+you may run into issues with some crates that compile code with separate cargo invocations. You should be
+able to get around this problem by setting `-Clinker=lld-link` in RUSTFLAGS
+
+## Toolchain Compatibility
+
+<!-- NOTE: to update the below table, you can use this Python script:
+
+```python
+from collections import defaultdict
+import subprocess
+import sys
+
+def minor_version(version):
+    return int(version.split('.')[1])
+
+INSTALL_TOOLCHAIN = ["rustup", "toolchain", "install", "--profile", "minimal"]
+subprocess.run(INSTALL_TOOLCHAIN + ["nightly"])
+
+LOWER_BOUND = 91
+NIGHTLY_VERSION = minor_version(subprocess.run(
+    ["rustc", "+nightly", "--version"],
+    capture_output=True,
+    text=True).stdout)
+
+def llvm_version(toolchain):
+    version_text = subprocess.run(
+        ["rustc", "+{}".format(toolchain), "-Vv"],
+        capture_output=True,
+        text=True).stdout
+    return int(version_text.split("LLVM")[1].split(':')[1].split('.')[0])
+
+version_map = defaultdict(lambda: [])
+for version in range(LOWER_BOUND, NIGHTLY_VERSION - 1):
+    toolchain = "1.{}.0".format(version)
+    print("Checking", toolchain, file=sys.stderr)
+    subprocess.run(
+        INSTALL_TOOLCHAIN + ["--no-self-update", toolchain],
+        capture_output=True)
+    version_map[llvm_version(toolchain)].append(version)
+
+print("| Rust Version | Clang Version |")
+print("|--------------|---------------|")
+for clang, rust in sorted(version_map.items()):
+    if len(rust) > 1:
+        rust_range = "1.{} - 1.{}".format(rust[0], rust[-1])
+    else:
+        rust_range = "1.{}       ".format(rust[0])
+    print("| {}  |      {}       |".format(rust_range, clang))
+```
+
+-->
+
+In order for this kind of LTO to work, the LLVM linker plugin must be able to
+handle the LLVM bitcode produced by `rustc` and by compilers of all
+interoperable languages. A good rule of thumb is to use an LLVM linker plugin
+whose version is at least as new as the newest compiler involved.
+
+Best results are achieved by using a `rustc` and LLVM compilers that are based
+on the exact same version of LLVM. One can use `rustc -vV` in order to view
+the LLVM used by a given `rustc` version. Note that the version number given
+here is only an approximation as Rust sometimes uses unstable revisions of
+LLVM. However, the approximation is usually reliable.
+
+The following table shows known good combinations of toolchain versions.
+
+| Rust Version | Clang Version |
+|--------------|---------------|
+| 1.34 - 1.37  |       8       |
+| 1.38 - 1.44  |       9       |
+| 1.45 - 1.46  |      10       |
+| 1.47 - 1.51  |      11       |
+| 1.52 - 1.55  |      12       |
+| 1.56 - 1.59  |      13       |
+| 1.60 - 1.64  |      14       |
+| 1.65 - 1.69  |      15       |
+| 1.70 - 1.72  |      16       |
+| 1.73 - 1.77  |      17       |
+| 1.78 - 1.81  |      18       |
+| 1.82 - 1.86  |      19       |
+| 1.87 - 1.90  |      20       |
+| 1.91 - 1.94  |      21       |
+
+Note that the compatibility policy for this feature might change in the future.

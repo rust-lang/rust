@@ -1,0 +1,18 @@
+error: lifetime may not live long enough
+  --> $DIR/error-handling.rs:21:16
+   |
+LL | fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+...
+LL |     let u = v;
+   |             - requirement occurs due to copying this value
+...
+LL |         let _: &'b i32 = *u.0;
+   |                ^^^^^^^ type annotation requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 1 previous error
+

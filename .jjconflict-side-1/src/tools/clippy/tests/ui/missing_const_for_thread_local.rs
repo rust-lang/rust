@@ -1,0 +1,77 @@
+#![warn(clippy::missing_const_for_thread_local)]
+
+use std::cell::{Cell, RefCell};
+
+fn main() {
+    // lint and suggest const
+    thread_local! {
+        static BUF_1: RefCell<String> = RefCell::new(String::new());
+        //~^ missing_const_for_thread_local
+    }
+
+    // don't lint
+    thread_local! {
+        static BUF_2: RefCell<String> = const { RefCell::new(String::new()) };
+    }
+
+    thread_local! {
+        static SIMPLE:i32 = 1;
+        //~^ missing_const_for_thread_local
+    }
+
+    // lint and suggest const for all non const items
+    thread_local! {
+        static BUF_3_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
+        //~^ missing_const_for_thread_local
+        static CONST_MIXED_WITH:i32 = const { 1 };
+        static BUF_4_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
+        //~^ missing_const_for_thread_local
+    }
+
+    thread_local! {
+        static PEEL_ME: i32 = { 1 };
+        //~^ missing_const_for_thread_local
+
+        static PEEL_ME_MANY: i32 = { let x = 1; x * x };
+        //~^ missing_const_for_thread_local
+
+    }
+}
+
+fn issue_12637() {
+    /// The set methods on LocalKey<Cell<T>> and LocalKey<RefCell<T>> are
+    /// guaranteed to bypass the thread_local's initialization expression.
+    /// See rust-lang/rust#92122. Thus, = panic!() is a useful idiom for
+    /// forcing the use of set on each thread before it accesses the thread local in any other
+    /// manner.
+    thread_local! {
+        static STATE_12637_PANIC: Cell<usize> = panic!();
+    }
+    STATE_12637_PANIC.set(9);
+    println!("{}", STATE_12637_PANIC.get());
+
+    thread_local! {
+        static STATE_12637_TODO: Cell<usize> = todo!();
+    }
+    STATE_12637_TODO.set(9);
+    println!("{}", STATE_12637_TODO.get());
+
+    thread_local! {
+        static STATE_12637_UNIMPLEMENTED: Cell<usize> = unimplemented!();
+    }
+    STATE_12637_UNIMPLEMENTED.set(9);
+    println!("{}", STATE_12637_UNIMPLEMENTED.get());
+
+    thread_local! {
+        static STATE_12637_UNREACHABLE: Cell<usize> = unreachable!();
+    }
+    STATE_12637_UNREACHABLE.set(9);
+    println!("{}", STATE_12637_UNREACHABLE.get());
+}
+
+#[clippy::msrv = "1.58"]
+fn f() {
+    thread_local! {
+        static TLS: i32 = 1;
+    }
+}

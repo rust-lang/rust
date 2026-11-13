@@ -1,0 +1,16 @@
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<dyn OneTwo as One>::one - shim(reify)),
+           Method(<dyn OneTwo as Two>::two - shim(reify)),
+           TraitVPtr(<dyn OneTwo as Two>),
+           TraitVPtr(<dyn OneTwo as TwoAgain>),
+       ]
+  --> $DIR/empty-supertrait-with-nonempty-supersupertrait.rs:40:1
+   |
+LL | type T = dyn OneTwo;
+   | ^^^^^^
+
+error: aborting due to 1 previous error
+

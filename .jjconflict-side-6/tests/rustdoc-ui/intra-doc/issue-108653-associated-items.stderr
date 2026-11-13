@@ -1,0 +1,67 @@
+error: `Self::IDENT` is both an associated function and an associated type
+  --> $DIR/issue-108653-associated-items.rs:9:7
+   |
+LL | /// [`Self::IDENT`]
+   |       ^^^^^^^^^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/issue-108653-associated-items.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the associated function, add parentheses
+   |
+LL | /// [`Self::IDENT()`]
+   |                  ++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Self::IDENT`]
+   |       +++++
+
+error: `Self::IDENT2` is both an associated constant and an associated type
+  --> $DIR/issue-108653-associated-items.rs:23:7
+   |
+LL | /// [`Self::IDENT2`]
+   |       ^^^^^^^^^^^^ ambiguous link
+   |
+help: to link to the associated constant, prefix with `const@`
+   |
+LL | /// [`const@Self::IDENT2`]
+   |       ++++++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Self::IDENT2`]
+   |       +++++
+
+error: `Self::IDENT` is both an associated function and a variant
+  --> $DIR/issue-108653-associated-items.rs:16:7
+   |
+LL | /// [`Self::IDENT`]
+   |       ^^^^^^^^^^^ ambiguous link
+   |
+help: to link to the associated function, add parentheses
+   |
+LL | /// [`Self::IDENT()`]
+   |                  ++
+help: to link to the variant, prefix with `variant@`
+   |
+LL | /// [`variant@Self::IDENT`]
+   |       ++++++++
+
+error: `Self::IDENT2` is both an associated constant and an associated type
+  --> $DIR/issue-108653-associated-items.rs:30:7
+   |
+LL | /// [`Self::IDENT2`]
+   |       ^^^^^^^^^^^^ ambiguous link
+   |
+help: to link to the associated constant, prefix with `const@`
+   |
+LL | /// [`const@Self::IDENT2`]
+   |       ++++++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Self::IDENT2`]
+   |       +++++
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,66 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "b"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          ARRAY_EXPR
+            L_BRACK "["
+            R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          SLICE_PAT
+            L_BRACK "["
+            OR_PAT
+              PIPE "|"
+              WHITESPACE " "
+              IDENT_PAT
+                NAME
+                  IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            REST_PAT
+              DOT2 ".."
+            R_BRACK "]"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          ARRAY_EXPR
+            L_BRACK "["
+            R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

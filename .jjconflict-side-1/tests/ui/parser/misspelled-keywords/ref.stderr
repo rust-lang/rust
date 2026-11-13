@@ -1,0 +1,25 @@
+error: expected one of `)`, `,`, `@`, `if`, or `|`, found `list`
+  --> $DIR/ref.rs:4:19
+   |
+LL |         Some(refe list) => println!("{list:?}"),
+   |                   ^^^^ expected one of `)`, `,`, `@`, `if`, or `|`
+   |
+help: there is a keyword `ref` with a similar name
+   |
+LL -         Some(refe list) => println!("{list:?}"),
+LL +         Some(ref list) => println!("{list:?}"),
+   |
+
+error[E0023]: this pattern has 2 fields, but the corresponding tuple variant has 1 field
+  --> $DIR/ref.rs:4:14
+   |
+LL |         Some(refe list) => println!("{list:?}"),
+   |              ^^^^ ^^^^ expected 1 field, found 2
+   |
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: tuple variant has 1 field
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0023`.

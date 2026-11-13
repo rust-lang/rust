@@ -1,0 +1,13 @@
+warning: unexpected `cfg` condition value: `unk`
+  --> $DIR/order-independant.rs:12:7
+   |
+LL | #[cfg(a = "unk")]
+   |       ^^^^^^^^^
+   |
+   = note: expected values for `a` are: (none), `b`
+   = help: to expect this configuration use `--check-cfg=cfg(a, values("unk"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

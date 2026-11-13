@@ -1,0 +1,20 @@
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/ambiguous_wide_pointer_comparisons_suggestions.rs:8:13
+   |
+LL |     let _ = a == b;
+   |             ^^^^^^
+   |
+   = note: `#[warn(ambiguous_wide_pointer_comparisons)]` on by default
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL -     let _ = a == b;
+LL +     let _ = std::ptr::addr_eq(a, b);
+   |
+help: use explicit `std::ptr::eq` method to compare metadata and addresses
+   |
+LL -     let _ = a == b;
+LL +     let _ = std::ptr::eq(a, b);
+   |
+
+warning: 1 warning emitted
+

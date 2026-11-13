@@ -1,0 +1,23 @@
+error[E0659]: `V` is ambiguous
+  --> $DIR/issue-105069.rs:2:5
+   |
+LL | use V;
+   |     ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `V` could refer to the variant imported here
+  --> $DIR/issue-105069.rs:1:5
+   |
+LL | use self::A::*;
+   |     ^^^^^^^^^^
+   = help: consider adding an explicit import of `V` to disambiguate
+note: `V` could also refer to the variant imported here
+  --> $DIR/issue-105069.rs:3:5
+   |
+LL | use self::B::*;
+   |     ^^^^^^^^^^
+   = help: consider adding an explicit import of `V` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

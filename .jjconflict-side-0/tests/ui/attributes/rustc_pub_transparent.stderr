@@ -1,0 +1,23 @@
+error: attribute should be applied to `#[repr(transparent)]` types
+  --> $DIR/rustc_pub_transparent.rs:14:1
+   |
+LL |   #[rustc_pub_transparent]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |   #[repr(C)]
+LL | / struct S1 {
+LL | |     A: u8,
+LL | | }
+   | |_- not a `#[repr(transparent)]` type
+
+error: attribute should be applied to `#[repr(transparent)]` types
+  --> $DIR/rustc_pub_transparent.rs:20:1
+   |
+LL |   #[rustc_pub_transparent]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / struct S2<T> {
+LL | |     value: T,
+LL | | }
+   | |_- not a `#[repr(transparent)]` type
+
+error: aborting due to 2 previous errors
+

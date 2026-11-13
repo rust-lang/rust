@@ -1,0 +1,3 @@
+pair_foo = PairFoo { fst: Foo(42), snd: Foo(1337) }
+foo #0 = Foo(42)
+foo #1 = Foo(1337)

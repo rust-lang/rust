@@ -1,0 +1,88 @@
+// The goal of this test is to ensure that the sidebar is working as expected in the source
+// code pages.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+show-text: true
+
+// First, check the sidebar colors.
+define-function: (
+    "check-colors",
+    [theme, color, background_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        // Checking results colors.
+        assert-css: (".src .sidebar", {
+            "color": |color|,
+            "background-color": |background_color|
+        }, ALL)
+    },
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "color": "#c5c5c5",
+        "background_color": "#14191f",
+    }
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "color": "#ddd",
+        "background_color": "#505050",
+    }
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "color": "black",
+        "background_color": "#F5F5F5",
+    }
+)
+
+// Next, desktop mode layout.
+set-window-size: (1100, 800)
+wait-for: "#sidebar-button"
+// We check that the sidebar isn't expanded and has the expected width.
+assert-css: ("nav.sidebar", {"width": "50px"})
+// We now click on the button to expand the sidebar.
+click: "#sidebar-button"
+// We wait for the sidebar to be expanded.
+wait-for-css: (".src-sidebar-expanded nav.sidebar", {"width": "300px"})
+assert-css: (".src-sidebar-expanded nav.sidebar a", {"font-size": "14px"})
+// We collapse the sidebar.
+click: "#sidebar-button"
+// We ensure that the class has been removed.
+wait-for: "html:not(.src-sidebar-expanded)"
+assert: "nav.sidebar"
+
+// Checking that only the path to the current file is "open".
+go-to: "file://" + |DOC_PATH| + "/src/lib2/another_folder/sub_mod/mod.rs.html"
+// First we expand the sidebar again.
+click: "#sidebar-button"
+// We wait for the sidebar to be expanded.
+wait-for-css: (".src-sidebar-expanded nav.sidebar", {"width": "300px"})
+assert: "//*[@class='dir-entry' and @open]/*[text()='lib2']"
+assert: "//*[@class='dir-entry' and @open]/*[normalize-space()='another_folder']"
+assert: "//*[@class='dir-entry' and @open]/*[normalize-space()='sub_mod']"
+// Only "another_folder" should be "open" in "lib2".
+assert: "//*[@class='dir-entry' and not(@open)]/*[normalize-space()='another_mod']"
+// All other trees should be collapsed.
+assert-count: ("//*[@id='src-sidebar']/details[not(normalize-space()='lib2') and not(@open)]", 13)
+
+// We now switch to mobile mode.
+set-window-size: (600, 600)
+wait-for-css: (".src-sidebar-expanded nav.sidebar", {"left": "0px"})
+// We collapse the sidebar.
+click: (10, 10)
+// We check that the sidebar has been moved off-screen.
+assert-css: ("nav.sidebar", {"left": "-1000px"})
+// We ensure that the class has been removed.
+assert-false: ".src-sidebar-expanded"
+assert: "nav.sidebar"
+
+// Check that the topbar is not visible
+assert-false: "rustdoc-topbar"

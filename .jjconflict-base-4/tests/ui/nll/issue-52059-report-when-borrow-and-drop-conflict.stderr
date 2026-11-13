@@ -1,0 +1,48 @@
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:11:5
+   |
+LL | fn finish_1(s: S) -> &mut String {
+   |             - has type `S<'1>`
+LL |     s.url
+   |     ^^^^^ returning this value requires that `*s.url` is borrowed for `'1`
+LL | }
+   | - here, drop of `s` needs exclusive access to `*s.url`, because the type `S<'_>` implements the `Drop` trait
+
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:16:13
+   |
+LL | fn finish_2(s: S) -> &mut String {
+   |             - has type `S<'1>`
+LL |     let p = &mut *s.url; p
+   |             ^^^^^^^^^^^  - returning this value requires that `*s.url` is borrowed for `'1`
+LL | }
+   | - here, drop of `s` needs exclusive access to `*s.url`, because the type `S<'_>` implements the `Drop` trait
+
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:21:21
+   |
+LL | fn finish_3(s: S) -> &mut String {
+   |             - has type `S<'1>`
+LL |     let p: &mut _ = s.url; p
+   |                     ^^^^^  - returning this value requires that `*s.url` is borrowed for `'1`
+LL | }
+   | - here, drop of `s` needs exclusive access to `*s.url`, because the type `S<'_>` implements the `Drop` trait
+
+error[E0509]: cannot move out of type `S<'_>`, which implements the `Drop` trait
+  --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:26:13
+   |
+LL |     let p = s.url; p
+   |             ^^^^^
+   |             |
+   |             cannot move out of here
+   |             move occurs because `s.url` has type `&mut String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let p = &s.url; p
+   |             +
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0509, E0713.
+For more information about an error, try `rustc --explain E0509`.

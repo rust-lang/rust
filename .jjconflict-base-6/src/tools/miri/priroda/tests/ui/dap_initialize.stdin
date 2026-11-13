@@ -1,0 +1,3 @@
+Content-Length: 85
+
+{"seq":1,"type":"request","command":"initialize","arguments":{"adapterID":"priroda"}}

@@ -1,0 +1,20 @@
+error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
+  --> $DIR/gate_test.rs:4:12
+   |
+LL | pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: the extern "cmse-nonsecure-entry" ABI is experimental and subject to change
+  --> $DIR/gate_test.rs:4:12
+   |
+LL | pub extern "cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #75835 <https://github.com/rust-lang/rust/issues/75835> for more information
+   = help: add `#![feature(cmse_nonsecure_entry)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0570, E0658.
+For more information about an error, try `rustc --explain E0570`.

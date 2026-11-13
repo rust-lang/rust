@@ -1,0 +1,12 @@
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/issue-17718-constants-not-static.rs:5:30
+   |
+LL | fn foo() -> &'static usize { &id(FOO) }
+   |                              ^-------
+   |                              ||
+   |                              |temporary value created here
+   |                              returns a reference to data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

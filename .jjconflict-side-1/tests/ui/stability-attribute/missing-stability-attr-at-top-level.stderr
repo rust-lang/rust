@@ -1,0 +1,10 @@
+error: module has missing stability attribute
+  --> $DIR/missing-stability-attr-at-top-level.rs:1:1
+   |
+LL | / #![feature(staged_api)]
+...  |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 1 previous error
+

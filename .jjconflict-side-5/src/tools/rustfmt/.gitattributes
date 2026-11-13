@@ -1,0 +1,7 @@
+* text=auto eol=lf
+tests/source/issue-3494/crlf.rs -text
+tests/source/comment_crlf_newline.rs -text
+tests/source/configs/enum_discrim_align_threshold/40.rs -text
+tests/target/issue-3494/crlf.rs -text
+tests/target/comment_crlf_newline.rs -text
+tests/target/configs/enum_discrim_align_threshold/40.rs -text

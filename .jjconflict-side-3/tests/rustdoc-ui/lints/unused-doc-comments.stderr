@@ -1,0 +1,27 @@
+warning: unused doc comment
+  --> $DIR/unused-doc-comments.rs:10:1
+   |
+LL | /** */ m!();
+   | ^^^^^^ rustdoc does not generate documentation for macro invocations
+   |
+   = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
+   = note: `#[warn(unused_doc_comments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused doc comment
+  --> $DIR/unused-doc-comments.rs:4:10
+   |
+LL | pub fn f</** */T>() {
+   |          ^^^^^^- rustdoc does not generate documentation for generic parameters
+   |
+   = help: use `/* */` for a plain comment
+
+warning: unused doc comment
+  --> $DIR/unused-doc-comments.rs:5:5
+   |
+LL |     /** */ let ();
+   |     ^^^^^^ ------- rustdoc does not generate documentation for statements
+   |
+   = help: use `/* */` for a plain comment
+
+warning: 3 warnings emitted
+

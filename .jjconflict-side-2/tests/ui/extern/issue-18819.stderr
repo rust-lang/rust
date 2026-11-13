@@ -1,0 +1,31 @@
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/issue-18819.rs:16:5
+   |
+LL |     print_x(X);
+   |     ^^^^^^^--- argument #2 of type `&str` is missing
+   |
+note: expected `&dyn Foo<Item = bool>`, found `X`
+  --> $DIR/issue-18819.rs:16:13
+   |
+LL |     print_x(X);
+   |             ^
+   = note: expected reference `&dyn Foo<Item = bool>`
+                 found struct `X`
+note: function defined here
+  --> $DIR/issue-18819.rs:11:4
+   |
+LL | fn print_x(_: &dyn Foo<Item=bool>, extra: &str) {
+   |    ^^^^^^^ ----------------------  -----------
+help: consider borrowing here
+   |
+LL |     print_x(&X);
+   |             +
+help: provide the argument
+   |
+LL -     print_x(X);
+LL +     print_x(/* &dyn Foo<Item = bool> */, /* &str */);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

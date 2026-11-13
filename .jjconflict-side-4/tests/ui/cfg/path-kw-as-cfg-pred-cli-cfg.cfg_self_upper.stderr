@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `Self` (malformed `cfg` input, expected a valid identifier)
+

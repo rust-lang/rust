@@ -1,0 +1,13 @@
+error: cast cannot be followed by `.yield`
+  --> $DIR/postfix-yield-after-cast.rs:7:9
+   |
+LL |         0 as u8.yield
+   |         ^^^^^^^
+   |
+help: try surrounding the expression in parentheses
+   |
+LL |         (0 as u8).yield
+   |         +       +
+
+error: aborting due to 1 previous error
+

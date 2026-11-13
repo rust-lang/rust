@@ -1,0 +1,11 @@
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/trait-pub-assoc-const.rs:2:5
+   |
+LL |     pub const Foo: u32;
+   |     ^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0449`.

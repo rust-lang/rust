@@ -1,0 +1,14 @@
+error[E0107]: missing generics for struct `Arc`
+  --> $DIR/cycle-cache-err-150907.rs:100:18
+   |
+LL |     vfork_event: Arc,
+   |                  ^^^ expected at least 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL |     vfork_event: Arc<T>,
+   |                     +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

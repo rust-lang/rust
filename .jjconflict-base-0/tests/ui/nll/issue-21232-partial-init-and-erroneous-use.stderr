@@ -1,0 +1,82 @@
+error[E0381]: assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:28:5
+   |
+LL |     let d: D;
+   |         - binding declared here but left uninitialized
+LL |     d.x = 10;
+   |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:33:5
+   |
+LL |     let mut d: D;
+   |         ----- binding declared here but left uninitialized
+LL |     d.x = 10;
+   |     ^^^^^^^^ `d` assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign of moved value: `d`
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:39:5
+   |
+LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0 } };
+   |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
+LL |     drop(d);
+   |          - value moved here
+LL |     d.x = 10;
+   |     ^^^^^^^^ value assigned here after move
+   |
+note: if `D` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:11:1
+   |
+LL | struct D {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(d);
+   |          - you could clone this value
+
+error[E0381]: partially assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:45:5
+   |
+LL |     let d: D;
+   |         - binding declared here but left uninitialized
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0381]: partially assigned binding `d` isn't fully initialized
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:50:5
+   |
+LL |     let mut d: D;
+   |         ----- binding declared here but left uninitialized
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^ `d.s` partially assigned here but it isn't fully initialized
+   |
+   = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
+
+error[E0382]: assign to part of moved value: `d`
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:56:5
+   |
+LL |     let mut d = D { x: 0, s: S{ y: 0, z: 0} };
+   |         ----- move occurs because `d` has type `D`, which does not implement the `Copy` trait
+LL |     drop(d);
+   |          - value moved here
+LL |     d.s.y = 20;
+   |     ^^^^^^^^^^ value partially assigned here after move
+   |
+note: if `D` implemented `Clone`, you could clone the value
+  --> $DIR/issue-21232-partial-init-and-erroneous-use.rs:11:1
+   |
+LL | struct D {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     drop(d);
+   |          - you could clone this value
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.

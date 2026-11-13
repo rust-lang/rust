@@ -1,0 +1,14 @@
+error: expected `{`, found `)`
+  --> $DIR/issue-61858.rs:2:15
+   |
+LL |     (if foobar)
+   |               ^ expected `{`
+   |
+note: the `if` expression is missing a block after this condition
+  --> $DIR/issue-61858.rs:2:9
+   |
+LL |     (if foobar)
+   |         ^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+error[E0277]: pointers cannot be reliably compared during const eval
+  --> $DIR/different-fn-ptr-binders-during-ctfe.rs:5:5
+   |
+LL |     x == y
+   |     ^^^^^^
+   |
+note: trait `PartialEq` is implemented but not `const`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

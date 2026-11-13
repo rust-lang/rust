@@ -1,0 +1,81 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              CALL_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "S"
+                    COLON2 "::"
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "default"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "0"
+              ERROR
+                COLON ":"
+              ERROR
+                COLON ":"
+              RECORD_EXPR_FIELD
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "default"
+                  ARG_LIST
+                    L_PAREN "("
+                    R_PAREN ")"
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 19: expected DOT2
+error 43: expected DOT2
+error 45: expected COMMA
+error 45: expected identifier
+error 46: expected COMMA
+error 46: expected identifier
+error 47: expected COMMA

@@ -1,0 +1,16 @@
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
+  --> $DIR/issue-102645.rs:15:22
+   |
+LL |     Pin::new(&mut b).resume();
+   |                      ^^^^^^-- argument #1 of type `()` is missing
+   |
+note: method defined here
+  --> $SRC_DIR/core/src/ops/coroutine.rs:LL:COL
+help: provide the argument
+   |
+LL |     Pin::new(&mut b).resume(());
+   |                             ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

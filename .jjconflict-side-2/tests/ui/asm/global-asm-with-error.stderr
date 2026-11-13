@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/global-asm-with-error.rs:8:29
+   |
+LL | global_asm!("/* {} */", sym a);
+   |                             ^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

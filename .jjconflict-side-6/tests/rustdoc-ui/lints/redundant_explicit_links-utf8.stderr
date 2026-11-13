@@ -1,0 +1,59 @@
+warning: unresolved link to `…foo`
+  --> $DIR/redundant_explicit_links-utf8.rs:3:7
+   |
+LL | /// [`…foo`]
+   |       ^^^^ no item named `…foo` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
+
+warning: unresolved link to `…bar`
+  --> $DIR/redundant_explicit_links-utf8.rs:4:7
+   |
+LL | /// [`…bar`]
+   |       ^^^^ no item named `…bar` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `…`
+  --> $DIR/redundant_explicit_links-utf8.rs:8:7
+   |
+LL | /// [`…`]
+   |       ^ no item named `…` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `…`
+  --> $DIR/redundant_explicit_links-utf8.rs:9:7
+   |
+LL | /// [`…`]
+   |       ^ no item named `…` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `…`
+  --> $DIR/redundant_explicit_links-utf8.rs:13:11
+   |
+LL | /// [`…`][…]
+   |           ^ no item named `…` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `…`
+  --> $DIR/redundant_explicit_links-utf8.rs:14:11
+   |
+LL | /// [`…`][…]
+   |           ^ no item named `…` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `…………………………`
+  --> $DIR/redundant_explicit_links-utf8.rs:21:15
+   |
+LL | /// [Broken3][…………………………]
+   |               ^^^^^^^^^^ no item named `…………………………` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: 7 warnings emitted
+

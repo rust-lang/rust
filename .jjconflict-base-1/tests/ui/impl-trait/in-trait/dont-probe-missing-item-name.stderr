@@ -1,0 +1,9 @@
+error[E0220]: associated type `Output` not found for `Self`
+  --> $DIR/dont-probe-missing-item-name.rs:8:23
+   |
+LL |     fn bar() -> Self::Output;
+   |                       ^^^^^^ associated type `Output` not found
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.

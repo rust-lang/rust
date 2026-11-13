@@ -1,0 +1,59 @@
+error: expected `,`
+  --> $DIR/incorrect-placement-of-pattern-modifiers.rs:8:26
+   |
+LL |         S {ref field_name: _foo} => {}
+   |         -                ^
+   |         |
+   |         while parsing the fields for this pattern
+   |
+help: the pattern modifiers belong after the `:`
+   |
+LL -         S {ref field_name: _foo} => {}
+LL +         S {field_name: ref _foo} => {}
+   |
+
+error: expected `,`
+  --> $DIR/incorrect-placement-of-pattern-modifiers.rs:11:26
+   |
+LL |         S {mut field_name: _foo} => {}
+   |         -                ^
+   |         |
+   |         while parsing the fields for this pattern
+   |
+help: the pattern modifiers belong after the `:`
+   |
+LL -         S {mut field_name: _foo} => {}
+LL +         S {field_name: mut _foo} => {}
+   |
+
+error: expected `,`
+  --> $DIR/incorrect-placement-of-pattern-modifiers.rs:14:30
+   |
+LL |         S {ref mut field_name: _foo} => {}
+   |         -                    ^
+   |         |
+   |         while parsing the fields for this pattern
+   |
+help: the pattern modifiers belong after the `:`
+   |
+LL -         S {ref mut field_name: _foo} => {}
+LL +         S {field_name: ref mut _foo} => {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/incorrect-placement-of-pattern-modifiers.rs:17:20
+   |
+LL |     let _: usize = 3u8;
+   |            -----   ^^^ expected `usize`, found `u8`
+   |            |
+   |            expected due to this
+   |
+help: change the type of the numeric literal from `u8` to `usize`
+   |
+LL -     let _: usize = 3u8;
+LL +     let _: usize = 3usize;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

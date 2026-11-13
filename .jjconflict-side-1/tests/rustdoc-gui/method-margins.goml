@@ -1,0 +1,18 @@
+// This test ensures that the margins on methods are coherent inside an impl block.
+go-to: "file://" + |DOC_PATH| + "/test_docs/trait_members/struct.HasTrait.html#impl-TraitMembers-for-HasTrait"
+
+assert-count: ("#trait-implementations-list > .toggle", 1)
+
+compare-elements-css: (
+    // compare margin on type with margin on method
+    "#trait-implementations-list .impl-items > .toggle:nth-child(1) > summary",
+    "#trait-implementations-list .impl-items > .toggle:nth-child(2) > summary",
+    ["margin"]
+)
+
+compare-elements-css: (
+    // compare margin on type with margin on method
+    "#trait-implementations-list .impl-items > .toggle:nth-child(1)",
+    "#trait-implementations-list .impl-items > .toggle:nth-child(2)",
+    ["margin"]
+)

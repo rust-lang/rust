@@ -1,0 +1,181 @@
+warning: for loop over an `Option`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:5:14
+   |
+LL |     for _ in Some(1) {}
+   |              ^^^^^^^
+   |
+   = note: `#[warn(for_loops_over_fallibles)]` on by default
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in Some(1) {}
+LL +     while let Some(_) = Some(1) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in Some(1) {}
+LL +     if let Some(_) = Some(1) {}
+   |
+
+warning: for loop over a `Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:9:14
+   |
+LL |     for _ in Ok::<_, ()>(1) {}
+   |              ^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in Ok::<_, ()>(1) {}
+LL +     while let Ok(_) = Ok::<_, ()>(1) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in Ok::<_, ()>(1) {}
+LL +     if let Ok(_) = Ok::<_, ()>(1) {}
+   |
+
+warning: for loop over an `Option`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:15:14
+   |
+LL |     for _ in [0; 0].iter().next() {}
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+help: to iterate over `[0; 0].iter()` remove the call to `next`
+   |
+LL -     for _ in [0; 0].iter().next() {}
+LL +     for _ in [0; 0].iter().by_ref() {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in [0; 0].iter().next() {}
+LL +     if let Some(_) = [0; 0].iter().next() {}
+   |
+
+warning: for loop over a `Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:21:14
+   |
+LL |     for _ in Ok::<_, ()>([0; 0].iter()) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in Ok::<_, ()>([0; 0].iter()) {}
+LL +     while let Ok(_) = Ok::<_, ()>([0; 0].iter()) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in Ok::<_, ()>([0; 0].iter()) {}
+LL +     if let Ok(_) = Ok::<_, ()>([0; 0].iter()) {}
+   |
+
+warning: for loop over a `Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:29:14
+   |
+LL |     for _ in Ok::<_, ()>([0; 0].iter()) {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in Ok::<_, ()>([0; 0].iter()) {}
+LL +     while let Ok(_) = Ok::<_, ()>([0; 0].iter()) {}
+   |
+help: consider unwrapping the `Result` with `?` to iterate over its contents
+   |
+LL |     for _ in Ok::<_, ()>([0; 0].iter())? {}
+   |                                        +
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in Ok::<_, ()>([0; 0].iter()) {}
+LL +     if let Ok(_) = Ok::<_, ()>([0; 0].iter()) {}
+   |
+
+warning: for loop over a `Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:36:14
+   |
+LL |     for _ in Ok::<_, ()>([0; 0]) {}
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in Ok::<_, ()>([0; 0]) {}
+LL +     while let Ok(_) = Ok::<_, ()>([0; 0]) {}
+   |
+help: consider unwrapping the `Result` with `?` to iterate over its contents
+   |
+LL |     for _ in Ok::<_, ()>([0; 0])? {}
+   |                                 +
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in Ok::<_, ()>([0; 0]) {}
+LL +     if let Ok(_) = Ok::<_, ()>([0; 0]) {}
+   |
+
+warning: for loop over a `&Option`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:47:14
+   |
+LL |     for _ in &Some(1) {}
+   |              ^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in &Some(1) {}
+LL +     while let Some(_) = &Some(1) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in &Some(1) {}
+LL +     if let Some(_) = &Some(1) {}
+   |
+
+warning: for loop over a `&Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:51:14
+   |
+LL |     for _ in &Ok::<_, ()>(1) {}
+   |              ^^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in &Ok::<_, ()>(1) {}
+LL +     while let Ok(_) = &Ok::<_, ()>(1) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in &Ok::<_, ()>(1) {}
+LL +     if let Ok(_) = &Ok::<_, ()>(1) {}
+   |
+
+warning: for loop over a `&mut Option`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:57:14
+   |
+LL |     for _ in &mut Some(1) {}
+   |              ^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in &mut Some(1) {}
+LL +     while let Some(_) = &mut Some(1) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in &mut Some(1) {}
+LL +     if let Some(_) = &mut Some(1) {}
+   |
+
+warning: for loop over a `&mut Result`. This is more readably written as an `if let` statement
+  --> $DIR/for_loop_over_fallibles.rs:61:14
+   |
+LL |     for _ in &mut Ok::<_, ()>(1) {}
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+help: to check pattern in a loop use `while let`
+   |
+LL -     for _ in &mut Ok::<_, ()>(1) {}
+LL +     while let Ok(_) = &mut Ok::<_, ()>(1) {}
+   |
+help: consider using `if let` to clear intent
+   |
+LL -     for _ in &mut Ok::<_, ()>(1) {}
+LL +     if let Ok(_) = &mut Ok::<_, ()>(1) {}
+   |
+
+warning: 10 warnings emitted
+

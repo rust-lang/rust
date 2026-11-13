@@ -1,0 +1,30 @@
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/missing-feature-flag.rs:11:1
+   |
+LL |     async fn foo(_: T) -> &'static str;
+   |     ----------------------------------- `foo` from trait
+...
+LL | impl<T> MyTrait<T> for MyStruct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error[E0308]: mismatched types
+  --> $DIR/missing-feature-flag.rs:15:42
+   |
+LL |     async fn foo(_: i32) -> &'static str {}
+   |                                          ^^ expected `&str`, found `()`
+
+error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/missing-feature-flag.rs:15:5
+   |
+LL | impl<T> MyTrait<T> for MyStruct {}
+   | ------------------------------- parent `impl` is here
+...
+LL |     async fn foo(_: i32) -> &'static str {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
+   |
+   = note: to specialize, `foo` in the parent `impl` must be marked `default`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0308, E0520.
+For more information about an error, try `rustc --explain E0046`.

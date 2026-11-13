@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/mutually-recursive-impls-hang-143018.rs:26:5
+   |
+LL |     impls_trait::<A, _>();
+   |     ^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `V` declared on the function `impls_trait`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

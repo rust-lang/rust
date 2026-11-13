@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `T: Trait<()>` is not satisfied
+  --> $DIR/normalize-param-env-1.rs:29:1
+   |
+LL | / fn g<T>()
+LL | |
+LL | | where
+LL | |     T: Trait<Unit>,
+LL | |     <T as Trait<()>>::Output: Sized,
+   | |____________________________________^ the trait `Trait<()>` is not implemented for `T`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

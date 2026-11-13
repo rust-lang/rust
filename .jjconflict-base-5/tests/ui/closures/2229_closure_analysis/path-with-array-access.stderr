@@ -1,0 +1,36 @@
+error: First Pass analysis includes:
+  --> $DIR/path-with-array-access.rs:24:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", pent.points[5].x);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing pent[(0, 0)] -> Immutable
+  --> $DIR/path-with-array-access.rs:27:24
+   |
+LL |         println!("{}", pent.points[5].x);
+   |                        ^^^^^^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/path-with-array-access.rs:24:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", pent.points[5].x);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture pent[(0, 0)] -> Immutable
+  --> $DIR/path-with-array-access.rs:27:24
+   |
+LL |         println!("{}", pent.points[5].x);
+   |                        ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

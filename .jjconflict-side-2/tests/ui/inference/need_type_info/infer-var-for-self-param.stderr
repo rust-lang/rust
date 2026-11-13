@@ -1,0 +1,14 @@
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/infer-var-for-self-param.rs:5:14
+   |
+LL |     let _ = (Default::default(),);
+   |              ^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use a fully-qualified path to a specific available implementation
+   |
+LL |     let _ = (</* self type */ as Default>::default(),);
+   |              +++++++++++++++++++        +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0790`.

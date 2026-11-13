@@ -1,0 +1,83 @@
+error[E0753]: expected outer doc comment
+  --> $DIR/issue-30318.rs:5:1
+   |
+LL | //! Misplaced comment...
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn bar() { }
+   | ------------ the inner doc comment doesn't annotate this function
+   |
+help: to annotate the function, change the doc comment from inner to outer style
+   |
+LL - //! Misplaced comment...
+LL + /// Misplaced comment...
+   |
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/issue-30318.rs:9:1
+   |
+LL | #![cfg(test)]
+   | ^^^^^^^^^^^^^
+LL | fn baz() { }
+   | ------------ the inner attribute doesn't annotate this function
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+help: to annotate the function, change the attribute from inner to outer style
+   |
+LL - #![cfg(test)]
+LL + #[cfg(test)]
+   |
+
+error[E0753]: expected outer doc comment
+  --> $DIR/issue-30318.rs:13:1
+   |
+LL | /*! Misplaced comment... */
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn bat() { }
+   | ------------ the inner doc comment doesn't annotate this function
+   |
+help: to annotate the function, change the doc comment from inner to outer style
+   |
+LL - /*! Misplaced comment... */
+LL + /** Misplaced comment... */
+   |
+
+error[E0753]: expected outer doc comment
+  --> $DIR/issue-30318.rs:19:1
+   |
+LL | //! Misplaced comment...
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+help: you might have meant to write a regular comment
+   |
+LL - //! Misplaced comment...
+LL + // Misplaced comment...
+   |
+
+error[E0753]: expected outer doc comment
+  --> $DIR/issue-30318.rs:23:1
+   |
+LL | /*! Misplaced comment... */
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inner doc comments like this (starting with `//!` or `/*!`) can only appear before items
+help: you might have meant to write a regular comment
+   |
+LL - /*! Misplaced comment... */
+LL + /* Misplaced comment... */
+   |
+
+error: expected item after doc comment
+  --> $DIR/issue-30318.rs:23:1
+   |
+LL | //! Misplaced comment...
+   | ------------------------ other attributes here
+...
+LL | /*! Misplaced comment... */
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment doesn't document anything
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0753`.

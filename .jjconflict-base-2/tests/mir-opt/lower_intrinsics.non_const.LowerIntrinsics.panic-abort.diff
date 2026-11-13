@@ -1,0 +1,23 @@
+- // MIR for `non_const` before LowerIntrinsics
++ // MIR for `non_const` after LowerIntrinsics
+  
+  fn non_const() -> usize {
+      let mut _0: usize;
+      let _1: unsafe fn() -> ! {std::intrinsics::unreachable};
+      let mut _2: !;
+      let mut _3: unsafe fn() -> ! {std::intrinsics::unreachable};
+      scope 1 {
+          debug unreachable => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = std::intrinsics::unreachable;
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = move _3() -> unwind unreachable;
++         unreachable;
+      }
+  }
+  

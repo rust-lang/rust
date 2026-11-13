@@ -1,0 +1,49 @@
+error[E0277]: the trait bound `Bar<'a, T>: Foo` is not satisfied
+  --> $DIR/hir-wf-canonicalized.rs:10:15
+   |
+LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Foo` is not implemented for `Bar<'a, T>`
+  --> $DIR/hir-wf-canonicalized.rs:9:1
+   |
+LL | struct Bar<'a, T> {
+   | ^^^^^^^^^^^^^^^^^
+help: this trait has no implementations, consider adding one
+  --> $DIR/hir-wf-canonicalized.rs:3:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error[E0277]: the trait bound `(dyn Callback<Bar<'a, T>, Output = ()> + 'static): Foo` is not satisfied
+  --> $DIR/hir-wf-canonicalized.rs:10:15
+   |
+LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `(dyn Callback<Bar<'a, T>, Output = ()> + 'static)`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/hir-wf-canonicalized.rs:3:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+
+error[E0277]: the size for values of type `(dyn Callback<Bar<'a, T>, Output = ()> + 'static)` cannot be known at compilation time
+  --> $DIR/hir-wf-canonicalized.rs:10:15
+   |
+LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Callback<Bar<'a, T>, Output = ()> + 'static)`
+note: required by an implicit `Sized` bound in `Bar`
+  --> $DIR/hir-wf-canonicalized.rs:9:16
+   |
+LL | struct Bar<'a, T> {
+   |                ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | struct Bar<'a, T: ?Sized> {
+   |                 ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

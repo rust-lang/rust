@@ -1,0 +1,9 @@
+error[E0560]: struct `Foo` has no field named `field`
+  --> $DIR/adt_expr_unit_struct_extra_field.rs:9:19
+   |
+LL |     foo::<{ Foo { field: const { 1 } } }>();
+   |                   ^^^^^ `Foo` does not have this field
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0560`.

@@ -1,0 +1,21 @@
+error[E0405]: cannot find trait `SomeNonExistentTrait` in this scope
+  --> $DIR/resolve-unknown-trait.rs:1:18
+   |
+LL | trait NewTrait : SomeNonExistentTrait {}
+   |                  ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `SomeNonExistentTrait` in this scope
+  --> $DIR/resolve-unknown-trait.rs:4:6
+   |
+LL | impl SomeNonExistentTrait for isize {}
+   |      ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error[E0405]: cannot find trait `SomeNonExistentTrait` in this scope
+  --> $DIR/resolve-unknown-trait.rs:7:8
+   |
+LL | fn f<T:SomeNonExistentTrait>() {}
+   |        ^^^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0405`.

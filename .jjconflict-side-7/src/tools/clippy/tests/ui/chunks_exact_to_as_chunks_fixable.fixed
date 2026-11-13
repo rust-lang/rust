@@ -1,0 +1,34 @@
+#![warn(clippy::chunks_exact_to_as_chunks)]
+#![allow(unused, clippy::deref_addrof)]
+
+fn main() {
+    let mut arr = [1, 2, 3, 4, 5, 6, 7, 8];
+
+    for _ in arr.as_chunks::<4>().0 {}
+    //~^ chunks_exact_to_as_chunks
+    for _ in arr.as_chunks_mut::<4>().0 {}
+    //~^ chunks_exact_to_as_chunks
+    for chunk in arr.as_chunks_mut::<4>().0.iter_mut().take(2) {
+        //~^ chunks_exact_to_as_chunks
+        chunk[0] += 1; // mutate chunks
+    }
+
+    // All const expressions should produce valid Rust code
+    for _ in arr.as_chunks::<{ 1 + 1 }>().0 {}
+    //~^ chunks_exact_to_as_chunks
+    const CHUNK_SIZE: usize = 4;
+    for _ in arr.as_chunks::<{ CHUNK_SIZE + 1 }>().0 {}
+    //~^ chunks_exact_to_as_chunks
+    for _ in arr.as_chunks::<{ size_of::<u32>() }>().0 {}
+    //~^ chunks_exact_to_as_chunks
+    for _ in arr.as_chunks::<{ const { 1 } }>().0 {}
+    //~^ chunks_exact_to_as_chunks
+    for _ in arr.as_chunks::<{ unsafe { 1 } }>().0 {}
+    //~^ chunks_exact_to_as_chunks
+    struct A;
+    impl A {
+        const A: usize = 4;
+    }
+    for _ in arr.as_chunks::<{ A::A }>().0 {}
+    //~^ chunks_exact_to_as_chunks
+}

@@ -1,0 +1,76 @@
+error: doc quote line without `>` marker
+  --> tests/ui/doc/doc_lazy_blockquote.rs:4:5
+   |
+LL | /// lazy continuation
+   |     ^
+   |
+   = help: if this not intended to be a quote at all, escape it with `\>`
+   = note: `-D clippy::doc-lazy-continuation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_lazy_continuation)]`
+help: add markers to start of line
+   |
+LL | /// > lazy continuation
+   |     +
+
+error: doc quote line without `>` marker
+  --> tests/ui/doc/doc_lazy_blockquote.rs:20:5
+   |
+LL | /// > lazy continuation
+   |     ^^
+   |
+   = help: if this not intended to be a quote at all, escape it with `\>`
+help: add markers to start of line
+   |
+LL | /// > > lazy continuation
+   |       +
+
+error: doc quote line without `>` marker
+  --> tests/ui/doc/doc_lazy_blockquote.rs:27:5
+   |
+LL | /// lazy continuation
+   |     ^
+   |
+   = help: if this not intended to be a quote at all, escape it with `\>`
+help: add markers to start of line
+   |
+LL | /// > > lazy continuation
+   |     +++
+
+error: doc quote line without `>` marker
+  --> tests/ui/doc/doc_lazy_blockquote.rs:32:5
+   |
+LL | /// lazy continuation
+   |     ^
+   |
+   = help: if this not intended to be a quote at all, escape it with `\>`
+help: add markers to start of line
+   |
+LL | /// >     > lazy continuation
+   |     +++++++
+
+error: doc quote line without `>` marker
+  --> tests/ui/doc/doc_lazy_blockquote.rs:37:5
+   |
+LL | /// lazy continuation
+   |     ^
+   |
+   = help: if this not intended to be a quote at all, escape it with `\>`
+help: add markers to start of line
+   |
+LL | /// >   > lazy continuation
+   |     +++++
+
+error: doc quote line without `>` marker
+  --> tests/ui/doc/doc_lazy_blockquote.rs:45:5
+   |
+LL | ///  lazy continuation (this results in strange indentation, but still works)
+   |     ^
+   |
+   = help: if this not intended to be a quote at all, escape it with `\>`
+help: add markers to start of line
+   |
+LL | ///    > lazy continuation (this results in strange indentation, but still works)
+   |        +
+
+error: aborting due to 6 previous errors
+

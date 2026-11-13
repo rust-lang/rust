@@ -1,0 +1,17 @@
+error: attribute without where predicates
+  --> $DIR/where-clause-attrs-without-predicate.rs:10:5
+   |
+LL |     #[cfg(false)]
+   |     ^^^^^^^^^^^^^ attributes are only permitted when preceding predicates
+
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/where-clause-attrs-without-predicate.rs:18:5
+   |
+LL |     /// dangling
+   |     ^^^^^^^^^^^^
+   |
+   = help: doc comments must come before what they document, if a comment was intended use `//`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0585`.

@@ -1,0 +1,27 @@
+error[E0275]: overflow normalizing the type alias `X2`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:6:1
+   |
+LL | type X1 = X2;
+   | ^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error[E0275]: overflow normalizing the type alias `X3`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:9:1
+   |
+LL | type X2 = X3;
+   | ^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error[E0275]: overflow normalizing the type alias `X1`
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:11:1
+   |
+LL | type X3 = X1;
+   | ^^^^^^^
+   |
+   = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

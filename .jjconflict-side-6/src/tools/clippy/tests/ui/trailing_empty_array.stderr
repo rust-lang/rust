@@ -1,0 +1,129 @@
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:6:1
+   |
+LL | / struct RarelyUseful {
+LL | |
+LL | |     field: i32,
+LL | |     last: [usize; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `RarelyUseful` with `#[repr(C)]` or another `repr` attribute
+   = note: `-D clippy::trailing-empty-array` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::trailing_empty_array)]`
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:12:1
+   |
+LL | / struct OnlyField {
+LL | |
+LL | |     first_and_last: [usize; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `OnlyField` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:17:1
+   |
+LL | / struct GenericArrayType<T> {
+LL | |
+LL | |     field: i32,
+LL | |     last: [T; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `GenericArrayType` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:24:1
+   |
+LL | / struct OnlyAnotherAttribute {
+LL | |
+LL | |     field: i32,
+LL | |     last: [usize; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `OnlyAnotherAttribute` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:31:1
+   |
+LL | / struct OnlyADeriveAttribute {
+LL | |
+LL | |     field: i32,
+LL | |     last: [usize; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `OnlyADeriveAttribute` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:38:1
+   |
+LL | / struct ZeroSizedWithConst {
+LL | |
+LL | |     field: i32,
+LL | |     last: [usize; ZERO],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `ZeroSizedWithConst` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:48:1
+   |
+LL | / struct ZeroSizedWithConstFunction {
+LL | |
+LL | |     field: i32,
+LL | |     last: [usize; compute_zero()],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `ZeroSizedWithConstFunction` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:57:1
+   |
+LL | / struct ZeroSizedWithConstFunction2 {
+LL | |
+LL | |     field: i32,
+LL | |     last: [usize; compute_zero_from_arg(1)],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `ZeroSizedWithConstFunction2` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:63:1
+   |
+LL | struct ZeroSizedArrayWrapper([usize; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider annotating `ZeroSizedArrayWrapper` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:66:1
+   |
+LL | struct TupleStruct(i32, [usize; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider annotating `TupleStruct` with `#[repr(C)]` or another `repr` attribute
+
+error: trailing zero-sized array in a struct which is not marked with a `repr` attribute
+  --> tests/ui/trailing_empty_array.rs:69:1
+   |
+LL | / struct LotsOfFields {
+LL | |
+LL | |     f1: u32,
+LL | |     f2: u32,
+...  |
+LL | |     last: [usize; 0],
+LL | | }
+   | |_^
+   |
+   = help: consider annotating `LotsOfFields` with `#[repr(C)]` or another `repr` attribute
+
+error: aborting due to 11 previous errors
+

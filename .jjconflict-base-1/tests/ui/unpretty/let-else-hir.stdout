@@ -1,0 +1,18 @@
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
+//@ edition: 2015
+
+
+
+fn foo(x:
+        Option<u32>) {
+    let Some(_) = x else
+        {
+
+        { ::std::rt::begin_panic("explicit panic") }
+    };
+}
+fn main() { }

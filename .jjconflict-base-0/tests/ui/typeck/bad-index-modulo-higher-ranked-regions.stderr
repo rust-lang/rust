@@ -1,0 +1,9 @@
+error[E0608]: cannot index into a value of type `Map<[usize; 1], {closure@$DIR/bad-index-modulo-higher-ranked-regions.rs:23:32: 23:45}>`
+  --> $DIR/bad-index-modulo-higher-ranked-regions.rs:23:55
+   |
+LL |     Map { inner: [0_usize], f: |_, i: usize| 1_usize }[0];
+   |                                                       ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0608`.

@@ -1,0 +1,17 @@
+error[E0004]: non-exhaustive patterns: type `()` is non-empty
+  --> $DIR/issue-3096-1.rs:2:11
+   |
+LL |     match () { }
+   |           ^^
+   |
+   = note: the matched value is of type `()`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   |
+LL ~     match () {
+LL +         _ => todo!(),
+LL ~     }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0004`.

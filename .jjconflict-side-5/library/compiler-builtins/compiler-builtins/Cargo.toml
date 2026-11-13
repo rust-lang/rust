@@ -1,0 +1,62 @@
+# NOTE: Must be kept in sync with `../builtins-shim/Cargo.toml`.
+#
+# This manifest is actually used in-tree by rust-lang/rust,
+# `../builtins-shim/Cargo.toml` is used by out-of-tree testing. See the other
+# manifest for further details.
+
+[package]
+name = "compiler_builtins"
+version = "0.1.160"
+authors = [
+    "Alex Crichton <alex@alexcrichton.com>",
+    "Amanieu d'Antras <amanieu@gmail.com>",
+    "Jorge Aparicio <japaricious@gmail.com>",
+    "Trevor Gross <tg@trevorgross.com>",
+]
+description = "Compiler intrinsics used by the Rust compiler."
+repository = "https://github.com/rust-lang/compiler-builtins"
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
+edition = "2024"
+publish = false
+links = "compiler-rt"
+
+[lib]
+bench = false
+doctest = false
+test = false
+# make sure this crate isn't included in public standard library docs
+doc = false
+
+[dependencies]
+core = { path = "../../core", optional = true }
+
+[build-dependencies]
+cc = { version = "1.2", optional = true }
+
+[features]
+default = ["arch"]
+
+# Enable architecture-specific features such as SIMD or assembly routines. If
+# disabled, the generic version can be tested on any platform.
+arch = []
+
+# Enable compilation of C code in compiler-rt, filling in some more optimized
+# implementations and also filling in unimplemented intrinsics
+c = ["dep:cc"]
+
+# Flag this library as the unstable compiler-builtins lib. This must be enabled
+# when using as `std`'s dependency.'
+compiler-builtins = ["dep:core", "unmangled-names"]
+
+# Enable `no_mangle` symbols for memory-related intrinsics like memcpy. The
+# mangled versions are always available.
+mem = []
+
+# Enable `no_mangle` symbols so this crate gets used as the runtime intrinsic
+# implementation. Leave this disabled for testing to avoid conflicting with
+# the system intrinsics.
+unmangled-names = []
+
+# This makes certain traits and function specializations public that
+# are not normally public but are required by the `builtins-test`
+unstable-public-internals = []

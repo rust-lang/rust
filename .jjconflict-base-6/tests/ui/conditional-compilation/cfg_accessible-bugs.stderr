@@ -1,0 +1,16 @@
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-bugs.rs:15:18
+   |
+LL | #[cfg_accessible(TraitAlias::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: cannot determine whether the path is accessible or not
+  --> $DIR/cfg_accessible-bugs.rs:11:1
+   |
+LL | #[cfg_accessible(unresolved)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

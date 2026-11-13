@@ -1,0 +1,16 @@
+error: extern blocks must be unsafe
+  --> $DIR/extern-items.rs:6:1
+   |
+LL |   extern "C" {
+   |   ^
+   |   |
+   |  _help: needs `unsafe` before the extern keyword: `unsafe`
+   | |
+LL | |
+LL | |     static TEST1: i32;
+LL | |     fn test1(i: i32);
+LL | | }
+   | |_^
+
+error: aborting due to 1 previous error
+

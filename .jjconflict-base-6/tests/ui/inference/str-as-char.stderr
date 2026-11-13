@@ -1,0 +1,53 @@
+error: character literal may only contain one codepoint
+  --> $DIR/str-as-char.rs:8:19
+   |
+LL |     let _: &str = '"""';
+   |                   ^^^^^
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     let _: &str = '"""';
+LL +     let _: &str = "\"\"\"";
+   |
+
+error: character literal may only contain one codepoint
+  --> $DIR/str-as-char.rs:9:19
+   |
+LL |     let _: &str = '\"\"\"';
+   |                   ^^^^^^^^
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     let _: &str = '\"\"\"';
+LL +     let _: &str = "\"\"\"";
+   |
+
+error: character literal may only contain one codepoint
+  --> $DIR/str-as-char.rs:10:19
+   |
+LL |     let _: &str = '"\"\"\\"\\"';
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     let _: &str = '"\"\"\\"\\"';
+LL +     let _: &str = "\"\"\\"\\"\\\"";
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/str-as-char.rs:7:19
+   |
+LL |     let _: &str = 'a';
+   |            ----   ^^^ expected `&str`, found `char`
+   |            |
+   |            expected due to this
+   |
+help: if you meant to write a string literal, use double quotes
+   |
+LL -     let _: &str = 'a';
+LL +     let _: &str = "a";
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
