@@ -1,8 +1,10 @@
 //@ no-prefer-dynamic
 
-#![feature(lang_items, rustc_attrs)]
+#![feature(lang_items, panic_unwind, rustc_attrs)]
 #![crate_type = "rlib"]
 #![no_std]
+
+extern crate unwind;
 
 pub struct DerefsToF64(f64);
 
@@ -20,9 +22,6 @@ mod inner {
         pub fn method() {}
     }
 }
-
-#[lang = "eh_personality"]
-fn foo() {}
 
 #[panic_handler]
 fn bar(_: &core::panic::PanicInfo) -> ! { loop {} }
