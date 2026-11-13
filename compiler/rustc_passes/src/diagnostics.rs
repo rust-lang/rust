@@ -703,16 +703,6 @@ pub(crate) struct IneffectiveUnstableImpl;
 #[diag("`#[unstable]` does not make this re-exported path unstable")]
 pub(crate) struct IneffectiveUnstableReexport;
 
-#[derive(Diagnostic)]
-#[diag("`#[deprecated]` on a `use` item has no effect")]
-#[note(
-    "this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information"
-)]
-#[help(
-    "to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies"
-)]
-pub(crate) struct IneffectiveDeprecatedReexport;
-
 // FIXME(jdonszelmann): move back to rustc_attr
 #[derive(Diagnostic)]
 #[diag(

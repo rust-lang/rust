@@ -1284,6 +1284,16 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[deprecated]` on a `use` item has no effect")]
+#[note(
+    "this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information"
+)]
+#[help(
+    "to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies"
+)]
+pub(crate) struct DeprecatedOnUseHasNoEffect;
+
+#[derive(Diagnostic)]
 #[diag("`#[non_exhaustive]` can't be used to annotate structs with default field values")]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]

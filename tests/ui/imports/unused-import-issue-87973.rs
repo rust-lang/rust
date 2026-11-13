@@ -2,7 +2,7 @@
 #![deny(unused_imports)]
 
 // Check that attributes get removed too. See #87973.
-#[expect(ineffective_deprecated_reexports)]
+#[expect(unused_attributes)]
 #[deprecated]
 #[allow(unsafe_code)]
 #[cfg(not(FALSE))]

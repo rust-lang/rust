@@ -57,15 +57,15 @@ mod deprecated_mod {
     pub use crate::inner::A as InDeprecatedMod;
 }
 
-#[expect(ineffective_deprecated_reexports)]
+#[expect(unused_attributes)]
 #[deprecated]
 pub use inner::A as ExpectedA;
 
-#[expect(ineffective_deprecated_reexports)]
+#[expect(unused_attributes)]
 #[deprecated]
 pub use inner::{A as ExpectedGroupA, B as ExpectedGroupB};
 
-#[allow(ineffective_deprecated_reexports)]
+#[allow(unused_attributes)]
 #[deprecated]
 pub use inner::A as AllowedA;
 
