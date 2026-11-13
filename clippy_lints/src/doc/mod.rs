@@ -525,6 +525,11 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    ///
+    /// ### Notes
+    ///
+    /// - This lint doesn't trigger for functions attributed with `#[target_feature(enable = "...")]`,
+    ///   even if your MSRV is lower than 1.86, where these functions would be unconditionally unsafe.
     #[clippy::version = "1.39.0"]
     pub MISSING_SAFETY_DOC,
     style,

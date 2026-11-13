@@ -118,7 +118,7 @@ Whether functions inside `#[cfg(test)]` modules or test functions should be chec
 
 ---
 **Affected lints:**
-* [`large_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_stack_frames)
+* [`large_unopt_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_unopt_stack_frames)
 
 
 ## `allow-mixed-uninlined-format-args`
@@ -864,6 +864,17 @@ The maximum number of bounds a trait can have to be linted
 * [`type_repetition_in_bounds`](https://clippy.rust-lang.org/main/index.html#type_repetition_in_bounds)
 
 
+## `may-panic-functions`
+List of function/method paths that may panic and should be documented with a `// Panic:` comment
+at call sites.
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`undocumented_may_panic_call`](https://clippy.rust-lang.org/main/index.html#undocumented_may_panic_call)
+
+
 ## `min-ident-chars-lint-trait-impl`
 Whether to lint idents that have too few chars even when following trait declaration.
 
@@ -1101,7 +1112,7 @@ The maximum allowed stack size for functions in bytes
 
 ---
 **Affected lints:**
-* [`large_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_stack_frames)
+* [`large_unopt_stack_frames`](https://clippy.rust-lang.org/main/index.html#large_unopt_stack_frames)
 
 
 ## `standard-macro-braces`

@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::SpanExt as _;
-use clippy_utils::{expr_or_init, std_or_core, sym};
+use clippy_utils::{expr_or_init, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, Ty, TyKind};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 use rustc_span::Spanned;
 
 use super::MANUAL_DANGLING_PTR;

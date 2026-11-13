@@ -265,7 +265,7 @@ define_Conf! {
     #[lints(indexing_slicing)]
     allow_indexing_slicing_in_tests("allow-indexing-slicing-in-tests"): bool = false,
     /// Whether functions inside `#[cfg(test)]` modules or test functions should be checked.
-    #[lints(large_stack_frames)]
+    #[lints(large_unopt_stack_frames)]
     allow_large_stack_frames_in_tests("allow-large-stack-frames-in-tests"): bool = true,
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     #[lints(uninlined_format_args)]
@@ -635,6 +635,10 @@ define_Conf! {
     /// The maximum number of bounds a trait can have to be linted
     #[lints(type_repetition_in_bounds)]
     max_trait_bounds("max-trait-bounds"): u64 = 3,
+    /// List of function/method paths that may panic and should be documented with a `// Panic:` comment
+    /// at call sites.
+    #[lints(undocumented_may_panic_call)]
+    may_panic_functions("may-panic-functions"): Vec<String>,
     /// Whether to lint idents that have too few chars even when following trait declaration.
     #[lints(min_ident_chars)]
     min_ident_chars_lint_trait_impl("min-ident-chars-lint-trait-impl"): bool = false,
@@ -771,7 +775,7 @@ define_Conf! {
     #[lints(arbitrary_source_item_ordering)]
     source_item_ordering("source-item-ordering"): SourceItemOrdering,
     /// The maximum allowed stack size for functions in bytes
-    #[lints(large_stack_frames)]
+    #[lints(large_unopt_stack_frames)]
     stack_size_threshold("stack-size-threshold"): u64 = 512_000,
     /// Enforce the named macros always use the braces specified.
     ///
