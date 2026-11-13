@@ -24,23 +24,27 @@ pub(crate) fn expand_derive_ord(
         methods: smallvec![MethodDef {
             name: sym::cmp,
             generics: cx.empty_generics(span),
-            explicit_self: true,
-            nonself_args: smallvec![(sym::other, cx.ty_self_ref(span))],
-            has_other_selflike_arg: true,
+            args: thin_vec![
+                cx.param_self_ref(span),
+                cx.param(span, sym::other, cx.ty_self_ref(span))
+            ],
             ret_ty: cx.ty_path(path_std!(cx, span, cmp::Ordering)),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            body: Box::new(|cx, span, substr| {
-                // Builds:
-                //
-                // match ::core::cmp::Ord::cmp(&self.x, &other.x) {
-                //     ::std::cmp::Ordering::Equal =>
-                //         ::core::cmp::Ord::cmp(&self.y, &other.y),
-                //     cmp => cmp,
-                // }
-                let expr = cmp_body(cx, span, substr, discr_then_data, OrdlikeDerive::Ord);
-                BlockOrExpr::new_expr(expr)
-            }),
+            body: MethodBody::SubstructureFunc {
+                body_func: Box::new(|cx, span, substr| {
+                    // Builds:
+                    //
+                    // match ::core::cmp::Ord::cmp(&self.x, &other.x) {
+                    //     ::std::cmp::Ordering::Equal =>
+                    //         ::core::cmp::Ord::cmp(&self.y, &other.y),
+                    //     cmp => cmp,
+                    // }
+                    let expr = cmp_body(cx, span, substr, discr_then_data, OrdlikeDerive::Ord);
+                    BlockOrExpr::new_expr(expr)
+                }),
+                strategy: FieldlessVariantsStrategy::Unify,
+                has_other_selflike_arg: true,
+            },
         }],
         is_const,
         ..

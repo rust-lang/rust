@@ -73,7 +73,7 @@ pub(crate) fn expand_test_case(
     }
 
     let ret = if is_stmt {
-        Annotatable::Stmt(Box::new(ecx.stmt_item(item.span, item)))
+        Annotatable::Stmt(ecx.stmt_item(item.span, item))
     } else {
         Annotatable::Item(item)
     };
@@ -121,7 +121,7 @@ pub(crate) fn expand_test_or_bench(
     let ast::ItemKind::Fn(fn_) = &item.kind else {
         not_testable_error(cx, is_bench, attr_sp, Some(&item));
         return if is_stmt {
-            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
+            vec![Annotatable::Stmt(cx.stmt_item(item.span, item))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -150,7 +150,7 @@ pub(crate) fn expand_test_or_bench(
     };
     if check_result.is_err() {
         return if is_stmt {
-            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
+            vec![Annotatable::Stmt(cx.stmt_item(item.span, item))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -380,11 +380,11 @@ pub(crate) fn expand_test_or_bench(
     if is_stmt {
         vec![
             // Access to libtest under a hygienic name
-            Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_extern))),
+            Annotatable::Stmt(cx.stmt_item(sp, test_extern)),
             // The generated test case
-            Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_const))),
+            Annotatable::Stmt(cx.stmt_item(sp, test_const)),
             // The original item
-            Annotatable::Stmt(Box::new(cx.stmt_item(sp, item))),
+            Annotatable::Stmt(cx.stmt_item(sp, item)),
         ]
     } else {
         vec![

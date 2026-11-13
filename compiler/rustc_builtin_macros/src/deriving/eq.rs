@@ -25,9 +25,7 @@ pub(crate) fn expand_derive_eq(
         methods: smallvec![MethodDef {
             name: sym::assert_fields_are_eq,
             generics: cx.empty_generics(span),
-            explicit_self: true,
-            nonself_args: smallvec![],
-            has_other_selflike_arg: false,
+            args: thin_vec![cx.param_self_ref(span)],
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.
@@ -36,20 +34,15 @@ pub(crate) fn expand_derive_eq(
                 cx.generated_attr(span, ast::GeneratedAttr::DocHidden),
                 cx.generated_attr(span, ast::GeneratedAttr::CoverageOff),
             ],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            body: Box::new(assert_fields_eq_body),
+            body: MethodBody::Directly(assert_fields_eq_body(cx, item)),
         }],
         is_const,
         ..
     };
-    trait_def.expand_ext(cx, item, push, true)
+    trait_def.expand(cx, item, push);
 }
 
-fn assert_fields_eq_body(
-    cx: &ExtCtxt<'_>,
-    trait_span: Span,
-    substr: Substructure<'_>,
-) -> BlockOrExpr {
+fn assert_fields_eq_body(cx: &ExtCtxt<'_>, item: &ast::Item) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {
@@ -74,16 +67,16 @@ fn assert_fields_eq_body(
         }
     };
 
-    match substr {
-        StaticStruct(vdata, ..) => {
+    match &item.kind {
+        ast::ItemKind::Struct(.., vdata) | ast::ItemKind::Union(.., vdata) => {
             process_variant(vdata);
         }
-        StaticEnum(enum_def, ..) => {
+        ast::ItemKind::Enum(.., enum_def) => {
             for variant in &enum_def.variants {
                 process_variant(&variant.data);
             }
         }
-        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Eq)`"),
+        _ => unreachable!(),
     }
     BlockOrExpr::new_stmts(stmts)
 }

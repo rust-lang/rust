@@ -1770,7 +1770,7 @@ impl InvocationCollectorNode for ast::Arm {
 impl InvocationCollectorNode for ast::Stmt {
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Stmt(Box::new(self))
+        Annotatable::Stmt(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_stmts()

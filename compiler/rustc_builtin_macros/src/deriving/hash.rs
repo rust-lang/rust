@@ -37,13 +37,17 @@ pub(crate) fn expand_derive_hash(
         methods: smallvec![MethodDef {
             name: sym::hash,
             generics,
-            explicit_self: true,
-            nonself_args: smallvec![(sym::state, cx.ty_ref(span, arg, None, Mutability::Mut))],
-            has_other_selflike_arg: false,
+            args: thin_vec![
+                cx.param_self_ref(span),
+                cx.param(span, sym::state, cx.ty_ref(span, arg, None, Mutability::Mut))
+            ],
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
-            fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            body: Box::new(hash_body),
+            body: MethodBody::SubstructureFunc {
+                body_func: Box::new(hash_body),
+                strategy: FieldlessVariantsStrategy::Unify,
+                has_other_selflike_arg: false,
+            },
         }],
         is_const,
         ..
@@ -72,6 +76,5 @@ fn hash_body(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrE
             )];
             BlockOrExpr::new_mixed(stmts, match_expr)
         }
-        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Hash)`"),
     }
 }

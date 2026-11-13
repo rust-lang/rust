@@ -38,13 +38,14 @@ pub(crate) fn expand_derive_partial_eq(
     let methods = smallvec![MethodDef {
         name: sym::eq,
         generics: cx.empty_generics(span),
-        explicit_self: true,
-        nonself_args: smallvec![(sym::other, cx.ty_self_ref(span))],
-        has_other_selflike_arg: true,
+        args: thin_vec![cx.param_self_ref(span), cx.param(span, sym::other, cx.ty_self_ref(span))],
         ret_ty: cx.ty_name(span, sym::bool),
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
-        fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        body: Box::new(partial_eq_body),
+        body: MethodBody::SubstructureFunc {
+            body_func: Box::new(partial_eq_body),
+            strategy: FieldlessVariantsStrategy::Unify,
+            has_other_selflike_arg: true,
+        },
     }];
 
     let trait_def = TraitDef {
@@ -109,7 +110,7 @@ pub(crate) fn expand_derive_partial_eq(
 fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>) -> BlockOrExpr {
     BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
-            let combine = move |acc, field: &FieldInfo| {
+            let combine = move |acc, field: &FieldInfo<'_>| {
                 let rhs = field
                     .other_selflike_expr
                     .as_ref()
@@ -130,12 +131,13 @@ fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>)
                 }
             };
 
+            let maybe_scalar = |field: &FieldInfo<'_>| field.def.ty.peel_refs().kind.maybe_scalar();
             // First compare scalar fields, then compound fields, combining all
             // with logical AND.
             fields
                 .iter()
-                .filter(|field| field.maybe_scalar)
-                .chain(fields.iter().filter(|field| !field.maybe_scalar))
+                .filter(|field| maybe_scalar(field))
+                .chain(fields.iter().filter(|field| !maybe_scalar(field)))
                 .fold(None, combine)
                 // If there are no fields, treat as always equal.
                 .unwrap_or_else(|| cx.expr_bool(span, true))
@@ -151,7 +153,6 @@ fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>)
             // fields.
             cx.expr_binary(span, BinOpKind::And, lhs, match_expr)
         }
-        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(PartialEq)`"),
     })
 }
 

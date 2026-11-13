@@ -25,10 +25,6 @@ pub(crate) fn expand_derive_partial_ord(
 
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
-    let default_body: MethodBodyFunc<'_> =
-        Box::new(|cx, span, substr| partial_cmp_body(cx, span, substr, discr_then_data));
-    let simple_body: MethodBodyFunc<'_> =
-        Box::new(|cx, span, _| partial_cmp_simple_body(cx, span, cx.expr_name(span, sym::other)));
     let is_simple = match &item.kind {
         // For unit structs/zero-variant enums, the default generated code is better.
         ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
@@ -55,13 +51,20 @@ pub(crate) fn expand_derive_partial_ord(
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
         generics: cx.empty_generics(span),
-        explicit_self: true,
-        nonself_args: smallvec![(sym::other, cx.ty_self_ref(span))],
-        has_other_selflike_arg: true,
+        args: thin_vec![cx.param_self_ref(span), cx.param(span, sym::other, cx.ty_self_ref(span))],
         ret_ty,
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
-        fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        body: if is_simple { simple_body } else { default_body },
+        body: if is_simple {
+            MethodBody::Directly(partial_cmp_simple_body(cx, span, cx.expr_name(span, sym::other)))
+        } else {
+            MethodBody::SubstructureFunc {
+                body_func: Box::new(|cx, span, substr| {
+                    partial_cmp_body(cx, span, substr, discr_then_data)
+                }),
+                strategy: FieldlessVariantsStrategy::Unify,
+                has_other_selflike_arg: true,
+            }
+        },
     };
 
     let trait_def = TraitDef {
@@ -74,7 +77,7 @@ pub(crate) fn expand_derive_partial_ord(
         is_const,
         ..
     };
-    trait_def.expand_ext(cx, item, push, is_simple)
+    trait_def.expand(cx, item, push);
 }
 
 pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
@@ -208,7 +211,7 @@ pub(crate) fn cmp_body(
 
     match substructure {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
-            let op = |old, field: FieldInfo| {
+            let op = |old, field: FieldInfo<'_>| {
                 // The basic case: a field expression for one or more selflike args. E.g.
                 // for `Ord::cmp` this is something like `Ord::cmp(&self.x, &other.x)`.
                 let other_expr =
@@ -242,6 +245,5 @@ pub(crate) fn cmp_body(
                 discr_check_expr
             }
         }
-        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive`"),
     }
 }

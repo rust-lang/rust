@@ -9,6 +9,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::deriving::generic::*;
+use crate::util::generic_param_to_arg;
 
 pub(crate) fn expand_derive_reborrow(
     cx: &ExtCtxt<'_>,
