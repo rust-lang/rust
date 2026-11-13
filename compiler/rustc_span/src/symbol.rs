@@ -964,6 +964,7 @@ symbols! {
         extern_crate_item_prelude,
         extern_crate_self,
         extern_in_paths,
+        extern_item_default_impls,
         extern_item_impls,
         extern_prelude,
         extern_system_varargs,
