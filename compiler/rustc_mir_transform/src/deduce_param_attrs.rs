@@ -12,6 +12,7 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::deduced_param_attrs::{DeducedParamAttrs, UsageSummary};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -205,6 +206,17 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Don't deduce any attributes for functions that have no MIR.
     if !tcx.is_mir_available(def_id) {
+        return &[];
+    }
+
+    // Functions which contain an extern indicator are written to be compatible with a specific ABI,
+    // deducing parameter attributes can subtly violate that expectation.
+    // Similarly, the bodies of #[naked] functions might do things like jump directly to an implementation
+    // with the same signature, and thus rely on the ABI of the naked function not being altered.
+    let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+    if codegen_attrs.contains_extern_indicator()
+        || codegen_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
+    {
         return &[];
     }
 
