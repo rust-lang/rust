@@ -95,7 +95,7 @@ unsafe fn configure_llvm(sess: &EarlySession) {
     let sess_args = tg_opts.chain(cg_opts);
 
     let user_specified_args: FxHashSet<_> =
-        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
+        sess_args.clone().map(llvm_arg_to_arg_name).filter(|s| !s.is_empty()).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true
@@ -144,20 +144,17 @@ unsafe fn configure_llvm(sess: &EarlySession) {
         }
 
         for arg in sess_args {
-            add(&(*arg), true);
+            add(arg, true);
         }
 
-        match (
-            sess.opts.unstable_opts.small_data_threshold,
-            sess.target.small_data_threshold_support(),
-        ) {
-            // Set up the small-data optimization limit for architectures that use
-            // an LLVM argument to control this.
-            (Some(threshold), SmallDataThresholdSupport::LlvmArg(arg)) => {
-                add(&format!("--{arg}={threshold}"), false)
-            }
-            _ => (),
-        };
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM argument to control this.
+        if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold
+            && let SmallDataThresholdSupport::LlvmArg(arg) =
+                sess.target.small_data_threshold_support()
+        {
+            add(&format!("--{arg}={threshold}"), false);
+        }
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
@@ -337,7 +334,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
         sess,
         |feature| {
             to_llvm_features(&sess.target, feature)
-                .map(|f| SmallVec::<[&str; 2]>::from_iter(f.into_iter()))
+                .map(SmallVec::<[&str; 2]>::from_iter)
                 .unwrap_or_default()
         },
         |feature| {
@@ -345,13 +342,8 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
             // do *not* consider the `-Ctarget-feature`s here (that's why we passed `for_cfg: true`
             // to `global_llvm_features` above) because that will be handled later in
             // `internal_target_features`.
-            if let Some(feat) = to_llvm_features(&sess.target, feature)
-                && mc_subtarget_info.has_features(feat)
-            {
-                true
-            } else {
-                false
-            }
+            to_llvm_features(&sess.target, feature)
+                .is_some_and(|feat| mc_subtarget_info.has_features(feat))
         },
     );
 
@@ -528,7 +520,7 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
 
 fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
     let cpu_names = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustPrintTargetCPUs(&tm, s);
+        llvm::LLVMRustPrintTargetCPUs(tm, s);
     })
     .unwrap();
 
@@ -594,7 +586,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
             }
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
             // strings.
-            let llvm_feature = to_llvm_features(&sess.target, *feature)?.llvm_feature_name;
+            let llvm_feature = to_llvm_features(&sess.target, feature)?.llvm_feature_name;
             let desc =
                 match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
                     Some(index) => {

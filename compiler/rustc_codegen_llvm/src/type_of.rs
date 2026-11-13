@@ -79,8 +79,7 @@ fn uncached_llvm_type<'ll, 'tcx>(
                 None => cx.type_struct(&[fill]),
                 Some(ref name) => {
                     let llty = cx.type_named_struct(name);
-                    let packed = false;
-                    cx.set_struct_body(llty, &[fill], packed);
+                    cx.set_struct_body(llty, &[fill]);
                     llty
                 }
             }
@@ -121,7 +120,7 @@ fn struct_llfields<'ll, 'tcx>(
     let mut prev_effective_align = layout.align;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
-        let target_offset = layout.fields.offset(i as usize);
+        let target_offset = layout.fields.offset(i);
         let field = layout.field(cx, i);
         let effective_field_align =
             layout.align.min(field.align).restrict_for_offset(target_offset);
@@ -269,7 +268,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
         if let Some((llty, layout)) = defer {
             let (llfields, packed) = struct_llfields(cx, layout);
-            cx.set_struct_body(llty, &llfields, packed);
+            if packed {
+                cx.set_struct_body_packed(llty, &llfields)
+            } else {
+                cx.set_struct_body(llty, &llfields)
+            }
         }
         llty
     }
