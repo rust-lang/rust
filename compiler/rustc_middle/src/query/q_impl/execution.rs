@@ -217,24 +217,19 @@ pub fn check_feedable_consistency<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     key: C::Key,
     value: &C::Value,
+    existing_value: &C::Value,
 ) {
-    // We should not compute queries that also got a value via feeding.
-    // This can't happen, as query feeding adds the very dependencies to the fed query
-    // as its feeding query had. So if the fed query is red, so is its feeder, which will
-    // get evaluated first, and re-feed the query.
-    let Some((cached_value, _)) = query.cache.lookup(&key) else { return };
-
     let Some(hash_value_fn) = query.hash_value_fn else {
         panic!(
             "no_hash fed query later has its value computed.\n\
             Remove `no_hash` modifier to allow recomputation.\n\
             The already cached value: {}",
-            (query.format_value)(&cached_value)
+            (query.format_value)(&existing_value)
         );
     };
 
     let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
-        (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, value))
+        (hash_value_fn(&mut hcx, &existing_value), hash_value_fn(&mut hcx, value))
     });
     let formatter = query.format_value;
     if old_hash != new_hash {
@@ -247,7 +242,7 @@ pub fn check_feedable_consistency<'tcx, C: QueryCache>(
             query.dep_kind,
             key,
             formatter(value),
-            formatter(&cached_value),
+            formatter(&existing_value),
         );
     }
 }

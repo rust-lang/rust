@@ -126,8 +126,10 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
                 execute_job_non_incr(query, tcx, key, id)
             };
 
-            if query.feedable {
-                check_feedable_consistency(tcx, query, key, &value);
+            if query.feedable
+                && let Some((cached_value, _)) = query.cache.lookup(&key)
+            {
+                check_feedable_consistency(tcx, query, key, &value, &cached_value);
             }
 
             // Tell the guard to insert `value` in the cache and remove the status entry from
