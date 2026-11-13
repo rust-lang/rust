@@ -34,6 +34,8 @@
 - [Platform Support](platform-support.md)
     - [Target Tier Policy](target-tier-policy.md)
     - [Template for Target-specific Documentation](platform-support/TEMPLATE.md)
+<!-- TARGET_LIST SECTION START -->
+<!-- See `src/tools/target-docs` -->
     - [arm64ec-pc-windows-msvc](platform-support/arm64ec-pc-windows-msvc.md)
     - [\*-apple-darwin](platform-support/apple-darwin.md)
         - [i686-apple-darwin](platform-support/i686-apple-darwin.md)
@@ -168,3 +170,4 @@
     - [x86_64-unknown-linux-gnutsan](platform-support/x86_64-unknown-linux-gnutsan.md)
     - [xtensa-\*-none-elf](platform-support/xtensa.md)
     - [\*-nuttx-\*](platform-support/nuttx.md)
+<!-- TARGET_LIST SECTION END -->
