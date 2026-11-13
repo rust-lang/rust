@@ -88,6 +88,41 @@ struct ItemVars<'a> {
     original_path: Option<HtmlLinkOrPath>,
 }
 
+/// Wrapper to ensure the `DefPath` is always cleaned up.
+struct DefPath(rustc_hir::definitions::DefPath);
+
+impl DefPath {
+    fn new(mut def_path: rustc_hir::definitions::DefPath) -> Self {
+        use rustc_hir::definitions::DefPathData;
+
+        def_path.data.retain(|item| match item.data {
+            DefPathData::AnonAssocTy(_)
+            | DefPathData::AnonConst
+            | DefPathData::Ctor
+            | DefPathData::ForeignMod
+            | DefPathData::GlobalAsm
+            | DefPathData::Impl
+            | DefPathData::LifetimeNs(_)
+            | DefPathData::NestedStatic
+            | DefPathData::OpaqueLifetime(_)
+            | DefPathData::OpaqueTy
+            | DefPathData::SyntheticCoroutineBody
+            | DefPathData::TestBinderConstraints
+            | DefPathData::Use
+            | DefPathData::Closure => false,
+            DefPathData::CrateRoot
+            | DefPathData::TypeNs(_)
+            | DefPathData::ValueNs(_)
+            | DefPathData::MacroNs(_) => true,
+        });
+        Self(def_path)
+    }
+
+    fn to_string_no_crate_verbose(&self) -> String {
+        self.0.to_string_no_crate_verbose()
+    }
+}
+
 fn compute_reexport_path(
     cx: &Context<'_>,
     item: &clean::Item,
@@ -100,9 +135,9 @@ fn compute_reexport_path(
         crate_name: Option<Symbol>,
         path: String,
         item: &clean::Item,
-        def_path: rustc_hir::definitions::DefPath,
+        def_path: DefPath,
     ) -> HtmlLinkOrPath {
-        let [parts @ .., last] = &def_path.data else {
+        let [parts @ .., last] = &def_path.0.data else {
             return HtmlLinkOrPath::Path(path);
         };
         let mut root: UrlPartsBuilder = root.into();
@@ -131,7 +166,7 @@ fn compute_reexport_path(
     if item.is_primitive() {
         HtmlLinkOrPath::Path(item.inner.name.unwrap().to_string())
     } else if target_def_id.is_local() {
-        let def_path = tcx.def_path(target_def_id);
+        let def_path = DefPath::new(tcx.def_path(target_def_id));
         let path = format!("crate{}", def_path.to_string_no_crate_verbose());
         let is_private = !cx.cache().document_private
             && !cx.cache().effective_visibilities.is_directly_public(tcx, target_def_id);
@@ -154,7 +189,7 @@ fn compute_reexport_path(
         // To ensure that we go completely through the reexports. If we use
         // `def_path_debug_str`, we get `alloc::vec::Vec`, but if we use `def_path_str`, we
         // get `std::vec::Vec`. So let's force the right path.
-        let def_path = tcx.cstore_untracked().def_path(target_def_id);
+        let def_path = DefPath::new(tcx.cstore_untracked().def_path(target_def_id));
         let crate_name = tcx.crate_name(target_def_id.krate);
         let path = if item.is_exported_decl_macro() {
             // `macro_rules!` is always documented at the top of the (foreign) crate, so we tweak
