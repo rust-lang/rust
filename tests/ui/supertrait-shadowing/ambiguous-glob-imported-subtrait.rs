@@ -1,3 +1,5 @@
+//@ revisions: plain first last
+
 // issue: <https://github.com/rust-lang/rust/issues/157965>
 
 #![feature(supertrait_item_shadowing)]
@@ -26,8 +28,14 @@ mod second_policy {
     }
 }
 
+#[cfg(first)]
+use first_policy::Role as _;
+
 use first_policy::*;
 use second_policy::*;
+
+#[cfg(last)]
+use first_policy::Role as _;
 
 fn main() {
     assert!(0u8.allow_action());

@@ -11,6 +11,7 @@ use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
+use rustc_hir_analysis::hir_ty_lowering::lint_shadowed_supertrait_item_usage;
 use rustc_infer::infer::{BoundRegionConversionTime, InferOk};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::ObligationCause;
@@ -188,6 +189,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let pick = self.lookup_probe(segment.ident, self_ty, call_expr, scope)?;
+
+        lint_shadowed_supertrait_item_usage(
+            self.tcx,
+            segment.hir_id,
+            segment.ident,
+            pick.item,
+            &pick.shadowed_candidates,
+        );
 
         self.lint_edition_dependent_dot_call(
             self_ty, segment, span, call_expr, self_expr, &pick, args,
@@ -545,6 +554,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         pick.maybe_emit_unstable_name_collision_hint(self.tcx, span, expr_id);
+
+        lint_shadowed_supertrait_item_usage(
+            self.tcx,
+            expr_id,
+            method_name,
+            pick.item,
+            &pick.shadowed_candidates,
+        );
 
         self.lint_fully_qualified_call_from_2018(
             span,
