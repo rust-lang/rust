@@ -88,7 +88,7 @@ pub(super) fn parse_and_update_aux(
     config.push_name_value_directive(ln, PROC_MACRO, &mut aux.proc_macros, parse_proc_macro);
 
     if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
-        aux.codegen_backend = Some(r.trim().to_owned());
+        aux.codegen_backend = Some(r.to_owned());
     }
 }
 

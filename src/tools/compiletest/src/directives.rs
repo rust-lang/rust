@@ -16,7 +16,7 @@ use crate::directives::directive_names::{
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
-use crate::directives::line::DirectiveLine;
+use crate::directives::line::{DirectiveLine, DirectivePayload};
 use crate::directives::needs::PreparedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
@@ -29,8 +29,7 @@ mod cfg;
 mod directive_names;
 mod file;
 mod handlers;
-mod line;
-pub(crate) use line::line_directive;
+pub(crate) mod line;
 mod line_number;
 pub(crate) use line_number::LineNumber;
 mod needs;
@@ -443,66 +442,90 @@ impl TestProps {
     }
 }
 
-pub(crate) fn do_early_directives_check(
+pub(crate) fn validate_name<'a>(
     mode: TestMode,
-    file_directives: &FileDirectives<'_>,
-) -> Result<(), String> {
-    let testfile = file_directives.path;
+    file_directives: &FileDirectives<'a>,
+) -> Result<(), NameValidationError<'a>> {
+    use NameValidationError as Error;
+    use NameValidationErrorKind as ErrorKind;
 
-    for directive_line @ DirectiveLine { line_number, .. } in &file_directives.lines {
-        let CheckDirectiveResult { is_known_directive, trailing_directive } =
-            check_directive(directive_line, mode);
+    for directive_line @ DirectiveLine { name, line_number, .. } in &file_directives.lines {
+        let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(name)
+            || match mode {
+                TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(name),
+                TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(name),
+                _ => false,
+            };
 
         if !is_known_directive {
-            return Err(format!(
-                "ERROR: unknown compiletest directive `{directive}` at {testfile}:{line_number}",
-                directive = directive_line.display(),
-            ));
+            return Err(Error {
+                kind: ErrorKind::UnknownDirective { name },
+                file_path: file_directives.path,
+                line_number: *line_number,
+            });
         }
 
-        if let Some(trailing_directive) = &trailing_directive {
-            return Err(format!(
-                "ERROR: detected trailing compiletest directive `{trailing_directive}` at {testfile}:{line_number}\n\
-                HELP: put the directive on its own line: `//@ {trailing_directive}`"
-            ));
+        // If it looks like the user tried to put two directives on the same line
+        // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
+        // second "directive" would actually be ignored with no effect.
+        if let Some(line::DirectivePayload::Remark(remark)) = directive_line.payload {
+            let token = remark.split([':', ' ']).next().unwrap();
+            if KNOWN_DIRECTIVE_NAMES_SET.contains(token) {
+                return Err(Error {
+                    kind: ErrorKind::TrailingDirective {
+                        leading_directive: name,
+                        trailing_directive: remark,
+                    },
+                    file_path: file_directives.path,
+                    line_number: *line_number,
+                });
+            }
         }
     }
 
     Ok(())
 }
 
-pub(crate) struct CheckDirectiveResult<'ln> {
-    is_known_directive: bool,
-    trailing_directive: Option<&'ln str>,
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct NameValidationError<'a> {
+    kind: NameValidationErrorKind<'a>,
+    file_path: &'a Utf8Path,
+    line_number: LineNumber,
 }
 
-fn check_directive<'a>(
-    directive_ln: &DirectiveLine<'a>,
-    mode: TestMode,
-) -> CheckDirectiveResult<'a> {
-    let &DirectiveLine { name: directive_name, .. } = directive_ln;
+#[cfg_attr(test, derive(Debug))]
+enum NameValidationErrorKind<'a> {
+    UnknownDirective { name: &'a str },
+    TrailingDirective { leading_directive: &'a str, trailing_directive: &'a str },
+}
 
-    let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
-        || match mode {
-            TestMode::RustdocHtml => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
-            TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
-            _ => false,
-        };
+impl NameValidationError<'_> {
+    // FIXME: Just report the error, poison the context and keep going.
+    pub(crate) fn raise_fatal(self) -> ! {
+        let Self { kind, file_path, line_number } = self;
 
-    // If it looks like the user tried to put two directives on the same line
-    // (e.g. `//@ only-linux only-x86_64`), signal an error, because the
-    // second "directive" would actually be ignored with no effect.
-    let trailing_directive = directive_ln
-        .remark_after_space()
-        .map(|remark| remark.trim_start().split(' ').next().unwrap())
-        .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
+        let title = |message| crate::error!("{message} at {file_path}:{line_number}");
 
-    // FIXME(Zalathar): Consider emitting specialized error/help messages for
-    // bogus directive names that are similar to real ones, e.g.:
-    // - *`compiler-flags` => `compile-flags`
-    // - *`compile-fail` => `check-fail` or `build-fail`
+        match kind {
+            NameValidationErrorKind::UnknownDirective { name } => {
+                title(format!("unknown directive `{name}`"));
+                // FIXME: Look for typo'ed names / suggest directives with a similar name. E.g,
+                // - *`compiler-flags` => `compile-flags`
+                // - *`compile-fail` => `check-fail` or `build-fail`
+            }
+            NameValidationErrorKind::TrailingDirective {
+                leading_directive,
+                trailing_directive,
+            } => {
+                title(format!(
+                    "directive `{leading_directive}` is followed by another directive (`{trailing_directive}`) on the same line"
+                ));
+                crate::help!("put the directive on its own line: `//@ {trailing_directive}`");
+            }
+        }
 
-    CheckDirectiveResult { is_known_directive, trailing_directive }
+        panic!("fatal error")
+    }
 }
 
 fn iter_directives(
@@ -510,50 +533,25 @@ fn iter_directives(
     file_directives: &FileDirectives<'_>,
     it: &mut dyn FnMut(&DirectiveLine<'_>),
 ) {
-    let testfile = file_directives.path;
-
-    let extra_directives = match config.mode {
+    // Inject certain directives depending on the test mode, so test writers don't need to specify
+    // then manually in every test file.
+    let synthetic = |name| DirectiveLine::synthetic(name, file_directives.path);
+    match config.mode {
         TestMode::CoverageRun => {
-            // Coverage tests in coverage-run mode always have these extra directives, without needing to
-            // specify them manually in every test file.
-            //
             // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
-            vec![
-                "//@ needs-profiler-runtime",
-                // FIXME(pietroalbini): this test currently does not work on cross-compiled targets
-                // because remote-test is not capable of sending back the *.profraw files generated by
-                // the LLVM instrumentation.
-                "//@ ignore-cross-compile",
-            ]
+            it(&synthetic("needs-profiler-runtime"));
+            // FIXME(pietroalbini): These tests currently do not work on cross-compiled targets
+            // because remote-test is not capable of sending back the *.profraw files generated by
+            // the LLVM instrumentation.
+            it(&synthetic("ignore-cross-compile"));
         }
         TestMode::Codegen if !file_directives.has_explicit_no_std_core_attribute => {
-            // Note: affects all codegen test suites under test mode `codegen`, e.g. `codegen-llvm`.
-            //
-            // Codegen tests automatically receive implied `//@ needs-target-std`, unless
-            // `#![no_std]`/`#![no_core]` attribute was explicitly seen. The rationale is basically to avoid
-            // having to manually maintain a bunch of `//@ needs-target-std` directives esp. for targets
-            // tested/built out-of-tree.
-            vec!["//@ needs-target-std"]
+            it(&synthetic("needs-target-std"));
         }
         TestMode::Ui if config.parallel_frontend_enabled() => {
-            // UI tests in parallel-frontend mode always have this extra directive, without needing to
-            // specify it manually in every test file.
-            vec!["//@ compare-output-by-lines"]
+            it(&synthetic("compare-output-by-lines"));
         }
-
-        _ => {
-            // No extra directives for other test modes.
-            vec![]
-        }
-    };
-
-    for directive_str in extra_directives {
-        if let Some(Ok(directive_line)) = line_directive(testfile, LineNumber::ZERO, directive_str)
-        {
-            it(&directive_line);
-        } else {
-            panic!("bad extra-directive line: {directive_str:?}")
-        }
+        _ => {}
     }
 
     for directive_line in &file_directives.lines {
@@ -623,7 +621,7 @@ impl Config {
     fn parse_pp_exact(&self, line: &DirectiveLine<'_>) -> Option<Utf8PathBuf> {
         // Unusually, `//@ pp-exact` can be used with or without a colon, so to avoid a panic
         // in the parse method we need to make sure there is a colon before calling it.
-        if line.value_after_colon().is_some()
+        if let Some(DirectivePayload::Value(_)) = line.payload
             && let Some(s) = self.parse_name_value_directive(line, "pp-exact")
         {
             Some(Utf8PathBuf::from(&s))
@@ -645,8 +643,11 @@ impl Config {
             _ => return None,
         };
 
-        let Some((regex, replacement)) = line.value_after_colon().and_then(parse_normalize_rule)
-        else {
+        let rule = match line.payload {
+            Some(DirectivePayload::Value(rule)) => parse_normalize_rule(rule),
+            _ => None,
+        };
+        let Some((regex, replacement)) = rule else {
             error!("couldn't parse custom normalization rule: `{}`", line.display());
             help!("expected syntax is: `{name}: \"REGEX\" -> \"REPLACEMENT\"`");
             panic!("invalid normalization rule detected");
@@ -655,16 +656,18 @@ impl Config {
     }
 
     fn parse_name_directive(&self, line: &DirectiveLine<'_>, directive: &str) -> bool {
-        if line.name != directive {
+        let &DirectiveLine { file_path, line_number, name, payload, .. } = line;
+
+        if name != directive {
             return false;
         }
 
-        if line.value_after_colon().is_some() {
-            let &DirectiveLine { file_path, line_number, .. } = line;
+        if let Some(DirectivePayload::Value(_)) = payload {
             panic!(
                 "{file_path}:{line_number}: directive `{directive}` must not be followed by a colon"
             );
         }
+
         true
     }
 
@@ -673,15 +676,18 @@ impl Config {
         line: &DirectiveLine<'_>,
         directive: &str,
     ) -> Option<String> {
-        let &DirectiveLine { file_path, line_number, .. } = line;
+        let &DirectiveLine { file_path, line_number, payload, .. } = line;
 
         if line.name != directive {
             return None;
         };
 
-        let value = line.value_after_colon().unwrap_or_else(|| {
-            panic!("{file_path}:{line_number}: directive `{directive}` must be followed by a colon and value");
-        });
+        let Some(DirectivePayload::Value(value)) = payload else {
+            panic!(
+                "{file_path}:{line_number}: \
+                directive `{directive}` must be followed by a colon and value"
+            );
+        };
         debug!("{}: {}", directive, value);
         let value = expand_variables(value.to_owned(), self);
 
@@ -699,15 +705,14 @@ impl Config {
         *value = *value || self.parse_name_directive(line, directive);
     }
 
-    fn set_name_value_directive<T>(
+    fn set_name_value_directive(
         &self,
         line: &DirectiveLine<'_>,
         directive: &str,
-        value: &mut Option<T>,
-        parse: impl FnOnce(String) -> T,
+        value: &mut Option<String>,
     ) {
         if value.is_none() {
-            *value = self.parse_name_value_directive(line, directive).map(parse);
+            *value = self.parse_name_value_directive(line, directive);
         }
     }
 
@@ -791,7 +796,6 @@ fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     let captures = static_regex!(
         r#"(?x) # (verbose mode regex)
         ^
-        \s*                     # (leading whitespace)
         "(?<regex>[^"]*)"       # "REGEX"
         \s+->\s+                # ->
         "(?<replacement>[^"]*)" # "REPLACEMENT"
@@ -1038,7 +1042,7 @@ fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
     if let Some(actual_version) = config.cdb_version {
         if line.name == "min-cdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
             let min_version = extract_cdb_version(rest).unwrap_or_else(|| {
                 panic!("couldn't parse version range: {:?}", rest);
@@ -1071,7 +1075,7 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
     if let Some(actual_version) = config.gdb_version {
         if line.name == "min-gdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
             let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
@@ -1089,7 +1093,7 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
                 };
             }
         } else if line.name == "ignore-gdb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
+            && let Some(DirectivePayload::Value(rest)) = line.payload
         {
             let (min_version, max_version) = extract_version_range(rest, extract_gdb_version)
                 .unwrap_or_else(|| {
@@ -1132,7 +1136,7 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
     if let Some(actual_version) = &config.lldb_version {
         match (line.name, actual_version) {
             ("min-apple-lldb-version", LldbVersion::Apple(vers)) => {
-                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
 
@@ -1150,7 +1154,7 @@ fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>)
                 }
             }
             ("min-llvm-lldb-version", LldbVersion::Llvm(vers)) => {
-                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                let Some(DirectivePayload::Value(rest)) = line.payload else {
                     return IgnoreDecision::Continue;
                 };
 

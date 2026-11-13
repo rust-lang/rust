@@ -5,11 +5,12 @@ use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
-use crate::directives::line::{DirectiveLine, Error, ErrorKind};
+use crate::directives::line::{DirectiveLine, DirectivePayload, Error, ErrorKind, line_directive};
 use crate::directives::{
     self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
-    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
-    extract_version_range, line_directive, parse_edition, parse_normalize_rule,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, NameValidationError,
+    NameValidationErrorKind, extract_llvm_version, extract_version_range, parse_edition,
+    parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 
@@ -82,7 +83,7 @@ fn test_parse_normalize_rule() {
             "something (32 bits)",
             "something ($WORD bits)",
         ),
-        (r#"  " with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
+        (r#"" with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
     ];
 
     for &(input, expected_regex, expected_replacement) in good_data {
@@ -615,7 +616,7 @@ fn test_extract_version_range() {
 }
 
 #[test]
-#[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
+#[should_panic(expected = "duplicate revision: `rpass1` in line `rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
     parse_early_props(&config, "//@ revisions: rpass1 rpass1");
@@ -665,7 +666,7 @@ fn test_ok_directive() {
         Some(Ok(DirectiveLine {
             revision: None,
             name: "aux-build",
-            raw_directive: "aux-build: file.rs",
+            payload: Some(DirectivePayload::Value("file.rs")),
             ..
         }))
     );
@@ -678,7 +679,12 @@ fn indented_directive() {
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(
         result,
-        Some(Ok(DirectiveLine { revision: None, name: "key", raw_directive: "key: value", .. }))
+        Some(Ok(DirectiveLine {
+            revision: None,
+            name: "key",
+            payload: Some(DirectivePayload::Value("value")),
+            ..
+        }))
     );
 }
 
@@ -985,77 +991,129 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
+fn parse_directives_and_validate_names<'a>(
+    path: &'a Utf8Path,
+    file_contents: &'a str,
+) -> Result<Vec<DirectiveLine<'a>>, NameValidationError<'a>> {
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
-    let result = directives::do_early_directives_check(TestMode::Ui, &file_directives);
-    if result.is_err() {
-        *poisoned = true;
-    }
+    directives::validate_name(TestMode::Ui, &file_directives)?;
+    Ok(file_directives.lines)
 }
 
 #[test]
 fn test_unknown_directive_check() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/unknown_directive.rs"),
     );
-    assert!(poisoned);
+    assert_matches!(
+        result,
+        Err(NameValidationError {
+            kind: NameValidationErrorKind::UnknownDirective { name: "needs-headpat" },
+            ..
+        })
+    );
 }
 
 #[test]
 fn test_known_directive_check_no_error() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/known_directive.rs"),
     );
-    assert!(!poisoned);
+    assert_matches!(
+        result.as_deref(),
+        Ok([
+            DirectiveLine { revision: None, name: "ignore-wasm", payload: None, .. },
+            DirectiveLine { revision: None, name: "check-pass", payload: None, .. },
+        ])
+    );
 }
 
 #[test]
 fn test_error_annotation_no_error() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.rs"),
         include_str!("./test-auxillary/error_annotation.rs"),
     );
-    assert!(!poisoned);
+    assert_matches!(
+        result.as_deref(),
+        Ok([DirectiveLine { revision: None, name: "check-pass", payload: None, .. },])
+    );
 }
 
 #[test]
 fn test_non_rs_unknown_directive_not_checked() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
+    let result = parse_directives_and_validate_names(
         Utf8Path::new("a.Makefile"),
         include_str!("./test-auxillary/not_rs.Makefile"),
     );
-    assert!(!poisoned);
+    assert_matches!(result.as_deref(), Ok([]));
 }
 
 #[test]
 fn test_trailing_directive() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
-    assert!(poisoned);
+    let result =
+        parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
+    assert_matches!(
+        result,
+        Err(NameValidationError {
+            kind: NameValidationErrorKind::TrailingDirective {
+                leading_directive: "only-x86",
+                trailing_directive: "only-arm",
+            },
+            ..
+        })
+    );
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86   only-arm with comment");
-    assert!(poisoned);
+    let result = parse_directives_and_validate_names(
+        Utf8Path::new("a.rs"),
+        "//@ only-x86   only-arm with comment",
+    );
+    assert_matches!(
+        result,
+        Err(NameValidationError {
+            kind: NameValidationErrorKind::TrailingDirective {
+                leading_directive: "only-x86",
+                trailing_directive: "only-arm with comment",
+            },
+            ..
+        })
+    );
+}
+
+#[test]
+fn test_trailing_directive_with_colon() {
+    let result =
+        parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ check-pass edition: 2015");
+    assert_matches!(
+        result,
+        Err(NameValidationError {
+            kind: NameValidationErrorKind::TrailingDirective {
+                leading_directive: "check-pass",
+                trailing_directive: "edition: 2015",
+            },
+            ..
+        })
+    );
 }
 
 #[test]
 fn test_not_trailing_directive() {
-    let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ revisions: incremental");
-    assert!(!poisoned);
+    let result =
+        parse_directives_and_validate_names(Utf8Path::new("a.rs"), "//@ revisions: incremental");
+    assert_matches!(
+        result.as_deref(),
+        Ok([DirectiveLine {
+            revision: None,
+            name: "revisions",
+            payload: Some(DirectivePayload::Value("incremental")),
+            ..
+        },])
+    );
 }
 
 #[test]

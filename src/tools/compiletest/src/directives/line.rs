@@ -23,10 +23,10 @@ pub(crate) fn line_directive<'a>(
         .map(|(revision, after_close_bracket)| (Some(revision), after_close_bracket.trim_start()))
         .unwrap_or((None, trimmed_comment));
 
-    let mut raw_directive = trimmed_comment.strip_prefix("@")?.trim_start();
+    let mut directive = trimmed_comment.strip_prefix("@")?.trim_start();
 
     if let Some(revision) = leading_revision {
-        let context = &line[..line.substr_range(raw_directive).unwrap().start];
+        let context = &line[..line.substr_range(directive).unwrap().start];
         return error(ErrorKind::LeadingRevisionCondition { revision, context });
     }
 
@@ -36,26 +36,36 @@ pub(crate) fn line_directive<'a>(
 
     let mut revision = None;
 
-    if let Some(after_open_bracket) = raw_directive.strip_prefix('[') {
+    if let Some(after_open_bracket) = directive.strip_prefix('[') {
         let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
             return error(ErrorKind::UnclosedRevisionCondition);
         };
 
         revision = Some(line_revision);
-        raw_directive = after_close_bracket.trim_start();
+        directive = after_close_bracket.trim_start();
 
         if line_revision.contains(",") {
             return error(ErrorKind::CommaInRevisionCondition {
                 revision: line_revision,
-                directive: raw_directive,
+                directive,
             });
         }
     }
 
-    // The directive name ends at the first occurrence of colon, space, or end-of-string.
-    let name = raw_directive.split([':', ' ']).next().expect("split is never empty");
+    let mut kind: fn(_) -> _ = DirectivePayload::Value;
+    let (name, payload) = directive
+        .split_once(|char| {
+            match char {
+                ' ' => kind = DirectivePayload::Remark,
+                ':' => {}
+                _ => return false,
+            };
+            true
+        })
+        .map(|(name, payload)| (name, Some(kind(payload.trim()))))
+        .unwrap_or((directive, None));
 
-    Some(Ok(DirectiveLine { file_path, line_number, revision, raw_directive, name }))
+    Some(Ok(DirectiveLine { file_path, line_number, revision, name, payload }))
 }
 
 /// The (partly) broken-down contents of a line containing a test directive,
@@ -82,60 +92,52 @@ pub(crate) struct DirectiveLine<'a> {
     pub(crate) file_path: &'a Utf8Path,
     pub(crate) line_number: LineNumber,
 
-    /// Some test directives start with a revision name in square brackets
-    /// (e.g. `[foo]`), and only apply to that revision of the test.
-    /// If present, this field contains the revision name (e.g. `foo`).
+    /// The revision condition.
+    ///
+    /// The directive only applies to the given revision of a test.
     pub(crate) revision: Option<&'a str>,
 
-    /// The main part of the directive, after removing the comment prefix
-    /// and the optional revision specifier.
-    ///
-    /// This is "raw" because the directive's name and colon-separated value
-    /// (if present) have not yet been extracted or checked.
-    #[cfg(not(test))]
-    raw_directive: &'a str,
-    #[cfg(test)]
-    pub(crate) raw_directive: &'a str,
-
     /// Name of the directive.
-    ///
-    /// Invariant: `self.raw_directive.starts_with(self.name)`
     pub(crate) name: &'a str,
+
+    /// The (whitespace-trimmed) playload of the directive.
+    ///
+    /// If the payload was separated using a colon (`:`) it will get represented as a
+    /// [`DirectivePayload::Value`]. If the payload was separated using a space, it will be
+    /// represented as a [`DirectivePayload::Remark`]. If the directive doesn't contain either colon
+    /// or space, the payload will be `None`.
+    pub(crate) payload: Option<DirectivePayload<'a>>,
 }
 
 impl<'ln> DirectiveLine<'ln> {
+    pub(crate) fn synthetic(name: &'static str, file_path: &'ln Utf8Path) -> Self {
+        Self { file_path, line_number: LineNumber::ZERO, revision: None, name, payload: None }
+    }
+
     pub(crate) fn applies_to_test_revision(&self, test_revision: Option<&str>) -> bool {
         self.revision.is_none() || self.revision == test_revision
     }
 
-    /// Helper method used by `value_after_colon` and `remark_after_space`.
-    /// Don't call this directly.
-    fn rest_after_separator(&self, separator: u8) -> Option<&'ln str> {
-        let n = self.name.len();
-        if self.raw_directive.as_bytes().get(n) != Some(&separator) {
-            return None;
-        }
-
-        Some(&self.raw_directive[n + 1..])
-    }
-
-    /// If this directive uses `name: value` syntax, returns the part after
-    /// the colon character.
-    pub(crate) fn value_after_colon(&self) -> Option<&'ln str> {
-        self.rest_after_separator(b':')
-    }
-
-    /// If this directive uses `name remark` syntax, returns the part after
-    /// the separating space.
-    pub(crate) fn remark_after_space(&self) -> Option<&'ln str> {
-        self.rest_after_separator(b' ')
-    }
-
-    /// Allows callers to print `raw_directive` if necessary,
-    /// without accessing the field directly.
+    /// Display the name & payload of the directive.
     pub(crate) fn display(&self) -> impl fmt::Display {
-        self.raw_directive
+        fmt::from_fn(|f| {
+            f.write_str(self.name)?;
+            if let Some(payload) = &self.payload {
+                match payload {
+                    DirectivePayload::Value(value) => write!(f, ": {value}"),
+                    DirectivePayload::Remark(remark) => write!(f, " {remark}"),
+                }?;
+            }
+            Ok(())
+        })
     }
+}
+
+#[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug))]
+pub(crate) enum DirectivePayload<'a> {
+    Value(&'a str),
+    Remark(&'a str),
 }
 
 #[cfg_attr(test, derive(Debug))]
@@ -158,15 +160,15 @@ impl Error<'_> {
     pub(crate) fn raise_fatal(self) -> ! {
         let Self { kind, file_path, line_number } = self;
 
-        let error = |message| error!("malformed directive: {message} at {file_path}:{line_number}");
+        let title = |message| error!("malformed directive: {message} at {file_path}:{line_number}");
 
         match kind {
             ErrorKind::LeadingRevisionCondition { revision, context } => {
-                error("found revision condition before `@` instead of after");
+                title("found revision condition before `@` instead of after");
                 help!("rewrite the start of the line to `//@[{revision}] ` (from `{context}`)");
             }
             ErrorKind::WhitespaceBeforeAtSign => {
-                error("found whitespace between `//` and `@`");
+                title("found whitespace between `//` and `@`");
                 help!("if you meant to write a directive remove the whitespace to form `//@`");
                 help!(
                     "if you meant to literally write `@` in a code comment add `\\` before `@` or \
@@ -174,10 +176,10 @@ impl Error<'_> {
                 );
             }
             ErrorKind::UnclosedRevisionCondition => {
-                error("revision condition is missing a closing bracket `]`");
+                title("revision condition is missing a closing bracket `]`");
             }
             ErrorKind::CommaInRevisionCondition { revision, directive } => {
-                error(
+                title(
                     "found commas in revision condition but multiple revisions aren't supported yet",
                 );
 
