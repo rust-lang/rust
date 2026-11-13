@@ -3233,30 +3233,18 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 format!("{name} would have to be valid for `{region_name}`..."),
             );
 
+            let tcx = self.infcx.tcx;
+            let def_id = self.mir_def_id();
+            let scope_end = match tcx.opt_item_name(def_id.to_def_id()) {
+                Some(fn_name) => format!("the function `{fn_name}` returns"),
+                None if matches!(tcx.hir_node_by_def_id(def_id), hir::Node::ConstBlock(_)) => {
+                    "the enclosing const block ends".to_string()
+                }
+                None => format!("the enclosing {} returns", tcx.def_descr(def_id.to_def_id())),
+            };
             err.span_label(
                 drop_span,
-                format!(
-                    "...but {name} will be dropped here, when the {} returns",
-                    self.infcx
-                        .tcx
-                        .opt_item_name(self.mir_def_id().to_def_id())
-                        .map(|name| format!("function `{name}`"))
-                        .unwrap_or_else(|| {
-                            match &self.infcx.tcx.def_kind(self.mir_def_id()) {
-                                DefKind::Closure
-                                    if self
-                                        .infcx
-                                        .tcx
-                                        .is_coroutine(self.mir_def_id().to_def_id()) =>
-                                {
-                                    "enclosing coroutine"
-                                }
-                                DefKind::Closure => "enclosing closure",
-                                kind => bug!("expected closure or coroutine, found {:?}", kind),
-                            }
-                            .to_string()
-                        })
-                ),
+                format!("...but {name} will be dropped here, when {scope_end}"),
             );
 
             err.note(
