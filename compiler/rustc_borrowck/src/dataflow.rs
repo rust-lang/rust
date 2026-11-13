@@ -532,10 +532,14 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                 self.kill_borrows_on_place(state, *lhs);
             }
 
-            mir::StatementKind::StorageDead(local) => {
-                // Make sure there are no remaining borrows for locals that
-                // are gone out of scope.
-                self.kill_borrows_on_place(state, Place::from(*local));
+            &mir::StatementKind::StorageDead(local) => {
+                // Make sure there are no remaining borrows for locals that have gone out of scope,
+                // except for temporaries created to point to thread-local storage. Borrows of
+                // thread-locals are tracked to prevent them from living past the end of functions;
+                // we shouldn't kill them when the temporary they're accessed through dies.
+                if !self.body.local_decls[local].is_ref_to_thread_local() {
+                    self.kill_borrows_on_place(state, Place::from(local));
+                }
             }
 
             mir::StatementKind::FakeRead(..)
