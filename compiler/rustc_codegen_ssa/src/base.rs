@@ -262,6 +262,54 @@ pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+/// Coerces `src` to `dst_ty`. `src` must be a reference to a pointer.
+pub(crate) fn unsize_ptr_ref<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    src: PlaceRef<'tcx, Bx::Value>,
+    dst_ty: Ty<'tcx>,
+) -> (Bx::Value, Bx::Value) {
+    let src_ty = src.layout.ty;
+    match (src_ty.kind(), dst_ty.kind()) {
+        (&ty::Pat(s, sp), &ty::Pat(d, dp))
+            if let (PatternKind::NotNull, PatternKind::NotNull) = (*sp, *dp) =>
+        {
+            let src = src.project_type(bx, s);
+            unsize_ptr_ref(bx, src, d)
+        }
+        (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
+            let (base, info) = match bx.load_operand(src).val {
+                OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
+                OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
+                OperandValue::Ref(..) | OperandValue::ZeroSized => bug!(),
+            };
+            (base, info)
+        }
+        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+            assert_eq!(def_a, def_b); // implies same number of fields
+            let src_layout = src.layout;
+            let dst_layout = bx.cx().layout_of(dst_ty);
+
+            let mut result = None;
+            for i in 0..src.layout.fields.count() {
+                let src_f = src.project_field(bx, i);
+                if src_f.layout.is_1zst() {
+                    continue;
+                }
+
+                assert_eq!(src_layout.fields.offset(i).bytes(), 0);
+                assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
+                assert_eq!(src_layout.size, src_f.layout.size);
+
+                let dst_f_layout = dst_layout.field(bx.cx(), i);
+                assert_eq!(result, None);
+                result = Some(unsize_ptr_ref(bx, src_f, dst_f_layout.ty));
+            }
+            result.unwrap()
+        }
+        _ => bug!("unsize_ptr_ref: invalid coercion {:?} -> {:?}", src_ty, dst_ty,),
+    }
+}
+
 /// Coerces `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty`, and stores the result in `dst`.
 pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
