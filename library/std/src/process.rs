@@ -2016,6 +2016,30 @@ impl ExitStatus {
     pub fn code(&self) -> Option<i32> {
         self.0.code()
     }
+
+    /// Converts the `ExitStatus` to an `ExitCode`.
+    ///
+    /// On Unix signals are converted to [`ExitCode::FAILURE`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(exitstatus_to_exitcode)]
+    /// use std::process::{Command, ExitCode};
+    ///
+    /// fn main() -> ExitCode {
+    ///     let status = Command::new("mkdir")
+    ///         .arg("projects")
+    ///         .status()
+    ///         .expect("mkdir command should execute successfully");
+    ///
+    ///     status.to_exit_code()
+    /// }
+    /// ```
+    #[unstable(feature = "exitstatus_to_exitcode", issue = "152049")]
+    pub fn to_exit_code(&self) -> ExitCode {
+        if let Some(code) = self.0.exit_code() { ExitCode(code) } else { ExitCode::FAILURE }
+    }
 }
 
 impl AsInner<imp::ExitStatus> for ExitStatus {
@@ -2224,6 +2248,30 @@ impl ExitCode {
     /// return the same codes (but will also `eprintln!` the error).
     #[stable(feature = "process_exitcode", since = "1.61.0")]
     pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
+
+    /// Converts the `ExitStatus` to an `ExitCode`.
+    ///
+    /// On Unix signals are converted to [`ExitCode::FAILURE`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(exitstatus_to_exitcode)]
+    /// use std::process::{Command, ExitCode};
+    ///
+    /// fn main() -> ExitCode {
+    ///     let status = Command::new("mkdir")
+    ///         .arg("projects")
+    ///         .status()
+    ///         .expect("mkdir command should execute successfully");
+    ///
+    ///     ExitCode::from_exit_status(status)
+    /// }
+    /// ```
+    #[unstable(feature = "exitstatus_to_exitcode", issue = "152049")]
+    pub fn from_exit_status(status: ExitStatus) -> Self {
+        status.to_exit_code()
+    }
 
     /// Exit the current process with the given `ExitCode`.
     ///

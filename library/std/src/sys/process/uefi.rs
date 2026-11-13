@@ -277,6 +277,10 @@ impl ExitStatus {
             i32::try_from(code).ok()
         }
     }
+
+    pub fn exit_code(&self) -> Option<ExitCode> {
+        if self.exit_ok() { Some(ExitCode::SUCCESS) } else { Some(ExitCode::FAILURE) }
+    }
 }
 
 impl fmt::Display for ExitStatus {
