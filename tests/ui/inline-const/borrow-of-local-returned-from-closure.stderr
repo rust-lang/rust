@@ -1,0 +1,17 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/borrow-of-local-returned-from-closure.rs:9:19
+   |
+LL |         foo(&|_| &x)
+   |               -   ^ `x` would have to be valid for `'0`...
+   |               |
+   |               has type `&'0 u32`
+LL |
+LL |     }
+   |     - ...but `x` will be dropped here, when the enclosing constant expression returns
+   |
+   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

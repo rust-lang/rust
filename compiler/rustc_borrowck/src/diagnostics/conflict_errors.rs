@@ -3242,19 +3242,10 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         .opt_item_name(self.mir_def_id().to_def_id())
                         .map(|name| format!("function `{name}`"))
                         .unwrap_or_else(|| {
-                            match &self.infcx.tcx.def_kind(self.mir_def_id()) {
-                                DefKind::Closure
-                                    if self
-                                        .infcx
-                                        .tcx
-                                        .is_coroutine(self.mir_def_id().to_def_id()) =>
-                                {
-                                    "enclosing coroutine"
-                                }
-                                DefKind::Closure => "enclosing closure",
-                                kind => bug!("expected closure or coroutine, found {:?}", kind),
-                            }
-                            .to_string()
+                            format!(
+                                "enclosing {}",
+                                self.infcx.tcx.def_descr(self.mir_def_id().to_def_id())
+                            )
                         })
                 ),
             );
