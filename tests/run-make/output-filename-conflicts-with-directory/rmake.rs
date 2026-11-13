@@ -3,6 +3,8 @@
 // potentially-confusing linker error.
 // See https://github.com/rust-lang/rust/pull/47203
 
+//@ ignore-nvptx64-nvidia-cuda
+
 use run_make_support::{rfs, rustc};
 
 fn main() {

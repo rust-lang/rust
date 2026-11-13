@@ -13,6 +13,7 @@
 // use a directory with non-existing parent like `/does-not-exist/output`.
 // See https://github.com/rust-lang/rust/issues/66530
 
+//@ ignore-nvptx64-nvidia-cuda
 //@ ignore-riscv64
 // FIXME: The riscv64gc-gnu build container runs as root, and can always write
 // into `inaccessible/tmp`. Ideally, the riscv64-gnu docker container
