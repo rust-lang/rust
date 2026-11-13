@@ -861,6 +861,8 @@ pub enum AttributeKind {
     ConstContinue(Span),
 
     /// Represents `#[coroutine]`.
+    ///
+    /// This attribute can be applied to closures to make them coroutines instead.
     Coroutine,
 
     /// Represents `#[coverage(..)]`.
@@ -1024,7 +1026,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[must_not_suspend]`
-    MustNotSupend {
+    MustNotSuspend {
         reason: Option<Symbol>,
     },
 
@@ -1130,7 +1132,10 @@ pub enum AttributeKind {
         limit: Limit,
     },
 
-    /// Represents `#[pin_v2]`
+    /// Represents `#[pin_v2]`.
+    ///
+    /// The `#[pin_v2]` attribute is part of the `pin_ergonomics` experiment that allows
+    /// structurally pinning, tracked in <https://github.com/rust-lang/rust/issues/130494>.
     PinV2(Span),
 
     /// Represents `#[prelude_import]`
@@ -1177,8 +1182,9 @@ pub enum AttributeKind {
         kind: RustcAbiAttrKind,
     },
 
-    /// Represents `#[align(N)]`.
-    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+    /// Represents `#[rustc_align(N)]`.
+    ///
+    /// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     RustcAlign {
         align: Align,
         span: Span,
@@ -1261,7 +1267,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     RustcConstStableIndirect,
 
-    /// Represents `#[rustc_conversion_suggestion]`
+    /// Represents `#[rustc_conversion_suggestion]`.
+    ///
+    /// Enumerates "identity-like" conversion methods to suggest on type mismatch.
     RustcConversionSuggestion,
 
     /// Represents `#[rustc_deallocator]`
@@ -1280,7 +1288,10 @@ pub enum AttributeKind {
     /// Represents `#[rustc_diagnostic_item]`
     RustcDiagnosticItem(Symbol),
 
-    /// Represents `#[rustc_do_not_const_check]`
+    /// Represents `#[rustc_do_not_const_check]`.
+    ///
+    /// Functions with this attribute will not have their body const-checked. It will always get
+    /// replaced during CTFE via `hook_special_const_fn`.
     RustcDoNotConstCheck,
 
     /// Represents `#[rustc_doc_primitive = ...]`
@@ -1366,18 +1377,30 @@ pub enum AttributeKind {
         attr_span: Span,
     },
 
-    /// Represents `#[rustc_lint_opt_deny_field_access]`
+    /// Represents `#[rustc_lint_opt_deny_field_access]`.
+    ///
+    /// Used by the `rustc::bad_opt_access` lint on fields
+    /// types (as well as any others in future).
     RustcLintOptDenyFieldAccess {
         lint_message: Symbol,
     },
 
-    /// Represents `#[rustc_lint_opt_ty]`
+    /// Represents `#[rustc_lint_opt_ty]`.
+    ///
+    /// Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
+    /// types (as well as any others in future)
     RustcLintOptTy,
 
-    /// Represents `#[rustc_lint_query_instability]`
+    /// Represents `#[rustc_lint_query_instability]`.
+    ///
+    /// Used by the `rustc::potential_query_instability` lint to warn methods which
+    /// might not be stable during incremental compilation.
     RustcLintQueryInstability,
 
-    /// Represents `#[rustc_lint_untracked_query_information]`
+    /// Represents `#[rustc_lint_untracked_query_information]`.
+    ///
+    /// Used by the `rustc::untracked_query_information` lint to warn methods which
+    /// might not be stable during incremental compilation.
     RustcLintUntrackedQueryInformation,
 
     /// Represents `#[rustc_macro_transparency]`.
@@ -1441,7 +1464,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     RustcPassByValue,
 
-    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
+    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`,
+    ///
+    /// See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
     RustcPassIndirectlyInNonRusticAbis(Span),
 
     /// Represents `#[rustc_preserve_ub_checks]`
@@ -1450,7 +1475,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_proc_macro_decls]`
     RustcProcMacroDecls,
 
-    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
+    /// Represents `#[rustc_pub_transparent]` (used to mark a type as "publicly" transparent, for
+    /// semver and documentation purposes).
     RustcPubTransparent(Span),
 
     /// Represents `#[rustc_reallocator]`
@@ -1465,9 +1491,6 @@ pub enum AttributeKind {
         /// is not provided for representing tuple types.
         element_count: Option<u16>,
     },
-
-    /// Represents `#[rustc_should_not_be_called_on_const_items]`
-    RustcShouldNotBeCalledOnConstItems,
 
     /// Represents `#[rustc_show_spans]`
     RustcShowSpans(ThinVec<RustcShowSpansKind>),
@@ -1516,7 +1539,11 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
-    /// Represents `#[rustc_splat]`
+    /// Represents `#[rustc_splat]`.
+    ///
+    /// The `#[rustc_splat]` attribute is part of the `splat` experiment that improves the
+    /// ergonomics of function overloading, tracked in
+    /// <https://github.com/rust-lang/rust/issues/153629>.
     Splat(Span),
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
@@ -1552,8 +1579,11 @@ pub enum AttributeKind {
     // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
     UncheckedTypeAlias,
 
-    /// Represents `#[rustc_unroll]`
-    // FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity
+    /// Represents `#[rustc_unroll]`.
+    ///
+    /// Tracked in <https://github.com/rust-lang/rust/issues/156874>.
+    ///
+    /// FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity.
     Unroll(UnrollAttr),
 
     /// Represents `#[unstable_feature_bound]`.
