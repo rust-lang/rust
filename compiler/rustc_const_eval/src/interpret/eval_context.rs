@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::convert::identity;
+use std::fmt::Arguments;
 
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
@@ -212,6 +213,22 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     }
 }
 
+/// Delayed a bug when layout mismatch found in const eval, which should be a type error
+/// reported elsewhere.
+pub(super) fn span_delayed_layout_mismatch_bug<'tcx>(
+    tcx: TyCtxtAt<'tcx>,
+    expected: TyAndLayout<'tcx>,
+    actual: TyAndLayout<'tcx>,
+    args: Arguments<'_>,
+) -> InterpResult<'tcx, !> {
+    throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
+        tcx.tcx.dcx().span_delayed_bug(
+            tcx.span,
+            format!("{args}\nexpected: {expected:?}\nactual: {actual:?}")
+        )
+    )))
+}
+
 /// Use the already known layout if given (but sanity check in debug mode),
 /// or compute the layout.
 #[cfg_attr(not(debug_assertions), inline(always))]
@@ -227,12 +244,12 @@ pub(super) fn from_known_layout<'tcx>(
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
                 if !mir_assign_valid_types(tcx.tcx, typing_env, check_layout, known_layout) {
-                    span_bug!(
-                        tcx.span,
-                        "expected type differs from actual type.\nexpected: {}\nactual: {}",
-                        known_layout.ty,
-                        check_layout.ty,
-                    );
+                    span_delayed_layout_mismatch_bug(
+                        tcx,
+                        known_layout,
+                        check_layout,
+                        format_args!("expected type differs from actual type"),
+                    )?;
                 }
             }
             interp_ok(known_layout)
