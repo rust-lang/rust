@@ -413,7 +413,7 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
 fn packed_stack_attr<'ll>(
     cx: &SimpleCx<'ll>,
     sess: &Session,
-    function_attributes: &Vec<TargetFeature>,
+    function_attributes: &[TargetFeature],
 ) -> Option<&'ll Attribute> {
     if sess.target.arch != Arch::S390x {
         return None;

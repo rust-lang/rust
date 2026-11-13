@@ -14,6 +14,12 @@ fn init_compiler_benchmarks(
     scenarios: &[&str],
     crates: &[&str],
 ) -> CmdBuilder {
+    // If we're currently trying to optimize cargo, we need to run benchmarks with the
+    // PGO-instrumented binary we just built to actually gather the profiles: the stage2 cargo.
+    // Otherwise, running the benchmarks using the beta/stage0 cargo is enough.
+    let benchmark_cargo =
+        if env.optimize_cargo { env.cargo_stage_2() } else { env.cargo_stage_0() };
+
     // Run rustc-perf benchmarks
     // Benchmark using profile_local with eprintln, which essentially just means
     // don't actually benchmark -- just make sure we run rustc a bunch of times.
@@ -31,7 +37,7 @@ fn init_compiler_benchmarks(
         "--id",
         "Test",
         "--cargo",
-        env.cargo_stage_2().as_str(),
+        benchmark_cargo.as_str(),
         "--profiles",
         profiles.join(",").as_str(),
         "--scenarios",

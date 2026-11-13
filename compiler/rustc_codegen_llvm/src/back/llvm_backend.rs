@@ -22,12 +22,12 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{LtoCli, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{
     BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
 };
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{RelocModel, TlsModel};
+use rustc_target::spec::{RelocModel, SplitDebuginfo, TlsModel};
 
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::write::{create_informational_target_machine, create_target_machine};
@@ -101,7 +101,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> CompiledModule {
-        let mut module = back::lto::run_fat(
+        let module = back::lto::run_fat(
             cgcx,
             &sess.prof,
             shared_emitter,
@@ -113,7 +113,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
 
         let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
         let dcx = dcx.handle();
-        back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &mut module, false);
+        back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &module, false);
 
         back::write::codegen(cgcx, &sess.prof, shared_emitter, module, &cgcx.module_config)
     }
@@ -206,6 +206,43 @@ impl CodegenBackend for LlvmCodegenBackend {
                     }
                 }
                 enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
+            }
+        }
+
+        // -Zllvm-tpde requires the TPDE pass plugin, which may not be available. If TPDE is used but not available,
+        // we emit an early error here and abort compilation.
+        {
+            match llvm::TpdeWrapper::get_or_init(
+                &sess.opts.sysroot,
+                &sess.opts.unstable_opts.llvm_tpde,
+            ) {
+                Ok(_) => {}
+                Err(llvm::TpdeLibraryError::NotFound { err }) => {
+                    sess.dcx().emit_fatal(crate::diagnostics::TpdeComponentMissing { err });
+                }
+                Err(llvm::TpdeLibraryError::LoadFailed { err }) => {
+                    sess.dcx().emit_fatal(crate::diagnostics::TpdeComponentUnavailable { err });
+                }
+            }
+
+            if sess.opts.unstable_opts.llvm_tpde.is_some() {
+                if !matches!(sess.opts.optimize, OptLevel::No | OptLevel::Less) {
+                    sess.dcx().emit_warn(crate::diagnostics::TpdeHighOptLevel);
+                }
+
+                if sess.target.requires_lto
+                    || !matches!(sess.early_lto(), LtoCli::No | LtoCli::Unspecified)
+                {
+                    sess.dcx().emit_fatal(crate::diagnostics::TpdeLtoUsed);
+                }
+
+                // JUSTIFICATION: the session doesn't exist at this point.
+                #[allow(rustc::bad_opt_access)]
+                if sess.opts.cg.split_debuginfo.unwrap_or(sess.target.split_debuginfo)
+                    != SplitDebuginfo::Off
+                {
+                    sess.dcx().emit_fatal(crate::diagnostics::TpdeSplitDebugInfoUsed);
+                }
             }
         }
 
@@ -397,7 +434,7 @@ impl CodegenBackend for LlvmCodegenBackend {
                 llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap();
 
             if !llvm_stats_json.is_empty() {
-                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                if let Err(e) = std::fs::write(out_path, llvm_stats_json) {
                     sess.dcx().err(format!("failed to write stats to {out_path}: {e}"));
                 }
             } else {

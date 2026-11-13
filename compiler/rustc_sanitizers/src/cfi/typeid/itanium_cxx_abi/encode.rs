@@ -263,6 +263,9 @@ fn encode_const_value<'tcx>(
         | ty::Placeholder(..) => {
             bug!("encode_const_value: unexpected type `{:?}`", cv.ty);
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 
     s
@@ -750,6 +753,9 @@ pub(crate) fn encode_ty<'tcx>(
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     };
 
     typeid

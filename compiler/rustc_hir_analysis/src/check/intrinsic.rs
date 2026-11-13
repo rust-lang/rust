@@ -181,10 +181,12 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_non_exhaustive
         | sym::type_id_points_mutably
         | sym::type_id_points_to
+        | sym::type_id_reflected_attrs
         | sym::type_id_size_of
         | sym::type_id_type_of
         | sym::type_id_variant_name
         | sym::type_id_variant_non_exhaustive
+        | sym::type_id_variant_reflected_attrs
         | sym::type_id_variants
         | sym::type_id_vtable
         | sym::type_name
@@ -291,6 +293,16 @@ pub(crate) fn check_intrinsic_type(
 
         sym::type_name => (1, 0, vec![], Ty::new_static_str(tcx)),
         sym::type_id => (1, 0, vec![], type_id_ty()),
+        sym::type_id_reflected_attrs => (
+            0,
+            0,
+            vec![type_id_ty()],
+            Ty::new_imm_ref(
+                tcx,
+                tcx.lifetimes.re_static,
+                Ty::new_slice(tcx, Ty::new_static_str(tcx)),
+            ),
+        ),
         sym::type_id_array_len => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_element_ty => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_eq => (0, 0, vec![type_id_ty(), type_id_ty()], tcx.types.bool),
@@ -313,6 +325,16 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_points_mutably => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_points_to => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::type_id_variant_reflected_attrs => (
+            0,
+            0,
+            vec![type_id_ty(), tcx.types.usize],
+            Ty::new_imm_ref(
+                tcx,
+                tcx.lifetimes.re_static,
+                Ty::new_slice(tcx, Ty::new_static_str(tcx)),
+            ),
+        ),
         sym::type_id_variant_name => {
             (0, 0, vec![type_id_ty(), tcx.types.usize], Ty::new_static_str(tcx))
         }

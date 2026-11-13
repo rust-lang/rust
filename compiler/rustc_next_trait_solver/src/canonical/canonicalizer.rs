@@ -419,6 +419,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Error(_) => {
                 return t.super_fold_with(self);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         let var = self.get_or_insert_bound_var(t, kind);

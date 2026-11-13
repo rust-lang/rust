@@ -1,0 +1,66 @@
+error[E0308]: mismatched types
+  --> $DIR/multiple-crate-names.rs:29:16
+   |
+LL |     let _: S = bar::S;
+   |            -   ^^^^^^ expected `S`, found `foo::S`
+   |            |
+   |            expected due to this
+   |
+   = note: `foo::S` and `S` have similar names, but are actually distinct types
+note: `foo::S` is defined in crate `somedep`
+  --> $DIR/auxiliary/somedep.rs:3:1
+   |
+LL | pub struct S;
+   | ^^^^^^^^^^^^
+note: `S` is defined in the current crate
+  --> $DIR/multiple-crate-names.rs:38:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/multiple-crate-names.rs:30:16
+   |
+LL |     let _: S = foo::S;
+   |            -   ^^^^^^ expected `S`, found `foo::S`
+   |            |
+   |            expected due to this
+   |
+   = note: `foo::S` and `S` have similar names, but are actually distinct types
+note: `foo::S` is defined in crate `somedep`
+  --> $DIR/auxiliary/somedep.rs:3:1
+   |
+LL | pub struct S;
+   | ^^^^^^^^^^^^
+note: `S` is defined in the current crate
+  --> $DIR/multiple-crate-names.rs:38:1
+   |
+LL | struct S;
+   | ^^^^^^^^
+
+error[E0433]: cannot find module or crate `fo` in this scope
+  --> $DIR/multiple-crate-names.rs:34:5
+   |
+LL |     fo::somefun();
+   |     ^^ use of unresolved module or unlinked crate `fo`
+   |
+help: there is a crate or module with a similar name
+   |
+LL |     foo::somefun();
+   |       +
+
+error[E0433]: cannot find module or crate `ba` in this scope
+  --> $DIR/multiple-crate-names.rs:35:5
+   |
+LL |     ba::somefun();
+   |     ^^ use of unresolved module or unlinked crate `ba`
+   |
+help: there is a crate or module with a similar name
+   |
+LL |     bar::somefun();
+   |       +
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0433.
+For more information about an error, try `rustc --explain E0308`.

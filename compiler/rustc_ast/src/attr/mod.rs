@@ -80,47 +80,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    fn path_matches(&self, name: &[Symbol]) -> bool {
-        match &self.kind {
-            AttrKind::Normal(normal) => {
-                normal.item.path.segments.len() == name.len()
-                    && normal
-                        .item
-                        .path
-                        .segments
-                        .iter()
-                        .zip(name)
-                        .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
-            }
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
-            AttrKind::Generated(generated) => generated.path() == name,
-        }
-    }
-
-    /// Returns the string value in:
-    ///
-    /// ```text
-    /// #[attribute = "value"]
-    ///               ^^^^^^^
-    /// ```
-    ///
-    /// It returns `None` in any other cases, including doc comments if they
-    /// are not under the form `#[doc = "..."]`.
-    ///
-    /// It also returns `None` for:
-    ///
-    /// ```text
-    /// #[attr("value")]
-    /// ```
-    fn value_str(&self) -> Option<Symbol> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.value_str(),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => generated.value_str(),
-        }
-    }
-
     /// Returns the documentation, its kind if this is a doc comment or a sugared doc comment
     /// and the span of the entire comment (or the entire attribute if raw - see the span in
     /// [`DocFragmentKind`] for the literal span.)
@@ -823,14 +782,6 @@ impl MetaItemLit {
 }
 
 pub trait AttributeExt: Debug + 'static {
-    /// Gets the value literal, as string, when using `#[attr = value]`
-    fn value_str(&self) -> Option<Symbol>;
-
-    /// Checks whether the path of this attribute matches the name.
-    ///
-    /// Matches one segment of the path to each element in `name`
-    fn path_matches(&self, name: &[Symbol]) -> bool;
-
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
@@ -849,8 +800,28 @@ pub trait AttributeExt: Debug + 'static {
 }
 
 impl Attribute {
+    /// Returns the string value in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases, including doc comments if they
+    /// are not under the form `#[doc = "..."]`.
+    ///
+    /// It also returns `None` for:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
     pub fn value_str(&self) -> Option<Symbol> {
-        AttributeExt::value_str(self)
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.value_str(),
+            AttrKind::Synthetic(..) => unreachable!(),
+            AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_str(),
+        }
     }
 
     /// Gets the span of the value literal, as string, when using `#[attr = value]`
@@ -866,7 +837,20 @@ impl Attribute {
     }
 
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        AttributeExt::path_matches(self, name)
+        match &self.kind {
+            AttrKind::Normal(normal) => {
+                normal.item.path.segments.len() == name.len()
+                    && normal
+                        .item
+                        .path
+                        .segments
+                        .iter()
+                        .zip(name)
+                        .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
+            }
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.path() == name,
+        }
     }
 
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).

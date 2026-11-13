@@ -150,6 +150,9 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             ty::UnsafeBinder(bound_ty) => {
                 stack.push(bound_ty.skip_binder().into());
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         },
         ty::GenericArgKind::Lifetime(_) => {}
         ty::GenericArgKind::Const(parent_ct) => match parent_ct.kind() {

@@ -76,6 +76,11 @@ pub struct CStore {
 
     /// Names that were used to load the crates via `extern crate` or paths.
     resolved_externs: UnordMap<Symbol, CrateNum>,
+    /// Given a crate id, get their extern crate import name (given by `--extern`,
+    /// `extern crate foo as bar;` or from the extern prelude). A crate might be known by more than
+    /// one extern name, but we only keep track of one of them. This name should *only be used for
+    /// diagnostics*.
+    extern_crate_name: UnordMap<CrateNum, Symbol>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -256,6 +261,7 @@ impl CStore {
     /// It's also not always the same as the `DefId`'s symbol due to renames `extern crate resolved_name as defid_name`.
     pub(crate) fn set_resolved_extern_crate_name(&mut self, name: Symbol, extern_crate: CrateNum) {
         self.resolved_externs.insert(name, extern_crate);
+        self.extern_crate_name.insert(extern_crate, name);
     }
 
     /// Crate resolved and loaded via the given extern name
@@ -264,6 +270,18 @@ impl CStore {
     /// May be `None` if the crate wasn't used
     pub fn resolved_extern_crate(&self, externs_name: Symbol) -> Option<CrateNum> {
         self.resolved_externs.get(&externs_name).copied()
+    }
+
+    /// A crate's extern crate import name.
+    ///
+    /// This name is given by `--extern`, `extern crate foo as bar;` or from the extern prelude. A
+    /// crate might be known by more than one extern name, but we only keep track of one of them.
+    /// This name should *only be used for diagnostics*.
+    // FIXME: find a way of making the provided name always suitable for structured suggestions, as
+    // right now this is will most of the time work, but could conceivably provide an incorrect name
+    // given the right circumstances.
+    pub fn opt_extern_crate_name(&self, c: CrateNum) -> Option<Symbol> {
+        self.extern_crate_name.get(&c).copied()
     }
 
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
@@ -609,6 +627,7 @@ impl CStore {
             has_alloc_error_handler: false,
             hash_to_cnum: UnordMap::default(),
             resolved_externs: UnordMap::default(),
+            extern_crate_name: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
             has_crate_resolve_with_fail: false,
@@ -818,13 +837,11 @@ impl CStore {
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
-                // crate maybe injrected with `standard_library_imports::inject`, their span is dummy.
-                // we ignore compiler-injected prelude/sysroot loads here so they don't suppress
-                // unrelated diagnostics, such as `unsupported targets for std library` etc,
-                // these maybe helpful for users to resolve crate loading failure.
-                if !tcx.sess.dcx().has_errors().is_some() && !span.is_dummy() {
-                    self.has_crate_resolve_with_fail = true;
-                }
+                // Crate maybe injected with `standard_library_imports::inject`, its span is
+                // dummy. We ignore compiler-injected prelude/sysroot loads here so they don't
+                // suppress unrelated diagnostics, such as "unsupported targets for std library"
+                // etc., these may be helpful for users to resolve crate loading failure.
+                self.has_crate_resolve_with_fail = true;
                 let missing_core = self
                     .maybe_resolve_crate(
                         tcx,
@@ -1213,6 +1230,7 @@ impl CStore {
                         tcx.dcx().emit_err(diagnostics::ConflictingGlobalAlloc {
                             crate_name: data.name(),
                             other_crate_name: other_crate,
+                            this_crate: other_crate == this_crate,
                         });
                     }
                     None => global_allocator = Some(data.name()),
@@ -1474,7 +1492,14 @@ impl CStore {
     }
 
     pub fn maybe_process_path_extern(&mut self, tcx: TyCtxt<'_>, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern).ok()
+        match self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern)
+        {
+            Ok(cnum) => Some(cnum),
+            Err(_) => {
+                self.has_crate_resolve_with_fail = true;
+                None
+            }
+        }
     }
 }
 
