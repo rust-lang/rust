@@ -309,6 +309,10 @@ symbols! {
         RangeTo,
         RangeToInclusive,
         RangeToInclusiveCopy,
+        RawCrate: "r#crate",
+        RawSelfLower: "r#self",
+        RawSelfUpper: "r#Self",
+        RawSuper: "r#super",
         Rc,
         RcWeak,
         Ready,
@@ -2658,7 +2662,9 @@ impl fmt::Display for IdentPrinter {
             }
             IdentPrintMode::Normal => self.symbol,
             IdentPrintMode::RawIdent => {
-                f.write_str("r#")?;
+                if !self.symbol.is_raw_path_segment_keyword() {
+                    f.write_str("r#")?;
+                }
                 self.symbol
             }
             IdentPrintMode::ForcedKeywordIdent => {
@@ -3109,6 +3115,12 @@ impl Symbol {
         self == kw::True || self == kw::False
     }
 
+    /// Returns `true` if the symbol is the raw version of a keyword that is used as a path segment.
+    /// This is currently `r#crate`, `r#self`, `r#Self`, and `r#super`.
+    pub fn is_raw_path_segment_keyword(self) -> bool {
+        matches!(self, sym::RawCrate | sym::RawSelfLower | sym::RawSelfUpper | sym::RawSuper)
+    }
+
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != sym::empty && self != kw::Underscore && !self.is_path_segment_keyword()
@@ -3157,7 +3169,7 @@ impl Ident {
     /// We see this identifier in a normal identifier position, like variable name or a type.
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
-        self.name.can_be_raw() && self.is_reserved()
+        self.name.is_raw_path_segment_keyword() || (self.name.can_be_raw() && self.is_reserved())
     }
 
     /// Given the name of a lifetime without the first quote (`'`),

@@ -4,7 +4,7 @@ error: proc macro panicked
 LL | invalid_raw_ident!();
    | ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: message: `self` cannot be a raw identifier
+   = help: message: `$crate` cannot be a raw identifier
 
 error: aborting due to 1 previous error
 

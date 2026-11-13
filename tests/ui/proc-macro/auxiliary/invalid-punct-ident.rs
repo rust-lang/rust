@@ -15,7 +15,7 @@ pub fn invalid_ident(_: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn invalid_raw_ident(_: TokenStream) -> TokenStream {
-    TokenTree::from(Ident::new_raw("self", Span::call_site())).into()
+    TokenTree::from(Ident::new_raw("$crate", Span::call_site())).into()
 }
 
 #[proc_macro]

@@ -142,6 +142,10 @@ tests!(r#await);
 tests!(r#dyn);
 tests!(r#gen);
 tests!(r#try);
+tests!(r#crate);
+tests!(r#self);
+tests!(r#Self);
+tests!(r#super);
 
 // Weak keywords:
 tests!(auto);
