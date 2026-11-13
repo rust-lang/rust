@@ -22,8 +22,6 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         return false;
     }
 
-    let body = &*tcx.mir_built(local_def_id).borrow();
-
     let body_ty = tcx.type_of(def_id).skip_binder();
     let body_abi = match body_ty.kind() {
         ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
@@ -31,7 +29,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         ty::CoroutineClosure(..) => ExternAbi::RustCall,
         ty::Coroutine(..) => ExternAbi::Rust,
         ty::Error(_) => return false,
-        _ => span_bug!(body.span, "unexpected body ty: {:?}", body_ty),
+        _ => span_bug!(tcx.def_span(def_id), "unexpected body ty: {:?}", body_ty),
     };
     let body_can_unwind = layout::fn_can_unwind(tcx, Some(def_id), body_abi);
 
@@ -39,6 +37,13 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     if !body_can_unwind {
         return false;
     }
+
+    // Intrinsics without a body can't be checked and we must instead rely on the signature.
+    if tcx.is_intrinsic_that_must_be_overridden(def_id) {
+        return false;
+    }
+
+    let body = &*tcx.mir_built(local_def_id).borrow();
 
     let mut tainted = false;
 
@@ -84,7 +89,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         // We assume this is true for intrinsics as well.
         if sig.abi().is_rustic_abi() {
             continue;
-        };
+        }
 
         let fn_def_id = match ty.kind() {
             ty::FnPtr(..) => None,

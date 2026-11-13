@@ -1167,13 +1167,16 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     sess.time("MIR_checking", || {
         tcx.par_hir_body_owners(|def_id| {
+            if tcx.is_intrinsic_that_must_be_overridden(def_id) {
+                return; // there is no MIR body that we can check
+            }
             let not_typeck_child = !tcx.is_typeck_child(def_id.to_def_id());
             if not_typeck_child {
                 // Child unsafety and borrowck happens together with the parent
                 tcx.ensure_ok().check_unsafety(def_id);
             }
             if tcx.is_trivial_const(def_id) {
-                return;
+                return; // we will never look at the MIR for trivial consts, so avoid building it
             }
             if not_typeck_child {
                 tcx.ensure_ok().mir_borrowck(def_id);
@@ -1287,7 +1290,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     if tcx.sess.opts.unstable_opts.validate_mir {
         sess.time("ensuring_final_MIR_is_computable", || {
             tcx.par_hir_body_owners(|def_id| {
-                if !tcx.is_trivial_const(def_id) {
+                if !tcx.is_trivial_const(def_id)
+                    && !tcx.is_intrinsic_that_must_be_overridden(def_id)
+                {
                     tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
                 }
             });
