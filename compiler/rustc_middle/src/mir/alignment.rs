@@ -1,7 +1,8 @@
 use rustc_abi::Align;
-use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, TyCtxt};
 use tracing::debug;
+
+use super::*;
+use crate::ty::{self, AdtDef, TyCtxt};
 
 /// If the place may be less aligned than its type requires
 /// (because it is in a packed type), returns the AdtDef

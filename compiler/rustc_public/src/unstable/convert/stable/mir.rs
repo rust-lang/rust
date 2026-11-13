@@ -286,7 +286,7 @@ impl<'tcx> Stable<'tcx> for mir::RawPtrKind {
         use mir::RawPtrKind::*;
         match *self {
             Const => crate::mir::RawPtrKind::Const,
-            Mut => crate::mir::RawPtrKind::Mut,
+            Mut { .. } => crate::mir::RawPtrKind::Mut,
             FakeForPtrMetadata => crate::mir::RawPtrKind::FakeForPtrMetadata,
         }
     }

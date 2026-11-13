@@ -1,16 +1,15 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir;
+pub use rustc_middle::mir::alignment::{most_packed_projection, place_unalignment};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-mod alignment;
 pub(crate) mod caller_location;
 mod check_validity_requirement;
 mod compare_types;
 mod type_name;
 
-pub use self::alignment::{most_packed_projection, place_unalignment};
 pub use self::check_validity_requirement::check_validity_requirement;
 pub(crate) use self::check_validity_requirement::validate_scalar_in_layout;
 pub use self::compare_types::{relate_types, sub_types};

@@ -337,6 +337,9 @@ language_item_table! {
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
+    PtrReadUnaligned,        sym::ptr_read_unaligned,  ptr_read_unaligned_fn,      Target::Fn,             GenericRequirement::Exact(1);
+    PtrWriteUnaligned,       sym::ptr_write_unaligned, ptr_write_unaligned_fn,     Target::Fn,             GenericRequirement::Exact(1);
+
     // Lang items needed for `format_args!()`.
     FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
     FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;

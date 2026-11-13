@@ -1551,11 +1551,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             &Rvalue::RawPtr(kind, place) => {
                 let access_kind = match kind {
-                    RawPtrKind::Mut => (
+                    RawPtrKind::Mut { kind } => (
                         Deep,
-                        Write(WriteKind::MutableBorrow(BorrowKind::Mut {
-                            kind: MutBorrowKind::Default,
-                        })),
+                        Write(WriteKind::MutableBorrow(BorrowKind::Mut { kind: kind.into() })),
                     ),
                     RawPtrKind::Const => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
                     RawPtrKind::FakeForPtrMetadata => {

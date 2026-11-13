@@ -5,6 +5,7 @@
 
 // Prefer importing rustc_public over internal rustc constructs to make this file more readable.
 
+use rustc_middle::mir::RawMutBorrowKind;
 use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy};
 use rustc_public_bridge::Tables;
 
@@ -298,7 +299,9 @@ impl RustcInternal for RawPtrKind {
         _tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
         match self {
-            RawPtrKind::Mut => rustc_middle::mir::RawPtrKind::Mut,
+            RawPtrKind::Mut => {
+                rustc_middle::mir::RawPtrKind::Mut { kind: RawMutBorrowKind::Default }
+            }
             RawPtrKind::Const => rustc_middle::mir::RawPtrKind::Const,
             RawPtrKind::FakeForPtrMetadata => rustc_middle::mir::RawPtrKind::FakeForPtrMetadata,
         }

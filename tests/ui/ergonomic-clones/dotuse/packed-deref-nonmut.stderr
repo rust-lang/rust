@@ -1,0 +1,19 @@
+error[E0596]: cannot borrow data in dereference of `ImplsDeref` as mutable
+  --> $DIR/packed-deref-nonmut.rs:36:17
+   |
+LL |     let _used = (*derefable).0.use;
+   |                 ^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `ImplsDeref`
+
+error[E0596]: cannot borrow data in an index of `ImplsDeref` as mutable
+  --> $DIR/packed-deref-nonmut.rs:40:17
+   |
+LL |     let _used = indexable[0].0.use;
+   |                 ^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `ImplsDeref`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.
