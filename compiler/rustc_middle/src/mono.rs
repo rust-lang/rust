@@ -586,7 +586,12 @@ impl<'tcx> CodegenUnit<'tcx> {
             // See https://github.com/rust-lang/rust/pull/145358 for more details.
             //
             // Sorting by symbol name should not incur any new non-determinism.
-            items.sort_by_cached_key(|&(i, _)| i.symbol_name(tcx));
+            items.sort_by_cached_key(|&(i, _)| {
+                let symbol_name = i.symbol_name(tcx);
+                let demangled = rustc_demangle::demangle(symbol_name.name);
+                let name_without_disambiguator = format!("{:#}", demangled);
+                (name_without_disambiguator, symbol_name)
+            });
         } else {
             items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         }
