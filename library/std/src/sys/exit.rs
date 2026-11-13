@@ -92,6 +92,8 @@ cfg_select! {
 }
 
 pub fn exit(code: i32) -> ! {
+    // Ensure thread local destructors aren't run on any platform.
+    crate::sys::thread_local::destructors::disable();
     cfg_select! {
         target_os = "hermit" => unsafe { hermit_abi::exit(code) },
         target_os = "linux" => unsafe {
