@@ -559,9 +559,7 @@ impl Session {
     #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Session::build", skip_all))]
     pub(crate) fn build(&mut self) {
         trace!("setting up job management");
-        unsafe {
-            crate::utils::job::setup(self);
-        }
+        crate::utils::job::setup(self);
 
         // Handle hard-coded subcommands.
         {
