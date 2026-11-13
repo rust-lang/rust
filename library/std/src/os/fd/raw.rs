@@ -14,6 +14,8 @@ use crate::alloc::Allocator;
 use crate::fs;
 use crate::io;
 use crate::macros::rustdoc_skip_body;
+#[cfg(any(target_os = "wasi", target_os = "web"))]
+use crate::os::fd::OwnedFd;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::io::OwnedFd;
 #[cfg(all(not(target_os = "hermit"), not(target_os = "motor")))]
@@ -22,8 +24,6 @@ use crate::os::raw;
 use crate::os::unix::io::AsFd;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;
-#[cfg(target_os = "wasi")]
-use crate::os::wasi::io::OwnedFd;
 #[cfg(not(target_os = "trusty"))]
 use crate::sys::{AsInner, FromInner, IntoInner};
 

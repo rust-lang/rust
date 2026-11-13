@@ -15,11 +15,7 @@ cfg_select! {
 
 use super::{open64, stat64};
 use crate::ffi::CStr;
-use crate::os::fd::{AsFd, BorrowedFd, IntoRawFd, OwnedFd, RawFd};
-#[cfg(target_family = "unix")]
-use crate::os::unix::io::{AsRawFd, FromRawFd};
-#[cfg(target_os = "wasi")]
-use crate::os::wasi::io::{AsRawFd, FromRawFd};
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::OpenOptions;
