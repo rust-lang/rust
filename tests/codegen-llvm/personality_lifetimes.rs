@@ -13,8 +13,10 @@ impl Drop for S {
     fn drop(&mut self) {}
 }
 
+// A plain Rust function is not enough: one whose body provably never unwinds is lowered to a
+// plain `call`, which would collapse the second cleanup this test exists to check.
 #[inline(never)]
-fn might_unwind() {}
+extern "C-unwind" fn might_unwind() {}
 
 // CHECK-LABEL: @test
 #[no_mangle]
