@@ -4,14 +4,10 @@
 
 #![feature(new_range_remainder)]
 
-use std::panic;
-
 fn main() {
     let mut it = core::range::RangeFrom::from(u8::MAX..).into_iter();
-    assert_eq!(it.next().unwrap(), 255);
+    assert_eq!(it.next(), Some(255));
+    assert_eq!(it.next(), None);
 
-    let r = panic::catch_unwind(|| {
-        let _ = it.remainder();
-    });
-    assert!(r.is_err());
+    assert_eq!(it.remainder(), None);
 }
