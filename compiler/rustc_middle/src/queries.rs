@@ -1205,7 +1205,7 @@ rustc_queries! {
         desc { "linting {}", describe_as_module(key, tcx) }
     }
 
-    query check_unused_traits(_: ()) {
+    query check_unused_traits(_: &'tcx [LocalDefId]) {
         desc { "checking unused trait imports in crate" }
     }
 

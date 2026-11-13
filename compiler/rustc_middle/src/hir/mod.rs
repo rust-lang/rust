@@ -57,6 +57,10 @@ impl ModuleItems {
         self.free_items.iter().copied()
     }
 
+    pub fn body_owners(&self) -> &[LocalDefId] {
+        &self.body_owners
+    }
+
     pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> {
         self.trait_items.iter().copied()
     }
