@@ -238,7 +238,7 @@ impl OnDuplicate {
             OnDuplicate::Ignore => {}
             _ => {
                 let name = Symbol::intern(
-                    &P::PATH.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
+                    &P::PATH.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"),
                 );
                 match self {
                     OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused, name),
