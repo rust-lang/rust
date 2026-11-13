@@ -516,20 +516,19 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
         );
     }
 
-    match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
+    // Set up the small-data optimization limit for architectures that use
+    // an LLVM module flag to control this.
+    if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold
+        && let SmallDataThresholdSupport::LlvmModuleFlag(flag) =
+            sess.target.small_data_threshold_support()
     {
-        // Set up the small-data optimization limit for architectures that use
-        // an LLVM module flag to control this.
-        (Some(threshold), SmallDataThresholdSupport::LlvmModuleFlag(flag)) => {
-            llvm::add_module_flag_u32(
-                llmod,
-                llvm::ModuleFlagMergeBehavior::Error,
-                &flag,
-                threshold as u32,
-            );
-        }
-        _ => (),
-    };
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            &flag,
+            threshold as u32,
+        );
+    }
 
     // Insert `llvm.ident` metadata.
     //
@@ -1160,7 +1159,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             _ => {
                 let intrinsic = llvm::Intrinsic::lookup(base_name.as_bytes())
                     .unwrap_or_else(|| bug!("Unknown intrinsic: `{base_name}`"));
-                let f = intrinsic.get_declaration(self.llmod, &type_params);
+                let f = intrinsic.get_declaration(self.llmod, type_params);
                 (self.get_type_of_global(f), f)
             }
         }

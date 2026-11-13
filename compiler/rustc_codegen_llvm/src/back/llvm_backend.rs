@@ -101,7 +101,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> CompiledModule {
-        let mut module = back::lto::run_fat(
+        let module = back::lto::run_fat(
             cgcx,
             &sess.prof,
             shared_emitter,
@@ -113,7 +113,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
 
         let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
         let dcx = dcx.handle();
-        back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &mut module, false);
+        back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &module, false);
 
         back::write::codegen(cgcx, &sess.prof, shared_emitter, module, &cgcx.module_config)
     }
@@ -434,7 +434,7 @@ impl CodegenBackend for LlvmCodegenBackend {
                 llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap();
 
             if !llvm_stats_json.is_empty() {
-                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                if let Err(e) = std::fs::write(out_path, llvm_stats_json) {
                     sess.dcx().err(format!("failed to write stats to {out_path}: {e}"));
                 }
             } else {
