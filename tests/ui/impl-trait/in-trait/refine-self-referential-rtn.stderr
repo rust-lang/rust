@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `!: IntFactory` is not satisfied
-  --> $DIR/refine-self-referential-rtn.rs:10:25
+  --> $DIR/refine-self-referential-rtn.rs:11:25
    |
 LL |     fn stream(&self) -> impl IntFactory<stream(..): Send> {
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `IntFactory` is not implemented for `!`
@@ -8,7 +8,7 @@ LL |         todo!()
    |         ------- return type was inferred to be `!` here
    |
 help: the trait `IntFactory` is implemented for `S`
-  --> $DIR/refine-self-referential-rtn.rs:9:1
+  --> $DIR/refine-self-referential-rtn.rs:10:1
    |
 LL | impl IntFactory for S {
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -17,6 +17,14 @@ help: `!` can be coerced to any type; consider casting it to a concrete type tha
 LL |         todo!() as /* Type */
    |                 +++++++++++++
 
-error: aborting due to 1 previous error
+error: recursion limit exceeded while collecting implied RPITIT bounds
+  --> $DIR/refine-self-referential-rtn.rs:4:25
+   |
+LL |     fn stream(&self) -> impl IntFactory<stream(..): Send>;
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`refine_self_referential_rtn`)
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

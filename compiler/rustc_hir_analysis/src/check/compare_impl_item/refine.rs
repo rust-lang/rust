@@ -14,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::ModId;
 use rustc_span::{Span, span_bug};
+use rustc_trait_selection::error_reporting::traits::suggest_new_overflow_limit;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
@@ -283,10 +284,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
             && self.tcx.is_impl_trait_in_trait(proj.kind)
         {
             if !self.tcx.recursion_limit().value_within_limit(self.depth) {
-                self.tcx.dcx().span_delayed_bug(
+                let mut err = self.tcx.dcx().struct_span_err(
                     self.tcx.def_span(proj.kind),
                     "recursion limit exceeded while collecting implied RPITIT bounds",
                 );
+                suggest_new_overflow_limit(self.tcx, &mut err);
+                err.emit();
                 return ControlFlow::Break(());
             }
             if self.types.insert(proj) {

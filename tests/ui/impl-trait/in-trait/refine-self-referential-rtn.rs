@@ -2,6 +2,7 @@
 
 trait IntFactory {
     fn stream(&self) -> impl IntFactory<stream(..): Send>;
+    //~^ ERROR recursion limit exceeded while collecting implied RPITIT bounds
 }
 
 struct S;
