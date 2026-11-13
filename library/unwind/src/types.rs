@@ -55,7 +55,7 @@ pub struct _Unwind_Exception {
 }
 
 // Check the size of _Unwind_Exception against the source of truth when using the unwinding crate.
-#[cfg(target_os = "xous")]
+#[cfg(any(target_os = "xous", target_os = "qtee"))]
 const _: () = {
     assert!(size_of::<unwinding::abi::UnwindException>() == size_of::<_Unwind_Exception>());
 };
