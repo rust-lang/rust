@@ -3663,6 +3663,14 @@ pub enum SyntheticAttr {
     ///
     /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
     CfgAttrTrace(CfgEntry),
+
+    /// This synthetic attribute is added by the `#[test]` and `#[bench]` macros to the annotated
+    /// function, so that tools (e.g. rustc drivers doing analysis) can find test entry points
+    /// without relying on unstable details such test lowering.
+    ///
+    /// The attribute is not used by rustc directly and is instead only provided as a utility for
+    /// out of tree users.
+    TestEntrypoint,
 }
 
 impl AttrItem {
