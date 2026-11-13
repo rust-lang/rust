@@ -2,7 +2,9 @@
 
 // tidy-alphabetical-start
 #![feature(deref_patterns)]
+#![feature(register_tool)]
 #![feature(try_blocks)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 // The `builder` module used to be named `build`, but that was causing GitHub's

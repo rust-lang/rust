@@ -2,6 +2,8 @@
 #![feature(file_buffered)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(once_cell_get_mut)]
+#![feature(register_tool)]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 use rustc_attr_ir::lang_items::LangItem;

@@ -486,7 +486,8 @@ pub enum NonDivergingIntrinsic<'tcx> {
 
 /// Describes whether this operand use performs a retag.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, StableHash)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub enum WithRetag {
     Yes,
     No,

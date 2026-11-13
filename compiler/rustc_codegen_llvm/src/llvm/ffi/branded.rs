@@ -9,7 +9,8 @@ type PhantomInvariantLifetime<'a> = PhantomData<fn(&'a ()) -> &'a ()>;
 /// Corresponds to `LLVMContextRef`.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub(crate) struct Context<'ll> {
     llcx_raw: ptr::NonNull<ContextRaw>,
     _invariant_ll: PhantomInvariantLifetime<'ll>,
@@ -18,7 +19,8 @@ pub(crate) struct Context<'ll> {
 /// Corresponds to `LLVMModuleRef`.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub(crate) struct Module<'ll> {
     llmod_raw: ptr::NonNull<ModuleRaw>,
     _invariant_ll: PhantomInvariantLifetime<'ll>,
@@ -65,7 +67,8 @@ pub(crate) unsafe fn wrap_llmod<'ll>(
 /// can be compared for equality (and hashed) based on their pointer address.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub(crate) struct Type<'ll> {
     llty_raw: ptr::NonNull<TypeRaw>,
     _invariant_ll: PhantomInvariantLifetime<'ll>,
@@ -79,7 +82,8 @@ unsafe extern "C" {
 /// Corresponds to `LLVMValueRef`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-#[rustc_pass_by_value]
+#[cfg_attr(bootstrap, rustc_pass_by_value)]
+#[cfg_attr(not(bootstrap), lint::pass_by_value)]
 pub(crate) struct Value<'ll> {
     llval_raw: ptr::NonNull<ValueRaw>,
     _invariant_ll: PhantomInvariantLifetime<'ll>,

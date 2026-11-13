@@ -46,6 +46,7 @@
 #![feature(negative_impls)]
 #![feature(option_into_flat_iter)]
 #![feature(range_bounds_is_empty)]
+#![feature(register_tool)]
 #![feature(rustc_attrs)]
 #![feature(sized_hierarchy)]
 #![feature(trait_alias)]
@@ -57,6 +58,7 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![recursion_limit = "256"]
+#![register_tool(lint)]
 // tidy-alphabetical-end
 
 #[cfg(test)]
