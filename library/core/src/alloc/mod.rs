@@ -566,17 +566,18 @@ pub const unsafe trait Allocator {
 pub unsafe trait GlobalAllocator: StaticAllocator + Sync + 'static {}
 
 /// Marks a type's [`Clone`] implementation as sound with regard to [`Allocator`] equivalence.
-/// Implementors must ensure that, upon cloning, the two allocators are equivalent
-/// (i.e. it is possible to free memory with one that was allocated with the other).
-/// Further, mutable accesses such as moving or dropping the allocator must not invalidate
-/// its currently allocated blocks at least so long as clones exist.
 ///
-/// Additionally, the bound that allocators do not unwind when (de)allocating also applies
-/// to guaranteeing allocators will not unwind when cloned.
+/// # Safety
 ///
-/// It must also be the case that types which are `AllocatorClone` are either explicitly not
-/// copyable (such as by containing a `!Copy` field) or that copying them also respects allocator
-/// equivalence as if it had been a clone.
+/// Implementors must ensure that:
+/// - Upon cloning, the two allocators are equivalent (i.e. it is possible to free memory
+///   with one that was allocated with the other).
+/// - Mutable accesses such as moving or dropping the allocator does not invalidate
+///   its currently allocated blocks at least so long as clones exist.
+/// - Cloning the allocator never unwinds.
+/// - Types which are `AllocatorClone` are either explicitly not copyable (such as by
+///   containing a `!Copy` field) or that copying them also respects allocator
+///   equivalence as if it had been a clone.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 pub unsafe trait AllocatorClone: Allocator + Clone {}
 
