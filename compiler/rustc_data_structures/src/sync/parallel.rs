@@ -280,12 +280,18 @@ pub fn par_for_each_in<T: Dss>(items: &(impl ParSlice<T> + ?Sized), for_each: im
     })
 }
 
-// FIXME: actually make parallel and `T: DynSend`
-pub fn par_for_each_slice<T>(items: &mut [T], for_each: impl Fn(&mut T)) {
+pub fn par_for_each_slice<T: DynSend>(
+    items: &mut [T],
+    for_each: impl Fn(&mut T) + DynSync + DynSend,
+) {
     parallel_guard(|guard| {
-        items.iter_mut().for_each(|i| {
-            guard.run(|| for_each(i));
-        });
+        if let Some(proof) = mode::check_dyn_thread_safe() {
+            par_slice(items, guard, |i| for_each(i), proof)
+        } else {
+            items.iter_mut().for_each(|i| {
+                guard.run(|| for_each(i));
+            });
+        }
     });
 }
 
