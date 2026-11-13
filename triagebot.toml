@@ -908,7 +908,7 @@ message_on_remove = """\
 [notify-zulip."beta-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
-topic = "beta-nominated: #{number}"
+topic = "beta: #{number} {title}"
 # Zulip polls may not be preceded by any other text and pings & short links inside
 # the title of a poll don't get recognized. Therefore we need to send two messages.
 message_on_add = [
@@ -930,7 +930,7 @@ message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
 # Put it in the same thread as beta-nominated.
-topic = "beta-nominated: #{number}"
+topic = "beta: #{number} {topic}"
 message_on_add = "PR #{number} has been **accepted** for beta backport."
 message_on_remove = "PR #{number}'s beta-acceptance has been **removed**."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
@@ -939,7 +939,7 @@ message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 [notify-zulip."stable-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
-topic = "stable-nominated: #{number}"
+topic = "stable: #{number} {title}"
 # Zulip polls may not be preceded by any other text and pings & short links inside
 # the title of a poll don't get recognized. Therefore we need to send two messages.
 message_on_add = [
@@ -962,7 +962,7 @@ message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
 # Put it in the same thread as stable-nominated.
-topic = "stable-nominated: #{number}"
+topic = "stable: #{number} {title}"
 message_on_add = "PR #{number} has been **accepted** for stable backport."
 message_on_remove = "PR #{number}'s stable-acceptance has been **removed**."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
@@ -974,7 +974,7 @@ message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 [notify-zulip."beta-nominated".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
-topic = "#{number}: beta-nominated"
+topic = "beta: #{number} {title}"
 message_on_add = [
     """\
 PR #{number} "{title}" fixes a regression and has been nominated for backport.
@@ -998,13 +998,13 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
 # Put it in the same Zulip topic as beta-nominated.
-topic = "#{number}: beta-nominated"
+topic = "beta: #{number} {title}"
 message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
 [notify-zulip."stable-nominated".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
-topic = "#{number}: stable-nominated"
+topic = "stable: #{number} {title}"
 message_on_add = [
     """\
 PR #{number} "{title}" fixes a regression and has been nominated for backport.
@@ -1029,7 +1029,7 @@ message_on_remove = "PR #{number}'s stable-nomination has been removed."
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
 # Put it in the same thread as stable-nominated.
-topic = "#{number}: stable-nominated"
+topic = "stable: #{number} {title}"
 message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 
 
@@ -1038,7 +1038,7 @@ message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 [notify-zulip."beta-nominated".libs]
 required_labels = ["T-libs"]
 zulip_stream = 542373 # #t-libs/backports
-topic = "#{number}: beta-nominated"
+topic = "beta: #{number} {title}"
 message_on_add = [
     """\
 @*T-libs-ping* PR #{number} "{title}" has been nominated for beta backport.
@@ -1056,13 +1056,13 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 required_labels = ["T-libs"]
 zulip_stream = 542373 # #t-libs/backports
 # Put it in the same Zulip topic as beta-nominated.
-topic = "#{number}: beta-nominated"
+topic = "beta: #{number} {title}"
 message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
 [notify-zulip."stable-nominated".libs]
 required_labels = ["T-libs"]
 zulip_stream = 542373 # #t-libs/backports
-topic = "#{number}: stable-nominated"
+topic = "stable: #{number} {title}"
 message_on_add = [
     """\
 @*T-libs-ping* PR #{number} "{title}" has been nominated for stable backport.
@@ -1081,7 +1081,7 @@ message_on_remove = "PR #{number}'s stable-nomination has been removed."
 required_labels = ["T-libs"]
 zulip_stream = 542373 # #t-libs/backports
 # Put it in the same thread as stable-nominated.
-topic = "#{number}: stable-nominated"
+topic = "stable: #{number} {title}"
 message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 
 
@@ -1090,7 +1090,7 @@ message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 [notify-zulip."beta-nominated".bootstrap]
 required_labels = ["T-bootstrap"]
 zulip_stream = 507486 # #t-infra/bootstrap/backports
-topic = "#{number}: beta-nominated"
+topic = "beta: #{number} {title}"
 message_on_add = [
     """\
 @*T-bootstrap* PR #{number} "{title}" has been nominated for beta backport.
@@ -1108,13 +1108,13 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 required_labels = ["T-bootstrap"]
 zulip_stream = 507486 # #t-infra/bootstrap/backports
 # Put it in the same thread as beta-nominated.
-topic = "#{number}: beta-nominated"
+topic = "beta: #{number} {title}"
 message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
 [notify-zulip."stable-nominated".bootstrap]
 required_labels = ["T-bootstrap"]
 zulip_stream = 507486 # #t-infra/bootstrap/backports
-topic = "#{number}: stable-nominated"
+topic = "stable: #{number} {title}"
 message_on_add = [
     """\
 @*T-bootstrap* PR #{number} "{title}" has been nominated for stable backport.
@@ -1133,7 +1133,7 @@ message_on_remove = "PR #{number}'s stable-nomination has been removed."
 required_labels = ["T-bootstrap"]
 zulip_stream = 507486 # #t-infra/bootstrap/backports
 # Put it in the same thread as stable-nominated.
-topic = "#{number}: stable-nominated"
+topic = "stable: #{number} {title}"
 message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 
 
@@ -1142,7 +1142,7 @@ message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 [notify-zulip."beta-nominated".rustfmt]
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
-topic = "rust#{number}: beta-nominated"
+topic = "beta: rust#{number} {title}"
 message_on_add = [
     """\
 @*T-rustfmt* @*T-rustfmt-contributors* PR rust#{number} "{title}" has been nominated
@@ -1161,13 +1161,13 @@ message_on_remove = "PR rust#{number}'s beta-nomination has been removed."
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
 # Put it in the same thread as beta-nominated.
-topic = "rust#{number}: beta-nominated"
+topic = "beta: rust#{number} {title}"
 message_on_add = "PR rust#{number} has been **accepted** for **beta** backport."
 
 [notify-zulip."stable-nominated".rustfmt]
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
-topic = "rust#{number}: stable-nominated"
+topic = "stable: rust#{number} {title}"
 message_on_add = [
     """\
 @*T-rustfmt* @*T-rustfmt-contributors* PR rust#{number} "{title}" has been nominated
@@ -1187,7 +1187,7 @@ message_on_remove = "PR rust#{number}'s stable-nomination has been removed."
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
 # Put it in the same thread as stable-nominated.
-topic = "rust#{number}: stable-nominated"
+topic = "stable: rust#{number} {title}"
 message_on_add = "PR rust#{number} has been **accepted** for **stable** backport."
 
 
