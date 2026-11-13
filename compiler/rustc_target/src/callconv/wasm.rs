@@ -1,9 +1,9 @@
 use rustc_abi::{
-    BackendRepr, Float, HasDataLayout, Integer, Primitive, Reg, RegKind, TagEncoding,
+    BackendRepr, CanonAbi, Float, HasDataLayout, Integer, Primitive, Reg, RegKind, TagEncoding,
     TyAbiInterface, TyAndLayout, Variants,
 };
 
-use crate::callconv::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, ComputeCallConv};
 
 fn singleton_scalar<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> Option<Reg>
 where
@@ -124,18 +124,32 @@ where
 }
 
 /// The purpose of this ABI is to match the C ABI (aka clang) exactly.
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct WasmCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for WasmCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(cx, ret);
+        }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         if arg.is_ignore() {
-            continue;
+            return;
         }
         classify_arg(cx, arg);
     }

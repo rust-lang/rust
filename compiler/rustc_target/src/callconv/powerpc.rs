@@ -1,7 +1,7 @@
-use rustc_abi::{BackendRepr, Float, Primitive, Reg, RegKind, TyAbiInterface};
+use rustc_abi::{BackendRepr, CanonAbi, Float, Primitive, Reg, RegKind, TyAbiInterface};
 use rustc_span::bug;
 
-use crate::callconv::{ArgAbi, CastTarget, FnAbi, Uniform};
+use crate::callconv::{ArgAbi, CastTarget, ComputeCallConv, Uniform};
 use crate::spec::{Env, HasTargetSpec, Os, RustcAbi};
 
 const NUM_ARG_GPRS: u64 = 8;
@@ -132,21 +132,36 @@ fn backend_repr_uses_gprs<'a, Ty, C: HasTargetSpec>(cx: &C, arg: &ArgAbi<'a, Ty>
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct PowerPCCallConv {
+    /// Keeps track of how many GPRs are in use so far to pass arguments. This is used to exhaust
+    /// the remaining argument registers when a complex value, that doesn't fit fully in the
+    /// remaining registers, is passed via the stack. Subsequent arguments must then also be passed
+    /// via the stack.
+    gprs_in_use: u64,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for PowerPCCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasTargetSpec,
 {
-    // Keeps track of how many GPRs are in use so far to pass arguments. This is used to exhaust
-    // the remaining argument registers when a complex value, that doesn't fit fully in the
-    // remaining registers, is passed via the stack. Subsequent arguments must then also be passed
-    // via the stack.
-    let mut gprs_in_use: u64 = 0;
-
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, &mut gprs_in_use);
+    fn new(_cx: &C) -> Self {
+        Self { gprs_in_use: 0 }
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        classify_arg(cx, arg, &mut gprs_in_use);
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(cx, ret, &mut self.gprs_in_use);
+        }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        classify_arg(cx, arg, &mut self.gprs_in_use);
     }
 }

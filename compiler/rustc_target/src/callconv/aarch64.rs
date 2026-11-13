@@ -1,8 +1,8 @@
 use std::iter;
 
-use rustc_abi::{BackendRepr, HasDataLayout, Primitive, TyAbiInterface};
+use rustc_abi::{BackendRepr, CanonAbi, HasDataLayout, Primitive, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{ArgAbi, ComputeCallConv, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::{Arch, HasTargetSpec, RustcAbi, Target};
 
 /// Indicates the variant of the AArch64 ABI we are compiling for.
@@ -10,7 +10,7 @@ use crate::spec::{Arch, HasTargetSpec, RustcAbi, Target};
 ///
 /// Corresponds to Clang's `AArch64ABIInfo::ABIKind`.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum AbiKind {
+enum AbiKind {
     AAPCS,
     DarwinPCS,
     Win64,
@@ -158,36 +158,55 @@ where
     arg.make_indirect();
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, kind: AbiKind)
+pub(crate) struct AArch64CallConv {
+    kind: AbiKind,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for AArch64CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, kind);
+    fn new(cx: &C) -> Self {
+        let kind = if cx.target_spec().is_like_darwin {
+            AbiKind::DarwinPCS
+        } else if cx.target_spec().is_like_windows {
+            AbiKind::Win64
+        } else {
+            AbiKind::AAPCS
+        };
+        AArch64CallConv { kind }
     }
 
-    // On Arm64EC the variadic portion of a c-variadic call follows the MS x64 ABI:
-    // "Any argument that doesn't fit in 8 bytes, or is not 1, 2, 4, or 8 bytes, must
-    // be passed by reference".
-    let c_variadic = fn_abi.c_variadic;
-    let fixed_count = fn_abi.fixed_count as usize;
-    let is_arm64ec = cx.target_spec().arch == Arch::Arm64EC;
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(cx, ret, self.kind);
+        }
+    }
 
-    for (idx, arg) in fn_abi.args.iter_mut().enumerate() {
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        is_vararg: bool,
+    ) {
         if arg.is_ignore() {
-            continue;
+            return;
         }
 
-        if is_arm64ec && c_variadic && idx >= fixed_count {
+        // On Arm64EC the variadic portion of a c-variadic call follows the MS x64 ABI:
+        // "Any argument that doesn't fit in 8 bytes, or is not 1, 2, 4, or 8 bytes, must
+        // be passed by reference".
+        if cx.target_spec().arch == Arch::Arm64EC && is_vararg {
             let size = arg.layout.size.bytes();
             if size > 8 || !size.is_power_of_two() {
                 arg.make_indirect();
-                continue;
+                return;
             }
         }
 
-        classify_arg(cx, arg, kind);
+        classify_arg(cx, arg, self.kind);
     }
 }
 

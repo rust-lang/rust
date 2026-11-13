@@ -1,8 +1,8 @@
 use arrayvec::ArrayVec;
-use rustc_abi::{HasDataLayout, Reg, Size, TyAbiInterface};
+use rustc_abi::{CanonAbi, HasDataLayout, Reg, Size, TyAbiInterface};
 
 use super::CastTarget;
-use crate::callconv::{ArgAbi, FnAbi, Uniform};
+use crate::callconv::{ArgAbi, ComputeCallConv, Uniform};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() && ret.layout.is_sized() {
@@ -87,34 +87,63 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct Nvptx64CallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for Nvptx64CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
+    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(ret);
+        }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         if arg.is_ignore() {
-            continue;
+            return;
         }
         classify_arg(cx, arg);
     }
 }
 
-pub(crate) fn compute_ptx_kernel_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct Nvptx64KernelCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for Nvptx64KernelCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !fn_abi.ret.layout.is_unit() && !fn_abi.ret.layout.is_never() {
-        panic!("Kernels should not return anything other than () or !");
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
+    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.layout.is_unit() && !ret.layout.is_never() {
+            panic!("Kernels should not return anything other than () or !");
+        }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         if arg.is_ignore() {
-            continue;
+            return;
         }
         classify_arg_kernel(cx, arg);
     }
