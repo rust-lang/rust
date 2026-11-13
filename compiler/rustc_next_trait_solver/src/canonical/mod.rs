@@ -154,7 +154,9 @@ where
             span,
         ),
         ExternalRegionConstraints::NextGen(r) => {
-            delegate.register_solver_region_constraint(r.clone(), span)
+            let mut r = r.clone();
+            r.and_constraint.visible_for_leak_check(VisibleForLeakCheck::No);
+            delegate.register_solver_region_constraint(r, span)
         }
     };
     register_new_opaque_types(delegate, opaque_types, span);

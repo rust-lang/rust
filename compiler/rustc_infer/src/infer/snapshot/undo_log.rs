@@ -179,7 +179,7 @@ impl<'tcx> InferCtxtUndoLogs<'tcx> {
     pub(crate) fn region_constraints_in_snapshot(
         &self,
         s: &Snapshot<'tcx>,
-    ) -> impl Iterator<Item = &'_ region_constraints::UndoLog<'tcx>> + Clone {
+    ) -> impl DoubleEndedIterator<Item = &'_ region_constraints::UndoLog<'tcx>> + Clone {
         self.logs[s.undo_len..].iter().filter_map(|log| match log {
             UndoLog::RegionConstraintCollector(log) => Some(log),
             _ => None,

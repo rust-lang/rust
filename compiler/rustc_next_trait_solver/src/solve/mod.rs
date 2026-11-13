@@ -130,8 +130,12 @@ where
                 LeafRegionConstraint, NoSpan, RegionConstraint,
             };
 
-            let constraint =
-                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, NoSpan));
+            let constraint = RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(
+                a,
+                b,
+                VisibleForLeakCheck::Yes,
+                NoSpan,
+            ));
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);

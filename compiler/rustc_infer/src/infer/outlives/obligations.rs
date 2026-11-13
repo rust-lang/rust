@@ -303,12 +303,11 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-        for c in constraint.and_constraint.0.into_iter().chain(
+        for c in constraint.and_constraint.into_iter().chain(
             constraint
                 .or_constraint
-                .0
                 .into_iter()
-                .flat_map(|and_constraint| and_constraint.0.into_iter()),
+                .flat_map(|and_constraint| and_constraint.into_iter()),
         ) {
             match c {
                 Ambiguity(span) => {
@@ -319,7 +318,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         )
                         .emit();
                 }
-                RegionOutlives(a, b, span) => {
+                RegionOutlives(a, b, _, span) => {
                     let origin = SubregionOrigin::SolverRegionConstraint(span);
                     let category = origin.to_constraint_category();
                     conversion.push_sub_region_constraint(

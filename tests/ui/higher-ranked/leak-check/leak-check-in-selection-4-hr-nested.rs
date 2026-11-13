@@ -1,6 +1,7 @@
-//@ revisions: old next
+//@ revisions: old next abby
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+//@[abby] compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 //@ check-pass
 
 // cc #119820. While the leak check does not consider the binder
