@@ -46,7 +46,7 @@ fn branches<'tcx>(
     }
 
     for i in 0..field_count {
-        let field = ecx.project_field(&place, FieldIdx::from_usize(i)).unwrap();
+        let field = ecx.project_field(&place, FieldIdx::from_usize(i)).report_err()?;
         let valtree = const_to_valtree_inner(ecx, &field, num_nodes, visited, settled)?;
         branches.push(ty::Const::new_value(*ecx.tcx, valtree, field.layout.ty));
     }
