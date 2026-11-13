@@ -208,6 +208,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-target-has-atomic",
     "needs-target-std",
     "needs-threads",
+    "needs-tpde",
     "needs-unwind",
     "needs-wasmtime",
     "needs-xray",
