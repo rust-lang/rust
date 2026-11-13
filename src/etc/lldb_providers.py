@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Dict, Generator, List, Optional
 from lldb import (
     SBData,
     SBError,
+    SBValue,
     eBasicTypeChar32,
     eBasicTypeDouble,
     eBasicTypeFloat,
@@ -409,7 +410,7 @@ def read_string(
     try:
         data = process.ReadMemory(address, length, error)
         if error.Success():
-            output = f"\"{data.decode('utf-8', 'replace')}\""
+            output = f'"{data.decode("utf-8", "replace")}"'
             if truncated > 0:
                 output += f" <summary truncated by {truncated} bytes>"
 
@@ -1374,106 +1375,13 @@ class StdVecDequeSyntheticProvider:
         return True
 
 
-# BACKCOMPAT: rust 1.35
-class StdOldHashMapSyntheticProvider:
-    """Pretty-printer for std::collections::hash::map::HashMap<K, V, S>
-
-    struct HashMap<K, V, S> {..., table: RawTable<K, V>, ... }
-    struct RawTable<K, V> { capacity_mask: usize, size: usize, hashes: TaggedHashUintPtr, ... }
-    """
-
-    def __init__(self, valobj: SBValue, _dict: LLDBOpaque, show_values: bool = True):
-        self.valobj = valobj
-        self.show_values = show_values
-        self.update()
-
-    def num_children(self) -> int:
-        return self.size
-
-    def get_child_index(self, name: str) -> int:
-        index = name.lstrip("[").rstrip("]")
-        if index.isdigit():
-            return int(index)
-        else:
-            return -1
-
-    def get_child_at_index(self, index: int) -> Optional[SBValue]:
-        # logger = Logger.Logger()
-        start = self.data_ptr.GetValueAsUnsigned() & ~1
-
-        # See `libstd/collections/hash/table.rs:raw_bucket_at
-        hashes = self.hash_uint_size * self.capacity
-        align = self.pair_type_size
-        # See `libcore/alloc.rs:padding_needed_for`
-        len_rounded_up = (
-            (
-                (((hashes + align) % self.modulo - 1) % self.modulo)
-                & ~((align - 1) % self.modulo)
-            )
-            % self.modulo
-            - hashes
-        ) % self.modulo
-        # len_rounded_up = ((hashes + align - 1) & ~(align - 1)) - hashes
-
-        pairs_offset = hashes + len_rounded_up
-        pairs_start = start + pairs_offset
-
-        table_index = self.valid_indices[index]
-        idx = table_index & self.capacity_mask
-        address = pairs_start + idx * self.pair_type_size
-        element = self.data_ptr.CreateValueFromAddress(
-            f"[{index}]", address, self.pair_type
-        )
-        if self.show_values:
-            return element
-        else:
-            key = element.GetChildAtIndex(0)
-            return self.valobj.CreateValueFromData(
-                f"[{index}]", key.GetData(), key.GetType()
-            )
-
-    def update(self):
-        # logger = Logger.Logger()
-
-        self.table = self.valobj.GetChildMemberWithName("table")  # type: SBValue
-        self.size = self.table.GetChildMemberWithName("size").GetValueAsUnsigned()
-        self.hashes = self.table.GetChildMemberWithName("hashes")
-        self.hash_uint_type = self.hashes.GetType()
-        self.hash_uint_size = self.hashes.GetType().GetByteSize()
-        self.modulo = 2**self.hash_uint_size
-        self.data_ptr = self.hashes.GetChildAtIndex(0).GetChildAtIndex(0)
-
-        self.capacity_mask = self.table.GetChildMemberWithName(
-            "capacity_mask"
-        ).GetValueAsUnsigned()
-        self.capacity = (self.capacity_mask + 1) % self.modulo
-
-        marker = self.table.GetChildMemberWithName("marker").GetType()  # type: SBType
-        self.pair_type = marker.template_args[0]
-        self.pair_type_size = self.pair_type.GetByteSize()
-
-        self.valid_indices = []
-        for idx in range(self.capacity):
-            address = self.data_ptr.GetValueAsUnsigned() + idx * self.hash_uint_size
-            hash_uint = self.data_ptr.CreateValueFromAddress(
-                f"[{idx}]", address, self.hash_uint_type
-            )
-            hash_ptr = hash_uint.GetChildAtIndex(0).GetChildAtIndex(0)
-            if hash_ptr.GetValueAsUnsigned() != 0:
-                self.valid_indices.append(idx)
-
-        # logger >> "Valid indices: {}".format(str(self.valid_indices))
-
-    def has_children(self) -> bool:
-        return True
-
-
 class StdHashMapSyntheticProvider:
     """Pretty-printer for hashbrown's HashMap"""
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, show_values: bool = True):
         self.valobj = valobj
         self.show_values = show_values
+        self.is_std = not valobj.GetType().GetName().startswith("hashbrown::")
         self.update()
 
     def num_children(self) -> int:
@@ -1551,12 +1459,21 @@ class StdHashMapSyntheticProvider:
 
     def table(self) -> SBValue:
         if self.show_values:
-            hashbrown_hashmap = self.valobj.GetChildMemberWithName("base")
+            if self.is_std:
+                hashbrown_hashmap = self.valobj.GetChildMemberWithName(
+                    "base"
+                ).GetNonSyntheticValue()
+            else:
+                hashbrown_hashmap = self.valobj
         else:
             # BACKCOMPAT: rust 1.47
             # HashSet wraps either std HashMap or hashbrown::HashSet, which both
             # wrap hashbrown::HashMap, so either way we "unwrap" twice.
-            hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
+            if self.is_std:
+                hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
+            else:
+                hashbrown_hashmap = self.valobj.GetChildAtIndex(0)
+
         return hashbrown_hashmap.GetChildMemberWithName("table")
 
     def has_children(self) -> bool:
