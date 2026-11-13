@@ -10,7 +10,8 @@
 
 use std::panic;
 
-// CHECK: define {{.*}} @__rust_try{{.*}} [[ATTR_TRY:#[0-9]+]]
+// CHECK: define internal i32 @{{.*}}lang_start{{.*}}pauth_attr_special_funcs(ptr %{{.*}}) unnamed_addr #[[#]] personality ptr @{{[_A-Za-z0-9]*}}rust_eh_personality
+// CHECK: define {{.*}} @__rust_try({{.*}}) unnamed_addr [[ATTR_TRY:#[0-9]+]] personality ptr @{{[_A-Za-z0-9]*}}rust_eh_personality
 // CHECK: define {{.*}} @main{{.*}} [[ATTR_MAIN:#[0-9]+]]
 
 // CHECK: attributes [[ATTR_TRY]] = { {{.*}}"aarch64-jump-table-hardening"
