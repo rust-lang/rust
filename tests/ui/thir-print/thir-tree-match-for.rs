@@ -3,6 +3,7 @@
 //@ normalize-stdout: "\[[a-z0-9]{4}\]" -> ""
 //@ normalize-stdout: "DefId\(\d+:\d+" -> "DefId(N:M"
 //@ normalize-stdout: "ReprOptions\s*\{[^}]+\}" -> "ReprOptions {}"
+//@ ignore-parallel-frontend different syntax contexts ids in `Span` serialization
 
 fn match_non_loop(x:u32, y: u32) {
   match x {

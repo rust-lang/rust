@@ -1,5 +1,5 @@
 error: functions with the "gpu-kernel" ABI cannot be `async`
-  --> $DIR/cannot-be-coroutine.rs:62:1
+  --> $DIR/cannot-be-coroutine.rs:63:1
    |
 LL | async extern "gpu-kernel" fn async_kernel() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL + extern "gpu-kernel" fn async_kernel() {
    |
 
 error: requires `ResumeTy` lang_item
-  --> $DIR/cannot-be-coroutine.rs:38:19
+  --> $DIR/cannot-be-coroutine.rs:39:19
    |
 LL |   async fn vanilla(){
    |  ___________________^

@@ -2,13 +2,13 @@ DefId(N:M ~ thir_tree_match_for::match_non_loop):
 params: [
     Param {
         ty: u32
-        ty_span: Some($DIR/thir-tree-match-for.rs:7:21: 7:24 (#0))
+        ty_span: Some($DIR/thir-tree-match-for.rs:8:21: 8:24 (#0))
         self_kind: None
         hir_id: Some(HirId(DefId(N:M ~ thir_tree_match_for::match_non_loop).1))
         param: Some( 
             Pat {
                 ty: u32
-                span: $DIR/thir-tree-match-for.rs:7:19: 7:20 (#0)
+                span: $DIR/thir-tree-match-for.rs:8:19: 8:20 (#0)
                 kind: PatKind {
                     Binding {
                         name: "x"
@@ -25,13 +25,13 @@ params: [
     }
     Param {
         ty: u32
-        ty_span: Some($DIR/thir-tree-match-for.rs:7:29: 7:32 (#0))
+        ty_span: Some($DIR/thir-tree-match-for.rs:8:29: 8:32 (#0))
         self_kind: None
         hir_id: Some(HirId(DefId(N:M ~ thir_tree_match_for::match_non_loop).3))
         param: Some( 
             Pat {
                 ty: u32
-                span: $DIR/thir-tree-match-for.rs:7:26: 7:27 (#0)
+                span: $DIR/thir-tree-match-for.rs:8:26: 8:27 (#0)
                 kind: PatKind {
                     Binding {
                         name: "y"
@@ -51,7 +51,7 @@ body:
     Expr {
         ty: ()
         temp_scope_id: 25
-        span: $DIR/thir-tree-match-for.rs:7:34: 13:2 (#0)
+        span: $DIR/thir-tree-match-for.rs:8:34: 14:2 (#0)
         kind: 
             Scope {
                 region_scope: Node(25)
@@ -60,11 +60,11 @@ body:
                     Expr {
                         ty: ()
                         temp_scope_id: 25
-                        span: $DIR/thir-tree-match-for.rs:7:34: 13:2 (#0)
+                        span: $DIR/thir-tree-match-for.rs:8:34: 14:2 (#0)
                         kind: 
                             Block {
                                 targeted_by_break: false
-                                span: $DIR/thir-tree-match-for.rs:7:34: 13:2 (#0)
+                                span: $DIR/thir-tree-match-for.rs:8:34: 14:2 (#0)
                                 region_scope: Node(5)
                                 safety_mode: Safe
                                 stmts: [
@@ -75,7 +75,7 @@ body:
                                                 Expr {
                                                     ty: i32
                                                     temp_scope_id: 6
-                                                    span: $DIR/thir-tree-match-for.rs:8:3: 12:4 (#0)
+                                                    span: $DIR/thir-tree-match-for.rs:9:3: 13:4 (#0)
                                                     kind: 
                                                         Scope {
                                                             region_scope: Node(6)
@@ -84,14 +84,14 @@ body:
                                                                 Expr {
                                                                     ty: i32
                                                                     temp_scope_id: 6
-                                                                    span: $DIR/thir-tree-match-for.rs:8:3: 12:4 (#0)
+                                                                    span: $DIR/thir-tree-match-for.rs:9:3: 13:4 (#0)
                                                                     kind: 
                                                                         Match {
                                                                             scrutinee:
                                                                                 Expr {
                                                                                     ty: u32
                                                                                     temp_scope_id: 7
-                                                                                    span: $DIR/thir-tree-match-for.rs:8:9: 8:10 (#0)
+                                                                                    span: $DIR/thir-tree-match-for.rs:9:9: 9:10 (#0)
                                                                                     kind: 
                                                                                         Scope {
                                                                                             region_scope: Node(7)
@@ -100,7 +100,7 @@ body:
                                                                                                 Expr {
                                                                                                     ty: u32
                                                                                                     temp_scope_id: 7
-                                                                                                    span: $DIR/thir-tree-match-for.rs:8:9: 8:10 (#0)
+                                                                                                    span: $DIR/thir-tree-match-for.rs:9:9: 9:10 (#0)
                                                                                                     kind: 
                                                                                                         VarRef {
                                                                                                             id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_non_loop).2))
@@ -113,13 +113,13 @@ body:
                                                                                     pattern: 
                                                                                         Pat {
                                                                                             ty: u32
-                                                                                            span: $DIR/thir-tree-match-for.rs:9:5: 9:10 (#0)
+                                                                                            span: $DIR/thir-tree-match-for.rs:10:5: 10:10 (#0)
                                                                                             kind: PatKind {
                                                                                                 Or {
                                                                                                     pats: [
                                                                                                         Pat {
                                                                                                             ty: u32
-                                                                                                            span: $DIR/thir-tree-match-for.rs:9:5: 9:6 (#0)
+                                                                                                            span: $DIR/thir-tree-match-for.rs:10:5: 10:6 (#0)
                                                                                                             kind: PatKind {
                                                                                                                 Constant {
                                                                                                                     value: 0_u32
@@ -128,7 +128,7 @@ body:
                                                                                                         }
                                                                                                         Pat {
                                                                                                             ty: u32
-                                                                                                            span: $DIR/thir-tree-match-for.rs:9:9: 9:10 (#0)
+                                                                                                            span: $DIR/thir-tree-match-for.rs:10:9: 10:10 (#0)
                                                                                                             kind: PatKind {
                                                                                                                 Constant {
                                                                                                                     value: 1_u32
@@ -144,7 +144,7 @@ body:
                                                                                         Expr {
                                                                                             ty: i32
                                                                                             temp_scope_id: 15
-                                                                                            span: $DIR/thir-tree-match-for.rs:9:14: 9:15 (#0)
+                                                                                            span: $DIR/thir-tree-match-for.rs:10:14: 10:15 (#0)
                                                                                             kind: 
                                                                                                 Scope {
                                                                                                     region_scope: Node(15)
@@ -153,22 +153,22 @@ body:
                                                                                                         Expr {
                                                                                                             ty: i32
                                                                                                             temp_scope_id: 15
-                                                                                                            span: $DIR/thir-tree-match-for.rs:9:14: 9:15 (#0)
+                                                                                                            span: $DIR/thir-tree-match-for.rs:10:14: 10:15 (#0)
                                                                                                             kind: 
-                                                                                                                Literal( lit: Spanned { node: Int(Pu128(0), Unsuffixed), span: $DIR/thir-tree-match-for.rs:9:14: 9:15 (#0) }, neg: false)
+                                                                                                                Literal( lit: Spanned { node: Int(Pu128(0), Unsuffixed), span: $DIR/thir-tree-match-for.rs:10:14: 10:15 (#0) }, neg: false)
 
                                                                                                         }
                                                                                                 }
                                                                                         }
                                                                                     hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_non_loop).14)
                                                                                     scope: Node(14)
-                                                                                    span: $DIR/thir-tree-match-for.rs:9:5: 9:15 (#0)
+                                                                                    span: $DIR/thir-tree-match-for.rs:10:5: 10:15 (#0)
                                                                                 }
                                                                                 Arm {
                                                                                     pattern: 
                                                                                         Pat {
                                                                                             ty: u32
-                                                                                            span: $DIR/thir-tree-match-for.rs:10:5: 10:9 (#0)
+                                                                                            span: $DIR/thir-tree-match-for.rs:11:5: 11:9 (#0)
                                                                                             extra: PatExtra {
                                                                                                 expanded_const: None
                                                                                                 ascriptions: []
@@ -182,7 +182,7 @@ body:
                                                                                         Expr {
                                                                                             ty: i32
                                                                                             temp_scope_id: 20
-                                                                                            span: $DIR/thir-tree-match-for.rs:10:14: 10:15 (#0)
+                                                                                            span: $DIR/thir-tree-match-for.rs:11:14: 11:15 (#0)
                                                                                             kind: 
                                                                                                 Scope {
                                                                                                     region_scope: Node(20)
@@ -191,22 +191,22 @@ body:
                                                                                                         Expr {
                                                                                                             ty: i32
                                                                                                             temp_scope_id: 20
-                                                                                                            span: $DIR/thir-tree-match-for.rs:10:14: 10:15 (#0)
+                                                                                                            span: $DIR/thir-tree-match-for.rs:11:14: 11:15 (#0)
                                                                                                             kind: 
-                                                                                                                Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/thir-tree-match-for.rs:10:14: 10:15 (#0) }, neg: false)
+                                                                                                                Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/thir-tree-match-for.rs:11:14: 11:15 (#0) }, neg: false)
 
                                                                                                         }
                                                                                                 }
                                                                                         }
                                                                                     hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_non_loop).19)
                                                                                     scope: Node(19)
-                                                                                    span: $DIR/thir-tree-match-for.rs:10:5: 10:15 (#0)
+                                                                                    span: $DIR/thir-tree-match-for.rs:11:5: 11:15 (#0)
                                                                                 }
                                                                                 Arm {
                                                                                     pattern: 
                                                                                         Pat {
                                                                                             ty: u32
-                                                                                            span: $DIR/thir-tree-match-for.rs:11:8: 11:9 (#0)
+                                                                                            span: $DIR/thir-tree-match-for.rs:12:8: 12:9 (#0)
                                                                                             kind: PatKind {
                                                                                                 Binding {
                                                                                                     name: "y"
@@ -224,7 +224,7 @@ body:
                                                                                         Expr {
                                                                                             ty: i32
                                                                                             temp_scope_id: 23
-                                                                                            span: $DIR/thir-tree-match-for.rs:11:14: 11:15 (#0)
+                                                                                            span: $DIR/thir-tree-match-for.rs:12:14: 12:15 (#0)
                                                                                             kind: 
                                                                                                 Scope {
                                                                                                     region_scope: Node(23)
@@ -233,16 +233,16 @@ body:
                                                                                                         Expr {
                                                                                                             ty: i32
                                                                                                             temp_scope_id: 23
-                                                                                                            span: $DIR/thir-tree-match-for.rs:11:14: 11:15 (#0)
+                                                                                                            span: $DIR/thir-tree-match-for.rs:12:14: 12:15 (#0)
                                                                                                             kind: 
-                                                                                                                Literal( lit: Spanned { node: Int(Pu128(2), Unsuffixed), span: $DIR/thir-tree-match-for.rs:11:14: 11:15 (#0) }, neg: false)
+                                                                                                                Literal( lit: Spanned { node: Int(Pu128(2), Unsuffixed), span: $DIR/thir-tree-match-for.rs:12:14: 12:15 (#0) }, neg: false)
 
                                                                                                         }
                                                                                                 }
                                                                                         }
                                                                                     hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_non_loop).22)
                                                                                     scope: Node(22)
-                                                                                    span: $DIR/thir-tree-match-for.rs:11:8: 11:15 (#0)
+                                                                                    span: $DIR/thir-tree-match-for.rs:12:8: 12:15 (#0)
                                                                                 }
                                                                             ]
                                                                             match_source: Normal
@@ -264,13 +264,13 @@ DefId(N:M ~ thir_tree_match_for::match_from_for):
 params: [
     Param {
         ty: u32
-        ty_span: Some($DIR/thir-tree-match-for.rs:15:22: 15:25 (#0))
+        ty_span: Some($DIR/thir-tree-match-for.rs:16:22: 16:25 (#0))
         self_kind: None
         hir_id: Some(HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).1))
         param: Some( 
             Pat {
                 ty: u32
-                span: $DIR/thir-tree-match-for.rs:15:19: 15:20 (#0)
+                span: $DIR/thir-tree-match-for.rs:16:19: 16:20 (#0)
                 kind: PatKind {
                     Binding {
                         name: "x"
@@ -287,13 +287,13 @@ params: [
     }
     Param {
         ty: u32
-        ty_span: Some($DIR/thir-tree-match-for.rs:15:30: 15:33 (#0))
+        ty_span: Some($DIR/thir-tree-match-for.rs:16:30: 16:33 (#0))
         self_kind: None
         hir_id: Some(HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).3))
         param: Some( 
             Pat {
                 ty: u32
-                span: $DIR/thir-tree-match-for.rs:15:27: 15:28 (#0)
+                span: $DIR/thir-tree-match-for.rs:16:27: 16:28 (#0)
                 kind: PatKind {
                     Binding {
                         name: "y"
@@ -313,7 +313,7 @@ body:
     Expr {
         ty: ()
         temp_scope_id: 45
-        span: $DIR/thir-tree-match-for.rs:15:35: 19:2 (#0)
+        span: $DIR/thir-tree-match-for.rs:16:35: 20:2 (#0)
         kind: 
             Scope {
                 region_scope: Node(45)
@@ -322,11 +322,11 @@ body:
                     Expr {
                         ty: ()
                         temp_scope_id: 45
-                        span: $DIR/thir-tree-match-for.rs:15:35: 19:2 (#0)
+                        span: $DIR/thir-tree-match-for.rs:16:35: 20:2 (#0)
                         kind: 
                             Block {
                                 targeted_by_break: false
-                                span: $DIR/thir-tree-match-for.rs:15:35: 19:2 (#0)
+                                span: $DIR/thir-tree-match-for.rs:16:35: 20:2 (#0)
                                 region_scope: Node(5)
                                 safety_mode: Safe
                                 stmts: []
@@ -334,7 +334,7 @@ body:
                                     Expr {
                                         ty: ()
                                         temp_scope_id: 44
-                                        span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                        span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                         kind: 
                                             Scope {
                                                 region_scope: Node(44)
@@ -343,14 +343,14 @@ body:
                                                     Expr {
                                                         ty: ()
                                                         temp_scope_id: 44
-                                                        span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                        span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                         kind: 
                                                             ValueExpr {
                                                                 source:
                                                                     Expr {
                                                                         ty: ()
                                                                         temp_scope_id: 43
-                                                                        span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                        span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                         kind: 
                                                                             Scope {
                                                                                 region_scope: Node(43)
@@ -359,14 +359,14 @@ body:
                                                                                     Expr {
                                                                                         ty: ()
                                                                                         temp_scope_id: 43
-                                                                                        span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                        span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                         kind: 
                                                                                             Match {
                                                                                                 scrutinee:
                                                                                                     Expr {
                                                                                                         ty: std::ops::Range<u32>
                                                                                                         temp_scope_id: 42
-                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                         kind: 
                                                                                                             Scope {
                                                                                                                 region_scope: Node(42)
@@ -375,17 +375,17 @@ body:
                                                                                                                     Expr {
                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                         temp_scope_id: 42
-                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                         kind: 
                                                                                                                             Call {
                                                                                                                                 ty: FnDef(DefId(N:M ~ core::iter::traits::collect::IntoIterator::into_iter), Binder { value: [std::ops::Range<u32>], bound_vars: [] })
                                                                                                                                 from_hir_call: true
-                                                                                                                                fn_span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                fn_span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                 fun:
                                                                                                                                     Expr {
                                                                                                                                         ty: FnDef(DefId(N:M ~ core::iter::traits::collect::IntoIterator::into_iter), Binder { value: [std::ops::Range<u32>], bound_vars: [] })
                                                                                                                                         temp_scope_id: 41
-                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                         kind: 
                                                                                                                                             Scope {
                                                                                                                                                 region_scope: Node(41)
@@ -394,7 +394,7 @@ body:
                                                                                                                                                     Expr {
                                                                                                                                                         ty: FnDef(DefId(N:M ~ core::iter::traits::collect::IntoIterator::into_iter), Binder { value: [std::ops::Range<u32>], bound_vars: [] })
                                                                                                                                                         temp_scope_id: 41
-                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                         kind: 
                                                                                                                                                             ZstLiteral(user_ty: None)
                                                                                                                                                     }
@@ -404,7 +404,7 @@ body:
                                                                                                                                     Expr {
                                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                                         temp_scope_id: 6
-                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#4)
+                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#4)
                                                                                                                                         kind: 
                                                                                                                                             Scope {
                                                                                                                                                 region_scope: Node(6)
@@ -413,7 +413,7 @@ body:
                                                                                                                                                     Expr {
                                                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                                                         temp_scope_id: 6
-                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#4)
+                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#4)
                                                                                                                                                         kind: 
                                                                                                                                                             Adt {
                                                                                                                                                                 adt_def:
@@ -430,7 +430,7 @@ body:
                                                                                                                                                                         Expr {
                                                                                                                                                                             ty: u32
                                                                                                                                                                             temp_scope_id: 7
-                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:13 (#0)
+                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:13 (#0)
                                                                                                                                                                             kind: 
                                                                                                                                                                                 Scope {
                                                                                                                                                                                     region_scope: Node(7)
@@ -439,7 +439,7 @@ body:
                                                                                                                                                                                         Expr {
                                                                                                                                                                                             ty: u32
                                                                                                                                                                                             temp_scope_id: 7
-                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:13 (#0)
+                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:13 (#0)
                                                                                                                                                                                             kind: 
                                                                                                                                                                                                 VarRef {
                                                                                                                                                                                                     id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).2))
@@ -451,7 +451,7 @@ body:
                                                                                                                                                                         Expr {
                                                                                                                                                                             ty: u32
                                                                                                                                                                             temp_scope_id: 10
-                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:15: 16:16 (#0)
+                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:15: 17:16 (#0)
                                                                                                                                                                             kind: 
                                                                                                                                                                                 Scope {
                                                                                                                                                                                     region_scope: Node(10)
@@ -460,7 +460,7 @@ body:
                                                                                                                                                                                         Expr {
                                                                                                                                                                                             ty: u32
                                                                                                                                                                                             temp_scope_id: 10
-                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:15: 16:16 (#0)
+                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:15: 17:16 (#0)
                                                                                                                                                                                             kind: 
                                                                                                                                                                                                 VarRef {
                                                                                                                                                                                                     id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).4))
@@ -483,7 +483,7 @@ body:
                                                                                                         pattern: 
                                                                                                             Pat {
                                                                                                                 ty: std::ops::Range<u32>
-                                                                                                                span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                 kind: PatKind {
                                                                                                                     Binding {
                                                                                                                         name: "iter"
@@ -501,7 +501,7 @@ body:
                                                                                                             Expr {
                                                                                                                 ty: ()
                                                                                                                 temp_scope_id: 15
-                                                                                                                span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                 kind: 
                                                                                                                     Scope {
                                                                                                                         region_scope: Node(15)
@@ -510,18 +510,18 @@ body:
                                                                                                                             Expr {
                                                                                                                                 ty: ()
                                                                                                                                 temp_scope_id: 15
-                                                                                                                                span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                 kind: 
                                                                                                                                     Loop (
                                                                                                                                         body:
                                                                                                                                             Expr {
                                                                                                                                                 ty: ()
                                                                                                                                                 temp_scope_id: 38
-                                                                                                                                                span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                 kind: 
                                                                                                                                                     Block {
                                                                                                                                                         targeted_by_break: false
-                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                         region_scope: Node(38)
                                                                                                                                                         safety_mode: Safe
                                                                                                                                                         stmts: [
@@ -532,7 +532,7 @@ body:
                                                                                                                                                                         Expr {
                                                                                                                                                                             ty: ()
                                                                                                                                                                             temp_scope_id: 36
-                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                             kind: 
                                                                                                                                                                                 Scope {
                                                                                                                                                                                     region_scope: Node(36)
@@ -541,14 +541,14 @@ body:
                                                                                                                                                                                         Expr {
                                                                                                                                                                                             ty: ()
                                                                                                                                                                                             temp_scope_id: 36
-                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                             kind: 
                                                                                                                                                                                                 Match {
                                                                                                                                                                                                     scrutinee:
                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                             ty: std::option::Option<u32>
                                                                                                                                                                                                             temp_scope_id: 35
-                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                 Scope {
                                                                                                                                                                                                                     region_scope: Node(35)
@@ -557,17 +557,17 @@ body:
                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                             ty: std::option::Option<u32>
                                                                                                                                                                                                                             temp_scope_id: 35
-                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                 Call {
                                                                                                                                                                                                                                     ty: FnDef(DefId(N:M ~ core::iter::traits::iterator::Iterator::next), Binder { value: [std::ops::Range<u32>], bound_vars: [Region(BrNamed(DefId(N:M ~ core::iter::traits::iterator::Iterator::next::'_)))] })
                                                                                                                                                                                                                                     from_hir_call: true
-                                                                                                                                                                                                                                    fn_span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                    fn_span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                     fun:
                                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                                             ty: FnDef(DefId(N:M ~ core::iter::traits::iterator::Iterator::next), Binder { value: [std::ops::Range<u32>], bound_vars: [Region(BrNamed(DefId(N:M ~ core::iter::traits::iterator::Iterator::next::'_)))] })
                                                                                                                                                                                                                                             temp_scope_id: 34
-                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                                 Scope {
                                                                                                                                                                                                                                                     region_scope: Node(34)
@@ -576,7 +576,7 @@ body:
                                                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                                                             ty: FnDef(DefId(N:M ~ core::iter::traits::iterator::Iterator::next), Binder { value: [std::ops::Range<u32>], bound_vars: [Region(BrNamed(DefId(N:M ~ core::iter::traits::iterator::Iterator::next::'_)))] })
                                                                                                                                                                                                                                                             temp_scope_id: 34
-                                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                                                 ZstLiteral(user_ty: None)
                                                                                                                                                                                                                                                         }
@@ -586,7 +586,7 @@ body:
                                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                                             ty: &'{erased} mut std::ops::Range<u32>
                                                                                                                                                                                                                                             temp_scope_id: 32
-                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                                 Scope {
                                                                                                                                                                                                                                                     region_scope: Node(32)
@@ -595,7 +595,7 @@ body:
                                                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                                                             ty: &'{erased} mut std::ops::Range<u32>
                                                                                                                                                                                                                                                             temp_scope_id: 32
-                                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                                                 Borrow (
                                                                                                                                                                                                                                                                     borrow_kind: Mut { kind: TwoPhaseBorrow }
@@ -603,13 +603,13 @@ body:
                                                                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                                                                             ty: std::ops::Range<u32>
                                                                                                                                                                                                                                                                             temp_scope_id: 32
-                                                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                                                                 Deref {
                                                                                                                                                                                                                                                                                     Expr {
                                                                                                                                                                                                                                                                                         ty: &'{erased} mut std::ops::Range<u32>
                                                                                                                                                                                                                                                                                         temp_scope_id: 32
-                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                                                                         kind: 
                                                                                                                                                                                                                                                                                             Borrow (
                                                                                                                                                                                                                                                                                                 borrow_kind: Mut { kind: Default }
@@ -617,7 +617,7 @@ body:
                                                                                                                                                                                                                                                                                                     Expr {
                                                                                                                                                                                                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                                                                                                                                                                                                         temp_scope_id: 31
-                                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                                                                                         kind: 
                                                                                                                                                                                                                                                                                                             Scope {
                                                                                                                                                                                                                                                                                                                 region_scope: Node(31)
@@ -626,7 +626,7 @@ body:
                                                                                                                                                                                                                                                                                                                     Expr {
                                                                                                                                                                                                                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                                                                                                                                                                                                                         temp_scope_id: 31
-                                                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:16:12: 16:16 (#7)
+                                                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:17:12: 17:16 (#7)
                                                                                                                                                                                                                                                                                                                         kind: 
                                                                                                                                                                                                                                                                                                                             VarRef {
                                                                                                                                                                                                                                                                                                                                 id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).29))
@@ -652,7 +652,7 @@ body:
                                                                                                                                                                                                             pattern: 
                                                                                                                                                                                                                 Pat {
                                                                                                                                                                                                                     ty: std::option::Option<u32>
-                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                                                                                     kind: PatKind {
                                                                                                                                                                                                                         Variant {
                                                                                                                                                                                                                             adt_def: 
@@ -673,7 +673,7 @@ body:
                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                     ty: ()
                                                                                                                                                                                                                     temp_scope_id: 16
-                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                                         Scope {
                                                                                                                                                                                                                             region_scope: Node(16)
@@ -682,14 +682,14 @@ body:
                                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                                     ty: ()
                                                                                                                                                                                                                                     temp_scope_id: 16
-                                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                                                         NeverToAny {
                                                                                                                                                                                                                                             source:
                                                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                                                     ty: !
                                                                                                                                                                                                                                                     temp_scope_id: 16
-                                                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                                                                         Break (
                                                                                                                                                                                                                                                             label: Node(15)
@@ -701,13 +701,13 @@ body:
                                                                                                                                                                                                                 }
                                                                                                                                                                                                             hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).19)
                                                                                                                                                                                                             scope: Node(19)
-                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                                                                         }
                                                                                                                                                                                                         Arm {
                                                                                                                                                                                                             pattern: 
                                                                                                                                                                                                                 Pat {
                                                                                                                                                                                                                     ty: std::option::Option<u32>
-                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:16:7: 16:8 (#7)
+                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:17:7: 17:8 (#7)
                                                                                                                                                                                                                     kind: PatKind {
                                                                                                                                                                                                                         Variant {
                                                                                                                                                                                                                             adt_def: 
@@ -725,7 +725,7 @@ body:
                                                                                                                                                                                                                                     pattern:
                                                                                                                                                                                                                                         Pat {
                                                                                                                                                                                                                                             ty: u32
-                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:7: 16:8 (#0)
+                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:7: 17:8 (#0)
                                                                                                                                                                                                                                             kind: PatKind {
                                                                                                                                                                                                                                                 Binding {
                                                                                                                                                                                                                                                     name: "i"
@@ -748,7 +748,7 @@ body:
                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                     ty: ()
                                                                                                                                                                                                                     temp_scope_id: 27
-                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:16:17: 18:4 (#0)
+                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:17:17: 19:4 (#0)
                                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                                         Scope {
                                                                                                                                                                                                                             region_scope: Node(27)
@@ -757,11 +757,11 @@ body:
                                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                                     ty: ()
                                                                                                                                                                                                                                     temp_scope_id: 27
-                                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:16:17: 18:4 (#0)
+                                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:17:17: 19:4 (#0)
                                                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                                                         Block {
                                                                                                                                                                                                                                             targeted_by_break: false
-                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:17: 18:4 (#0)
+                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:17: 19:4 (#0)
                                                                                                                                                                                                                                             region_scope: Node(23)
                                                                                                                                                                                                                                             safety_mode: Safe
                                                                                                                                                                                                                                             stmts: [
@@ -772,7 +772,7 @@ body:
                                                                                                                                                                                                                                                             Expr {
                                                                                                                                                                                                                                                                 ty: u32
                                                                                                                                                                                                                                                                 temp_scope_id: 24
-                                                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:17:5: 17:6 (#0)
+                                                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:18:5: 18:6 (#0)
                                                                                                                                                                                                                                                                 kind: 
                                                                                                                                                                                                                                                                     Scope {
                                                                                                                                                                                                                                                                         region_scope: Node(24)
@@ -781,7 +781,7 @@ body:
                                                                                                                                                                                                                                                                             Expr {
                                                                                                                                                                                                                                                                                 ty: u32
                                                                                                                                                                                                                                                                                 temp_scope_id: 24
-                                                                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:17:5: 17:6 (#0)
+                                                                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:18:5: 18:6 (#0)
                                                                                                                                                                                                                                                                                 kind: 
                                                                                                                                                                                                                                                                                     VarRef {
                                                                                                                                                                                                                                                                                         id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).14))
@@ -799,7 +799,7 @@ body:
                                                                                                                                                                                                                 }
                                                                                                                                                                                                             hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).28)
                                                                                                                                                                                                             scope: Node(28)
-                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                                                                                                                         }
                                                                                                                                                                                                     ]
                                                                                                                                                                                                     match_source: ForLoopDesugar
@@ -819,7 +819,7 @@ body:
                                                                                                             }
                                                                                                         hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_from_for).39)
                                                                                                         scope: Node(39)
-                                                                                                        span: $DIR/thir-tree-match-for.rs:16:3: 18:4 (#7)
+                                                                                                        span: $DIR/thir-tree-match-for.rs:17:3: 19:4 (#7)
                                                                                                     }
                                                                                                 ]
                                                                                                 match_source: ForLoopDesugar
@@ -841,13 +841,13 @@ DefId(N:M ~ thir_tree_match_for::match_loop_nonfor):
 params: [
     Param {
         ty: u32
-        ty_span: Some($DIR/thir-tree-match-for.rs:22:25: 22:28 (#0))
+        ty_span: Some($DIR/thir-tree-match-for.rs:23:25: 23:28 (#0))
         self_kind: None
         hir_id: Some(HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).1))
         param: Some( 
             Pat {
                 ty: u32
-                span: $DIR/thir-tree-match-for.rs:22:22: 22:23 (#0)
+                span: $DIR/thir-tree-match-for.rs:23:22: 23:23 (#0)
                 kind: PatKind {
                     Binding {
                         name: "x"
@@ -864,13 +864,13 @@ params: [
     }
     Param {
         ty: u32
-        ty_span: Some($DIR/thir-tree-match-for.rs:22:33: 22:36 (#0))
+        ty_span: Some($DIR/thir-tree-match-for.rs:23:33: 23:36 (#0))
         self_kind: None
         hir_id: Some(HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).3))
         param: Some( 
             Pat {
                 ty: u32
-                span: $DIR/thir-tree-match-for.rs:22:30: 22:31 (#0)
+                span: $DIR/thir-tree-match-for.rs:23:30: 23:31 (#0)
                 kind: PatKind {
                     Binding {
                         name: "y"
@@ -890,7 +890,7 @@ body:
     Expr {
         ty: ()
         temp_scope_id: 48
-        span: $DIR/thir-tree-match-for.rs:22:38: 31:2 (#0)
+        span: $DIR/thir-tree-match-for.rs:23:38: 32:2 (#0)
         kind: 
             Scope {
                 region_scope: Node(48)
@@ -899,11 +899,11 @@ body:
                     Expr {
                         ty: ()
                         temp_scope_id: 48
-                        span: $DIR/thir-tree-match-for.rs:22:38: 31:2 (#0)
+                        span: $DIR/thir-tree-match-for.rs:23:38: 32:2 (#0)
                         kind: 
                             Block {
                                 targeted_by_break: false
-                                span: $DIR/thir-tree-match-for.rs:22:38: 31:2 (#0)
+                                span: $DIR/thir-tree-match-for.rs:23:38: 32:2 (#0)
                                 region_scope: Node(5)
                                 safety_mode: Safe
                                 stmts: []
@@ -911,7 +911,7 @@ body:
                                     Expr {
                                         ty: ()
                                         temp_scope_id: 6
-                                        span: $DIR/thir-tree-match-for.rs:23:3: 30:4 (#0)
+                                        span: $DIR/thir-tree-match-for.rs:24:3: 31:4 (#0)
                                         kind: 
                                             Scope {
                                                 region_scope: Node(6)
@@ -920,14 +920,14 @@ body:
                                                     Expr {
                                                         ty: ()
                                                         temp_scope_id: 6
-                                                        span: $DIR/thir-tree-match-for.rs:23:3: 30:4 (#0)
+                                                        span: $DIR/thir-tree-match-for.rs:24:3: 31:4 (#0)
                                                         kind: 
                                                             Match {
                                                                 scrutinee:
                                                                     Expr {
                                                                         ty: std::ops::Range<u32>
                                                                         temp_scope_id: 7
-                                                                        span: $DIR/thir-tree-match-for.rs:23:9: 23:38 (#0)
+                                                                        span: $DIR/thir-tree-match-for.rs:24:9: 24:38 (#0)
                                                                         kind: 
                                                                             Scope {
                                                                                 region_scope: Node(7)
@@ -936,17 +936,17 @@ body:
                                                                                     Expr {
                                                                                         ty: std::ops::Range<u32>
                                                                                         temp_scope_id: 7
-                                                                                        span: $DIR/thir-tree-match-for.rs:23:9: 23:38 (#0)
+                                                                                        span: $DIR/thir-tree-match-for.rs:24:9: 24:38 (#0)
                                                                                         kind: 
                                                                                             Call {
                                                                                                 ty: FnDef(DefId(N:M ~ core::iter::traits::collect::IntoIterator::into_iter), Binder { value: [std::ops::Range<u32>], bound_vars: [] })
                                                                                                 from_hir_call: true
-                                                                                                fn_span: $DIR/thir-tree-match-for.rs:23:9: 23:38 (#0)
+                                                                                                fn_span: $DIR/thir-tree-match-for.rs:24:9: 24:38 (#0)
                                                                                                 fun:
                                                                                                     Expr {
                                                                                                         ty: FnDef(DefId(N:M ~ core::iter::traits::collect::IntoIterator::into_iter), Binder { value: [std::ops::Range<u32>], bound_vars: [] })
                                                                                                         temp_scope_id: 8
-                                                                                                        span: $DIR/thir-tree-match-for.rs:23:9: 23:32 (#0)
+                                                                                                        span: $DIR/thir-tree-match-for.rs:24:9: 24:32 (#0)
                                                                                                         kind: 
                                                                                                             Scope {
                                                                                                                 region_scope: Node(8)
@@ -955,7 +955,7 @@ body:
                                                                                                                     Expr {
                                                                                                                         ty: FnDef(DefId(N:M ~ core::iter::traits::collect::IntoIterator::into_iter), Binder { value: [std::ops::Range<u32>], bound_vars: [] })
                                                                                                                         temp_scope_id: 8
-                                                                                                                        span: $DIR/thir-tree-match-for.rs:23:9: 23:32 (#0)
+                                                                                                                        span: $DIR/thir-tree-match-for.rs:24:9: 24:32 (#0)
                                                                                                                         kind: 
                                                                                                                             ZstLiteral(user_ty: None)
                                                                                                                     }
@@ -965,7 +965,7 @@ body:
                                                                                                     Expr {
                                                                                                         ty: std::ops::Range<u32>
                                                                                                         temp_scope_id: 11
-                                                                                                        span: $DIR/thir-tree-match-for.rs:23:33: 23:37 (#8)
+                                                                                                        span: $DIR/thir-tree-match-for.rs:24:33: 24:37 (#8)
                                                                                                         kind: 
                                                                                                             Scope {
                                                                                                                 region_scope: Node(11)
@@ -974,7 +974,7 @@ body:
                                                                                                                     Expr {
                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                         temp_scope_id: 11
-                                                                                                                        span: $DIR/thir-tree-match-for.rs:23:33: 23:37 (#8)
+                                                                                                                        span: $DIR/thir-tree-match-for.rs:24:33: 24:37 (#8)
                                                                                                                         kind: 
                                                                                                                             Adt {
                                                                                                                                 adt_def:
@@ -991,7 +991,7 @@ body:
                                                                                                                                         Expr {
                                                                                                                                             ty: u32
                                                                                                                                             temp_scope_id: 12
-                                                                                                                                            span: $DIR/thir-tree-match-for.rs:23:33: 23:34 (#0)
+                                                                                                                                            span: $DIR/thir-tree-match-for.rs:24:33: 24:34 (#0)
                                                                                                                                             kind: 
                                                                                                                                                 Scope {
                                                                                                                                                     region_scope: Node(12)
@@ -1000,7 +1000,7 @@ body:
                                                                                                                                                         Expr {
                                                                                                                                                             ty: u32
                                                                                                                                                             temp_scope_id: 12
-                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:23:33: 23:34 (#0)
+                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:24:33: 24:34 (#0)
                                                                                                                                                             kind: 
                                                                                                                                                                 VarRef {
                                                                                                                                                                     id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).2))
@@ -1012,7 +1012,7 @@ body:
                                                                                                                                         Expr {
                                                                                                                                             ty: u32
                                                                                                                                             temp_scope_id: 15
-                                                                                                                                            span: $DIR/thir-tree-match-for.rs:23:36: 23:37 (#0)
+                                                                                                                                            span: $DIR/thir-tree-match-for.rs:24:36: 24:37 (#0)
                                                                                                                                             kind: 
                                                                                                                                                 Scope {
                                                                                                                                                     region_scope: Node(15)
@@ -1021,7 +1021,7 @@ body:
                                                                                                                                                         Expr {
                                                                                                                                                             ty: u32
                                                                                                                                                             temp_scope_id: 15
-                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:23:36: 23:37 (#0)
+                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:24:36: 24:37 (#0)
                                                                                                                                                             kind: 
                                                                                                                                                                 VarRef {
                                                                                                                                                                     id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).4))
@@ -1044,7 +1044,7 @@ body:
                                                                         pattern: 
                                                                             Pat {
                                                                                 ty: std::ops::Range<u32>
-                                                                                span: $DIR/thir-tree-match-for.rs:24:5: 24:13 (#0)
+                                                                                span: $DIR/thir-tree-match-for.rs:25:5: 25:13 (#0)
                                                                                 kind: PatKind {
                                                                                     Binding {
                                                                                         name: "iter"
@@ -1062,7 +1062,7 @@ body:
                                                                             Expr {
                                                                                 ty: ()
                                                                                 temp_scope_id: 21
-                                                                                span: $DIR/thir-tree-match-for.rs:24:17: 29:6 (#0)
+                                                                                span: $DIR/thir-tree-match-for.rs:25:17: 30:6 (#0)
                                                                                 kind: 
                                                                                     Scope {
                                                                                         region_scope: Node(21)
@@ -1071,18 +1071,18 @@ body:
                                                                                             Expr {
                                                                                                 ty: ()
                                                                                                 temp_scope_id: 21
-                                                                                                span: $DIR/thir-tree-match-for.rs:24:17: 29:6 (#0)
+                                                                                                span: $DIR/thir-tree-match-for.rs:25:17: 30:6 (#0)
                                                                                                 kind: 
                                                                                                     Loop (
                                                                                                         body:
                                                                                                             Expr {
                                                                                                                 ty: ()
                                                                                                                 temp_scope_id: 22
-                                                                                                                span: $DIR/thir-tree-match-for.rs:24:22: 29:6 (#0)
+                                                                                                                span: $DIR/thir-tree-match-for.rs:25:22: 30:6 (#0)
                                                                                                                 kind: 
                                                                                                                     Block {
                                                                                                                         targeted_by_break: false
-                                                                                                                        span: $DIR/thir-tree-match-for.rs:24:22: 29:6 (#0)
+                                                                                                                        span: $DIR/thir-tree-match-for.rs:25:22: 30:6 (#0)
                                                                                                                         region_scope: Node(22)
                                                                                                                         safety_mode: Safe
                                                                                                                         stmts: [
@@ -1093,7 +1093,7 @@ body:
                                                                                                                                         Expr {
                                                                                                                                             ty: ()
                                                                                                                                             temp_scope_id: 23
-                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:7: 28:8 (#0)
+                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:7: 29:8 (#0)
                                                                                                                                             kind: 
                                                                                                                                                 Scope {
                                                                                                                                                     region_scope: Node(23)
@@ -1102,14 +1102,14 @@ body:
                                                                                                                                                         Expr {
                                                                                                                                                             ty: ()
                                                                                                                                                             temp_scope_id: 23
-                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:7: 28:8 (#0)
+                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:7: 29:8 (#0)
                                                                                                                                                             kind: 
                                                                                                                                                                 Match {
                                                                                                                                                                     scrutinee:
                                                                                                                                                                         Expr {
                                                                                                                                                                             ty: std::option::Option<u32>
                                                                                                                                                                             temp_scope_id: 24
-                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:13: 25:38 (#0)
+                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:13: 26:38 (#0)
                                                                                                                                                                             kind: 
                                                                                                                                                                                 Scope {
                                                                                                                                                                                     region_scope: Node(24)
@@ -1118,17 +1118,17 @@ body:
                                                                                                                                                                                         Expr {
                                                                                                                                                                                             ty: std::option::Option<u32>
                                                                                                                                                                                             temp_scope_id: 24
-                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:13: 25:38 (#0)
+                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:13: 26:38 (#0)
                                                                                                                                                                                             kind: 
                                                                                                                                                                                                 Call {
                                                                                                                                                                                                     ty: FnDef(DefId(N:M ~ core::iter::traits::iterator::Iterator::next), Binder { value: [std::ops::Range<u32>], bound_vars: [Region(BrNamed(DefId(N:M ~ core::iter::traits::iterator::Iterator::next::'_)))] })
                                                                                                                                                                                                     from_hir_call: true
-                                                                                                                                                                                                    fn_span: $DIR/thir-tree-match-for.rs:25:13: 25:38 (#0)
+                                                                                                                                                                                                    fn_span: $DIR/thir-tree-match-for.rs:26:13: 26:38 (#0)
                                                                                                                                                                                                     fun:
                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                             ty: FnDef(DefId(N:M ~ core::iter::traits::iterator::Iterator::next), Binder { value: [std::ops::Range<u32>], bound_vars: [Region(BrNamed(DefId(N:M ~ core::iter::traits::iterator::Iterator::next::'_)))] })
                                                                                                                                                                                                             temp_scope_id: 25
-                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:13: 25:27 (#0)
+                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:13: 26:27 (#0)
                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                 Scope {
                                                                                                                                                                                                                     region_scope: Node(25)
@@ -1137,7 +1137,7 @@ body:
                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                             ty: FnDef(DefId(N:M ~ core::iter::traits::iterator::Iterator::next), Binder { value: [std::ops::Range<u32>], bound_vars: [Region(BrNamed(DefId(N:M ~ core::iter::traits::iterator::Iterator::next::'_)))] })
                                                                                                                                                                                                                             temp_scope_id: 25
-                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:13: 25:27 (#0)
+                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:13: 26:27 (#0)
                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                 ZstLiteral(user_ty: None)
                                                                                                                                                                                                                         }
@@ -1147,7 +1147,7 @@ body:
                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                             ty: &'{erased} mut std::ops::Range<u32>
                                                                                                                                                                                                             temp_scope_id: 28
-                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:28: 25:37 (#0)
+                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:28: 26:37 (#0)
                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                 Scope {
                                                                                                                                                                                                                     region_scope: Node(28)
@@ -1156,7 +1156,7 @@ body:
                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                             ty: &'{erased} mut std::ops::Range<u32>
                                                                                                                                                                                                                             temp_scope_id: 28
-                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:28: 25:37 (#0)
+                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:28: 26:37 (#0)
                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                 Borrow (
                                                                                                                                                                                                                                     borrow_kind: Mut { kind: TwoPhaseBorrow }
@@ -1164,13 +1164,13 @@ body:
                                                                                                                                                                                                                                         Expr {
                                                                                                                                                                                                                                             ty: std::ops::Range<u32>
                                                                                                                                                                                                                                             temp_scope_id: 28
-                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:25:28: 25:37 (#0)
+                                                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:28: 26:37 (#0)
                                                                                                                                                                                                                                             kind: 
                                                                                                                                                                                                                                                 Deref {
                                                                                                                                                                                                                                                     Expr {
                                                                                                                                                                                                                                                         ty: &'{erased} mut std::ops::Range<u32>
                                                                                                                                                                                                                                                         temp_scope_id: 28
-                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:25:28: 25:37 (#0)
+                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:26:28: 26:37 (#0)
                                                                                                                                                                                                                                                         kind: 
                                                                                                                                                                                                                                                             Borrow (
                                                                                                                                                                                                                                                                 borrow_kind: Mut { kind: Default }
@@ -1178,7 +1178,7 @@ body:
                                                                                                                                                                                                                                                                     Expr {
                                                                                                                                                                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                                                                                                                                                                         temp_scope_id: 29
-                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:25:33: 25:37 (#0)
+                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:26:33: 26:37 (#0)
                                                                                                                                                                                                                                                                         kind: 
                                                                                                                                                                                                                                                                             Scope {
                                                                                                                                                                                                                                                                                 region_scope: Node(29)
@@ -1187,7 +1187,7 @@ body:
                                                                                                                                                                                                                                                                                     Expr {
                                                                                                                                                                                                                                                                                         ty: std::ops::Range<u32>
                                                                                                                                                                                                                                                                                         temp_scope_id: 29
-                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:25:33: 25:37 (#0)
+                                                                                                                                                                                                                                                                                        span: $DIR/thir-tree-match-for.rs:26:33: 26:37 (#0)
                                                                                                                                                                                                                                                                                         kind: 
                                                                                                                                                                                                                                                                                             VarRef {
                                                                                                                                                                                                                                                                                                 id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).19))
@@ -1213,7 +1213,7 @@ body:
                                                                                                                                                                             pattern: 
                                                                                                                                                                                 Pat {
                                                                                                                                                                                     ty: std::option::Option<u32>
-                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:26:11: 26:23 (#0)
+                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:27:11: 27:23 (#0)
                                                                                                                                                                                     kind: PatKind {
                                                                                                                                                                                         Variant {
                                                                                                                                                                                             adt_def: 
@@ -1234,7 +1234,7 @@ body:
                                                                                                                                                                                 Expr {
                                                                                                                                                                                     ty: ()
                                                                                                                                                                                     temp_scope_id: 36
-                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:26:27: 26:32 (#0)
+                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:27:27: 27:32 (#0)
                                                                                                                                                                                     kind: 
                                                                                                                                                                                         Scope {
                                                                                                                                                                                             region_scope: Node(36)
@@ -1243,14 +1243,14 @@ body:
                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                     ty: ()
                                                                                                                                                                                                     temp_scope_id: 36
-                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:26:27: 26:32 (#0)
+                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:27:27: 27:32 (#0)
                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                         NeverToAny {
                                                                                                                                                                                                             source:
                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                     ty: !
                                                                                                                                                                                                                     temp_scope_id: 36
-                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:26:27: 26:32 (#0)
+                                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:27:27: 27:32 (#0)
                                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                                         Break (
                                                                                                                                                                                                                             label: Node(21)
@@ -1262,13 +1262,13 @@ body:
                                                                                                                                                                                 }
                                                                                                                                                                             hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).35)
                                                                                                                                                                             scope: Node(35)
-                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:26:11: 26:32 (#0)
+                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:27:11: 27:32 (#0)
                                                                                                                                                                         }
                                                                                                                                                                         Arm {
                                                                                                                                                                             pattern: 
                                                                                                                                                                                 Pat {
                                                                                                                                                                                     ty: std::option::Option<u32>
-                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:27:11: 27:26 (#0)
+                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:28:11: 28:26 (#0)
                                                                                                                                                                                     kind: PatKind {
                                                                                                                                                                                         Variant {
                                                                                                                                                                                             adt_def: 
@@ -1286,7 +1286,7 @@ body:
                                                                                                                                                                                                     pattern:
                                                                                                                                                                                                         Pat {
                                                                                                                                                                                                             ty: u32
-                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:27:24: 27:25 (#0)
+                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:28:24: 28:25 (#0)
                                                                                                                                                                                                             kind: PatKind {
                                                                                                                                                                                                                 Binding {
                                                                                                                                                                                                                     name: "i"
@@ -1309,7 +1309,7 @@ body:
                                                                                                                                                                                 Expr {
                                                                                                                                                                                     ty: ()
                                                                                                                                                                                     temp_scope_id: 42
-                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:27:30: 27:36 (#0)
+                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:28:30: 28:36 (#0)
                                                                                                                                                                                     kind: 
                                                                                                                                                                                         Scope {
                                                                                                                                                                                             region_scope: Node(42)
@@ -1318,11 +1318,11 @@ body:
                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                     ty: ()
                                                                                                                                                                                                     temp_scope_id: 42
-                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:27:30: 27:36 (#0)
+                                                                                                                                                                                                    span: $DIR/thir-tree-match-for.rs:28:30: 28:36 (#0)
                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                         Block {
                                                                                                                                                                                                             targeted_by_break: false
-                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:27:30: 27:36 (#0)
+                                                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:28:30: 28:36 (#0)
                                                                                                                                                                                                             region_scope: Node(43)
                                                                                                                                                                                                             safety_mode: Safe
                                                                                                                                                                                                             stmts: [
@@ -1333,7 +1333,7 @@ body:
                                                                                                                                                                                                                             Expr {
                                                                                                                                                                                                                                 ty: u32
                                                                                                                                                                                                                                 temp_scope_id: 44
-                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:27:32: 27:33 (#0)
+                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:28:32: 28:33 (#0)
                                                                                                                                                                                                                                 kind: 
                                                                                                                                                                                                                                     Scope {
                                                                                                                                                                                                                                         region_scope: Node(44)
@@ -1342,7 +1342,7 @@ body:
                                                                                                                                                                                                                                             Expr {
                                                                                                                                                                                                                                                 ty: u32
                                                                                                                                                                                                                                                 temp_scope_id: 44
-                                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:27:32: 27:33 (#0)
+                                                                                                                                                                                                                                                span: $DIR/thir-tree-match-for.rs:28:32: 28:33 (#0)
                                                                                                                                                                                                                                                 kind: 
                                                                                                                                                                                                                                                     VarRef {
                                                                                                                                                                                                                                                         id: LocalVarId(HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).40))
@@ -1360,7 +1360,7 @@ body:
                                                                                                                                                                                 }
                                                                                                                                                                             hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).41)
                                                                                                                                                                             scope: Node(41)
-                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:27:11: 27:36 (#0)
+                                                                                                                                                                            span: $DIR/thir-tree-match-for.rs:28:11: 28:36 (#0)
                                                                                                                                                                         }
                                                                                                                                                                     ]
                                                                                                                                                                     match_source: Normal
@@ -1380,7 +1380,7 @@ body:
                                                                             }
                                                                         hir_id: HirId(DefId(N:M ~ thir_tree_match_for::match_loop_nonfor).20)
                                                                         scope: Node(20)
-                                                                        span: $DIR/thir-tree-match-for.rs:24:5: 29:6 (#0)
+                                                                        span: $DIR/thir-tree-match-for.rs:25:5: 30:6 (#0)
                                                                     }
                                                                 ]
                                                                 match_source: Normal
@@ -1401,7 +1401,7 @@ body:
     Expr {
         ty: ()
         temp_scope_id: 2
-        span: $DIR/thir-tree-match-for.rs:33:11: 33:13 (#0)
+        span: $DIR/thir-tree-match-for.rs:34:11: 34:13 (#0)
         kind: 
             Scope {
                 region_scope: Node(2)
@@ -1410,11 +1410,11 @@ body:
                     Expr {
                         ty: ()
                         temp_scope_id: 2
-                        span: $DIR/thir-tree-match-for.rs:33:11: 33:13 (#0)
+                        span: $DIR/thir-tree-match-for.rs:34:11: 34:13 (#0)
                         kind: 
                             Block {
                                 targeted_by_break: false
-                                span: $DIR/thir-tree-match-for.rs:33:11: 33:13 (#0)
+                                span: $DIR/thir-tree-match-for.rs:34:11: 34:13 (#0)
                                 region_scope: Node(1)
                                 safety_mode: Safe
                                 stmts: []
