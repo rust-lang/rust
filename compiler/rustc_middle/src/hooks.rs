@@ -13,6 +13,7 @@ use rustc_span::{ExpnHash, ExpnId, bug};
 
 use crate::mir;
 use crate::query::on_disk_cache::CacheEncoder;
+use crate::query::q_impl::job::{CollectActiveJobsKind, QueryJobMap};
 use crate::ty::{self, Ty, TyCtxt};
 
 macro_rules! declare_hooks {
@@ -131,6 +132,7 @@ declare_hooks! {
         body: &mir::Body<'tcx>,
     ) -> Option<Box<dyn Fn(mir::PassWhere, &mut dyn io::Write) -> io::Result<()>>>;
 
+    hook collect_active_query_jobs(collect_kind: CollectActiveJobsKind) -> QueryJobMap<'tcx>;
 }
 
 #[cold]
