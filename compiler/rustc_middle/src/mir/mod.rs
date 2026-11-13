@@ -36,6 +36,7 @@ use crate::ty::{
     TypeVisitableExt, TypingEnv, UserTypeAnnotationIndex,
 };
 
+pub mod alignment;
 pub mod basic_blocks;
 mod consts;
 pub mod coverage;

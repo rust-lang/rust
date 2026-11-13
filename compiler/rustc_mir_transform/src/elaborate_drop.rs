@@ -1287,7 +1287,10 @@ where
             vec![
                 self.assign(
                     ptr,
-                    Rvalue::RawPtr(RawPtrKind::Mut, tcx.mk_place_index(self.place, cur)),
+                    Rvalue::RawPtr(
+                        RawPtrKind::Mut { kind: RawMutBorrowKind::Default },
+                        tcx.mk_place_index(self.place, cur),
+                    ),
                 ),
                 self.assign(
                     cur.into(),
@@ -1413,7 +1416,10 @@ where
         self.new_block_with_statements(
             self.unwind,
             vec![
-                self.assign(Place::from(array_ptr), Rvalue::RawPtr(RawPtrKind::Mut, self.place)),
+                self.assign(
+                    Place::from(array_ptr),
+                    Rvalue::RawPtr(RawPtrKind::Mut { kind: RawMutBorrowKind::Default }, self.place),
+                ),
                 self.assign(
                     Place::from(slice_ptr),
                     Rvalue::Cast(
