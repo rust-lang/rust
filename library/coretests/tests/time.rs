@@ -641,6 +641,30 @@ fn duration_const() {
     const FROM_NANOS_U128: Duration = Duration::from_nanos_u128(NANOS);
     assert_eq!(FROM_NANOS_U128, Duration::SECOND);
 
+    const WEEKS: u64 = Duration::WEEK.as_weeks();
+    assert_eq!(WEEKS, 1);
+
+    const FROM_WEEKS: Duration = Duration::from_weeks(1);
+    assert_eq!(FROM_WEEKS, 604_800 * Duration::SECOND);
+
+    const DAYS: u64 = Duration::DAY.as_days();
+    assert_eq!(DAYS, 1);
+
+    const FROM_DAYS: Duration = Duration::from_days(1);
+    assert_eq!(FROM_DAYS, 86400 * Duration::SECOND);
+
+    const HOURS: u64 = Duration::HOUR.as_hours();
+    assert_eq!(HOURS, 1);
+
+    const FROM_HOURS: Duration = Duration::from_hours(1);
+    assert_eq!(FROM_HOURS, 3600 * Duration::SECOND);
+
+    const MINUTES: u64 = Duration::MINUTE.as_mins();
+    assert_eq!(MINUTES, 1);
+
+    const FROM_MINUTES: Duration = Duration::from_mins(1);
+    assert_eq!(FROM_MINUTES, 60 * Duration::SECOND);
+
     const MAX: Duration = Duration::new(u64::MAX, 999_999_999);
 
     const CHECKED_ADD: Option<Duration> = MAX.checked_add(Duration::SECOND);

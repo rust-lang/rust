@@ -722,6 +722,99 @@ impl Duration {
         self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos.as_inner() as u128
     }
 
+    /// Returns the number of _whole_ weeks contained by this `Duration`.
+    ///
+    /// The returned value does not include any fractional component
+    /// corresponding to units less than a week of the duration.
+    ///
+    /// For this method, one week is defined as 7 days, or 604,800 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_extractors)]
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_days(40);
+    /// assert_eq!(duration.as_weeks(), 5);
+    /// ```
+    #[unstable(feature = "duration_extractors", issue = "165786")]
+    #[must_use]
+    #[inline]
+    pub const fn as_weeks(&self) -> u64 {
+        self.as_secs() / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK)
+    }
+
+    /// Returns the number of _whole_ days contained by this `Duration`.
+    ///
+    /// The returned value does not include any fractional component
+    /// corresponding to units less than a day of the duration.
+    ///
+    /// For this method, one day is defined as 24 hours, or 86,400 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_extractors)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_hours(130);
+    /// assert_eq!(duration.as_days(), 5);
+    /// ```
+    #[unstable(feature = "duration_extractors", issue = "165786")]
+    #[must_use]
+    #[inline]
+    pub const fn as_days(&self) -> u64 {
+        self.as_secs() / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY)
+    }
+
+    /// Returns the number of _whole_ hours contained by this `Duration`.
+    ///
+    /// The returned value does not include any fractional component
+    /// corresponding to units less than an hour of the duration.
+    ///
+    /// For this method, one hour is defined as 60 minutes, or 3,600 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_extractors_lite)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_mins(320);
+    /// assert_eq!(duration.as_hours(), 5);
+    /// ```
+    #[unstable(feature = "duration_extractors_lite", issue = "165784")]
+    #[must_use]
+    #[inline]
+    pub const fn as_hours(&self) -> u64 {
+        self.as_secs() / (SECS_PER_MINUTE * MINS_PER_HOUR)
+    }
+
+    /// Returns the number of _whole_ minutes contained by this `Duration`.
+    ///
+    /// The returned value does not include any fractional component
+    /// corresponding to units less than a minute of the duration.
+    ///
+    /// For this method, one minute is defined as 60 seconds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_extractors_lite)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_secs(320);
+    /// assert_eq!(duration.as_mins(), 5);
+    /// ```
+    #[unstable(feature = "duration_extractors_lite", issue = "165784")]
+    #[must_use]
+    #[inline]
+    pub const fn as_mins(&self) -> u64 {
+        self.as_secs() / SECS_PER_MINUTE
+    }
+
     /// Computes the absolute difference between `self` and `other`.
     ///
     /// # Examples

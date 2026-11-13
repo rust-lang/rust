@@ -55,6 +55,8 @@
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
 #![feature(duration_display_seconds)]
+#![feature(duration_extractors)]
+#![feature(duration_extractors_lite)]
 #![feature(exact_div)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
