@@ -1313,16 +1313,18 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             AllowHigherAlign::No,
             ForceRightAdjust::No,
         ),
+        Arch::M68k => emit_ptr_va_arg(
+            bx,
+            addr,
+            layout,
+            PassMode::Direct,
+            SlotSize::Bytes4,
+            AllowHigherAlign::No,
+            ForceRightAdjust::Yes,
+        ),
 
         Arch::Bpf => bug!("bpf does not support c-variadic functions"),
         Arch::SpirV => bug!("spirv does not support c-variadic functions"),
-
-        Arch::M68k => {
-            std::assert_matches!(stability, CVariadicStatus::Unstable { .. });
-
-            // Clang uses the LLVM implementation for these architectures.
-            bx.va_arg(addr.immediate(), layout.llvm_type(bx.cx))
-        }
 
         Arch::Other(ref arch) => {
             std::assert_matches!(stability, CVariadicStatus::Unstable { .. });
