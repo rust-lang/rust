@@ -6,8 +6,8 @@ use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 use super::prelude::*;
 use super::util::parse_version;
 use crate::diagnostics::{
-    DeprecatedAnnotationHasNoEffect, DeprecatedItemSuggestion, InvalidSince, MissingNote,
-    MissingSince,
+    DeprecatedAnnotationHasNoEffect, DeprecatedItemSuggestion, DeprecatedOnUseHasNoEffect,
+    InvalidSince, MissingNote, MissingSince,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -47,7 +47,7 @@ impl SingleAttributeParser for DeprecatedParser {
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::TyAlias),
-        Allow(Target::Use),
+        AllowSilent(Target::Use),
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignTy),
@@ -206,6 +206,14 @@ impl SingleAttributeParser for DeprecatedParser {
                 DeprecatedAnnotationHasNoEffect { span: attr_span },
                 attr_span,
             );
+        }
+
+        // `#[deprecated]` on a `use` item has no effect: deprecation is checked on the item a
+        // path resolves to, not on the imports the path went through.
+        // FIXME(#30827): remove this and `AllowSilent(Target::Use)` once that is fixed.
+        if matches!(cx.target, Target::Use) {
+            let attr_span = cx.attr_span;
+            cx.emit_lint(UNUSED_ATTRIBUTES, DeprecatedOnUseHasNoEffect, attr_span);
         }
 
         Some(AttributeKind::Deprecated {
