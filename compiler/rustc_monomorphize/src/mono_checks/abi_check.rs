@@ -170,8 +170,8 @@ fn do_check_unsized_params<'tcx>(
 /// - the signature requires target features that are not enabled
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let typing_env = ty::TypingEnv::fully_monomorphized();
-    let ty = instance.ty(tcx, typing_env);
-    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::LlvmIntrinsic {
+    let ty = tcx.type_of(instance.def.def_id()).skip_binder();
+    if ty.is_fn() && ty.fn_sig_abi(tcx) == ExternAbi::LlvmIntrinsic {
         // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
         // LLVM intrinsics
         return;
@@ -213,7 +213,7 @@ fn check_call_site_abi<'tcx>(
     caller: Instance<'tcx>,
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
-    let extern_abi = callee.fn_sig(tcx).abi();
+    let extern_abi = callee.fn_sig_abi(tcx);
     if extern_abi.is_rustic_abi() {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.

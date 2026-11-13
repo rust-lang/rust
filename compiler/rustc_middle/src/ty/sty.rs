@@ -7,7 +7,7 @@ use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
+use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -1619,6 +1619,20 @@ impl<'tcx> Ty<'tcx> {
     #[tracing::instrument(level = "trace", skip(tcx))]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         self.kind().fn_sig(tcx)
+    }
+
+    /// `ty.fn_sig_abi(tcx)` is much faster than `ty.fn_sig(tcx).abi()` because the latter requires
+    /// instantiating the signature.
+    #[tracing::instrument(level = "trace", skip(tcx))]
+    pub fn fn_sig_abi(self, tcx: TyCtxt<'tcx>) -> ExternAbi {
+        self.kind().fn_sig_abi(tcx)
+    }
+
+    /// `ty.fn_sig_safety(tcx)` is much faster than `ty.fn_sig(tcx).safety()` because the latter
+    /// requires instantiating the signature.
+    #[tracing::instrument(level = "trace", skip(tcx))]
+    pub fn fn_sig_safety(self, tcx: TyCtxt<'tcx>) -> hir::Safety {
+        self.kind().fn_sig_safety(tcx)
     }
 
     #[tracing::instrument(level = "trace", skip(tcx))]

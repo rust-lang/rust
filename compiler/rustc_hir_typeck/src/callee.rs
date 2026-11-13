@@ -116,7 +116,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
-                let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi();
+                // njn: move double skip_binder removal to precursor commit
+                let abi = self.tcx.fn_sig(def_id).skip_binder().abi();
                 self.check_call_abi(abi, call_expr.span);
             }
             ty::FnPtr(_, header) => {
