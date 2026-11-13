@@ -151,23 +151,6 @@ impl AttributeExt for Attribute {
         self.value_lit().and_then(|x| x.value_as_str())
     }
 
-    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
-    #[inline]
-    fn name(&self) -> Option<Symbol> {
-        match &self {
-            Attribute::DeriveHelper(n) => {
-                if let [ident] = n.path.segments.as_ref() {
-                    Some(*ident)
-                } else {
-                    None
-                }
-            }
-            Attribute::Parsed(..) => None,
-            // Tools are never single segment attributes
-            Attribute::Tool(..) => None,
-        }
-    }
-
     #[inline]
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self {

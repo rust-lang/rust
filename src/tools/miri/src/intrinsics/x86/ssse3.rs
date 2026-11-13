@@ -11,8 +11,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
-        this.expect_target_feature_for_intrinsic(link_name, "ssse3")?;
+        let ecx = self.eval_context_mut();
+        ecx.expect_target_feature_for_intrinsic(link_name, "ssse3")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.ssse3.").unwrap();
 
@@ -21,15 +21,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Shuffles bytes from `left` using `right` as pattern.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shuffle_epi8
             "pshuf.b.128" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pshufb(this, left, right, dest)?;
+                pshufb(ecx, left, right, dest)?;
             }
             // Used to implement the _mm_maddubs_epi16 function.
             "pmadd.ub.sw.128" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pmaddbw(this, left, right, dest)?;
+                pmaddbw(ecx, left, right, dest)?;
             }
             // Used to implement the _mm_mulhrs_epi16 function.
             // Multiplies packed 16-bit signed integer values, truncates the 32-bit
@@ -38,9 +38,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 1 and then taking the bits `1..=16`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhrs_epi16
             "pmul.hr.sw.128" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                pmulhrsw(this, left, right, dest)?;
+                pmulhrsw(ecx, left, right, dest)?;
             }
             // Used to implement the _mm_sign_epi{8,16,32} functions.
             // Negates elements from `left` when the corresponding element in
@@ -48,9 +48,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is written to the corresponding output element.
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b.128" | "psign.w.128" | "psign.d.128" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                psign(this, left, right, dest)?;
+                psign(ecx, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

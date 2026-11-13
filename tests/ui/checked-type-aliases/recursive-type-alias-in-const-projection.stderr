@@ -1,8 +1,8 @@
 error[E0275]: overflow normalizing the type alias `Arr2`
-  --> $DIR/recursive-type-alias-in-const-projection.rs:12:1
+  --> $DIR/recursive-type-alias-in-const-projection.rs:12:13
    |
 LL | type Arr2 = [usize; <Arr2 as Trait>::ASSOC];
-   | ^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 

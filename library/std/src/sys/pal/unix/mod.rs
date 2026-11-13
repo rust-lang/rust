@@ -88,13 +88,16 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         'poll: {
             use crate::sys::io::errno;
-            let pfds: &mut [_] = &mut [
-                libc::pollfd { fd: 0, events: 0, revents: 0 },
-                libc::pollfd { fd: 1, events: 0, revents: 0 },
-                libc::pollfd { fd: 2, events: 0, revents: 0 },
-            ];
 
-            while libc::poll(pfds.as_mut_ptr(), 3, 0) == -1 {
+            let mut pfds: [libc::pollfd; 3] = crate::mem::zeroed();
+            pfds[0].fd = 0;
+            pfds[0].events = 0;
+            pfds[1].fd = 1;
+            pfds[1].events = 0;
+            pfds[2].fd = 2;
+            pfds[2].events = 0;
+
+            while libc::poll(pfds.as_mut_ptr(), pfds.len() as libc::nfds_t, 0) == -1 {
                 match errno() {
                     libc::EINTR => continue,
                     #[cfg(target_vendor = "unikraft")]
@@ -193,6 +196,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     target_os = "horizon",
     target_os = "vxworks",
     target_os = "vita",
+    target_os = "l4re",
 )))]
 static ON_BROKEN_PIPE_USED: crate::sync::atomic::Atomic<bool> =
     crate::sync::atomic::AtomicBool::new(false);
@@ -205,6 +209,7 @@ static ON_BROKEN_PIPE_USED: crate::sync::atomic::Atomic<bool> =
     target_os = "vxworks",
     target_os = "vita",
     target_os = "nuttx",
+    target_os = "l4re",
 )))]
 pub(crate) fn on_broken_pipe_used() -> bool {
     ON_BROKEN_PIPE_USED.load(crate::sync::atomic::Ordering::Relaxed)

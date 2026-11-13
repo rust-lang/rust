@@ -13,7 +13,7 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 use base_db::Crate;
 use hir_def::{
     AdtId, CallableDefId, EnumId, GenericDefId, GenericParamId, HasModule, ItemContainerId,
-    StructId, TraitId, TypeAliasId, UnionId, VariantId,
+    StructId, UnionId, VariantId,
     attrs::AttrFlags,
     expr_store::{ExpressionStore, StoreVisitor},
     hir::{ClosureKind as HirClosureKind, CoroutineKind as HirCoroutineKind, ExprId, PatId},
@@ -872,40 +872,6 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
 interned_slice!(PatListStorage, PatList, StoredPatList, pat_list, Pattern<'db>, Pattern<'static>);
 impl_foldable_for_interned_slice!(PatList);
 
-macro_rules! as_lang_item {
-    (
-        $solver_enum:ident, $self:ident, $def_id:expr, $id_ty:ty;
-
-        $( $variant:ident ),* $(,)?
-    ) => {{
-        let lang_items = $self.lang_items();
-        // Ensure exhaustiveness.
-        if let Some(it) = None::<$solver_enum> {
-            match it {
-                $( $solver_enum::$variant => {} )*
-            }
-        }
-        match $def_id {
-            $( def_id if let Some(it) = lang_items.$variant && <$id_ty>::from(it) == def_id => Some($solver_enum::$variant), )*
-            _ => None
-        }
-    }};
-}
-
-macro_rules! is_lang_item {
-    (
-        $solver_enum:ident, $self:ident, $def_id:expr, $expected_variant:ident;
-
-        $( $variant:ident ),* $(,)?
-    ) => {{
-        let lang_items = $self.lang_items();
-        let def_id = $def_id;
-        match $expected_variant {
-            $( $solver_enum::$variant => lang_items.$variant.is_some_and(|it| it == def_id), )*
-        }
-    }};
-}
-
 impl<'db> Interner for DbInterner<'db> {
     type DefId = SolverDefId<'db>;
     type LocalDefId = SolverDefId<'db>;
@@ -1413,66 +1379,24 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         lang_item: SolverProjectionLangItem,
     ) -> Self::TraitAssocTyId {
-        let lang_items = self.lang_items();
-        let lang_item = match lang_item {
-            SolverProjectionLangItem::AsyncFnKindUpvars => lang_items.AsyncFnKindUpvars,
-            SolverProjectionLangItem::AsyncFnOnceOutput => lang_items.AsyncFnOnceOutput,
-            SolverProjectionLangItem::CallOnceFuture => lang_items.CallOnceFuture,
-            SolverProjectionLangItem::CallRefFuture => lang_items.CallRefFuture,
-            SolverProjectionLangItem::CoroutineReturn => lang_items.CoroutineReturn,
-            SolverProjectionLangItem::CoroutineYield => lang_items.CoroutineYield,
-            SolverProjectionLangItem::FutureOutput => lang_items.FutureOutput,
-            SolverProjectionLangItem::Metadata => lang_items.Metadata,
-            SolverProjectionLangItem::FieldBase => lang_items.FieldBase,
-            SolverProjectionLangItem::FieldType => lang_items.FieldType,
-        };
-        lang_item.expect("Lang item required but not found.").into()
+        self.lang_items()
+            .get_solver_projection(lang_item)
+            .expect("Lang item required but not found.")
+            .into()
     }
 
     fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> TraitIdWrapper {
-        let lang_items = self.lang_items();
-        let lang_item = match lang_item {
-            SolverTraitLangItem::AsyncFn => lang_items.AsyncFn,
-            SolverTraitLangItem::AsyncFnKindHelper => lang_items.AsyncFnKindHelper,
-            SolverTraitLangItem::AsyncFnMut => lang_items.AsyncFnMut,
-            SolverTraitLangItem::AsyncFnOnce => lang_items.AsyncFnOnce,
-            SolverTraitLangItem::AsyncIterator => lang_items.AsyncIterator,
-            SolverTraitLangItem::Clone => lang_items.Clone,
-            SolverTraitLangItem::Copy => lang_items.Copy,
-            SolverTraitLangItem::Coroutine => lang_items.Coroutine,
-            SolverTraitLangItem::Destruct => lang_items.Destruct,
-            SolverTraitLangItem::DiscriminantKind => lang_items.DiscriminantKind,
-            SolverTraitLangItem::Drop => lang_items.Drop,
-            SolverTraitLangItem::Fn => lang_items.Fn,
-            SolverTraitLangItem::FnMut => lang_items.FnMut,
-            SolverTraitLangItem::FnOnce => lang_items.FnOnce,
-            SolverTraitLangItem::FnPtrTrait => lang_items.FnPtrTrait,
-            SolverTraitLangItem::FusedIterator => lang_items.FusedIterator,
-            SolverTraitLangItem::Future => lang_items.Future,
-            SolverTraitLangItem::Iterator => lang_items.Iterator,
-            SolverTraitLangItem::PointeeTrait => lang_items.PointeeTrait,
-            SolverTraitLangItem::Sized => lang_items.Sized,
-            SolverTraitLangItem::MetaSized => lang_items.MetaSized,
-            SolverTraitLangItem::PointeeSized => lang_items.PointeeSized,
-            SolverTraitLangItem::TransmuteTrait => lang_items.TransmuteTrait,
-            SolverTraitLangItem::Tuple => lang_items.Tuple,
-            SolverTraitLangItem::Unpin => lang_items.Unpin,
-            SolverTraitLangItem::Unsize => lang_items.Unsize,
-            SolverTraitLangItem::BikeshedGuaranteedNoDrop => lang_items.BikeshedGuaranteedNoDrop,
-            SolverTraitLangItem::TrivialClone => lang_items.TrivialClone,
-            SolverTraitLangItem::Field => lang_items.Field,
-        };
-        lang_item.expect("Lang item required but not found.").into()
+        self.lang_items()
+            .get_solver_trait(lang_item)
+            .expect("Lang item required but not found.")
+            .into()
     }
 
     fn require_adt_lang_item(self, lang_item: SolverAdtLangItem) -> AdtIdWrapper {
-        let lang_items = self.lang_items();
-        let lang_item = match lang_item {
-            SolverAdtLangItem::Option => lang_items.Option.map(Into::into),
-            SolverAdtLangItem::Poll => lang_items.Poll.map(Into::into),
-            SolverAdtLangItem::DynMetadata => lang_items.DynMetadata.map(Into::into),
-        };
-        AdtIdWrapper(lang_item.expect("Lang item required but not found."))
+        self.lang_items()
+            .get_solver_adt(lang_item)
+            .expect("Lang item required but not found.")
+            .into()
     }
 
     fn is_projection_lang_item(
@@ -1480,116 +1404,30 @@ impl<'db> Interner for DbInterner<'db> {
         def_id: Self::TraitAssocTyId,
         lang_item: SolverProjectionLangItem,
     ) -> bool {
-        self.as_projection_lang_item(def_id)
-            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+        self.lang_items().get_solver_projection(lang_item) == Some(def_id.0)
     }
 
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool {
-        is_lang_item!(
-            SolverTraitLangItem, self, def_id.0, lang_item;
-
-            Sized,
-            MetaSized,
-            PointeeSized,
-            Unsize,
-            Copy,
-            Clone,
-            DiscriminantKind,
-            PointeeTrait,
-            FnPtrTrait,
-            Drop,
-            Destruct,
-            TransmuteTrait,
-            Fn,
-            FnMut,
-            FnOnce,
-            Future,
-            Coroutine,
-            Unpin,
-            Tuple,
-            Iterator,
-            AsyncFn,
-            AsyncFnMut,
-            AsyncFnOnce,
-            TrivialClone,
-            AsyncFnKindHelper,
-            AsyncIterator,
-            BikeshedGuaranteedNoDrop,
-            FusedIterator,
-            Field,
-        )
+        self.lang_items().get_solver_trait(lang_item) == Some(def_id.0)
     }
 
     fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool {
-        // FIXME: derive PartialEq on SolverTraitLangItem
-        self.as_adt_lang_item(def_id)
-            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+        self.lang_items().get_solver_adt(lang_item) == Some(def_id.0)
     }
 
     fn as_projection_lang_item(
         self,
         def_id: Self::TraitAssocTyId,
     ) -> Option<SolverProjectionLangItem> {
-        as_lang_item!(
-            SolverProjectionLangItem, self, def_id.0, TypeAliasId;
-
-            Metadata,
-            CoroutineReturn,
-            CoroutineYield,
-            FutureOutput,
-            CallRefFuture,
-            CallOnceFuture,
-            AsyncFnOnceOutput,
-            AsyncFnKindUpvars,
-            FieldBase,
-            FieldType,
-        )
+        self.lang_items().get_reverse_solver_projection(def_id.0)
     }
 
     fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem> {
-        as_lang_item!(
-            SolverTraitLangItem, self, def_id.0, TraitId;
-
-            Sized,
-            MetaSized,
-            PointeeSized,
-            Unsize,
-            Copy,
-            Clone,
-            DiscriminantKind,
-            PointeeTrait,
-            FnPtrTrait,
-            Drop,
-            Destruct,
-            TransmuteTrait,
-            Fn,
-            FnMut,
-            FnOnce,
-            Future,
-            Coroutine,
-            Unpin,
-            Tuple,
-            Iterator,
-            AsyncFn,
-            AsyncFnMut,
-            AsyncFnOnce,
-            TrivialClone,
-            AsyncFnKindHelper,
-            AsyncIterator,
-            BikeshedGuaranteedNoDrop,
-            FusedIterator,
-            Field,
-        )
+        self.lang_items().get_reverse_solver_trait(def_id.0)
     }
 
     fn as_adt_lang_item(self, def_id: Self::AdtId) -> Option<SolverAdtLangItem> {
-        as_lang_item!(
-            SolverAdtLangItem, self, def_id.0, AdtId;
-
-            Option,
-            Poll,
-            DynMetadata,
-        )
+        self.lang_items().get_reverse_solver_adt(def_id.0)
     }
 
     fn associated_type_def_ids(

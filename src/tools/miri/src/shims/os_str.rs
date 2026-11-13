@@ -37,8 +37,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         'tcx: 'a,
     {
-        let this = self.eval_context_ref();
-        let bytes = this.read_c_str(ptr)?;
+        let ecx = self.eval_context_ref();
+        let bytes = ecx.read_c_str(ptr)?;
         bytes_to_os_str(bytes)
     }
 
@@ -143,10 +143,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer> {
         let size = u64::try_from(os_str.len()).unwrap().strict_add(1); // Make space for `0` terminator.
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u8, size);
-        let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
+        let arg_type = Ty::new_array(ecx.tcx.tcx, ecx.tcx.types.u8, size);
+        let arg_place = ecx.allocate(ecx.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) = self.write_os_str_to_c_str(os_str, arg_place.ptr(), size).unwrap();
         assert!(written);
         interp_ok(arg_place.ptr())
@@ -159,10 +159,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer> {
         let size = u64::try_from(os_str.len()).unwrap().strict_add(1); // Make space for `0x0000` terminator.
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let arg_type = Ty::new_array(this.tcx.tcx, this.tcx.types.u16, size);
-        let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
+        let arg_type = Ty::new_array(ecx.tcx.tcx, ecx.tcx.types.u16, size);
+        let arg_place = ecx.allocate(ecx.layout_of(arg_type).unwrap(), memkind)?;
         let (written, _) = self.write_os_str_to_wide_str(os_str, arg_place.ptr(), size).unwrap();
         assert!(written);
         interp_ok(arg_place.ptr())
@@ -173,10 +173,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         'tcx: 'a,
     {
-        let this = self.eval_context_ref();
-        let os_str = this.read_os_str_from_c_str(ptr)?;
+        let ecx = self.eval_context_ref();
+        let os_str = ecx.read_os_str_from_c_str(ptr)?;
 
-        interp_ok(match this.convert_path(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
+        interp_ok(match ecx.convert_path(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
             Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
             Cow::Owned(y) => Cow::Owned(PathBuf::from(y)),
         })
@@ -184,11 +184,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Read a null-terminated sequence of `u16`s, and perform path separator conversion if needed.
     fn read_path_from_wide_str(&self, ptr: Pointer) -> InterpResult<'tcx, PathBuf> {
-        let this = self.eval_context_ref();
-        let os_str = this.read_os_str_from_wide_str(ptr)?;
+        let ecx = self.eval_context_ref();
+        let os_str = ecx.read_os_str_from_wide_str(ptr)?;
 
         interp_ok(
-            this.convert_path(Cow::Owned(os_str), PathConversion::TargetToHost).into_owned().into(),
+            ecx.convert_path(Cow::Owned(os_str), PathConversion::TargetToHost).into_owned().into(),
         )
     }
 
@@ -200,10 +200,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ptr: Pointer,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let os_str =
-            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.write_os_str_to_c_str(&os_str, ptr, size)
+            ecx.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        ecx.write_os_str_to_c_str(&os_str, ptr, size)
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of `u16`s),
@@ -214,10 +214,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ptr: Pointer,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let os_str =
-            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.write_os_str_to_wide_str(&os_str, ptr, size)
+            ecx.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        ecx.write_os_str_to_wide_str(&os_str, ptr, size)
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of `u16`s),
@@ -228,10 +228,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ptr: Pointer,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let os_str =
-            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.write_os_str_to_wide_str_truncated(&os_str, ptr, size)
+            ecx.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        ecx.write_os_str_to_wide_str_truncated(&os_str, ptr, size)
     }
 
     /// Allocate enough memory to store a Path as a null-terminated sequence of bytes,
@@ -241,10 +241,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         path: &Path,
         memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let os_str =
-            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.alloc_os_str_as_c_str(&os_str, memkind)
+            ecx.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        ecx.alloc_os_str_as_c_str(&os_str, memkind)
     }
 
     /// Allocate enough memory to store a Path as a null-terminated sequence of `u16`s,
@@ -254,10 +254,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         path: &Path,
         memkind: MemoryKind,
     ) -> InterpResult<'tcx, Pointer> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let os_str =
-            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.alloc_os_str_as_wide_str(&os_str, memkind)
+            ecx.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        ecx.alloc_os_str_as_wide_str(&os_str, memkind)
     }
 
     fn convert_path<'a>(
@@ -265,8 +265,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         os_str: Cow<'a, OsStr>,
         direction: PathConversion,
     ) -> Cow<'a, OsStr> {
-        let this = self.eval_context_ref();
-        let target_os = &this.tcx.sess.target.os;
+        let ecx = self.eval_context_ref();
+        let target_os = &ecx.tcx.sess.target.os;
 
         /// Adjust a Windows path to Unix conventions such that it un-does everything that
         /// `unix_to_windows` did, and such that if the Windows input path was absolute, then the

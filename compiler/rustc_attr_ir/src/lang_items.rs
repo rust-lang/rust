@@ -8,7 +8,6 @@
 //! * Functions called by the compiler itself.
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_macros::{BlobDecodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::{Symbol, kw, sym};
@@ -80,7 +79,7 @@ macro_rules! language_item_table {
         $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
         /// A representation of all the valid lang items in Rust.
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, BlobDecodable, PrintAttribute)]
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, StableHash, Encodable, BlobDecodable, PrintAttribute)]
         pub enum LangItem {
             $(
                 #[doc = concat!("The `", stringify!($name), "` lang item.")]
@@ -149,12 +148,6 @@ macro_rules! language_item_table {
     }
 }
 
-impl StableHash for LangItem {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
-    }
-}
-
 language_item_table! {
 //  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
     Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
@@ -169,6 +162,7 @@ language_item_table! {
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    CloneFromFn,             sym::clone_from_fn,       clone_from_fn,              Target::Method(MethodKind::Trait { body: true }), GenericRequirement::None;
     UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
     TrivialClone,            sym::trivial_clone,       trivial_clone_trait,        Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
@@ -186,7 +180,9 @@ language_item_table! {
     UnsafeUnpin,             sym::unsafe_unpin,        unsafe_unpin_trait,         Target::Trait,          GenericRequirement::Exact(0);
 
     FnPtrTrait,              sym::fn_ptr_trait,        fn_ptr_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    FnPtrAsPtr,              sym::fn_ptr_as_ptr,       fn_ptr_as_ptr,              Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FnAddrTrait,             sym::fn_addr_trait,       fn_addr_trait,              Target::Trait,          GenericRequirement::Exact(0);
+    FnAddrAsPtr,             sym::fn_addr_as_ptr,      fn_addr_as_ptr,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FnAddrAddrFn,            sym::fn_addr_addr_fn,     fn_addr_addr_fn,            Target::Method(MethodKind::Trait { body: true }), GenericRequirement::None;
     FnPtrFromPtr,            sym::fn_ptr_from_ptr,     fn_ptr_from_ptr,            Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     Code,                    sym::code,                code,                       Target::ForeignTy,      GenericRequirement::None;
 
@@ -239,6 +235,8 @@ language_item_table! {
 
     Complex,                 sym::complex,             complex,                    Target::Struct,         GenericRequirement::Exact(1);
     PpcF128,                 sym::ppcf128,             ppcf128,                    Target::Struct,         GenericRequirement::None;
+    X87F80,                  sym::x87_f80,             x87_f80,                    Target::Struct,         GenericRequirement::None;
+    X87F80Raw,               sym::x87_f80_raw,         x87_f80_raw,                Target::Struct,         GenericRequirement::None;
 
     Deref,                   kw::Deref,                deref_trait,                Target::Trait,          GenericRequirement::Exact(0);
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait,          GenericRequirement::Exact(0);
@@ -278,6 +276,8 @@ language_item_table! {
 
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     kw::Pin,                  pin_type,                   Target::Struct,         GenericRequirement::None;
+
+    Move,                    sym::move_trait,          move_trait,                 Target::Trait,          GenericRequirement::None;
 
     OrderingEnum,            sym::Ordering,            ordering_enum,              Target::Enum,           GenericRequirement::Exact(0);
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);

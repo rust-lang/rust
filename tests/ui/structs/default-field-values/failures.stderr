@@ -1,8 +1,9 @@
 error: the `#[default]` attribute may only be used on unit enum variants or variants where every field has a default value
-  --> $DIR/failures.rs:49:5
+  --> $DIR/failures.rs:48:5
    |
+LL |     #[default]
+   |     ^^^^^^^^^^
 LL |     Variant {}
-   |     ^^^^^^^
    |
    = help: consider a manual implementation of `Default`
 

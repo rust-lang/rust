@@ -1894,7 +1894,10 @@ impl<'tcx> Pick<'tcx> {
                             tcx.def_path_str(this.item.def_id),
                         ));
                     }
-                    (ty::AssocKind::Const { name, .. }, ty::AssocContainer::Trait) => {
+                    (
+                        ty::AssocKind::Const { data: ty::AssocConstData::Named(name) },
+                        ty::AssocContainer::Trait,
+                    ) => {
                         let def_id = this.item.container_id(tcx);
                         lint.span_suggestion(
                             span,
@@ -2662,7 +2665,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         {
             return true;
         }
-
         false
     }
 
@@ -2676,7 +2678,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
-                    .in_definition_order()
+                    .named_items_in_definition_order()
                     .filter(|x| {
                         if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;

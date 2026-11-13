@@ -539,6 +539,7 @@ pub(crate) fn build_impl(
                 .items
                 .iter()
                 .map(|&item| tcx.hir_impl_item(item))
+                .filter(|item| !item.is_anon_const())
                 .filter(|item| {
                     // Filter out impl items whose corresponding trait item has `doc(hidden)`
                     // not to document such impl items.
@@ -608,8 +609,9 @@ pub(crate) fn build_impl(
     };
     let trait_ = associated_trait
         .map(|t| clean_trait_ref_with_constraints(cx, ty::Binder::dummy(t), ThinVec::new()));
-    if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait()
-        && polarity != ty::ImplPolarity::Negative
+    if trait_
+        .as_ref()
+        .is_some_and(|t| polarity != ty::ImplPolarity::Negative && t.is_deref_trait(tcx))
     {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }

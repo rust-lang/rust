@@ -126,6 +126,33 @@ impl OptLevel {
             _ => 2,
         }
     }
+
+    /// Maps a general opt-level onto the objective it is trying to achieve.
+    pub fn objective(&self) -> OptimizationObjective {
+        match self {
+            OptLevel::No => OptimizationObjective::None,
+            OptLevel::Less => OptimizationObjective::Balanced,
+            OptLevel::More | OptLevel::Aggressive => OptimizationObjective::Speed,
+            OptLevel::Size | OptLevel::SizeMin => OptimizationObjective::Size,
+        }
+    }
+}
+
+/// What a compilation, or a single item, is being asked to optimize *for*.
+///
+/// Unlike [`OptLevel`], speed and size are alternatives here rather than degrees of the same
+/// thing. Sites that map a level onto an LLVM or linker flag, where `s` and `z` produce different
+/// flags, still match on [`OptLevel`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OptimizationObjective {
+    /// Nothing is optimized, so there is no objective (`-Copt-level=0`).
+    None,
+    /// Optimize, without a strong preference for speed over size (`-Copt-level=1`).
+    Balanced,
+    /// Favor runtime speed over binary size (`-Copt-level=2`/`3`, `#[optimize(speed)]`).
+    Speed,
+    /// Favor binary size over runtime speed (`-Copt-level=s`/`z`, `#[optimize(size)]`).
+    Size,
 }
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
@@ -860,7 +887,7 @@ pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
     #[default]
     HumanReadable {
-        kind: HumanReadableErrorType = HumanReadableErrorType { short: false, unicode: false },
+        kind: HumanReadableErrorType = HumanReadableErrorType { no_graphics: false, short: false, unicode: false },
         color_config: ColorConfig = ColorConfig::Auto,
     },
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
@@ -1536,7 +1563,11 @@ impl Default for Options {
             verbose: false,
             target_modifiers: BTreeMap::default(),
             mitigation_coverage_map: Default::default(),
-            jobs: Jobs { frontend: None, backend: None, linker: LinkerJobs::Default },
+            jobs: Jobs {
+                frontend: JobsMode::Sequential,
+                backend: JobsMode::Sequential,
+                linker: LinkerJobs::Default,
+            },
             recommended_stack_size: DEFAULT_STACK_SIZE,
         }
     }
@@ -1568,10 +1599,9 @@ impl Options {
     pub fn share_generics(&self) -> bool {
         match self.unstable_opts.share_generics {
             Some(setting) => setting,
-            None => match self.optimize {
-                OptLevel::No | OptLevel::Less | OptLevel::Size | OptLevel::SizeMin => true,
-                OptLevel::More | OptLevel::Aggressive => false,
-            },
+            // Sharing instantiations means fewer copies, at the cost of leaving them opaque to
+            // speed optimizations. That is a good trade unless speed is what is asked for.
+            None => self.optimize.objective() != OptimizationObjective::Speed,
         }
     }
 
@@ -1710,29 +1740,51 @@ impl PointerAuthOption {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum JobsMode {
+    /// Everything runs on a single thread, and all the parallelization overhead
+    /// (locking, jobserver, prefetching, or anything else) is avoided when possible.
+    Sequential,
+    /// Multiple threads may be used and all the parallelization overhead is enabled.
+    /// Note that the actual parallelism can still be limited to 1 thread, which is useful for
+    /// perf testing the parallelization overhead (`--jobs*=sync` enables this mode).
+    Parallel(NonZero<usize>),
+}
+
+impl JobsMode {
+    pub fn limit(self) -> NonZero<usize> {
+        match self {
+            JobsMode::Sequential => NonZero::new(1).unwrap(),
+            JobsMode::Parallel(n) => n,
+        }
+    }
+
+    pub fn is_parallel(self) -> bool {
+        matches!(self, JobsMode::Parallel(..))
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum LinkerJobs {
     /// Do not pass anything to the linker, use it's default behavior.
     Default,
     /// Pass some specific number of jobs to use to the linker.
-    Explicit(NonZero<usize>),
+    Explicit(JobsMode),
 }
 
 impl LinkerJobs {
-    pub fn limit(self) -> Option<NonZero<usize>> {
+    pub fn mode(self) -> JobsMode {
         match self {
-            LinkerJobs::Default => None,
-            LinkerJobs::Explicit(n) => Some(n),
+            LinkerJobs::Default => JobsMode::Sequential,
+            LinkerJobs::Explicit(n) => n,
         }
     }
 }
 
-/// `None` for frontend and backend means everything is single-threaded
-/// and synchronization can be disabled.
 #[derive(Clone, Copy)]
 pub struct Jobs {
-    pub frontend: Option<NonZero<usize>>,
-    pub backend: Option<NonZero<usize>>,
+    pub frontend: JobsMode,
+    pub backend: JobsMode,
     pub linker: LinkerJobs,
 }
 
@@ -1750,9 +1802,9 @@ fn parse_jobs_all(
     let jobs = matches
         .opt_str("jobs")
         .map(|s| parse_jobs_one(early_dcx, "--jobs", &s, unstable, &mut available));
-    let check_upper_limit = |value: Option<_>, opt_name| {
+    let check_upper_limit = |value: JobsMode, opt_name| {
         if let Some(jobs) = jobs
-            && value.or(NonZero::new(1)) > jobs.or(NonZero::new(1))
+            && value.limit() > jobs.limit()
         {
             early_dcx.early_fatal(format!("`{opt_name}` cannot be larger than `--jobs`"));
         }
@@ -1776,7 +1828,7 @@ fn parse_jobs_all(
                 check_upper_limit(frontend, opt_name);
                 frontend
             }
-            None => None, // default to 1 thread irrespectively of `jobs` for now
+            None => JobsMode::Sequential, // default to 1 thread irrespectively of `jobs` for now
         },
     };
     let backend = match matches.opt_str("jobs-backend") {
@@ -1799,10 +1851,10 @@ fn parse_jobs_all(
             let linker =
                 parse_jobs_one(early_dcx, opt_name, &jobs_linker, unstable, &mut available);
             check_upper_limit(linker, opt_name);
-            LinkerJobs::Explicit(linker.or(NonZero::new(1)).unwrap())
+            LinkerJobs::Explicit(linker)
         }
         None => match jobs {
-            Some(n) => LinkerJobs::Explicit(n.or(NonZero::new(1)).unwrap()),
+            Some(n) => LinkerJobs::Explicit(n),
             None => LinkerJobs::Default, // back compat with lld
         },
     };
@@ -1817,13 +1869,13 @@ fn parse_jobs_one(
     s: &str,
     unstable: bool,
     available: &mut Option<u8>,
-) -> Option<NonZero<usize>> {
+) -> JobsMode {
     if s == "sync" {
         // Enable synchronization overhead for benchmarking despite only using one thread.
         if !unstable {
             early_dcx.early_fatal(format!("`{opt_name}=sync` requires `-Z unstable-options`"));
         }
-        return NonZero::new(1);
+        return JobsMode::Parallel(NonZero::new(1).unwrap());
     }
     // The number of jobs is capped by 255 (`u8::MAX`) to avoid arbitrary large numbers like 999999
     // causing compiler panics (#117638). The limit can be potentially increased, because e.g.
@@ -1838,7 +1890,11 @@ fn parse_jobs_one(
             .early_fatal(format!("`{opt_name}`: expected a number from 0 to 255 or `sync`")),
     };
     // `Jobs` uses `usize` for more convenient use, even if the actual values are limited to `u8`.
-    (n > 1).then_some(NonZero::new(usize::from(n)).unwrap())
+    match n {
+        0 => unreachable!(),
+        1 => JobsMode::Sequential,
+        _ => JobsMode::Parallel(NonZero::new(usize::from(n)).unwrap()),
+    }
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
@@ -2281,7 +2337,8 @@ impl JsonUnusedExterns {
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
 pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> JsonConfig {
-    let mut json_rendered = HumanReadableErrorType { short: false, unicode: false };
+    let mut json_rendered =
+        HumanReadableErrorType { no_graphics: false, short: false, unicode: false };
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
@@ -2298,10 +2355,16 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
         for sub_option in option.split(',') {
             match sub_option {
                 "diagnostic-short" => {
-                    json_rendered = HumanReadableErrorType { short: true, unicode: false };
+                    json_rendered =
+                        HumanReadableErrorType { no_graphics: false, short: true, unicode: false };
+                }
+                "diagnostic-no-graphics" => {
+                    json_rendered =
+                        HumanReadableErrorType { no_graphics: true, short: false, unicode: false };
                 }
                 "diagnostic-unicode" => {
-                    json_rendered = HumanReadableErrorType { short: false, unicode: true };
+                    json_rendered =
+                        HumanReadableErrorType { no_graphics: false, short: false, unicode: true };
                 }
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
@@ -2332,7 +2395,7 @@ pub fn parse_error_format(
     json_color: ColorConfig,
     json_rendered: HumanReadableErrorType,
 ) -> ErrorOutputType {
-    let default_kind = HumanReadableErrorType { short: false, unicode: false };
+    let default_kind = HumanReadableErrorType { no_graphics: false, short: false, unicode: false };
     // We need the `opts_present` check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
     // is unstable, it will not be present. We have to use `opts_present` not
@@ -2349,11 +2412,15 @@ pub fn parse_error_format(
                 ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
             }
             Some("short") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType { short: true, unicode: false },
+                kind: HumanReadableErrorType { no_graphics: false, short: true, unicode: false },
+                color_config,
+            },
+            Some("human-no-graphics") => ErrorOutputType::HumanReadable {
+                kind: HumanReadableErrorType { no_graphics: true, short: false, unicode: false },
                 color_config,
             },
             Some("human-unicode") => ErrorOutputType::HumanReadable {
-                kind: HumanReadableErrorType { short: false, unicode: true },
+                kind: HumanReadableErrorType { no_graphics: false, short: false, unicode: true },
                 color_config,
             },
             Some(arg) => {
@@ -2362,8 +2429,8 @@ pub fn parse_error_format(
                     kind: default_kind,
                 });
                 early_dcx.early_fatal(format!(
-                    "argument for `--error-format` must be `human`, `human-unicode`, \
-                    `json`, `pretty-json` or `short` (instead was `{arg}`)"
+                    "argument for `--error-format` must be `human`, `human-no-graphics`, \
+                    `human-unicode`, `json`, `pretty-json` or `short` (instead was `{arg}`)"
                 ))
             }
         }
@@ -2438,6 +2505,7 @@ fn check_error_format_stability(
     let format = match format {
         ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
         ErrorOutputType::HumanReadable { kind, .. } => match kind {
+            HumanReadableErrorType { no_graphics: true, .. } => "human-no-graphics",
             HumanReadableErrorType { unicode: true, .. } => "human-unicode",
             _ => return,
         },

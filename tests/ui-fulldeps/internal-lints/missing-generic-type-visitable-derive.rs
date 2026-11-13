@@ -1,6 +1,4 @@
 //@ compile-flags: -Z unstable-options
-// FIXME(bootstrap): Remove the ignore once we promote the next beta.
-//@ ignore-stage1
 
 #![crate_type = "lib"]
 #![feature(rustc_private)]

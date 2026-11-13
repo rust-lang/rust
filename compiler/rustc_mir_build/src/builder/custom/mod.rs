@@ -20,7 +20,7 @@ use rustc_attr_ir as attrs;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::{IndexSlice, IndexVec, indexvec};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -64,7 +64,6 @@ pub(super) fn build_custom_mir<'tcx>(
     };
 
     body.local_decls.push(LocalDecl::new(return_ty, return_ty_span));
-    body.basic_blocks_mut().push(BasicBlockData::new(None, false));
     body.source_scopes.push(SourceScopeData {
         span,
         parent_scope: None,
@@ -80,6 +79,8 @@ pub(super) fn build_custom_mir<'tcx>(
         thir,
         source_scope: OUTERMOST_SOURCE_SCOPE,
         body: &mut body,
+        // Single `false` for entry block which is declared implicitly
+        block_decls: indexvec![false],
         local_map: FxHashMap::default(),
         block_map: FxHashMap::default(),
     };
@@ -138,6 +139,8 @@ struct ParseCtxt<'a, 'tcx> {
     thir: &'a Thir<'tcx>,
     source_scope: SourceScope,
     body: &'a mut Body<'tcx>,
+    /// list of declared blocks, with a flag indicating whether it is a cleanup block
+    block_decls: IndexVec<BasicBlock, bool>,
     local_map: FxHashMap<LocalVarId, Local>,
     block_map: FxHashMap<LocalVarId, BasicBlock>,
 }

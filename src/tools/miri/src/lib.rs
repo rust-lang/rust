@@ -8,7 +8,9 @@
     ),
     feature(abort_unwind)
 )]
+#![cfg_attr(windows, feature(windows_by_handle))]
 #![feature(array_try_from_fn)]
+#![feature(clamp_to)]
 #![feature(rustc_private)]
 #![feature(dirfd)]
 #![feature(f16)]
@@ -16,10 +18,12 @@
 #![feature(float_erf)]
 #![feature(map_try_insert)]
 #![feature(try_blocks)]
+#![feature(integer_casts)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]
 #![feature(io_error_input_output_error)]
 #![feature(io_error_too_many_open_files)]
+#![feature(seek_stream_len)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(pointer_is_aligned_to)]
@@ -31,6 +35,7 @@
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_if,
+    clippy::needless_ifs,
     clippy::enum_variant_names,
     clippy::manual_map,
     clippy::neg_cmp_op_on_partial_ord,
@@ -51,6 +56,7 @@
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,
 )]
+#![cfg_attr(not(unix), allow(clippy::permissions_set_readonly_false))]
 #![warn(
     rust_2018_idioms,
     unqualified_local_imports,

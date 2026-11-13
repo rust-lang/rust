@@ -232,16 +232,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Parses a `_umtx_time` struct.
     /// Returns `None` if the underlying `timespec` struct is invalid.
     fn read_umtx_time(&self, ut: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<UmtxTime>> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         // Only flag allowed is UMTX_ABSTIME.
-        let abs_time = this.eval_libc_u32("UMTX_ABSTIME");
+        let abs_time = ecx.eval_libc_u32("UMTX_ABSTIME");
 
-        let timespec_place = this.project_field(ut, FieldIdx::from_u32(0))?;
+        let timespec_place = ecx.project_field(ut, FieldIdx::from_u32(0))?;
         // Inner `timespec` must still be valid.
-        let Some(duration) = this.read_timespec(&timespec_place)? else { return interp_ok(None) };
+        let Some(duration) = ecx.read_timespec(&timespec_place)? else { return interp_ok(None) };
 
-        let flags_place = this.project_field(ut, FieldIdx::from_u32(1))?;
-        let mut flags = this.read_scalar(&flags_place)?.to_u32()?;
+        let flags_place = ecx.project_field(ut, FieldIdx::from_u32(1))?;
+        let mut flags = ecx.read_scalar(&flags_place)?.to_u32()?;
 
         let abs_time_flag = if flags & abs_time != 0 {
             flags &= !abs_time;
@@ -253,13 +253,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("unsupported `_umtx_time` flags: {:#x}", flags);
         }
 
-        let clock_id_place = this.project_field(ut, FieldIdx::from_u32(2))?;
-        let clock_id = this.read_scalar(&clock_id_place)?.to_i32()?;
-        let Some(timeout_clock) = this.parse_clockid(clock_id) else {
+        let clock_id_place = ecx.project_field(ut, FieldIdx::from_u32(2))?;
+        let clock_id = ecx.read_scalar(&clock_id_place)?.to_i32()?;
+        let Some(timeout_clock) = ecx.parse_clockid(clock_id) else {
             throw_unsup_format!("unsupported clock")
         };
         if timeout_clock == TimeoutClock::RealTime {
-            this.check_no_isolation("`_umtx_op` with `CLOCK_REALTIME`")?;
+            ecx.check_no_isolation("`_umtx_op` with `CLOCK_REALTIME`")?;
         }
 
         interp_ok(Some(UmtxTime { timeout: duration, abs_time: abs_time_flag, timeout_clock }))

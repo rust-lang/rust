@@ -548,9 +548,12 @@ fn iter_directives(
     };
 
     for directive_str in extra_directives {
-        let directive_line = line_directive(testfile, LineNumber::ZERO, directive_str)
-            .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
-        it(&directive_line);
+        if let Some(Ok(directive_line)) = line_directive(testfile, LineNumber::ZERO, directive_str)
+        {
+            it(&directive_line);
+        } else {
+            panic!("bad extra-directive line: {directive_str:?}")
+        }
     }
 
     for directive_line in &file_directives.lines {

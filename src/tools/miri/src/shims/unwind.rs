@@ -98,7 +98,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
-        this.write_null(&dest)?;
+        this.write_int(0, &dest)?;
 
         // In unwind mode, we tag this frame with the extra data needed to catch unwinding.
         // This lets `handle_stack_pop` (below) know that we should stop unwinding

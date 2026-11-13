@@ -15,6 +15,7 @@ LL | m!();
             ^^^^^^^^^^
    = note: no item named `long_cat` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[`long_cat`]: https://...`
    = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 
 warning: 1 warning emitted

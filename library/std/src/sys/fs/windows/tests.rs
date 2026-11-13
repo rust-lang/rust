@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // Windows fs APIs are not supported in Miri
+
 use super::{get_path_canonical, get_path_fallback};
 use crate::env;
 use crate::fs::{File, canonicalize};

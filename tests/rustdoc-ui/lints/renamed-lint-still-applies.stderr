@@ -19,6 +19,7 @@ LL | //! [x]
    |      ^ no item named `x` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[x]: https://...`
 note: the lint level is defined here
   --> $DIR/renamed-lint-still-applies.rs:1:9
    |

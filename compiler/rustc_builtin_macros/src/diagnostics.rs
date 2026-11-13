@@ -23,10 +23,6 @@ pub(crate) struct IncompleteInclude;
 pub(crate) struct UnnameableTestItems;
 
 #[derive(Diagnostic)]
-#[diag("duplicated attribute")]
-pub(crate) struct DuplicateMacroAttribute;
-
-#[derive(Diagnostic)]
 #[diag("macro requires a cfg-pattern as an argument")]
 pub(crate) struct RequiresCfgPattern {
     #[primary_span]
@@ -234,6 +230,13 @@ mod autodiff {
 }
 
 #[derive(Diagnostic)]
+#[diag("offload_kernel must be applied to function")]
+pub(crate) struct OffloadKernelInvalidApplication {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("cannot concatenate {$lit_kind} literals")]
 pub(crate) struct ConcatBytesInvalid {
     #[primary_span]
@@ -429,11 +432,14 @@ pub(crate) struct MultipleDefaultsSugg {
 
 #[derive(Diagnostic)]
 #[diag("the `#[default]` attribute may only be used on unit enum variants{$post}")]
-#[help("consider a manual implementation of `Default`")]
 pub(crate) struct NonUnitDefault {
     #[primary_span]
+    pub(crate) default_span: Span,
+    #[context]
     pub(crate) span: Span,
     pub(crate) post: &'static str,
+    #[help("consider a manual implementation of `Default`")]
+    pub(crate) is_item: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -441,6 +447,8 @@ pub(crate) struct NonUnitDefault {
 #[help("consider a manual implementation of `Default`")]
 pub(crate) struct NonExhaustiveDefault {
     #[primary_span]
+    pub(crate) default_span: Span,
+    #[context]
     pub(crate) span: Span,
     #[label("declared `#[non_exhaustive]` here")]
     pub(crate) non_exhaustive: Span,

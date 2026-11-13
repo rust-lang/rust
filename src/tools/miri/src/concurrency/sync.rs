@@ -236,15 +236,15 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         retval: Scalar,
         dest: MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         if let Some(owner) = mutex_ref.owner() {
-            assert_ne!(owner, this.active_thread());
-            this.mutex_enqueue_and_block(mutex_ref, Some((retval, dest)));
+            assert_ne!(owner, ecx.active_thread());
+            ecx.mutex_enqueue_and_block(mutex_ref, Some((retval, dest)));
         } else {
             // We can have it right now!
-            this.mutex_lock(&mutex_ref)?;
+            ecx.mutex_lock(&mutex_ref)?;
             // Don't forget to write the return value.
-            this.write_scalar(retval, &dest)?;
+            ecx.write_scalar(retval, &dest)?;
         }
         interp_ok(())
     }
@@ -335,14 +335,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     mutex_ref: MutexRef,
                     retval_dest: Option<(Scalar, MPlaceTy<'tcx>)>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
 
                     assert!(mutex_ref.owner().is_none());
-                    this.mutex_lock(&mutex_ref)?;
+                    ecx.mutex_lock(&mutex_ref)?;
 
                     if let Some((retval, dest)) = retval_dest {
-                        this.write_scalar(retval, &dest)?;
+                        ecx.write_scalar(retval, &dest)?;
                     }
 
                     interp_ok(())
@@ -428,10 +428,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     retval: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.rwlock_reader_lock(&rwlock_ref)?;
-                    this.write_scalar(retval, &dest)?;
+                    ecx.rwlock_reader_lock(&rwlock_ref)?;
+                    ecx.write_scalar(retval, &dest)?;
                     interp_ok(())
                 }
             ),
@@ -515,10 +515,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     retval: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    this.rwlock_writer_lock(&rwlock_ref)?;
-                    this.write_scalar(retval, &dest)?;
+                    ecx.rwlock_writer_lock(&rwlock_ref)?;
+                    ecx.write_scalar(retval, &dest)?;
                     interp_ok(())
                 }
             ),
@@ -563,24 +563,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     retval_timeout: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     match unblock {
                         UnblockKind::Ready => {
                             // The condvar was signaled. Make sure we get the clock for that.
-                            this.acquire_clock(
+                            ecx.acquire_clock(
                                     &condvar_ref.0.borrow().clock,
                                 )?;
                             // Try to acquire the mutex.
                             // The timeout only applies to the first wait (until the signal), not for mutex acquisition.
-                            this.condvar_reacquire_mutex(mutex_ref, retval_succ, dest)
+                            ecx.condvar_reacquire_mutex(mutex_ref, retval_succ, dest)
                         }
                         UnblockKind::TimedOut => {
                             // We have to remove the waiter from the queue again.
-                            let thread = this.active_thread();
+                            let thread = ecx.active_thread();
                             let waiters = &mut condvar_ref.0.borrow_mut().waiters;
                             waiters.retain(|waiter| *waiter != thread);
                             // Now get back the lock.
-                            this.condvar_reacquire_mutex(mutex_ref, retval_timeout, dest)
+                            ecx.condvar_reacquire_mutex(mutex_ref, retval_timeout, dest)
                         }
                     }
                 }
@@ -630,22 +630,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     futex_ref: FutexRef,
                     callback: DynUnblockCallback<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     match unblock {
                         UnblockKind::Ready => {
                             let futex = futex_ref.0.borrow();
                             // Acquire the clock of the futex.
-                            this.acquire_clock(&futex.clock)?;
+                            ecx.acquire_clock(&futex.clock)?;
                         },
                         UnblockKind::TimedOut => {
                             // Remove the waiter from the futex.
-                            let thread = this.active_thread();
+                            let thread = ecx.active_thread();
                             let mut futex = futex_ref.0.borrow_mut();
                             futex.waiters.retain(|waiter| waiter.thread != thread);
                         },
                     }
 
-                    callback.call(this, unblock)
+                    callback.call(ecx, unblock)
                 }
             ),
         );
@@ -714,20 +714,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     deadline: Option<Deadline>,
                     callback: DynUnblockCallback<'tcx>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     match unblock {
                         UnblockKind::TimedOut => {
                             // Remove the waiter.
-                            let thread = this.active_thread();
+                            let thread = ecx.active_thread();
                             let mut semaphore = semaphore_ref.0.borrow_mut();
                             semaphore.waiters.retain(|&waiter| waiter != thread);
                             // Finish with callback.
-                            return callback.call(this, UnblockKind::TimedOut);
+                            return callback.call(ecx, UnblockKind::TimedOut);
                         }
                         UnblockKind::Ready => {
                             // Try again! This time it will definitely work.
                             // (But it's too much of a hassle to assert that.)
-                            this.semaphore_decrement(semaphore_ref, deadline, callback)
+                            ecx.semaphore_decrement(semaphore_ref, deadline, callback)
                         }
                     }
                 }
@@ -739,7 +739,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Increment the semaphore.
     /// Returns whether anyone was woken up.
     fn semaphore_increment(&mut self, semaphore_ref: &SemaphoreRef) -> InterpResult<'tcx, bool> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         let mut semaphore = semaphore_ref.0.borrow_mut();
         // If the value is currently 0, we will unlock one thread later.
@@ -751,11 +751,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         semaphore.value = new_value;
         // Snapshot vector clock.
-        this.release_clock(|clock| semaphore.clock.clone_from(clock))?;
+        ecx.release_clock(|clock| semaphore.clock.clone_from(clock))?;
         drop(semaphore);
 
         if let Some(thread) = wake_thread {
-            this.unblock_thread(thread, BlockReason::Semaphore)?;
+            ecx.unblock_thread(thread, BlockReason::Semaphore)?;
         }
 
         interp_ok(wake_thread.is_some())

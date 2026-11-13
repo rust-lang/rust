@@ -23,7 +23,7 @@ use tracing::{debug, instrument};
 use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
 use crate::delegate::SolverDelegate;
-use crate::solve::assembly::structural_traits::AmbiguousOrRerunNonErased;
+use crate::solve::assembly::structural_traits::NoUniqueSolutionOrRerunNonErased;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
@@ -157,10 +157,13 @@ where
                     ecx.add_goals(GoalSource::ImplWhereBound, requirements)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
-                Err(AmbiguousOrRerunNonErased::Ambiguous) => {
+                Err(NoUniqueSolutionOrRerunNonErased::Ambiguous) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
-                Err(AmbiguousOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun.into()),
+                Err(NoUniqueSolutionOrRerunNonErased::NoSolution(no_solution)) => {
+                    Err(no_solution.into())
+                }
+                Err(NoUniqueSolutionOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun.into()),
             }
         })
     }
@@ -307,6 +310,12 @@ where
 
     /// A type is a `FnPtr` if it is of `FnPtr` type.
     fn consider_builtin_fn_ptr_trait_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+
+    /// A type is a `FnStatic` if it is of `FnDef` type.
+    fn consider_builtin_fn_static_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
@@ -676,6 +685,13 @@ where
                 }
                 Some(SolverTraitLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
+                }
+                Some(SolverTraitLangItem::FnAddrTrait) => {
+                    if matches!(goal.predicate.self_ty().kind(), ty::FnDef(..)) {
+                        G::consider_builtin_fn_static_trait_candidate(self, goal)
+                    } else {
+                        G::consider_builtin_fn_ptr_trait_candidate(self, goal)
+                    }
                 }
                 Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)

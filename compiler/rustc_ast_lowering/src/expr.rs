@@ -137,7 +137,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .and_then(|state| state.as_ref())
             .map_or(0, |state| state.occurrences.len());
         let ident = Ident::from_str_and_span(&format!("__move_expr_{index}"), move_kw_span);
-        let (pat, binding) = self.pat_ident(inner.span, ident);
+        let (pat, binding) = self.pat_ident_binding_mode(inner.span, ident, hir::BindingMode::MUT);
         let Some(state) = self.move_expr_bindings.last_mut().and_then(|state| state.as_mut())
         else {
             span_bug!(move_kw_span, "`move(...)` lowered without a closure-like body state");
@@ -188,7 +188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Evaluate the expression inside `move(...)` before creating the
             // closure/coroutine and store it in a synthetic local:
             // `|| move(foo).bar` becomes roughly
-            // `let __move_expr_0 = foo; || __move_expr_0.bar`.
+            // `let mut __move_expr_0 = foo; || __move_expr_0.bar`.
             let expr = initializers[&occurrence.id];
             // This state has already been popped, so a nested `move(...)` in
             // the initializer is recorded by the immediately enclosing

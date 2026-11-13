@@ -226,6 +226,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut options = fs::OpenOptions::new();
             options.read(desired_read);
             options.write(desired_write);
+            let mut append = false;
             match creation_disposition {
                 CreateAlways | OpenAlways => {
                     // These two create the file if it is missing, but also succeed if it
@@ -248,6 +249,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // https://doc.rust-lang.org/std/fs/struct.OpenOptions.html#method.create_new
                     if !desired_write {
                         options.append(true);
+                        append = true;
                     }
                 }
                 OpenExisting => {
@@ -300,11 +302,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         unreachable!()
                     }
 
-                    let Some(fd_num) = ecx.machine.fds.insert_new(DirHandle {
-                        dir,
-                        #[cfg(bootstrap)]
-                        fallback: file_name.canonicalize().unwrap(),
-                    }) else {
+                    let Some(fd_num) = ecx.machine.fds.insert_new(DirHandle { dir }) else {
                         throw_unsup_format!("we ran out of FD numbers")
                     };
                     interp_ok(Handle::File(fd_num))
@@ -319,6 +317,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         file,
                         writable: desired_write,
                         readable: desired_read,
+                        append,
                     }) else {
                         throw_unsup_format!("we ran out of FD numbers")
                     };
@@ -646,25 +645,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     io_status_info: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, result: Result<usize, IoError>| {
+                |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(read_size) => {
-                            assert!(read_size <= count.try_into().unwrap());
+                            assert!(read_size <= count.into());
                             // This must fit since `count` fits.
-                            this.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
-                            this.write_int(0, &io_status)?;
-                            this.write_int(0, &dest)
+                            ecx.write_int(read_size, &io_status_info)?;
+                            ecx.write_int(0, &io_status)?;
+                            ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            this.write_int(0, &io_status_info)?;
+                            ecx.write_int(0, &io_status_info)?;
                             let status = e.into_ntstatus();
-                            this.write_int(status, &io_status)?;
-                            this.write_int(status, &dest)
+                            ecx.write_int(status, &io_status)?;
+                            ecx.write_int(status, &dest)
                         }
                 }}
             )
         };
-        desc.write(ecx.machine.communicate(), buf, count.try_into().unwrap(), ecx, finish)?;
+        desc.write(ecx.machine.communicate(), buf, count.into(), ecx, finish)?;
 
         // Return status is written to `dest` and `io_status_block` on callback completion.
         interp_ok(())
@@ -746,25 +745,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     io_status_info: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                |this, result: Result<usize, IoError>| {
+                |ecx, result: Result<u64, IoError>| {
                     match result {
                         Ok(read_size) => {
-                            assert!(read_size <= count.try_into().unwrap());
+                            assert!(read_size <= count.into());
                             // This must fit since `count` fits.
-                            this.write_int(u64::try_from(read_size).unwrap(), &io_status_info)?;
-                            this.write_int(0, &io_status)?;
-                            this.write_int(0, &dest)
+                            ecx.write_int(read_size, &io_status_info)?;
+                            ecx.write_int(0, &io_status)?;
+                            ecx.write_int(0, &dest)
                         }
                         Err(e) => {
-                            this.write_int(0, &io_status_info)?;
+                            ecx.write_int(0, &io_status_info)?;
                             let status = e.into_ntstatus();
-                            this.write_int(status, &io_status)?;
-                            this.write_int(status, &dest)
+                            ecx.write_int(status, &io_status)?;
+                            ecx.write_int(status, &dest)
                         }
                 }}
             )
         };
-        desc.read(ecx.machine.communicate(), buf, count.try_into().unwrap(), ecx, finish)?;
+        desc.read(ecx.machine.communicate(), buf, count.into(), ecx, finish)?;
 
         // See NtWriteFile for commentary on this
         interp_ok(())

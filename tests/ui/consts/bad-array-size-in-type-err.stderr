@@ -1,16 +1,20 @@
 error: the constant `N` is not of type `usize`
-  --> $DIR/bad-array-size-in-type-err.rs:2:10
+  --> $DIR/bad-array-size-in-type-err.rs:2:16
    |
+LL | struct BadArraySize<const N: u8> {
+   |                     ----------- `N` defined here
 LL |     arr: [i32; N],
-   |          ^^^^^^^^ expected `usize`, found `u8`
+   |                ^ array length expected `usize`, found `u8`
    |
    = note: the length of array `[i32; N]` must be type `usize`
 
 error: the constant `N` is not of type `usize`
-  --> $DIR/bad-array-size-in-type-err.rs:19:32
+  --> $DIR/bad-array-size-in-type-err.rs:19:41
    |
 LL | pub struct Blorb<const N: u16>([String; N]);
-   |                                ^^^^^^^^^^^ expected `usize`, found `u16`
+   |                  ------------           ^ array length expected `usize`, found `u16`
+   |                  |
+   |                  `N` defined here
    |
    = note: the length of array `[String; N]` must be type `usize`
 

@@ -84,7 +84,11 @@ pub struct ParseSess {
     /// provide a single error per unique incorrect identifier.
     pub bad_unicode_identifiers: Lock<FxIndexMap<Symbol, Vec<Span>>>,
     source_map: Arc<SourceMap>,
-    pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
+    /// Lints that are emitted before the lint infrastructure is working, these will be taken
+    /// during early linting.
+    /// This is an `Option` because it will be `None` after the buffered lints are emptied, to ensure that
+    /// nothing uses `buffered_lints` after.
+    pub buffered_lints: Lock<Option<Vec<BufferedEarlyLint>>>,
     /// Places where *complete* stmt exprs are followed by a token that would've been interpreted as
     /// a binary operator instead of the start of a following stmt or pat *if we weren't in a stmt
     /// expr context*.
@@ -125,7 +129,7 @@ impl ParseSess {
             raw_identifier_spans: Default::default(),
             bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
-            buffered_lints: Lock::new(vec![]),
+            buffered_lints: Lock::new(Some(vec![])),
             complete_stmt_exprs_before_bin_op_lookalike: Lock::new(Default::default()),
             gated_spans: GatedSpans::default(),
             symbol_gallery: SymbolGallery::default(),
@@ -217,12 +221,10 @@ impl ParseSess {
         diagnostic: DecorateDiagCompat,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
-            buffered_lints.push(BufferedEarlyLint {
-                span,
-                node_id,
-                lint_id: LintId::of(lint),
-                diagnostic,
-            });
+            buffered_lints
+                .as_mut()
+                .expect("Buffered lints are not stolen yet")
+                .push(BufferedEarlyLint { span, node_id, lint_id: LintId::of(lint), diagnostic });
         });
     }
 

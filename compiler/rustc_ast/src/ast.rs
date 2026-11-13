@@ -477,6 +477,10 @@ impl GenericParam {
             GenericParamKind::Const { span, .. } => *span,
         }
     }
+
+    pub fn span_with_attributes(&self) -> Span {
+        if let Some(first) = self.attrs.first() { first.span.to(self.span()) } else { self.span() }
+    }
 }
 
 /// Represents lifetime, type and const parameters attached to a declaration of
@@ -548,15 +552,6 @@ pub struct WhereRegionPredicate {
     pub lifetime: Lifetime,
     #[visitable(extra = BoundKind::Bound)]
     pub bounds: GenericBounds,
-}
-
-/// An equality predicate (unsupported).
-///
-/// E.g., `T = int`.
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct WhereEqPredicate {
-    pub lhs_ty: Box<Ty>,
-    pub rhs_ty: Box<Ty>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3494,6 +3489,7 @@ pub enum GeneratedAttr {
     DocHidden,
     CoverageOff,
     RustcTestMarker(Symbol),
+    RustcTrivialFieldReads,
 }
 
 impl GeneratedAttr {
@@ -3509,6 +3505,7 @@ impl GeneratedAttr {
             GeneratedAttr::RustcTestMarker(test_path) => {
                 format!("#[rustc_test_marker = \"{test_path}\"]")
             }
+            GeneratedAttr::RustcTrivialFieldReads => "#[rustc_trivial_field_reads]".into(),
         }
     }
     pub fn value_span(&self) -> Option<Span> {
@@ -3519,6 +3516,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
             GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
         }
     }
 
@@ -3530,6 +3528,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => false,
             GeneratedAttr::CoverageOff => false,
             GeneratedAttr::RustcTestMarker(_) => false,
+            GeneratedAttr::RustcTrivialFieldReads => false,
         }
     }
 
@@ -3541,6 +3540,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => &[sym::doc],
             GeneratedAttr::CoverageOff => &[sym::coverage],
             GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
+            GeneratedAttr::RustcTrivialFieldReads => &[sym::rustc_trivial_field_reads],
         }
     }
 
@@ -3552,6 +3552,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
             GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
         }
     }
 
@@ -3563,6 +3564,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => false,
             GeneratedAttr::CoverageOff => false,
             GeneratedAttr::RustcTestMarker(_) => false,
+            GeneratedAttr::RustcTrivialFieldReads => false,
         }
     }
     pub fn value_str(&self) -> Option<Symbol> {
@@ -3573,6 +3575,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
             GeneratedAttr::RustcTestMarker(test_path) => Some(*test_path),
+            GeneratedAttr::RustcTrivialFieldReads => None,
         }
     }
 
@@ -3584,6 +3587,7 @@ impl GeneratedAttr {
             GeneratedAttr::DocHidden => None,
             GeneratedAttr::CoverageOff => None,
             GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
         }
     }
 

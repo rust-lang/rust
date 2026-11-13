@@ -3,24 +3,29 @@
 use std::marker::PhantomData;
 use std::ptr;
 
+/// FIXME(Zalathar): Use the stdlib's `PhantomInvariantLifetime` when its API is settled.
+type PhantomInvariantLifetime<'a> = PhantomData<fn(&'a ()) -> &'a ()>;
+
 /// Corresponds to `LLVMContextRef`.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
+#[rustc_pass_by_value]
 pub(crate) struct Context<'ll> {
     llcx_raw: ptr::NonNull<ContextRaw>,
-    _invariant_ll: PhantomData<fn(&'ll ()) -> &'ll ()>,
+    _invariant_ll: PhantomInvariantLifetime<'ll>,
 }
 
 /// Corresponds to `LLVMModuleRef`.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
+#[rustc_pass_by_value]
 pub(crate) struct Module<'ll> {
     llmod_raw: ptr::NonNull<ModuleRaw>,
-    _invariant_ll: PhantomData<fn(&'ll ()) -> &'ll ()>,
+    _invariant_ll: PhantomInvariantLifetime<'ll>,
 }
 
 impl<'ll> Module<'ll> {
-    pub(crate) fn llmod_raw(&self) -> ptr::NonNull<ModuleRaw> {
+    pub(crate) fn llmod_raw(self) -> ptr::NonNull<ModuleRaw> {
         self.llmod_raw
     }
 }
@@ -52,4 +57,35 @@ pub(crate) unsafe fn wrap_llmod<'ll>(
     llmod_raw: ptr::NonNull<ModuleRaw>,
 ) -> Module<'ll> {
     Module { llmod_raw, _invariant_ll: PhantomData }
+}
+
+/// Corresponds to `LLVMTypeRef`.
+///
+/// LLVM types are interned within their LLVM context ([`Context<'ll>`]), so they
+/// can be compared for equality (and hashed) based on their pointer address.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+#[rustc_pass_by_value]
+pub(crate) struct Type<'ll> {
+    llty_raw: ptr::NonNull<TypeRaw>,
+    _invariant_ll: PhantomInvariantLifetime<'ll>,
+}
+
+unsafe extern "C" {
+    /// Pointee type of the raw pointer wrapped by [`Type`].
+    type TypeRaw;
+}
+
+/// Corresponds to `LLVMValueRef`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+#[rustc_pass_by_value]
+pub(crate) struct Value<'ll> {
+    llval_raw: ptr::NonNull<ValueRaw>,
+    _invariant_ll: PhantomInvariantLifetime<'ll>,
+}
+
+unsafe extern "C" {
+    /// Pointee type of the raw pointer wrapped by [`Value`].
+    type ValueRaw;
 }

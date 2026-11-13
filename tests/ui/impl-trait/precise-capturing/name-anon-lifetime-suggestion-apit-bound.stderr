@@ -1,0 +1,24 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-apit-bound.rs:11:5
+   |
+LL | fn anon_in_apit_bound(x: &(), y: &(), mut z: impl Iterator<Item = &u8>) -> impl Sized {
+   |                          ---                                               ---------- opaque type defined here
+   |                          |
+   |                          hidden type `(&(), &(), Option<&u8>)` captures the anonymous lifetime defined here
+LL |     (x, y, z.next())
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/name-anon-lifetime-suggestion-apit-bound.rs:10:46
+   |
+LL | fn anon_in_apit_bound(x: &(), y: &(), mut z: impl Iterator<Item = &u8>) -> impl Sized {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'_` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn anon_in_apit_bound(x: &(), y: &(), mut z: impl Iterator<Item = &u8>) -> impl Sized {
+LL + fn anon_in_apit_bound<T: Iterator<Item = &u8>>(x: &(), y: &(), mut z: T) -> impl Sized + use<'_, T> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

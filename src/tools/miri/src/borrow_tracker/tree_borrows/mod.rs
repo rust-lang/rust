@@ -229,8 +229,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[track_caller]
     #[inline]
     fn get_tree_borrows_params(&self) -> TreeBorrowsParams {
-        let this = self.eval_context_ref();
-        let borrow_tracker = this.machine.borrow_tracker.as_ref().unwrap().borrow();
+        let ecx = self.eval_context_ref();
+        let borrow_tracker = ecx.machine.borrow_tracker.as_ref().unwrap().borrow();
         borrow_tracker.borrow_tracker_method.get_tree_borrows_params()
     }
 
@@ -438,7 +438,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         place: &MPlaceTy<'tcx>,
         new_perm: NewPermission,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Determine the size of the reborrow.
         // For most types this is the entire size of the place, however
@@ -446,7 +446,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // - if the pointer is not reborrowed (raw pointer) then we override the size
         //   to do a zero-length reborrow.
         let reborrow_size =
-            this.size_and_align_of_val(place)?.map(|(size, _)| size).unwrap_or(place.layout.size);
+            ecx.size_and_align_of_val(place)?.map(|(size, _)| size).unwrap_or(place.layout.size);
         trace!("Creating new permission: {:?} with size {:?}", new_perm, reborrow_size);
 
         // This new tag is not guaranteed to actually be used.
@@ -455,10 +455,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // so that rather than taking as input a fresh tag and deciding whether it uses this
         // one or the parent it instead just returns whether a new tag should be created.
         // This will avoid creating tags than end up never being used.
-        let new_tag = this.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
+        let new_tag = ecx.machine.borrow_tracker.as_mut().unwrap().get_mut().new_ptr();
 
         // Compute the actual reborrow.
-        let new_prov = this.tb_reborrow(place, reborrow_size, new_perm, new_tag)?;
+        let new_prov = ecx.tb_reborrow(place, reborrow_size, new_perm, new_tag)?;
 
         // Adjust place.
         // (If the closure gets called, that means the old provenance was `Some`, and hence the new
@@ -477,14 +477,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ty: Ty<'tcx>,
         mode: RetagMode,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx>>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let new_perm = match *ty.kind() {
-            _ if ty.is_box_global(*this.tcx) => {
+            _ if ty.is_box_global(*ecx.tcx) => {
                 // The `None` marks this as a Box.
-                NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, this)
+                NewPermission::new(ty.builtin_deref(true).unwrap(), None, mode, ecx)
             }
             ty::Ref(_, pointee, mutability) =>
-                NewPermission::new(pointee, Some(mutability), mode, this),
+                NewPermission::new(pointee, Some(mutability), mode, ecx),
 
             ty::RawPtr(..) => {
                 assert!(mode == RetagMode::Raw);
@@ -498,9 +498,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => panic!("tb_retag_ptr_value: invalid type {ty}"),
         };
         if let Some(new_perm) = new_perm {
-            let place = this.imm_ptr_to_mplace(val)?;
-            let new_place = this.tb_retag_place(&place, new_perm)?;
-            interp_ok(Some(ImmTy::from_immediate(new_place.to_ref(this), val.layout)))
+            let place = ecx.imm_ptr_to_mplace(val)?;
+            let new_place = ecx.tb_retag_place(&place, new_perm)?;
+            interp_ok(Some(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout)))
         } else {
             interp_ok(None)
         }
@@ -511,7 +511,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// This is used to ensure soundness of in-place function argument/return passing.
     fn tb_protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Retag it. With protection! That is the entire point.
         let new_perm = NewPermission {
@@ -524,26 +524,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             outside_perm: Permission::new_reserved_frz(),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        this.tb_retag_place(place, new_perm)
+        ecx.tb_retag_place(place, new_perm)
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
     fn tb_expose_tag(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Tree Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
-        let kind = this.get_alloc_info(alloc_id).kind;
+        let kind = ecx.get_alloc_info(alloc_id).kind;
         match kind {
             AllocKind::LiveData => {
                 // This should have alloc_extra data, but `get_alloc_extra` can still fail
                 // if converting this alloc_id from a global to a local one
                 // uncovers a non-supported `extern static`.
-                let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
                 trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
 
-                let global = this.machine.borrow_tracker.as_ref().unwrap();
+                let global = ecx.machine.borrow_tracker.as_ref().unwrap();
                 let protected_tags = &global.borrow().protected_tags;
                 let protected = protected_tags.contains_key(&tag);
                 alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag, protected);
@@ -561,10 +561,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Display the tree.
     fn print_tree(&self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
-        let alloc_extra = this.get_alloc_extra(alloc_id)?;
+        let ecx = self.eval_context_ref();
+        let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
         let tree_borrows = alloc_extra.borrow_tracker_tb().borrow();
-        let borrow_tracker = &this.machine.borrow_tracker.as_ref().unwrap().borrow();
+        let borrow_tracker = &ecx.machine.borrow_tracker.as_ref().unwrap().borrow();
         tree_borrows.print_tree(&borrow_tracker.protected_tags, show_unnamed)
     }
 
@@ -577,7 +577,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         nth_parent: u8,
         name: &str,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         let (tag, alloc_id) = match ptr.provenance {
             Some(Provenance::Concrete { tag, alloc_id }) => (tag, alloc_id),
             Some(Provenance::Wildcard) => {
@@ -589,7 +589,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(());
             }
         };
-        let alloc_extra = this.get_alloc_extra(alloc_id)?;
+        let alloc_extra = ecx.get_alloc_extra(alloc_id)?;
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
         tree_borrows.give_pointer_debug_name(tag, nth_parent, name)
     }

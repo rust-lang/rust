@@ -1,4 +1,6 @@
 // tidy-alphabetical-start
+#![allow(internal_features)]
+#![feature(allow_internal_unstable)]
 #![feature(default_field_values)]
 // tidy-alphabetical-end
 
@@ -698,6 +700,7 @@ macro_rules! declare_lint {
 }
 
 #[macro_export]
+#[allow_internal_unstable(default_field_values)]
 macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr

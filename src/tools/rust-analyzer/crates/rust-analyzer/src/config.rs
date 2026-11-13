@@ -259,7 +259,7 @@ config_data! {
         inlayHints_genericParameterHints_type_enable: bool = false,
 
         /// Show implicit drop hints.
-        inlayHints_implicitDrops_enable: bool = false,
+        inlayHints_implicitDrops_enable: ImplicitDropDef = ImplicitDropDef::Never,
 
         /// Show inlay hints for the implied type parameter `Sized` bound.
         inlayHints_implicitSizedBoundHints_enable: bool = false,
@@ -639,6 +639,9 @@ config_data! {
         /// Show method calls and field accesses completions with `await` prefixed to them when
         /// completing on a future.
         completion_autoAwait_enable: bool = true,
+
+        /// Complete traits with `dyn` prefixed to them when completing in a type position.
+        completion_autoDyn_enable: bool = true,
 
         /// Show method call completions with `iter()` or `into_iter()` prefixed to them when
         /// completing on a type that has them.
@@ -1911,6 +1914,7 @@ impl Config {
             enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
             enable_auto_iter: *self.completion_autoIter_enable(source_root),
             enable_auto_await: *self.completion_autoAwait_enable(source_root),
+            enable_auto_dyn: *self.completion_autoDyn_enable(source_root),
             enable_private_editable: self.completion_privateEditable_enable(source_root).to_owned(),
             full_function_signatures: self
                 .completion_fullFunctionSignatures_enable(source_root)
@@ -2168,7 +2172,11 @@ impl Config {
             fields_to_resolve: InlayFieldsToResolve::from_client_capabilities(
                 &client_capability_fields,
             ),
-            implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
+            implicit_drop_hints: match self.inlayHints_implicitDrops_enable() {
+                ImplicitDropDef::Always => ide::ImplicitDropHints::Always,
+                ImplicitDropDef::WithDropGlue => ide::ImplicitDropHints::WithDropGlue,
+                ImplicitDropDef::Never => ide::ImplicitDropHints::Never,
+            },
             implied_dyn_trait_hints: self.inlayHints_impliedDynTraitHints_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
             ra_fixture: self.ra_fixture(minicore),
@@ -3122,6 +3130,18 @@ enum LifetimeElisionDef {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+enum ImplicitDropDef {
+    WithDropGlue,
+    #[serde(with = "true_or_always")]
+    #[serde(untagged)]
+    Always,
+    #[serde(with = "false_or_never")]
+    #[serde(untagged)]
+    Never,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 enum ClosureReturnTypeHintsDef {
     WithBlock,
     #[serde(with = "true_or_always")]
@@ -3886,6 +3906,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Always show lifetime elision hints.",
                 "Never show lifetime elision hints.",
                 "Only show lifetime elision hints if a return type is involved."
+            ]
+        },
+        "ImplicitDropDef" => set! {
+            "type":"string",
+            "enum": [
+                "always",
+                "never",
+                "with_drop_glue"
+            ],
+            "enumDescriptions": [
+                "Always show drop hints.",
+                "Never show drop hints.",
+                "Only show drop hints for values with drop glue."
             ]
         },
         "ClosureReturnTypeHintsDef" => set! {

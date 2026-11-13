@@ -43,25 +43,29 @@ pub unsafe fn read_exact_generic(
     assert!(count > 0);
     let mut read_so_far = 0;
     while read_so_far < count {
-        let res = read(buf.add(read_so_far), count - read_so_far);
-        if res < 0 {
-            if let RetryAfter(duration) = retry {
-                if errno() == libc::EAGAIN {
-                    // Emulate blocking behavior by sleeping a bit and then trying again.
-                    std::thread::sleep(duration);
-                    continue;
+        match errno_result(read(buf.add(read_so_far), count - read_so_far)) {
+            Err(err) => {
+                if let RetryAfter(duration) = retry {
+                    if err.raw_os_error().unwrap() == libc::EAGAIN {
+                        // Emulate blocking behavior by sleeping a bit and then trying again.
+                        std::thread::sleep(duration);
+                        continue;
+                    }
                 }
+                return Err(err);
             }
-            return Err(io::Error::last_os_error());
+            Ok(res) => {
+                if res == 0 {
+                    // We expected more data but got EOF.
+                    panic!(
+                        "could not fill buffer with {count} bytes: EOF received after {read_so_far} bytes"
+                    );
+                }
+                read_so_far += res as libc::size_t;
+            }
         }
-        if res == 0 {
-            // We expected more data but got EOF.
-            panic!(
-                "could not fill buffer with {count} bytes: EOF received after {read_so_far} bytes"
-            );
-        }
-        read_so_far += res as libc::size_t;
     }
+    assert!(read_so_far == count);
     Ok(())
 }
 
@@ -91,6 +95,24 @@ pub fn read_partial(fd: libc::c_int, buf: &mut [u8]) -> io::Result<(&mut [u8], &
     Ok(buf.split_at_mut(res as usize))
 }
 
+/// Read `fd` until EOF, return the data.
+pub fn read_to_end(fd: libc::c_int) -> io::Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    loop {
+        // Make sure we have at least 32 bytes of spare capacity (`Vec` is smart about avoid too
+        // frequent reallocations).
+        buf.reserve(32);
+        // Read into spare capacity.
+        let spare = buf.spare_capacity_mut();
+        let res = errno_result(unsafe { libc::read(fd, spare.as_mut_ptr().cast(), spare.len()) })?;
+        if res == 0 {
+            // EOF has been reached.
+            return Ok(buf);
+        }
+        unsafe { buf.set_len(buf.len() + res as usize) };
+    }
+}
+
 /// Invoke the `write` function until `buf` is full. `retry` controls the behavior on EAGAIN.
 pub unsafe fn write_all_generic(
     buf: *const libc::c_void,
@@ -101,20 +123,24 @@ pub unsafe fn write_all_generic(
     assert!(count > 0);
     let mut written_so_far = 0;
     while written_so_far < count {
-        let res = write(buf.add(written_so_far), count - written_so_far);
-        if res < 0 {
-            if let RetryAfter(duration) = retry {
-                if errno() == libc::EAGAIN {
-                    // Emulate blocking behavior by sleeping a bit and then trying again.
-                    std::thread::sleep(duration);
-                    continue;
+        match errno_result(write(buf.add(written_so_far), count - written_so_far)) {
+            Err(err) => {
+                if let RetryAfter(duration) = retry {
+                    if err.raw_os_error().unwrap() == libc::EAGAIN {
+                        // Emulate blocking behavior by sleeping a bit and then trying again.
+                        std::thread::sleep(duration);
+                        continue;
+                    }
                 }
+                return Err(err);
             }
-            return Err(io::Error::last_os_error());
+            Ok(res) => {
+                // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
+                written_so_far += res as libc::size_t;
+            }
         }
-        // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
-        written_so_far += res as libc::size_t;
     }
+    assert!(written_so_far == count);
     return Ok(());
 }
 

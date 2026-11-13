@@ -30,37 +30,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd: &OpTy<'tcx>,
         offset: i128,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // We do not support MAP_FIXED, so the addr argument is always ignored (except for the MacOS hack)
-        let addr = this.read_target_usize(addr)?;
-        let length = this.read_target_usize(length)?;
-        let prot = this.read_scalar(prot)?.to_i32()?;
-        let flags = this.read_scalar(flags)?.to_i32()?;
-        let fd = this.read_scalar(fd)?.to_i32()?;
+        let addr = ecx.read_target_usize(addr)?;
+        let length = ecx.read_target_usize(length)?;
+        let prot = ecx.read_scalar(prot)?.to_i32()?;
+        let flags = ecx.read_scalar(flags)?.to_i32()?;
+        let fd = ecx.read_scalar(fd)?.to_i32()?;
 
-        let map_private = this.eval_libc_i32("MAP_PRIVATE");
-        let map_anonymous = this.eval_libc_i32("MAP_ANONYMOUS");
-        let map_shared = this.eval_libc_i32("MAP_SHARED");
-        let map_fixed = this.eval_libc_i32("MAP_FIXED");
+        let map_private = ecx.eval_libc_i32("MAP_PRIVATE");
+        let map_anonymous = ecx.eval_libc_i32("MAP_ANONYMOUS");
+        let map_shared = ecx.eval_libc_i32("MAP_SHARED");
+        let map_fixed = ecx.eval_libc_i32("MAP_FIXED");
 
         // This is a horrible hack, but on MacOS and Solarish the guard page mechanism uses mmap
         // in a way we do not support. We just give it the return value it expects.
-        if this.frame_in_std()
-            && matches!(&this.tcx.sess.target.os, Os::MacOs | Os::Solaris | Os::Illumos)
+        if ecx.frame_in_std()
+            && matches!(&ecx.tcx.sess.target.os, Os::MacOs | Os::Solaris | Os::Illumos)
             && (flags & map_fixed) != 0
         {
-            return interp_ok(Scalar::from_maybe_pointer(Pointer::without_provenance(addr), this));
+            return interp_ok(Scalar::from_maybe_pointer(Pointer::without_provenance(addr), ecx));
         }
 
         // First, we do some basic argument validation as required by mmap
         if (flags & (map_private | map_shared)).count_ones() != 1 {
-            this.set_last_error(LibcError("EINVAL"))?;
-            return interp_ok(this.eval_libc("MAP_FAILED"));
+            ecx.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(ecx.eval_libc("MAP_FAILED"));
         }
         if length == 0 {
-            this.set_last_error(LibcError("EINVAL"))?;
-            return interp_ok(this.eval_libc("MAP_FAILED"));
+            ecx.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(ecx.eval_libc("MAP_FAILED"));
         }
 
         // If a user tries to map a file, we want to loudly inform them that this is not going
@@ -77,7 +77,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        verify_prot(this, prot)?;
+        verify_prot(ecx, prot)?;
 
         // Miri does not support shared mappings, or any of the other extensions that for example
         // Linux has added to the flags arguments.
@@ -93,13 +93,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("Miri does not support non-zero offsets to mmap");
         }
 
-        let align = this.machine.page_align();
-        let Some(map_length) = round_up_to_page_size(this, length) else {
-            this.set_last_error(LibcError("EINVAL"))?;
-            return interp_ok(this.eval_libc("MAP_FAILED"));
+        let align = ecx.machine.page_align();
+        let Some(map_length) = round_up_to_page_size(ecx, length) else {
+            ecx.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(ecx.eval_libc("MAP_FAILED"));
         };
 
-        let ptr = this.allocate_ptr(
+        let ptr = ecx.allocate_ptr(
             Size::from_bytes(map_length),
             align,
             MiriMemoryKind::Mmap.into(),
@@ -107,29 +107,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             AllocInit::Zero,
         )?;
 
-        interp_ok(Scalar::from_pointer(ptr, this))
+        interp_ok(Scalar::from_pointer(ptr, ecx))
     }
 
     fn munmap(&mut self, addr: &OpTy<'tcx>, length: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let addr = this.read_pointer(addr)?;
-        let length = this.read_target_usize(length)?;
+        let addr = ecx.read_pointer(addr)?;
+        let length = ecx.read_target_usize(length)?;
 
         // addr must be a multiple of the page size, but apart from that munmap is just implemented
         // as a dealloc.
-        if !addr.addr().bytes().is_multiple_of(this.machine.page_size) {
-            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        if !addr.addr().bytes().is_multiple_of(ecx.machine.page_size) {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
-        let Some(length) = round_up_to_page_size(this, length) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        let Some(length) = round_up_to_page_size(ecx, length) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
 
         let length = Size::from_bytes(length);
-        this.deallocate_ptr(
+        ecx.deallocate_ptr(
             addr,
-            Some((length, this.machine.page_align())),
+            Some((length, ecx.machine.page_align())),
             MemoryKind::Machine(MiriMemoryKind::Mmap),
         )?;
 
@@ -142,25 +142,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         length: &OpTy<'tcx>,
         prot: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let addr = this.read_pointer(addr)?;
-        let length = this.read_target_usize(length)?;
-        let prot = this.read_scalar(prot)?.to_i32()?;
+        let addr = ecx.read_pointer(addr)?;
+        let length = ecx.read_target_usize(length)?;
+        let prot = ecx.read_scalar(prot)?.to_i32()?;
 
         // addr must be a multiple of the page size.
-        if !addr.addr().bytes().is_multiple_of(this.machine.page_size) {
-            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        if !addr.addr().bytes().is_multiple_of(ecx.machine.page_size) {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
-        verify_prot(this, prot)?;
+        verify_prot(ecx, prot)?;
 
         // The pages from `[addr, addr + length)` must be mapped, so length definitely must not overflow.
-        let Some(length) = round_up_to_page_size(this, length) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOMEM"));
+        let Some(length) = round_up_to_page_size(ecx, length) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOMEM"));
         };
         // Ensure this is actually allocated memory we can access.
-        this.check_ptr_access(addr, Size::from_bytes(length), CheckInAllocMsg::MemoryAccess)
+        ecx.check_ptr_access(addr, Size::from_bytes(length), CheckInAllocMsg::MemoryAccess)
             .map_err_kind(|_| err_ub_format!("`mprotect` called on out-of-bounds memory"))?;
 
         // If the memory comes from memory the Rust program has allocated with mmap, we only support
@@ -179,22 +179,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         length: &OpTy<'tcx>,
         advice: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let addr = this.read_pointer(addr)?;
-        let length = this.read_target_usize(length)?;
-        let advise = this.read_scalar(advice)?.to_i32()?;
+        let addr = ecx.read_pointer(addr)?;
+        let length = ecx.read_target_usize(length)?;
+        let advise = ecx.read_scalar(advice)?.to_i32()?;
 
         // addr must be a multiple of the page size.
-        if !addr.addr().bytes().is_multiple_of(this.machine.page_size) {
-            return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
+        if !addr.addr().bytes().is_multiple_of(ecx.machine.page_size) {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         }
 
         // advise must be supported.
-        let madv_normal = this.eval_libc_i32("MADV_NORMAL");
-        let madv_random = this.eval_libc_i32("MADV_RANDOM");
-        let madv_sequential = this.eval_libc_i32("MADV_SEQUENTIAL");
-        let madv_willneed = this.eval_libc_i32("MADV_WILLNEED");
+        let madv_normal = ecx.eval_libc_i32("MADV_NORMAL");
+        let madv_random = ecx.eval_libc_i32("MADV_RANDOM");
+        let madv_sequential = ecx.eval_libc_i32("MADV_SEQUENTIAL");
+        let madv_willneed = ecx.eval_libc_i32("MADV_WILLNEED");
         if advise != madv_normal
             && advise != madv_random
             && advise != madv_sequential
@@ -206,11 +206,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // The pages from `[addr, addr + length)` must be mapped, so length definitely must not overflow.
-        let Some(length) = round_up_to_page_size(this, length) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("ENOMEM"));
+        let Some(length) = round_up_to_page_size(ecx, length) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("ENOMEM"));
         };
         // Ensure this is actually allocated memory we can access.
-        this.check_ptr_access(addr, Size::from_bytes(length), CheckInAllocMsg::MemoryAccess)
+        ecx.check_ptr_access(addr, Size::from_bytes(length), CheckInAllocMsg::MemoryAccess)
             .map_err_kind(|_| err_ub_format!("`madvise` called on out-of-bounds memory"))?;
 
         // All advises we support are no-ops.

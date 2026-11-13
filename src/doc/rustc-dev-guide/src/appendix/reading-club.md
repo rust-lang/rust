@@ -2,7 +2,7 @@
 
 The dev-guide is large, dense, and often written by subject-matter-experts.
 Occasionally, maintainers and anyone else who's interested will read through existing chapters to try and understand them.
-This appendex indexes those Zulip discussions.
+This appendix indexes those Zulip discussions.
 
 - [February 26, 2024: Compiler architecture, queries, bootstrap, serialization, and rustdoc][2024-02-26]
 - [March 11, 2024: Bootstrap deep dive][2024-03-11]

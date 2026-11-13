@@ -12,7 +12,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.loongarch.").unwrap();
         match unprefixed_name {
@@ -23,7 +23,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // require a target feature to be enabled.
             "crc.w.b.w" | "crc.w.h.w" | "crc.w.w.w" | "crc.w.d.w" | "crcc.w.b.w" | "crcc.w.h.w"
             | "crcc.w.w.w" | "crcc.w.d.w"
-                if this.tcx.pointer_size().bits() == 64 =>
+                if ecx.tcx.pointer_size().bits() == 64 =>
             {
                 // The polynomial constants below include the leading 1 bit
                 // (e.g. 0x104C11DB7 instead of 0x04C11DB7) which the the
@@ -44,9 +44,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                let [data, crc] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                let data = this.read_scalar(data)?;
-                let crc = this.read_scalar(crc)?;
+                let [data, crc] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let data = ecx.read_scalar(data)?;
+                let crc = ecx.read_scalar(crc)?;
 
                 // The CRC accumulator is always i32. The data argument is i32 for
                 // b/h/w variants and i64 for the d variant, per the LLVM intrinsic
@@ -65,7 +65,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let result = compute_crc32(crc, data, bit_size, polynomial);
-                this.write_scalar(Scalar::from_u32(result), dest)?;
+                ecx.write_scalar(Scalar::from_u32(result), dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

@@ -1,12 +1,6 @@
 //! Demonstrate some use cases of or patterns
 
-#![feature(
-    pattern_type_macro,
-    pattern_types,
-    rustc_attrs,
-    const_trait_impl,
-    pattern_type_range_trait
-)]
+#![feature(pattern_types, rustc_attrs, const_trait_impl, pattern_type_range_trait)]
 
 use std::pat::pattern_type;
 
@@ -26,5 +20,5 @@ fn main() {
     //~? ERROR: allowed are two range patterns that are directly connected
     let not_simple_enough_for_mvp: pattern_type!(i8 is ..0 | 1..10 | 10..) =
         unsafe { std::mem::transmute(0) };
-        //~^ ERROR: cannot transmute between types of different sizes, or dependently-sized types
+    //~^ ERROR: cannot transmute between types of different sizes, or dependently-sized types
 }

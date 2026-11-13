@@ -8,7 +8,7 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, Command, Stdio};
+use std::process::{self, Command, ExitCode, Stdio};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -142,7 +142,7 @@ fn get_doctest_dir(opts: &RustdocOptions) -> io::Result<TempDir> {
     builder.tempdir()
 }
 
-pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) {
+pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) -> ExitCode {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // See core::create_config for what's going on here.
@@ -216,7 +216,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         .map_err(|error| format!("failed to create temporary directory: {error:?}"))
     {
         Ok(temp_dir) => temp_dir,
-        Err(error) => return crate::wrap_return(dcx, Err(error)),
+        Err(error) => dcx.fatal(error),
     };
     let args_path = temp_dir.path().join("rustdoc-cfgs");
     crate::wrap_return(dcx, generate_args_file(&args_path, &options));
@@ -281,7 +281,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         ..
     } = match result {
         Ok(Some(collector)) => collector,
-        Ok(None) => return,
+        Ok(None) => return ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");
             // Since some files in the temporary folder are still owned and alive, we need
@@ -289,19 +289,21 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             if !save_temps {
                 let _ = std::fs::remove_dir_all(temp_dir.path());
             }
-            std::process::exit(1);
+            return ExitCode::FAILURE;
         }
     };
 
-    run_tests(
+    let exit_code = run_tests(
         dcx,
         opts,
         &rustdoc_options,
         &unused_extern_reports,
         standalone_tests,
         mergeable_tests,
-        Some(temp_dir),
     );
+    if exit_code != ExitCode::SUCCESS {
+        return exit_code;
+    }
 
     let compiling_test_count = compiling_test_count.load(Ordering::SeqCst);
 
@@ -343,6 +345,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             eprintln!("{unused_extern_json}");
         }
     }
+    ExitCode::SUCCESS
 }
 
 pub(crate) fn run_tests(
@@ -352,9 +355,7 @@ pub(crate) fn run_tests(
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
     mergeable_tests: FxIndexMap<MergeableTestKey, Vec<(DocTestBuilder, ScrapedDocTest)>>,
-    // We pass this argument so we can drop it manually before using `exit`.
-    mut temp_dir: Option<TempDir>,
-) {
+) -> ExitCode {
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
     test_args.extend_from_slice(&rustdoc_options.test_args);
@@ -434,15 +435,12 @@ pub(crate) fn run_tests(
         let standalone_test_refs = &standalone_tests.iter().collect::<Vec<_>>();
         let exit = test::test_main(&test_args, standalone_test_refs);
         let times = times.times_in_secs();
-        // We ensure temp dir destructor is called.
-        std::mem::drop(standalone_tests);
-        std::mem::drop(temp_dir.take());
         if let Some((total_time, compilation_time)) = times {
             test::print_merged_doctests_times(&test_args, total_time, compilation_time);
         }
         // Fall through on success, the caller may want to do more stuff.
         if exit != std::process::ExitCode::SUCCESS {
-            exit.exit_process();
+            return exit;
         }
     } else {
         // If the first condition branch exited successfully, it will
@@ -452,11 +450,7 @@ pub(crate) fn run_tests(
             test::print_merged_doctests_times(&test_args, total_time, compilation_time);
         }
     }
-    // We ensure temp dir destructor is called.
-    std::mem::drop(temp_dir);
-    if nb_errors != 0 {
-        std::process::exit(test::ERROR_EXIT_CODE.into());
-    }
+    if nb_errors != 0 { test::ERROR_EXIT_CODE.into() } else { ExitCode::SUCCESS }
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
@@ -654,9 +648,12 @@ fn run_test(
         },
     ]);
     if let ErrorOutputType::HumanReadable { kind, color_config } = rustdoc_options.error_format {
-        let short = kind.short();
-        let unicode = kind == HumanReadableErrorType { unicode: true, short };
+        let HumanReadableErrorType { no_graphics, short, unicode } = kind;
 
+        if no_graphics {
+            compiler_args
+                .extend_from_slice(&["--error-format".to_owned(), "human-no-graphics".to_owned()]);
+        }
         if short {
             compiler_args.extend_from_slice(&["--error-format".to_owned(), "short".to_owned()]);
         }

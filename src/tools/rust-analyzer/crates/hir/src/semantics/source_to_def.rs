@@ -485,10 +485,7 @@ impl<'db> SourceToDefCtx<'db, '_> {
     ) -> Option<TypeParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax_ref())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::TYPE_PARAM]
-            .get(&AstPtr::new(src.value))
-            .copied()
-            .map(TypeParamId::from_unchecked)
+        dyn_map[keys::TYPE_PARAM].get(&AstPtr::new(src.value)).copied()
     }
 
     pub(super) fn lifetime_param_to_def(
@@ -506,10 +503,7 @@ impl<'db> SourceToDefCtx<'db, '_> {
     ) -> Option<ConstParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax_ref())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::CONST_PARAM]
-            .get(&AstPtr::new(src.value))
-            .copied()
-            .map(ConstParamId::from_unchecked)
+        dyn_map[keys::CONST_PARAM].get(&AstPtr::new(src.value)).copied()
     }
 
     pub(super) fn generic_param_to_def(

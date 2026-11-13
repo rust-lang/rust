@@ -47,7 +47,7 @@ mod to_tokens;
 use core::convert::From;
 use core::ops::BitOr;
 use std::borrow::Cow;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -65,10 +65,61 @@ use crate::bridge::client::Methods as BridgeMethods;
 use crate::escape::{EscapeOptions, escape_bytes};
 
 /// Mostly relating to malformed escape sequences, but also a few other problems.
+#[derive(Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro_value", issue = "136652")]
+pub struct EscapeError {
+    kind: EscapeErrorKind,
+}
+
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+impl error::Error for EscapeError {}
+
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+impl fmt::Display for EscapeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.kind, f)
+    }
+}
+
+#[unstable(feature = "proc_macro_value", issue = "136652")]
+#[doc(hidden)]
+impl From<rustc_literal_escaper::EscapeError> for EscapeError {
+    fn from(value: rustc_literal_escaper::EscapeError) -> Self {
+        use rustc_literal_escaper::EscapeError as EE;
+
+        let kind = match value {
+            EE::ZeroChars => EscapeErrorKind::ZeroChars,
+            EE::MoreThanOneChar => EscapeErrorKind::MoreThanOneChar,
+            EE::LoneSlash => EscapeErrorKind::LoneSlash,
+            EE::InvalidEscape => EscapeErrorKind::InvalidEscape,
+            EE::BareCarriageReturn => EscapeErrorKind::BareCarriageReturn,
+            EE::BareCarriageReturnInRawString => EscapeErrorKind::BareCarriageReturnInRawString,
+            EE::EscapeOnlyChar => EscapeErrorKind::EscapeOnlyChar,
+            EE::TooShortHexEscape => EscapeErrorKind::TooShortHexEscape,
+            EE::InvalidCharInHexEscape => EscapeErrorKind::InvalidCharInHexEscape,
+            EE::OutOfRangeHexEscape => EscapeErrorKind::OutOfRangeHexEscape,
+            EE::NoBraceInUnicodeEscape => EscapeErrorKind::NoBraceInUnicodeEscape,
+            EE::InvalidCharInUnicodeEscape => EscapeErrorKind::InvalidCharInUnicodeEscape,
+            EE::EmptyUnicodeEscape => EscapeErrorKind::EmptyUnicodeEscape,
+            EE::UnclosedUnicodeEscape => EscapeErrorKind::UnclosedUnicodeEscape,
+            EE::LeadingUnderscoreUnicodeEscape => EscapeErrorKind::LeadingUnderscoreUnicodeEscape,
+            EE::OverlongUnicodeEscape => EscapeErrorKind::OverlongUnicodeEscape,
+            EE::LoneSurrogateUnicodeEscape => EscapeErrorKind::LoneSurrogateUnicodeEscape,
+            EE::OutOfRangeUnicodeEscape => EscapeErrorKind::OutOfRangeUnicodeEscape,
+            EE::UnicodeEscapeInByte => EscapeErrorKind::UnicodeEscapeInByte,
+            EE::NonAsciiCharInByte => EscapeErrorKind::NonAsciiCharInByte,
+            EE::NulInCStr => EscapeErrorKind::NulInCStr,
+            EE::UnskippedWhitespaceWarning => EscapeErrorKind::UnskippedWhitespaceWarning,
+            EE::MultipleSkippedLinesWarning => EscapeErrorKind::MultipleSkippedLinesWarning,
+        };
+        Self { kind }
+    }
+}
+
+/// Mostly relating to malformed escape sequences, but also a few other problems.
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum EscapeError {
+enum EscapeErrorKind {
     /// Expected 1 char, but 0 were found.
     ZeroChars,
     /// Expected 1 char, but more than 1 were found.
@@ -125,45 +176,9 @@ pub enum EscapeError {
     MultipleSkippedLinesWarning,
 }
 
-#[unstable(feature = "proc_macro_value", issue = "136652")]
-#[doc(hidden)]
-impl From<rustc_literal_escaper::EscapeError> for EscapeError {
-    fn from(value: rustc_literal_escaper::EscapeError) -> Self {
-        use rustc_literal_escaper::EscapeError as EE;
+impl error::Error for EscapeErrorKind {}
 
-        match value {
-            EE::ZeroChars => Self::ZeroChars,
-            EE::MoreThanOneChar => Self::MoreThanOneChar,
-            EE::LoneSlash => Self::LoneSlash,
-            EE::InvalidEscape => Self::InvalidEscape,
-            EE::BareCarriageReturn => Self::BareCarriageReturn,
-            EE::BareCarriageReturnInRawString => Self::BareCarriageReturnInRawString,
-            EE::EscapeOnlyChar => Self::EscapeOnlyChar,
-            EE::TooShortHexEscape => Self::TooShortHexEscape,
-            EE::InvalidCharInHexEscape => Self::InvalidCharInHexEscape,
-            EE::OutOfRangeHexEscape => Self::OutOfRangeHexEscape,
-            EE::NoBraceInUnicodeEscape => Self::NoBraceInUnicodeEscape,
-            EE::InvalidCharInUnicodeEscape => Self::InvalidCharInUnicodeEscape,
-            EE::EmptyUnicodeEscape => Self::EmptyUnicodeEscape,
-            EE::UnclosedUnicodeEscape => Self::UnclosedUnicodeEscape,
-            EE::LeadingUnderscoreUnicodeEscape => Self::LeadingUnderscoreUnicodeEscape,
-            EE::OverlongUnicodeEscape => Self::OverlongUnicodeEscape,
-            EE::LoneSurrogateUnicodeEscape => Self::LoneSurrogateUnicodeEscape,
-            EE::OutOfRangeUnicodeEscape => Self::OutOfRangeUnicodeEscape,
-            EE::UnicodeEscapeInByte => Self::UnicodeEscapeInByte,
-            EE::NonAsciiCharInByte => Self::NonAsciiCharInByte,
-            EE::NulInCStr => Self::NulInCStr,
-            EE::UnskippedWhitespaceWarning => Self::UnskippedWhitespaceWarning,
-            EE::MultipleSkippedLinesWarning => Self::MultipleSkippedLinesWarning,
-        }
-    }
-}
-
-#[unstable(feature = "proc_macro_value", issue = "136652")]
-impl error::Error for EscapeError {}
-
-#[unstable(feature = "proc_macro_value", issue = "136652")]
-impl fmt::Display for EscapeError {
+impl fmt::Display for EscapeErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::ZeroChars => "zero chars",
@@ -1697,7 +1712,7 @@ impl Literal {
     /// Returns the unescaped string value if the current literal is a c-string or a c-string
     /// literal.
     #[unstable(feature = "proc_macro_value", issue = "136652")]
-    pub fn cstr_value(&self) -> Result<Vec<u8>, ConversionErrorKind> {
+    pub fn cstr_value(&self) -> Result<CString, ConversionErrorKind> {
         self.0.symbol.with(|symbol| match self.0.kind {
             bridge::LitKind::CStr => {
                 let mut error = None;
@@ -1718,16 +1733,16 @@ impl Literal {
                     Err(error)
                 } else {
                     buf.push(0);
-                    Ok(buf)
+                    // Safety: The `buf` content was already checked by the compiler when generating
+                    // the literal.
+                    unsafe { Ok(CString::from_vec_with_nul_unchecked(buf)) }
                 }
             }
             bridge::LitKind::CStrRaw(_) => {
                 // Raw strings have no escapes so we can convert the symbol
                 // directly to a `Lrc<u8>` after appending the terminating NUL
                 // char.
-                let mut buf = symbol.to_owned().into_bytes();
-                buf.push(0);
-                Ok(buf)
+                Ok(CString::new(symbol.to_owned()).expect("invalid cstr literal"))
             }
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })

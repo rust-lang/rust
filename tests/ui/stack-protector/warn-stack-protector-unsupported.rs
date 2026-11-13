@@ -1,11 +1,9 @@
 //@ build-pass
-//@ revisions: all strong basic
+//@ revisions: all strong
 //@ compile-flags: --target nvptx64-nvidia-cuda
 //@ needs-llvm-components: nvptx
 //@ [all] compile-flags: -Z stack-protector=all
 //@ [strong] compile-flags: -Z stack-protector=strong
-//@ [basic] compile-flags: -Z stack-protector=basic
-//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]
@@ -28,4 +26,3 @@ pub fn main(){}
 
 //[all]~? WARN `-Z stack-protector=all` is not supported for target nvptx64-nvidia-cuda and will be ignored
 //[strong]~? WARN `-Z stack-protector=strong` is not supported for target nvptx64-nvidia-cuda and will be ignored
-//[basic]~? WARN `-Z stack-protector=basic` is not supported for target nvptx64-nvidia-cuda and will be ignored

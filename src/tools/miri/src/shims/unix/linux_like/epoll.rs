@@ -293,17 +293,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         events: MPlaceTy<'tcx>,
                         maxevents: u32,
                     }
-                    |this, unblock: UnblockKind| {
+                    |ecx, unblock: UnblockKind| {
                         match unblock {
                             UnblockKind::Ready => {
-                                let events = this.return_ready_list(&epfd, &dest, &events, maxevents)?;
+                                let events = ecx.return_ready_list(&epfd, &dest, &events, maxevents)?;
                                 assert!(events > 0, "we got woken up with no events to deliver");
                                 interp_ok(())
                             },
                             UnblockKind::TimedOut => {
                                 // Remove the current active thread id from the blocked threads list.
-                                epfd.watcher.remove_blocked_thread(this.active_thread());
-                                this.write_int(0, &dest)?;
+                                epfd.watcher.remove_blocked_thread(ecx.active_thread());
+                                ecx.write_int(0, &dest)?;
                                 interp_ok(())
                             },
                         }

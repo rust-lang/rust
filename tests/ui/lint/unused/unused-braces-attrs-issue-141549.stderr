@@ -2,7 +2,7 @@ warning: unnecessary braces around block return value
   --> $DIR/unused-braces-attrs-issue-141549.rs:11:5
    |
 LL |     { #[expect(ambiguous_wide_pointer_comparisons)] p1.cmp(&p2) }
-   |     ^^                                                         ^^
+   |     ^                                                           ^
    |
 note: the lint level is defined here
   --> $DIR/unused-braces-attrs-issue-141549.rs:5:9
