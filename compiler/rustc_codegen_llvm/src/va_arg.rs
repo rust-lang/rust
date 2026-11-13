@@ -21,7 +21,7 @@ fn round_up_to_alignment<'ll>(
     align: Align,
 ) -> Value<'ll> {
     value = bx.add(value, bx.cx().const_i32(align.bytes() as i32 - 1));
-    return bx.and(value, bx.cx().const_i32(-(align.bytes() as i32)));
+    bx.and(value, bx.cx().const_i32(-(align.bytes() as i32)))
 }
 
 fn round_pointer_up_to_alignment<'ll>(
@@ -294,10 +294,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     bx.br(end);
 
     bx.switch_to_block(end);
-    let val =
-        bx.phi(layout.immediate_llvm_type(bx), &[reg_value, stack_value], &[in_reg, on_stack]);
-
-    val
+    bx.phi(layout.immediate_llvm_type(bx), &[reg_value, stack_value], &[in_reg, on_stack])
 }
 
 fn is_powerpc_softfloat_abi(target: &Target) -> bool {
@@ -1063,7 +1060,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     assert!(bx.tcx().sess.target.endian == Endian::Little);
     let value_ptr =
         bx.phi(bx.type_ptr(), &[regsave_value_ptr, stack_value_ptr], &[from_regsave, from_stack]);
-    return bx.load(layout.llvm_type(bx), value_ptr, layout.align);
+    bx.load(layout.llvm_type(bx), value_ptr, layout.align)
 }
 
 /// Determine the va_arg implementation to use. The LLVM va_arg instruction

@@ -304,7 +304,7 @@ pub(crate) fn save_temp_bitcode(
 }
 
 fn write_bitcode_to_file(module: &ModuleLlvm, path: &Path) {
-    let path = path_to_c_string(&path);
+    let path = path_to_c_string(path);
     module.with_module_refs(|ModuleRefs { llmod, .. }| {
         unsafe { llvm::LLVMWriteBitcodeToFile(llmod, path.as_ptr()) };
     });
@@ -672,7 +672,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         }
 
         // Create the new parameter list, with ptr as the first argument
-        let mut new_param_types = Vec::with_capacity(old_param_count as usize + 1);
+        let mut new_param_types = Vec::with_capacity(old_param_count + 1);
         new_param_types.push(cx.type_ptr());
 
         // This relies on undocumented LLVM knowledge that scalars must be passed as i64
@@ -692,7 +692,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
 
         // Create the new function, with a temporary .offload name to avoid a name collision.
         let old_fn_name = String::from_utf8(llvm::get_value_name(old_fn)).unwrap();
-        let new_fn_name = format!("{}.offload", &old_fn_name);
+        let new_fn_name = format!("{old_fn_name}.offload");
         let new_fn = cx.add_func(&new_fn_name, new_fn_ty);
         let a0 = llvm::get_param(new_fn, 0);
         llvm::set_value_name(a0, CString::new("dyn_ptr").unwrap().as_bytes());
@@ -1029,7 +1029,7 @@ pub(crate) fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
                     module.module_llvm.thin_lto_buffer.get().expect("cannot find embedded bitcode");
-                embed_bitcode(cgcx, llcx, llmod, &thin_bc);
+                embed_bitcode(cgcx, llcx, llmod, thin_bc);
             }
         }
 
@@ -1046,14 +1046,12 @@ pub(crate) fn codegen(
                 output_ptr: *mut c_char,
                 output_len: size_t,
             ) -> size_t {
-                let input =
-                    unsafe { slice::from_raw_parts(input_ptr as *const u8, input_len as usize) };
+                let input = unsafe { slice::from_raw_parts(input_ptr as *const u8, input_len) };
 
                 let Ok(input) = str::from_utf8(input) else { return 0 };
 
-                let output = unsafe {
-                    slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
-                };
+                let output =
+                    unsafe { slice::from_raw_parts_mut(output_ptr as *mut u8, output_len) };
                 let mut cursor = io::Cursor::new(output);
 
                 let Ok(demangled) = rustc_demangle::try_demangle(input) else { return 0 };
@@ -1186,15 +1184,15 @@ fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: 
         if byte == b'\\' || byte == b'"' {
             asm.push(b'\\');
             asm.push(byte);
-        } else if byte < 0x20 || byte >= 0x80 {
+        } else if (0x20..0x80).contains(&byte) {
+            asm.push(byte);
+        } else {
             // Avoid non UTF-8 inline assembly. Use octal escape sequence, because it is fixed
             // width, while hex escapes will consume following characters.
             asm.push(b'\\');
             asm.push(b'0' + ((byte >> 6) & 0x7));
             asm.push(b'0' + ((byte >> 3) & 0x7));
             asm.push(b'0' + ((byte >> 0) & 0x7));
-        } else {
-            asm.push(byte);
         }
     }
     asm.extend_from_slice(b"\"\n");

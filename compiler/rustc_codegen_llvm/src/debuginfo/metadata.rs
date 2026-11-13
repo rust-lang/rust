@@ -534,7 +534,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
 
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
 fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
-    *debug_context(cx).recursion_marker_type.get_or_init(move || {
+    debug_context(cx).recursion_marker_type.get_or_init(move || {
         // The choice of type here is pretty arbitrary -
         // anything reading the debuginfo for a recursive
         // type is going to see *something* weird - the only
@@ -993,7 +993,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         );
         let flags = c"";
 
-        let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
+        llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder.as_ref(),
             dwarf_const::DW_LANG_Rust,
             compile_unit_file,
@@ -1012,10 +1012,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             tcx.sess.opts.unstable_opts.split_dwarf_inlining,
             tcx.sess.opts.unstable_opts.debuginfo_for_profiling,
             debug_name_table_kind,
-        );
-
-        return unit_metadata;
-    };
+        )
+    }
 }
 
 /// Creates a `DW_TAG_member` entry inside the DIE represented by the given `type_di_node`.
@@ -1861,7 +1859,7 @@ pub(crate) fn extend_scope_to_file<'ll>(
 }
 
 fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
-    const TUPLE_FIELD_NAMES: [&'static str; 16] = [
+    const TUPLE_FIELD_NAMES: [&str; 16] = [
         "__0", "__1", "__2", "__3", "__4", "__5", "__6", "__7", "__8", "__9", "__10", "__11",
         "__12", "__13", "__14", "__15",
     ];

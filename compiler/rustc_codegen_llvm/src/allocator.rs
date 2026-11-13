@@ -118,7 +118,7 @@ fn create_wrapper_function<'ll>(
 ) {
     let ty = cx.type_func(args, output.unwrap_or_else(|| cx.type_void()));
     let llfn = declare_simple_fn(
-        &cx,
+        cx,
         from_name,
         llvm::CallConv::CCallConv,
         llvm::UnnamedAddr::Global,
@@ -149,11 +149,11 @@ fn create_wrapper_function<'ll>(
     }
 
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
-    let mut bx = SBuilder::build(&cx, llbb);
+    let mut bx = SBuilder::build(cx, llbb);
 
     if let Some(to_name) = to_name {
         let callee = declare_simple_fn(
-            &cx,
+            cx,
             to_name,
             llvm::CallConv::CCallConv,
             llvm::UnnamedAddr::Global,
