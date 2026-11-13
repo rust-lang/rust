@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use rustc_abi::Primitive::{self, Float, Int, Pointer};
+use rustc_abi::Primitive::{self, Bool, Float, Int, Pointer};
 use rustc_abi::{Align, BackendRepr, FieldsShape, Scalar, Size, Variants};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -299,6 +299,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
 
     fn scalar_llvm_type_at<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> Type<'ll> {
         match scalar.primitive() {
+            Bool => cx.type_i8(),
             Int(i, _) => cx.type_from_integer(i),
             Float(f) => cx.type_from_float(f),
             Pointer(address_space) => cx.type_ptr_ext(address_space),

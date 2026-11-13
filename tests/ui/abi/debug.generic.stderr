@@ -73,13 +73,13 @@ error: fn_abi_of(test) = FnAbi {
                        size: Size(1 bytes),
                        align: $SOME_ALIGN,
                        backend_repr: Scalar(
-                           u8 is 0..=1,
+                           bool is 0..=1,
                        ),
                        fields: Primitive,
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: u8,
+                               value: bool,
                                valid_range: 0..=1,
                            },
                        ),
@@ -163,13 +163,13 @@ error: fn_abi_of(test_unsized) = FnAbi {
                        size: Size(1 bytes),
                        align: $SOME_ALIGN,
                        backend_repr: Scalar(
-                           u8 is 0..=1,
+                           bool is 0..=1,
                        ),
                        fields: Primitive,
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: u8,
+                               value: bool,
                                valid_range: 0..=1,
                            },
                        ),
@@ -211,13 +211,13 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                            size: Size(1 bytes),
                            align: $SOME_ALIGN,
                            backend_repr: Scalar(
-                               u8 is 0..=1,
+                               bool is 0..=1,
                            ),
                            fields: Primitive,
                            largest_niche: Some(
                                Niche {
                                    offset: Size(0 bytes),
-                                   value: u8,
+                                   value: bool,
                                    valid_range: 0..=1,
                                },
                            ),

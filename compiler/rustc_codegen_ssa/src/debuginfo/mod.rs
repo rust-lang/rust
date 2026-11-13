@@ -72,6 +72,7 @@ fn tag_base_type_opt<'tcx>(
             // Niche tags are always normalized to unsized integers of the correct size.
             Some(
                 match tag.primitive() {
+                    Primitive::Bool => Integer::I8,
                     Primitive::Int(t, _) => t,
                     Primitive::Float(f) => Integer::from_size(f.size()).unwrap(),
                     // FIXME(erikdesjardins): handle non-default addrspace ptr sizes

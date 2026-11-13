@@ -267,6 +267,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         offset: Size,
     ) -> Type<'gcc> {
         match scalar.primitive() {
+            Bool => cx.type_u8(),
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
             Float(f) => cx.type_from_float(f),

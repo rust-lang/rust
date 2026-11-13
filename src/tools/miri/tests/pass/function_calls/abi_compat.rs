@@ -169,6 +169,8 @@ fn main() {
     test_abi_newtype::<Zst>();
     test_abi_newtype::<ReprAlignZst>();
     test_abi_newtype::<ReprCZst>();
+    // FIXME (ABI): this should work, but doesn't - see https://github.com/rust-lang/rust/issues/165800
+    // test_abi_newtype::<bool>();
     test_abi_newtype::<u32>();
     test_abi_newtype::<f32>();
     test_abi_newtype::<(u8, u16, f32)>();
