@@ -652,7 +652,7 @@ impl FromClean<clean::Type> for Type {
     fn from_clean(ty: &clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
+            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder, View,
         };
 
         match ty {
@@ -691,6 +691,8 @@ impl FromClean<clean::Type> for Type {
             QPath(qpath) => qpath.into_json(renderer),
             // FIXME(unsafe_binder): Implement rustdoc-json.
             UnsafeBinder(_) => unimplemented!(),
+            // FIXME(view_types): that's quite bad but heh
+            View(path, _) => Type::ResolvedPath(path.into_json(renderer)),
         }
     }
 }

@@ -547,9 +547,9 @@ fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
         ty::FnDef(..) => panic!("type alias to a function definition"),
         ty::FnPtr(..) => Res::Primitive(Fn),
         ty::Never => Res::Primitive(Never),
-        ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
-            Res::from_def_id(tcx, did)
-        }
+        ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _)
+        | ty::View(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _, _)
+        | ty::Foreign(did) => Res::from_def_id(tcx, did),
         ty::Alias(_, ..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)

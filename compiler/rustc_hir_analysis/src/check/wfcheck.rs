@@ -1974,6 +1974,9 @@ fn receiver_is_valid<'tcx>(
 
         confirm_type_is_not_a_method_generic_param(potential_self_ty, method_generics)?;
 
+        // Treat view types in receiver position like their counterpart.
+        let potential_self_ty = ignore_view(wfcx, potential_self_ty);
+
         // Check if the self type unifies. If it does, then commit the result
         // since it may have region side-effects.
         if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
@@ -2016,6 +2019,42 @@ fn receiver_is_valid<'tcx>(
 
     debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
     Err(ReceiverValidityError::DoesNotDeref)
+}
+
+fn ignore_view<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.kind() {
+        ty::View(def, args, _) => Ty::new_adt(wfcx.tcx(), *def, *args),
+
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(_, _)
+        | ty::Pat(_, _)
+        | ty::Slice(_)
+        | ty::RawPtr(_, _)
+        | ty::Ref(_, _, _)
+        | ty::FnDef(_, _)
+        | ty::FnPtr(_, _)
+        | ty::UnsafeBinder(_)
+        | ty::Dynamic(_, _)
+        | ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Bound(_, _)
+        | ty::Placeholder(_)
+        | ty::Infer(_)
+        | ty::Error(_) => ty,
+    }
 }
 
 fn legacy_receiver_is_implemented<'tcx>(
