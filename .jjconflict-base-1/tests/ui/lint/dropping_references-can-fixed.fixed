@@ -1,0 +1,31 @@
+//@ check-fail
+//@ run-rustfix
+
+#![deny(dropping_references)]
+
+struct SomeStruct;
+
+fn main() {
+    let _ = &SomeStruct; //~ ERROR calls to `std::mem::drop`
+
+    let mut owned1 = SomeStruct;
+    let _ = &owned1; //~ ERROR calls to `std::mem::drop`
+    let _ = &&owned1; //~ ERROR calls to `std::mem::drop`
+    let _ = &mut owned1; //~ ERROR calls to `std::mem::drop`
+    drop(owned1);
+
+    let reference1 = &SomeStruct;
+    let _ = reference1; //~ ERROR calls to `std::mem::drop`
+
+    let reference2 = &mut SomeStruct;
+    let _ = reference2; //~ ERROR calls to `std::mem::drop`
+
+    let ref reference3 = SomeStruct;
+    let _ = reference3; //~ ERROR calls to `std::mem::drop`
+}
+
+#[allow(dead_code)]
+fn test_generic_fn_drop<T>(val: T) {
+    let _ = &val; //~ ERROR calls to `std::mem::drop`
+    drop(val);
+}

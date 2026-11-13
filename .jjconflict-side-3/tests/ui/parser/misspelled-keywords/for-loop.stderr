@@ -1,0 +1,14 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `i`
+  --> $DIR/for-loop.rs:2:10
+   |
+LL |     form i in 1..10 {}
+   |          ^ expected one of 8 possible tokens
+   |
+help: there is a keyword `for` with a similar name
+   |
+LL -     form i in 1..10 {}
+LL +     for i in 1..10 {}
+   |
+
+error: aborting due to 1 previous error
+

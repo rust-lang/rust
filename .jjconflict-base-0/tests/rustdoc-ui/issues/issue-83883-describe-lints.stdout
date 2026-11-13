@@ -1,0 +1,24 @@
+
+Available lint options:
+    -W <foo>           Warn about <foo>
+    -A <foo>           Allow <foo>
+    -D <foo>           Deny <foo>
+    -F <foo>           Forbid <foo> (deny <foo> and all attempts to override)
+
+
+Lint checks provided by rustc:
+
+    $NAMES  $LEVELS  $MEANINGS
+
+Lint groups provided by rustc:
+
+    $NAMES  $SUB_LINTS
+
+Lint checks loaded by this crate:
+
+    $NAMES  $LEVELS  $MEANINGS
+
+Lint groups loaded by this crate:
+
+    $NAMES  $SUB_LINTS
+

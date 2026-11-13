@@ -1,0 +1,66 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:4:8
+   |
+LL |     x: &bool,
+   |        ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ struct Foo<'a> {
+LL ~     x: &'a bool,
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:9:7
+   |
+LL |     B(&bool),
+   |       ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ enum Bar<'a> {
+LL |     A(u8),
+LL ~     B(&'a bool),
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:12:14
+   |
+LL | type MyStr = &str;
+   |              ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type MyStr<'a> = &'a str;
+   |           ++++    ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:19:10
+   |
+LL |     baz: Baz,
+   |          ^^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ struct Quux<'a> {
+LL ~     baz: Baz<'a>,
+   |
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/E0106.rs:22:11
+   |
+LL |     buzz: Buzz,
+   |           ^^^^ expected 2 lifetime parameters
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ struct Quux<'a> {
+LL |     baz: Baz,
+LL |
+LL |
+LL ~     buzz: Buzz<'a, 'a>,
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

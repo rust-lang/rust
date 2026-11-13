@@ -1,0 +1,9 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-tait-conflicting-defn.rs:25:22
+   |
+LL | fn make_option2() -> Option<TestImpl> {
+   |                      ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0720`.

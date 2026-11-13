@@ -1,0 +1,30 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/issue-84768.rs:7:11
+   |
+LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
+   |           ^^^^^^^^^^^^^^^ associated item constraint not allowed here
+
+error[E0308]: mismatched types
+  --> $DIR/issue-84768.rs:7:42
+   |
+LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
+   |     ---------------------------------    ^ expected `(&mut u8,)`, found integer
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected tuple `(&mut u8,)`
+               found type `{integer}`
+help: the return type of this call is `{integer}` due to the type of the argument passed
+  --> $DIR/issue-84768.rs:7:5
+   |
+LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                          |
+   |                                          this argument influences the return type of `call_once`
+note: method defined here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0229, E0308.
+For more information about an error, try `rustc --explain E0229`.

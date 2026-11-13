@@ -1,0 +1,8 @@
+error: allocators must be statics
+  --> $DIR/issue-83469-global-alloc-invalid-stmt.rs:7:5
+   |
+LL |     fn inner() {}
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,50 @@
+error[E0277]: the trait bound `U: Copy` is not satisfied
+  --> $DIR/wf-fn-where-clause.rs:8:24
+   |
+LL | fn foo<T,U>() where T: ExtraCopy<U>
+   |                        ^^^^^^^^^^^^ the trait `Copy` is not implemented for `U`
+   |
+note: required by a bound in `ExtraCopy`
+  --> $DIR/wf-fn-where-clause.rs:6:19
+   |
+LL | trait ExtraCopy<T:Copy> { }
+   |                   ^^^^ required by this bound in `ExtraCopy`
+help: consider further restricting type parameter `U` with trait `Copy`
+   |
+LL | fn foo<T,U>() where T: ExtraCopy<U>, U: std::marker::Copy
+   |                                    ++++++++++++++++++++++
+
+error[E0038]: the trait `Copy` is not dyn compatible
+  --> $DIR/wf-fn-where-clause.rs:12:16
+   |
+LL | fn bar() where Vec<dyn Copy>:, {}
+   |                ^^^^^^^^^^^^^ `Copy` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
+  --> $DIR/wf-fn-where-clause.rs:12:16
+   |
+LL | fn bar() where Vec<dyn Copy>:, {}
+   |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $DIR/wf-fn-where-clause.rs:16:12
+   |
+LL | struct Vec<T> {
+   |            ^ required by the implicit `Sized` requirement on this type parameter in `Vec`
+help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
+  --> $DIR/wf-fn-where-clause.rs:16:12
+   |
+LL | struct Vec<T> {
+   |            ^ this could be changed to `T: ?Sized`...
+LL |     t: T,
+   |        - ...if indirection were used here: `Box<T>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

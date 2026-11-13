@@ -1,0 +1,111 @@
+error[E0308]: mismatched types
+  --> $DIR/as-mut-closure.rs:16:37
+   |
+LL |     let _ = option.map(|arg| append(arg));
+   |                              ------ ^^^ expected `&mut String`, found `String`
+   |                              |
+   |                              arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-mut-closure.rs:6:4
+   |
+LL | fn append(value: &mut String) {
+   |    ^^^^^^ ------------------
+help: consider using `as_mut` instead
+   |
+LL |     let _ = option.as_mut().map(|arg| append(arg));
+   |                    +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-mut-closure.rs:18:54
+   |
+LL |     let _ = (&mut option).and_then(|arg| Some(append(arg)));
+   |                                               ------ ^^^ expected `&mut String`, found `String`
+   |                                               |
+   |                                               arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-mut-closure.rs:6:4
+   |
+LL | fn append(value: &mut String) {
+   |    ^^^^^^ ------------------
+help: consider using `as_mut` instead
+   |
+LL |     let _ = (&mut option).as_mut().and_then(|arg| Some(append(arg)));
+   |                           +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-mut-closure.rs:22:37
+   |
+LL |     let _ = result.map(|arg| append(arg));
+   |                              ------ ^^^ expected `&mut String`, found `String`
+   |                              |
+   |                              arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-mut-closure.rs:6:4
+   |
+LL | fn append(value: &mut String) {
+   |    ^^^^^^ ------------------
+help: consider using `as_mut` instead
+   |
+LL |     let _ = result.as_mut().map(|arg| append(arg));
+   |                    +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-mut-closure.rs:24:52
+   |
+LL |     let _ = (&mut result).and_then(|arg| Ok(append(arg)));
+   |                                             ------ ^^^ expected `&mut String`, found `String`
+   |                                             |
+   |                                             arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-mut-closure.rs:6:4
+   |
+LL | fn append(value: &mut String) {
+   |    ^^^^^^ ------------------
+help: consider using `as_mut` instead
+   |
+LL |     let _ = (&mut result).as_mut().and_then(|arg| Ok(append(arg)));
+   |                           +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-mut-closure.rs:29:44
+   |
+LL |     let _ = shared.map(|mut arg| increment(arg));
+   |                                  --------- ^^^ expected `&mut i32`, found integer
+   |                                  |
+   |                                  arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-mut-closure.rs:10:4
+   |
+LL | fn increment(value: &mut i32) {
+   |    ^^^^^^^^^ ---------------
+help: consider mutably borrowing here
+   |
+LL |     let _ = shared.map(|mut arg| increment(&mut arg));
+   |                                            ++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-mut-closure.rs:32:44
+   |
+LL |     let _ = nested.map(|mut arg| increment(arg));
+   |                                  --------- ^^^ expected `&mut i32`, found integer
+   |                                  |
+   |                                  arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-mut-closure.rs:10:4
+   |
+LL | fn increment(value: &mut i32) {
+   |    ^^^^^^^^^ ---------------
+help: consider mutably borrowing here
+   |
+LL |     let _ = nested.map(|mut arg| increment(&mut arg));
+   |                                            ++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

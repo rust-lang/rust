@@ -1,0 +1,14 @@
+error[E0520]: `fly` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/E0520.rs:16:5
+   |
+LL | impl<T: Clone> SpaceLlama for T {
+   | ------------------------------- parent `impl` is here
+...
+LL |     default fn fly(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `fly`
+   |
+   = note: to specialize, `fly` in the parent `impl` must be marked `default`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0520`.

@@ -1,0 +1,14 @@
+error: unexpected generic arguments in path
+  --> $DIR/macro-expand-within-generics-in-path.rs:15:11
+   |
+LL | m!(generic<p!()>);
+   |           ^^^^^^
+
+error: cannot find attribute `generic` in this scope
+  --> $DIR/macro-expand-within-generics-in-path.rs:15:4
+   |
+LL | m!(generic<p!()>);
+   |    ^^^^^^^
+
+error: aborting due to 2 previous errors
+

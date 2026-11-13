@@ -1,0 +1,14 @@
+error: cannot use register `p0`: x13, x14, x23, x24, x28, v16-v31, p*, ffr cannot be used for Arm64EC
+  --> $DIR/arm64ec-sve.rs:18:18
+   |
+LL |         asm!("", out("p0") _);
+   |                  ^^^^^^^^^^^
+
+error: cannot use register `ffr`: x13, x14, x23, x24, x28, v16-v31, p*, ffr cannot be used for Arm64EC
+  --> $DIR/arm64ec-sve.rs:20:18
+   |
+LL |         asm!("", out("ffr") _);
+   |                  ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

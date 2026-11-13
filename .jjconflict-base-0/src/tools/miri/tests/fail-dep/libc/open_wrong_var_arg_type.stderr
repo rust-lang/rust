@@ -1,0 +1,13 @@
+error: Undefined Behavior: incorrect c-variadic argument type for `open(pathname, O_CREAT, ...)`: expected argument #3 to have type `$TYPE` but got incompatible type `u64`
+  --> tests/fail-dep/libc/open_wrong_var_arg_type.rs:LL:CC
+   |
+LL |         open(c_path.as_ptr(), libc::O_CREAT, /* should be mode_t */ 0u64)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

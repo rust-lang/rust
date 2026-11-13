@@ -1,0 +1,14 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-88770.rs:7:3
+   |
+LL | fn m(){print!("",(c for&g
+   |       -      -   - unclosed delimiter
+   |       |      |
+   |       |      unclosed delimiter
+   |       unclosed delimiter
+...
+LL | e
+   |  ^
+
+error: aborting due to 1 previous error
+

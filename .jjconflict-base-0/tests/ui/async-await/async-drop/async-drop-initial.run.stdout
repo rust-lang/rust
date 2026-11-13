@@ -1,0 +1,22 @@
+AsyncInt::Dropper::poll: 0
+AsyncInt::Dropper::poll: 1
+AsyncInt::Dropper::poll: 2
+AsyncInt::Dropper::poll: 3
+AsyncInt::Dropper::poll: 4
+AsyncStruct::Dropper::poll: 6
+AsyncInt::Dropper::poll: 7
+AsyncInt::Dropper::poll: 8
+AsyncReference::Dropper::poll: 10
+AsyncInt::Dropper::poll: 11
+AsyncEnum(A)::Dropper::poll: 12
+SyncInt::drop: 12
+AsyncEnum(B)::Dropper::poll: 13
+AsyncInt::Dropper::poll: 13
+SyncInt::drop: 14
+SyncThenAsync::drop: 15
+AsyncInt::Dropper::poll: 16
+SyncInt::drop: 17
+AsyncInt::Dropper::poll: 18
+AsyncInt::Dropper::poll: 19
+AsyncInt::Dropper::poll: 20
+AsyncUnion::Dropper::poll: 21, 21

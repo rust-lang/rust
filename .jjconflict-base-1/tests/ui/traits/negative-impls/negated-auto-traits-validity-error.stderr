@@ -1,0 +1,54 @@
+error[E0367]: `!Foo` impl requires `T: 'a` but the struct it is implemented for does not
+  --> $DIR/negated-auto-traits-validity-error.rs:6:13
+   |
+LL | impl<'a, T: 'a> !Foo for AdditionalLt<'a, T> {}
+   |             ^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/negated-auto-traits-validity-error.rs:5:1
+   |
+LL | struct AdditionalLt<'a, T>(&'a (), T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0367]: `!Foo` impl requires `T: Bound` but the struct it is implemented for does not
+  --> $DIR/negated-auto-traits-validity-error.rs:11:9
+   |
+LL | impl<T: Bound> !Foo for AdditionalBound<T> {}
+   |         ^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/negated-auto-traits-validity-error.rs:9:1
+   |
+LL | struct AdditionalBound<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0366]: `!Foo` impls cannot be specialized
+  --> $DIR/negated-auto-traits-validity-error.rs:15:1
+   |
+LL | impl<T> !Foo for TwoParam<T, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `T` is mentioned multiple times
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/negated-auto-traits-validity-error.rs:14:1
+   |
+LL | struct TwoParam<T, U>(T, U);
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0366]: `!Foo` impls cannot be specialized
+  --> $DIR/negated-auto-traits-validity-error.rs:19:1
+   |
+LL | impl !Foo for ConcreteParam<i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `i32` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/negated-auto-traits-validity-error.rs:18:1
+   |
+LL | struct ConcreteParam<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0366, E0367.
+For more information about an error, try `rustc --explain E0366`.

@@ -1,0 +1,153 @@
+error: expected one of `=>`, `if`, or `|`, found reserved identifier `_`
+  --> $DIR/match-arm-without-body.rs:13:9
+   |
+LL |         Some(_)
+   |                - expected one of `=>`, `if`, or `|`
+LL |         _ => {}
+   |         ^ unexpected token
+
+error: unexpected `,` in pattern
+  --> $DIR/match-arm-without-body.rs:17:16
+   |
+LL |         Some(_),
+   |                ^
+   |
+help: try adding parentheses to match on a tuple...
+   |
+LL |         (Some(_),)
+   |         +        +
+help: ...or a vertical bar to match on alternatives
+   |
+LL -         Some(_),
+LL +         Some(_) |
+   |
+
+error: unexpected `,` in pattern
+  --> $DIR/match-arm-without-body.rs:23:16
+   |
+LL |         Some(_),
+   |                ^
+   |
+help: try adding parentheses to match on a tuple...
+   |
+LL ~         (Some(_),
+LL |
+LL |
+LL |
+LL ~         _) => {}
+   |
+help: ...or a vertical bar to match on alternatives
+   |
+LL -         Some(_),
+LL +         Some(_) |
+   |
+
+error: expected one of `.`, `=>`, `?`, or an operator, found reserved identifier `_`
+  --> $DIR/match-arm-without-body.rs:36:9
+   |
+LL |         Some(_) if true
+   |                        - expected one of `.`, `=>`, `?`, or an operator
+LL |         _ => {}
+   |         ^ unexpected token
+
+error: expected `,` following `match` arm
+  --> $DIR/match-arm-without-body.rs:66:15
+   |
+LL |         pat!()
+   |               ^
+   |
+help: missing a comma here to end this `match` arm
+   |
+LL |         pat!(),
+   |               +
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:7:9
+   |
+LL |         Some(_)
+   |         ^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) => { todo!() }
+   |                 ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:30:9
+   |
+LL |         Some(_) if true
+   |         ^^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) if true => { todo!() }
+   |                         ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:40:9
+   |
+LL |         Some(_) if true,
+   |         ^^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) if true => { todo!() },
+   |                         ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:45:9
+   |
+LL |         Some(_) if true,
+   |         ^^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         Some(_) if true => { todo!() },
+   |                         ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:51:9
+   |
+LL |         pat!()
+   |         ^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         pat!() => { todo!() }
+   |                ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:56:9
+   |
+LL |         pat!(),
+   |         ^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         pat!() => { todo!() },
+   |                ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:61:9
+   |
+LL |         pat!() if true,
+   |         ^^^^^^^^^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         pat!() if true => { todo!() },
+   |                        ++++++++++++++
+
+error: `match` arm with no body
+  --> $DIR/match-arm-without-body.rs:72:9
+   |
+LL |         pat!(),
+   |         ^^^^^^
+   |
+help: add a body after the pattern
+   |
+LL |         pat!() => { todo!() },
+   |                ++++++++++++++
+
+error: aborting due to 13 previous errors
+

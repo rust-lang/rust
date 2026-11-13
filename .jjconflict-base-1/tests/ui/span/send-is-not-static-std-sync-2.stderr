@@ -1,0 +1,39 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:11:20
+   |
+LL |     let lock = {
+   |         ---- borrow later stored here
+LL |         let x = 1;
+   |             - binding `x` declared here
+LL |         Mutex::new(&x)
+   |                    ^^ borrowed value does not live long enough
+LL |     };
+   |     - `x` dropped here while still borrowed
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:21:21
+   |
+LL |     let lock = {
+   |         ---- borrow later stored here
+LL |         let x = 1;
+   |             - binding `x` declared here
+LL |         RwLock::new(&x)
+   |                     ^^ borrowed value does not live long enough
+LL |     };
+   |     - `x` dropped here while still borrowed
+
+error[E0597]: `x` does not live long enough
+  --> $DIR/send-is-not-static-std-sync-2.rs:31:25
+   |
+LL |         let x = 1;
+   |             - binding `x` declared here
+LL |         let (tx, rx) = mpsc::channel();
+LL |         let _ = tx.send(&x);
+   |                         ^^ borrowed value does not live long enough
+LL |         (tx, rx)
+LL |     };
+   |     - `x` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

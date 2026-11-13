@@ -1,0 +1,15 @@
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/issue-37139.rs:12:18
+   |
+LL |             test(&mut x);
+   |                  ^^^^^^ cannot borrow as mutable
+   |
+help: try removing `&mut` here
+   |
+LL -             test(&mut x);
+LL +             test(x);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

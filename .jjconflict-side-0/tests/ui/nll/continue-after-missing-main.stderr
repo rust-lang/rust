@@ -1,0 +1,39 @@
+error[E0601]: `main` function not found in crate `continue_after_missing_main`
+  --> $DIR/continue-after-missing-main.rs:31:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
+
+error: lifetime may not live long enough
+  --> $DIR/continue-after-missing-main.rs:28:12
+   |
+LL | fn create_and_solve_subproblems<'data_provider, 'original_data, MP>(
+   |                                 --------------  -------------- lifetime `'original_data` defined here
+   |                                 |
+   |                                 lifetime `'data_provider` defined here
+...
+LL |     let _: AdaptedMatrixProvider<'original_data, MP> = tableau.provider().clone_with_extra_bound();
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'data_provider` must outlive `'original_data`
+   |
+   = help: consider adding the following bound: `'data_provider: 'original_data`
+
+error[E0597]: `tableau` does not live long enough
+  --> $DIR/continue-after-missing-main.rs:28:56
+   |
+LL | fn create_and_solve_subproblems<'data_provider, 'original_data, MP>(
+   |                                                 -------------- lifetime `'original_data` defined here
+LL |     tableau: Tableau<'data_provider, AdaptedMatrixProvider<'original_data, MP>>,
+   |     ------- binding `tableau` declared here
+LL | ) {
+LL |     let _: AdaptedMatrixProvider<'original_data, MP> = tableau.provider().clone_with_extra_bound();
+   |            -----------------------------------------   ^^^^^^^ borrowed value does not live long enough
+   |            |
+   |            type annotation requires that `tableau` is borrowed for `'original_data`
+...
+LL | }
+   |  - `tableau` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0597, E0601.
+For more information about an error, try `rustc --explain E0597`.

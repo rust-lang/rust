@@ -1,0 +1,168 @@
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:51:35
+   |
+LL |     let _: &dyn std::fmt::Debug = baz;
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Baz`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Baz`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:53:24
+   |
+LL |     let _: &dyn Send = baz;
+   |            ---------   ^^^ expected trait `Send`, found trait `Baz`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Baz`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:55:24
+   |
+LL |     let _: &dyn Sync = baz;
+   |            ---------   ^^^ expected trait `Sync`, found trait `Baz`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Baz`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:58:25
+   |
+LL |     let bar: &dyn Bar = baz;
+   |              --------   ^^^ expected trait `Bar`, found trait `Baz`
+   |              |
+   |              expected due to this
+   |
+   = note: expected reference `&dyn Bar`
+              found reference `&dyn Baz`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:60:35
+   |
+LL |     let _: &dyn std::fmt::Debug = bar;
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Bar`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Bar`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:62:24
+   |
+LL |     let _: &dyn Send = bar;
+   |            ---------   ^^^ expected trait `Send`, found trait `Bar`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Bar`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:64:24
+   |
+LL |     let _: &dyn Sync = bar;
+   |            ---------   ^^^ expected trait `Sync`, found trait `Bar`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Bar`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:67:25
+   |
+LL |     let foo: &dyn Foo = baz;
+   |              --------   ^^^ expected trait `Foo`, found trait `Baz`
+   |              |
+   |              expected due to this
+   |
+   = note: expected reference `&dyn Foo`
+              found reference `&dyn Baz`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:69:35
+   |
+LL |     let _: &dyn std::fmt::Debug = foo;
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Foo`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:71:24
+   |
+LL |     let _: &dyn Send = foo;
+   |            ---------   ^^^ expected trait `Send`, found trait `Foo`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:73:24
+   |
+LL |     let _: &dyn Sync = foo;
+   |            ---------   ^^^ expected trait `Sync`, found trait `Foo`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:76:25
+   |
+LL |     let foo: &dyn Foo = bar;
+   |              --------   ^^^ expected trait `Foo`, found trait `Bar`
+   |              |
+   |              expected due to this
+   |
+   = note: expected reference `&dyn Foo`
+              found reference `&dyn Bar`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:78:35
+   |
+LL |     let _: &dyn std::fmt::Debug = foo;
+   |            --------------------   ^^^ expected trait `Debug`, found trait `Foo`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Debug`
+              found reference `&dyn Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:80:24
+   |
+LL |     let _: &dyn Send = foo;
+   |            ---------   ^^^ expected trait `Send`, found trait `Foo`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Send`
+              found reference `&dyn Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/invalid-upcast.rs:82:24
+   |
+LL |     let _: &dyn Sync = foo;
+   |            ---------   ^^^ expected trait `Sync`, found trait `Foo`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&dyn Sync`
+              found reference `&dyn Foo`
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

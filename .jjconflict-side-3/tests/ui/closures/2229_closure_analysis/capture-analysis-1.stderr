@@ -1,0 +1,56 @@
+error: First Pass analysis includes:
+  --> $DIR/capture-analysis-1.rs:16:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", p);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:19:26
+   |
+LL |         println!("{:?}", p);
+   |                          ^
+note: Capturing p[(0, 0)] -> Immutable
+  --> $DIR/capture-analysis-1.rs:22:26
+   |
+LL |         println!("{:?}", p.x);
+   |                          ^^^
+note: Capturing q[(0, 0)] -> Immutable
+  --> $DIR/capture-analysis-1.rs:25:26
+   |
+LL |         println!("{:?}", q.x);
+   |                          ^^^
+note: Capturing q[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:27:26
+   |
+LL |         println!("{:?}", q);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/capture-analysis-1.rs:16:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{:?}", p);
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:19:26
+   |
+LL |         println!("{:?}", p);
+   |                          ^
+note: Min Capture q[] -> Immutable
+  --> $DIR/capture-analysis-1.rs:27:26
+   |
+LL |         println!("{:?}", q);
+   |                          ^
+
+error: aborting due to 2 previous errors
+

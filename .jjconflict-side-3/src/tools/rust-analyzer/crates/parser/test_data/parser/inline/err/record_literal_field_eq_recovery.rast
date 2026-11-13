@@ -1,0 +1,68 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
+                NAME_REF
+                  IDENT "field"
+                WHITESPACE " "
+                ERROR
+                  EQ "="
+                WHITESPACE " "
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "foo"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        RECORD_EXPR
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "S"
+          WHITESPACE " "
+          RECORD_EXPR_FIELD_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD
+              NAME_REF
+                INT_NUMBER "0"
+              WHITESPACE " "
+              ERROR
+                EQ "="
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "foo"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 26: expected `:`
+error 33: expected SEMICOLON
+error 44: expected `:`

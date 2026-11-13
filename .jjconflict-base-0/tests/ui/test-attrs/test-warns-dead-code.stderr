@@ -1,0 +1,14 @@
+error: function `dead` is never used
+  --> $DIR/test-warns-dead-code.rs:5:4
+   |
+LL | fn dead() {}
+   |    ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/test-warns-dead-code.rs:3:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,14 @@
+[]
+[
+    (
+        "MIRI_TEST",
+        "the answer",
+    ),
+]
+[
+    (
+        "MIRI_TEST",
+        "42",
+    ),
+]
+[]

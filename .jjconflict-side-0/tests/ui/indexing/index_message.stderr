@@ -1,0 +1,11 @@
+error[E0608]: cannot index into a value of type `({integer},)`
+  --> $DIR/index_message.rs:3:14
+   |
+LL |     let _ = z[0];
+   |              ^^^ help: to access tuple element `0`, use: `.0`
+   |
+   = help: tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0608`.

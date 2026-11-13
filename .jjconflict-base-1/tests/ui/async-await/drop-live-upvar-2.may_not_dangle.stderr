@@ -1,0 +1,18 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/drop-live-upvar-2.rs:31:26
+   |
+LL |         let y = ();
+   |             - binding `y` declared here
+LL |         drop_me = Droppy(&y);
+   |                          ^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - `y` dropped here while still borrowed
+LL | }
+   | - borrow might be used here, when `fut` is dropped and runs the destructor for coroutine
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

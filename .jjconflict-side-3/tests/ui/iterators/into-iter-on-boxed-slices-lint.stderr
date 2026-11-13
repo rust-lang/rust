@@ -1,0 +1,40 @@
+warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
+  --> $DIR/into-iter-on-boxed-slices-lint.rs:10:11
+   |
+LL |     boxed.into_iter();
+   |           ^^^^^^^^^
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>
+   = note: `#[warn(boxed_slice_into_iter)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL -     boxed.into_iter();
+LL +     boxed.iter();
+   |
+help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
+   |
+LL -     boxed.into_iter();
+LL +     IntoIterator::into_iter(boxed);
+   |
+
+warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
+  --> $DIR/into-iter-on-boxed-slices-lint.rs:13:29
+   |
+LL |     Box::new(boxed.clone()).into_iter();
+   |                             ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>
+
+warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
+  --> $DIR/into-iter-on-boxed-slices-lint.rs:16:39
+   |
+LL |     Box::new(Box::new(boxed.clone())).into_iter();
+   |                                       ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>
+
+warning: 3 warnings emitted
+

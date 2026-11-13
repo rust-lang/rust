@@ -1,0 +1,19 @@
+error[E0284]: type annotations needed for `[usize; _]`
+  --> $DIR/issue-83606.rs:8:9
+   |
+LL |     let _ = foo("foo");
+   |         ^   ---------- type must be known at this point
+   |
+note: required by a const generic parameter in `foo`
+  --> $DIR/issue-83606.rs:3:8
+   |
+LL | fn foo<const N: usize>(_: impl std::fmt::Display) -> [usize; N] {
+   |        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
+help: consider giving this pattern a type, where the value of const parameter `N` is specified
+   |
+LL |     let _: [_; N] = foo("foo");
+   |          ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

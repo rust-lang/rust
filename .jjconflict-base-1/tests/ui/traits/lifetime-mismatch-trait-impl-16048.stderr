@@ -1,0 +1,25 @@
+error[E0195]: lifetime parameters or bounds on method `get` do not match the trait declaration
+  --> $DIR/lifetime-mismatch-trait-impl-16048.rs:23:11
+   |
+LL |     fn get<'p, T : Test<'p>>(&self) -> T;
+   |           ------------------ lifetimes in impl do not match this method in trait
+...
+LL |     fn get<'p, T: Test<'a> + From<Foo<'a>>>(&self) -> T {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetimes do not match method in trait
+
+error[E0605]: non-primitive cast: `Foo<'a>` as `T`
+  --> $DIR/lifetime-mismatch-trait-impl-16048.rs:26:16
+   |
+LL |         return *self as T;
+   |                ^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+   |
+help: consider using the `From` trait instead
+   |
+LL -         return *self as T;
+LL +         return T::from(*self);
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0195, E0605.
+For more information about an error, try `rustc --explain E0195`.

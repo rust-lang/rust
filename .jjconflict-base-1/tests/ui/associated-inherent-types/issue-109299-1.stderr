@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/issue-109299-1.rs:10:10
+   |
+LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `X` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 1 previous error
+

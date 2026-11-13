@@ -1,0 +1,83 @@
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:26:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::AcqRel);
+   |                                                         ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:28:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::AcqRel);
+   |                                                         ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:30:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::AcqRel);
+   |                                                         ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:32:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::AcqRel, Ordering::AcqRel);
+   |                                                        ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:34:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::SeqCst, Ordering::AcqRel);
+   |                                                        ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:38:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::Release);
+   |                                                         ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:40:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::Release);
+   |                                                         ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:42:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::Release);
+   |                                                         ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:44:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::AcqRel, Ordering::Release);
+   |                                                        ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `compare_exchange`'s failure ordering may not be `Release` or `AcqRel`, since a failed `compare_exchange` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:46:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::SeqCst, Ordering::Release);
+   |                                                        ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: aborting due to 10 previous errors
+

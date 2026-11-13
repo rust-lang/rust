@@ -1,0 +1,18 @@
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/async_gen_fn.rs:4:1
+   |
+LL | async gen fn foo() {}
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found `gen`
+  --> $DIR/async_gen_fn.rs:4:7
+   |
+LL | async gen fn foo() {}
+   |       ^^^ expected one of `extern`, `fn`, `safe`, or `unsafe`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0670`.

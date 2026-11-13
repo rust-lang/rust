@@ -1,0 +1,12 @@
+warning: method `convert` is never used
+  --> $DIR/multidispatch-infer-convert-target.rs:8:8
+   |
+LL | trait Convert<Target> {
+   |       ------- method in this trait
+LL |     fn convert(&self) -> Target;
+   |        ^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

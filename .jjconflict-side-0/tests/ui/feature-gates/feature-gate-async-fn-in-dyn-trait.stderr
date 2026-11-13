@@ -1,0 +1,19 @@
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:7:30
+   |
+LL | async fn takes_dyn_trait(x: &dyn Foo) {
+   |                              ^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:4:14
+   |
+LL | trait Foo {
+   |       --- this trait is not dyn compatible...
+LL |     async fn bar(&self);
+   |              ^^^ ...because method `bar` is `async`
+   = help: consider moving `bar` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,37 @@
+error: lifetime bounds may not be parenthesized
+  --> $DIR/trait-object-lifetime-parens.rs:9:21
+   |
+LL | fn f<'a, T: Trait + ('a)>() {}
+   |                     ^^^^
+   |
+help: remove the parentheses
+   |
+LL - fn f<'a, T: Trait + ('a)>() {}
+LL + fn f<'a, T: Trait + 'a>() {}
+   |
+
+error: lifetime bounds may not be parenthesized
+  --> $DIR/trait-object-lifetime-parens.rs:12:24
+   |
+LL |     let _: Box<Trait + ('a)>;
+   |                        ^^^^
+   |
+help: remove the parentheses
+   |
+LL -     let _: Box<Trait + ('a)>;
+LL +     let _: Box<Trait + 'a>;
+   |
+
+error: lifetimes must be followed by `+` to form a trait object type
+  --> $DIR/trait-object-lifetime-parens.rs:16:17
+   |
+LL |     let _: Box<('a) + Trait>;
+   |                 ^^
+   |
+help: consider adding a trait bound after the potential lifetime bound
+   |
+LL |     let _: Box<('a + /* Trait */) + Trait>;
+   |                    +++++++++++++
+
+error: aborting due to 3 previous errors
+

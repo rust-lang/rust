@@ -1,0 +1,35 @@
+error[E0605]: non-primitive cast: `NotUnitOnlyOrFieldless` as `isize`
+  --> $DIR/enum-to-numeric-cast.rs:42:13
+   |
+LL |     let _ = not_unit_only_or_fieldless as isize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
+   |
+   = note: see https://doc.rust-lang.org/reference/items/enumerations.html#casting for more information
+
+error[E0605]: non-primitive cast: `NotUnitOnlyOrFieldless` as `i32`
+  --> $DIR/enum-to-numeric-cast.rs:43:13
+   |
+LL |     let _ = not_unit_only_or_fieldless as i32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
+   |
+   = note: see https://doc.rust-lang.org/reference/items/enumerations.html#casting for more information
+
+error[E0605]: non-primitive cast: `NotUnitOnlyOrFieldless` as `usize`
+  --> $DIR/enum-to-numeric-cast.rs:44:13
+   |
+LL |     let _ = not_unit_only_or_fieldless as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
+   |
+   = note: see https://doc.rust-lang.org/reference/items/enumerations.html#casting for more information
+
+error[E0605]: non-primitive cast: `NotUnitOnlyOrFieldless` as `u32`
+  --> $DIR/enum-to-numeric-cast.rs:45:13
+   |
+LL |     let _ = not_unit_only_or_fieldless as u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ an `as` expression can be used to convert enum types to numeric types only if the enum type is unit-only or field-less
+   |
+   = note: see https://doc.rust-lang.org/reference/items/enumerations.html#casting for more information
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

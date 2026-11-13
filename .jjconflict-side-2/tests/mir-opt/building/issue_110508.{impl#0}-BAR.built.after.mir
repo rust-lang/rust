@@ -1,0 +1,14 @@
+// MIR for `<impl at $DIR/issue_110508.rs:10:1: 10:9>::BAR` after built
+
+const <impl at $DIR/issue_110508.rs:10:1: 10:9>::BAR: Foo = {
+    let mut _0: Foo;
+    let mut _1: ();
+
+    bb0: {
+        StorageLive(_1);
+        _1 = ();
+        _0 = Foo::Bar(move _1);
+        StorageDead(_1);
+        return;
+    }
+}

@@ -1,0 +1,32 @@
+error: unreachable block in `if` or `while` expression
+  --> $DIR/expr_while.rs:7:20
+   |
+LL |       while {return} {
+   |  ____________------__^
+   | |            |
+   | |            any code following this expression is unreachable
+LL | |
+LL | |         println!("Hello, world!");
+LL | |     }
+   | |_____^ unreachable block in `if` or `while` expression
+   |
+note: the lint level is defined here
+  --> $DIR/expr_while.rs:4:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable block in `if` or `while` expression
+  --> $DIR/expr_while.rs:22:20
+   |
+LL |       while {return} {
+   |  ____________------__^
+   | |            |
+   | |            any code following this expression is unreachable
+LL | |
+LL | |         println!("I am dead.");
+LL | |     }
+   | |_____^ unreachable block in `if` or `while` expression
+
+error: aborting due to 2 previous errors
+

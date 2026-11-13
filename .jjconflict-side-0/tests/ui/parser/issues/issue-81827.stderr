@@ -1,0 +1,20 @@
+error: mismatched closing delimiter: `]`
+  --> $DIR/issue-81827.rs:7:23
+   |
+LL | fn r()->i{0|{#[cfg(r(0{]0
+   |               -       ^^ mismatched closing delimiter
+   |               |       |
+   |               |       unclosed delimiter
+   |               closing delimiter possibly meant for this
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-81827.rs:7:27
+   |
+LL | fn r()->i{0|{#[cfg(r(0{]0
+   |          -  -            ^
+   |          |  |
+   |          |  unclosed delimiter
+   |          unclosed delimiter
+
+error: aborting due to 2 previous errors
+

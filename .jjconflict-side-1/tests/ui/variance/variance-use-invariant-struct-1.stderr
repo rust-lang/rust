@@ -1,0 +1,34 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-use-invariant-struct-1.rs:10:5
+   |
+LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
+LL |     v
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
+   |
+   = help: consider adding the following bound: `'min: 'max`
+   = note: requirement occurs because of the type `SomeStruct<&()>`, which makes the generic argument `&()` invariant
+   = note: the struct `SomeStruct<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: lifetime may not live long enough
+  --> $DIR/variance-use-invariant-struct-1.rs:18:5
+   |
+LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
+LL |     v
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
+   |
+   = help: consider adding the following bound: `'min: 'max`
+   = note: requirement occurs because of the type `SomeStruct<&()>`, which makes the generic argument `&()` invariant
+   = note: the struct `SomeStruct<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 2 previous errors
+

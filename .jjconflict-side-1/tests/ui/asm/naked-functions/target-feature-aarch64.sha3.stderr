@@ -1,0 +1,10 @@
+error: instruction requires: i8mm
+   |
+note: instantiated into assembly here
+  --> <inline asm>:15:1
+   |
+LL | usdot   v0.4s, v2.16b, v2.4b[3]
+   | ^
+
+error: aborting due to 1 previous error
+

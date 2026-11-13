@@ -1,0 +1,22 @@
+- // MIR for `unreachable_mut` before DataflowConstProp
++ // MIR for `unreachable_mut` after DataflowConstProp
+  
+  fn unreachable_mut() -> ! {
+      let mut _0: !;
+      let _1: &mut Never;
+      let mut _2: &mut Never;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = const 1_usize as &mut Never (Transmute);
++         _2 = const {0x1 as &mut Never};
+          _1 = &mut (*_2);
+          StorageDead(_2);
+          unreachable;
+      }
+  }
+  

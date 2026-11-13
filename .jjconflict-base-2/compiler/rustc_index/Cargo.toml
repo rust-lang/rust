@@ -1,0 +1,24 @@
+[package]
+name = "rustc_index"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_index_macros = { path = "../rustc_index_macros" }
+rustc_macros = { path = "../rustc_macros", optional = true }
+rustc_serialize = { path = "../rustc_serialize", optional = true }
+smallvec = { version = "1.8.1", optional = true }
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+default = ["nightly"]
+nightly = [
+    "dep:rustc_macros",
+    "dep:rustc_serialize",
+    "dep:smallvec",
+    "rustc_index_macros/nightly",
+]
+rustc_randomized_layouts = []
+# tidy-alphabetical-end

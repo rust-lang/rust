@@ -1,0 +1,8 @@
+error: expected identifier, found `>`
+  --> $DIR/bound-single-question-mark.rs:1:10
+   |
+LL | fn f<T: ?>() {}
+   |          ^ expected identifier
+
+error: aborting due to 1 previous error
+

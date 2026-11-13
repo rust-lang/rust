@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/ambiguous-associated-type-error-78622.rs:6:5
+   |
+LL |     S::A::<f> {}
+   |     ^^^^
+   |
+help: if there were a trait named `Example` with associated type `A` implemented for `S`, you could use the fully-qualified path
+   |
+LL -     S::A::<f> {}
+LL +     <S as Example>::A::<f> {}
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.

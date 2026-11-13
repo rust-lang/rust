@@ -1,0 +1,7 @@
+[package]
+name = "subdep-crate-name"
+version = "0.1.0"
+authors = ["calebcartwright"]
+edition = "2018"
+
+[dependencies]

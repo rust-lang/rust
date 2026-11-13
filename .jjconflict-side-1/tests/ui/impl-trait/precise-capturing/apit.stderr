@@ -1,0 +1,8 @@
+error: `use<...>` precise capturing syntax not allowed in argument-position `impl Trait`
+  --> $DIR/apit.rs:1:26
+   |
+LL | fn hello(_: impl Sized + use<>) {}
+   |                          ^^^^^
+
+error: aborting due to 1 previous error
+

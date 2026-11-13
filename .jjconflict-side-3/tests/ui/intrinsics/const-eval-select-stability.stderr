@@ -1,0 +1,14 @@
+error: const function that might be (indirectly) exposed to stable cannot use `#[feature(const_eval_select)]`
+  --> $DIR/const-eval-select-stability.rs:17:5
+   |
+LL |     const_eval_select((), nothing, log);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if the function is not (yet) meant to be exposed to stable const contexts, add `#[rustc_const_unstable]`
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | pub const fn hey() {
+   |
+
+error: aborting due to 1 previous error
+

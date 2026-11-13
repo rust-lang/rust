@@ -1,0 +1,22 @@
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic-no_std-extern-std.rs:12:17
+   |
+LL |     std::panic!(123);
+   |                 ^^^
+   |
+   = note: this usage of `std::panic!()` is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/panic-macro-consistency.html>
+   = note: `#[warn(non_fmt_panics)]` (part of `#[warn(rust_2021_compatibility)]`) on by default
+help: add a "{}" format string to `Display` the message
+   |
+LL |     std::panic!("{}", 123);
+   |                 +++++
+help: or use std::panic::panic_any instead
+   |
+LL -     std::panic!(123);
+LL +     std::panic::panic_any(123);
+   |
+
+warning: 1 warning emitted
+

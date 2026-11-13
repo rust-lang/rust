@@ -1,0 +1,140 @@
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:5:10
+   |
+LL |     loop 'a: {}
+   |          ^^^ not supported here
+   |
+help: if you meant to label the loop, move this label before the loop
+   |
+LL -     loop 'a: {}
+LL +     'a: loop {}
+   |
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:8:17
+   |
+LL |     while false 'a: {}
+   |                 ^^^ not supported here
+   |
+help: if you meant to label the loop, move this label before the loop
+   |
+LL -     while false 'a: {}
+LL +     'a: while false {}
+   |
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:11:18
+   |
+LL |     for i in [0] 'a: {}
+   |                  ^^^ not supported here
+   |
+help: if you meant to label the loop, move this label before the loop
+   |
+LL -     for i in [0] 'a: {}
+LL +     'a: for i in [0] {}
+   |
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:16:31
+   |
+LL |         while break 'a 'b: {} 'c: {}
+   |                               ^^^ not supported here
+   |
+help: if you meant to label the loop, move this label before the loop
+   |
+LL -         while break 'a 'b: {} 'c: {}
+LL +         'c: while break 'a 'b: {} {}
+   |
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:19:33
+   |
+LL |         while break 'a ('b: {}) 'c: {}
+   |                                 ^^^ not supported here
+   |
+help: if you meant to label the loop, move this label before the loop
+   |
+LL -         while break 'a ('b: {}) 'c: {}
+LL +         'c: while break 'a ('b: {}) {}
+   |
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:26:29
+   |
+LL |         while (break 'a {}) 'c: {}
+   |                             ^^^ not supported here
+   |
+help: if you meant to label the loop, move this label before the loop
+   |
+LL -         while (break 'a {}) 'c: {}
+LL +         'c: while (break 'a {}) {}
+   |
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:32:14
+   |
+LL |     'a: loop 'b: {}
+   |              ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:35:21
+   |
+LL |     'a: while false 'b: {}
+   |                     ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:38:22
+   |
+LL |     'a: for i in [0] 'b: {}
+   |                      ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:43:35
+   |
+LL |         'd: while break 'a 'b: {} 'c: {}
+   |                                   ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:46:37
+   |
+LL |         'd: while break 'a ('b: {}) 'c: {}
+   |                                     ^^^ not supported here
+
+error: block label not supported here
+  --> $DIR/label-on-block-suggest-move.rs:53:33
+   |
+LL |         'd: while (break 'a {}) 'c: {}
+   |                                 ^^^ not supported here
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/label-on-block-suggest-move.rs:83:9
+   |
+LL |     'a: 'b: {}
+   |         ^^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: consider removing the label
+   |
+LL -     'a: 'b: {}
+LL +     'b: {}
+   |
+
+error: parentheses are required around this expression to avoid confusion with a labeled break expression
+  --> $DIR/label-on-block-suggest-move.rs:86:24
+   |
+LL |     loop { while break 'b: {} {} }
+   |                        ^^^^^^
+   |
+help: wrap the expression in parentheses
+   |
+LL |     loop { while break ('b: {}) {} }
+   |                        +      +
+
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/label-on-block-suggest-move.rs:86:18
+   |
+LL |     loop { while break 'b: {} {} }
+   |                  ^^^^^^^^^^^^ unlabeled `break` in the condition of a `while` loop
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0590`.

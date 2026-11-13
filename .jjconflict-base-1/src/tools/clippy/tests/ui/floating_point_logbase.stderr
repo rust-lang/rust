@@ -1,0 +1,35 @@
+error: log base can be expressed more clearly
+  --> tests/ui/floating_point_logbase.rs:7:13
+   |
+LL |     let _ = x.ln() / y.ln();
+   |             ^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
+   |
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
+
+error: log base can be expressed more clearly
+  --> tests/ui/floating_point_logbase.rs:9:13
+   |
+LL |     let _ = (x as f32).ln() / y.ln();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x as f32).log(y)`
+
+error: log base can be expressed more clearly
+  --> tests/ui/floating_point_logbase.rs:11:13
+   |
+LL |     let _ = x.log2() / y.log2();
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
+
+error: log base can be expressed more clearly
+  --> tests/ui/floating_point_logbase.rs:13:13
+   |
+LL |     let _ = x.log10() / y.log10();
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
+
+error: log base can be expressed more clearly
+  --> tests/ui/floating_point_logbase.rs:15:13
+   |
+LL |     let _ = x.log(5f32) / y.log(5f32);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.log(y)`
+
+error: aborting due to 5 previous errors
+

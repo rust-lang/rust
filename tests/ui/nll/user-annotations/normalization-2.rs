@@ -1,9 +1,5 @@
 // Make sure we honor region constraints when normalizing type annotations.
 
-//@ check-fail
-
-#![feature(more_qualified_paths)]
-
 trait Trait {
     type Assoc;
 }

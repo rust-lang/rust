@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `where`
+  --> $DIR/keyword-where-as-identifier.rs:4:9
+   |
+LL |     let where = "foo";
+   |         ^^^^^ expected identifier, found keyword
+   |
+help: escape `where` to use it as an identifier
+   |
+LL |     let r#where = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

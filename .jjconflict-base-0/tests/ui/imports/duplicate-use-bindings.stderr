@@ -1,0 +1,13 @@
+error[E0252]: the name `X` is defined multiple times
+  --> $DIR/duplicate-use-bindings.rs:5:9
+   |
+LL |     pub use self::bar::X;
+   |             ------------ previous import of the type `X` here
+LL |     use self::bar::X;
+   |         ^^^^^^^^^^^^ `X` reimported here
+   |
+   = note: `X` must be defined only once in the type namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0252`.

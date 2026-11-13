@@ -1,0 +1,39 @@
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'d` due to conflicting requirements
+  --> $DIR/normalization-bounds-error.rs:12:31
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'d` as defined here...
+  --> $DIR/normalization-bounds-error.rs:12:14
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   |              ^^
+note: ...but the lifetime must also be valid for the lifetime `'a` as defined here...
+  --> $DIR/normalization-bounds-error.rs:12:18
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   |                  ^^
+note: ...so that the types are compatible
+  --> $DIR/normalization-bounds-error.rs:12:31
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `Visitor<'d>`
+              found `Visitor<'_>`
+
+error: lifetime may not live long enough
+  --> $DIR/normalization-bounds-error.rs:12:1
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   | ^^^^^^^^^^^^^--^^--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |            |   |
+   | |            |   lifetime `'a` defined here
+   | |            lifetime `'d` defined here
+   | requires that `'d` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'d: 'a`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0803`.

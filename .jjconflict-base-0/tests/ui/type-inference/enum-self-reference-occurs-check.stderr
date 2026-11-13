@@ -1,0 +1,9 @@
+error[E0275]: overflow assigning `Clam<_>` to `_`
+  --> $DIR/enum-self-reference-occurs-check.rs:11:17
+   |
+LL |     c = Clam::A(c);
+   |                 ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

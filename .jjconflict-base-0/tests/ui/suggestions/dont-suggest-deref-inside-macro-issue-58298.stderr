@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-deref-inside-macro-issue-58298.rs:5:14
+   |
+LL |           warn(format!("unsupported intrinsic {}", $intrinsic));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found `String`
+...
+LL | /     intrinsic_match! {
+LL | |         "abc"
+LL | |     };
+   | |_____- in this macro invocation
+   |
+   = note: this error originates in the macro `format` which comes from the expansion of the macro `intrinsic_match` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

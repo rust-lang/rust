@@ -1,0 +1,64 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            CHAR "'c'u32"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            STRING "\"string\"invalid"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            BYTE "b'b'_suff"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            BYTE_STRING "b\"bs\"invalid"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

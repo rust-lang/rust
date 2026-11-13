@@ -1,0 +1,35 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/interior-mutability.rs:40:26
+   |
+LL |     let x: &'static _ = &X;
+   |            ----------    ^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/interior-mutability.rs:41:26
+   |
+LL |     let y: &'static _ = &Y;
+   |            ----------    ^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |     let z: &'static _ = &Z;
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/interior-mutability.rs:42:26
+   |
+LL |     let z: &'static _ = &Z;
+   |            ----------    ^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

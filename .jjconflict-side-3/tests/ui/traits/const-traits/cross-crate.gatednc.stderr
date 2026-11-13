@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `cross_crate::NonConst: [const] cross_crate::MyTrait` is not satisfied
+  --> $DIR/cross-crate.rs:19:14
+   |
+LL |     NonConst.func();
+   |              ^^^^
+   |
+note: trait `MyTrait` is implemented but not `const`
+  --> $DIR/auxiliary/cross-crate.rs:11:1
+   |
+LL | impl MyTrait for NonConst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

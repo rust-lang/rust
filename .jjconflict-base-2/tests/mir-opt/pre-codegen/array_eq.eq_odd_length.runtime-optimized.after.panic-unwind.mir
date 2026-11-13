@@ -1,0 +1,21 @@
+// MIR for `eq_odd_length` after runtime-optimized
+
+fn eq_odd_length(_1: &[u8; 3], _2: &[u8; 3]) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    scope 1 (inlined std::cmp::impls::<impl PartialEq for &[u8; 3]>::eq) {
+        scope 2 (inlined array::equality::<impl PartialEq for [u8; 3]>::eq) {
+            scope 3 (inlined <u8 as array::equality::SpecArrayEq<u8, 3>>::spec_eq) {
+            }
+        }
+    }
+
+    bb0: {
+        _0 = raw_eq::<[u8; 3]>(move _1, move _2) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}

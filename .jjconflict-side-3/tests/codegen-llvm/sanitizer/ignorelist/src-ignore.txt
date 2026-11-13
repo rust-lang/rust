@@ -1,0 +1,2 @@
+[cfi]
+src:*src-ignore*

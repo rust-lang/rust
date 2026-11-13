@@ -1,0 +1,10 @@
+error: expected type, found `123`
+  --> $DIR/diagnostics-parenthesized-type-arguments-issue-120892-2.rs:2:45
+   |
+LL |   foo::/* definitely not harmful comment */(123, "foo") -> (u32);
+   |      ---------------------------------------^^^ expected type
+   |      |
+   |      while parsing this parenthesized list of type arguments starting here
+
+error: aborting due to 1 previous error
+

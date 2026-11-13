@@ -1,0 +1,19 @@
+error[E0369]: cannot add `{integer}` to `Foo`
+  --> $DIR/recursion3.rs:10:29
+   |
+LL |     let x: u32 = foo(false) + 42;
+   |                  ---------- ^ -- {integer}
+   |                  |
+   |                  Foo
+
+error[E0369]: cannot add `{integer}` to `impl Debug`
+  --> $DIR/recursion3.rs:18:29
+   |
+LL |     let x: u32 = bar(false) + 42;
+   |                  ---------- ^ -- {integer}
+   |                  |
+   |                  impl Debug
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

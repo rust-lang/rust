@@ -1,0 +1,25 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// Test that coverage instrumentation can gracefully handle functions that end
+   LL|       |// up having no relevant spans, without crashing the compiler or causing
+   LL|       |// `llvm-cov` to fail.
+   LL|       |//
+   LL|       |// This was originally a regression test for issues such as #118643 and #118662.
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    affected_function()();
+   LL|      1|}
+   LL|       |
+   LL|       |macro_rules! macro_that_defines_a_function {
+   LL|       |    (fn $name:ident () $body:tt) => {
+   LL|       |        fn $name () -> impl Fn() $body
+   LL|       |    }
+   LL|       |}
+   LL|       |
+   LL|       |macro_that_defines_a_function! {
+   LL|      1|    fn affected_function() {
+   LL|       |        || ()
+   LL|       |    }
+   LL|       |}
+

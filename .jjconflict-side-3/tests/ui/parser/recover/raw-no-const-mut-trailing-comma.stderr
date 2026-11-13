@@ -1,0 +1,22 @@
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `const`, `mut`, `{`, or an operator, found `x`
+  --> $DIR/raw-no-const-mut-trailing-comma.rs:4:29
+   |
+LL |     takes_raw_ptr_args(&raw x,)
+   |                             ^ expected one of 10 possible tokens
+   |
+help: `&raw` must be followed by `const` or `mut` to be a raw reference expression
+   |
+LL |     takes_raw_ptr_args(&raw const x,)
+   |                             +++++
+LL |     takes_raw_ptr_args(&raw mut x,)
+   |                             +++
+
+error[E0425]: cannot find function `takes_raw_ptr_args` in this scope
+  --> $DIR/raw-no-const-mut-trailing-comma.rs:4:5
+   |
+LL |     takes_raw_ptr_args(&raw x,)
+   |     ^^^^^^^^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

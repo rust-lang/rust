@@ -1,0 +1,398 @@
+use std::path::PathBuf;
+use std::sync::LazyLock;
+use std::{fs, process};
+
+use anyhow::Result;
+use clap::Parser;
+use ignore::Walk;
+use regex::Regex;
+
+#[derive(Parser)]
+struct Cli {
+    /// File or directory to check
+    path: PathBuf,
+    /// Modify files that do not comply
+    #[arg(long)]
+    overwrite: bool,
+    /// This reflows file even when it complies (with one sentence per line)
+    #[arg(long)]
+    reflow_harder: bool,
+    /// Applies to lines that are to be split
+    #[arg(long, default_value_t = 100)]
+    line_length_limit: usize,
+}
+
+static REGEX_IGNORE_END: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\.|\?|;|!|,|\-)$").unwrap());
+static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
+static REGEX_SPLIT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^\.\d\-]\.|[^r\~]\?|!)\s").unwrap());
+// list elements, numbered (1.) or not  (- and *)
+static REGEX_LIST_ENTRY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*|\d\))\s+").unwrap());
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    let mut compliant = Vec::new();
+    let mut not_compliant = Vec::new();
+    let mut made_compliant = Vec::new();
+    for result in Walk::new(cli.path) {
+        let entry = result?;
+        if entry.file_type().expect("no stdin").is_dir() {
+            continue;
+        }
+        let path = entry.into_path();
+        let Some(extension) = path.extension() else { continue };
+        if extension != "md" {
+            continue;
+        }
+        let old = fs::read_to_string(&path)?;
+        let mut new = comply(&old);
+        if cli.reflow_harder {
+            new = lengthen_lines(&new, cli.line_length_limit)
+        }
+        if new == old {
+            compliant.push(path.clone());
+        } else if cli.overwrite {
+            fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+            made_compliant.push(path.clone());
+        } else {
+            not_compliant.push(path.clone());
+        }
+    }
+    if !compliant.is_empty() {
+        display("compliant", &compliant);
+    }
+    if !made_compliant.is_empty() {
+        display("made compliant", &made_compliant);
+    }
+    if !not_compliant.is_empty() {
+        display("not compliant", &not_compliant);
+        process::exit(1);
+    }
+    Ok(())
+}
+
+fn display(header: &str, paths: &[PathBuf]) {
+    println!("{header}:");
+    for element in paths {
+        println!("- {}", element.display());
+    }
+}
+
+fn ignore(line: &str) -> bool {
+    REGEX_IGNORE_LINK_TARGETS.is_match(line)
+        || line.to_lowercase().contains("e.g.")
+        || line.to_lowercase().contains("n.b.")
+        || line.contains(" etc.")
+        || line.contains("i.e.")
+        || line.contains("et. al")
+        || line.contains("<!--")
+        || line.contains("-->")
+        || line.contains('|')
+        || line.trim_start().starts_with('>')
+        || line.starts_with('#')
+        || line.trim().is_empty()
+}
+
+fn comply(content: &str) -> String {
+    let content: Vec<_> = content.lines().map(std::borrow::ToOwned::to_owned).collect();
+    let mut new_content = content.clone();
+    let mut new_n = 0;
+    let mut in_code_block = false;
+    for (n, line) in content.into_iter().enumerate() {
+        if n != 0 {
+            new_n += 1;
+        }
+        if line.trim_start().starts_with("```") {
+            in_code_block = !in_code_block;
+            continue;
+        }
+        if in_code_block || ignore(&line) {
+            continue;
+        }
+        if REGEX_SPLIT.is_match(&line) {
+            let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
+                regex_match.len()
+            } else {
+                line.find(|ch: char| !ch.is_whitespace()).unwrap()
+            };
+            let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
+            let first = newly_split_lines.next().unwrap().trim_end().to_owned();
+            let mut remaining: Vec<_> = newly_split_lines
+                .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
+                .collect();
+            let mut new_lines = Vec::new();
+            new_lines.push(first);
+            new_lines.append(&mut remaining);
+            new_content.splice(new_n..=new_n, new_lines.clone());
+            new_n += new_lines.len() - 1;
+        }
+    }
+    new_content.join("\n") + "\n"
+}
+
+fn lengthen_lines(content: &str, limit: usize) -> String {
+    let content: Vec<_> = content.lines().map(std::borrow::ToOwned::to_owned).collect();
+    let mut new_content = content.clone();
+    let mut new_n = 0;
+    let mut in_code_block = false;
+    let mut in_html_div = false;
+    let mut skip_next = false;
+    for (n, line) in content.iter().enumerate() {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if n != 0 {
+            new_n += 1;
+        }
+        if line.trim_start().starts_with("```") {
+            in_code_block = !in_code_block;
+            continue;
+        }
+        if in_code_block {
+            continue;
+        }
+        if line.trim_end().ends_with("</div>") {
+            in_html_div = false;
+            continue;
+        }
+        if line.trim_start().starts_with("<div") {
+            in_html_div = true;
+            continue;
+        }
+        if in_html_div {
+            continue;
+        }
+        if line.trim_end().ends_with("<br>") {
+            continue;
+        }
+        if ignore(line) || REGEX_SPLIT.is_match(line) {
+            continue;
+        }
+        let Some(next_line) = content.get(n + 1) else {
+            continue;
+        };
+        if next_line.trim_start().starts_with("```") {
+            continue;
+        }
+        if ignore(next_line)
+            || REGEX_LIST_ENTRY.is_match(next_line)
+            || REGEX_IGNORE_END.is_match(line)
+        {
+            continue;
+        }
+        if line.len() + next_line.len() < limit {
+            new_content[new_n] = format!("{line} {}", next_line.trim_start());
+            new_content.remove(new_n + 1);
+            skip_next = true;
+            continue;
+        }
+        const SEP: &str = ", ";
+        let indent = next_line.find(|ch: char| !ch.is_whitespace()).unwrap();
+        if next_line.contains(SEP) {
+            let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
+            if line.len() + before_sep.len() < limit - SEP.len() {
+                new_content[new_n] =
+                    format!("{line} {}{}", before_sep.trim_start(), SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] = format!("{:indent$}{after_sep}", "");
+                skip_next = true;
+            }
+        } else if line.contains(SEP) {
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            if after_sep.len() + next_line.len() < limit {
+                new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
+                new_n += 1;
+                new_content[new_n] =
+                    format!("{:indent$}{after_sep} {}", "", next_line.trim_start());
+                skip_next = true;
+            }
+        }
+    }
+    new_content.join("\n") + "\n"
+}
+
+#[test]
+fn test_sembr() {
+    let original = "
+# some. heading
+must! be. split?
+1. ignore a dot after number. but no further
+ignore | tables
+ignore e.g. and
+ignore i.e. and
+ignore etc. and
+ignore E.g. too
+- list. entry
+ * list. entry
+  1) list. entry
+```
+some code. block
+```
+sentence with *italics* should not be ignored. truly.
+git log main.. compiler
+ foo.   bar.  baz
+o? whatever
+r? @reviewer
+ r? @reviewer
+~? diagnostic
+";
+    let expected = "
+# some. heading
+must!
+be.
+split?
+1. ignore a dot after number.
+   but no further
+ignore | tables
+ignore e.g. and
+ignore i.e. and
+ignore etc. and
+ignore E.g. too
+- list.
+  entry
+ * list.
+   entry
+  1) list.
+     entry
+```
+some code. block
+```
+sentence with *italics* should not be ignored.
+truly.
+git log main.. compiler
+ foo.
+   bar.
+  baz
+o?
+whatever
+r? @reviewer
+ r? @reviewer
+~? diagnostic
+";
+    assert_eq!(expected, comply(original));
+}
+
+#[test]
+fn test_lengthen_lines() {
+    let original = "\
+do not split
+short sentences
+<div class='warning'>
+a bit of text inside
+</div>
+<div></div>
+preserve next line
+1. one
+
+preserve next line
+- two
+
+preserve next line
+* three
+
+do not mess with code block chars
+```
+leave the
+text alone
+```
+
+<!-- ignore
+html comment opening
+--> ignore
+html comment closing
+
+ handle the
+ indented well
+
+[a target]: https://example.com
+[another target]: https://example.com
+";
+    let expected = "\
+do not split short sentences
+<div class='warning'>
+a bit of text inside
+</div>
+<div></div>
+preserve next line
+1. one
+
+preserve next line
+- two
+
+preserve next line
+* three
+
+do not mess with code block chars
+```
+leave the
+text alone
+```
+
+<!-- ignore
+html comment opening
+--> ignore
+html comment closing
+
+ handle the indented well
+
+[a target]: https://example.com
+[another target]: https://example.com
+";
+    assert_eq!(expected, lengthen_lines(original, 50));
+}
+
+#[test]
+#[ignore]
+fn should_pass() {
+    let original = "if you see `input isn't interesting! verify interesting-ness test`.";
+    assert_eq!(original, comply(original));
+}
+
+#[test]
+fn split_on_comma_of_current_line() {
+    let original = "
+Each derived value has a dependency, on other values, which could themselves be either base or
+derived.
+
+  Each derived value has a dependency, on other values, which could themselves be either base or
+  derived.
+";
+    let expected = "
+Each derived value has a dependency, on other values,
+which could themselves be either base or derived.
+
+  Each derived value has a dependency, on other values,
+  which could themselves be either base or derived.
+";
+    assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+fn split_on_comma_of_next_line() {
+    let original = "
+Because of canonicalization of regions and
+inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
+
+  Because of canonicalization of regions and
+  inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
+";
+    let expected = "
+Because of canonicalization of regions and inference variables,
+encountering a cycle doesn't mean that we would get an infinite proof tree.
+
+  Because of canonicalization of regions and inference variables,
+  encountering a cycle doesn't mean that we would get an infinite proof tree.
+";
+    assert_eq!(expected, lengthen_lines(original, 100))
+}
+
+#[test]
+fn should_split() {
+    let original = "the queries that we do, as well as the **query DAG**. The";
+    let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
+    assert_eq!(expected, comply(original));
+}

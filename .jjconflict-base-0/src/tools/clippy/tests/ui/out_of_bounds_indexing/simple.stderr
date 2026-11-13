@@ -1,0 +1,41 @@
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/simple.rs:7:11
+   |
+LL |     &x[..=4];
+   |           ^
+   |
+   = note: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::out_of_bounds_indexing)]`
+
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/simple.rs:10:11
+   |
+LL |     &x[1..5];
+   |           ^
+
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/simple.rs:13:8
+   |
+LL |     &x[5..];
+   |        ^
+
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/simple.rs:16:10
+   |
+LL |     &x[..5];
+   |          ^
+
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/simple.rs:19:8
+   |
+LL |     &x[5..].iter().map(|x| 2 * x).collect::<Vec<i32>>();
+   |        ^
+
+error: range is out of bounds
+  --> tests/ui/out_of_bounds_indexing/simple.rs:22:12
+   |
+LL |     &x[0..=4];
+   |            ^
+
+error: aborting due to 6 previous errors
+

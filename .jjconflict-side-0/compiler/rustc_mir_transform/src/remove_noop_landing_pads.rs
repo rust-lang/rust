@@ -1,0 +1,191 @@
+use rustc_index::bit_set::DenseBitSet;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, Instance, TyCtxt};
+use tracing::{debug, instrument};
+
+use crate::PassPolicy;
+use crate::patch::MirPatch;
+
+/// A pass that removes noop landing pads and replaces jumps to them with
+/// `UnwindAction::Continue`. This is important because otherwise LLVM generates
+/// terrible code for these.
+pub(super) struct RemoveNoopLandingPads;
+
+impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
+    fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
+        // FIXME: Should this really run on opt-level 0? Or is the LLVM code so terrible we want this even with
+        // "no" optimizations?
+        PassPolicy::optional(ctx.panic_strategy().unwinds())
+    }
+
+    #[instrument(level = "debug", skip(self, tcx, body))]
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let def_id = body.source.def_id();
+        debug!(?def_id);
+
+        // Skip the pass if there are no blocks with a resume terminator.
+        let has_resume = body
+            .basic_blocks
+            .iter_enumerated()
+            .any(|(_bb, block)| matches!(block.terminator().kind, TerminatorKind::UnwindResume));
+        if !has_resume {
+            debug!("no resume block in MIR");
+            return;
+        }
+
+        let nop_landing_pads = find_noop_landing_pads(tcx, body, None);
+
+        if nop_landing_pads.is_empty() {
+            debug!("no nop landing pads in MIR");
+            return;
+        }
+
+        // make sure there's a resume block without any statements
+        let resume_block = {
+            let mut patch = MirPatch::new(body);
+            let resume_block = patch.resume_block();
+            patch.apply(body);
+            resume_block
+        };
+        debug!(?resume_block);
+
+        let basic_blocks = body.basic_blocks.as_mut();
+        for (bb, bbdata) in basic_blocks.iter_enumerated_mut() {
+            debug!("processing {:?}", bb);
+
+            if let Some(unwind) = bbdata.terminator_mut().unwind_mut()
+                && let UnwindAction::Cleanup(unwind_bb) = *unwind
+                && nop_landing_pads.contains(unwind_bb)
+            {
+                debug!("    removing noop landing pad");
+                *unwind = UnwindAction::Continue;
+            }
+
+            bbdata.terminator_mut().successors_mut(|target| {
+                if *target != resume_block && nop_landing_pads.contains(*target) {
+                    debug!("    folding noop jump to {:?} to resume block", target);
+                    *target = resume_block;
+                }
+            });
+        }
+    }
+}
+
+impl RemoveNoopLandingPads {
+    fn is_nop_landing_pad<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        bbdata: &BasicBlockData<'tcx>,
+        body: &Body<'tcx>,
+        nop_landing_pads: &DenseBitSet<BasicBlock>,
+        // Extra post-monomorphization info that allows more cases to be identified.
+        extra: Option<(Instance<'tcx>, ty::TypingEnv<'tcx>)>,
+    ) -> bool {
+        for stmt in &bbdata.statements {
+            match &stmt.kind {
+                StatementKind::FakeRead(..)
+                | StatementKind::StorageLive(_)
+                | StatementKind::StorageDead(_)
+                | StatementKind::PlaceMention(..)
+                | StatementKind::AscribeUserType(..)
+                | StatementKind::Coverage(..)
+                | StatementKind::ConstEvalCounter
+                | StatementKind::BackwardIncompatibleDropHint { .. }
+                | StatementKind::Nop => {
+                    // These are all noops in a landing pad
+                }
+
+                StatementKind::Assign((place, Rvalue::Use(..) | Rvalue::Discriminant(_))) => {
+                    if place.as_local().is_some() {
+                        // Writing to a local (e.g., a drop flag) does not
+                        // turn a landing pad to a non-nop
+                    } else {
+                        return false;
+                    }
+                }
+
+                StatementKind::Assign { .. }
+                | StatementKind::SetDiscriminant { .. }
+                | StatementKind::Intrinsic(..) => {
+                    return false;
+                }
+            }
+        }
+
+        let terminator = bbdata.terminator();
+        match terminator.kind {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::UnwindResume
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. } => {
+                terminator.successors().all(|succ| nop_landing_pads.contains(succ))
+            }
+            TerminatorKind::Drop { place, .. } => {
+                if let Some((instance, typing_env)) = extra {
+                    let ty = place.ty(body, tcx).ty;
+                    debug!("monomorphize: instance={instance:?}");
+                    let ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                        tcx,
+                        typing_env,
+                        ty::EarlyBinder::bind(tcx, ty),
+                    );
+                    let drop_fn = Instance::resolve_drop_glue(tcx, ty);
+                    if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_fn.def {
+                        // no need to drop anything, if all of our successors are also no-op then we
+                        // can be skipped.
+                        return terminator.successors().all(|succ| nop_landing_pads.contains(succ));
+                    }
+                }
+
+                false
+            }
+            TerminatorKind::CoroutineDrop
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::Return
+            | TerminatorKind::UnwindTerminate(_)
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Call { .. }
+            | TerminatorKind::TailCall { .. }
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::InlineAsm { .. } => false,
+        }
+    }
+}
+
+/// Hook impl for [`TyCtxt::find_noop_landing_pads_for_instance`].
+pub(crate) fn find_noop_landing_pads_for_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    instance: Instance<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+) -> DenseBitSet<BasicBlock> {
+    find_noop_landing_pads(tcx, body, Some((instance, typing_env)))
+}
+
+fn find_noop_landing_pads<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    extra: Option<(Instance<'tcx>, ty::TypingEnv<'tcx>)>,
+) -> DenseBitSet<BasicBlock> {
+    let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
+
+    // This is a post-order traversal, so that if A post-dominates B
+    // then A will be visited before B.
+    let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
+    for bb in postorder {
+        let is_nop_landing_pad = RemoveNoopLandingPads.is_nop_landing_pad(
+            tcx,
+            &body.basic_blocks[bb],
+            body,
+            &nop_landing_pads,
+            extra,
+        );
+        if is_nop_landing_pad {
+            nop_landing_pads.insert(bb);
+        }
+        debug!("    is_nop_landing_pad({:?}) = {}", bb, is_nop_landing_pad);
+    }
+
+    nop_landing_pads
+}

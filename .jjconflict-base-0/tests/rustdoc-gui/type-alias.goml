@@ -1,0 +1,7 @@
+// This test ensures that we correctly generate links to methods on type aliases.
+go-to: "file://" + |DOC_PATH| + "/test_docs/tyalias/type.Y.html"
+
+// It's generated with JS so we need to wait for it to be done generating.
+wait-for: "#implementations"
+// We check that it's "#method." and not "#tymethod.".
+assert-text: ('#method\.blob a.fn[href="#method.blob"]', "blob")

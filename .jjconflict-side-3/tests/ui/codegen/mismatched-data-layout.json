@@ -1,0 +1,12 @@
+{
+    "llvm-target": "x86_64-unknown-none-gnu",
+    "data-layout": "e-m:e-i64:64-f80:128-n8:16:32:64-S128",
+    "arch": "x86_64",
+    "target-endian": "little",
+    "target-pointer-width": 64,
+    "os": "none",
+    "linker-flavor": "ld.lld",
+    "linker": "rust-lld",
+    "executables": true
+}
+

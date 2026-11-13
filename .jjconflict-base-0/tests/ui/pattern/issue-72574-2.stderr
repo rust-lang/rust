@@ -1,0 +1,38 @@
+error: `_x @` is not allowed in a tuple struct
+  --> $DIR/issue-72574-2.rs:6:20
+   |
+LL |         Binder(_a, _x @ ..) => {}
+   |                    ^^^^^^^ this is only allowed in slice patterns
+   |
+   = help: remove this and bind each tuple field independently
+help: if you don't need to use the contents of _x, discard the tuple's remaining fields
+   |
+LL -         Binder(_a, _x @ ..) => {}
+LL +         Binder(_a, ..) => {}
+   |
+
+error: `..` patterns are not allowed here
+  --> $DIR/issue-72574-2.rs:6:25
+   |
+LL |         Binder(_a, _x @ ..) => {}
+   |                         ^^
+   |
+   = note: only allowed in tuple, tuple struct, and slice patterns
+
+error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 3 fields
+  --> $DIR/issue-72574-2.rs:6:16
+   |
+LL | struct Binder(i32, i32, i32);
+   |               ---  ---  --- tuple struct has 3 fields
+...
+LL |         Binder(_a, _x @ ..) => {}
+   |                ^^  ^^^^^^^ expected 3 fields, found 2
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         Binder(_a, _x @ .., _) => {}
+   |                           +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0023`.

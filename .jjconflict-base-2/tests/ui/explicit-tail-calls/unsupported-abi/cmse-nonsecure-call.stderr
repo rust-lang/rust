@@ -1,0 +1,34 @@
+error[E0781]: the `"cmse-nonsecure-call"` ABI is only allowed on function pointers
+  --> $DIR/cmse-nonsecure-call.rs:21:1
+   |
+LL | extern "cmse-nonsecure-call" fn become_nonsecure_call_1(x: u32, y: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ABI does not support guaranteed tail calls
+  --> $DIR/cmse-nonsecure-call.rs:25:9
+   |
+LL |         become f(1, 2)
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `become` is not supported for `extern "cmse-nonsecure-call"` functions
+
+error: mismatched function ABIs
+  --> $DIR/cmse-nonsecure-call.rs:34:9
+   |
+LL |         become f(1, 2)
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have the same ABI
+   = note: caller ABI is `"C"`, while callee ABI is `"cmse-nonsecure-call"`
+
+error: ABI does not support guaranteed tail calls
+  --> $DIR/cmse-nonsecure-call.rs:34:9
+   |
+LL |         become f(1, 2)
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `become` is not supported for `extern "cmse-nonsecure-call"` functions
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0781`.
