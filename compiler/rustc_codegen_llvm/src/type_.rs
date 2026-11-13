@@ -176,6 +176,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMArrayType2(ty, len) }
     }
 
+    pub(crate) fn type_byte_array(&self, len: Size) -> Type<'ll> {
+        self.type_array(self.type_i8(), len.bytes())
+    }
+
     /// Prefer more specific methods (e.g. `int_width`, `float_type`, `vector_element_type`) when
     /// possible.
     pub(crate) fn type_kind(&self, ty: Type<'ll>) -> TypeKind {
