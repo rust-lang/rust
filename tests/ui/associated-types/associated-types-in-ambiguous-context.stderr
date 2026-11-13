@@ -31,9 +31,6 @@ LL | type X = std::ops::Deref::Target;
 help: use fully-qualified syntax
    |
 LL - type X = std::ops::Deref::Target;
-LL + type X = <ByteStr as Deref>::Target;
-   |
-LL - type X = std::ops::Deref::Target;
 LL + type X = <ByteString as Deref>::Target;
    |
 LL - type X = std::ops::Deref::Target;
@@ -41,6 +38,9 @@ LL + type X = <CString as Deref>::Target;
    |
 LL - type X = std::ops::Deref::Target;
 LL + type X = <IoSlice<'_> as Deref>::Target;
+   |
+LL - type X = std::ops::Deref::Target;
+LL + type X = <IoSliceMut<'_> as Deref>::Target;
    |
    = and N other candidates
 
