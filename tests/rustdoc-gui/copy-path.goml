@@ -1,5 +1,6 @@
-// Checks that the "copy path" button is not triggering JS error and its display
-// isn't broken and the copied path is as expected.
+// Checks that the "copy path" button is not triggering JS error and its display isn't broken and
+// the copied path is as expected. Also checks that the button is only present on the expected
+// pages.
 go-to: "file://" + |DOC_PATH| + "/test_docs/foreign_impl_order/trait.Foo.html"
 permissions: ["clipboard-read"]
 
@@ -7,6 +8,7 @@ permissions: ["clipboard-read"]
 assert-clipboard: ""
 
 // First we store the size of the button before we click on it.
+wait-for: "#copy-path"
 store-size: ("#copy-path", {"width": width, "height": height})
 click: "#copy-path"
 // We wait for the new text to appear.
@@ -22,6 +24,7 @@ assert-size: ("#copy-path:not(.clicked)", {"width": |width|, "height": |height|}
 
 // Check the path for a module.
 go-to: "file://" + |DOC_PATH| + "/test_docs/foreign_impl_order/index.html"
+wait-for: "#copy-path"
 click: "#copy-path"
 // We wait for the new text to appear.
 wait-for: "#copy-path.clicked"
@@ -30,8 +33,49 @@ assert-clipboard: "test_docs::foreign_impl_order"
 
 // Check the path for the crate.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+wait-for: "#copy-path"
 click: "#copy-path"
 // We wait for the new text to appear.
 wait-for: "#copy-path.clicked"
 // We check that the clipboard value is the expected one.
 assert-clipboard: "test_docs"
+
+// Now check the presence of the "copy path" button. Above we already checked for items, crate
+// and modules.
+define-function: ("check-copy-path-presence", [path], block {
+    go-to: "file://" + |DOC_PATH| + "/test_docs/" + |path|
+    wait-for: "#copy-path"
+})
+
+// Keyword
+call-function: ("check-copy-path-presence", {"path": "keyword.for.html"})
+// Attribute
+call-function: ("check-copy-path-presence", {"path": "attribute.forbid.html"})
+// Macro
+call-function: ("check-copy-path-presence", {"path": "macro.attr_macro.html"})
+// Constant
+call-function: ("check-copy-path-presence", {"path": "constant.CONST.html"})
+
+// And now we check its absence.
+define-function: ("check-copy-path-absence", [path], block {
+    go-to: "file://" + |DOC_PATH| + "/" + |path|
+    expect-failure: true
+    wait-for: "#copy-path"
+    expect-failure: false
+})
+
+// To prevent waiting for too long, we set the maximum time for "wait-for" to 1 second.
+set-timeout: 1000
+
+// Source code page.
+call-function: ("check-copy-path-absence", {"path": "src/test_docs/lib.rs.html"})
+// Settings page.
+call-function: ("check-copy-path-absence", {"path": "settings.html"})
+// Help page.
+call-function: ("check-copy-path-absence", {"path": "help.html"})
+// All items page.
+call-function: ("check-copy-path-absence", {"path": "test_docs/all.html"})
+
+// Check the button is not present if javascript is disabled (since it's generated with JS...).
+javascript: false
+call-function: ("check-copy-path-absence", {"path": "test_docs/index.html"})
