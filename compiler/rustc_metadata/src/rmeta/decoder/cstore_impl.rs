@@ -431,6 +431,7 @@ provide! { tcx, def_id, other, cdata,
     anon_const_kind => { table }
     const_of_item => { table }
     args_known_to_outlive_alias_params => { table }
+    captured_args_for_opaque => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
