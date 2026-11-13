@@ -174,3 +174,55 @@ fn massive_exponent() {
     assert_eq!(format!("1e-{max}000").parse(), Ok(0.0f64));
     assert_eq!(format!("1e{max}000").parse(), Ok(f64::INFINITY));
 }
+
+#[test]
+fn long_exponent_cancellation() {
+    // Regression test for <https://github.com/rust-lang/rust/issues/163674>.
+    // The previous code ignored later digits of the exponent, even though, e.g.,
+    // a small fractional part could mean that the correct parsed value would not be +infty.
+    let zeros = "0".repeat(65_536);
+    // 10^65536 * 10^-655360 = 10^-589824
+    let tiny = format!("1{zeros}e-655360");
+    // 10^-65536 * 10^655360 = 10^589824
+    let huge = format!("0.{}1e655360", &zeros[..65_535]);
+    assert_eq!(tiny.parse::<f64>(), Ok(0.0));
+    assert_eq!(tiny.parse::<f32>(), Ok(0.0));
+    assert_eq!(huge.parse::<f64>(), Ok(f64::INFINITY));
+    assert_eq!(huge.parse::<f32>(), Ok(f32::INFINITY));
+    assert_eq!(format!("-{tiny}").parse::<f64>().map(f64::to_bits), Ok((-0.0f64).to_bits()));
+    assert_eq!(format!("-{tiny}").parse::<f32>().map(f32::to_bits), Ok((-0.0f32).to_bits()));
+    assert_eq!(format!("-{huge}").parse::<f64>(), Ok(f64::NEG_INFINITY));
+    assert_eq!(format!("-{huge}").parse::<f32>(), Ok(f32::NEG_INFINITY));
+}
+
+#[test]
+fn long_fractional_decimal_point() {
+    // Regression test for <https://github.com/rust-lang/rust/issues/163676>.
+    // In this code previously, i32 casts of slice lengths were subtracted.
+    // This could overflow which would panic when overflow checks were enabled.
+    // Now the subtraction happens in i64, and then is clamped. This test does
+    // not use the huge input causing panic referenced in the issue but tests
+    // the same arithmetic.
+    let short = "0.000000000001000000000000000080";
+    let long = format!("{short}{}", "0".repeat(100_000));
+    assert_eq!(short.parse::<f64>().map(f64::to_bits), Ok(0x3d719799812dea11));
+    assert_eq!(long.parse::<f64>().map(f64::to_bits), Ok(0x3d719799812dea11));
+    assert_eq!(long.parse::<f32>(), short.parse::<f32>());
+
+    #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
+    {
+        use core::num::imp::dec2flt::decimal_seq::final_decimal_point;
+
+        let boundary = 1usize << 31;
+        for fractional_count in [boundary - 1, boundary, boundary + 1] {
+            assert_eq!(
+                final_decimal_point(fractional_count - 11, fractional_count, 0),
+                -11,
+                "fractional_count={fractional_count}",
+            );
+        }
+
+        assert_eq!(final_decimal_point(1, boundary, boundary as i64), 1);
+        assert_eq!(final_decimal_point(boundary, 0, 1 - boundary as i64), 1);
+    }
+}

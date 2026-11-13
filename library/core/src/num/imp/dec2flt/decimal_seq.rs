@@ -10,6 +10,7 @@
 //! available online: <https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html>.
 
 use dec2flt::common::{ByteSlice, is_8digits};
+use dec2flt::parse::parse_scientific;
 
 use crate::num::imp::dec2flt;
 
@@ -218,10 +219,27 @@ impl DecimalSeq {
     }
 }
 
+/// Subtract counts in i64 and clamp before casting to i32.
+#[inline]
+pub fn final_decimal_point(
+    significant_count: usize,
+    fractional_count: usize,
+    explicit: i64,
+) -> i32 {
+    if significant_count == 0 {
+        return 0;
+    }
+    let base = significant_count as i64 - fractional_count as i64;
+    base.saturating_add(explicit)
+        .clamp(-(DecimalSeq::DECIMAL_POINT_RANGE as i64), DecimalSeq::DECIMAL_POINT_RANGE as i64)
+        as i32
+}
+
 /// Parse a big integer representation of the float as a decimal.
 pub fn parse_decimal_seq(mut s: &[u8]) -> DecimalSeq {
     let mut d = DecimalSeq::default();
     let start = s;
+    let mut fractional_count = 0;
 
     while let Some((&b'0', s_next)) = s.split_first() {
         s = s_next;
@@ -248,9 +266,10 @@ pub fn parse_decimal_seq(mut s: &[u8]) -> DecimalSeq {
             s = &s[8..];
         }
         s = s.parse_digits(|digit| d.try_add_digit(digit));
-        d.decimal_point = s.len() as i32 - first.len() as i32;
+        fractional_count = first.len() - s.len();
     }
 
+    let significant_count = d.num_digits;
     if d.num_digits != 0 {
         // Ignore the trailing zeros if there are any
         let mut n_trailing_zeros = 0;
@@ -261,36 +280,21 @@ pub fn parse_decimal_seq(mut s: &[u8]) -> DecimalSeq {
                 break;
             }
         }
-        d.decimal_point += n_trailing_zeros as i32;
         d.num_digits -= n_trailing_zeros;
-        d.decimal_point += d.num_digits as i32;
         if d.num_digits > DecimalSeq::MAX_DIGITS {
             d.truncated = true;
             d.num_digits = DecimalSeq::MAX_DIGITS;
         }
     }
 
+    let mut explicit = 0;
     if let Some((&ch, s_next)) = s.split_first() {
         if ch == b'e' || ch == b'E' {
             s = s_next;
-            let mut neg_exp = false;
-            if let Some((&ch, s_next)) = s.split_first() {
-                neg_exp = ch == b'-';
-                if ch == b'-' || ch == b'+' {
-                    s = s_next;
-                }
-            }
-            let mut exp_num = 0_i32;
-
-            s.parse_digits(|digit| {
-                if exp_num < 0x10000 {
-                    exp_num = 10 * exp_num + digit as i32;
-                }
-            });
-
-            d.decimal_point += if neg_exp { -exp_num } else { exp_num };
+            explicit = parse_scientific(&mut s).unwrap_or(0);
         }
     }
+    d.decimal_point = final_decimal_point(significant_count, fractional_count, explicit);
 
     for i in d.num_digits..DecimalSeq::MAX_DIGITS_WITHOUT_OVERFLOW {
         d.digits[i] = 0;
