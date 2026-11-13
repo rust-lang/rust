@@ -4,6 +4,7 @@
 //@ build-pass
 //@ compile-flags: -Ccodegen-units=1 -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
 //@ needs-sanitizer-cfi
+//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 

@@ -1,6 +1,7 @@
 //@ revisions: allow not_allow
 //@ compile-flags: --crate-type=lib -Cinstrument-coverage  -Zno-profiler-runtime
 //@[allow] check-pass
+//@ ignore-backends: gcc
 
 #![feature(staged_api, rustc_attrs)]
 #![stable(feature = "rust_test", since = "1.0.0")]

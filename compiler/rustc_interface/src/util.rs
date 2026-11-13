@@ -26,11 +26,14 @@ use rustc_session::config::{
     Cfg, Jobs, OptionsTargetModifiers, OutFileName, OutputFilenames, OutputTypes, Sysroot,
     host_tuple,
 };
-use rustc_session::{EarlyDiagCtxt, EarlySession, IncrCompSession, Session, filesearch};
+use rustc_session::{
+    CodegenBackendInit, EarlyDiagCtxt, EarlySession, IncrCompSession, Session,
+    SupportedBackendFeatures, filesearch,
+};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
-use rustc_structures::CrateType;
+use rustc_structures::{CrateType, SanitizerSet};
 use rustc_target::spec::{Arch, Target};
 use tracing::info;
 
@@ -430,6 +433,19 @@ pub struct DummyCodegenBackend;
 impl CodegenBackend for DummyCodegenBackend {
     fn name(&self) -> &'static str {
         "dummy"
+    }
+
+    fn init(&mut self, _sess: &EarlySession) -> CodegenBackendInit {
+        // Pretend we support all backend features since there's no codegen anyways
+        CodegenBackendInit {
+            supported_backend_features: SupportedBackendFeatures {
+                sanitizers: SanitizerSet::all(),
+                fat_lto: true,
+                thin_lto: true,
+                instrument_coverage: true,
+            },
+            ..Default::default()
+        }
     }
 
     fn target_config(&self, sess: &EarlySession) -> TargetConfig {
