@@ -1,4 +1,5 @@
 //! The bulk of the logic for implementing `-Zassumptions-on-binders`
+use std::ops::Deref;
 
 use derive_where::derive_where;
 use indexmap::IndexSet;
@@ -288,7 +289,9 @@ impl<I: Interner, S: ConstraintSpan> LeafRegionConstraint<I, S> {
 /// - No AND is a superset of another AND
 /// - All ANDs are in canonical form
 /// - If any AND is empty, i.e. trivially true, it is the only AND
-pub struct Or<I: Interner, S: Clone + std::fmt::Debug = NoSpan>(pub SmallVec<[And<I, S>; 1]>);
+// FIXME(assumptions-on-binders): move to a separate module to avoid accidental
+// mutation in this module?
+pub struct Or<I: Interner, S: Clone + std::fmt::Debug = NoSpan>(SmallVec<[And<I, S>; 1]>);
 impl<I: Interner> Or<I> {
     pub fn with_spans<S: ConstraintSpan>(self, span: S) -> Or<I, S> {
         Or(self.0.into_iter().map(|and| and.with_spans(span.clone())).collect())
@@ -417,14 +420,48 @@ impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for Or<I, S> {
     }
 }
 
+impl<I: Interner, S: Clone + std::fmt::Debug> IntoIterator for Or<I, S> {
+    type Item = And<I, S>;
+    type IntoIter = <SmallVec<[And<I, S>; 1]> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, I: Interner, S: Clone + std::fmt::Debug> IntoIterator for &'a Or<I, S> {
+    type Item = &'a And<I, S>;
+    type IntoIter = <&'a SmallVec<[And<I, S>; 1]> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
+}
+
+impl<I: Interner, S: Clone + std::fmt::Debug> Deref for Or<I, S> {
+    type Target = SmallVec<[And<I, S>; 1]>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(PartialEq)]
+pub enum IsDuplicate {
+    Yes,
+    No,
+}
+
 #[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An AND of leaf constraints. Always in "canonical form", meaning:
 /// - No leaf constraints are present twice in this AND
 /// - No leaf constraint is trivially true, i.e. a reflexive `'a: 'a`
+// FIXME(assumptions-on-binders): move to a separate module to avoid accidental
+// mutation in this module?
 pub struct And<I: Interner, S: Clone + std::fmt::Debug = NoSpan>(
-    pub SmallVec<[LeafRegionConstraint<I, S>; 1]>,
+    SmallVec<[LeafRegionConstraint<I, S>; 1]>,
 );
 impl<I: Interner> And<I> {
     pub fn with_spans<S: ConstraintSpan>(self, span: S) -> And<I, S> {
@@ -458,6 +495,24 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
                 }
             })
             .collect())
+    }
+
+    pub fn add(&mut self, leaf: LeafRegionConstraint<I, S>) -> Option<(usize, IsDuplicate)> {
+        if let LeafRegionConstraint::RegionOutlives(r1, r2, _) = leaf
+            && r1 == r2
+        {
+            return None;
+        }
+        self.0.iter().position(|x| x == &leaf).map(|index| (index, IsDuplicate::Yes)).or_else(
+            || {
+                self.0.push(leaf);
+                Some((self.0.len() - 1, IsDuplicate::No))
+            },
+        )
+    }
+
+    pub fn pop(&mut self) -> Option<LeafRegionConstraint<I, S>> {
+        self.0.pop()
     }
 
     fn compare_and_relation(&self, other: &And<I, S>) -> AndRelation {
@@ -498,6 +553,32 @@ impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for And<I, S> {
             f.write_str("and ")?;
             f.debug_set().entries(&self.0).finish()
         }
+    }
+}
+
+impl<I: Interner, S: Clone + std::fmt::Debug> IntoIterator for And<I, S> {
+    type Item = LeafRegionConstraint<I, S>;
+    type IntoIter = <SmallVec<[LeafRegionConstraint<I, S>; 1]> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, I: Interner, S: Clone + std::fmt::Debug> IntoIterator for &'a And<I, S> {
+    type Item = &'a LeafRegionConstraint<I, S>;
+    type IntoIter = <&'a SmallVec<[LeafRegionConstraint<I, S>; 1]> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.0).into_iter()
+    }
+}
+
+impl<I: Interner, S: Clone + std::fmt::Debug> Deref for And<I, S> {
+    type Target = SmallVec<[LeafRegionConstraint<I, S>; 1]>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
