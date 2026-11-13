@@ -51,8 +51,8 @@
 //! Additionally, the algorithm is geared towards finding *any* solution rather
 //! than finding a number of solutions (there are normally quite a few).
 
-use rustc_crate_store::CrateDepKind;
 use rustc_crate_store::LinkagePreference::{self, RequireDynamic, RequireStatic};
+use rustc_crate_store::{CrateDepKind, CrateSourceFlags};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_index::IndexVec;
@@ -148,8 +148,8 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     if tcx.crate_dep_kind(cnum).macros_only() {
                         continue;
                     }
-                    let src = tcx.used_crate_source(cnum);
-                    if src.rlib.is_some() {
+
+                    if tcx.used_crate_source_flags(cnum).contains(CrateSourceFlags::RLIB) {
                         continue;
                     }
                     sess.dcx().emit_err(RlibRequired { crate_name: tcx.crate_name(cnum) });
@@ -163,8 +163,9 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     let all_dylibs = || {
         tcx.crates(()).iter().filter(|&&cnum| {
             !tcx.crate_dep_kind(cnum).macros_only()
-                && (tcx.used_crate_source(cnum).dylib.is_some()
-                    || tcx.used_crate_source(cnum).sdylib_interface.is_some())
+                && (tcx
+                    .used_crate_source_flags(cnum)
+                    .intersects(CrateSourceFlags::DYLIB | CrateSourceFlags::SDYLIB_INTERFACE))
         })
     };
 
@@ -237,12 +238,12 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // If the crate hasn't been included yet and it's not actually required
     // (e.g., it's a panic runtime) then we skip it here as well.
     for &cnum in tcx.crates(()).iter() {
-        let src = tcx.used_crate_source(cnum);
-        if src.dylib.is_none()
+        let src_flags = tcx.used_crate_source_flags(cnum);
+        if !src_flags.contains(CrateSourceFlags::DYLIB)
             && !formats.contains_key(&cnum)
             && tcx.crate_dep_kind(cnum) == CrateDepKind::Unconditional
         {
-            assert!(src.rlib.is_some() || src.rmeta.is_some());
+            assert!(src_flags.intersects(CrateSourceFlags::RLIB | CrateSourceFlags::RMETA));
             info!("adding staticlib: {}", tcx.crate_name(cnum));
             add_library(tcx, cnum, RequireStatic, &mut formats, &mut unavailable_as_static);
             ret[cnum] = Linkage::Static;
@@ -268,11 +269,16 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         if cnum == LOCAL_CRATE {
             continue;
         }
-        let src = tcx.used_crate_source(cnum);
+        let src_flags = tcx.used_crate_source_flags(cnum);
         match *kind {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
-            Linkage::Static if src.rlib.is_some() => continue,
-            Linkage::Dynamic if src.dylib.is_some() || src.sdylib_interface.is_some() => continue,
+            Linkage::Static if src_flags.contains(CrateSourceFlags::RLIB) => continue,
+            Linkage::Dynamic
+                if src_flags
+                    .intersects(CrateSourceFlags::DYLIB | CrateSourceFlags::SDYLIB_INTERFACE) =>
+            {
+                continue;
+            }
             kind => {
                 let kind = match kind {
                     Linkage::Static => "rlib",
@@ -335,7 +341,7 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
             if tcx.crate_dep_kind(cnum).macros_only() {
                 return None;
             }
-            let is_rlib = tcx.used_crate_source(cnum).rlib.is_some();
+            let is_rlib = tcx.used_crate_source_flags(cnum).contains(CrateSourceFlags::RLIB);
             if !is_rlib {
                 unavailable.push(cnum);
             }

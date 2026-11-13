@@ -409,6 +409,7 @@ provide! { tcx, def_id, other, cdata,
     }
 
     used_crate_source => { Arc::clone(&cdata.source) }
+    used_crate_source_flags => { cdata.source().flags() }
     debugger_visualizers => { cdata.get_debugger_visualizers(tcx) }
 
     exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx)) }

@@ -3924,6 +3924,7 @@ dependencies = [
 name = "rustc_crate_store"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "rustc_abi",
  "rustc_attr_ir",
  "rustc_data_structures",
