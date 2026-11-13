@@ -675,6 +675,9 @@ fn find_cold_blocks<'tcx>(
 
     // Traverse all basic blocks from end of the function to the start.
     for (bb, bb_data) in traversal::postorder(mir) {
+        if bb_data.is_cleanup {
+            continue;
+        }
         let terminator = bb_data.terminator();
 
         match terminator.kind {
@@ -698,8 +701,8 @@ fn find_cold_blocks<'tcx>(
             _ => {}
         }
 
-        // If all successors of a BB are cold and there's at least one of them, mark this BB as cold
-        let mut succ = terminator.successors();
+        // If all non-cleanup successors of a BB are cold and there's at least one of them, mark this BB as cold.
+        let mut succ = terminator.successors().filter(|&s| !mir.basic_blocks[s].is_cleanup);
         if let Some(first) = succ.next()
             && cold_blocks.contains(first)
             && succ.all(|s| cold_blocks.contains(s))
