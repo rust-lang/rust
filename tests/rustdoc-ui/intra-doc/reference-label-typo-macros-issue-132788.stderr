@@ -30,5 +30,17 @@ help: there is a similarly named reference label `configuration`
 LL |         "[configuration].\n\n[configuration]: https://example.com/configuration"
    |                 +
 
-error: aborting due to 2 previous errors
+error: unresolved link to `configration`
+  --> $DIR/reference-label-typo-macros-issue-132788.rs:34:22
+   |
+LL | document_argument!("[configration].\n\n[configuration]: https://example.com/configuration");
+   |                      ^^^^^^^^^^^^ no item named `configration` in scope
+   |
+   = note: this error originates in the macro `document_argument` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is a similarly named reference label `configuration`
+   |
+LL | document_argument!("[configuration].\n\n[configuration]: https://example.com/configuration");
+   |                            +
+
+error: aborting due to 3 previous errors
 

@@ -23,3 +23,14 @@ macro_rules! reference_docs {
 
 #[doc = reference_docs!()]
 pub struct FromMacroValue;
+
+macro_rules! document_argument {
+    ($docs:literal) => {
+        #[doc = $docs]
+        pub struct FromArgument;
+    };
+}
+
+document_argument!("[configration].\n\n[configuration]: https://example.com/configuration");
+//~^ ERROR unresolved link to `configration`
+//~| HELP reference label `configuration`
