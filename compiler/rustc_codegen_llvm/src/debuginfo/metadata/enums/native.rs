@@ -369,7 +369,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
             Some(create_member_type(
                 cx,
                 containing_scope,
-                &tag_name,
+                tag_name,
                 file,
                 UNKNOWN_LINE_NUMBER,
                 layout,

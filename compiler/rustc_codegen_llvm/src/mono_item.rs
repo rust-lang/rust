@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::ffi::CString;
 
 use rustc_abi::AddressSpace;
@@ -78,7 +77,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     fn predefine_without_aliases(
         &self,
         instance: Instance<'tcx>,
-        attrs: &Cow<'_, CodegenFnAttrs>,
+        attrs: &CodegenFnAttrs,
         linkage: Linkage,
         visibility: Visibility,
         symbol_name: &str,
@@ -167,7 +166,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         aliasee_instance: Instance<'tcx>,
         aliasee: llvm::Value<'ll>,
-        attrs: &Cow<'_, CodegenFnAttrs>,
+        attrs: &CodegenFnAttrs,
         aliases: &[(DefId, Linkage, Visibility)],
     ) {
         for (alias, linkage, visibility) in aliases {

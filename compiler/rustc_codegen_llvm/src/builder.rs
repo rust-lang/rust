@@ -74,7 +74,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
             bundles.push(funclet_bundle);
         }
 
-        let call = unsafe {
+        unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
                 self.llbuilder(),
                 llty,
@@ -85,8 +85,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
                 bundles.len() as c_uint,
                 c"".as_ptr(),
             )
-        };
-        call
+        }
     }
 }
 
@@ -154,8 +153,8 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
             // Cast to default addrspace if necessary
             llvm::LLVMBuildPointerCast(self.llbuilder(), alloca, self.cx.type_ptr(), UNNAMED)
         };
-        if name != "" {
-            llvm::set_value_name(val, &name.as_bytes());
+        if !name.is_empty() {
+            llvm::set_value_name(val, name.as_bytes());
         }
         val
     }
