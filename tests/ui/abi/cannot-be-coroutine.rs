@@ -21,6 +21,7 @@
 //@ [nvptx] needs-llvm-components: nvptx
 //@ [nvptx] compile-flags: --target nvptx64-nvidia-cuda --crate-type=rlib
 //@ ignore-backends: gcc
+//@ ignore-parallel-frontend we allow all fatal errors to be emitted during AST -> HIR lowering
 #![no_core]
 #![feature(
     no_core,
