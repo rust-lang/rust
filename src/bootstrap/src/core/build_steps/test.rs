@@ -2847,6 +2847,10 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--with-std-debug-assertions");
         }
 
+        if builder.config.rust_overflow_checks_std {
+            cmd.arg("--with-std-overflow-checks");
+        }
+
         if builder.config.rust_remap_debuginfo {
             cmd.arg("--with-std-remap-debuginfo");
         }

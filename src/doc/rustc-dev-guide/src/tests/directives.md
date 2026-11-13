@@ -187,6 +187,8 @@ The following directives will check rustc build settings and target settings:
   This can be the case on Windows if the developer did not enable privileged symlink permissions.
 - `ignore-std-debug-assertions` — ignores if std was built with debug assertions.
 - `needs-std-debug-assertions` — ignores if std was not built with debug assertions.
+- `ignore-std-overflow-checks` — ignores if std was built with overflow checks.
+- `needs-std-overflow-checks` — ignores if std was not built with overflow checks.
 - `ignore-std-remap-debuginfo` — ignores if std was built with remapping of it's sources.
 - `needs-std-remap-debugino` — ignores if std was not built with remapping of it's sources.
 - `ignore-rustc-debug-assertions` — ignores if rustc was built with debug assertions.

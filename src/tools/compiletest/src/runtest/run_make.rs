@@ -268,6 +268,12 @@ impl TestCx<'_> {
             cmd.env("__STD_DEBUG_ASSERTIONS_ENABLED", "1");
         }
 
+        cmd.env_remove("__STD_OVERFLOW_CHECKS_ENABLED");
+        if self.config.with_std_overflow_checks {
+            // Used for `run_make_support::env::std_overflow_checks_enabled`.
+            cmd.env("__STD_OVERFLOW_CHECKS_ENABLED", "1");
+        }
+
         cmd.env_remove("__STD_REMAP_DEBUGINFO_ENABLED");
         if self.config.with_std_remap_debuginfo {
             // Used for `run_make_support::env::std_remap_debuginfo_enabled`.
