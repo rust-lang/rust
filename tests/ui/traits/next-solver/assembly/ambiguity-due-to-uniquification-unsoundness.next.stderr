@@ -1,0 +1,16 @@
+error[E0283]: type annotations needed: cannot satisfy `dyn D<'_, '_>: Tr<'_>`
+  --> $DIR/ambiguity-due-to-uniquification-unsoundness.rs:18:49
+   |
+LL | fn f<'a>(x: &dyn D<'a, 'a>) -> &'static str { x.get() }
+   |                                                 ^^^
+   |
+   = note: cannot satisfy `dyn D<'_, '_>: Tr<'_>`
+help: the trait `Tr<'t>` is implemented for `&'t str`
+  --> $DIR/ambiguity-due-to-uniquification-unsoundness.rs:15:1
+   |
+LL | impl<'t> Tr<'t> for &'t str { fn get(&self) -> &'t str { *self } }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.
