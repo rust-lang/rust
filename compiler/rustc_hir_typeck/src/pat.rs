@@ -996,8 +996,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Err(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
             // If scrutinee is String and pattern is &str, suggest .as_str()
             let expected = self.deeply_resolve_ignoring_regions_with_obligations(expected);
+            let top_expected = self.deeply_resolve_ignoring_regions_with_obligations(ti.expected);
             if let ty::Adt(adt, _) = expected.kind()
                 && self.tcx.is_lang_item(adt.did(), LangItem::String)
+                && top_expected == expected
                 && pat_ty.is_ref()
                 && pat_ty.peel_refs().is_str()
                 && let Some(origin_expr) = ti.origin_expr
