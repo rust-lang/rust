@@ -1,6 +1,6 @@
-use rustc_abi::{HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{CanonAbi, HasDataLayout, Size, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg};
+use crate::callconv::{ArgAbi, ComputeCallConv, Reg};
 
 fn classify_ret<'a, Ty, C>(_cx: &C, ret: &mut ArgAbi<'a, Ty>)
 where
@@ -112,22 +112,32 @@ fn smallest_int_reg(size: Size) -> Reg {
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct HexagonCallConv {
+    /// Note that, matching clang, the hidden pointer for an indirect return value does not use up
+    /// any of the argument registers.
+    regs_left: u32,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for HexagonCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self { regs_left: ARG_REGS }
     }
 
-    // Note that, matching clang, the hidden pointer for an indirect return value does not use up
-    // any of the argument registers.
-    let mut regs_left = ARG_REGS;
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
-        }
-        classify_arg(cx, arg, &mut regs_left);
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        classify_ret(cx, ret);
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        classify_arg(cx, arg, &mut self.regs_left);
     }
 }

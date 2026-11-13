@@ -1,9 +1,9 @@
 // Reference: MSP430 Embedded Application Binary Interface
 // https://www.ti.com/lit/an/slaa534a/slaa534a.pdf
 
-use rustc_abi::TyAbiInterface;
+use rustc_abi::{CanonAbi, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, ComputeCallConv};
 
 // 3.5 Structures or Unions Passed and Returned by Reference
 //
@@ -34,18 +34,33 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct MSP430CallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for MSP430CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
+    fn passes_zst(&self) -> bool {
+        true
+    }
+
+    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(ret);
         }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         classify_arg(cx, arg);
     }
 }

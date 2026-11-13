@@ -2,8 +2,8 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Primitive,
-    Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants,
+    AddressSpace, Align, BackendRepr, CanonAbi, FieldsShape, HasDataLayout, InterruptKind,
+    Primitive, Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants, X86Call,
 };
 use rustc_macros::StableHash;
 
@@ -665,13 +665,77 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
     }
 }
 
+fn compute_abi<'a, CC, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    CC: ComputeCallConv<'a, Ty, C>,
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    let mut cc = CC::new(cx);
+
+    // Some ABIs pass ZSTs by pointer indirection rather than ignoring them. We follow
+    // that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them), but
+    // `repr(Rust)` ones are always ignored (ensuring that `()` matches C `void`).
+    fn ignore_zst<'a, CC, Ty, C>(cc: &CC, arg: &ArgAbi<'a, Ty>) -> bool
+    where
+        CC: ComputeCallConv<'a, Ty, C>,
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if !arg.is_ignore() {
+            // Not a ZST
+            return false;
+        }
+
+        if !cc.passes_zst() {
+            // ZSTs ignored by callconv
+            return true;
+        }
+
+        // Rust ZSTs are always ignored
+        !arg.layout.is_repr_c()
+    }
+
+    if !ignore_zst(&cc, &fn_abi.ret) {
+        cc.compute_ret_abi(cx, fn_abi.conv, &mut fn_abi.ret);
+    }
+
+    let c_variadic = fn_abi.c_variadic;
+    let fixed_count = fn_abi.fixed_count as usize;
+    for (idx, arg) in fn_abi.args.iter_mut().enumerate() {
+        if ignore_zst(&cc, arg) {
+            continue;
+        }
+
+        cc.compute_arg_abi(cx, fn_abi.conv, arg, c_variadic && idx >= fixed_count);
+    }
+}
+
+trait ComputeCallConv<'a, Ty, C>
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    fn new(cx: &C) -> Self;
+
+    fn passes_zst(&self) -> bool {
+        false
+    }
+
+    fn compute_ret_abi(&mut self, cx: &C, conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>);
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        is_vararg: bool,
+    );
+}
+
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: ExternAbi)
+    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
     {
-        if abi == ExternAbi::X86Interrupt {
+        if self.conv == CanonAbi::Interrupt(InterruptKind::X86) {
             if let Some(arg) = self.args.first_mut() {
                 arg.pass_by_stack_offset(None);
             }
@@ -681,11 +745,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch {
             Arch::X86 => {
-                let flavor = match abi {
-                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
+                let flavor = match self.conv {
+                    CanonAbi::X86(X86Call::Fastcall | X86Call::Vectorcall) => {
                         x86::Flavor::FastcallOrVectorcall
                     }
-                    ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
+                    CanonAbi::C | CanonAbi::X86(X86Call::Stdcall) => {
                         x86::Flavor::General { regparam: cx.x86_abi_opt().regparm }
                     }
                     _ => x86::Flavor::General { regparam: None },
@@ -698,55 +762,58 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     x86::compute_abi_info(cx, self, opts);
                 }
             }
-            Arch::X86_64 => match abi {
-                ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
-                ExternAbi::Win64 { .. } | ExternAbi::Vectorcall { .. } => {
-                    x86_win64::compute_abi_info(cx, self)
+            Arch::X86_64 => match self.conv {
+                CanonAbi::X86(X86Call::SysV64) => {
+                    compute_abi::<x86_64::X86_64CallConv, _, _>(cx, self)
+                }
+                CanonAbi::X86(X86Call::Win64 | X86Call::Vectorcall) => {
+                    compute_abi::<x86_win64::X86Win64CallConv, _, _>(cx, self)
                 }
                 _ => {
                     if cx.target_spec().is_like_windows {
-                        x86_win64::compute_abi_info(cx, self)
+                        compute_abi::<x86_win64::X86Win64CallConv, _, _>(cx, self)
                     } else {
-                        x86_64::compute_abi_info(cx, self)
+                        compute_abi::<x86_64::X86_64CallConv, _, _>(cx, self)
                     }
                 }
             },
             Arch::AArch64 | Arch::Arm64EC => {
-                let kind = if cx.target_spec().is_like_darwin {
-                    aarch64::AbiKind::DarwinPCS
-                } else if cx.target_spec().is_like_windows {
-                    aarch64::AbiKind::Win64
-                } else {
-                    aarch64::AbiKind::AAPCS
-                };
-                aarch64::compute_abi_info(cx, self, kind)
+                compute_abi::<aarch64::AArch64CallConv, _, _>(cx, self)
             }
-            Arch::AmdGpu => amdgpu::compute_abi_info(cx, self),
-            Arch::Arm => arm::compute_abi_info(cx, self),
-            Arch::Avr => avr::compute_abi_info(cx, self),
-            Arch::LoongArch32 | Arch::LoongArch64 => loongarch::compute_abi_info(cx, self),
-            Arch::M68k => m68k::compute_abi_info(cx, self),
-            Arch::CSky => csky::compute_abi_info(cx, self),
-            Arch::Mips | Arch::Mips32r6 => mips::compute_abi_info(cx, self),
-            Arch::Mips64 | Arch::Mips64r6 => mips64::compute_abi_info(cx, self),
-            Arch::PowerPC => powerpc::compute_abi_info(cx, self),
-            Arch::PowerPC64 => powerpc64::compute_abi_info(cx, self),
-            Arch::S390x => s390x::compute_abi_info(cx, self),
-            Arch::Msp430 => msp430::compute_abi_info(cx, self),
-            Arch::Sparc => sparc::compute_abi_info(cx, self),
-            Arch::Sparc64 => sparc64::compute_abi_info(cx, self),
-            Arch::Nvptx64 => {
-                if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
-                    nvptx64::compute_ptx_kernel_abi_info(cx, self)
+            Arch::AmdGpu => compute_abi::<amdgpu::AmdGpuCallConv, _, _>(cx, self),
+            Arch::Arm => {
+                if self.c_variadic {
+                    compute_abi::<arm::ArmCallConv<true>, _, _>(cx, self)
                 } else {
-                    nvptx64::compute_abi_info(cx, self)
+                    compute_abi::<arm::ArmCallConv<false>, _, _>(cx, self)
                 }
             }
-            Arch::Hexagon => hexagon::compute_abi_info(cx, self),
-            Arch::Xtensa => xtensa::compute_abi_info(cx, self),
-            Arch::RiscV32 | Arch::RiscV64 => riscv::compute_abi_info(cx, self),
-            Arch::Wasm32 | Arch::Wasm64 => wasm::compute_abi_info(cx, self),
-            Arch::Bpf => bpf::compute_abi_info(cx, self),
+            Arch::Avr => compute_abi::<avr::AvrCallConv, _, _>(cx, self),
+            Arch::LoongArch32 | Arch::LoongArch64 => {
+                compute_abi::<loongarch::LoongArchCallConv, _, _>(cx, self)
+            }
+            Arch::M68k => compute_abi::<m68k::M64KCallConv, _, _>(cx, self),
+            Arch::CSky => compute_abi::<csky::CSkyCallConv, _, _>(cx, self),
+            Arch::Mips | Arch::Mips32r6 => compute_abi::<mips::MipsCallConv, _, _>(cx, self),
+            Arch::Mips64 | Arch::Mips64r6 => compute_abi::<mips64::Mips64CallConv, _, _>(cx, self),
+            Arch::PowerPC => compute_abi::<powerpc::PowerPCCallConv, _, _>(cx, self),
+            Arch::PowerPC64 => compute_abi::<powerpc64::PowerPC64CallConv, _, _>(cx, self),
+            Arch::S390x => compute_abi::<s390x::S390XCallConv, _, _>(cx, self),
+            Arch::Msp430 => compute_abi::<msp430::MSP430CallConv, _, _>(cx, self),
+            Arch::Sparc => compute_abi::<sparc::SparcCallConv, _, _>(cx, self),
+            Arch::Sparc64 => compute_abi::<sparc64::Sparc64CallConv, _, _>(cx, self),
+            Arch::Nvptx64 => {
+                if self.conv == CanonAbi::GpuKernel {
+                    compute_abi::<nvptx64::Nvptx64KernelCallConv, _, _>(cx, self)
+                } else {
+                    compute_abi::<nvptx64::Nvptx64CallConv, _, _>(cx, self)
+                }
+            }
+            Arch::Hexagon => compute_abi::<hexagon::HexagonCallConv, _, _>(cx, self),
+            Arch::Xtensa => compute_abi::<xtensa::XtensaCallConv, _, _>(cx, self),
+            Arch::RiscV32 | Arch::RiscV64 => compute_abi::<riscv::RiscvCallConv, _, _>(cx, self),
+            Arch::Wasm32 | Arch::Wasm64 => compute_abi::<wasm::WasmCallConv, _, _>(cx, self),
+            Arch::Bpf => compute_abi::<bpf::BpfCallConv, _, _>(cx, self),
             arch @ (Arch::SpirV | Arch::Other(_)) => {
                 panic!("no lowering implemented for {arch}")
             }

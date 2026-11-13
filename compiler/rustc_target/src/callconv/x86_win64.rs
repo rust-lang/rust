@@ -1,15 +1,18 @@
-use rustc_abi::{BackendRepr, Integer, Primitive, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, CanonAbi, Integer, Primitive, Size, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg};
+use crate::callconv::{ArgAbi, ComputeCallConv, Reg};
 use crate::spec::{HasTargetSpec, RustcAbi};
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub(crate) fn compute_abi_info<'a, Ty, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
-where
-    Ty: TyAbiInterface<'a, C> + Copy,
-{
-    let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
+pub(crate) struct X86Win64CallConv;
+
+impl X86Win64CallConv {
+    fn fixup<'a, Ty, C>(cx: &C, a: &mut ArgAbi<'_, Ty>, is_ret: bool)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasTargetSpec,
+    {
         match a.layout.backend_repr {
             BackendRepr::Memory { sized: false } => {}
             BackendRepr::ScalarPair { .. } | BackendRepr::Memory { sized: true } => {
@@ -42,33 +45,51 @@ where
                 }
             }
         }
-    };
+    }
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for X86Win64CallConv
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasTargetSpec,
+{
+    fn new(_cx: &C) -> Self {
+        Self
+    }
 
     // Windows ABIs do not talk about ZST since such types do not exist in MSVC.
     // However, clang and gcc allow ZST in their windows-gnu targets, and pass them by pointer indirection.
     // We follow that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them),
     // but `repr(Rust)` ones are always ignored (ensuring that `()` matches C `void`).
 
-    if fn_abi.ret.is_ignore() {
-        if fn_abi.ret.layout.is_repr_c() {
-            fn_abi.ret.make_indirect_from_ignore();
-        }
-    } else {
-        fixup(&mut fn_abi.ret, true);
+    fn passes_zst(&self) -> bool {
+        true
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            if arg.layout.is_repr_c() {
-                arg.make_indirect_from_ignore();
-            }
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if ret.is_ignore() {
+            ret.make_indirect_from_ignore();
+        } else {
+            Self::fixup(cx, ret, true);
+        }
+    }
 
-            continue;
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        if arg.is_ignore() {
+            arg.make_indirect_from_ignore();
+
+            return;
         }
         if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
             arg.make_indirect();
-            continue;
+            return;
         }
-        fixup(arg, false);
+        Self::fixup(cx, arg, false);
     }
 }

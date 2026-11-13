@@ -1,7 +1,7 @@
 // see https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/BPF/BPFCallingConv.td
-use rustc_abi::{Reg, RegKind, Size, TyAbiInterface};
+use rustc_abi::{CanonAbi, Reg, RegKind, Size, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, CastTarget, FnAbi, Uniform};
+use crate::callconv::{ArgAbi, CastTarget, ComputeCallConv, FnAbi, Uniform};
 
 fn classify_aggregate_type<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     let size = arg.layout.size;
@@ -52,18 +52,27 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct BpfCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for BpfCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
-        }
+    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        classify_ret(ret);
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         classify_arg(cx, arg);
     }
 }

@@ -2,9 +2,11 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use rustc_abi::{FieldsShape, HasDataLayout, Integer, Numeric, TyAbiInterface, TyAndLayout};
+use rustc_abi::{
+    CanonAbi, FieldsShape, HasDataLayout, Integer, Numeric, TyAbiInterface, TyAndLayout,
+};
 
-use crate::callconv::{Align, ArgAbi, CastTarget, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{Align, ArgAbi, CastTarget, ComputeCallConv, Reg, RegKind, Uniform};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -93,7 +95,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if arg.is_ignore() || !arg.layout.is_sized() {
+    if !arg.layout.is_sized() {
         // Not touching this...
         return;
     }
@@ -157,23 +159,38 @@ where
     };
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct PowerPC64CallConv {
+    abi: ABI,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for PowerPC64CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let abi = match cx.target_spec().options.llvm_abiname {
-        LlvmAbi::ElfV1 => ELFv1,
-        LlvmAbi::ElfV2 => ELFv2,
-        LlvmAbi::Unspecified if cx.target_spec().os == Os::Aix => AIX,
-        // Target::check_consistency enforces that every target except AIX
-        // sets llvm_abiname to either ElfV1 or ElfV2
-        _ => unreachable!(),
-    };
+    fn new(cx: &C) -> Self {
+        let abi = match cx.target_spec().options.llvm_abiname {
+            LlvmAbi::ElfV1 => ELFv1,
+            LlvmAbi::ElfV2 => ELFv2,
+            LlvmAbi::Unspecified if cx.target_spec().os == Os::Aix => AIX,
+            // Target::check_consistency enforces that every target except AIX
+            // sets llvm_abiname to either ElfV1 or ElfV2
+            _ => unreachable!(),
+        };
+        Self { abi }
+    }
 
-    classify(cx, &mut fn_abi.ret, abi, true);
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        classify(cx, ret, self.abi, true);
+    }
 
-    for arg in fn_abi.args.iter_mut() {
-        classify(cx, arg, abi, false);
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        classify(cx, arg, self.abi, false);
     }
 }

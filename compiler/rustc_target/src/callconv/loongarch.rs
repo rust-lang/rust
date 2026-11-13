@@ -1,9 +1,11 @@
 use rustc_abi::{
-    BackendRepr, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
-    TyAndLayout, Variants,
+    BackendRepr, CanonAbi, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size,
+    TyAbiInterface, TyAndLayout, Variants,
 };
 
-use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
+use crate::callconv::{
+    ArgAbi, ArgExtension, CastTarget, ComputeCallConv, FnAbi, PassMode, Uniform,
+};
 use crate::spec::{HasTargetSpec, LlvmAbi};
 
 #[derive(Copy, Clone)]
@@ -409,37 +411,53 @@ fn extend_integer_width<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
     arg.extend_integer_width_to(xlen);
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct LoongArchCallConv {
+    xlen: u64,
+    flen: u64,
+    avail_gprs: u64,
+    avail_fprs: u64,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for LoongArchCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let xlen = cx.data_layout().pointer_size().bits();
-    let flen = match &cx.target_spec().llvm_abiname {
-        LlvmAbi::Ilp32f | LlvmAbi::Lp64f => 32,
-        LlvmAbi::Ilp32d | LlvmAbi::Lp64d => 64,
-        _ => 0,
-    };
+    fn new(cx: &C) -> Self {
+        let xlen = cx.data_layout().pointer_size().bits();
+        let flen = match &cx.target_spec().llvm_abiname {
+            LlvmAbi::Ilp32f | LlvmAbi::Lp64f => 32,
+            LlvmAbi::Ilp32d | LlvmAbi::Lp64d => 64,
+            _ => 0,
+        };
 
-    let mut avail_gprs = 8;
-    let mut avail_fprs = 8;
+        let avail_gprs = 8;
+        let avail_fprs = 8;
 
-    if !fn_abi.ret.is_ignore() && classify_ret(cx, &mut fn_abi.ret, xlen, flen) {
-        avail_gprs -= 1;
+        Self { xlen, flen, avail_gprs, avail_fprs }
     }
 
-    for (i, arg) in fn_abi.args.iter_mut().enumerate() {
-        if arg.is_ignore() {
-            continue;
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if classify_ret(cx, ret, self.xlen, self.flen) {
+            self.avail_gprs -= 1;
         }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        is_vararg: bool,
+    ) {
         classify_arg(
             cx,
             arg,
-            xlen,
-            flen,
-            i >= fn_abi.fixed_count as usize,
-            &mut avail_gprs,
-            &mut avail_fprs,
+            self.xlen,
+            self.flen,
+            is_vararg,
+            &mut self.avail_gprs,
+            &mut self.avail_fprs,
         );
     }
 }

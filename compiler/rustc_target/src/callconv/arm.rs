@@ -1,6 +1,6 @@
 use rustc_abi::{ArmCall, CanonAbi, HasDataLayout, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{ArgAbi, ComputeCallConv, Reg, RegKind, Uniform};
 use crate::spec::{CfgAbi, HasTargetSpec, Os};
 
 #[derive(Clone, Copy)]
@@ -114,42 +114,54 @@ where
     arg.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, total));
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
-where
-    Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout + HasTargetSpec,
-{
-    let abi_kind = if cx.target_spec().os == Os::WatchOs {
-        ArmAbiKind::Aapcs16Vfp
-    } else if cx.target_spec().cfg_abi == CfgAbi::EabiHf {
-        ArmAbiKind::AapcsVfp
-    } else {
-        ArmAbiKind::Aapcs
-    };
+pub(crate) struct ArmCallConv<const C_VARIADIC: bool> {
+    kind: ArmAbiKind,
+}
 
-    // Whether we must use the VFP registers for homogeneous aggregates.
-    let is_effectively_vfp = |accept_aapcs16| {
+impl<const C_VARIADIC: bool> ArmCallConv<C_VARIADIC> {
+    /// Whether we must use the VFP registers for homogeneous aggregates.
+    fn is_effectively_vfp(&self, conv: CanonAbi, accept_aapcs16: bool) -> bool {
         // When the user requested aapcs explicitly, honor that.
-        if matches!(fn_abi.conv, CanonAbi::Arm(ArmCall::Aapcs)) {
+        if matches!(conv, CanonAbi::Arm(ArmCall::Aapcs)) {
             return false;
         }
 
-        match abi_kind {
+        match self.kind {
             ArmAbiKind::AapcsVfp => true,
             ArmAbiKind::Aapcs16Vfp => accept_aapcs16,
             ArmAbiKind::Aapcs => false,
         }
-    };
+    }
+}
 
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, abi_kind, !fn_abi.c_variadic && is_effectively_vfp(true));
+impl<'a, Ty, C, const C_VARIADIC: bool> ComputeCallConv<'a, Ty, C> for ArmCallConv<C_VARIADIC>
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    fn new(cx: &C) -> Self {
+        let kind = if cx.target_spec().os == Os::WatchOs {
+            ArmAbiKind::Aapcs16Vfp
+        } else if cx.target_spec().cfg_abi == CfgAbi::EabiHf {
+            ArmAbiKind::AapcsVfp
+        } else {
+            ArmAbiKind::Aapcs
+        };
+        ArmCallConv { kind }
     }
 
-    let is_arg_vfp = !fn_abi.c_variadic && is_effectively_vfp(false);
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
-        }
-        classify_arg(cx, arg, abi_kind, is_arg_vfp);
+    fn compute_ret_abi(&mut self, cx: &C, conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        classify_ret(cx, ret, self.kind, !C_VARIADIC && self.is_effectively_vfp(conv, true));
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        let is_arg_vfp = !C_VARIADIC && self.is_effectively_vfp(conv, false);
+        classify_arg(cx, arg, self.kind, is_arg_vfp);
     }
 }
