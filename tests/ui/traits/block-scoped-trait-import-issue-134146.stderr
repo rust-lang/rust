@@ -8,7 +8,11 @@ LL |     ().hello();
    |        ^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-   = help: trait `crate::main::Hello` which provides `hello` is implemented but not reachable
+help: trait `crate::main::Hello` which provides `hello` is implemented but not reachable
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:8:9
+   |
+LL |         trait Hello {
+   |         ^^^^^^^^^^^
 
 error[E0599]: no method named `nested` found for unit type `()` in the current scope
   --> $DIR/block-scoped-trait-import-issue-134146.rs:30:8
@@ -20,7 +24,11 @@ LL |     ().nested();
    |        ^^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-   = help: trait `crate::nested_module::inner::Nested` which provides `nested` is implemented but not reachable
+help: trait `crate::nested_module::inner::Nested` which provides `nested` is implemented but not reachable
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:22:9
+   |
+LL |         pub trait Nested {
+   |         ^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `in_const` found for unit type `()` in the current scope
   --> $DIR/block-scoped-trait-import-issue-134146.rs:42:8
@@ -32,7 +40,11 @@ LL |     ().in_const();
    |        ^^^^^^^^ method not found in `()`
    |
    = help: items from traits can only be used if the trait is in scope
-   = help: trait `crate::_::InConst` which provides `in_const` is implemented but not reachable
+help: trait `crate::_::InConst` which provides `in_const` is implemented but not reachable
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:35:5
+   |
+LL |     trait InConst {
+   |     ^^^^^^^^^^^^^
 
 error[E0599]: no method named `several` found for unit type `()` in the current scope
   --> $DIR/block-scoped-trait-import-issue-134146.rs:57:8

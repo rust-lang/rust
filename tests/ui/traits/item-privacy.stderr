@@ -8,7 +8,11 @@ LL |     S.a();
    |       ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `crate::method::A` which provides `a` is implemented but not reachable
+help: trait `crate::method::A` which provides `a` is implemented but not reachable
+  --> $DIR/item-privacy.rs:7:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 help: there is a method `b` with a similar name
    |
 LL -     S.a();
@@ -57,7 +61,11 @@ LL |     S::a(&S);
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `crate::method::A` which provides `a` is implemented but not reachable
+help: trait `crate::method::A` which provides `a` is implemented but not reachable
+  --> $DIR/item-privacy.rs:7:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:30:9
    |
@@ -105,7 +113,11 @@ LL |     S::A;
    |        ^ associated function or constant not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = help: trait `crate::assoc_const::A` which provides `A` is implemented but not reachable
+help: trait `crate::assoc_const::A` which provides `A` is implemented but not reachable
+  --> $DIR/item-privacy.rs:25:5
+   |
+LL |     trait A {
+   |     ^^^^^^^
 help: there is an associated constant `B` with a similar name
    |
 LL -     S::A;
