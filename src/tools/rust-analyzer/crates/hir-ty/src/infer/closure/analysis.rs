@@ -1456,19 +1456,16 @@ fn truncate_place_to_len_and_update_capture_kind(
     // Note that if the place contained Deref of a raw pointer it would've not been MutBorrow, so
     // we don't need to worry about that case here.
     match info.capture_kind {
-        UpvarCapture::ByRef(BorrowKind::Mutable) => {
-            for i in len..place.projections.len() {
-                if place.projections[i].kind == ProjectionKind::Deref
+        UpvarCapture::ByRef(BorrowKind::Mutable)
+            if (len..place.projections.len()).any(|i| {
+                place.projections[i].kind == ProjectionKind::Deref
                     && is_mut_ref(place.ty_before_projection(i))
-                {
-                    info.capture_kind = UpvarCapture::ByRef(BorrowKind::UniqueImmutable);
-                    break;
-                }
-            }
+            }) =>
+        {
+            info.capture_kind = UpvarCapture::ByRef(BorrowKind::UniqueImmutable);
         }
 
-        UpvarCapture::ByRef(..) => {}
-        UpvarCapture::ByValue | UpvarCapture::ByUse => {}
+        UpvarCapture::ByRef(_) | UpvarCapture::ByValue | UpvarCapture::ByUse => {}
     }
 
     // Now fix the sources, to point at the smaller place.
