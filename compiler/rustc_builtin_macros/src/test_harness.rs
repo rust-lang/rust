@@ -378,9 +378,7 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
         sp,
         tests
             .iter()
-            .map(|test| {
-                ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, &[test.ident])))
-            })
+            .map(|test| ecx.expr_ref(test.span, ecx.expr_path(ecx.path(test.span, &[test.ident]))))
             .collect(),
     )
 }

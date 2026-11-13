@@ -9,7 +9,7 @@ mod utils;
 
 use std::io::ErrorKind;
 use std::time::{Duration, Instant};
-use std::{ptr, thread};
+use std::{mem, ptr, thread};
 
 use libc_utils::*;
 
@@ -34,11 +34,14 @@ fn main() {
     test_listen_listening();
 
     test_accept_connect();
+    test_accept_addr_nullptr();
     test_connect_error();
     test_connect_connected();
     test_connect_listening();
     test_send_peek_recv();
     test_write_read();
+    test_recvfrom();
+    test_sendto();
     test_readv();
     test_writev();
 
@@ -189,7 +192,18 @@ fn test_accept_connect() {
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || {
-        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+        let (peerfd, peeraddr) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // IP should match the server, it's all localhost. Port will be different of course.
+        assert_eq!(addr.sin_family, peeraddr.sin_family);
+        assert_ne!(addr.sin_port, peeraddr.sin_port);
+        assert_eq!(addr.sin_addr.s_addr, peeraddr.sin_addr.s_addr);
+        #[cfg(any(target_os = "freebsd", target_vendor = "apple"))]
+        {
+            // Ensure that the `sin_len` field is populated on a socket address
+            // and that it matches `sizeof(sockaddr_in)`.
+            assert_eq!(peeraddr.sin_len as usize, size_of::<libc::sockaddr_in>());
+        }
 
         let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
 
@@ -218,6 +232,25 @@ fn test_accept_connect() {
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
+}
+
+/// Test accepting an incoming connection where the `address` pointer
+/// of the `accept` function is null but the `address_len` pointer is valid.
+/// The `accept` should succeed and the `address_len` should be left unchanged.
+fn test_accept_addr_nullptr() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    unsafe {
+        errno_result(libc::accept(
+            server_sockfd,
+            ptr::null_mut::<libc::sockaddr_in>().cast(),
+            ptr::without_provenance_mut::<libc::socklen_t>(0x200),
+        ))
+        .unwrap();
+    }
 }
 
 /// Test connecting to an address where nothing is listening and ensure the error matches what
@@ -356,15 +389,204 @@ fn test_write_read() {
 
         // Write some bytes into the stream.
         libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+        // Make sure the other side sees an EOF.
+        errno_check(unsafe { libc::close(peerfd) });
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    let data = libc_utils::read_to_end(client_sockfd).unwrap();
+    assert_eq!(&data, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}
+
+/// Test receiving data from a TCP socket using `recvfrom`.
+/// Since TCP is a connection-mode protocol the `address` and `address_len`
+/// pointers should be left unchanged.
+fn test_recvfrom() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // Write some bytes into the stream.
+
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     let mut buffer = [0; TEST_BYTES.len()];
-    libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
+
+    // It is legal to make both the addr and addr_len pointers null.
+    unsafe {
+        errno_result(libc::recvfrom(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            /* flags */ 0,
+            ptr::null_mut::<libc::sockaddr>(),
+            ptr::null_mut::<libc::socklen_t>(),
+        ))
+        .unwrap();
+    }
+
+    assert_eq!(&buffer, TEST_BYTES);
+
+    let mut buffer: [u8; 26] = [0; TEST_BYTES.len()];
+
+    // If address pointer is non-null, `address_len` should be zeroed (but address itself is not accessed).
+    let mut addr = unsafe { mem::zeroed::<libc::sockaddr>() };
+    let mut addr_len = mem::size_of_val(&addr) as libc::socklen_t;
+    unsafe {
+        errno_result(libc::recvfrom(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            /* flags */ 0,
+            &mut addr,
+            &mut addr_len,
+        ))
+        .unwrap();
+    }
+    // Ensure the `address_len` pointer gets zeroed.
+    assert_eq!(addr_len, 0);
+
     assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
+}
+
+/// Test sending data into a TCP socket using `sendto`.
+/// We provide a nullptr as destination address, which should not be
+/// a problem since TCP is a connection-mode protocol and thus the
+/// destination address should be ignored.
+fn test_sendto() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // Write some bytes into the stream using `sendto`.
+
+        // When the address pointer and the length are valid, the destination
+        // address should be ignored since we're using TCP.
+        let valid_addr = net::sock_addr_ipv4([127, 0, 0, 1], 5555);
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        (&valid_addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+                        size_of::<libc::sockaddr_in>() as libc::socklen_t,
+                    )
+                },
+            )
+            .unwrap();
+        }
+
+        // Setting both to null/zero should also work.
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        ptr::null_mut::<libc::sockaddr>(),
+                        /* address_len */ 0,
+                    )
+                },
+            )
+            .unwrap();
+        }
+
+        // In fact when the address is null, the length is entirely ignored.
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        ptr::null_mut::<libc::sockaddr>(),
+                        /* address_len */ 16,
+                    )
+                },
+            )
+            .unwrap();
+        };
+
+        // But when the pointer is non-null and the length null, behavior differs between OSes.
+        let res = unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| {
+                    libc::sendto(
+                        peerfd,
+                        buf,
+                        count,
+                        /* flags */ 0,
+                        ptr::without_provenance_mut::<libc::sockaddr>(16),
+                        /* address_len */ 0,
+                    )
+                },
+            )
+        };
+
+        if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+            res.unwrap();
+        } else {
+            // Native FreeBSD and macOS return EINVAL when the address pointer is invalid even when
+            // the address length is zero.
+            assert_eq!(res.unwrap_err().raw_os_error().unwrap(), libc::EINVAL);
+        }
+
+        errno_check(unsafe { libc::close(peerfd) });
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    // We sent the test data at least 3 times.
+    for _ in 0..3 {
+        let mut buffer = [0; TEST_BYTES.len()];
+        libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
+        assert_eq!(&buffer, TEST_BYTES);
+    }
+    let rest = libc_utils::read_to_end(client_sockfd).unwrap();
+    if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+        // it was sent a 4th time.
+        assert_eq!(*rest, *TEST_BYTES);
+    } else {
+        assert_eq!(*rest, []);
+    }
+
+    server_thread.join().unwrap();
+    errno_check(unsafe { libc::close(client_sockfd) });
 }
 
 /// Test vectored reads with multiple buffers on a connected socket.
@@ -481,6 +703,12 @@ fn test_getpeername_ipv4() {
     assert_eq!(addr.sin_family, peer_addr.sin_family);
     assert_eq!(addr.sin_port, peer_addr.sin_port);
     assert_eq!(addr.sin_addr.s_addr, peer_addr.sin_addr.s_addr);
+    #[cfg(any(target_os = "freebsd", target_vendor = "apple"))]
+    {
+        // Ensure that the `sin_len` field is populated on a socket address
+        // and that it matches `sizeof(sockaddr_in)`.
+        assert_eq!(peer_addr.sin_len as usize, size_of::<libc::sockaddr_in>());
+    }
 }
 
 /// Test the `getpeername` syscall on an IPv6 socket.
@@ -504,6 +732,12 @@ fn test_getpeername_ipv6() {
     assert_eq!(addr.sin6_flowinfo, peer_addr.sin6_flowinfo);
     assert_eq!(addr.sin6_scope_id, peer_addr.sin6_scope_id);
     assert_eq!(addr.sin6_addr.s6_addr, peer_addr.sin6_addr.s6_addr);
+    #[cfg(any(target_os = "freebsd", target_vendor = "apple"))]
+    {
+        // Ensure that the `sin6_len` field is populated on a socket address
+        // and that it matches `sizeof(sockaddr_in6)`.
+        assert_eq!(peer_addr.sin6_len as usize, size_of::<libc::sockaddr_in6>());
+    }
 }
 
 /// Test shutting down TCP streams.

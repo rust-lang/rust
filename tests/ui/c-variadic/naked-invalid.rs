@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ compile-flags: --target x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
-//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![feature(abi_x86_interrupt, naked_functions_rustic_abi)]

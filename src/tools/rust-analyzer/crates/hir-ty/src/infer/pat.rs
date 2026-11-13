@@ -1011,7 +1011,7 @@ impl<'db> InferenceContext<'db> {
             | ValueNs::ImplSelf(_)
             | ValueNs::LocalBinding(_)
             | ValueNs::StaticId(_) => {
-                // FIXME: Emit an error.
+                self.push_diagnostic(InferenceDiagnostic::InvalidPatPathRes { pat, res });
                 return Err(());
             }
             ValueNs::ConstId(_) | ValueNs::EnumVariantId(_) | ValueNs::StructId(_) => {} // OK
@@ -1383,7 +1383,9 @@ impl<'db> InferenceContext<'db> {
                         // (RFC 3627, Rule 5). If we implement a pattern typing ruleset with Rule 4E
                         // but not Rule 5, we'll need to check that here.
                         debug_assert!(ref_pat_matches_mut_ref);
-                        // FIXME: Emit an error.
+                        self.push_diagnostic(
+                            InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat },
+                        );
                     }
 
                     pat_info.binding_mode = ByRef::No;
@@ -1421,7 +1423,9 @@ impl<'db> InferenceContext<'db> {
                             // falling back to the inherited reference didn't work. This should be
                             // the same error as the old-Edition version below.
                             debug_assert!(ref_pat_matches_mut_ref);
-                            // FIXME: Emit an error.
+                            self.push_diagnostic(
+                                InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat },
+                            );
                         }
 
                         pat_info.binding_mode = ByRef::No;
@@ -1458,7 +1462,9 @@ impl<'db> InferenceContext<'db> {
                         // inherited reference.
                         if pat_mutbl > inh_mut {
                             // We can't match a lone inherited shared reference with `&mut`.
-                            // FIXME: Emit an error.
+                            self.push_diagnostic(
+                                InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat },
+                            );
                         }
 
                         self.result.skipped_ref_pats.insert(pat);

@@ -2641,31 +2641,90 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             && args.len() == fields.len()
                         // Make sure we have same number of args as fields
                         {
+                            let call_span = *span;
+                            let source_map = this.r.tcx.sess.source_map();
                             let path_span = path.span;
-                            let mut parts = Vec::new();
 
-                            // Start with the opening brace
-                            parts.push((
-                                path_span.shrink_to_hi().until(args[0].span),
-                                "{".to_owned(),
-                            ));
+                            // An expanded argument's span may point into a macro definition, not this call.
+                            // Map argument spans to ancestors inside the call with its syntax context,
+                            // so the suggestion edits the corresponding source text instead of macro internals.
+                            let arg_spans: Option<Vec<_>> = args
+                                .iter()
+                                .map(|arg| arg.span.find_ancestor_inside_same_ctxt(call_span))
+                                .collect();
 
-                            for (field, arg) in fields.iter().zip(args.iter()) {
-                                // Add the field name before the argument
-                                parts.push((arg.span.shrink_to_lo(), format!("{}: ", field)));
+                            if !call_span.in_external_macro(source_map)
+                                && call_span.contains(path_span)
+                                && path_span.ctxt() == call_span.ctxt()
+                                && let Some(arg_spans) = arg_spans
+                            {
+                                let first_arg = arg_spans[0];
+                                let last_arg = arg_spans[arg_spans.len() - 1];
+                                let ordered_args =
+                                    arg_spans.windows(2).all(|pair| pair[0].hi() <= pair[1].lo());
+
+                                // We only provide a structured suggestion when the spans are nonempty,
+                                // nonoverlapping, and in source order. Macro expansion can reuse or reorder
+                                // source spans, so the argument list alone does not guarantee valid ranges
+                                // for replacing the call's opening and closing delimiters.
+                                if !path_span.is_empty()
+                                    && arg_spans.iter().all(|arg| !arg.is_empty())
+                                    && path_span.hi() < first_arg.lo()
+                                    && ordered_args
+                                    && last_arg.hi() < call_span.hi()
+                                {
+                                    let can_use_shorthand = |field: &rustc_span::Ident,
+                                                             arg: &rustc_ast::Expr,
+                                                             span: rustc_span::Span| {
+                                        let rustc_ast::ExprKind::Path(None, path) = &arg.kind else {
+                                            return false;
+                                        };
+
+                                        let Some(ident) = path.as_single_argless_ident() else {
+                                            return false;
+                                        };
+
+                                        ident.name == field.name
+                                            && source_map
+                                                .span_to_snippet(span)
+                                                .is_ok_and(|snippet| snippet == field.to_string())
+                                    };
+
+                                    let mut parts = Vec::new();
+
+                                    let opening =
+                                        if can_use_shorthand(&fields[0], &args[0], first_arg) {
+                                            " { ".to_owned()
+                                        } else {
+                                            format!(" {{ {}: ", fields[0])
+                                        };
+
+                                    parts
+                                        .push((path_span.shrink_to_hi().until(first_arg), opening));
+
+                                    for ((field, arg), &arg_span) in
+                                        fields.iter().zip(args.iter()).zip(arg_spans.iter()).skip(1)
+                                    {
+                                        if !can_use_shorthand(field, arg, arg_span) {
+                                            parts.push((
+                                                arg_span.shrink_to_lo(),
+                                                format!("{field}: "),
+                                            ));
+                                        }
+                                    }
+
+                                    parts.push((
+                                        last_arg.shrink_to_hi().until(call_span.shrink_to_hi()),
+                                        " }".to_owned(),
+                                    ));
+
+                                    err.multipart_suggestion(
+                                        format!("use struct {descr} syntax instead of calling"),
+                                        parts,
+                                        applicability,
+                                    );
+                                }
                             }
-
-                            // Add the closing brace
-                            parts.push((
-                                args.last().unwrap().span.shrink_to_hi().until(span.shrink_to_hi()),
-                                "}".to_owned(),
-                            ));
-
-                            err.multipart_suggestion(
-                                format!("use struct {descr} syntax instead of calling"),
-                                parts,
-                                applicability,
-                            );
                         } else {
                             let (fields, applicability) = match fields {
                                 Some(fields) => {
@@ -4067,8 +4126,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // if removing within `<>` brackets, we also want to
                     // delete a leading or trailing comma as appropriate
                     match (
-                        param.span().find_ancestor_inside(generics_span),
-                        params[param_index + 1].span().find_ancestor_inside(generics_span),
+                        param.span_with_attributes().find_ancestor_inside(generics_span),
+                        params[param_index + 1]
+                            .span_with_attributes()
+                            .find_ancestor_inside(generics_span),
                     ) {
                         (Some(param_span), Some(next_param_span)) => {
                             Some(param_span.to(next_param_span.shrink_to_lo()))
@@ -4079,8 +4140,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     // if removing within `<>` brackets, we also want to
                     // delete a leading or trailing comma as appropriate
                     match (
-                        param.span().find_ancestor_inside(generics_span),
-                        params[param_index - 1].span().find_ancestor_inside(generics_span),
+                        param.span_with_attributes().find_ancestor_inside(generics_span),
+                        params[param_index - 1]
+                            .span_with_attributes()
+                            .find_ancestor_inside(generics_span),
                     ) {
                         (Some(param_span), Some(prev_param_span)) => {
                             Some(prev_param_span.shrink_to_hi().to(param_span))

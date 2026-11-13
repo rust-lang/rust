@@ -1,6 +1,4 @@
 #!/bin/sh
-# ignore-tidy-file-tab
-# ignore-tidy-file-linelength
 set -ex
 
 hide_output() {
@@ -27,52 +25,13 @@ shift
 # Apparently applying `-fPIC` everywhere allows them to link successfully.
 export CFLAGS="-fPIC $CFLAGS"
 
-MUSL=musl-1.2.5
+MUSL=musl-1.2.6
 
 # may have been downloaded in a previous run
 if [ ! -d $MUSL ]; then
   curl https://www.musl-libc.org/releases/$MUSL.tar.gz | tar xzf -
 
-  # Apply patches for CVE-2025-26519. At the time of adding these patches no release containing them
-  # has been published by the musl project, so we just apply them directly on top of the version we
-  # were distributing already. The patches should be removed once we upgrade to musl >= 1.2.6.
-  #
-  # Advisory: https://www.openwall.com/lists/musl/2025/02/13/1
-  #
-  # Patches applied:
-  # - https://www.openwall.com/lists/musl/2025/02/13/1/1
-  # - https://www.openwall.com/lists/musl/2025/02/13/1/2
-  #
-  patch -p1 -d $MUSL <<EOF
---- a/src/locale/iconv.c
-+++ b/src/locale/iconv.c
-@@ -502,7 +502,7 @@ size_t iconv(iconv_t cd, char **restrict in, size_t *restrict inb, char **restri
- 			if (c >= 93 || d >= 94) {
- 				c += (0xa1-0x81);
- 				d += 0xa1;
--				if (c >= 93 || c>=0xc6-0x81 && d>0x52)
-+				if (c > 0xc6-0x81 || c==0xc6-0x81 && d>0x52)
- 					goto ilseq;
- 				if (d-'A'<26) d = d-'A';
- 				else if (d-'a'<26) d = d-'a'+26;
-EOF
-  patch -p1 -d $MUSL <<EOF
---- a/src/locale/iconv.c
-+++ b/src/locale/iconv.c
-@@ -545,6 +545,10 @@ size_t iconv(iconv_t cd, char **restrict in, size_t *restrict inb, char **restri
- 				if (*outb < k) goto toobig;
- 				memcpy(*out, tmp, k);
- 			} else k = wctomb_utf8(*out, c);
-+			/* This failure condition should be unreachable, but
-+			 * is included to prevent decoder bugs from translating
-+			 * into advancement outside the output buffer range. */
-+			if (k>4) goto ilseq;
- 			*out += k;
- 			*outb -= k;
- 			break;
-EOF
-
-  # Apply patches for CVE-2026-6042 and CVE-2026-40200.
+  # Apply patches for CVE-2026-6042, CVE-2026-40200 and CVE-2026-107891.
   #
   # At the time of adding these patches no release containing them has been published by the musl
   # project, so we just apply them directly on top of the version we were distributing already. The
@@ -86,6 +45,9 @@ EOF
   # Advisory: https://www.openwall.com/lists/musl/2026/04/10/3
   # Patches:  https://www.openwall.com/lists/musl/2026/04/10/3/1
   patch -p1 -d $MUSL <"$MUSL_PATCH_DIR/musl-cve-2026-40200.diff"
+  # Advisory: https://www.openwall.com/lists/musl/2026/10/21/1
+  # Patch:    https://www.openwall.com/lists/musl/2026/10/21/1/1
+  patch -p1 -d $MUSL <"$MUSL_PATCH_DIR/musl-cve-2026-107891.diff"
 fi
 
 cd $MUSL

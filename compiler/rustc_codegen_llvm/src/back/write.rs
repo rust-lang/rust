@@ -116,18 +116,18 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
-    target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(tcx.dcx(), config)
+    target_machine_factory(tcx.sess, tcx.sess.opts.optimize)(tcx.dcx(), config)
 }
 
-fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
+// `s` and `z` are the same codegen level; what tells LLVM that they are size builds is the
+// per-function attribute, not this setting.
+fn to_llvm_opt_level(cfg: config::OptLevel) -> llvm::CodeGenOptLevel {
     use self::config::OptLevel::*;
     match cfg {
-        No => (llvm::CodeGenOptLevel::None, llvm::CodeGenOptSizeNone),
-        Less => (llvm::CodeGenOptLevel::Less, llvm::CodeGenOptSizeNone),
-        More => (llvm::CodeGenOptLevel::Default, llvm::CodeGenOptSizeNone),
-        Aggressive => (llvm::CodeGenOptLevel::Aggressive, llvm::CodeGenOptSizeNone),
-        Size => (llvm::CodeGenOptLevel::Default, llvm::CodeGenOptSizeDefault),
-        SizeMin => (llvm::CodeGenOptLevel::Default, llvm::CodeGenOptSizeAggressive),
+        No => llvm::CodeGenOptLevel::None,
+        Less => llvm::CodeGenOptLevel::Less,
+        More | Size | SizeMin => llvm::CodeGenOptLevel::Default,
+        Aggressive => llvm::CodeGenOptLevel::Aggressive,
     }
 }
 
@@ -184,7 +184,7 @@ pub(crate) fn target_machine_factory(
 
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
-    let (opt_level, _) = to_llvm_opt_settings(optlvl);
+    let opt_level = to_llvm_opt_level(optlvl);
     let float_abi = to_llvm_float_abi(sess.target.llvm_floatabi);
 
     let ffunction_sections =
@@ -594,8 +594,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         vectorize_slp = false;
         vectorize_loop = false;
     } else {
-        unroll_loops =
-            opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+        unroll_loops = opt_level.objective() != config::OptimizationObjective::Size;
         merge_functions = config.merge_functions;
         vectorize_slp = config.vectorize_slp;
         vectorize_loop = config.vectorize_loop;
@@ -660,8 +659,8 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
     // Returns the new function, or `None` if nothing was wrapped
     fn handle_offload<'ll>(
         cx: &SimpleCx<'ll>,
-        old_fn: &'ll llvm::Value,
-    ) -> Option<&'ll llvm::Value> {
+        old_fn: llvm::Value<'ll>,
+    ) -> Option<llvm::Value<'ll>> {
         let old_fn_ty = cx.get_type_of_global(old_fn);
         let old_param_types = cx.func_params_types(old_fn_ty);
         let old_param_count = old_param_types.len();

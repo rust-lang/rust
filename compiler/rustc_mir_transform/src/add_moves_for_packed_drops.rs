@@ -1,5 +1,5 @@
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
 use crate::patch::MirPatch;
@@ -41,9 +41,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
         let mut patch = MirPatch::new(body);
-        // FIXME(#132279): This is used during the phase transition from analysis
-        // to runtime, so we have to manually specify the correct typing mode.
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let typing_env = body.typing_env(tcx);
 
         for (bb, data) in body.basic_blocks.iter_enumerated() {
             let loc = Location { block: bb, statement_index: data.statements.len() };
@@ -94,7 +92,7 @@ fn add_move_for_packed_drop<'tcx>(
 
     let storage_dead_block = patch.new_block(BasicBlockData::new_stmts(
         vec![Statement::new(source_info, StatementKind::StorageDead(temp))],
-        Some(Terminator { source_info, kind: TerminatorKind::goto(target) }),
+        Terminator { source_info, kind: TerminatorKind::goto(target) },
         is_cleanup,
     ));
 

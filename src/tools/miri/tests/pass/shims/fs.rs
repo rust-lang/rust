@@ -4,6 +4,7 @@
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 #![feature(dirfd)]
+#![feature(seek_stream_len)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 #![allow(unused_features)] // feature use depends on target
 
@@ -25,15 +26,10 @@ use std::os::windows::fs::{symlink_dir, symlink_file};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
-use utils::check_nondet;
 
 fn main() {
     test_path_conversion();
     test_file();
-    // Partial reads/writes are apparently not a thing on Windows.
-    if cfg!(not(windows)) {
-        test_file_partial_reads_writes();
-    }
     test_file_create_new();
     test_metadata();
     test_seek();
@@ -68,6 +64,9 @@ fn main() {
     }
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) || cfg!(not(miri)) {
+        test_fs_set_permissions();
+        test_file_set_permissions();
+
         test_create_new_dangling_symlink();
         test_directory();
         test_canonicalize();
@@ -75,6 +74,10 @@ fn main() {
         test_flock();
         test_symlink();
         test_hard_link();
+        // Uses different shims on apple that we do not support.
+        if cfg!(not(all(miri, target_vendor = "apple"))) {
+            test_copy();
+        }
 
         test_readv_writev();
         #[cfg(unix)]
@@ -175,32 +178,6 @@ fn test_file() {
     }
 }
 
-fn test_file_partial_reads_writes() {
-    if !cfg!(miri) {
-        // This test is not expected to work natively.
-        return;
-    }
-
-    let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
-    let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
-
-    // Ensure we sometimes do incomplete writes.
-    check_nondet(|| {
-        let mut file = File::create(&path1).unwrap();
-        file.write(&[0; 4]).unwrap() == 4
-    });
-    // Ensure we sometimes do incomplete reads.
-    check_nondet(|| {
-        let mut file = File::open(&path2).unwrap();
-        let mut buf = [0; 4];
-        file.read(&mut buf).unwrap() == 4
-    });
-
-    // Clean up
-    remove_file(&path1).unwrap();
-    remove_file(&path2).unwrap();
-}
-
 fn test_file_clone() {
     let bytes = b"Hello, World!\n";
     let path = utils::prepare_with_content("miri_test_fs_file_clone.txt", bytes);
@@ -253,6 +230,10 @@ fn test_seek() {
     let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();
     assert_eq!(file.stream_position().unwrap(), 0);
+    if cfg!(not(windows)) {
+        // FIXME: stream_len not supported on Windows
+        assert_eq!(file.stream_len().unwrap(), bytes.len() as u64);
+    }
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
     assert_eq!(file.stream_position().unwrap(), bytes.len() as u64);
@@ -383,6 +364,22 @@ fn test_file_set_times() {
     let metadata = file.metadata().unwrap();
     assert_eq!(metadata.accessed().unwrap(), accessed);
     assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    // 32-bit FreeBSD cannot represent timestamps beyond 2038.
+    if !cfg!(all(target_os = "freebsd", target_pointer_width = "32")) {
+        // On 32-bit glibc, std needs the weak `__futimens64` symbol for dates past 2038.
+        let future_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(3_000_000_000);
+        file.set_times(FileTimes::new().set_modified(future_modified)).unwrap();
+        let metadata = file.metadata().unwrap();
+        assert_eq!(metadata.accessed().unwrap(), accessed);
+        assert_eq!(metadata.modified().unwrap(), future_modified);
+
+        let future_accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(3_000_000_001);
+        file.set_times(FileTimes::new().set_accessed(future_accessed)).unwrap();
+        let metadata = file.metadata().unwrap();
+        assert_eq!(metadata.accessed().unwrap(), future_accessed);
+        assert_eq!(metadata.modified().unwrap(), future_modified);
+    }
 
     remove_file(&path).unwrap();
 }
@@ -850,4 +847,59 @@ fn test_directory_handle() {
 
     fs::create_dir(dirname.join("subdir")).unwrap();
     let _subdir = dir.open_dir("subdir").unwrap();
+}
+
+fn test_fs_set_permissions() {
+    let file = utils::prepare("miri_test_fs_set_permissions.txt");
+    drop(File::create(&file).unwrap());
+
+    // Make file read-only
+    let mut p = fs::metadata(&file).unwrap().permissions();
+    assert!(!p.readonly());
+    p.set_readonly(true);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Make it writable again
+    p.set_readonly(false);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(!fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Test error for non-existing file
+    match fs::set_permissions(&file.with_file_name("foo"), p) {
+        Ok(..) => panic!("wanted an error"),
+        Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
+    }
+}
+
+fn test_file_set_permissions() {
+    let path = utils::prepare("miri_test_file_set_permissions.txt");
+
+    let file = File::create(&path).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(!attr.permissions().readonly());
+    let mut p = attr.permissions();
+    p.set_readonly(true);
+    file.set_permissions(p.clone()).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(attr.permissions().readonly());
+
+    p.set_readonly(false);
+    file.set_permissions(p).unwrap();
+}
+
+fn test_copy() {
+    // This efficiently allocates a lot of zeros, even in Miri.
+    let mut bytes = vec![0u8; 10_000];
+    // Make it not all-zero so we notice if some data goes missing.
+    for i in 0..200u8 {
+        bytes[(i as usize) * 47] = i;
+    }
+
+    let src_path = utils::prepare_with_content("miri_test_fs_copy_src.txt", &bytes);
+    let dst_path = utils::prepare("miri_test_fs_copy_dst.txt");
+    assert_eq!(fs::copy(&src_path, &dst_path).unwrap(), bytes.len() as u64);
+    assert_eq!(fs::read(&dst_path).unwrap(), bytes);
+    fs::remove_file(&src_path).unwrap();
+    fs::remove_file(&dst_path).unwrap();
 }

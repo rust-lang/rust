@@ -3,7 +3,7 @@
 go-to: "file://" + |DOC_PATH| + "/implementors/trait.Whatever.html"
 wait-for-css: ("#implementors-list", {"display": "block"})
 // There are supposed to be four implementors listed.
-assert-count: ("#implementors-list .impl", 4)
+assert-count: ("#implementors-list .impl", 5)
 // There are supposed to be two non-negative implementors.
 assert-count: ("#implementors-list .negative-marker ~ *", 2)
 // Now we check that both implementors have an anchor, an ID and a similar DOM.
@@ -17,9 +17,10 @@ define-function: (
 )
 
 call-function: ("check-dom", {"id": "#impl-Whatever-for-Struct2"})
-call-function: ("check-dom", {"id": "#impl-Whatever-2"})
-call-function: ("check-dom", {"id": "#impl-Whatever-for-Struct"})
+call-function: ("check-dom", {"id": "#impl-Whatever-for-Struct3"})
 call-function: ("check-dom", {"id": "#impl-Whatever-3"})
+call-function: ("check-dom", {"id": "#impl-Whatever-for-Struct"})
+call-function: ("check-dom", {"id": "#impl-Whatever-4"})
 
 // Ensure that negative impl are sorted first.
 assert-property: (
@@ -27,20 +28,25 @@ assert-property: (
     {"textContent": "impl !Whatever for Struct2"},
 )
 assert-property: (
-    "#implementors-list > *:nth-child(2) > h3",
+    "#implementors-list > *:nth-child(3) > h3",
     {"textContent": "impl !Whatever for StructToImplOnReexport"},
 )
 // Third one is the negative marker.
-assert-attribute: ("#implementors-list > *:nth-child(3)", {"class": "negative-marker"})
+assert-attribute: ("#implementors-list > *:nth-child(4)", {"class": "negative-marker"})
 // This one is a `<detail>` so the selector is a bit different.
 assert-property: (
-    "#implementors-list > *:nth-child(4) section > h3",
+    "#implementors-list > *:nth-child(5) section > h3",
     {"textContent": "impl Whatever for Struct"},
 )
 assert-property: (
-    "#implementors-list > *:nth-child(5) > h3",
+    "#implementors-list > *:nth-child(6) > h3",
     {"textContent": "impl Whatever for Foo"},
 )
+
+// Ensure that implementors are collapsed by default if they have items.
+assert: "details.implementors-toggle:not(:open) #impl-Whatever-for-Struct"
+// Same for implementor with more than one line of docs.
+assert: "details.implementors-toggle:not(:open) #impl-Whatever-for-Struct3"
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HasEmptyTraits.html"
 compare-elements-position-near-false: (

@@ -8,8 +8,7 @@ store-position: ("#impl-Context > .item-info", {"x": impl_item_x})
 assert: |impl_x| < |impl_item_x|
 
 // And we ensure that all impl items have the same indent.
-assert-position: ("#impl-Context > .docblock", {"x": |impl_item_x|})
-assert-position: ("#impl-Context + .docblock", {"x": |impl_item_x|})
+assert-position: ("#impl-Context > .docblock", {"x": |impl_item_x|}, ALL)
 
 // Same with the collapsible impl block.
 assert-position: ("#impl-Context-1 > .docblock", {"x": |impl_item_x|})

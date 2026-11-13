@@ -1,6 +1,4 @@
 #![feature(pattern_types, rustc_attrs)]
-#![feature(pattern_type_macro)]
-#![allow(incomplete_features)]
 
 //! check that pattern types don't have an `Add` impl.
 

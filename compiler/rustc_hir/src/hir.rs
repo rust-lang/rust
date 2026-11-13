@@ -1280,13 +1280,6 @@ impl<'hir> WhereRegionPredicate<'hir> {
     }
 }
 
-/// An equality predicate (e.g., `T = int`); currently unsupported.
-#[derive(Debug, Clone, Copy, StableHash)]
-pub struct WhereEqPredicate<'hir> {
-    pub lhs_ty: &'hir Ty<'hir>,
-    pub rhs_ty: &'hir Ty<'hir>,
-}
-
 /// HIR node coupled with its parent's id in the same HIR owner.
 ///
 /// The parent is trash when the node is a HIR owner.
@@ -3149,6 +3142,13 @@ impl<'hir> ImplItem<'hir> {
 
     pub fn impl_item_id(&self) -> ImplItemId {
         ImplItemId { owner_id: self.owner_id }
+    }
+
+    /// Returns whether this is an anonymous associated constant in an inherent impl.
+    pub fn is_anon_const(&self) -> bool {
+        matches!(self.impl_kind, ImplItemImplKind::Inherent { .. })
+            && matches!(self.kind, ImplItemKind::Const(..))
+            && self.ident.name == kw::Underscore
     }
 
     pub fn vis_span(&self) -> Option<Span> {

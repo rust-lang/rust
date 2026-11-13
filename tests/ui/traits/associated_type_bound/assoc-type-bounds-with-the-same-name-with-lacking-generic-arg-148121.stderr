@@ -11,8 +11,8 @@ LL | pub trait Super<X> {
    |           ^^^^^ -
 help: add missing generic argument
    |
-LL | impl A for dyn Super<X, X = ()> {}
-   |                      ++
+LL | impl<X> A for dyn Super<X, X = ()> {}
+   |     +++                 ++
 
 error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/assoc-type-bounds-with-the-same-name-with-lacking-generic-arg-148121.rs:14:16
@@ -27,8 +27,8 @@ LL | pub trait Zelf<X>: Super<X> {}
    |           ^^^^ -
 help: add missing generic argument
    |
-LL | impl A for dyn Zelf<X, X = ()> {}
-   |                     ++
+LL | impl<X> A for dyn Zelf<X, X = ()> {}
+   |     +++                ++
 
 error: aborting due to 2 previous errors
 

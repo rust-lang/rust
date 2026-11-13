@@ -1,4 +1,3 @@
-//@ ignore-backends: gcc
 //@ run-pass
 
 #![feature(const_trait_impl)]

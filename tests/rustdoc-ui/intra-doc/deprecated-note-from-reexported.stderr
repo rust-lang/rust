@@ -10,6 +10,7 @@ LL |     #[deprecated(note = "Use [`define_sql_function`] instead")]
                 ^^^^^^^^^^^^^^^^^^^^^
    = note: no item named `define_sql_function` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[`define_sql_function`]: https://...`
 note: the lint level is defined here
   --> $DIR/deprecated-note-from-reexported.rs:4:9
    |
@@ -40,6 +41,7 @@ LL |     #[deprecated(note = "Use [`define_sql_function`] instead")]
                 ^^^^^^^^^^^^^^^^^^^^^
    = note: no item named `define_sql_function` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[`define_sql_function`]: https://...`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: unresolved link to `Env::try_invoke`

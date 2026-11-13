@@ -763,7 +763,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::ThreadLocal(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnAddrAsPtr(..))
         | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Ok(()),
     }
 
@@ -858,20 +858,20 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     mut callee_body: Body<'tcx>,
 ) {
     let tcx = inliner.tcx();
-    let terminator = caller_body[callsite.block].terminator.take().unwrap();
-    let TerminatorKind::Call { func, args, destination, unwind, target, .. } = terminator.kind
+    let terminator = caller_body.basic_blocks.as_mut()[callsite.block].terminator.as_mut().unwrap();
+    let TerminatorKind::Call { ref func, ref mut args, destination, unwind, target, .. } =
+        terminator.kind
     else {
         bug!("unexpected terminator kind {:?}", terminator.kind);
     };
+    let args = std::mem::take(args);
+    let func_ty = func.ty(&caller_body.local_decls, tcx);
 
     let return_block = if let Some(block) = target {
         // Prepare a new block for code that should execute when call returns. We don't use
         // target block directly since it might have other predecessors.
         let data = BasicBlockData::new(
-            Some(Terminator {
-                source_info: terminator.source_info,
-                kind: TerminatorKind::goto(block),
-            }),
+            Terminator { source_info: terminator.source_info, kind: TerminatorKind::goto(block) },
             caller_body[block].is_cleanup,
         );
         Some(caller_body.basic_blocks_mut().push(data))
@@ -1013,7 +1013,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // the actually used items. By doing this we can entirely avoid visiting the callee!
     // We need to reconstruct the `required_item` for the callee so that we can find and
     // remove it.
-    let callee_item = MentionedItem::Fn(func.ty(caller_body, tcx));
+    let callee_item = MentionedItem::Fn(func_ty);
     let caller_mentioned_items = caller_body.mentioned_items.as_mut().unwrap();
     if let Some(idx) = caller_mentioned_items.iter().position(|item| item.node == callee_item) {
         // We found the callee, so remove it and add its items instead.

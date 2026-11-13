@@ -1,6 +1,5 @@
 //@ proc-macro: re-export.rs
 //@ edition:2018
-//@ ignore-backends: gcc
 
 extern crate re_export;
 

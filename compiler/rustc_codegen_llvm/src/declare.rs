@@ -39,8 +39,8 @@ pub(crate) fn declare_simple_fn<'ll>(
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
-    ty: &'ll Type,
-) -> &'ll Value {
+    ty: Type<'ll>,
+) -> Value<'ll> {
     debug!("declare_simple_fn(name={:?}, ty={:?})", name, ty);
     let llfn = unsafe { llvm::LLVMGetOrInsertFunction(cx.llmod, name.as_ptr(), name.len(), ty) };
 
@@ -61,8 +61,8 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
     callconv: llvm::CallConv,
     unnamed: llvm::UnnamedAddr,
     visibility: llvm::Visibility,
-    ty: &'ll Type,
-) -> &'ll Value {
+    ty: Type<'ll>,
+) -> Value<'ll> {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let llfn = declare_simple_fn(cx, name, callconv, unnamed, visibility, ty);
 
@@ -91,7 +91,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// return its Value instead.
-    pub(crate) fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn declare_global(&self, name: &str, ty: Type<'ll>) -> Value<'ll> {
         debug!("declare_global(name={:?})", name);
         unsafe {
             llvm::LLVMRustGetOrInsertGlobal((**self).borrow().llmod, name.as_ptr(), name.len(), ty)
@@ -105,9 +105,9 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn declare_global_in_addrspace(
         &self,
         name: &str,
-        ty: &'ll Type,
+        ty: Type<'ll>,
         addr_space: AddressSpace,
-    ) -> &'ll Value {
+    ) -> Value<'ll> {
         debug!("declare_global(name={name:?}, addrspace={addr_space:?})");
         unsafe {
             llvm::LLVMRustGetOrInsertGlobalInAddrspace(
@@ -133,8 +133,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         &self,
         name: &str,
         unnamed: llvm::UnnamedAddr,
-        fn_type: &'ll Type,
-    ) -> &'ll Value {
+        fn_type: Type<'ll>,
+    ) -> Value<'ll> {
         // Visibility should always be default for declarations, otherwise the linker may report an
         // error.
         declare_raw_fn(self, name, llvm::CCallConv, unnamed, Visibility::Default, fn_type)
@@ -152,8 +152,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         name: &str,
         callconv: llvm::CallConv,
         unnamed: llvm::UnnamedAddr,
-        fn_type: &'ll Type,
-    ) -> &'ll Value {
+        fn_type: Type<'ll>,
+    ) -> Value<'ll> {
         let visibility = Visibility::from_generic(self.tcx.sess.default_visibility());
         declare_raw_fn(self, name, callconv, unnamed, visibility, fn_type)
     }
@@ -167,7 +167,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         name: &str,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         instance: Option<Instance<'tcx>>,
-    ) -> &'ll Value {
+    ) -> Value<'ll> {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
         // Function addresses in Rust are never significant, allowing functions to
@@ -243,7 +243,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// return `None` if the name already has a definition associated with it. In that
     /// case an error should be reported to the user, because it usually happens due
     /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
-    pub(crate) fn define_global(&self, name: &str, ty: &'ll Type) -> Option<&'ll Value> {
+    pub(crate) fn define_global(&self, name: &str, ty: Type<'ll>) -> Option<Value<'ll>> {
         if self.get_defined_value(name).is_some() {
             None
         } else {
@@ -252,14 +252,14 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     /// Gets declared value by name.
-    pub(crate) fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
+    pub(crate) fn get_declared_value(&self, name: &str) -> Option<Value<'ll>> {
         debug!("get_declared_value(name={:?})", name);
         unsafe { llvm::LLVMRustGetNamedValue(self.llmod(), name.as_ptr(), name.len()) }
     }
 
     /// Gets defined or externally defined (AvailableExternally linkage) value by
     /// name.
-    pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
+    pub(crate) fn get_defined_value(&self, name: &str) -> Option<Value<'ll>> {
         self.get_declared_value(name).and_then(|val| {
             let declaration = llvm::is_declaration(val);
             if !declaration { Some(val) } else { None }

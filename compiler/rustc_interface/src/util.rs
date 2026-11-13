@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -248,7 +247,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let jobs_frontend = jobs.frontend.or(NonZero::new(1)).unwrap();
+    let jobs_frontend = jobs.frontend.limit();
     let registry = sync::Registry::new(jobs_frontend);
 
     let Some(proof) = sync::check_dyn_thread_safe() else {
@@ -271,6 +270,14 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     let current_gcx2 = current_gcx.clone();
 
     let proxy = Proxy::new();
+
+    // Explicitly drop and join helper thread before rustc exits,
+    // so all job server tokens are returned.
+    let _drop_helper_thread = defer({
+        let proxy = Arc::clone(&proxy);
+        move || proxy.drop_helper_thread()
+    });
+
     let proxy_ = Arc::clone(&proxy);
 
     let builder = rustc_thread_pool::ThreadPoolBuilder::new()

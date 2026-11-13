@@ -25,7 +25,6 @@ use rustc_abi::{CVariadicStatus, CanonAbi, ExternAbi, InterruptKind};
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
-use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
 use rustc_feature::Features;
@@ -1071,11 +1070,19 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_item_named(&self, ident: Ident, kind: &str) {
+    fn check_item_named(&self, ident: Ident, kind: &str, ctxt: AssocCtxt) {
         if ident.name != kw::Underscore {
             return;
         }
-        self.dcx().emit_err(diagnostics::ItemUnderscore { span: ident.span, kind });
+
+        if !self.features.associated_const_underscore()
+            && matches!(ctxt, AssocCtxt::Impl { of_trait: false })
+        {
+            let msg = format!("naming associated constants with `_` is unstable");
+            feature_err(&self.sess, sym::associated_const_underscore, ident.span, msg).emit();
+        } else if !matches!(ctxt, AssocCtxt::Impl { of_trait: false }) {
+            self.dcx().emit_err(diagnostics::ItemUnderscore { span: ident.span, kind });
+        }
     }
 
     fn check_nomangle_item_asciionly(&self, ident: Ident, item_span: Span) {
@@ -1402,10 +1409,6 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 }
 
 impl Visitor<'_> for AstValidator<'_> {
-    fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.sess.psess, attr);
-    }
-
     fn visit_ty(&mut self, ty: &Ty) {
         self.visit_ty_common(ty);
         self.walk_ty(ty)
@@ -2162,7 +2165,7 @@ impl Visitor<'_> for AstValidator<'_> {
         }
 
         if let AssocItemKind::Const(ci) = &item.kind {
-            self.check_item_named(ci.ident, "const");
+            self.check_item_named(ci.ident, "const", ctxt);
         }
 
         let parent_is_const =

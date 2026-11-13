@@ -1,0 +1,79 @@
+error[E0423]: cannot find function, tuple struct or tuple variant `NamedFields` in this scope
+  --> $DIR/struct-literal-suggestion-macros.rs:11:13
+   |
+LL | / struct NamedFields {
+LL | |     b: Vec<u8>,
+LL | |     c: usize,
+LL | | }
+   | |_- `NamedFields` defined here
+...
+LL |       let _ = NamedFields(vec![], 2);
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a struct named `NamedFields` exists in another namespace
+help: use struct literal syntax instead of calling
+   |
+LL -     let _ = NamedFields(vec![], 2);
+LL +     let _ = NamedFields { b: vec![], c: 2 };
+   |
+
+error[E0423]: cannot find function, tuple struct or tuple variant `NamedFields` in this scope
+  --> $DIR/struct-literal-suggestion-macros.rs:16:13
+   |
+LL | / struct NamedFields {
+LL | |     b: Vec<u8>,
+LL | |     c: usize,
+LL | | }
+   | |_- `NamedFields` defined here
+...
+LL |       let _ = NamedFields(b, c);
+   |               ^^^^^^^^^^^^^^^^^
+   |
+   = note: a struct named `NamedFields` exists in another namespace
+help: use struct literal syntax instead of calling
+   |
+LL -     let _ = NamedFields(b, c);
+LL +     let _ = NamedFields { b, c };
+   |
+
+error[E0423]: cannot find function, tuple struct or tuple variant `NamedFields` in this scope
+  --> $DIR/struct-literal-suggestion-macros.rs:20:13
+   |
+LL | / struct NamedFields {
+LL | |     b: Vec<u8>,
+LL | |     c: usize,
+LL | | }
+   | |_- `NamedFields` defined here
+...
+LL |       let _ = NamedFields(b, 2);
+   |               ^^^^^^^^^^^^^^^^^
+   |
+   = note: a struct named `NamedFields` exists in another namespace
+help: use struct literal syntax instead of calling
+   |
+LL -     let _ = NamedFields(b, 2);
+LL +     let _ = NamedFields { b, c: 2 };
+   |
+
+error[E0423]: cannot find function, tuple struct or tuple variant `NamedFields` in this scope
+  --> $DIR/struct-literal-suggestion-macros.rs:28:13
+   |
+LL | / struct NamedFields {
+LL | |     b: Vec<u8>,
+LL | |     c: usize,
+LL | | }
+   | |_- `NamedFields` defined here
+...
+LL |       let _ = NamedFields(b_expr!(), c);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a struct named `NamedFields` exists in another namespace
+help: use struct literal syntax instead of calling
+   |
+LL -     let _ = NamedFields(b_expr!(), c);
+LL +     let _ = NamedFields { b: b_expr!(), c };
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

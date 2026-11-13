@@ -30,6 +30,8 @@ fn main() {
     test_blocking_read();
     test_blocking_write();
     test_unblock_after_socket_close();
+    test_read_unblocked_by_other_socket_close();
+    test_write_unblocked_by_other_socket_close();
 }
 
 fn test_socketpair() {
@@ -155,13 +157,15 @@ fn test_blocking_read() {
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let thread1 = thread::spawn(move || {
         // Let this thread block on read.
-        let buf = read_exact_array::<3>(fds[1]).unwrap();
+        let buf = read_to_end(fds[1]).unwrap();
         assert_eq!(&buf, b"abc");
     });
     let thread2 = thread::spawn(move || {
         yield_now(); // thread1 should go first
         // Unblock thread1 by doing writing something.
         write_all(fds[0], b"abc").unwrap();
+        // Signal EOF.
+        errno_check(unsafe { libc::close(fds[0]) });
     });
     thread1.join().unwrap();
     thread2.join().unwrap();
@@ -221,4 +225,52 @@ fn test_unblock_after_socket_close() {
     assert_eq!(&data, b"1234");
 
     server_thread.join().unwrap();
+}
+
+/// Test that `close` unblocks writes on the peer FD.
+fn test_write_unblocked_by_other_socket_close() {
+    // The test uses Miri's exact buffer size.
+    if !cfg!(miri) {
+        return;
+    }
+
+    let mut fds = [-1, -1];
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
+    let arr1: [u8; 0x34000] = [1; 0x34000];
+    // Exhaust the space in the buffer so the subsequent write will block.
+    write_all(fds[0], &arr1).unwrap();
+
+    let thread1 = thread::spawn(move || {
+        // This write belo will be blocked because the buffer is already full.
+        write_all(fds[0], b"abc").unwrap_err()
+    });
+    let thread2 = thread::spawn(move || {
+        yield_now(); // thread1 should go first
+        // Unblock thread1 by closing our FD.
+        errno_check(unsafe { libc::close(fds[1]) });
+    });
+    let err = thread1.join().unwrap();
+    thread2.join().unwrap();
+    // Natively, apparently, we get ECONNRESET if a write was blocked and then gets unblocked by a
+    // close, and EPIPE if it was already closed. We do not try to match that.
+    assert_eq!(err.raw_os_error().unwrap(), libc::EPIPE);
+}
+
+/// Test that `close` unblocks reads on the other FD.
+fn test_read_unblocked_by_other_socket_close() {
+    let mut fds = [-1, -1];
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
+
+    let thread1 = thread::spawn(move || {
+        // This read will be blocked because the buffer is empty.
+        read_to_end(fds[0]).unwrap()
+    });
+    let thread2 = thread::spawn(move || {
+        yield_now(); // thread1 should go first
+        // Unblock thread1 by closing our FD.
+        errno_check(unsafe { libc::close(fds[1]) });
+    });
+    let data = thread1.join().unwrap();
+    thread2.join().unwrap();
+    assert_eq!(&data, &[]);
 }

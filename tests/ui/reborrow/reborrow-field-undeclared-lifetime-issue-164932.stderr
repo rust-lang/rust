@@ -1,0 +1,14 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/reborrow-field-undeclared-lifetime-issue-164932.rs:10:26
+   |
+LL | struct CustomMut<'b, T>(&'a mut T);
+   |                          ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct CustomMut<'a, 'b, T>(&'a mut T);
+   |                  +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

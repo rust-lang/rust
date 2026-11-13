@@ -1,38 +1,66 @@
 //! Routines for manipulating the control-flow graph.
 
+use itertools::Either;
 use rustc_attr_ir::UnrollAttr;
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_index::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
-use crate::builder::CFG;
+use crate::builder::{CFG, CFGBlock, UnterminatedBlockData};
 
 impl<'tcx> CFG<'tcx> {
-    pub(crate) fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
+    fn block_data(&self, blk: BasicBlock) -> &CFGBlock<'tcx> {
         &self.basic_blocks[blk]
     }
 
-    pub(crate) fn block_data_mut(&mut self, blk: BasicBlock) -> &mut BasicBlockData<'tcx> {
+    fn block_data_mut(&mut self, blk: BasicBlock) -> &mut CFGBlock<'tcx> {
         &mut self.basic_blocks[blk]
+    }
+
+    pub(crate) fn assert_terminator(&self, bb: BasicBlock) -> &Terminator<'tcx> {
+        self.block_data(bb).as_ref().left().unwrap().terminator()
+    }
+
+    pub(crate) fn assert_terminator_mut(&mut self, bb: BasicBlock) -> &mut Terminator<'tcx> {
+        self.block_data_mut(bb).as_mut().left().unwrap().terminator_mut()
+    }
+
+    pub(crate) fn statements(&self, blk: BasicBlock) -> &[Statement<'tcx>] {
+        match &self.basic_blocks[blk] {
+            CFGBlock::Left(bb) => &bb.statements,
+            CFGBlock::Right(bb) => &bb.statements,
+        }
+    }
+
+    pub(crate) fn statements_mut(&mut self, blk: BasicBlock) -> &mut Vec<Statement<'tcx>> {
+        match &mut self.basic_blocks[blk] {
+            CFGBlock::Left(bb) => &mut bb.statements,
+            CFGBlock::Right(bb) => &mut bb.statements,
+        }
+    }
+
+    pub(crate) fn into_basic_blocks(self) -> IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        // CFGBlock has the same layout as BasicBlockData, so this call should be
+        // almost no-op (we have a specialization for reusing the allocation in this case).
+        self.basic_blocks.into_iter().map(|bb| bb.left().unwrap()).collect()
     }
 
     // llvm.org/PR32488 makes this function use an excess of stack space. Mark
     // it as #[inline(never)] to keep rustc's stack use in check.
     #[inline(never)]
     pub(crate) fn start_new_block(&mut self) -> BasicBlock {
-        self.basic_blocks.push(BasicBlockData::new(None, false))
+        self.basic_blocks.push(Either::Right(UnterminatedBlockData::new(Vec::new(), false)))
     }
 
     pub(crate) fn start_new_cleanup_block(&mut self) -> BasicBlock {
-        let bb = self.start_new_block();
-        self.block_data_mut(bb).is_cleanup = true;
-        bb
+        self.basic_blocks.push(Either::Right(UnterminatedBlockData::new(Vec::new(), true)))
     }
 
     pub(crate) fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
         debug!("push({:?}, {:?})", block, statement);
-        self.block_data_mut(block).statements.push(statement);
+        self.statements_mut(block).push(statement);
     }
 
     pub(crate) fn push_assign(
@@ -112,13 +140,20 @@ impl<'tcx> CFG<'tcx> {
     ) -> &mut Terminator<'tcx> {
         debug!("terminating block {:?} <- {:?}", block, kind);
         debug_assert!(
-            self.block_data(block).terminator.is_none(),
+            self.block_data(block).is_right(),
             "terminate: block {:?}={:?} already has a terminator set",
             block,
             self.block_data(block)
         );
-        self.block_data_mut(block).terminator = Some(Terminator { source_info, kind });
-        self.block_data_mut(block).terminator.as_mut().unwrap()
+        let UnterminatedBlockData { statements, is_cleanup } =
+            self.block_data_mut(block).as_mut().right().unwrap();
+
+        *self.block_data_mut(block) = Either::Left(BasicBlockData::new_stmts(
+            std::mem::take(statements),
+            Terminator { source_info, kind },
+            *is_cleanup,
+        ));
+        self.block_data_mut(block).as_mut().left().unwrap().terminator_mut()
     }
 
     /// In the `origin` block, push a `goto -> target` terminator.

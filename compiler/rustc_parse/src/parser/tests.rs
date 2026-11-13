@@ -309,7 +309,7 @@ error: foo
   │
 2 │   fn foo() {
   │ ┏━━━━━━━━━━┛
-  ‡ ┃
+  ┆ ┇
 5 │ ┃   }
   ╰╴┗━━━┛ test
 
@@ -2126,7 +2126,7 @@ error: foo
  5 │  │ 1
  6 │  │ 2
  7 │  │ 3
-   ‡  │
+   ┆  ┆
 15 │  │   X2 Y2 Z2
 16 │  │   X3 Y3 Z3
    ╰╴ └──────────┘ `Y` is a good letter too
@@ -2207,7 +2207,7 @@ error: foo
 10 │ ┃│ 6
 11 │ ┃│   X2 Y2 Z2
    │ ┃└──────────┘ `Z` is a good letter too
-   ‡ ┃
+   ┆ ┇
 15 │ ┃  10
 16 │ ┃    X3 Y3 Z3
    ╰╴┗━━━━━━━━┛ `Y` is a good letter

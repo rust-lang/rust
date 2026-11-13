@@ -5,6 +5,7 @@ LL |     /// [Oooops]
    |          ^^^^^^ no item named `Oooops` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[Oooops]: https://...`
 note: the lint level is defined here
   --> $DIR/through-proc-macro.rs:7:9
    |

@@ -45,13 +45,11 @@ mod global_allocator;
 mod iter;
 mod log_syntax;
 mod offload;
-mod pattern_type;
 mod rustdoc_skip_body;
 mod source_util;
 mod test;
 mod test_binder_constraints;
 mod trace_macros;
-mod view_type;
 
 pub mod asm;
 pub mod cmdline_attrs;
@@ -100,13 +98,11 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         module_path: source_util::expand_mod,
         naked_asm: asm::expand_naked_asm,
         option_env: env::expand_option_env,
-        pattern_type: pattern_type::expand,
         std_panic: edition_panic::expand_panic,
         stringify: source_util::expand_stringify,
         test_binder_constraints: test_binder_constraints::expand,
         trace_macros: trace_macros::expand_trace_macros,
         unreachable: edition_panic::expand_unreachable,
-        view_type: view_type::expand,
         // tidy-alphabetical-end
     }
 
@@ -134,20 +130,20 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     }
 
     register_derive! {
-        Clone: clone::expand_deriving_clone,
-        CoerceShared: reborrow::expand_deriving_coerce_shared,
-        Copy: copy::expand_deriving_copy,
-        ConstParamTy: const_param_ty::expand_deriving_const_param_ty,
-        Debug: debug::expand_deriving_debug,
-        Default: default::expand_deriving_default,
-        Eq: eq::expand_deriving_eq,
-        Hash: hash::expand_deriving_hash,
-        Ord: ord::expand_deriving_ord,
-        PartialEq: partial_eq::expand_deriving_partial_eq,
-        PartialOrd: partial_ord::expand_deriving_partial_ord,
-        CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
-        Reborrow: reborrow::expand_deriving_reborrow,
-        From: from::expand_deriving_from,
+        Clone: clone::expand_derive_clone,
+        CoerceShared: reborrow::expand_derive_coerce_shared,
+        Copy: copy::expand_derive_copy,
+        ConstParamTy: const_param_ty::expand_derive_const_param_ty,
+        Debug: debug::expand_derive_debug,
+        Default: default::expand_derive_default,
+        Eq: eq::expand_derive_eq,
+        Hash: hash::expand_derive_hash,
+        Ord: ord::expand_derive_ord,
+        PartialEq: partial_eq::expand_derive_partial_eq,
+        PartialOrd: partial_ord::expand_derive_partial_ord,
+        CoercePointee: coerce_pointee::expand_derive_coerce_pointee,
+        Reborrow: reborrow::expand_derive_reborrow,
+        From: from::expand_derive_from,
     }
 
     let client = rustc_proc_macro::bridge::client::Client::expand1(rustc_proc_macro::quote);

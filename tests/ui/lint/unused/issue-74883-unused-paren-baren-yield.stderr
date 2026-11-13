@@ -48,7 +48,7 @@ error: unnecessary parentheses around block return value
   --> $DIR/issue-74883-unused-paren-baren-yield.rs:17:10
    |
 LL |         {( yield )};
-   |          ^^     ^^
+   |          ^       ^
    |
 help: remove these parentheses
    |

@@ -1,4 +1,4 @@
-#![feature(pattern_types, pattern_type_macro, sized_hierarchy)]
+#![feature(pattern_types, sized_hierarchy)]
 #![allow(dead_code)]
 
 use std::marker::PointeeSized;

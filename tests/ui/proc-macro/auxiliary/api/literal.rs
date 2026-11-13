@@ -1,5 +1,10 @@
+// This code is part of a more global proc-macro testsuite. To run it:
+// `./x.py test tests/ui/proc-macro/test.rs`. Also it's very frequent that even with modifications,
+// it won't rerun, so don't forget to use `--force-rerun`.
+
 // ignore-tidy-file-linelength
 
+use std::ffi::CString;
 use proc_macro::{EscapeError, Literal, ConversionErrorKind};
 
 pub fn test() {
@@ -124,4 +129,10 @@ fn test_literal_value() {
         Literal::byte_character(b'B').byte_character_value(),
         Ok(b'B')
     );
+
+    assert_eq!(Literal::string("aA").str_value(), Ok("aA".to_string()));
+    assert_eq!(Literal::string("\t").str_value(), Ok("\t".to_string()));
+
+    assert_eq!(Literal::c_string(c"aA").cstr_value().unwrap(), c"aA");
+    assert_eq!(Literal::c_string(c"\t").cstr_value().unwrap(), c"\t");
 }

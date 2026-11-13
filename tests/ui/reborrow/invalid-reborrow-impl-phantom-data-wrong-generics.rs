@@ -9,7 +9,7 @@ struct CustomMarker<'a>(PhantomData<&'a ()>);
 impl<'a> Reborrow for PhantomData<'a> {}
 //~^ ERROR E0107
 //~| ERROR E0107
-//~| ERROR implementing `Reborrow` requires exactly one lifetime argument in the reborrowed type
+//~| ERROR implementing `Reborrow` requires at least one lifetime argument in the reborrowed type
 
 fn main() {
     let mut a = CustomMarker(PhantomData);

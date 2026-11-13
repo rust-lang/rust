@@ -1,7 +1,7 @@
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Target;
+use rustc_target::spec::{Arch, Target};
 
 use self::shims::unix::linux::mem::EvalContextExt as _;
 use self::shims::unix::linux_like::eventfd::EvalContextExt as _;
@@ -19,9 +19,15 @@ use crate::*;
 const TASK_COMM_LEN: u64 = 16;
 
 pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
-    matches!(name, "gettid" | "statx")
-        || (target.env == rustc_target::spec::Env::Gnu
-            && matches!(name, "__cxa_thread_atexit_impl"))
+    match name {
+        "copy_file_range" | "gettid" | "statx" => true,
+        "__cxa_thread_atexit_impl" => target.env == rustc_target::spec::Env::Gnu,
+        // glibc only exposes this symbol on targets with a 32-bit time_t.
+        "__futimens64" =>
+            target.env == rustc_target::spec::Env::Gnu
+                && matches!(target.arch, Arch::X86 | Arch::Arm | Arch::Mips),
+        _ => false,
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -40,7 +46,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // File related shims
             "open64" => {
-                // FIXME: This does not have a direct test (#3179).
                 // "open64" means that the file is opened with O_LARGEFILE, which we always do.
                 let ([path_raw, flag], varargs) = ecx.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
@@ -50,7 +55,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ecx.write_scalar(result, dest)?;
             }
             "openat64" => {
-                // FIXME: This does not have a direct test (#3179).
                 // "openat64" means that the file is opened with O_LARGEFILE, which we always do.
                 let ([dirfd, path_raw, flag], varargs) = ecx.check_shim_sig_variadic(
                     shim_sig!(extern "C" fn(i32, *_, i32, ...) -> i32),
@@ -150,8 +154,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t, u32) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = ecx.sync_file_range(fd, offset, nbytes, flags)?;
+                let result = ecx.linux_sync_file_range(fd, offset, nbytes, flags)?;
                 ecx.write_scalar(result, dest)?;
+            }
+            "copy_file_range" => {
+                let [fd_in, off_in, fd_out, off_out, len, flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::off_t, i32, *libc::off_t, libc::size_t, u32) -> libc::ssize_t),
+                    (link_name, abi, args),
+                )?;
+                ecx.linux_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags, dest)?;
             }
             "statx" => {
                 let [dirfd, pathname, flags, mask, statxbuf] = &ecx.check_shim_sig(
@@ -173,6 +184,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [dirp] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
                 ecx.readdir(dirp, dest, "dirent64")?;
+            }
+            "__futimens64" if ecx.is_dyn_sym("__futimens64") => {
+                // libc has no separate time64 type; its timespec uses 32-bit time_t here.
+                // (See https://github.com/rust-lang/libc/issues/3223.)
+                let [fd, times] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *std::sys::pal::time::__timespec64) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = ecx.futimens(fd, times)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             // epoll, eventfd
@@ -282,7 +303,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ecx.machine.current_user_relevant_span(),
                 )?;
 
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
 
             // Dynamically invoked syscalls
@@ -342,7 +363,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                ecx.write_null(dest)?;
+                ecx.write_int(0, dest)?;
             }
             "gnu_get_libc_version"
                 if ecx.frame_in_std()
@@ -355,6 +376,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let version = "2.26\0";
                 let version = ecx.allocate_str_dedup(version)?;
                 ecx.write_pointer(version.ptr(), dest)?;
+            }
+            "sendfile64" if ecx.frame_in_std() => {
+                let [_out_fd, _in_fd, _offset, _count] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, *libc::off64_t, usize) -> isize),
+                    (link_name, abi, args),
+                )?;
+                // Force std to use a fallback path.
+                ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
+            }
+            "splice" if ecx.frame_in_std() => {
+                let [_src_fd, _src_offset, _dst_fd, _dst_offset, _len, _flags] = &ecx.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::off_t, i32, *libc::off_t, usize, u32) -> isize),
+                    (link_name, abi, args),
+                )?;
+                // Force std to use a fallback path.
+                ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),

@@ -3122,11 +3122,6 @@ impl<'tcx> ty::PolyTraitClause<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, Lift)]
-pub struct PrintClosureAsImpl<'tcx> {
-    pub closure: ty::ClosureArgs<TyCtxt<'tcx>>,
-}
-
 macro_rules! forward_display_to_print {
     ($($ty:ty),+) => {
         $(
@@ -3409,10 +3404,6 @@ define_print_and_forward_display! {
             write!(p, "!")?;
         }
         self.0.trait_ref.print_trait_sugared().print(p)?;
-    }
-
-    PrintClosureAsImpl<'tcx> {
-        p.pretty_print_closure_as_impl(self.closure)?;
     }
 
     ty::ParamTy {

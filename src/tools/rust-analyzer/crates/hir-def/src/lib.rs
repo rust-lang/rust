@@ -17,6 +17,7 @@ extern crate ra_ap_rustc_parse_format as rustc_parse_format;
 
 pub extern crate ra_ap_rustc_abi as layout;
 pub extern crate ra_ap_rustc_abi as rustc_abi;
+pub extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 
 pub mod attrs;
 pub mod builtin_type;

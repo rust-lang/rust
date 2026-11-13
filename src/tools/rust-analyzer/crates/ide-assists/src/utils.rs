@@ -126,6 +126,16 @@ fn needs_parens_in_guard_chain(make: &SyntaxFactory, guard: &ast::Expr) -> bool 
     guard.needs_parens_in_place_of(if_let_and_guard.syntax(), fake_guard.syntax())
 }
 
+fn needs_parens_in_bin_expr(make: &SyntaxFactory, expr: &ast::Expr, kind: ast::BinaryOp) -> bool {
+    let ast::Expr::BinExpr(bin_expr) = make.expr_bin_op(make.expr_unit(), kind, make.expr_unit())
+    else {
+        stdx::never!("invalid make bin_expr");
+        return false;
+    };
+    let lhs = bin_expr.lhs().expect("invalid make");
+    expr.needs_parens_in_place_of(bin_expr.syntax(), lhs.syntax())
+}
+
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
 /// `#[test_case(...)]`, `#[tokio::test]` and similar.
 /// Also a regular `#[test]` annotation is supported.
@@ -328,8 +338,12 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
                     );
                 }
             };
+            let mut lhs = bin.lhs()?;
+            if needs_parens_in_bin_expr(make, &lhs, rev_kind) {
+                lhs = make.expr_paren(lhs).into();
+            }
 
-            Some(make.expr_bin(bin.lhs()?, rev_kind, bin.rhs()?).into())
+            Some(make.expr_bin(lhs, rev_kind, bin.rhs()?).into())
         }
         ast::Expr::MethodCallExpr(mce) => {
             let receiver = mce.receiver()?;

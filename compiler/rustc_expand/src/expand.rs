@@ -41,7 +41,6 @@ use crate::diagnostics::{
     GlobDelegationTraitlessQpath, IncompleteParse, RecursionLimitReached, RemoveExprNotSupported,
     UnsupportedKeyValue, WrongFragmentKind,
 };
-use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{
     DirOwnership, ParsedExternalMod, mod_dir_path, mod_file_path_from_attr, parse_external_mod,
 };
@@ -1067,7 +1066,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 if err.span.is_dummy() {
                     err.span(span);
                 }
-                annotate_err_with_kind(&mut err, kind, span);
                 let guar = err.emit_err();
                 self.cx.macro_error_and_trace_macros_diag();
                 kind.dummy(span, guar)
@@ -2235,7 +2233,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
-            validate_attr::check_attr(&self.cx.sess.psess, attr);
             AttributeParser::parse_limited_all(
                 self.cx.sess,
                 slice::from_ref(attr),

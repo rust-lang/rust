@@ -112,19 +112,20 @@ fn test_bind_ipv4_invalid_addr_len() {
     };
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
-    if cfg!(miri) {
-        // A too big size is also invalid. Some native hosts (e.g. Linux)
-        // allow too big sizes, so we skip this test on native hosts:
-        // <https://github.com/rust-lang/miri/pull/5059#discussion_r3305439221>
-        let err = unsafe {
-            errno_result(libc::bind(
-                sockfd,
-                (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
-                (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
-            ))
-            .unwrap_err()
-        };
-        assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+    // A too big size is also invalid according to the spec, but accepted on Linux.
+    // Make sure the bigger size is still fully in-bounds.
+    let addrs = [addr; 2];
+    let res = unsafe {
+        errno_result(libc::bind(
+            sockfd,
+            addrs.as_ptr().cast::<libc::sockaddr>(),
+            (size_of::<libc::sockaddr_in>() + 1) as libc::socklen_t,
+        ))
+    };
+    if cfg!(miri) || cfg!(not(target_os = "linux")) {
+        assert_eq!(res.unwrap_err().raw_os_error().unwrap(), libc::EINVAL);
+    } else {
+        assert_eq!(res.unwrap(), 0);
     }
 }
 
@@ -281,7 +282,8 @@ fn test_getsockopt_truncate() {
         assert_eq!(&truncated_timeout, slice::from_raw_parts(timeout_ptr, 5));
     }
 
-    let mut option_value = std::mem::MaybeUninit::<libc::timeval>::zeroed();
+    // The buffer must be at least as large as the length we claim.
+    let mut option_value = std::mem::MaybeUninit::<[libc::timeval; 2]>::zeroed();
     // The actual length is smaller than this.
     let mut long_option_len = (size_of::<libc::timeval>() + 2) as libc::socklen_t;
 
@@ -298,7 +300,7 @@ fn test_getsockopt_truncate() {
     // Ensure that the size was shortened to the actual length.
     assert_eq!(long_option_len, size_of::<libc::timeval>() as libc::socklen_t);
     // The returned timeout should be the same value as we just set.
-    let untruncated_timeout = unsafe { option_value.assume_init() };
+    let untruncated_timeout = unsafe { option_value.assume_init() }[0];
     assert_eq!(untruncated_timeout.tv_sec, new_timeout.tv_sec);
     assert_eq!(untruncated_timeout.tv_usec, new_timeout.tv_usec);
 }

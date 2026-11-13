@@ -770,12 +770,6 @@ pub mod impls_indent {
     pub struct Context;
 
     /// Working with objects.
-    ///
-    /// # Safety
-    ///
-    /// Functions that take indices of locals do not check bounds on these indices;
-    /// the caller must ensure that the indices are less than the number of locals
-    /// in the current stack frame.
     impl Context {
     }
 

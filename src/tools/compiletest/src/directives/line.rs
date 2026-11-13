@@ -3,56 +3,59 @@ use std::fmt;
 use camino::Utf8Path;
 
 use crate::directives::LineNumber;
-
-const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
+use crate::{error, help};
 
 /// If the given line begins with the appropriate comment prefix for a directive,
 /// returns a struct containing various parts of the directive.
 pub(crate) fn line_directive<'a>(
     file_path: &'a Utf8Path,
     line_number: LineNumber,
-    original_line: &'a str,
-) -> Option<DirectiveLine<'a>> {
-    // Ignore lines that don't start with the comment prefix.
-    let after_comment =
-        original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
+    line: &'a str,
+) -> Option<Result<DirectiveLine<'a>, Error<'a>>> {
+    let error = |kind| Some(Err(Error { kind, file_path, line_number }));
 
-    let revision;
-    let raw_directive;
+    let comment = line.trim_start().strip_prefix("//")?;
+    let trimmed_comment = comment.trim_start();
 
-    if let Some(after_open_bracket) = after_comment.strip_prefix('[') {
-        // A comment like `//@[foo]` only applies to revision `foo`.
+    let (leading_revision, trimmed_comment) = trimmed_comment
+        .strip_prefix('[')
+        .and_then(|after_open_bracket| after_open_bracket.split_once(']'))
+        .map(|(revision, after_close_bracket)| (Some(revision), after_close_bracket.trim_start()))
+        .unwrap_or((None, trimmed_comment));
+
+    let mut raw_directive = trimmed_comment.strip_prefix("@")?.trim_start();
+
+    if let Some(revision) = leading_revision {
+        let context = &line[..line.substr_range(raw_directive).unwrap().start];
+        return error(ErrorKind::LeadingRevisionCondition { revision, context });
+    }
+
+    if trimmed_comment.len() != comment.len() {
+        return error(ErrorKind::WhitespaceBeforeAtSign);
+    }
+
+    let mut revision = None;
+
+    if let Some(after_open_bracket) = raw_directive.strip_prefix('[') {
         let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
-            panic!(
-                "malformed condition directive: expected `{COMPILETEST_DIRECTIVE_PREFIX}[foo]`, found `{original_line}`"
-            )
+            return error(ErrorKind::UnclosedRevisionCondition);
         };
 
         revision = Some(line_revision);
         raw_directive = after_close_bracket.trim_start();
 
         if line_revision.contains(",") {
-            let suggestion: Vec<_> = line_revision
-                .split(",")
-                .map(|revision| {
-                    format!("{COMPILETEST_DIRECTIVE_PREFIX} [{revision}]: {raw_directive}")
-                })
-                .collect();
-            panic!(
-                "malformed condition directive: multiple revisions aren't supported yet in `{}`, split them like\n{}",
-                original_line,
-                suggestion.join("\n"),
-            );
+            return error(ErrorKind::CommaInRevisionCondition {
+                revision: line_revision,
+                directive: raw_directive,
+            });
         }
-    } else {
-        revision = None;
-        raw_directive = after_comment;
-    };
+    }
 
     // The directive name ends at the first occurrence of colon, space, or end-of-string.
     let name = raw_directive.split([':', ' ']).next().expect("split is never empty");
 
-    Some(DirectiveLine { file_path, line_number, revision, raw_directive, name })
+    Some(Ok(DirectiveLine { file_path, line_number, revision, raw_directive, name }))
 }
 
 /// The (partly) broken-down contents of a line containing a test directive,
@@ -70,6 +73,7 @@ pub(crate) fn line_directive<'a>(
 ///           ^^^^^^^^^^^^^^^^^ raw_directive
 ///           ^^^^^^^^^^^^^     name
 /// ```
+#[cfg_attr(test, derive(Debug))]
 pub(crate) struct DirectiveLine<'a> {
     /// Path of the file containing this line.
     ///
@@ -88,7 +92,10 @@ pub(crate) struct DirectiveLine<'a> {
     ///
     /// This is "raw" because the directive's name and colon-separated value
     /// (if present) have not yet been extracted or checked.
+    #[cfg(not(test))]
     raw_directive: &'a str,
+    #[cfg(test)]
+    pub(crate) raw_directive: &'a str,
 
     /// Name of the directive.
     ///
@@ -128,5 +135,62 @@ impl<'ln> DirectiveLine<'ln> {
     /// without accessing the field directly.
     pub(crate) fn display(&self) -> impl fmt::Display {
         self.raw_directive
+    }
+}
+
+#[cfg_attr(test, derive(Debug))]
+pub(crate) struct Error<'a> {
+    pub(crate) kind: ErrorKind<'a>,
+    pub(crate) file_path: &'a Utf8Path,
+    pub(crate) line_number: LineNumber,
+}
+
+#[cfg_attr(test, derive(Debug))]
+pub(crate) enum ErrorKind<'a> {
+    LeadingRevisionCondition { revision: &'a str, context: &'a str },
+    WhitespaceBeforeAtSign,
+    UnclosedRevisionCondition,
+    CommaInRevisionCondition { revision: &'a str, directive: &'a str },
+}
+
+impl Error<'_> {
+    // FIXME: Just report the error, poison the context and keep going.
+    pub(crate) fn raise_fatal(self) -> ! {
+        let Self { kind, file_path, line_number } = self;
+
+        let error = |message| error!("malformed directive: {message} at {file_path}:{line_number}");
+
+        match kind {
+            ErrorKind::LeadingRevisionCondition { revision, context } => {
+                error("found revision condition before `@` instead of after");
+                help!("rewrite the start of the line to `//@[{revision}] ` (from `{context}`)");
+            }
+            ErrorKind::WhitespaceBeforeAtSign => {
+                error("found whitespace between `//` and `@`");
+                help!("if you meant to write a directive remove the whitespace to form `//@`");
+                help!(
+                    "if you meant to literally write `@` in a code comment add `\\` before `@` or \
+                    rewrap the contents of the comment so `@` doesn't come first"
+                );
+            }
+            ErrorKind::UnclosedRevisionCondition => {
+                error("revision condition is missing a closing bracket `]`");
+            }
+            ErrorKind::CommaInRevisionCondition { revision, directive } => {
+                error(
+                    "found commas in revision condition but multiple revisions aren't supported yet",
+                );
+
+                let suggestion = revision
+                    .split(",")
+                    .map(|revision| format!("//@[{revision}]: {directive}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                help!("consider splitting the directive like\n{suggestion}");
+            }
+        }
+
+        panic!("fatal error")
     }
 }

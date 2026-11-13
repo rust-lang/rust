@@ -26,23 +26,27 @@ use crate::llvm::{
 };
 use crate::{attributes, llvm_util};
 
-pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
+pub(crate) fn apply_to_llfn<'ll>(llfn: Value<'ll>, idx: AttributePlace, attrs: &[&'ll Attribute]) {
     if !attrs.is_empty() {
         llvm::AddFunctionAttributes(llfn, idx, attrs);
     }
 }
 
-pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
+pub(crate) fn apply_to_callsite<'ll>(
+    callsite: Value<'ll>,
+    idx: AttributePlace,
+    attrs: &[&'ll Attribute],
+) {
     if !attrs.is_empty() {
         llvm::AddCallSiteAttributes(callsite, idx, attrs);
     }
 }
 
-pub(crate) fn has_string_attr(llfn: &Value, name: &str) -> bool {
+pub(crate) fn has_string_attr<'ll>(llfn: Value<'ll>, name: &str) -> bool {
     llvm::HasStringAttribute(llfn, name)
 }
 
-pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
+pub(crate) fn remove_string_attr_from_llfn<'ll>(llfn: Value<'ll>, name: &str) {
     llvm::RemoveStringAttrFromFn(llfn, name);
 }
 
@@ -401,7 +405,6 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
         StackProtector::None => return None,
         StackProtector::All => AttributeKind::StackProtectReq,
         StackProtector::Strong => AttributeKind::StackProtectStrong,
-        StackProtector::Basic => AttributeKind::StackProtect,
     };
 
     Some(sspattr.create_attr(cx.llcx))
@@ -478,6 +481,8 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     sess: &Session,
 ) -> SmallVec<[&'ll Attribute; 2]> {
     let mut attrs = SmallVec::new();
+    // Either attribute satisfies LLVM's combined size predicate, but the software pipeliner reads
+    // `optsize` alone, so a `z` build needs both.
     match sess.opts.optimize {
         OptLevel::Size => {
             attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
@@ -501,7 +506,7 @@ fn create_alloc_family_attr<'ll>(llcx: llvm::Context<'ll>) -> &'ll llvm::Attribu
 pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
-    llfn: &'ll Value,
+    llfn: Value<'ll>,
     codegen_fn_attrs: &CodegenFnAttrs,
     instance: Option<ty::Instance<'tcx>>,
     sanitizer_ignorelist: Option<&SanitizerIgnoreList>,

@@ -557,6 +557,26 @@ impl<T, A: Allocator> LinkedList<T, A> {
     pub const fn new_in(alloc: A) -> Self {
         LinkedList { head: None, tail: None, len: 0, alloc, marker: PhantomData }
     }
+
+    /// Returns a reference to the underlying allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_ext)]
+    ///
+    /// use std::alloc::System;
+    /// use std::collections::LinkedList;
+    ///
+    /// let list: LinkedList<i32, System> = LinkedList::new_in(System);
+    /// let _alloc: &System = list.allocator();
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    pub const fn allocator(&self) -> &A {
+        &self.alloc
+    }
+
     /// Provides a forward iterator.
     ///
     /// # Examples
@@ -669,7 +689,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_linked_list_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_linked_list_len", since = "1.101.0")]
     pub const fn is_empty(&self) -> bool {
         self.head.is_none()
     }
@@ -697,7 +717,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_linked_list_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_linked_list_len", since = "1.101.0")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.len

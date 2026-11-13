@@ -4,7 +4,8 @@ use std::sync::OnceLock;
 
 use super::ffi::{Module, Value};
 
-type LLVMRustOffloadMapperFn = unsafe extern "C" fn(&Value, &Value, *const &Value);
+type LLVMRustOffloadMapperFn =
+    for<'ll> unsafe extern "C" fn(Value<'ll>, Value<'ll>, *const Value<'ll>);
 type LLVMRustOffloadWrapImagesFn =
     for<'ll> unsafe extern "C" fn(Module<'ll>, *const c_char) -> bool;
 
@@ -50,7 +51,12 @@ impl RustOffloadWrapper {
             .expect("RustOffloadWrapper not initialized. Call get_or_init with sysroot first.")
     }
 
-    pub(crate) unsafe fn llvm_rust_offload_wrapper(&self, v1: &Value, v2: &Value, vs: &[&Value]) {
+    pub(crate) unsafe fn llvm_rust_offload_wrapper<'ll>(
+        &self,
+        v1: Value<'ll>,
+        v2: Value<'ll>,
+        vs: &[Value<'ll>],
+    ) {
         unsafe { (self.LLVMRustOffloadMapper)(v1, v2, vs.as_ptr()) }
     }
 

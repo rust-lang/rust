@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // Unix domain sockets are not supported in Miri
+
 use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};

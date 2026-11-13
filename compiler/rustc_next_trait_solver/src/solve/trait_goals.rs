@@ -212,6 +212,19 @@ where
             return Err(NoSolution.into());
         }
 
+        // Fast path: when the feature is disabled,
+        // assume all types implement `Move`.
+        //
+        // This will trivially make the addition of
+        // `Move` backward compatible with trait bounds
+        if !cx.features().move_trait()
+            && cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
+        {
+            return ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Trivial)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes));
+        }
+
         if let Some(result) = ecx.disqualify_auto_trait_candidate_due_to_possible_impl(goal) {
             return result;
         }
@@ -352,6 +365,33 @@ where
                     Err(NoSolution.into())
                 }
             }
+        }
+    }
+
+    fn consider_builtin_fn_static_trait_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        let self_ty = goal.predicate.self_ty();
+        match goal.predicate.polarity {
+            // impl FnStatic for FnDef {}
+            ty::ClausePolarity::Positive => match self_ty.kind() {
+                ty::FnDef(_, _) => {
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                }
+                _ => Err(NoSolution.into()),
+            },
+            //  impl !FnStatic for T where T != FnDef && T is rigid {}
+            ty::ClausePolarity::Negative => match self_ty.kind() {
+                ty::FnDef(_, _) if self_ty.is_known_rigid() => {
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                }
+                _ => Err(NoSolution.into()),
+            },
         }
     }
 

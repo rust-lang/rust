@@ -2,7 +2,6 @@
 
 #![allow(unused_variables)]
 //@ proc-macro: lifetimes-rpass.rs
-//@ ignore-backends: gcc
 
 extern crate lifetimes_rpass as lifetimes;
 use lifetimes::*;

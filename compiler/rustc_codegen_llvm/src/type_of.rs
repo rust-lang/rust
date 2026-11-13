@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use rustc_abi::Primitive::{Float, Int, Pointer};
+use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{Align, BackendRepr, FieldsShape, Scalar, Size, Variants};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -12,11 +12,11 @@ use tracing::debug;
 use crate::common::*;
 use crate::llvm::Type;
 
-fn uncached_llvm_type<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
+fn uncached_llvm_type<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
     layout: TyAndLayout<'tcx>,
-    defer: &mut Option<(&'a Type, TyAndLayout<'tcx>)>,
-) -> &'a Type {
+    defer: &mut Option<(Type<'ll>, TyAndLayout<'tcx>)>,
+) -> Type<'ll> {
     match layout.backend_repr {
         BackendRepr::Scalar(_) => bug!("handled elsewhere"),
         BackendRepr::SimdVector { element, count } => {
@@ -85,7 +85,16 @@ fn uncached_llvm_type<'a, 'tcx>(
                 }
             }
         }
-        FieldsShape::Array { count, .. } => cx.type_array(layout.field(cx, 0).llvm_type(cx), count),
+        FieldsShape::Array { count, .. } => {
+            let element_ty = layout.field(cx, 0);
+            if let BackendRepr::Scalar(scalar) = element_ty.backend_repr
+                && scalar.primitive() == Primitive::Float(rustc_abi::Float::X87F80)
+            {
+                cx.type_padding_filler(element_ty.size * count, element_ty.align)
+            } else {
+                cx.type_array(element_ty.llvm_type(cx), count)
+            }
+        }
         FieldsShape::Arbitrary { .. } => match name {
             None => {
                 let (llfields, packed) = struct_llfields(cx, layout);
@@ -100,10 +109,10 @@ fn uncached_llvm_type<'a, 'tcx>(
     }
 }
 
-fn struct_llfields<'a, 'tcx>(
-    cx: &CodegenCx<'a, 'tcx>,
+fn struct_llfields<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
     layout: TyAndLayout<'tcx>,
-) -> (Vec<&'a Type>, bool) {
+) -> (Vec<Type<'ll>>, bool) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
@@ -135,7 +144,15 @@ fn struct_llfields<'a, 'tcx>(
             result.push(cx.type_padding_filler(padding, padding_align));
             debug!("    padding before: {:?}", padding);
         }
-        result.push(field.llvm_type(cx));
+
+        if let BackendRepr::Scalar(scalar) = field.backend_repr
+            && scalar.primitive() == Primitive::Float(rustc_abi::Float::X87F80)
+        {
+            result.push(cx.type_padding_filler(field.size, field.align));
+        } else {
+            result.push(field.llvm_type(cx));
+        }
+
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
@@ -179,30 +196,32 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 }
 
 pub(crate) trait LayoutLlvmExt<'tcx> {
-    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
-    fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type;
-    fn scalar_pair_element_llvm_type<'a>(
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
+    fn immediate_llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
+    fn scalar_llvm_type_at<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> Type<'ll>;
+    fn scalar_pair_element_llvm_type<'ll>(
         &self,
-        cx: &CodegenCx<'a, 'tcx>,
+        cx: &CodegenCx<'ll, 'tcx>,
         index: usize,
         immediate: bool,
-    ) -> &'a Type;
+    ) -> Type<'ll>;
 }
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     /// Gets the LLVM type corresponding to a Rust type, i.e., `rustc_middle::ty::Ty`.
-    /// The pointee type of the pointer in `PlaceRef` is always this type.
-    /// For sized types, it is also the right LLVM type for an `alloca`
-    /// containing a value of that type, and most immediates (except `bool`).
+    ///
+    /// For sized types, this is the in-memory type that is used for stores and loads.
+    /// The type used for immediates may be different, see [`Self::immediate_llvm_type`].
+    ///
     /// Unsized types, however, are represented by a "minimal unit", e.g.
     /// `[T]` becomes `T`, while `str` and `Trait` turn into `i8` - this
     /// is useful for indexing slices, as `&[T]`'s data pointer is `T*`.
+    ///
     /// If the type is an unsized struct, the regular layout is generated,
     /// with the innermost trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
-    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
@@ -222,7 +241,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             Variants::Single { index } => Some(index),
             _ => None,
         };
-        if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+        if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)).copied() {
             return llty;
         }
 
@@ -255,7 +274,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         llty
     }
 
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
+    fn immediate_llvm_type<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         match self.backend_repr {
             BackendRepr::Scalar(scalar) => {
                 if scalar.is_bool() {
@@ -275,7 +294,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         self.llvm_type(cx)
     }
 
-    fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type {
+    fn scalar_llvm_type_at<'ll>(&self, cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> Type<'ll> {
         match scalar.primitive() {
             Int(i, _) => cx.type_from_integer(i),
             Float(f) => cx.type_from_float(f),
@@ -283,12 +302,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         }
     }
 
-    fn scalar_pair_element_llvm_type<'a>(
+    fn scalar_pair_element_llvm_type<'ll>(
         &self,
-        cx: &CodegenCx<'a, 'tcx>,
+        cx: &CodegenCx<'ll, 'tcx>,
         index: usize,
         immediate: bool,
-    ) -> &'a Type {
+    ) -> Type<'ll> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.

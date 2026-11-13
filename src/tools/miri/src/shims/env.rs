@@ -95,36 +95,36 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Try to get an environment variable from the interpreted program's environment. This is
     /// useful for implementing shims which are documented to read from the environment.
     fn get_env_var(&mut self, name: &OsStr) -> InterpResult<'tcx, Option<OsString>> {
-        let this = self.eval_context_ref();
-        match &this.machine.env_vars {
+        let ecx = self.eval_context_ref();
+        match &ecx.machine.env_vars {
             EnvVars::Uninit => interp_ok(None),
-            EnvVars::Unix(vars) => vars.get(this, name),
+            EnvVars::Unix(vars) => vars.get(ecx, name),
             EnvVars::Windows(vars) => vars.get(name),
         }
     }
 
     /// Get the process identifier.
     fn get_pid(&self) -> u32 {
-        let this = self.eval_context_ref();
-        if this.machine.communicate() { std::process::id() } else { 1000 }
+        let ecx = self.eval_context_ref();
+        if ecx.machine.communicate() { std::process::id() } else { 1000 }
     }
 
     /// Get an "OS" thread ID for any thread.
     fn get_tid(&self, thread: ThreadId) -> u32 {
-        let this = self.eval_context_ref();
-        assert!(this.target_os_is_unix());
+        let ecx = self.eval_context_ref();
+        assert!(ecx.target_os_is_unix());
         // On Linux, the main thread has PID == TID so we uphold this. For simplicity we do it
         // everywhere. That also ensures this ID is different from what is returned by
         // `pthread_self`.
-        this.get_pid().strict_add(thread.to_u32())
+        ecx.get_pid().strict_add(thread.to_u32())
     }
 
     /// Convert TID back to a `ThreadId`, or `None` if it is invalid or the thread has terminated.
     fn get_thread_id_from_linux_tid(&self, tid: u32) -> Option<ThreadId> {
-        let this = self.eval_context_ref();
-        assert_matches!(this.tcx.sess.target.os, Os::Linux | Os::Android);
+        let ecx = self.eval_context_ref();
+        assert_matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android);
         // TID = PID + thread_index => index = TID - PID.
-        let id = tid.checked_sub(this.get_pid())?;
-        this.machine.threads.thread_id_try_from(id).ok()
+        let id = tid.checked_sub(ecx.get_pid())?;
+        ecx.machine.threads.thread_id_try_from(id).ok()
     }
 }

@@ -224,9 +224,14 @@ fn configure_and_expand(
 
         // The rest is error reporting and stats
 
-        sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
-            buffered_lints.append(&mut ecx.buffered_early_lint);
-        });
+        sess.psess.buffered_lints.with_lock(
+            |buffered_lints: &mut Option<Vec<BufferedEarlyLint>>| {
+                buffered_lints
+                    .as_mut()
+                    .expect("Buffered lints are not stolen yet")
+                    .append(&mut ecx.buffered_early_lint);
+            },
+        );
 
         sess.time("check_unused_macros", || {
             ecx.check_unused_macros();
@@ -430,8 +435,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.psess.buffered_lints.with_lock(|buffered_lints| {
+        let buffered_lints = buffered_lints.take().expect("Buffered lints are not stolen yet");
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for early_lint in buffered_lints.drain(..) {
+        for early_lint in buffered_lints {
             lint_buffer.add_early_lint(early_lint);
         }
     });
@@ -1159,7 +1165,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This improves performance by allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
 
-    sess.time("MIR_borrow_checking", || {
+    sess.time("MIR_checking", || {
         tcx.par_hir_body_owners(|def_id| {
             let not_typeck_child = !tcx.is_typeck_child(def_id.to_def_id());
             if not_typeck_child {

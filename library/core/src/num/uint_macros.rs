@@ -60,6 +60,83 @@ macro_rules! uint_impl {
         #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = Self::MAX.count_ones();
 
+        /// Tests the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than or equal to [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let n = 0b0111_1001", stringify!($SelfT), ";")]
+        ///
+        /// assert!(n.bit(0));
+        /// assert!(!n.bit(1));
+        /// assert!(!n.bit(2));
+        /// assert!(n.bit(3));
+        /// assert!(n.bit(4));
+        /// assert!(n.bit(5));
+        /// assert!(n.bit(6));
+        /// assert!(!n.bit(7));
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn bit(self, index: u32) -> bool {
+            (self & (1 << index)) != 0
+        }
+
+        /// Sets the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than or equal [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let mut n = 0b0101_0101", stringify!($SelfT), ";")]
+        ///
+        /// n = n.set_bit(0, false);
+        /// n = n.set_bit(1, true);
+        /// n = n.set_bit(2, false);
+        /// n = n.set_bit(3, true);
+        /// n = n.set_bit(4, false);
+        /// n = n.set_bit(5, true);
+        /// n = n.set_bit(6, false);
+        /// n = n.set_bit(7, true);
+        ///
+        /// assert_eq!(n, 0b1010_1010);
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn set_bit(mut self, index: u32, value: bool) -> Self {
+            self &= !(1 << index);
+            self |= (value as $SelfT) << index;
+
+            self
+        }
+
         /// Returns the number of ones in the binary representation of `self`.
         ///
         /// # Examples
@@ -555,8 +632,8 @@ macro_rules! uint_impl {
         /// # }
         /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[rustc_inherit_overflow_checks]
@@ -622,8 +699,8 @@ macro_rules! uint_impl {
         /// # }
         /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[rustc_inherit_overflow_checks]
@@ -646,8 +723,8 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shl`](Self::funnel_shl) would panic.
         ///
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
@@ -673,8 +750,8 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shr`](Self::funnel_shr) would panic.
         ///
-        #[rustc_const_stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[stable(feature = "funnel_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
@@ -804,7 +881,7 @@ macro_rules! uint_impl {
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
-        ///                 second least-significant bit becomes second most-significant bit, etc.
+        /// second least-significant bit becomes second most-significant bit, etc.
         ///
         /// # Examples
         ///

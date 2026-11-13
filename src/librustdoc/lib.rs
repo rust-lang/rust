@@ -7,7 +7,6 @@
 #![feature(ascii_char_variants)]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
-#![feature(exitcode_exit_method)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
@@ -64,7 +63,7 @@ extern crate test;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::path::Path;
-use std::process::ExitCode;
+use std::process::{ExitCode, Termination};
 
 use rustc_ast::ast;
 use rustc_errors::DiagCtxtHandle;
@@ -162,7 +161,7 @@ pub fn main() -> ExitCode {
 
     rustc_driver::catch_with_exit_code(|| {
         let at_args = rustc_driver::args::raw_args(&early_dcx);
-        main_args(&mut early_dcx, &at_args);
+        main_args(&mut early_dcx, &at_args)
     })
 }
 
@@ -500,7 +499,7 @@ fn opts() -> Vec<RustcOptGroup> {
             Unstable,
             FlagMulti,
             "",
-            "show-coverage",
+            "coverage",
             "calculate percentage of public items with documentation",
             "",
         ),
@@ -741,9 +740,12 @@ fn usage(argv0: &str) {
     );
 }
 
-pub(crate) fn wrap_return(dcx: DiagCtxtHandle<'_>, res: Result<(), String>) {
+pub(crate) fn wrap_return<T: Termination>(dcx: DiagCtxtHandle<'_>, res: Result<T, String>) -> T {
     match res {
-        Ok(()) => dcx.abort_if_errors(),
+        Ok(val) => {
+            dcx.abort_if_errors();
+            val
+        }
         Err(err) => dcx.fatal(err),
     }
 }
@@ -821,7 +823,7 @@ fn run_merge_finalize(
     Ok(())
 }
 
-fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
+fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) -> ExitCode {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
     // passing empty argument array to execve under some platforms,
@@ -850,7 +852,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let (input, options, render_options, loaded_paths) =
         match config::Options::from_matches(early_dcx, &matches, args) {
             Some(opts) => opts,
-            None => return,
+            None => return ExitCode::SUCCESS,
         };
 
     let dcx =
@@ -872,13 +874,14 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 options,
                 &render_options,
             );
-            return wrap_return(
+            wrap_return(
                 dcx,
                 interface::run_compiler(config, |compiler| {
                     run_merge_finalize(render_options, compiler)
                         .map_err(|e| format!("could not write merged cross-crate info: {e}"))
                 }),
             );
+            return ExitCode::SUCCESS;
         }
     };
     let md_input = config::markdown_input(&input);
@@ -960,7 +963,8 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                         });
                     res
                 }),
-            )
+            );
+            ExitCode::SUCCESS
         };
     }
 
@@ -997,14 +1001,14 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         // -W help
         if sess.opts.describe_lints {
             rustc_driver::describe_lints(sess, registered_lints);
-            return;
+            return ExitCode::SUCCESS;
         }
 
         // --print
         if rustc_driver::print_crate_info(&*compiler.codegen_backend, sess, true)
             == rustc_driver::Compilation::Stop
         {
-            return;
+            return ExitCode::SUCCESS;
         }
 
         let krate = rustc_interface::passes::parse(sess);
@@ -1013,20 +1017,24 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
-            let (krate, render_opts, mut cache, expanded_macros) = sess
+            let (krate, render_opts, mut cache, expanded_macros) = match sess
                 .time("run_global_ctxt", || {
                     core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-                });
+                }) {
+                Ok(value) => value,
+                Err(error) => return error.report(),
+            };
             info!("finished with rustc");
 
             if let Some(options) = scrape_examples_options {
-                return scrape_examples::run(krate, render_opts, cache, tcx, options, bin_crate);
+                scrape_examples::run(krate, render_opts, cache, tcx, options, bin_crate);
+                return ExitCode::SUCCESS;
             }
 
             if show_coverage {
                 // if we ran coverage, bail early, we don't need to also generate docs at this point
                 // (also we didn't load in any of the useful passes)
-                return;
+                return ExitCode::SUCCESS;
             }
 
             cache.crate_version = crate_version;
@@ -1041,7 +1049,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
             if run_check {
                 // Since we're in "check" mode, no need to generate anything beyond this point.
-                return;
+                return ExitCode::SUCCESS;
             }
 
             info!("going to format");
@@ -1071,7 +1079,9 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     unreachable!()
                 }
             }
-        });
+            ExitCode::SUCCESS
+        })
+        .0
     })
 }
 

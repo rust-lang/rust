@@ -18,7 +18,6 @@
 //@[default_cpu] compile-flags: --target avr-none
 //@[default_cpu] needs-llvm-components: avr
 //
-//@ ignore-backends: gcc
 //
 //[no_sram,disable_sram]~? WARN target feature `sram` must be enabled
 //[disable_sram]~? WARN target feature `sram` cannot be disabled with `-Ctarget-feature`

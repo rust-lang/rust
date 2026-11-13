@@ -1,17 +1,22 @@
 note: showing the spans of the path
-  --> $DIR/show_spans_macros.rs:27:11
+  --> $DIR/show_spans_macros.rs:20:17
    |
+LL | macro_rules! path {
+LL |     ($a:tt, $b:tt) => {
+LL |         let _ = $a::$b;
+   |                 ^^^^^^
+...
 LL |     path!(foo, BAR);
-   |           ^^^^^^^^
+   |     --------------- in this macro invocation
 
 note: showing the spans of the expr
-  --> $DIR/show_spans_macros.rs:41:12
+  --> $DIR/show_spans_macros.rs:40:12
    |
 LL |     field!(T, 0);
    |            ^^^^
 
 note: showing the spans of the expr
-  --> $DIR/show_spans_macros.rs:41:12
+  --> $DIR/show_spans_macros.rs:40:12
    |
 LL |     field!(T, 0);
    |            ^

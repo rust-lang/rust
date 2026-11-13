@@ -9,7 +9,7 @@ use std::marker::Reborrow;
 struct Thing;
 
 impl<'a> Reborrow for Thing {}
-//~^ ERROR implementing `Reborrow` requires exactly one lifetime argument in the reborrowed type
+//~^ ERROR implementing `Reborrow` requires at least one lifetime argument in the reborrowed type
 
 fn foo(_: Thing) {}
 

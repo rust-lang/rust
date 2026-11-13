@@ -1,5 +1,5 @@
 //@ check-pass
-// @ needs-rustc-debug-assertions
+//@ needs-rustc-debug-assertions
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver

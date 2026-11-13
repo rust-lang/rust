@@ -5,6 +5,7 @@ LL | /// [v2]
    |      ^^ no item named `v2` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[v2]: https://...`
 note: the lint level is defined here
   --> $DIR/deny-intra-link-resolution-failure.rs:1:9
    |

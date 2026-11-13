@@ -269,6 +269,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         sess.dcx().emit_fatal(err);
     });
     let mut has_atomic = false;
+    let (min_atomic_width, max_atomic_width) = {
+        let cpu = sess.opts.cg.target_cpu.as_deref().unwrap_or(sess.target.cpu.as_ref());
+        sess.target.atomic_widths(cpu)
+    };
     for (i, align) in [
         (8, layout.i8_align),
         (16, layout.i16_align),
@@ -276,7 +280,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         (64, layout.i64_align),
         (128, layout.i128_align),
     ] {
-        if i >= sess.target.min_atomic_width() && i <= sess.target.max_atomic_width() {
+        if i >= min_atomic_width && i <= max_atomic_width {
             if !has_atomic {
                 has_atomic = true;
                 if sess.is_nightly_build() {

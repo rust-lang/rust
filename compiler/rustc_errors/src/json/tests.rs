@@ -51,7 +51,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
             Box::new(Shared { data: output.clone() }),
             Some(sm),
             true, // pretty
-            HumanReadableErrorType { short: true, unicode: false },
+            HumanReadableErrorType { no_graphics: false, short: true, unicode: false },
             ColorConfig::Never,
         );
 
