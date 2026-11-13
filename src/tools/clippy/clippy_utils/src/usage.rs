@@ -92,9 +92,9 @@ pub struct ParamBindingIdCollector {
     pub binding_hir_ids: Vec<HirId>,
 }
 impl<'tcx> ParamBindingIdCollector {
-    fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<HirId> {
+    fn collect_binding_hir_ids(decl: &'tcx hir::FnDecl<'tcx>) -> Vec<HirId> {
         let mut hir_ids: Vec<HirId> = Vec::new();
-        for param in body.params {
+        for param in decl.inputs {
             let mut finder = ParamBindingIdCollector {
                 binding_hir_ids: Vec::new(),
             };
@@ -122,11 +122,11 @@ pub struct BindingUsageFinder<'a, 'tcx> {
     binding_ids: Vec<HirId>,
 }
 impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
-    /// Checks whether the parameter bindings of the given [`Body`](hir::Body) are used within it.
-    pub fn are_params_used(cx: &'a LateContext<'tcx>, body: &'tcx hir::Body<'tcx>) -> bool {
+    /// Checks whether the parameter bindings of the given [`hir::FnDecl`](hir::FnDecl) are used within the corresponding [`hir::Body`](hir::Body).
+    pub fn are_params_used(cx: &'a LateContext<'tcx>, decl: &hir::FnDecl<'_>, body: &'tcx hir::Body<'tcx>) -> bool {
         let mut finder = BindingUsageFinder {
             cx,
-            binding_ids: ParamBindingIdCollector::collect_binding_hir_ids(body),
+            binding_ids: ParamBindingIdCollector::collect_binding_hir_ids(decl),
         };
         finder.visit_body(body).is_break()
     }

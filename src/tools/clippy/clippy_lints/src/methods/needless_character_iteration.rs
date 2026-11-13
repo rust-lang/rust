@@ -96,9 +96,8 @@ fn handle_expr(
 }
 
 pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>, closure_arg: &Expr<'_>, is_all: bool) {
-    if let ExprKind::Closure(&Closure { body, .. }) = closure_arg.kind
-        && let body = cx.tcx.hir_body(body)
-        && let Some(first_param) = body.params.first()
+    if let ExprKind::Closure(&Closure { fn_decl, body, .. }) = closure_arg.kind
+        && let [first_param] = fn_decl.inputs
         && let ExprKind::MethodCall(method, mut recv, [], _) = recv.kind
         && method.ident.name == sym::chars
         && let str_ty = cx.typeck_results().expr_ty_adjusted(recv).peel_refs()
@@ -108,7 +107,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         while let ExprKind::MethodCall(_, new_recv, _, _) = recv.kind {
             recv = new_recv;
         }
-        let body_expr = peel_blocks(body.value);
+        let body_expr = peel_blocks(cx.tcx.hir_body(body).value);
 
         handle_expr(
             cx,

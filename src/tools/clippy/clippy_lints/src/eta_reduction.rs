@@ -88,18 +88,18 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 
 #[expect(clippy::too_many_lines)]
 fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx>>, expr: &Expr<'tcx>) {
-    let body = if let ExprKind::Closure(c) = expr.kind
-        && c.fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(())))
+    let (hir_closure, body) = if let ExprKind::Closure(c) = expr.kind
+        && c.fn_decl.inputs.iter().all(|param| matches!(param.ty.kind, TyKind::Infer(())))
         && matches!(c.fn_decl.output, FnRetTy::DefaultReturn(_))
         && !expr.span.from_expansion()
     {
-        cx.tcx.hir_body(c.body)
+        (c, cx.tcx.hir_body(c.body))
     } else {
         return;
     };
 
     if body.value.span.from_expansion() {
-        if body.params.is_empty()
+        if hir_closure.fn_decl.inputs.is_empty()
             && let Some(VecArgs::Vec(&[])) = VecArgs::hir(cx, body.value)
         {
             let vec_crate = if is_no_std_crate(cx) { "alloc" } else { "std" };
@@ -145,7 +145,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
             let callee_ty_raw = typeck.expr_ty(callee);
             let callee_ty = callee_ty_raw.peel_refs();
             if matches!(callee_ty.opt_diag_name(cx), Some(sym::Arc | sym::Rc))
-                || !check_inputs(typeck, body.params, None, args)
+                || !check_inputs(typeck, hir_closure.fn_decl.inputs, None, args)
             {
                 return;
             }
@@ -262,7 +262,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                 );
             }
         },
-        ExprKind::MethodCall(path, self_, args, _) if check_inputs(typeck, body.params, Some(self_), args) => {
+        ExprKind::MethodCall(path, self_, args, _) if check_inputs(typeck, hir_closure.fn_decl.inputs, Some(self_), args) => {
             if let Some(method_def_id) = typeck.type_dependent_def_id(body.value.hir_id)
                 && !find_attr!(cx.tcx, method_def_id, TrackCaller(..))
                 && check_sig(closure_sig, cx.tcx.fn_sig(method_def_id).skip_binder().skip_binder())

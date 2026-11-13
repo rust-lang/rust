@@ -16,10 +16,10 @@ pub(super) fn check<'tcx>(
     filter_recv: &'tcx Expr<'_>,
     filter_arg: &'tcx Expr<'_>,
 ) {
-    if let ExprKind::Closure(&Closure { body, .. }) = filter_arg.kind
-        && let body = cx.tcx.hir_body(body)
-        && let [param] = body.params
+    if let ExprKind::Closure(&Closure { fn_decl, body, .. }) = filter_arg.kind
+        && let [param] = fn_decl.inputs
         && let PatKind::Binding(_, arg_id, _, _) = strip_pat_refs(param.pat).kind
+        && let body = cx.tcx.hir_body(body)
         && let ExprKind::Binary(ref op, l, r) = body.value.kind
         && op.node == BinOpKind::Eq
         && cx

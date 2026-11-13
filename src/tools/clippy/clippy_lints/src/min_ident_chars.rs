@@ -173,15 +173,6 @@ impl LateLintPass<'_> for MinIdentChars {
         if self.min_chars_threshold == 0 {
             return;
         }
-        if let TraitItemKind::Fn(_, TraitFn::Required(idents)) = i.kind {
-            for &ident in idents {
-                if let Some(ident) = ident
-                    && let Some(missing) = self.check_sym(ident.name)
-                {
-                    self.emit(cx, ident, missing);
-                }
-            }
-        }
         if let Some(missing) = self.check_sym(i.ident.name)
             && !(matches!(i.kind, TraitItemKind::Fn(_, TraitFn::Provided(_)))
                 && cx.tcx.codegen_fn_attrs(i.owner_id.def_id).contains_extern_indicator())
@@ -200,10 +191,10 @@ impl LateLintPass<'_> for MinIdentChars {
             trait_item_def_id: Ok(trait_item),
             ..
         } = i.impl_kind
-            && let ImplItemKind::Fn(_, body) = i.kind
+            && let ImplItemKind::Fn(sig, _) = i.kind
         {
             let mut named_params_count = 0;
-            for (trait_ident, param) in iter::zip(cx.tcx.fn_arg_idents(trait_item), cx.tcx.hir_body(body).params) {
+            for (trait_ident, param) in iter::zip(cx.tcx.fn_arg_idents(trait_item), sig.decl.inputs) {
                 if let PatKind::Binding(_, _, ident, _) = param.pat.kind {
                     named_params_count += 1;
                     if trait_ident.is_none_or(|trait_ident| ident.name != trait_ident.name || self.lint_trait_impl)

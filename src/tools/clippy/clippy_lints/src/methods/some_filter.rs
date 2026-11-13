@@ -4,7 +4,7 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::{as_some_expr, pat_is_wild, peel_blocks, span_contains_comment};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 
 use super::SOME_FILTER;
@@ -18,13 +18,11 @@ pub(super) fn check<'tcx>(
 ) {
     let (condition, value) = if let Some(value) = as_some_expr(cx, recv)
         && let ExprKind::Closure(c) = arg.kind
-        && let Body {
-            params: [p],
-            value: condition,
-        } = cx.tcx.hir_body(c.body)
+        && let [p] = c.fn_decl.inputs
         && pat_is_wild(cx, &p.pat.kind, arg)
         && msrv.meets(cx, msrvs::BOOL_THEN_SOME)
     {
+        let condition = cx.tcx.hir_body(c.body).value;
         (condition, value)
     } else {
         return;

@@ -317,10 +317,10 @@ fn check_or_fn_call<'tcx>(
 }
 
 fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
-    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = e.kind {
+    if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = e.kind {
         let body = cx.tcx.hir_body(body);
 
-        if body.params.is_empty()
+        if fn_decl.inputs.is_empty()
             && let hir::Expr { kind, .. } = &body.value
             && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, [], _) = kind
             && ident.name == sym::to_string

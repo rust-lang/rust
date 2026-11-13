@@ -1074,7 +1074,7 @@ pub(super) fn const_conditions<'tcx>(
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
         Node::ForeignItem(item) => match item.kind {
-            hir::ForeignItemKind::Fn(_, _, generics) => (generics, None, false),
+            hir::ForeignItemKind::Fn(_, generics) => (generics, None, false),
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),
         },
         Node::OpaqueTy(opaque) => match opaque.origin {

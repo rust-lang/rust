@@ -778,7 +778,10 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
             if this.tcx.hir_body_owner_kind(owner_id).is_fn_or_closure() {
                 // The arguments and `self` are parented to the fn.
                 this.cx.var_parent = this.cx.parent;
-                for param in body.params {
+
+                let decl =
+                    this.tcx.hir_fn_decl_by_hir_id(this.tcx.hir_body_owner(body_id)).unwrap();
+                for param in decl.inputs {
                     this.visit_pat(param.pat);
                 }
 

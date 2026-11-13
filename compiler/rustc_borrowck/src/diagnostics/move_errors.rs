@@ -859,7 +859,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         hir::Node::Param(param) => {
                             // Instead of pointing at the path where we access the value within a
                             // closure, we point at the type of the outer `fn` argument.
-                            param.ty_span
+                            param.ty.span
                         }
                         hir::Node::LetStmt(stmt) => match (stmt.ty, stmt.init) {
                             // We point at the type of the outer let-binding.
@@ -1200,6 +1200,9 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             cannot_remove: FxHashSet::default(),
             desugar_binding_spans: Vec::new(),
         };
+        if let Some(fn_decl) = tcx.hir_fn_decl_by_hir_id(self.mir_hir_id()) {
+            finder.visit_fn_decl(fn_decl);
+        }
         finder.visit_body(body);
 
         let mut suggestions = Vec::new();

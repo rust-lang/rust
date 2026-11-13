@@ -139,7 +139,10 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
 
         let HirId { owner, local_id } = id;
         // get (or insert) the list of items for this owner and symbol
-        let (ref mut data, scope_owner) = *self.bindings.last_mut().unwrap();
+        let Some((data, scope_owner)) = self.bindings.last_mut() else {
+            // If this `pat` is in a param, return early so we can visit it from the body
+            return
+        };
         let items_with_name = data.entry(ident.name).or_default();
 
         // check other bindings with the same name, most recently seen first
@@ -149,7 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
                 return;
             }
 
-            if is_shadow(cx, scope_owner, prev, local_id) {
+            if is_shadow(cx, *scope_owner, prev, local_id) {
                 let prev_hir_id = HirId { owner, local_id: prev };
                 lint_shadow(cx, pat, prev_hir_id, ident.span);
                 // only lint against the "nearest" shadowed binding
@@ -164,6 +167,14 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
         let owner_id = cx.tcx.hir_body_owner_def_id(body.id());
         if !matches!(cx.tcx.hir_body_owner_kind(owner_id), BodyOwnerKind::Closure) {
             self.bindings.push((FxHashMap::default(), owner_id));
+
+            // Visit the patterns of the param belonging to the body
+            // FIXME: This would be a lot cleaner if we used `check_fn` instead
+            if let Some(decl) = cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.hir_body_owner(body.id())) {
+                for input in decl.inputs {
+                    self.check_pat(cx, input.pat);
+                }
+            }
         }
     }
 

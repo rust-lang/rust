@@ -453,10 +453,11 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
         },
         ExprKind::Closure(closure) => {
             let body = cx.tcx.hir_body(closure.body);
-            let params = body
-                .params
+            let params = closure
+                .fn_decl
+                .inputs
                 .iter()
-                .map(|param| param.span.get_text(cx).map(|t| t.to_string()))
+                .map(|param| param.param_span.get_text(cx).map(|t| t.to_string()))
                 .collect::<Option<Vec<_>>>()?
                 .join(", ");
             let negated = simplify_not(cx, curr_msrv, body.value)?;
