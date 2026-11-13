@@ -147,7 +147,7 @@ pub fn suggest_restriction<'tcx>(
     let generics = tcx.generics_of(item_id);
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
     if let Some((param, bound_str, fn_sig)) =
-        fn_sig.zip(projection).and_then(|(sig, p)| match *p.projection_self_ty().kind() {
+        fn_sig.zip(projection).and_then(|(sig, p)| match p.projection_self_ty().kind() {
             // Shenanigans to get the `Trait` from the `impl Trait`.
             ty::Param(param) => {
                 let param_def = generics.type_param(param, tcx);
@@ -362,7 +362,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .unwrap_or_else(|| self.tcx.def_span(field_def.did));
 
             if field_def.vis.is_accessible_from(def_scope, self.tcx) {
-                let accessible_field_ty = field_def.ty(self.tcx, *args).skip_norm_wip();
+                let accessible_field_ty = field_def.ty(self.tcx, args).skip_norm_wip();
                 if let Some((private_base_ty, private_field_ty, private_field_span)) =
                     private_candidate
                     && !self.can_eq(param_env, private_field_ty, accessible_field_ty)
@@ -454,7 +454,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             private_candidate.get_or_insert((
                 deref_base_ty,
-                field_def.ty(self.tcx, *args).skip_norm_wip(),
+                field_def.ty(self.tcx, args).skip_norm_wip(),
                 field_span,
             ));
         }
@@ -474,7 +474,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_pred = self.resolve_numeric_literals_with_default(trait_pred);
 
         let self_ty = trait_pred.skip_binder().self_ty();
-        let (param_ty, projection) = match *self_ty.kind() {
+        let (param_ty, projection) = match self_ty.kind() {
             ty::Param(_) => (true, None),
             ty::Alias(_, alias) => {
                 if let Some(projection) = alias.try_to_projection() {
@@ -736,7 +736,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // that, similar to what `FnCtxt::suggest_deref_or_ref` does.
             let (is_under_ref, base_ty, span) = match expr.kind {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, subexpr)
-                    if let &ty::Ref(region, base_ty, hir::Mutability::Not) = real_ty.kind() =>
+                    if let ty::Ref(region, base_ty, hir::Mutability::Not) = real_ty.kind() =>
                 {
                     (Some(region), base_ty, subexpr.span)
                 }
@@ -1060,9 +1060,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // If this is a zero-argument async closure directly passed as an argument
         // and the expected type is `Future`, suggest using `async {}` block instead
         // of `async || {}`
-        if let ty::CoroutineClosure(def_id, args) = *self_ty.kind()
+        if let ty::CoroutineClosure(def_id, args) = self_ty.kind()
             && let sig = args.as_coroutine_closure().coroutine_closure_sig().skip_binder()
-            && let ty::Tuple(inputs) = *sig.tupled_inputs_ty.kind()
+            && let ty::Tuple(inputs) = sig.tupled_inputs_ty.kind()
             && inputs.is_empty()
             && self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Future)
             && let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
@@ -1423,7 +1423,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ..
                 }) if ident.name == sym::clone
                     && !call_span.from_expansion()
-                    && !has_clone(*inner_ty) =>
+                    && !has_clone(inner_ty) =>
                 {
                     // We only care about method calls corresponding to the real `Clone` trait.
                     let Some(typeck_results) = self.typeck_results.as_ref() else { return false };
@@ -1441,7 +1441,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             let new_obligation = self.mk_trait_obligation_with_new_self_ty(
                 obligation.param_env,
-                trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty)),
+                trait_pred.map_bound(|trait_pred| (trait_pred, inner_ty)),
             );
 
             if self.predicate_may_hold(&new_obligation) && has_clone(ty) {
@@ -1490,7 +1490,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
         // Autoderef is useful here because sometimes we box callables, etc.
         let Some((def_id_or_name, output, inputs)) =
-            (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| match *found.kind() {
+            (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| match found.kind() {
                 ty::FnPtr(sig_tys, _) => Some((
                     DefIdOrName::Name("function pointer"),
                     sig_tys.output(),
@@ -1650,7 +1650,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let inner_old_self_ty = match old_self_ty.kind() {
-            ty::Ref(_, inner_ty, _) => Some(*inner_ty),
+            ty::Ref(_, inner_ty, _) => Some(inner_ty),
             _ => None,
         };
 
@@ -1925,7 +1925,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let ty::Ref(_, ty, mutability) = old_pred.self_ty().skip_binder().kind()
                 {
                     (
-                        mk_result(old_pred.map_bound(|trait_pred| (trait_pred, *ty))),
+                        mk_result(old_pred.map_bound(|trait_pred| (trait_pred, ty))),
                         mutability.is_mut(),
                     )
                 } else {
@@ -2177,7 +2177,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let ty::Ref(_, inner_ty, _) = ty.kind() else {
                     break 'outer;
                 };
-                ty = *inner_ty;
+                ty = inner_ty;
                 refs.push(PeeledRef { span, peeled_ty: ty });
                 expr = borrowed;
             }
@@ -2286,7 +2286,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
                     break;
                 };
-                suggested_ty = *inner_ty;
+                suggested_ty = inner_ty;
 
                 hir_ty = ref_ty;
 
@@ -2362,7 +2362,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let has_future = {
                     let mut ty = self_ty;
                     loop {
-                        match *ty.kind() {
+                        match ty.kind() {
                             ty::Ref(_, inner_ty, _)
                                 if !matches!(inner_ty.kind(), ty::Dynamic(..)) =>
                             {
@@ -2462,7 +2462,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let Some(typeck_results) = &self.typeck_results
                     && let ty = typeck_results.expr_ty_adjusted(base)
                     && let ty::FnDef(def_id, _args) = ty.kind()
-                    && let Some(hir::Node::Item(item)) = self.tcx.hir_get_if_local(*def_id)
+                    && let Some(hir::Node::Item(item)) = self.tcx.hir_get_if_local(def_id)
                 {
                     let (ident, _, _, _) = item.expect_fn();
                     let msg = format!("alternatively, consider making `fn {ident}` asynchronous");
@@ -2513,8 +2513,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             // Skipping binder here, remapping below
-            if let ty::Ref(region, t_type, mutability) = *trait_pred.skip_binder().self_ty().kind()
-            {
+            if let ty::Ref(region, t_type, mutability) = trait_pred.skip_binder().self_ty().kind() {
                 let suggested_ty = match mutability {
                     hir::Mutability::Mut => Ty::new_imm_ref(self.tcx, region, t_type),
                     hir::Mutability::Not => Ty::new_mut_ref(self.tcx, region, t_type),
@@ -2730,7 +2729,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 hir::ExprKind::Closure(closure) => closure.def_id,
                 _ => match typeck_results
                     .expr_ty_adjusted_opt(arg)
-                    .map(|ty| *self.deeply_resolve_ignoring_regions(ty).peel_refs().kind())
+                    .map(|ty| self.deeply_resolve_ignoring_regions(ty).peel_refs().kind())
                 {
                     Some(ty::Closure(def_id, _)) => def_id.as_local()?,
                     _ => return None,
@@ -2980,7 +2979,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let inputs = trait_ref.args.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_callable_trait(trait_ref.def_id) => {
-                    infcx.tcx.mk_fn_sig_safe_rust_abi(*inputs, infcx.next_ty_var(DUMMY_SP))
+                    infcx.tcx.mk_fn_sig_safe_rust_abi(inputs, infcx.next_ty_var(DUMMY_SP))
                 }
                 _ => infcx.tcx.mk_fn_sig_safe_rust_abi([inputs], infcx.next_ty_var(DUMMY_SP)),
             };
@@ -3037,11 +3036,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ty::FnPtr(sig_tys, hdr) = expected.kind() else {
             return;
         };
-        let expected = sig_tys.with(*hdr);
+        let expected = sig_tys.with(hdr);
         let ty::FnPtr(sig_tys, hdr) = found.kind() else {
             return;
         };
-        let found = sig_tys.with(*hdr);
+        let found = sig_tys.with(hdr);
         let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id) else {
             return;
         };
@@ -3361,7 +3360,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         "ImplDerived",
                     );
 
-                    match *ty.kind() {
+                    match ty.kind() {
                         ty::Coroutine(did, ..) | ty::CoroutineWitness(did, _) => {
                             coroutine = coroutine.or(Some(did));
                             outer_coroutine = Some(did);
@@ -3390,7 +3389,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self_ty.kind = ?ty.kind(),
                     );
 
-                    match *ty.kind() {
+                    match ty.kind() {
                         ty::Coroutine(did, ..) | ty::CoroutineWitness(did, ..) => {
                             coroutine = coroutine.or(Some(did));
                             outer_coroutine = Some(did);
@@ -4478,7 +4477,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let ty_str = tcx.short_string(ty, err.long_ty_path());
                         format!("required because it appears within the type `{ty_str}`")
                     };
-                    match *ty.kind() {
+                    match ty.kind() {
                         ty::Adt(def, args) => {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
@@ -4523,7 +4522,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if is_future
                                 && obligated_types.last().is_some_and(|ty| match ty.kind() {
                                     ty::Coroutine(last_def_id, ..) => {
-                                        tcx.coroutine_is_async(*last_def_id)
+                                        tcx.coroutine_is_async(last_def_id)
                                     }
                                     _ => false,
                                 })
@@ -5162,7 +5161,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         is_derivable_trait &&
             // Ensure all fields impl the trait.
             adt.all_fields().all(|field| {
-                let field_ty = ty::GenericArg::from(field.ty(self.tcx, *args).skip_norm_wip());
+                let field_ty = ty::GenericArg::from(field.ty(self.tcx, args).skip_norm_wip());
                 let trait_args = match diagnostic_name {
                     sym::PartialEq | sym::PartialOrd => {
                         Some(field_ty)
@@ -5541,7 +5540,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && fn_sig.is_fn_trait_compatible()
 
             // Extract first param of fn sig with peeled refs, e.g. `fn(&T)` -> `T`
-            && let Some(&ty::Ref(_, target_ty, needs_mut)) = fn_sig.inputs().first().map(|t| t.kind())
+            && let Some(ty::Ref(_, target_ty, needs_mut)) = fn_sig.inputs().first().map(|t| t.kind())
             && !target_ty.has_escaping_bound_vars()
 
             // Extract first tuple element out of fn trait, e.g. `FnOnce<(U,)>` -> `U`
@@ -5703,7 +5702,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             trait_ref: ty::TraitRef::new(
                                 tcx,
                                 tcx.require_lang_item(LangItem::Clone, span),
-                                [*ty],
+                                [ty],
                             ),
                             polarity: ty::ClausePolarity::Positive,
                         });
@@ -5913,7 +5912,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let TypeError::Sorts(expected_found) = diff else {
                 continue;
             };
-            let &ty::Alias(_, ty::AliasTy { kind: kind @ ty::Projection { def_id }, .. }) =
+            let ty::Alias(_, ty::AliasTy { kind: kind @ ty::Projection { def_id }, .. }) =
                 expected_found.expected.kind()
             else {
                 continue;
@@ -5994,7 +5993,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let binder = tcx.fn_sig(body_def_id).instantiate_identity().skip_norm_wip().output();
         self.enter_forall(binder, |output| {
-            let &ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, args, .. }) =
+            let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: opaque_def_id }, args, .. }) =
                 output.kind()
             else {
                 return;
@@ -6096,10 +6095,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // 1. `[T; _]` (array of T)
         // 2. `&[T; _]` (reference to array of T)
         // 3. `&mut [T; _]` (mutable reference to array of T)
-        let (element_ty, mut mutability) = match *trait_pred.skip_binder().self_ty().kind() {
+        let (element_ty, mut mutability) = match trait_pred.skip_binder().self_ty().kind() {
             ty::Array(element_ty, _) => (element_ty, None),
 
-            ty::Ref(_, pointee_ty, mutability) => match *pointee_ty.kind() {
+            ty::Ref(_, pointee_ty, mutability) => match pointee_ty.kind() {
                 ty::Array(element_ty, _) => (element_ty, Some(mutability)),
                 _ => return,
             },
@@ -6109,9 +6108,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Go through all the candidate impls to see if any of them is for
         // slices of `element_ty` with `mutability`.
-        let mut is_slice = |candidate: Ty<'tcx>| match *candidate.kind() {
+        let mut is_slice = |candidate: Ty<'tcx>| match candidate.kind() {
             ty::RawPtr(t, m) | ty::Ref(_, t, m) => {
-                if let ty::Slice(e) = *t.kind()
+                if let ty::Slice(e) = t.kind()
                     && e == element_ty
                     && m == mutability.unwrap_or(m)
                 {
@@ -6227,7 +6226,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let (mutability, _ty) = match rcvr_ty.kind() {
                         ty::Ref(_, ty, hir::Mutability::Mut) => ("&mut ", ty),
                         ty::Ref(_, ty, _) => ("&", ty),
-                        _ => ("", &rcvr_ty),
+                        _ => ("", rcvr_ty),
                     };
                     let path = self.tcx.def_path_str(def_id);
                     err.note(format!(
@@ -6345,7 +6344,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         };
         let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) =
-            self.tcx.opt_rpitit_info(*def_id)
+            self.tcx.opt_rpitit_info(def_id)
         else {
             return;
         };
@@ -6422,7 +6421,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.type_implements_trait(default_trait, [ty], param_env).must_apply_modulo_regions()
         };
 
-        Some(match *ty.kind() {
+        Some(match ty.kind() {
             ty::Never | ty::Error(_) => return None,
             ty::Bool => "false".to_string(),
             ty::Char => "\'x\'".to_string(),
@@ -6821,13 +6820,13 @@ fn hint_missing_borrow<'tcx>(
     }
 
     let found_args = match found.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => infcx.enter_forall(sig_tys, |sig_tys| sig_tys.inputs().iter()),
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => infcx.enter_forall(sig_tys, |sig_tys| sig_tys.inputs().iter()),
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }
@@ -7092,7 +7091,7 @@ struct ReplaceImplTraitFolder<'tcx> {
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceImplTraitFolder<'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Param(ty::ParamTy { index, .. }) = t.kind() {
-            if self.param.index == *index {
+            if self.param.index == index {
                 return self.replace_ty;
             }
         }
@@ -7310,8 +7309,8 @@ fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, Vec<hir::Mutability>) {
     let mut refs = vec![];
 
     while let ty::Ref(_, new_ty, mutbl) = ty.kind() {
-        ty = *new_ty;
-        refs.push(*mutbl);
+        ty = new_ty;
+        refs.push(mutbl);
     }
 
     (ty, refs)

@@ -281,7 +281,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Examine the target type and consider type-specific coercions, such
         // as auto-borrowing, coercing pointer mutability, pin-ergonomics, or
         // generic reborrow.
-        match *b.kind() {
+        match b.kind() {
             ty::RawPtr(_, b_mutbl) => {
                 return self.coerce_to_raw_ptr(a, b, b_mutbl);
             }
@@ -324,7 +324,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => {}
         }
 
-        match *a.kind() {
+        match a.kind() {
             ty::FnDef(..) => {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
@@ -430,7 +430,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
 
-        let (r_a, mt_a) = match *a.kind() {
+        let (r_a, mt_a) = match a.kind() {
             ty::Ref(r_a, ty, mutbl) => {
                 coerce_mutbls(mutbl, mutbl_b)?;
                 (r_a, ty::TypeAndMut { ty, mutbl })
@@ -631,9 +631,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
         // `&str: CoerceUnsized<&str>` does not hold but is encountered frequently
         // so we fast path bail out here
-        if let ty::Ref(_, source_pointee, ty::Mutability::Not) = *source.kind()
+        if let ty::Ref(_, source_pointee, ty::Mutability::Not) = source.kind()
             && source_pointee.is_str()
-            && let ty::Ref(_, target_pointee, ty::Mutability::Not) = *target.kind()
+            && let ty::Ref(_, target_pointee, ty::Mutability::Not) = target.kind()
             && target_pointee.is_str()
         {
             return Err(TypeError::Mismatch);
@@ -657,7 +657,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         self.commit_if_ok(|_| {
             // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
             let reborrow = match (source.kind(), target.kind()) {
-                (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
+                (ty::Ref(_, ty_a, mutbl_a), ty::Ref(_, _, mutbl_b)) => {
                     coerce_mutbls(mutbl_a, mutbl_b)?;
 
                     let coercion = RegionVariableOrigin::Coercion(self.cause.span);
@@ -676,7 +676,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         },
                     ))
                 }
-                (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
+                (ty::Ref(_, ty_a, mt_a), ty::RawPtr(_, mt_b)) => {
                     coerce_mutbls(mt_a, mt_b)?;
 
                     Some((
@@ -781,7 +781,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
                         debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
                         match (self_ty.kind(), unsize_ty.kind()) {
-                            (&ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
+                            (ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
                                 if self.type_var_is_sized(v) =>
                             {
                                 debug!("coerce_unsized: have sized infer {:?}", v);
@@ -1143,7 +1143,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(a) == a);
         debug_assert!(self.shallow_resolve(b) == b);
 
-        let (is_ref, mt_a) = match *a.kind() {
+        let (is_ref, mt_a) = match a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::RawPtr(ty, mutbl) => (false, ty::TypeAndMut { ty, mutbl }),
             _ => return self.unify(a, b, ForceLeakCheck::No),
@@ -1303,7 +1303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Result<ty::PolyFnSig<'tcx>, TypeError<'tcx>> {
         let tcx = self.tcx;
 
-        let &ty::FnDef(def_id, _) = fndef.kind() else {
+        let ty::FnDef(def_id, _) = fndef.kind() else {
             unreachable!("`sig_for_fn_def_coercion` called with non-fndef: {:?}", fndef);
         };
 
@@ -2257,7 +2257,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
                 // FIXME: structurally normalize?
                 if self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
                     && let ty::Dynamic(..) = pred.skip_binder().trait_ref.args.type_at(1).kind()
-                    && let ty::Infer(ty::TyVar(vid)) = *pred.self_ty().skip_binder().kind()
+                    && let ty::Infer(ty::TyVar(vid)) = pred.self_ty().skip_binder().kind()
                     && self.fcx.type_var_is_sized(vid)
                 {
                     // We get here when trying to unsize a type variable to a `dyn Trait`,

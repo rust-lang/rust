@@ -505,12 +505,12 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
         // any other type variable related to `vid` via
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
-        let g = match *t.kind() {
+        let g = match t.kind_ref() {
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("unexpected infer type: {t}")
             }
 
-            ty::Infer(ty::TyVar(vid)) => {
+            &ty::Infer(ty::TyVar(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let vid = inner.type_variables().root_var(vid);
                 if TermVid::Ty(vid) == self.root_vid {
@@ -595,7 +595,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
 
             // We only need to be careful with potentially normalizeable
             // aliases here. See `generalize_alias_term` for more information.
-            ty::Alias(ty::IsRigid::No, data) => {
+            &ty::Alias(ty::IsRigid::No, data) => {
                 self.generalize_alias_term(data.into()).map(|v| v.expect_type())
             }
 

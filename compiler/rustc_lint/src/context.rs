@@ -709,7 +709,7 @@ impl<'tcx> LateContext<'tcx> {
                 if trait_ref.is_none()
                     && let ty::Adt(def, args) = self_ty.kind()
                 {
-                    return self.print_def_path(def.did(), *args);
+                    return self.print_def_path(def.did(), args);
                 }
 
                 // This shouldn't ever be needed, but just in case:

@@ -171,7 +171,7 @@ fn encode_const_value<'tcx>(
             let bits = cv
                 .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                 .expect("expected monomorphic const in cfi");
-            let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+            let val = Integer::from_int_ty(&tcx, ity).size().sign_extend(bits) as i128;
             if val < 0 {
                 s.push('n');
             }
@@ -237,7 +237,7 @@ fn encode_const_value<'tcx>(
         // Reference values are encoded as the values of their referents (i.e., the valtree of a
         // reference value is the valtree of its referent).
         ty::Ref(_, ty0, ..) => {
-            let cv = ty::Value { ty: *ty0, valtree: cv.valtree };
+            let cv = ty::Value { ty: ty0, valtree: cv.valtree };
             s.push_str(&encode_const_value(tcx, cv, dict, options));
         }
 
@@ -531,7 +531,7 @@ pub(crate) fn encode_ty<'tcx>(
             let len = len.try_to_target_usize(tcx).expect("expected monomorphic const in cfi");
             let mut s = String::from("A");
             let _ = write!(s, "{len}");
-            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            s.push_str(&encode_ty(tcx, ty0, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -539,8 +539,8 @@ pub(crate) fn encode_ty<'tcx>(
         ty::Pat(ty0, pat) => {
             // u3patI<element-type><pattern>E as vendor extended type
             let mut s = String::from("u3patI");
-            s.push_str(&encode_ty(tcx, *ty0, dict, options));
-            write!(s, "{:?}", **pat).unwrap();
+            s.push_str(&encode_ty(tcx, ty0, dict, options));
+            write!(s, "{:?}", pat).unwrap();
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -549,7 +549,7 @@ pub(crate) fn encode_ty<'tcx>(
         ty::Slice(ty0) => {
             // u5sliceI<element-type>E as vendor extended type
             let mut s = String::from("u5sliceI");
-            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            s.push_str(&encode_ty(tcx, ty0, dict, options));
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -596,7 +596,7 @@ pub(crate) fn encode_ty<'tcx>(
                 // <subst>, as vendor extended type.
                 let name = encode_ty_name(tcx, def_id);
                 let _ = write!(s, "u{}{}", name.len(), name);
-                s.push_str(&encode_args(tcx, *args, def_id, false, dict, options));
+                s.push_str(&encode_args(tcx, args, def_id, false, dict, options));
                 compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             }
             typeid.push_str(&s);
@@ -606,11 +606,11 @@ pub(crate) fn encode_ty<'tcx>(
             // <length><name>, where <name> is <unscoped-name>
             let mut s = String::new();
 
-            if let Some(encoding) = find_attr!(tcx, *def_id, CfiEncoding {encoding} => encoding) {
+            if let Some(encoding) = find_attr!(tcx, def_id, CfiEncoding {encoding} => encoding) {
                 // Use user-defined CFI encoding for type
                 s.push_str(encoding.as_str().trim());
             } else {
-                let name = tcx.item_name(*def_id).to_string();
+                let name = tcx.item_name(def_id).to_string();
                 let _ = write!(s, "{}{}", name.len(), name);
             }
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
@@ -622,9 +622,9 @@ pub(crate) fn encode_ty<'tcx>(
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
-            let name = encode_ty_name(tcx, *def_id);
+            let name = encode_ty_name(tcx, def_id);
             let _ = write!(s, "u{}{}", name.len(), name);
-            s.push_str(&encode_args(tcx, *args, *def_id, false, dict, options));
+            s.push_str(&encode_args(tcx, args, def_id, false, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -632,12 +632,12 @@ pub(crate) fn encode_ty<'tcx>(
         // FIXME: could stand to merge this and the prior match arm
         ty::FnDef(def_id, args) => {
             let mut s = String::new();
-            let name = encode_ty_name(tcx, *def_id);
+            let name = encode_ty_name(tcx, def_id);
             let _ = write!(s, "u{}{}", name.len(), name);
             s.push_str(&encode_args(
                 tcx,
                 args.no_bound_vars().unwrap(),
-                *def_id,
+                def_id,
                 false,
                 dict,
                 options,
@@ -650,10 +650,10 @@ pub(crate) fn encode_ty<'tcx>(
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
-            let name = encode_ty_name(tcx, *def_id);
+            let name = encode_ty_name(tcx, def_id);
             let _ = write!(s, "u{}{}", name.len(), name);
             let parent_args = tcx.mk_args(args.as_coroutine_closure().parent_args());
-            s.push_str(&encode_args(tcx, parent_args, *def_id, false, dict, options));
+            s.push_str(&encode_args(tcx, parent_args, def_id, false, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -662,13 +662,13 @@ pub(crate) fn encode_ty<'tcx>(
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
-            let name = encode_ty_name(tcx, *def_id);
+            let name = encode_ty_name(tcx, def_id);
             let _ = write!(s, "u{}{}", name.len(), name);
             // Encode parent args only
             s.push_str(&encode_args(
                 tcx,
                 tcx.mk_args(args.as_coroutine().parent_args()),
-                *def_id,
+                def_id,
                 false,
                 dict,
                 options,
@@ -682,9 +682,9 @@ pub(crate) fn encode_ty<'tcx>(
             // [U3mut]u3refI<element-type>E as vendor extended type qualifier and type
             let mut s = String::new();
             s.push_str("u3refI");
-            s.push_str(&encode_ty(tcx, *ty0, dict, options));
+            s.push_str(&encode_ty(tcx, ty0, dict, options));
             s.push('E');
-            compress(dict, DictKey::Ty(Ty::new_imm_ref(tcx, *region, *ty0), TyQ::None), &mut s);
+            compress(dict, DictKey::Ty(Ty::new_imm_ref(tcx, region, ty0), TyQ::None), &mut s);
             if ty.is_mutable_ptr() {
                 s = format!("{}{}", "U3mut", s);
                 compress(dict, DictKey::Ty(ty, TyQ::Mut), &mut s);
@@ -696,10 +696,10 @@ pub(crate) fn encode_ty<'tcx>(
             // FIXME: This can definitely not be so spaghettified.
             // P[K]<element-type>
             let mut s = String::new();
-            s.push_str(&encode_ty(tcx, *ptr_ty, dict, options));
+            s.push_str(&encode_ty(tcx, ptr_ty, dict, options));
             if !ty.is_mutable_ptr() {
                 s = format!("{}{}", "K", s);
-                compress(dict, DictKey::Ty(*ptr_ty, TyQ::Const), &mut s);
+                compress(dict, DictKey::Ty(ptr_ty, TyQ::Const), &mut s);
             };
             s = format!("{}{}", "P", s);
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
@@ -711,7 +711,7 @@ pub(crate) fn encode_ty<'tcx>(
             let mut s = String::from("P");
             s.push_str(&encode_fnsig(
                 tcx,
-                &sig_tys.with(*hdr).skip_binder(),
+                &sig_tys.with(hdr).skip_binder(),
                 dict,
                 TypeIdOptions::empty(),
             ));
@@ -730,7 +730,7 @@ pub(crate) fn encode_ty<'tcx>(
             // vendor extended type.
             let mut s = String::from("u3dynI");
             s.push_str(&encode_predicates(tcx, predicates, dict, options));
-            s.push_str(&encode_region(*region, dict));
+            s.push_str(&encode_region(region, dict));
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);

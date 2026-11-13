@@ -167,10 +167,10 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let (source, target) =
         cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.typing_env());
     match (source.kind(), target.kind()) {
-        (&ty::Array(_, len), &ty::Slice(_)) => cx.const_usize(
+        (ty::Array(_, len), ty::Slice(_)) => cx.const_usize(
             len.try_to_target_usize(cx.tcx()).expect("expected monomorphic const in codegen"),
         ),
-        (&ty::Dynamic(data_a, _), &ty::Dynamic(data_b, _)) => {
+        (ty::Dynamic(data_a, _), ty::Dynamic(data_b, _)) => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             let b_principal_def_id = data_b.principal_def_id();
@@ -226,13 +226,13 @@ pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (src_ty.kind(), dst_ty.kind()) {
-        (&ty::Pat(a, _), &ty::Pat(b, _)) => unsize_ptr(bx, src, a, b, old_info),
-        (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
-        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => {
+        (ty::Pat(a, _), ty::Pat(b, _)) => unsize_ptr(bx, src, a, b, old_info),
+        (ty::Ref(_, a, _), ty::Ref(_, b, _) | ty::RawPtr(b, _))
+        | (ty::RawPtr(a, _), ty::RawPtr(b, _)) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
             (src, unsized_info(bx, a, b, old_info))
         }
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b); // implies same number of fields
             let src_layout = bx.cx().layout_of(src_ty);
             let dst_layout = bx.cx().layout_of(dst_ty);
@@ -272,14 +272,14 @@ pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     match (src_ty.kind(), dst_ty.kind()) {
-        (&ty::Pat(s, sp), &ty::Pat(d, dp))
+        (ty::Pat(s, sp), ty::Pat(d, dp))
             if let (PatternKind::NotNull, PatternKind::NotNull) = (*sp, *dp) =>
         {
             let src = src.project_type(bx, s);
             let dst = dst.project_type(bx, d);
             coerce_unsized_into(bx, src, dst)
         }
-        (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
+        (ty::Ref(..), ty::Ref(..) | ty::RawPtr(..)) | (ty::RawPtr(..), ty::RawPtr(..)) => {
             let (base, info) = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
                 OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
@@ -288,7 +288,7 @@ pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             OperandValue::Pair(base, info).store(bx, dst);
         }
 
-        (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+        (ty::Adt(def_a, _), ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b); // implies same number of fields
 
             for i in def_a.variant(FIRST_VARIANT).fields.indices() {
@@ -444,7 +444,7 @@ where
                 rustc_hir::InlineAsmOperand::SymFn { expr } => {
                     let ty = cx.tcx().typeck(item_id.owner_id).expr_ty(expr);
                     let instance = match ty.kind() {
-                        &ty::FnDef(def_id, args) => Instance::expect_resolve(
+                        ty::FnDef(def_id, args) => Instance::expect_resolve(
                             cx.tcx(),
                             cx.typing_env(),
                             def_id,

@@ -72,7 +72,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
         ty::Param(_) => false,
         ty::Adt(def, subs) => def
             .all_fields()
-            .any(|f| !is_copy(cx, f.ty(cx.tcx, *subs).skip_norm_wip())),
+            .any(|f| !is_copy(cx, f.ty(cx.tcx, subs).skip_norm_wip())),
         _ => true,
     }
 }
@@ -114,7 +114,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         kind: ty::Opaque { def_id },
                         ..
                     },
-                ) = *inner_ty.kind()
+                ) = inner_ty.kind()
                 {
                     if !seen.insert(def_id) {
                         return false;
@@ -208,7 +208,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
     ];
 
     let ty_to_check = match probably_ref_ty.kind() {
-        ty::Ref(_, ty_to_check, _) => *ty_to_check,
+        ty::Ref(_, ty_to_check, _) => ty_to_check,
         _ => probably_ref_ty,
     };
 
@@ -435,7 +435,7 @@ pub fn is_non_aggregate_primitive_type(ty: Ty<'_>) -> bool {
 /// Returns `true` if the given type is a primitive (a `bool` or `char`, any integer or
 /// floating-point number type, a `str`, or an array, slice, or tuple of those types).
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
         ty::Ref(_, inner, _) if inner.is_str() => true,
         ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
@@ -484,10 +484,10 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             // Check if any component type has any.
             match ty.kind() {
                 ty::Tuple(fields) => fields.iter().any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
-                ty::Array(ty, _) => needs_ordered_drop_inner(cx, *ty, seen),
+                ty::Array(ty, _) => needs_ordered_drop_inner(cx, ty, seen),
                 ty::Adt(adt, subs) => adt
                     .all_fields()
-                    .map(|f| f.ty(cx.tcx, *subs).skip_norm_wip())
+                    .map(|f| f.ty(cx.tcx, subs).skip_norm_wip())
                     .any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
                 _ => true,
             }
@@ -511,9 +511,9 @@ pub fn peel_and_count_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize, Option<Mutabili
     let mut count = 0;
     let mut mutbl = None;
     while let ty::Ref(_, dest_ty, m) = ty.kind() {
-        ty = *dest_ty;
+        ty = dest_ty;
         count += 1;
-        mutbl.replace(mutbl.map_or(*m, |mutbl: Mutability| mutbl.min(*m)));
+        mutbl.replace(mutbl.map_or(m, |mutbl: Mutability| mutbl.min(m)));
     }
     (ty, count, mutbl)
 }
@@ -524,8 +524,8 @@ pub fn peel_n_ty_refs(mut ty: Ty<'_>, n: usize) -> (Ty<'_>, Option<Mutability>) 
     let mut mutbl = None;
     for _ in 0..n {
         if let ty::Ref(_, dest_ty, m) = ty.kind() {
-            ty = *dest_ty;
-            mutbl.replace(mutbl.map_or(*m, |mutbl: Mutability| mutbl.min(*m)));
+            ty = dest_ty;
+            mutbl.replace(mutbl.map_or(m, |mutbl: Mutability| mutbl.min(m)));
         } else {
             break;
         }
@@ -551,7 +551,7 @@ pub fn same_type_modulo_regions<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
                 return false;
             }
 
-            iter::zip(*args_a, *args_b).all(|(arg_a, arg_b)| match (arg_a.kind(), arg_b.kind()) {
+            iter::zip(args_a, args_b).all(|(arg_a, arg_b)| match (arg_a.kind(), arg_b.kind()) {
                 (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
                 (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
                     same_type_modulo_regions(type_a, type_b)
@@ -559,9 +559,9 @@ pub fn same_type_modulo_regions<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
                 _ => true,
             })
         },
-        (ty::Ref(_, a, mut_a), ty::Ref(_, b, mut_b)) => mut_a == mut_b && same_type_modulo_regions(*a, *b),
+        (ty::Ref(_, a, mut_a), ty::Ref(_, b, mut_b)) => mut_a == mut_b && same_type_modulo_regions(a, b),
         (ty::Tuple(as_), ty::Tuple(bs)) => over(as_, bs, |a, b| same_type_modulo_regions(*a, *b)),
-        (ty::Array(a, na), ty::Array(b, nb)) => na == nb && same_type_modulo_regions(*a, *b),
+        (ty::Array(a, na), ty::Array(b, nb)) => na == nb && same_type_modulo_regions(a, b),
         _ => a == b,
     }
 }
@@ -626,7 +626,7 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
         .typing_env()
         .with_post_analysis_normalized_invalidating_rigid_aliases(cx.tcx, ty);
 
-    match *ty.kind() {
+    match ty.kind() {
         // The array length may be polymorphic, let's try the inner type.
         ty::Array(component, len) => {
             // Zero-length arrays are always valid
@@ -768,7 +768,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
     if let Some(boxed_ty) = ty.boxed_ty() {
         return ty_sig(cx, boxed_ty);
     }
-    match *ty.kind() {
+    match ty.kind() {
         ty::Closure(id, subs) => {
             let decl = id
                 .as_local()
@@ -1074,14 +1074,14 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
     match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
-        (Err(_), ty::Array(t, n)) => n.try_to_target_usize(cx.tcx).unwrap_or_default() * approx_ty_size(cx, *t),
+        (Err(_), ty::Array(t, n)) => n.try_to_target_usize(cx.tcx).unwrap_or_default() * approx_ty_size(cx, t),
         (Err(_), ty::Adt(def, subst)) if def.is_struct() => def
             .variants()
             .iter()
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, *subst).skip_norm_wip()))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
                     .sum::<u64>()
             })
             .sum(),
@@ -1091,7 +1091,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, *subst).skip_norm_wip()))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
                     .sum::<u64>()
             })
             .max()
@@ -1102,7 +1102,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, *subst).skip_norm_wip()))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
                     .max()
                     .unwrap_or_default()
             })
@@ -1315,7 +1315,7 @@ impl<'tcx> InteriorMut<'tcx> {
         };
         let depth = depth + 1;
 
-        let chain = match *ty.kind() {
+        let chain = match ty.kind() {
             ty::RawPtr(inner_ty, _) if !self.ignore_pointers => self.interior_mut_ty_chain_inner(cx, inner_ty, depth),
             ty::Ref(_, inner_ty, _) | ty::Slice(inner_ty) => self.interior_mut_ty_chain_inner(cx, inner_ty, depth),
             ty::Array(inner_ty, size) if size.try_to_target_usize(cx.tcx) != Some(0) => {
@@ -1470,7 +1470,7 @@ pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_n
 
 /// Gets the type of a field by name.
 pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) -> Option<Ty<'tcx>> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(def, args) if def.is_union() || def.is_struct() => def
             .non_enum_variant()
             .fields
@@ -1492,7 +1492,7 @@ pub fn get_field_def_id_by_name(ty: Ty<'_>, name: Symbol) -> Option<DefId> {
 
 /// Check if `ty` is an `Option` and return its argument type if it is.
 pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(adt, args)
             if let [arg] = *args.as_slice()
                 && let Some(arg) = arg.as_type()
@@ -1541,9 +1541,9 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
                 .types()
                 .any(|arg_ty| has_non_owning_mutable_access_inner(cx, visited, arg_ty)),
             ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
-                has_non_owning_mutable_access_inner(cx, visited, normalize_ty(cx, field.ty(cx.tcx, *args)))
+                has_non_owning_mutable_access_inner(cx, visited, normalize_ty(cx, field.ty(cx.tcx, args)))
             }),
-            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => has_non_owning_mutable_access_inner(cx, visited, *elem_ty),
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => has_non_owning_mutable_access_inner(cx, visited, elem_ty),
             ty::RawPtr(pointee_ty, mutability) | ty::Ref(_, pointee_ty, mutability) => {
                 mutability.is_mut() || !pointee_ty.is_freeze(cx.tcx, cx.typing_env())
             },
@@ -1569,7 +1569,7 @@ pub fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 /// Attempts to find the field's index by name, for unions, structs and tuples.
 /// Note: for tuples, `name` is just parsed as an index.
 pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Adt(def, _) if def.is_union() || def.is_struct() => {
             def.non_enum_variant().fields.iter().position(|f| f.name == name)
         },

@@ -505,7 +505,7 @@ impl Transmute {
     ) -> (Ty<'tcx>, Sugg<'tcx>) {
         let mut applicability = Applicability::MachineApplicable;
         let outer_sugg = Sugg::hir_with_context(cx, outer, e.span.ctxt(), "..", &mut applicability);
-        if let ty::Adt(struct_def, struct_args) = *outer_type.kind()
+        if let ty::Adt(struct_def, struct_args) = outer_type.kind()
             && struct_def.is_struct()
             && let mut fields = struct_def.all_fields()
             && let Some(first) = fields.next()

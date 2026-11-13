@@ -98,7 +98,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let src_val = self.codegen_operand(bx, src);
                 let count = self.codegen_operand(bx, count).immediate();
 
-                let &ty::RawPtr(pointee, _) = dst_val.layout.ty.kind() else {
+                let ty::RawPtr(pointee, _) = dst_val.layout.ty.kind() else {
                     bug!("expected pointer")
                 };
                 let pointee_layout = bx

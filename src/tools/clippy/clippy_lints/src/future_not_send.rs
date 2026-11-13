@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner());
-        if let ty::Alias(_, AliasTy { kind: ty::Opaque{def_id}, args, .. }) = *ret_ty.kind()
+        if let ty::Alias(_, AliasTy { kind: ty::Opaque{def_id}, args, .. }) = ret_ty.kind()
             && let Some(future_trait) = cx.tcx.lang_items().future_trait()
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let preds = cx.tcx.explicit_item_self_bounds(def_id)

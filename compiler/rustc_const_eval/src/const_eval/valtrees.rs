@@ -123,7 +123,7 @@ fn const_to_valtree_inner<'tcx>(
             // The valtree of the base type is the same as the valtree of the pattern type.
             // Since the returned valtree does not contain the type or layout, we can just
             // switch to the base type.
-            place.layout = ecx.layout_of(*base).unwrap();
+            place.layout = ecx.layout_of(base).unwrap();
             const_to_valtree_inner(ecx, &place, num_nodes, visited, settled)
         }
 
@@ -306,7 +306,7 @@ pub fn valtree_to_const_value<'tcx>(
     // the `ValTree` and using `place_projection` and `place_field` to
     // create inner `MPlace`s which are filled recursively.
     // FIXME: Does this need an example?
-    match *cv.ty.kind() {
+    match cv.ty.kind() {
         ty::FnDef(..) => {
             assert!(cv.valtree.is_zst());
             mir::ConstValue::ZeroSized
@@ -428,7 +428,7 @@ fn valtree_into_mplace<'tcx>(
             ecx.write_immediate(Immediate::Scalar(scalar_int.into()), place).unwrap();
         }
         ty::Ref(_, inner_ty, _) => {
-            let imm = valtree_to_ref(ecx, valtree, *inner_ty);
+            let imm = valtree_to_ref(ecx, valtree, inner_ty);
             debug!(?imm);
             ecx.write_immediate(imm, place).unwrap();
         }

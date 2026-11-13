@@ -124,7 +124,7 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
 
         let ty = self.ecx.typeck.expr_ty(e).kind();
         let (deref_ty, deref) = match ty {
-            &ty::Ref(_, ty, _) => {
+            ty::Ref(_, ty, _) => {
                 // TODO(@Jarcho): Allow eager evaluation starting with 1.102.
                 if op != UnOp::Deref {
                     self.eagerness |= NoChange;
@@ -134,7 +134,7 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
             ty => (ty, false),
         };
         match op {
-            UnOp::Neg => match *deref_ty {
+            UnOp::Neg => match deref_ty {
                 ty::Int(_) => {
                     if self.ecx.eval_deref(e, deref).is_some() {
                         // rustc's `arithmetic_overflow` lint will catch this case.
@@ -146,7 +146,7 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
                 ty::Float(_) => {},
                 _ => self.eagerness = Lazy,
             },
-            UnOp::Deref => match *ty {
+            UnOp::Deref => match ty {
                 ty::Adt(def, _) if def.is_box() => {},
                 ty::Ref(..) => {},
                 // Raw pointer dereferences have validity invariants which may not be
@@ -154,7 +154,7 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
                 // cheap, but we don't know for sure.
                 _ => self.eagerness |= NoChange,
             },
-            UnOp::Not => match *deref_ty {
+            UnOp::Not => match deref_ty {
                 ty::Int(_) | ty::Uint(_) | ty::Bool => {},
                 _ => self.eagerness |= NoChange,
             },
@@ -166,7 +166,7 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
         use EagernessSuggestion::{Lazy, NoChange};
 
         let lhs_ty = self.ecx.typeck.expr_ty(lhs);
-        let (lhs_ty, lhs_deref) = match *lhs_ty.kind() {
+        let (lhs_ty, lhs_deref) = match lhs_ty.kind() {
             ty::Ref(_, lhs_ty, _) => {
                 // TODO(@Jarcho): Allow eager evaluation starting with 1.102.
                 self.eagerness |= NoChange;
@@ -175,7 +175,7 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
             _ => (lhs_ty, false),
         };
         let rhs_ty = self.ecx.typeck.expr_ty(rhs);
-        let (rhs_ty, rhs_deref) = match *rhs_ty.kind() {
+        let (rhs_ty, rhs_deref) = match rhs_ty.kind() {
             ty::Ref(_, rhs_ty, _) => {
                 // TODO(@Jarcho): Allow eager evaluation starting with 1.102.
                 self.eagerness |= NoChange;
@@ -188,13 +188,13 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
             if lhs_deref == rhs_deref {
                 let mut lhs_ty = lhs_ty;
                 let mut rhs_ty = rhs_ty;
-                while let ty::Ref(_, lhs, _) = *lhs_ty.kind()
-                    && let ty::Ref(_, rhs, _) = *rhs_ty.kind()
+                while let ty::Ref(_, lhs, _) = lhs_ty.kind()
+                    && let ty::Ref(_, rhs, _) = rhs_ty.kind()
                 {
                     lhs_ty = lhs;
                     rhs_ty = rhs;
                 }
-                match *lhs_ty.kind() {
+                match lhs_ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) if lhs_ty == rhs_ty => {},
                     ty::RawPtr(..) if rhs_ty.is_raw_ptr() => {},
                     _ => self.eagerness = Lazy,
@@ -206,8 +206,8 @@ impl<'tcx> ExprEagernessVisitor<'tcx> {
             // If both sides are an integer type then we can assume either the types are
             // the same, or we have a shift operator. Since we don't care about the types
             // in that case just take the lhs's type.
-            (&ty::Int(ty), ty::Int(_) | ty::Uint(_)) => Some((true, ty)),
-            (&ty::Uint(ty), ty::Int(_) | ty::Uint(_)) => Some((false, ty.to_signed())),
+            (ty::Int(ty), ty::Int(_) | ty::Uint(_)) => Some((true, ty)),
+            (ty::Uint(ty), ty::Int(_) | ty::Uint(_)) => Some((false, ty.to_signed())),
             (ty::Float(_), ty::Float(_)) | (ty::Bool, ty::Bool) => None,
             _ => {
                 self.eagerness = Lazy;

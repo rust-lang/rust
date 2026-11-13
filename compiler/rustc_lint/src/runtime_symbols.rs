@@ -188,7 +188,7 @@ fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId
     };
 
     let user_sig = if let ty::FnPtr(sig_tys, hdr) = user_sig.kind() {
-        sig_tys.with(*hdr)
+        sig_tys.with(hdr)
     } else {
         // not a function pointer, report an error
 

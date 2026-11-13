@@ -292,7 +292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         closure_kind: hir::ClosureKind,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
-        match *expected_ty.kind() {
+        match expected_ty.kind() {
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
@@ -490,7 +490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
 
-        let ty::Tuple(input_tys) = *arg_param_ty.kind() else {
+        let ty::Tuple(input_tys) = arg_param_ty.kind() else {
             return None;
         };
 
@@ -540,7 +540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
 
-        let ty::Tuple(input_tys) = *arg_param_ty.kind() else {
+        let ty::Tuple(input_tys) = arg_param_ty.kind() else {
             return None;
         };
 
@@ -549,7 +549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // but none of them would be useful, since async closures return
         // concrete anonymous future types, and their futures are not coerced
         // into any other type within the body of the async closure.
-        let ty::Infer(ty::TyVar(return_vid)) = *projection.skip_binder().term.expect_type().kind()
+        let ty::Infer(ty::TyVar(return_vid)) = projection.skip_binder().term.expect_type().kind()
         else {
             return None;
         };
@@ -956,7 +956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let output_ty = match *ret_ty.kind() {
+        let output_ty = match ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => self
                 .obligations_for_self_ty(ret_vid, UseSubtyping::No)
                 .into_iter()

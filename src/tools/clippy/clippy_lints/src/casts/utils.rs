@@ -70,8 +70,8 @@ pub(super) enum CastTo {
 /// signedness is cast to.
 pub(super) fn is_signedness_cast(cast_from: Ty<'_>, cast_to: Ty<'_>) -> Option<CastTo> {
     match (cast_from.kind(), cast_to.kind()) {
-        (ty::Int(from), ty::Uint(to)) if from.to_unsigned() == *to => Some(CastTo::Unsigned),
-        (ty::Uint(from), ty::Int(to)) if *from == to.to_unsigned() => Some(CastTo::Signed),
+        (ty::Int(from), ty::Uint(to)) if from.to_unsigned() == to => Some(CastTo::Unsigned),
+        (ty::Uint(from), ty::Int(to)) if from == to.to_unsigned() => Some(CastTo::Signed),
         _ => None,
     }
 }

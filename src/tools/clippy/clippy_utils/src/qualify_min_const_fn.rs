@@ -98,7 +98,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) 
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
             ty::Dynamic(preds, _) => {
-                for pred in *preds {
+                for pred in preds {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
                             return Err((
@@ -377,7 +377,7 @@ fn check_terminator<'tcx>(
                 let fn_def_id = match Instance::try_resolve(
                     cx.tcx,
                     cx.typing_env(),
-                    *fn_def_id,
+                    fn_def_id,
                     fn_substs.no_bound_vars().unwrap(),
                 ) {
                     Ok(Some(fn_inst)) => fn_inst.def_id(),

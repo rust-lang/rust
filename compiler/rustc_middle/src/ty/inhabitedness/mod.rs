@@ -148,7 +148,7 @@ impl<'tcx> Ty<'tcx> {
                     ..
                 },
             ) => InhabitedPredicate::GenericType(self),
-            &Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
+            Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 match def_id.as_local() {
                     // Foreign opaque is considered inhabited.
                     None => InhabitedPredicate::True,
@@ -243,7 +243,7 @@ impl<'tcx> Ty<'tcx> {
 
 /// N.B. this query should only be called through `Ty::inhabited_predicate`
 fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedPredicate<'tcx> {
-    match *ty.kind() {
+    match ty.kind() {
         Adt(adt, args) => tcx.inhabited_predicate_for_def(adt.did()).instantiate(tcx, args),
 
         Tuple(tys) => {
@@ -280,7 +280,7 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
     /// See `is_opsem_inhabited` above for the spec of what we compute.
     fn is_inhabited_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let tcx = self.tcx;
-        match *ty.kind() {
+        match ty.kind() {
             // Trivially (un)inhabited types
             ty::Int(_)
             | ty::Uint(_)

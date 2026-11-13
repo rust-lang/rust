@@ -63,7 +63,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     }
 
     fn skip_newtypes<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) -> TyAndLayout<'tcx> {
-        match *layout.ty.kind() {
+        match layout.ty.kind() {
             ty::UnsafeBinder(bound_ty) => {
                 let ty = cx.tcx().instantiate_bound_regions_with_erased(bound_ty.into());
                 return skip_newtypes(cx, &TyAndLayout { ty, ..*layout });

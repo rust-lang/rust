@@ -1549,7 +1549,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             },
                         );
                         let ty::Adt(_, enum_args) = self_ty.kind() else { unreachable!() };
-                        return Ok(TypeRelativePath::Ctor { ctor_def_id, args: *enum_args });
+                        return Ok(TypeRelativePath::Ctor { ctor_def_id, args: enum_args });
                     }
                     if let PermitVariants::Yes = mode.permit_variants() {
                         tcx.check_stability(variant_def.def_id, Some(qpath_hir_id), span, None);
@@ -1665,7 +1665,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )?
             }
             (
-                &ty::Param(_),
+                ty::Param(_),
                 Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
             ) => self.probe_single_ty_param_bound_for_assoc_item(
                 param_did.expect_local(),
@@ -2529,7 +2529,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let elem_ty = match ty.kind() {
             ty::Array(elem_ty, _) => elem_ty,
-            ty::Error(e) => return Const::new_error(tcx, *e),
+            ty::Error(e) => return Const::new_error(tcx, e),
             _ => {
                 let e = tcx
                     .dcx()
@@ -2541,14 +2541,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let elems = array_expr
             .elems
             .iter()
-            .map(|elem| self.lower_const_arg(elem, *elem_ty))
+            .map(|elem| self.lower_const_arg(elem, elem_ty))
             .collect::<Vec<_>>();
 
         // The array len passed in the type might be an infer var, or a const param, or it could
         // just be an incorrect constant. So, construct the resulting valtree's type based on the
         // provided syntax rather than the expected type. The surrounding typeck will catch any
         // mismatches.
-        let valtree_ty = Ty::new_array(tcx, *elem_ty, elems.len() as u64);
+        let valtree_ty = Ty::new_array(tcx, elem_ty, elems.len() as u64);
         let valtree = ty::ValTree::from_branches(tcx, elems);
         ty::Const::new_value(tcx, valtree, valtree_ty)
     }
@@ -2622,16 +2622,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let (adt_def, adt_args, variant_did) = match value.ty.kind() {
             ty::FnDef(def_id, fn_args)
-                if let DefKind::Ctor(CtorOf::Variant, _) = tcx.def_kind(*def_id) =>
+                if let DefKind::Ctor(CtorOf::Variant, _) = tcx.def_kind(def_id) =>
             {
-                let parent_did = tcx.parent(*def_id);
+                let parent_did = tcx.parent(def_id);
                 let enum_did = tcx.parent(parent_did);
                 (tcx.adt_def(enum_did), fn_args, parent_did)
             }
             ty::FnDef(def_id, fn_args)
-                if let DefKind::Ctor(CtorOf::Struct, _) = tcx.def_kind(*def_id) =>
+                if let DefKind::Ctor(CtorOf::Struct, _) = tcx.def_kind(def_id) =>
             {
-                let parent_did = tcx.parent(*def_id);
+                let parent_did = tcx.parent(def_id);
                 (tcx.adt_def(parent_did), fn_args, parent_did)
             }
             _ => {
@@ -2699,7 +2699,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let tys = match ty.kind() {
             ty::Tuple(tys) => tys,
-            ty::Error(e) => return Const::new_error(tcx, *e),
+            ty::Error(e) => return Const::new_error(tcx, e),
             _ => {
                 let e =
                     tcx.dcx().span_err(span, format!("expected `{}`, found {}", ty, found_tuple()));
@@ -3630,7 +3630,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx,
                 dcx.span_err(ty_span, format!("could not resolve fields of `{ty}`")),
             ),
-            ty::Error(err) => Ty::new_error(tcx, *err),
+            ty::Error(err) => Ty::new_error(tcx, err),
             ty::Bool
             | ty::Char
             | ty::Int(_)

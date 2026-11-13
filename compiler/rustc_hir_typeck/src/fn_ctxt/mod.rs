@@ -413,7 +413,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
         match ty.kind() {
-            ty::Adt(adt_def, _) => Some(*adt_def),
+            ty::Adt(adt_def, _) => Some(adt_def),
             // FIXME(#104767): Should we handle bound regions here?
             ty::Alias(
                 _,
@@ -440,7 +440,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                 ty::AliasTy { kind: ty::Projection { def_id } | ty::Free { def_id }, args, .. },
             ) = ty.kind()
             {
-                self.add_required_obligations_for_hir(span, *def_id, *args, hir_id);
+                self.add_required_obligations_for_hir(span, def_id, args, hir_id);
             }
 
             self.normalize(span, Unnormalized::new_wip(ty))

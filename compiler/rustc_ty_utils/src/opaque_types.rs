@@ -207,7 +207,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         t.super_visit_with(self);
-        match *t.kind() {
+        match t.kind() {
             ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Opaque { def_id }, .. })
                 if def_id.is_local() =>
             {
@@ -299,7 +299,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         .instantiate(self.tcx, alias_ty.args)
                         .skip_norm_wip();
                     let ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
-                        *ty.kind()
+                        ty.kind()
                     else {
                         bug!("{ty:?}")
                     };

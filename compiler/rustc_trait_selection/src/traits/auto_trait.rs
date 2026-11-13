@@ -222,7 +222,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // used for testing, even if the generated synthetic impls are less
         // precise.
         let tcx = self.tcx;
-        let ty::Adt(adt_def, args) = *ty.kind() else {
+        let ty::Adt(adt_def, args) = ty.kind() else {
             return AutoTraitResult::NoImpl;
         };
 
@@ -657,7 +657,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionClause<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().as_type() {
-            matches!(ty.kind(), ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty())
+            matches!(ty.kind(), ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == p.skip_binder().projection_term.expect_ty())
         } else {
             false
         }

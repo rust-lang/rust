@@ -412,7 +412,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
                 let fn_ty = self.thir[fun].ty;
                 let sig = fn_ty.fn_sig(self.tcx);
-                let (callee_features, safe_target_features): (&[_], _) = match *fn_ty.kind() {
+                let (callee_features, safe_target_features): (&[_], _) = match fn_ty.kind() {
                     ty::FnDef(func_id, ..) => {
                         let cg_attrs = self.tcx.codegen_fn_attrs(func_id);
                         (&cg_attrs.target_features, cg_attrs.safe_target_features)
@@ -420,13 +420,10 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     _ => (&[], false),
                 };
                 if sig.safety().is_unsafe() && !safe_target_features {
-                    let func_id = if let ty::FnDef(func_id, _) = fn_ty.kind() {
-                        Some(*func_id)
-                    } else {
-                        None
-                    };
+                    let func_id =
+                        if let ty::FnDef(func_id, _) = fn_ty.kind() { Some(func_id) } else { None };
                     self.requires_unsafe(expr.span, CallToUnsafeFunction(func_id));
-                } else if let &ty::FnDef(func_did, _) = fn_ty.kind() {
+                } else if let ty::FnDef(func_did, _) = fn_ty.kind() {
                     if !self
                         .tcx
                         .is_target_feature_call_safe(callee_features, self.body_target_features)

@@ -408,7 +408,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if self.suggest_fn_call(err, expr, found, |output| self.may_coerce(output, expected))
-            && let ty::FnDef(def_id, ..) = *found.kind()
+            && let ty::FnDef(def_id, ..) = found.kind()
             && let Some(sp) = self.tcx.hir_span_if_local(def_id)
         {
             let name = self.tcx.item_name(def_id);
@@ -485,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some((found_ty_inner, expected_ty_inner, error_tys)) =
             self.deconstruct_option_or_result(found, expected)
-            && let ty::Ref(_, peeled, hir::Mutability::Not) = *expected_ty_inner.kind()
+            && let ty::Ref(_, peeled, hir::Mutability::Not) = expected_ty_inner.kind()
         {
             // Suggest removing any stray borrows (unless there's macro shenanigans involved).
             let inner_expr = expr.peel_borrows();
@@ -628,7 +628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
-            let suggest_boxing = match *found.kind() {
+            let suggest_boxing = match found.kind() {
                 ty::Tuple(tuple) if tuple.is_empty() => {
                     diagnostics::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }
@@ -675,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
     ) -> bool {
         if let (ty::FnPtr(..), ty::Closure(def_id, _)) = (expected.kind(), found.kind())
-            && let Some(upvars) = self.tcx.upvars_mentioned(*def_id)
+            && let Some(upvars) = self.tcx.upvars_mentioned(def_id)
         {
             // Report upto four upvars being captured to reduce the amount error messages
             // reported back to the user.
@@ -1493,8 +1493,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Ref(_, inner_expected_ty, _),
                 ) => {
                     expr = *inner_expr;
-                    expr_ty = *inner_expr_ty;
-                    expected_ty = *inner_expected_ty;
+                    expr_ty = inner_expr_ty;
+                    expected_ty = inner_expected_ty;
                 }
                 (hir::ExprKind::Block(blk, _), _, _) => {
                     self.suggest_block_to_brackets(diag, blk, expr_ty, expected_ty);
@@ -1514,7 +1514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         if let ty::Ref(_, inner_ty, hir::Mutability::Not) = expr_ty.kind()
             && let Some(clone_trait_def) = self.tcx.lang_items().clone_trait()
-            && expected_ty == *inner_ty
+            && expected_ty == inner_ty
             && self
                 .infcx
                 .type_implements_trait(
@@ -1565,7 +1565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let expr_inner_ty = args.type_at(0);
             let expected_inner_ty = expected_args.type_at(0);
-            if let &ty::Ref(_, ty, _mutability) = expr_inner_ty.kind()
+            if let ty::Ref(_, ty, _mutability) = expr_inner_ty.kind()
                 && self.can_eq(self.param_env, ty, expected_inner_ty)
             {
                 let def_path = self.tcx.def_path_str(adt_def.did());
@@ -1756,11 +1756,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let dummy_ty = if let ty::Array(elem_ty, size) = peeled.kind()
             && let ty::Infer(_) = elem_ty.kind()
             && self
-                .try_structurally_resolve_const(provided_expr.span, *size)
+                .try_structurally_resolve_const(provided_expr.span, size)
                 .try_to_target_usize(self.tcx)
                 == Some(0)
         {
-            let slice = Ty::new_slice(self.tcx, *elem_ty);
+            let slice = Ty::new_slice(self.tcx, elem_ty);
             Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_static, slice)
         } else {
             provided_ty
@@ -1790,7 +1790,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
     ) {
         if let ty::Slice(elem_ty) | ty::Array(elem_ty, _) = expected_ty.kind() {
-            if self.may_coerce(blk_ty, *elem_ty)
+            if self.may_coerce(blk_ty, elem_ty)
                 && blk.stmts.is_empty()
                 && blk.rules == hir::BlockCheckMode::DefaultBlock
                 && let source_map = self.tcx.sess.source_map()
@@ -2065,7 +2065,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // diagnostic in cases where we have `(&&T).clone()` and we expect `T`).
             && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
             // Check that we're in fact trying to clone into the expected type
-            && self.may_coerce(*pointee_ty, expected_ty)
+            && self.may_coerce(pointee_ty, expected_ty)
             && let trait_ref = ty::TraitRef::new(self.tcx, clone_trait_did, [expected_ty])
             // And the expected type doesn't implement `Clone`
             && !self.predicate_must_hold_considering_regions(&traits::Obligation::new(
@@ -2717,7 +2717,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // suggestions would be often wrong. So suppress the suggestion. See #145294.
                     if let (ty::Adt(exp_adt, _), ty::Adt(act_adt, _)) = (expected.kind(), expr_ty.kind())
                         && exp_adt.did() == act_adt.did()
-                        && sole_field.ty(self.tcx, *args).skip_norm_wip().is_ty_var() {
+                        && sole_field.ty(self.tcx, args).skip_norm_wip().is_ty_var() {
                             return None;
                     }
 
@@ -2734,7 +2734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
                         .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
-                    let sole_field_ty = sole_field.ty(self.tcx, *args).skip_norm_wip();
+                    let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
                     if self.may_coerce(expr_ty, sole_field_ty) {
                         let variant_path = with_types_for_suggestion!(with_no_trimmed_paths!(
                             self.tcx.def_path_str(variant.def_id)
@@ -2925,7 +2925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if mutability.is_mut() && ref_mutability.is_not() {
                 return None;
             }
-            self_ty = *inner;
+            self_ty = inner;
         }
         let name = method_path.ident.name;
         let can_borrow = match self_ty.kind() {
@@ -2994,7 +2994,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `&T` to `&&T` or `&T` to `&mut &T`.
             // Keep ordinary `T` to `&T` cases on later path so its more
             // specific suggestions, such as `Option::as_ref()`, are preserved.
-            (_, &ty::Ref(_, exp, mutability), _)
+            (_, ty::Ref(_, exp, mutability), _)
                 if exp.is_ref()
                     && matches!(
                         self.tcx.parent_hir_node(expr.hir_id),
@@ -3023,8 +3023,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false,
                 ));
             }
-            (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
-                (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
+            (_, ty::Ref(_, exp, _), ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
+                (ty::Str, ty::Array(arr, _) | ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "b\"", "\"").is_some()
@@ -3038,7 +3038,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
                 }
-                (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
+                (ty::Array(arr, _) | ty::Slice(arr), ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "\"", "b\"").is_some()
@@ -3053,7 +3053,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {}
             },
-            (_, &ty::Ref(_, _, mutability), _) => {
+            (_, ty::Ref(_, _, mutability), _) => {
                 // Check if it can work when put into a ref. For example:
                 //
                 // ```
@@ -3171,7 +3171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         kind: hir::ExprKind::Binary(_, lhs, ..),
                         ..
                     }) = self.tcx.parent_hir_node(expr.hir_id)
-                        && let &ty::Ref(..) = self.check_expr(lhs).kind()
+                        && let ty::Ref(..) = self.check_expr(lhs).kind()
                     {
                         let sugg = make_sugg(lhs, lhs.span, "*");
 
@@ -3193,7 +3193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                 }
             }
-            (hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr), _, &ty::Ref(_, checked, _))
+            (hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr), _, ty::Ref(_, checked, _))
                 if self.can_eq(self.param_env, checked, expected) =>
             {
                 let make_sugg = |start: Span, end: BytePos| {
@@ -3231,7 +3231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return make_sugg(sp, expr.span.lo());
                 }
             }
-            (_, &ty::RawPtr(ty_b, mutbl_b), &ty::Ref(_, ty_a, mutbl_a)) => {
+            (_, ty::RawPtr(ty_b, mutbl_b), ty::Ref(_, ty_a, mutbl_a)) => {
                 if let Some(steps) = self.deref_steps_for_suggestion(ty_a, ty_b)
                     // Only suggest valid if dereferencing needed.
                     && steps > 0
@@ -3649,7 +3649,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Int(exp), &ty::Uint(found)) => {
+            (ty::Int(exp), ty::Uint(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if found < exp => (false, true),
@@ -3659,7 +3659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Uint(exp), &ty::Int(found)) => {
+            (ty::Uint(exp), ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if found > exp => (true, false),
@@ -3688,7 +3688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
+            (ty::Uint(_) | ty::Int(_), ty::Float(_)) => {
                 if literal_is_ty_suffixed(expr) {
                     err.multipart_suggestion(
                         lit_msg,
@@ -3766,9 +3766,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (
-                &ty::Uint(ty::UintTy::U32 | ty::UintTy::U64 | ty::UintTy::U128)
-                | &ty::Int(ty::IntTy::I32 | ty::IntTy::I64 | ty::IntTy::I128),
-                &ty::Char,
+                ty::Uint(ty::UintTy::U32 | ty::UintTy::U64 | ty::UintTy::U128)
+                | ty::Int(ty::IntTy::I32 | ty::IntTy::I64 | ty::IntTy::I128),
+                ty::Char,
             ) => {
                 err.multipart_suggestion(
                     format!("{cast_msg}, since a `char` always occupies 4 bytes"),

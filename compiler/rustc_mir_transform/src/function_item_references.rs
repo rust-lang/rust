@@ -45,7 +45,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
             }
             let source_info = terminator.source_info;
             let func_ty = func.ty(self.body, self.tcx);
-            if let ty::FnDef(def_id, args_ref) = *func_ty.kind() {
+            if let ty::FnDef(def_id, args_ref) = func_ty.kind() {
                 // Handle calls to `transmute`
                 if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
                     let arg_ty = args[0].node.ty(self.body, self.tcx);
@@ -132,7 +132,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         };
         referent_ty
             .map(|ref_ty| {
-                if let ty::FnDef(def_id, args_ref) = *ref_ty.kind() {
+                if let ty::FnDef(def_id, args_ref) = ref_ty.kind() {
                     Some((def_id, args_ref.no_bound_vars().unwrap()))
                 } else {
                     None

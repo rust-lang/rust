@@ -99,7 +99,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // If this inference variable is related to an earlier variable
                 // via subtyping, we need to add that info to the inference context.
                 if let Some(prev) = prev_var_values.get(sub_root.as_usize()) {
-                    if let &ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind() {
+                    if let ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind() {
                         self.sub_unify_ty_vids_raw(vid, sub_root);
                     } else {
                         unreachable!()

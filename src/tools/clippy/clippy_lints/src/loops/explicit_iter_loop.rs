@@ -26,7 +26,7 @@ pub(super) fn check(
         return;
     };
 
-    if let ty::Array(_, count) = *ty.peel_refs().kind() {
+    if let ty::Array(_, count) = ty.peel_refs().kind() {
         if !ty.is_ref() {
             if !msrv.meets(cx, msrvs::ARRAY_INTO_ITERATOR) {
                 return;
@@ -143,7 +143,7 @@ fn is_ref_iterable<'tcx>(
                 .instantiate(cx.tcx, typeck.node_args(call_expr.hir_id))
                 .skip_norm_wip(),
         );
-        let mutbl = if let ty::Ref(_, _, mutbl) = *req_self_ty.kind() {
+        let mutbl = if let ty::Ref(_, _, mutbl) = req_self_ty.kind() {
             Some(mutbl)
         } else {
             None
@@ -160,7 +160,7 @@ fn is_ref_iterable<'tcx>(
                     return Some((AdjustKind::None, self_ty));
                 }
             } else if enforce_iter_loop_reborrow
-                && let ty::Ref(region, ty, Mutability::Mut) = *self_ty.kind()
+                && let ty::Ref(region, ty, Mutability::Mut) = self_ty.kind()
                 && let Some(mutbl) = mutbl
             {
                 // Attempt to reborrow the mutable reference

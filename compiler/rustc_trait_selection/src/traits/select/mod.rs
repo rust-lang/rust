@@ -1528,7 +1528,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut alias_bound_kind = AliasBoundKind::SelfBounds;
 
         loop {
-            let (alias_ty, def_id) = match *self_ty.kind() {
+            let (alias_ty, def_id) = match self_ty.kind() {
                 ty::Alias(
                     _,
                     alias_ty @ ty::AliasTy {
@@ -2061,7 +2061,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(tys.last().map_or_else(Vec::new, |&last| vec![last]))
             }
 
-            ty::Pat(ty, _) => ty::Binder::dummy(vec![*ty]),
+            ty::Pat(ty, _) => ty::Binder::dummy(vec![ty]),
 
             ty::Adt(def, args) => {
                 if let Some(crit) = def.sizedness_constraint(self.tcx(), sizedness) {
@@ -2087,7 +2087,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     }
 
     fn copy_clone_conditions(&mut self, self_ty: Ty<'tcx>) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => ty::Binder::dummy(vec![]),
 
             ty::Uint(_)
@@ -2169,7 +2169,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     }
 
     fn coroutine_is_gen(&mut self, self_ty: Ty<'tcx>) -> bool {
-        matches!(*self_ty.kind(), ty::Coroutine(did, ..)
+        matches!(self_ty.kind(), ty::Coroutine(did, ..)
             if self.tcx().coroutine_is_gen(did))
     }
 
@@ -2189,7 +2189,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         t: Ty<'tcx>,
     ) -> Result<ty::Binder<'tcx, AutoImplConstituents<'tcx>>, SelectionError<'tcx>> {
-        Ok(match *t.kind() {
+        Ok(match t.kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2692,7 +2692,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         self_ty: Ty<'tcx>,
         fn_trait_def_id: DefId,
     ) -> ty::PolyTraitRef<'tcx> {
-        let ty::Closure(_, args) = *self_ty.kind() else {
+        let ty::Closure(_, args) = self_ty.kind() else {
             bug!("expected closure, found {self_ty}");
         };
         let closure_sig = args.as_closure().sig();

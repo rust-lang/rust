@@ -225,8 +225,8 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
             // `async gen` continues to return `Poll::Ready(None)`
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => {
-                let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
-                let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                let ty::Adt(_poll_adt, args) = self.old_yield_ty.kind() else { bug!() };
+                let ty::Adt(_option_adt, args) = args.type_at(0).kind() else { bug!() };
                 let yield_ty = args.type_at(0);
                 Rvalue::Use(
                     Operand::Constant(Box::new(ConstOperand {
@@ -297,8 +297,8 @@ impl<'tcx> TransformVisitor<'tcx> {
             }
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => {
                 if is_return {
-                    let ty::Adt(_poll_adt, args) = *self.old_yield_ty.kind() else { bug!() };
-                    let ty::Adt(_option_adt, args) = *args.type_at(0).kind() else { bug!() };
+                    let ty::Adt(_poll_adt, args) = self.old_yield_ty.kind() else { bug!() };
+                    let ty::Adt(_option_adt, args) = args.type_at(0).kind() else { bug!() };
                     let yield_ty = args.type_at(0);
                     Rvalue::Use(
                         Operand::Constant(Box::new(ConstOperand {
@@ -675,7 +675,7 @@ fn eliminate_get_context_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let terminator = bb_data.terminator_mut();
         if let TerminatorKind::Call { func, args, destination, target, .. } = &terminator.kind
             && let func_ty = func.ty(&body.local_decls, tcx)
-            && let ty::FnDef(def_id, _) = *func_ty.kind()
+            && let ty::FnDef(def_id, _) = func_ty.kind()
             && def_id == get_context_def_id
             && let [arg] = &**args
             && let Some(place) = arg.node.place()

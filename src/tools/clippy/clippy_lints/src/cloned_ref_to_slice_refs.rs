@@ -143,7 +143,7 @@ fn is_needless_clone_or_equivalent<'tcx>(
     // being cloned, except for the following special cases:
     // 1. `OsString`, which is first dereferenced to `OsStr` and the borrowed as `&OsStr`.
     // 2. `PathBuf`, which is first dereferenced to `Path` and then borrowed as `&Path`.
-    let adjust_target_ty = if method_ret_ty == *method_recv_ty_inner {
+    let adjust_target_ty = if method_ret_ty == method_recv_ty_inner {
         method_ret_ty
     } else if let Some(after_special_case_ty_name @ (sym::OsStr | sym::Path)) = method_recv_ty_inner.opt_diag_name(cx)
         // Looking for the `OSString -> OSStr` or `PathBuf -> Path` adjustment in the abovementioned special cases

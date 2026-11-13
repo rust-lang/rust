@@ -251,7 +251,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     // Pattern types have the same number of variants as their base type.
                     // Even if we restrict e.g. which variants are valid, the variants are essentially just uninhabited.
                     // And `Result<(), !>` still has two variants according to `variant_count`.
-                    ty::Pat(base, _) => *base,
+                    ty::Pat(base, _) => base,
                     _ => tp_ty,
                 };
                 let val = match ty.kind() {
@@ -826,17 +826,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Accept the cast if one type is pointer to void, and the other is a pointer to
                 // a character type (`char`, `unsigned char` and `signed char`).
-                if caller_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*callee_target_ty) {
+                if caller_target_ty.is_c_void(self.tcx.tcx) && is_c_char(callee_target_ty) {
                     return interp_ok(VarArgCompatible::Compatible);
                 }
-                if callee_target_ty.is_c_void(self.tcx.tcx) && is_c_char(*caller_target_ty) {
+                if callee_target_ty.is_c_void(self.tcx.tcx) && is_c_char(caller_target_ty) {
                     return interp_ok(VarArgCompatible::Compatible);
                 }
 
                 // Accept the cast if both types are pointers to compatible types.
-                match self
-                    .validate_c_variadic_compatible_ty(*caller_target_ty, *callee_target_ty)?
-                {
+                match self.validate_c_variadic_compatible_ty(caller_target_ty, callee_target_ty)? {
                     VarArgCompatible::Incompatible => interp_ok(VarArgCompatible::Incompatible),
                     VarArgCompatible::Compatible => interp_ok(VarArgCompatible::Compatible),
                     VarArgCompatible::CastIntTo { source_is_signed: _ } => {
@@ -1383,7 +1381,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
 
         for (i, field) in adt.non_enum_variant().fields.iter().enumerate() {
-            if field.ty(*self.tcx, *substs).skip_norm_wip().is_raw_ptr() {
+            if field.ty(*self.tcx, substs).skip_norm_wip().is_raw_ptr() {
                 return self.project_field(&va_list_inner, FieldIdx::from_usize(i));
             }
         }

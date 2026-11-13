@@ -336,7 +336,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::cos
             | sym::powi => 'float_op: {
                 let ty = args[0].layout.ty;
-                let ty::Float(float_ty) = *ty.kind() else {
+                let ty::Float(float_ty) = ty.kind() else {
                     span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
                 };
                 use ty::FloatTy::*;
@@ -807,7 +807,7 @@ fn int_type_width_signed<'gcc, 'tcx>(
     ty: Ty<'tcx>,
     cx: &CodegenCx<'gcc, 'tcx>,
 ) -> Option<(u64, bool)> {
-    match *ty.kind() {
+    match ty.kind() {
         ty::Int(t) => Some((
             match t {
                 rustc_middle::ty::IntTy::Isize => u64::from(cx.tcx.sess.target.pointer_width),

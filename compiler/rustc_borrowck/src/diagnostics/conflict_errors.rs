@@ -454,7 +454,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     && let hir::ExprKind::Call(call, args) = parent_expr.kind
                     && let ty::FnDef(def_id, _) = typeck.node_type(call.hir_id).kind()
                 {
-                    (Some(*def_id), args, 0)
+                    (Some(def_id), args, 0)
                 } else {
                     (None, &[][..], 0)
                 };
@@ -493,7 +493,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
                     // If the moved place is used generically by the callee and a reference to it
                     // would still satisfy any bounds on its type, suggest borrowing.
-                    if let Some(&param) = arg_param
+                    if let Some(param) = arg_param
                         && let hir::Node::Expr(call_expr) = parent
                         && let Some(ref_mutability) = self.suggest_borrow_generic_arg(
                             err,
@@ -679,7 +679,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             // For normal calls, generic arguments are in the callee's type.
             // This diagnostic is only run for `FnDef` callees.
             hir::ExprKind::Call(callee, _)
-                if let &ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
+                if let ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
             {
                 args.no_bound_vars().unwrap()
             }
@@ -1011,7 +1011,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     ) {
         let mut ty = moved_place.ty(self.body, self.infcx.tcx).ty;
         if strip_ref && let ty::Ref(_, inner, _) = ty.kind() {
-            ty = *inner;
+            ty = inner;
         }
         debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
 
@@ -1295,7 +1295,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             // In practice unless there are more than one field with the same type, we'll be
             // suggesting a single field at a type, because we don't aggregate multiple borrow
             // checker errors involving the functional record update syntax into a single one.
-            let field_ty = field.ty(self.infcx.tcx, *args).skip_norm_wip();
+            let field_ty = field.ty(self.infcx.tcx, args).skip_norm_wip();
             let ident = field.ident(self.infcx.tcx);
             if field_ty == ty && fields.iter().all(|field| field.ident.name != ident.name) {
                 // Suggest adding field and cloning it.
@@ -1371,7 +1371,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             && let Some(local_did) = def.did().as_local()
             && def.variants().iter().all(|variant| {
                 variant.fields.iter().all(|field| {
-                    self.implements_clone(field.ty(self.infcx.tcx, *args).skip_norm_wip())
+                    self.implements_clone(field.ty(self.infcx.tcx, args).skip_norm_wip())
                 })
             })
         {
@@ -1424,7 +1424,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         } else if let ty::Param(param) = ty.kind()
             && let Some(_clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
             && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
-            && let generic_param = generics.type_param(*param, self.infcx.tcx)
+            && let generic_param = generics.type_param(param, self.infcx.tcx)
             && let param_span = self.infcx.tcx.def_span(generic_param.def_id)
             && if let Some(UseSpans::FnSelfUse { kind, .. }) = use_spans
                 && let CallKind::FnCall { fn_trait_id, self_ty } = kind
@@ -1655,7 +1655,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             .into_iter()
             .map(|err| match err.obligation.predicate.kind().skip_binder() {
                 PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    match *predicate.self_ty().kind() {
+                    match predicate.self_ty().kind() {
                         ty::Param(param_ty) => Ok((
                             generics.type_param(param_ty, tcx),
                             predicate.trait_ref.print_trait_sugared().to_string(),

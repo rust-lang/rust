@@ -414,7 +414,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
                     // Arg position const args are already part of the callee's generic args,
                     // so we skip them when building runtime arguments.
-                    let generics = match *expr.ty.kind() {
+                    let generics = match expr.ty.kind() {
                         ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
                         _ => None,
                     };
@@ -542,7 +542,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         // Arg position const args are already part of the callee's generic args,
                         // so we skip them when building runtime arguments.
                         let fn_ty = self.typeck_results.node_type(fun.hir_id);
-                        let generics = match *fn_ty.kind() {
+                        let generics = match fn_ty.kind() {
                             ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
                             _ => None,
                         };
@@ -587,7 +587,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             // Make `&pin mut $expr` and `&pin const $expr` into
             // `Pin { __pointer: &mut { $expr } }` and `Pin { __pointer: &$expr }`.
             hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutbl, arg_expr) => match expr_ty.kind() {
-                &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), LangItem::Pin) => {
+                ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), LangItem::Pin) => {
                     let ty = args.type_at(0);
                     let arg_ty = self.typeck_results.expr_ty(arg_expr);
                     let mut arg = self.mirror_expr(arg_expr);
@@ -733,9 +733,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
                         debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
                         ExprKind::Adt(Box::new(AdtExpr {
-                            adt_def: *adt,
+                            adt_def: adt,
                             variant_index: FIRST_VARIANT,
-                            args: *args,
+                            args,
                             user_ty,
                             fields: self.field_refs(fields),
                             base: match base {
@@ -776,9 +776,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                     user_provided_types.get(expr.hir_id).copied().map(Box::new);
                                 debug!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
                                 ExprKind::Adt(Box::new(AdtExpr {
-                                    adt_def: *adt,
+                                    adt_def: adt,
                                     variant_index: index,
-                                    args: *args,
+                                    args,
                                     user_ty,
                                     fields: self.field_refs(fields),
                                     base: match base {
@@ -813,7 +813,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
             hir::ExprKind::Closure(hir::Closure { .. }) => {
                 let closure_ty = self.typeck_results.expr_ty(expr);
-                let (def_id, args, movability) = match *closure_ty.kind() {
+                let (def_id, args, movability) = match closure_ty.kind() {
                     ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args), None),
                     ty::Coroutine(def_id, args) => {
                         (def_id, UpvarArgs::Coroutine(args), Some(tcx.coroutine_movability(def_id)))
@@ -1003,7 +1003,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     span_bug!(expr.span, "unexpected repeat expr ty: {:?}", ty);
                 };
 
-                ExprKind::Repeat { value: self.mirror_expr(v), count: *count }
+                ExprKind::Repeat { value: self.mirror_expr(v), count }
             }
             hir::ExprKind::Ret(v) => ExprKind::Return { value: v.map(|v| self.mirror_expr(v)) },
             hir::ExprKind::Become(call) => ExprKind::Become { value: self.mirror_expr(call) },
@@ -1518,9 +1518,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     // A unit struct/variant which is used as a value.
                     // We return a completely different ExprKind here to account for this special case.
                     ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
-                        adt_def: *adt_def,
+                        adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
-                        args: *args,
+                        args,
                         user_ty,
                         fields: Box::new([]),
                         base: AdtExprBase::None,
@@ -1608,7 +1608,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         // Reconstruct the output assuming it's a reference with the
         // same region and mutability as the receiver. This holds for
         // `Deref(Mut)::deref(_mut)` and `Index(Mut)::index(_mut)`.
-        let ty::Ref(region, _, mutbl) = *self.thir[args[0]].ty.kind() else {
+        let ty::Ref(region, _, mutbl) = self.thir[args[0]].ty.kind() else {
             span_bug!(span, "overloaded_place: receiver is not a reference");
         };
         let ref_ty = Ty::new_ref(self.tcx, region, place_ty, mutbl);

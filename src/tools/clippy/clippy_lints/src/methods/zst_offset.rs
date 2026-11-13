@@ -10,7 +10,7 @@ use super::ZST_OFFSET;
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
     let recv_ty = cx.typeck_results().expr_ty(recv);
     let pointee_ty = match recv_ty.kind() {
-        ty::RawPtr(ty, _) => *ty,
+        ty::RawPtr(ty, _) => ty,
         ty::Adt(_, args) if recv_ty.is_lang_item(cx, LangItem::NonNull) => args.type_at(0),
         _ => return,
     };

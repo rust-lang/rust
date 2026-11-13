@@ -383,11 +383,11 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                         v,
                         kind,
                         location,
-                        *target_field_adt,
-                        *target_field_args,
+                        target_field_adt,
+                        target_field_args,
                         target_field_place,
-                        *source_field_adt,
-                        *source_field_args,
+                        source_field_adt,
+                        source_field_args,
                         source_field_place,
                     );
                 }
@@ -475,8 +475,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         } else if let &mir::Rvalue::Reborrow(target, mutability, source_place) = rvalue {
             let source_ty = source_place.ty(self.body, self.tcx).ty;
-            let &ty::Adt(source_adt, source_args) = source_ty.kind() else { unreachable!() };
-            let &ty::Adt(target_adt, target_args) = target.kind() else { unreachable!() };
+            let ty::Adt(source_adt, source_args) = source_ty.kind() else { unreachable!() };
+            let ty::Adt(target_adt, target_args) = target.kind() else { unreachable!() };
 
             let kind = if mutability == Mutability::Mut {
                 // Reborrow

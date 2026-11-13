@@ -86,9 +86,9 @@ fn detect_extrema<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
     let cv = ConstEvalCtxt::new(cx).eval(expr)?;
 
     match (cv.int_value(cx.tcx, ty)?, ty.kind()) {
-        (FullInt::S(i), &ty::Int(ity)) if i == i128::MIN >> (128 - ity.bit_width()?) => Some(Extrema::Minimum),
-        (FullInt::S(i), &ty::Int(ity)) if i == i128::MAX >> (128 - ity.bit_width()?) => Some(Extrema::Maximum),
-        (FullInt::U(i), &ty::Uint(uty))
+        (FullInt::S(i), ty::Int(ity)) if i == i128::MIN >> (128 - ity.bit_width()?) => Some(Extrema::Minimum),
+        (FullInt::S(i), ty::Int(ity)) if i == i128::MAX >> (128 - ity.bit_width()?) => Some(Extrema::Maximum),
+        (FullInt::U(i), ty::Uint(uty))
             if {
                 let bits = match uty {
                     ty::UintTy::Usize => u32::try_from(cx.tcx.data_layout.pointer_size().bits()).ok()?,
@@ -99,7 +99,7 @@ fn detect_extrema<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
         {
             Some(Extrema::Maximum)
         },
-        (FullInt::U(0), &ty::Uint(_)) => Some(Extrema::Minimum),
+        (FullInt::U(0), ty::Uint(_)) => Some(Extrema::Minimum),
         _ => None,
     }
 }

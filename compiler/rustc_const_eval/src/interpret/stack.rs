@@ -517,7 +517,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // We avoid `ty.is_trivially_sized` since that does something expensive for ADTs.
         fn is_very_trivially_sized(ty: Ty<'_>) -> bool {
-            match ty.kind() {
+            match ty.kind_ref() {
                 ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
                 | ty::Uint(_)
                 | ty::Int(_)

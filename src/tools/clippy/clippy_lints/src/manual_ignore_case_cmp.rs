@@ -71,7 +71,7 @@ fn get_ascii_type<'a>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'_>) -> Op
 /// Returns true if the type needs to be dereferenced to be compared
 fn needs_ref_to_cmp(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     ty.is_char()
-        || *ty.kind() == ty::Uint(UintTy::U8)
+        || ty.kind() == ty::Uint(UintTy::U8)
         || ty.is_diag_item(cx, sym::Vec)
         || ty.is_lang_item(cx, LangItem::String)
 }

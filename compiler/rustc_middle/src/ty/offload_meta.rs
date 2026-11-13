@@ -129,11 +129,11 @@ fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> OffloadSize {
         ty::Slice(elem_ty) => {
             let layout = tcx.layout_of(PseudoCanonicalInput {
                 typing_env: TypingEnv::fully_monomorphized(),
-                value: *elem_ty,
+                value: elem_ty,
             });
             OffloadSize::Slice { element_size: layout.unwrap().size.bytes() }
         }
-        ty::RawPtr(inner, _) | ty::Ref(_, inner, _) => get_payload_size(tcx, *inner),
+        ty::RawPtr(inner, _) | ty::Ref(_, inner, _) => get_payload_size(tcx, inner),
         _ => OffloadSize::Static(
             tcx.layout_of(PseudoCanonicalInput {
                 typing_env: TypingEnv::fully_monomorphized(),

@@ -409,7 +409,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ) => return Err(e),
         };
 
-        match *ty.kind() {
+        match ty.kind() {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_raw_ptr();
 
@@ -447,7 +447,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     }
                     ty::Error(guar) => {
                         // Fixes ICE #124031
-                        return Err(tcx.arena.alloc(LayoutError::ReferencesError(*guar)));
+                        return Err(tcx.arena.alloc(LayoutError::ReferencesError(guar)));
                     }
                     _ => bug!(
                         "SizeSkeleton::compute({ty}): layout errored ({err:?}), yet \
@@ -868,7 +868,7 @@ where
                 }
             };
 
-            match *this.ty.kind() {
+            match this.ty.kind() {
                 ty::Bool
                 | ty::Char
                 | ty::Int(_)
@@ -1067,7 +1067,7 @@ where
         // attributes in LLVM have compile-time cost even in unoptimized builds).
         let optimize = tcx.sess.opts.optimize != OptLevel::No;
 
-        let pointee_info = match *this.ty.kind() {
+        let pointee_info = match this.ty.kind() {
             ty::RawPtr(_, _) | ty::FnPtr(..) if offset.bytes() == 0 => {
                 Some(PointeeInfo { safe: None, size: Size::ZERO, align: Align::ONE })
             }

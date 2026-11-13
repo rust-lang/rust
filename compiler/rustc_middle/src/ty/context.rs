@@ -2172,7 +2172,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *ty.kind() else {
+        let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = ty.kind() else {
             return false;
         };
         let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
@@ -2196,7 +2196,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn signature_unclosure(self, sig: PolyFnSig<'tcx>, safety: hir::Safety) -> PolyFnSig<'tcx> {
         sig.map_bound(|s| {
             let params = match s.inputs()[0].kind() {
-                ty::Tuple(params) => *params,
+                ty::Tuple(params) => params,
                 _ => bug!(),
             };
             // Ignore splatting, it is unsupported on closures.
@@ -2969,7 +2969,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn get_impl_future_output_ty(self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-        let (def_id, args) = match *ty.kind() {
+        let (def_id, args) = match ty.kind() {
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
             ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
                 if self.is_impl_trait_in_trait(def_id) =>

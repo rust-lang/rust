@@ -264,7 +264,7 @@ fn type_is_printable_and_comparable<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) 
 /// by `Vec<T>` suggestions. Returns `None` for non-sequence receiver types.
 fn element_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.kind() {
-        ty::Array(ty, _) | ty::Slice(ty) => Some(*ty),
+        ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
         ty::Adt(_, args) if ty.is_diag_item(cx, sym::Vec) => args.types().next(),
         _ => None,
     }

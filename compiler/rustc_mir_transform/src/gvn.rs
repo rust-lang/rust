@@ -1333,7 +1333,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         && let Some(to) = self.ty(arg_index).builtin_deref(true)
                         && let ty::Slice(..) = to.kind() =>
                     {
-                        return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
+                        return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, len)));
                     }
 
                     // `&mut *p`, `&raw *p`, etc don't change metadata.
@@ -1373,7 +1373,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             ) if let ty::Slice(..) = arg_ty.builtin_deref(true).unwrap().kind()
                 && let ty::Array(_, len) = self.ty(inner).builtin_deref(true).unwrap().kind() =>
             {
-                return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
+                return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, len)));
             }
             _ => Value::UnaryOp(op, arg_index),
         };
@@ -1728,7 +1728,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
                 }
                 ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
-                    ty_may_have_ref_inner(tcx, *ty, depth)
+                    ty_may_have_ref_inner(tcx, ty, depth)
                 }
                 ty::Adt(adt_def, args) => {
                     adt_def.has_param()
@@ -1736,7 +1736,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         || adt_def.all_fields().any(|field| {
                             ty_may_have_ref_inner(
                                 tcx,
-                                field.ty(tcx, *args).skip_normalization(),
+                                field.ty(tcx, args).skip_normalization(),
                                 depth,
                             )
                         })
@@ -1853,7 +1853,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, *args).skip_norm_wip()))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
         } else {
             None
         }

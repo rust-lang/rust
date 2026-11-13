@@ -88,7 +88,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
         BackendRepr::SimdScalableVector { .. } => todo!(),
     }
 
-    let name = match *layout.ty.kind() {
+    let name = match layout.ty.kind() {
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
@@ -101,14 +101,14 @@ fn uncached_gcc_type<'gcc, 'tcx>(
             if !cx.sess().fewer_names() =>
         {
             let mut name = with_no_trimmed_paths!(layout.ty.to_string());
-            if let (&ty::Adt(def, _), &Variants::Single { index }) =
+            if let (ty::Adt(def, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
                 && def.is_enum()
                 && !def.variants().is_empty()
             {
                 write!(&mut name, "::{}", def.variant(index).name).unwrap();
             }
-            if let (&ty::Coroutine(_, _), &Variants::Single { index }) =
+            if let (ty::Coroutine(_, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {
                 write!(&mut name, "::{}", ty::CoroutineArgs::variant_name(index)).unwrap();
@@ -198,7 +198,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             if let Some(&ty) = cx.scalar_types.borrow().get(&self.ty) {
                 return ty;
             }
-            let ty = match *self.ty.kind() {
+            let ty = match self.ty.kind() {
                 // NOTE: we cannot remove this match like in the LLVM codegen because the call
                 // to fn_ptr_backend_type handle the on-stack attribute.
                 // FIXME(antoyo): find a less hackish way to handle the on-stack attribute.

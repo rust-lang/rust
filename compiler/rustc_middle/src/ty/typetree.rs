@@ -75,7 +75,7 @@ fn handle_indirection<'a>(
             .layout_of(typing_env.as_query_input(inner_ty))
             .is_ok_and(|layout| layout.size.bytes() == 0)
         {
-            typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false)
+            typetree_from_ty_impl_inner(tcx, element_ty, depth + 1, visited, false)
         } else {
             typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true)
         };
@@ -118,7 +118,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
         // Direct slices are handled by `handle_indirection`. This arm describes a slice tail while
         // recursing through a prefixed DST, so its caller can add the field offset.
         ty::Slice(element_ty) => {
-            typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false)
+            typetree_from_ty_impl_inner(tcx, element_ty, depth + 1, visited, false)
         }
         ty::Ref(..) | ty::RawPtr(..) => handle_indirection(ty, tcx, depth, visited),
         ty::Adt(def, _) if def.is_box() => handle_indirection(ty, tcx, depth, visited),
@@ -128,7 +128,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
                 TypeTree::new()
             } else {
                 let element_tree =
-                    typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
+                    typetree_from_ty_impl_inner(tcx, element_ty, depth + 1, visited, false);
                 let mut types = Vec::new();
                 for elem_type in &element_tree.0 {
                     types.push(Type::from_ty(-1, elem_type));
@@ -176,7 +176,7 @@ fn typetree_from_ty_impl_inner<'tcx>(
                 let mut types = Vec::new();
 
                 for (field_idx, field_def) in adt_def.all_fields().enumerate() {
-                    let field_ty = field_def.ty(tcx, *args);
+                    let field_ty = field_def.ty(tcx, args);
                     let field_tree = typetree_from_ty_impl_inner(
                         tcx,
                         field_ty.skip_norm_wip(),

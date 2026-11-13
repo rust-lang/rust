@@ -487,7 +487,7 @@ fn has_matching_args(kind: FnKind, args: GenericArgs<'_>) -> bool {
         FnKind::Fn => true,
         FnKind::TraitFn => args.iter().enumerate().all(|(idx, subst)| match subst.kind() {
             GenericArgKind::Lifetime(_) => true,
-            GenericArgKind::Type(ty) => matches!(*ty.kind(), ty::Param(ty) if ty.index as usize == idx),
+            GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(ty) if ty.index as usize == idx),
             GenericArgKind::Const(c) => matches!(c.kind(), ConstKind::Param(c) if c.index as usize == idx),
         }),
         #[allow(deprecated)]

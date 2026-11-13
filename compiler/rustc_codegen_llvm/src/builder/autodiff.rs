@@ -50,7 +50,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
                 // Now we need to figure out the size of each slice element in memory to allow
                 // safety checks and usability improvements in the backend.
 
-                let layout = tcx.layout_of(typing_env.as_query_input(*element_ty));
+                let layout = tcx.layout_of(typing_env.as_query_input(element_ty));
                 let elem_size = match layout {
                     Ok(layout) => layout.size,
                     Err(_) => {

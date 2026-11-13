@@ -43,14 +43,14 @@ impl DebugContext {
                 tcx,
                 type_dbg,
                 ty,
-                *elem_ty,
+                elem_ty,
                 len.try_to_target_usize(tcx).expect("expected monomorphic const in codegen"),
             ),
             // ty::Slice(_) | ty::Str
             // ty::Dynamic
             // ty::Foreign
             ty::RawPtr(pointee_type, _) | ty::Ref(_, pointee_type, _) => {
-                self.pointer_type(tcx, type_dbg, ty, *pointee_type)
+                self.pointer_type(tcx, type_dbg, ty, pointee_type)
             }
             // ty::Adt(def, args) if def.is_box() && args.get(1).map_or(true, |arg| cx.layout_of(arg.expect_ty()).is_1zst())
             // ty::FnDef(..) | ty::FnPtr(..)

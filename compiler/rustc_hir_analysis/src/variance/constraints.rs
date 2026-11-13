@@ -211,7 +211,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)

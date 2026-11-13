@@ -530,7 +530,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         ty
                     );
                 };
-                let llty = self.type_float_from_ty(*f);
+                let llty = self.type_float_from_ty(f);
                 let llvm_name = match name {
                     sym::fabs => "llvm.fabs",
                     sym::sqrt => "llvm.sqrt",
@@ -657,7 +657,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 // must be obeyed by the GPU runtime.
                 // When multiple of these global variables are used by a kernel, the maximum alignment is taken.
                 // See https://github.com/llvm/llvm-project/blob/a271d07488a85ce677674bbe8101b10efff58c95/llvm/lib/Target/AMDGPU/AMDGPULowerModuleLDSPass.cpp#L821
-                let alignment = self.align_of(*inner_ty).bytes() as u32;
+                let alignment = self.align_of(inner_ty).bytes() as u32;
                 unsafe {
                     // FIXME Workaround the above issue by taking maximum alignment if the global existed
                     if tcx.sess.target.arch == Arch::Nvptx64 {
@@ -801,9 +801,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         {
                             let (size, elem_ty) = arg.layout.ty.simd_size_and_type(self.tcx());
                             let elem_ll_ty = match elem_ty.kind() {
-                                ty::Float(f) => self.type_float_from_ty(*f),
-                                ty::Int(i) => self.type_int_from_ty(*i),
-                                ty::Uint(u) => self.type_uint_from_ty(*u),
+                                ty::Float(f) => self.type_float_from_ty(f),
+                                ty::Int(i) => self.type_int_from_ty(i),
+                                ty::Uint(u) => self.type_uint_from_ty(u),
                                 ty::RawPtr(_, _) => self.type_ptr(),
                                 _ => unreachable!(),
                             };
@@ -821,9 +821,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 {
                     let (size, elem_ty) = result_layout.ty.simd_size_and_type(self.tcx());
                     let elem_ll_ty = match elem_ty.kind() {
-                        ty::Float(f) => self.type_float_from_ty(*f),
-                        ty::Int(i) => self.type_int_from_ty(*i),
-                        ty::Uint(u) => self.type_uint_from_ty(*u),
+                        ty::Float(f) => self.type_float_from_ty(f),
+                        ty::Int(i) => self.type_int_from_ty(i),
+                        ty::Uint(u) => self.type_uint_from_ty(u),
                         ty::RawPtr(_, _) => self.type_ptr(),
                         _ => unreachable!(),
                     };
@@ -905,7 +905,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let tcx = self.tcx();
 
         let fn_ty = instance.ty(tcx, self.typing_env());
-        let fn_sig = match *fn_ty.kind() {
+        let fn_sig = match fn_ty.kind() {
             ty::FnDef(def_id, args) => tcx.instantiate_bound_regions_with_erased(
                 tcx.fn_sig(def_id).instantiate(tcx, args.no_bound_vars().unwrap()).skip_norm_wip(),
             ),
@@ -1793,7 +1793,7 @@ fn codegen_autodiff<'ll, 'tcx>(
         _ => bug!("invalid args"),
     };
 
-    let fn_diff = match Instance::try_resolve(tcx, bx.cx.typing_env(), *diff_id, diff_args) {
+    let fn_diff = match Instance::try_resolve(tcx, bx.cx.typing_env(), diff_id, diff_args) {
         Ok(Some(instance)) => instance,
         Ok(None) => bug!(
             "could not resolve ({:?}, {:?}) to a specific autodiff instance",
@@ -1856,7 +1856,7 @@ fn codegen_offload<'ll, 'tcx>(
         _ => bug!("invalid offload intrinsic arg"),
     };
 
-    let fn_target = match Instance::try_resolve(tcx, cx.typing_env(), *target_id, target_args) {
+    let fn_target = match Instance::try_resolve(tcx, cx.typing_env(), target_id, target_args) {
         Ok(Some(instance)) => instance,
         Ok(None) => bug!(
             "could not resolve ({:?}, {:?}) to a specific offload instance",
@@ -2441,7 +2441,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let ty::Float(f) = in_elem.kind() else {
             return_error!(InvalidMonomorphization::BasicFloatType { span, name, ty: in_ty });
         };
-        let elem_ty = bx.cx.type_float_from_ty(*f);
+        let elem_ty = bx.cx.type_float_from_ty(f);
 
         let vec_ty = bx.type_vector(elem_ty, in_len);
 
@@ -2494,7 +2494,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     fn llvm_vector_ty<'ll>(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64) -> Type<'ll> {
-        let elem_ty = match *elem_ty.kind() {
+        let elem_ty = match elem_ty.kind() {
             ty::Int(v) => cx.type_int_from_ty(v),
             ty::Uint(v) => cx.type_uint_from_ty(v),
             ty::Float(v) => cx.type_float_from_ty(v),
@@ -2553,7 +2553,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                *element_ty1.kind(),
+                element_ty1.kind(),
                 ty::RawPtr(p_ty, _) if p_ty == in_elem && p_ty.kind() == element_ty0.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
@@ -2655,7 +2655,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                *pointer_ty.kind(),
+                pointer_ty.kind(),
                 ty::RawPtr(p_ty, _) if p_ty == values_elem && p_ty.kind() == values_elem.kind()
             ),
             InvalidMonomorphization::ExpectedElementType {
@@ -2735,7 +2735,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The second argument must be a mutable pointer type matching the element type
         require!(
             matches!(
-                *pointer_ty.kind(),
+                pointer_ty.kind(),
                 ty::RawPtr(p_ty, p_mutbl)
                     if p_ty == values_elem && p_ty.kind() == values_elem.kind() && p_mutbl.is_mut()
             ),
@@ -2818,7 +2818,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         require!(
             matches!(
-                *element_ty1.kind(),
+                element_ty1.kind(),
                 ty::RawPtr(p_ty, p_mutbl)
                     if p_ty == in_elem && p_mutbl.is_mut() && p_ty.kind() == element_ty0.kind()
             ),
@@ -3296,7 +3296,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_funnel_shr
     ) {
         let vec_ty = bx.cx.type_vector(
-            match *in_elem.kind() {
+            match in_elem.kind() {
                 ty::Int(i) => bx.cx.type_int_from_ty(i),
                 ty::Uint(i) => bx.cx.type_uint_from_ty(i),
                 _ => return_error!(InvalidMonomorphization::UnsupportedOperation {
@@ -3376,7 +3376,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
         let is_add = name == sym::simd_saturating_add;
-        let (signed, elem_ty) = match *in_elem.kind() {
+        let (signed, elem_ty) = match in_elem.kind() {
             ty::Int(i) => (true, bx.cx.type_int_from_ty(i)),
             ty::Uint(i) => (false, bx.cx.type_uint_from_ty(i)),
             _ => {

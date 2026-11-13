@@ -470,7 +470,7 @@ fn can_switch_ranges<'tcx>(
             Mutability::Not => cx.tcx.lang_items().index_trait(),
             Mutability::Mut => cx.tcx.lang_items().index_mut_trait(),
         }
-       && implements_trait(cx, *outer_ty, index_def_id, &[switched_range_ty.into()])
+       && implements_trait(cx, outer_ty, index_def_id, &[switched_range_ty.into()])
     // We could also check that the associated item of the `index_def_id` trait with the switched range type
     // return the same type, but it is reasonable to expect so. We can't check that the result is identical
     // in both `Index<Range<…>>` and `Index<RangeInclusive<…>>` anyway.

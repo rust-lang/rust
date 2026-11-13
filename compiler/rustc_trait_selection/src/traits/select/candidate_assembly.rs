@@ -326,7 +326,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self_ty.kind() {
             // `async`/`gen` constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
-            ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(*did) => {
+            ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(did) => {
                 debug!(?self_ty, ?obligation, "assemble_coroutine_candidates");
 
                 candidates.vec.push(CoroutineCandidate);
@@ -348,7 +348,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let ty::Coroutine(did, ..) = self_ty.kind() {
             // async constructs get lowered to a special kind of coroutine that
             // should directly `impl Future`.
-            if self.tcx().coroutine_is_async(*did) {
+            if self.tcx().coroutine_is_async(did) {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates");
 
                 candidates.vec.push(FutureCandidate);
@@ -365,7 +365,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // gen constructs get lowered to a special kind of coroutine that
         // should directly `impl Iterator`.
         if let ty::Coroutine(did, ..) = self_ty.kind()
-            && self.tcx().coroutine_is_gen(*did)
+            && self.tcx().coroutine_is_gen(did)
         {
             debug!(?self_ty, ?obligation, "assemble_iterator_candidates");
 
@@ -389,7 +389,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, args) = *self_ty.kind() {
+        if let ty::Coroutine(did, args) = self_ty.kind() {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
             if self.tcx().coroutine_is_async_gen(did) {
@@ -397,11 +397,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Can only confirm this candidate if we have constrained
                 // the `Yield` type to at least `Poll<Option<?0>>`..
-                let ty::Adt(_poll_def, args) = *args.as_coroutine().yield_ty().kind() else {
+                let ty::Adt(_poll_def, args) = args.as_coroutine().yield_ty().kind() else {
                     candidates.ambiguous = true;
                     return;
                 };
-                let ty::Adt(_option_def, _) = *args.type_at(0).kind() else {
+                let ty::Adt(_option_def, _) = args.type_at(0).kind() else {
                     candidates.ambiguous = true;
                     return;
                 };
@@ -428,7 +428,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = obligation.self_ty().skip_binder();
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::Closure(def_id, _) => {
                 let is_const = self.tcx().is_const_fn(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
@@ -489,7 +489,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
         debug!("self_ty = {:?}", obligation.self_ty().skip_binder().kind());
-        match *obligation.self_ty().skip_binder().kind() {
+        match obligation.self_ty().skip_binder().kind() {
             ty::CoroutineClosure(def_id, args) => {
                 if let Some(closure_kind) =
                     args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
@@ -579,7 +579,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
-        match *self_ty.kind() {
+        match self_ty.kind() {
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // Could wind up being a fn() type.
@@ -775,7 +775,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         if self.tcx().trait_is_auto(def_id) {
-            match *self_ty.kind() {
+            match self_ty.kind() {
                 ty::Dynamic(..) => {
                     // For object types, we don't know what the closed
                     // over types are. This means we conservatively
@@ -1023,7 +1023,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(a_data, a_region), &ty::Dynamic(b_data, b_region)) => {
+            (ty::Dynamic(a_data, a_region), ty::Dynamic(b_data, b_region)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -1090,25 +1090,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(_, _)) => {
+            (_, ty::Dynamic(_, _)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
             // Ambiguous handling is below `T` -> `Trait`, because inference
             // variables can still implement `Unsize<Trait>` and nested
             // obligations will have the final say (likely deferred).
-            (&ty::Infer(ty::TyVar(_)), _) | (_, &ty::Infer(ty::TyVar(_))) => {
+            (ty::Infer(ty::TyVar(_)), _) | (_, ty::Infer(ty::TyVar(_))) => {
                 debug!("assemble_candidates_for_unsizing: ambiguous");
                 candidates.ambiguous = true;
             }
 
             // `[T; n]` -> `[T]`
-            (&ty::Array(..), &ty::Slice(_)) => {
+            (ty::Array(..), ty::Slice(_)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
             // `Struct<T>` -> `Struct<U>`
-            (&ty::Adt(def_id_a, _), &ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
+            (ty::Adt(def_id_a, _), ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
                 if def_id_a == def_id_b {
                     candidates.vec.push(BuiltinUnsizeCandidate);
                 }
@@ -1161,7 +1161,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self_ty: Ty<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        match *self_ty.kind() {
+        match self_ty.kind() {
             // These impls are built-in because we cannot express sufficiently
             // generic impls in libcore.
             ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) | ty::Tuple(..) | ty::Pat(..) => {
@@ -1266,7 +1266,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
         sizedness: SizedTraitKind,
     ) {
-        match *self_ty.kind() {
+        match self_ty.kind() {
             // Always sized.
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
@@ -1503,7 +1503,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        match *obligation.predicate.self_ty().skip_binder().kind() {
+        match obligation.predicate.self_ty().skip_binder().kind() {
             ty::Dynamic(bounds, _lifetime) => {
                 for bound in bounds {
                     match bound.skip_binder() {
@@ -1536,7 +1536,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // encountering query cycles instead.
         if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
             && let Some(FieldInfo { base, ty, .. }) =
-                def.field_representing_type_info(self.tcx(), *args)
+                def.field_representing_type_info(self.tcx(), args)
             // NOTE: these bounds have to be kept in sync with the definition of the `Field` trait
             // in `library/core/src/field.rs` as well as the new trait solver `fn
             // consider_builtin_field_candidate` in

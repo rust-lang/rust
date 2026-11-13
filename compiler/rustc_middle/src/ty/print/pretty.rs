@@ -759,7 +759,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     }
 
     fn pretty_print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Bool => write!(self, "bool")?,
             ty::Char => write!(self, "char")?,
             ty::Int(t) => write!(self, "{}", t.name_str())?,
@@ -898,12 +898,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
                         // `type_of` on a type alias or assoc type should never cause a cycle.
                         if let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id: d }, .. }) =
-                            *self
-                                .tcx()
-                                .type_of(parent)
-                                .instantiate_identity()
-                                .skip_norm_wip()
-                                .kind()
+                            self.tcx().type_of(parent).instantiate_identity().skip_norm_wip().kind()
                         {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
@@ -1299,7 +1294,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         if trait_pred.polarity() == ty::ClausePolarity::Positive
             && let Some((kind, is_async)) = fn_trait_and_async
-            && let ty::Tuple(types) = *trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
+            && let ty::Tuple(types) = trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
         {
             let entry = fn_traits
                 .entry((trait_pred.rebind((types, trait_pred.skip_binder().self_ty())), is_async))
@@ -1854,7 +1849,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 )?;
             }
             ty::Pat(base_ty, pat) if self.tcx().validate_scalar_in_layout(int, ty) => {
-                self.pretty_print_const_scalar_int(int, *base_ty, print_ty)?;
+                self.pretty_print_const_scalar_int(int, base_ty, print_ty)?;
                 write!(self, " is {pat:?}")?;
             }
             // Nontrivial types with scalar bit representation
@@ -1912,9 +1907,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         let u8_type = self.tcx().types.u8;
-        match (*cv.valtree, *cv.ty.kind()) {
+        match (*cv.valtree, cv.ty.kind()) {
             (ty::ValTreeKind::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
-                ty::Slice(t) if *t == u8_type => {
+                ty::Slice(t) if t == u8_type => {
                     let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                         bug!(
                             "expected to convert valtree {:?} to raw bytes for type {:?}",
@@ -1951,7 +1946,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Tuple(..)) => {
                 let fields_iter = fields.iter();
 
-                match *cv.ty.kind() {
+                match cv.ty.kind() {
                     ty::Array(..) => {
                         write!(self, "[")?;
                         self.comma_sep(fields_iter)?;
@@ -2762,7 +2757,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match *t.kind() {
+        match t.kind() {
             _ if t.has_vars_bound_at_or_above(self.current_index) || t.has_placeholders() => {
                 return t.super_fold_with(self);
             }

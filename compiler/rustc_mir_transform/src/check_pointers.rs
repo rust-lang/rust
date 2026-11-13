@@ -187,7 +187,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
         let pointer_ty = pointer.ty(self.local_decls, self.tcx).ty;
 
         // We only want to check places based on raw pointers
-        let &ty::RawPtr(mut pointee_ty, _) = pointer_ty.kind() else {
+        let ty::RawPtr(mut pointee_ty, _) = pointer_ty.kind() else {
             trace!("Indirect, but not based on an raw ptr, not checking {:?}", place);
             return;
         };
@@ -213,7 +213,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
 
         // We don't need to look for slices, we already rejected unsized types above.
         let element_ty = match pointee_ty.kind() {
-            ty::Array(ty, _) => *ty,
+            ty::Array(ty, _) => ty,
             _ => pointee_ty,
         };
         // Check if we excluded this pointee type from the check.

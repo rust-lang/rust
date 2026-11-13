@@ -48,12 +48,12 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Error(_) => true,
 
         // `T is PAT` and `[T]` have same properties as T.
-        ty::Pat(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
+        ty::Pat(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, ty),
         ty::Array(ty, size) => {
             // Empty array never has a dtor. See issue #110288.
             match size.try_to_target_usize(tcx) {
                 Some(0) => true,
-                _ => trivial_dropck_outlives(tcx, *ty),
+                _ => trivial_dropck_outlives(tcx, ty),
             }
         }
 
@@ -272,7 +272,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         return;
     }
 
-    match *ty.kind() {
+    match ty.kind() {
         ty::Bool
         | ty::Char
         | ty::Int(_)

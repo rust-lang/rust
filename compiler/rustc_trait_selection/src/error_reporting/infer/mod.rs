@@ -213,7 +213,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
-                if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
+                if let (ty::Adt(exp_adt, _), ty::Adt(found_adt, _)) =
                     (exp_found.expected.kind(), exp_found.found.kind())
                 {
                     return self.check_same_definition_different_crate(
@@ -246,7 +246,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) {
-        let (alias, &def_id, concrete) = match (expected.kind(), found.kind()) {
+        let (alias, def_id, concrete) = match (expected.kind(), found.kind()) {
             (ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }), _) => {
                 (proj, def_id, found)
             }
@@ -1176,7 +1176,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // process starts here
         match (t1.kind(), t2.kind()) {
-            (&ty::Adt(def1, sub1_args), &ty::Adt(def2, sub2_args)) => {
+            (ty::Adt(def1, sub1_args), ty::Adt(def2, sub2_args)) => {
                 let sub1 = sub1_args.as_slice();
                 let sub2 = sub2_args.as_slice();
                 let did1 = def1.did();
@@ -1301,20 +1301,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             // When finding `&T != &T`, compare the references, then recurse into pointee type
-            (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2)) => {
+            (ty::Ref(r1, ref_ty1, mutbl1), ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 cmp_ty_refs(r1, mutbl1, r2, mutbl2, &mut values);
                 self.recurse(ref_ty1, ref_ty2, &mut values);
                 values
             }
             // When finding T != &T, highlight the borrow
-            (&ty::Ref(r1, ref_ty1, mutbl1), _) => {
+            (ty::Ref(r1, ref_ty1, mutbl1), _) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r1, mutbl1, &mut values.0);
                 self.recurse(ref_ty1, t2, &mut values);
                 values
             }
-            (_, &ty::Ref(r2, ref_ty2, mutbl2)) => {
+            (_, ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r2, mutbl2, &mut values.1);
                 self.recurse(t1, ref_ty2, &mut values);
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             // When encountering tuples of the same size, highlight only the differing types
-            (&ty::Tuple(args1), &ty::Tuple(args2)) if args1.len() == args2.len() => {
+            (ty::Tuple(args1), ty::Tuple(args2)) if args1.len() == args2.len() => {
                 let mut values = (DiagStyledString::normal("("), DiagStyledString::normal("("));
                 let len = args1.len();
                 for (i, (left, right)) in args1.iter().zip(args2).enumerate() {
@@ -1343,26 +1343,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let args1 = args1.no_bound_vars().unwrap();
                 let args2 = args2.no_bound_vars().unwrap();
 
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
-                self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig2, Some((*did2, Some(args2))))
+                let sig1 = self.tcx.fn_sig(did1).instantiate(self.tcx, args1).skip_norm_wip();
+                let sig2 = self.tcx.fn_sig(did2).instantiate(self.tcx, args2).skip_norm_wip();
+                self.cmp_fn_sig(sig1, Some((did1, Some(args1))), sig2, Some((did2, Some(args2))))
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let args1 = args1.no_bound_vars().unwrap();
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
-                self.cmp_fn_sig(sig1, Some((*did1, Some(args1))), sig_tys2.with(*hdr2), None)
+                let sig1 = self.tcx.fn_sig(did1).instantiate(self.tcx, args1).skip_norm_wip();
+                self.cmp_fn_sig(sig1, Some((did1, Some(args1))), sig_tys2.with(hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let args2 = args2.no_bound_vars().unwrap();
 
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
-                self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig2, Some((*did2, Some(args2))))
+                let sig2 = self.tcx.fn_sig(did2).instantiate(self.tcx, args2).skip_norm_wip();
+                self.cmp_fn_sig(sig_tys1.with(hdr1), None, sig2, Some((did2, Some(args2))))
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
-                self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig_tys2.with(*hdr2), None)
+                self.cmp_fn_sig(sig_tys1.with(hdr1), None, sig_tys2.with(hdr2), None)
             }
 
             (ty::Alias(kind1, alias1), ty::Alias(kind2, alias2))
@@ -1722,7 +1722,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let path = self.tcx.def_path(expected.did()).data;
                     let name = path.last().unwrap().data.get_opt_name();
                     if name == Some(primitive) {
-                        return Some(Similar::PrimitiveFound { expected: *expected, found });
+                        return Some(Similar::PrimitiveFound { expected, found });
                     }
                 } else if let Some(primitive) = expected.primitive_symbol()
                     && let ty::Adt(found, _) = found.kind()
@@ -1730,7 +1730,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let path = self.tcx.def_path(found.did()).data;
                     let name = path.last().unwrap().data.get_opt_name();
                     if name == Some(primitive) {
-                        return Some(Similar::PrimitiveExpected { expected, found: *found });
+                        return Some(Similar::PrimitiveExpected { expected, found });
                     }
                 } else if let ty::Adt(expected, _) = expected.kind()
                     && let ty::Adt(found, _) = found.kind()
@@ -1747,7 +1747,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if let (Some(e_last), Some(f_last)) = (e_path.last(), f_path.last())
                         && e_last == f_last
                     {
-                        return Some(Similar::Adts { expected: *expected, found: *found });
+                        return Some(Similar::Adts { expected, found });
                     }
                 }
                 None
@@ -1831,7 +1831,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. })) => {
                             let sm = self.tcx.sess.source_map();
-                            let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(def_id).lo());
                             DiagStyledString::normal(format!(
                                 " (opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
@@ -1841,7 +1841,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                         (
                             true,
-                            &ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }),
+                            ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }),
                         ) if self.tcx.is_impl_trait_in_trait(def_id) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(def_id).lo());
@@ -2200,7 +2200,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn format_on_type_error_notes(
         &self,
         directive: &Directive,
-        args: &ty::GenericArgs<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         item_def: ty::AdtDef<'tcx>,
         expected_ty: Ty<'tcx>,
         found_ty: Ty<'tcx>,
@@ -2751,7 +2751,7 @@ impl fmt::Display for TyCategory {
 
 impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
-        match *ty.kind() {
+        match ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                 let kind =

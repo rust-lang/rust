@@ -226,7 +226,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             obligation.cause.code(),
                             leaf_trait_predicate.def_id(),
                         ) && let ty::Param(param_ty) =
-                            *leaf_trait_predicate.skip_binder().self_ty().kind()
+                            leaf_trait_predicate.skip_binder().self_ty().kind()
                         {
                             span = param_ty.span_from_generics(
                                 self.tcx,
@@ -447,7 +447,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             {
                                 self.tcx.def_span(def.did())
                             }
-                            ty::Closure(def_id, _) => self.tcx.def_span(*def_id),
+                            ty::Closure(def_id, _) => self.tcx.def_span(def_id),
                             _ => DUMMY_SP,
                         };
                         if let Some(s) = label {
@@ -607,7 +607,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         let is_fn_trait = tcx.is_fn_trait(leaf_trait_predicate.def_id());
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
-                            *leaf_trait_predicate.skip_binder().self_ty().kind()
+                            leaf_trait_predicate.skip_binder().self_ty().kind()
                         {
                             !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                         } else {
@@ -1135,7 +1135,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
         let trait_prefix = if is_async { "Async" } else { "" };
 
-        let (closure_def_id, found_args, has_self_borrows) = match *self_ty.kind() {
+        let (closure_def_id, found_args, has_self_borrows) = match self_ty.kind() {
             ty::Closure(def_id, args) => {
                 (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), false)
             }
@@ -1887,7 +1887,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let Some((_, _, expected_ty)) = values
                     && let Some(expected_ty) = expected_ty.as_type()
                     && let ty::Closure(def_id, _) = expected_ty.kind()
-                    && self.tcx.def_span(*def_id).overlaps(span)
+                    && self.tcx.def_span(def_id).overlaps(span)
                     && let ObligationCauseCode::FunctionArg { parent_code, arg_hir_id, .. } =
                         obligation.cause.code()
                     && let ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
@@ -2079,7 +2079,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         with_forced_trimmed_paths! {
             if self.tcx.is_lang_item(projection_def_id, LangItem::FnOnceOutput) {
-                let (span, closure_span) = if let ty::Closure(def_id, _) = *self_ty.kind() {
+                let (span, closure_span) = if let ty::Closure(def_id, _) = self_ty.kind() {
                     let def_span = self.tcx.def_span(def_id);
                     if let Some(local_def_id) = def_id.as_local()
                         && let node = self.tcx.hir_node_by_def_id(local_def_id)
@@ -2111,7 +2111,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     (span, None)
                 };
                 let item = match self_ty.kind() {
-                    ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
+                    ty::FnDef(def, _) => self.tcx.item_name(def).to_string(),
                     _ => self.tcx.short_string(self_ty, long_ty_path),
                 };
                 let expected_ty = self.tcx.short_string(expected_ty, long_ty_path);
@@ -2188,7 +2188,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let strip_references = |mut t: Ty<'tcx>| -> Ty<'tcx> {
             loop {
                 match t.kind() {
-                    ty::Ref(_, inner, _) | ty::RawPtr(inner, _) => t = *inner,
+                    ty::Ref(_, inner, _) | ty::RawPtr(inner, _) => t = inner,
                     _ => break t,
                 }
             }
@@ -2380,7 +2380,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if !self_ty.has_escaping_bound_vars() {
                 let self_ty = self.tcx.instantiate_bound_regions_with_erased(trait_pred.self_ty());
                 if let ty::Ref(_, inner_ty, _) = self_ty.kind()
-                    && self.can_eq(param_env, single.trait_ref.self_ty(), *inner_ty)
+                    && self.can_eq(param_env, single.trait_ref.self_ty(), inner_ty)
                     && !self.where_clause_expr_matches_failed_self_ty(obligation, self_ty)
                 {
                     // Avoid pointing at a nearby impl like `String: Borrow<str>` when the
@@ -3190,7 +3190,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // FIXME(#155345): This should automatically
                     // handled by type folders instead of needing to do it
                     // manually here.
-                    &ty::Alias(is_rigid, alias)
+                    ty::Alias(is_rigid, alias)
                         if is_rigid == ty::IsRigid::Yes
                             && ty.has_type_flags(ty::TypeFlags::HAS_TY_PARAM) =>
                     {
@@ -3549,7 +3549,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         found_ty: Ty<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        let ty::Ref(region, inner_ty, mutbl) = *found_ty.kind() else {
+        let ty::Ref(region, inner_ty, mutbl) = found_ty.kind() else {
             return None;
         };
 
@@ -3740,12 +3740,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         // Note any argument mismatches
-        let ty::Tuple(given) = *params.skip_binder().kind() else {
+        let ty::Tuple(given) = params.skip_binder().kind() else {
             return;
         };
 
         let expected_ty = trait_pred.skip_binder().trait_ref.args.type_at(1);
-        let ty::Tuple(expected) = *expected_ty.kind() else {
+        let ty::Tuple(expected) = expected_ty.kind() else {
             return;
         };
 
@@ -3843,7 +3843,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         terr: TypeError<'tcx>,
     ) -> Diag<'a> {
         let self_ty = found_trait_ref.self_ty();
-        let (cause, terr) = if let ty::Closure(def_id, _) = *self_ty.kind() {
+        let (cause, terr) = if let ty::Closure(def_id, _) = self_ty.kind() {
             (
                 ObligationCause::dummy_with_span(self.tcx.def_span(def_id)),
                 TypeError::CyclicTy(self_ty),
@@ -3871,7 +3871,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         expected_trait_ref.self_ty().error_reported()?;
         let found_trait_ty = found_trait_ref.self_ty();
 
-        let found_did = match *found_trait_ty.kind() {
+        let found_did = match found_trait_ty.kind() {
             ty::Closure(did, _) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => Some(did),
             _ => None,
         };

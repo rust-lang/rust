@@ -508,7 +508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `tests/ui/rfcs/rfc-2005-default-binding-mode`.
             _ if let AdjustMode::Peel { kind: peel_kind } = adjust_mode
                 && pat.default_binding_modes
-                && let &ty::Ref(_, inner_ty, inner_mutability) = expected.kind()
+                && let ty::Ref(_, inner_ty, inner_mutability) = expected.kind()
                 && self.should_peel_ref(peel_kind, expected) =>
             {
                 debug!("inspecting {:?}", expected);
@@ -539,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Currently, only pinned reference is specially handled, leaving other
                 // pinned types (e.g. `Pin<Box<T>>` to deref patterns) handled as a
                 // deref pattern.
-                && let &ty::Ref(_, inner_ty, inner_mutability) = pinned_ty.kind() =>
+                && let ty::Ref(_, inner_ty, inner_mutability) = pinned_ty.kind() =>
             {
                 debug!("scrutinee ty {expected:?} is a pinned reference, inserting pin deref");
 
@@ -797,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut peeled_ty = lit_ty;
                     let mut pat_ref_layers = 0;
                     while let ty::Ref(_, inner_ty, mutbl) =
-                        *self.deeply_resolve_ignoring_regions_with_obligations(peeled_ty).kind()
+                        self.deeply_resolve_ignoring_regions_with_obligations(peeled_ty).kind()
                     {
                         // We rely on references at the head of constants being immutable.
                         debug_assert!(mutbl.is_not());
@@ -858,7 +858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // we can still, e.g., match on a `&mut str` with a string literal pattern. This is because
         // string literal patterns may be used where `str` is expected.
         let mut expected_ref_layers = 0;
-        while let ty::Ref(_, inner_ty, mutbl) = *expected.kind() {
+        while let ty::Ref(_, inner_ty, mutbl) = expected.kind() {
             if mutbl.is_mut() {
                 // Mutable references can't be in the final value of constants, thus they can't be
                 // at the head of their types, thus we should always peel `&mut`.
@@ -878,7 +878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME(deref_patterns): we'll get better diagnostics for users trying to
             // implicitly deref generics if we allow them here, but primitives, tuples, and
             // inference vars definitely should be stopped. Figure out what makes most sense.
-            && let ty::Adt(scrutinee_adt, _) = *expected.kind()
+            && let ty::Adt(scrutinee_adt, _) = expected.kind()
             // Don't peel if the pattern type already matches the scrutinee. E.g., stop here if
             // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
             && until_adt != Some(scrutinee_adt.did())
@@ -943,7 +943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if matches!(lit_kind, ast::LitKind::ByteStr(..)) {
             let tcx = self.tcx;
             let expected = self.structurally_resolve_type(span, expected);
-            match *expected.kind() {
+            match expected.kind() {
                 // Allow `b"...": &[u8]`
                 ty::Ref(_, inner_ty, _)
                     if self
@@ -959,7 +959,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 // Allow `b"...": [u8; 3]` for `deref_patterns`
                 ty::Array(..) if tcx.features().deref_patterns() => {
-                    pat_ty = match *ty.kind() {
+                    pat_ty = match ty.kind() {
                         ty::Ref(_, inner_ty, _) => inner_ty,
                         _ => span_bug!(span, "found byte string literal with non-ref type {ty:?}"),
                     }
@@ -1347,7 +1347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         match (expected.kind(), actual.kind(), ba) {
             (ty::Ref(_, inner_ty, _), _, BindingMode::NONE)
-                if self.can_eq(self.param_env, *inner_ty, actual) =>
+                if self.can_eq(self.param_env, inner_ty, actual) =>
             {
                 err.span_suggestion_verbose(
                     span.shrink_to_lo(),
@@ -1357,7 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
             (_, ty::Ref(_, inner_ty, _), BindingMode::REF)
-                if self.can_eq(self.param_env, expected, *inner_ty) =>
+                if self.can_eq(self.param_env, expected, inner_ty) =>
             {
                 err.span_suggestion_verbose(
                     span.with_hi(span.lo() + BytePos(4)),
@@ -1615,7 +1615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Err(e);
             }
             Res::SelfCtor(def_id) => {
-                if let ty::Adt(adt_def, _) = *tcx.type_of(def_id).skip_binder().kind()
+                if let ty::Adt(adt_def, _) = tcx.type_of(def_id).skip_binder().kind()
                     && adt_def.is_struct()
                     && let Some((CtorKind::Const, _)) = adt_def.non_enum_variant().ctor
                 {
@@ -1862,7 +1862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
-                let field_ty = self.field_ty(subpat.span, field, *args);
+                let field_ty = self.field_ty(subpat.span, field, args);
                 self.check_pat(subpat, field_ty, pat_info);
 
                 self.tcx.check_stability(
@@ -1956,7 +1956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct Box<T>(T);`.
             (ty::Adt(_, args), [field], Ok(())) => {
-                let field_ty = self.field_ty(pat_span, field, *args);
+                let field_ty = self.field_ty(pat_span, field, args);
                 match field_ty.kind() {
                     ty::Tuple(fields) => fields.len() == subpats.len(),
                     _ => false,
@@ -2129,7 +2129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
                             self.tcx.check_stability(f.did, Some(field.hir_id), span, None);
-                            self.field_ty(span, f, *args)
+                            self.field_ty(span, f, args)
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
@@ -2159,7 +2159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut unmentioned_fields,
                 pat,
                 variant,
-                *args,
+                args,
             ))
         } else {
             None
@@ -2836,7 +2836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return expected;
                 }
                 InheritedRefMatchRule::EatInner => {
-                    if let ty::Ref(_, _, r_mutbl) = *expected.kind()
+                    if let ty::Ref(_, _, r_mutbl) = expected.kind()
                         && pat_mutbl <= r_mutbl
                     {
                         // Match against the reference type; don't consume the inherited ref.
@@ -2878,7 +2878,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Reset binding mode on old editions
                     pat_info.binding_mode = ByRef::No;
 
-                    if let ty::Ref(_, inner_ty, _) = *expected.kind() {
+                    if let ty::Ref(_, inner_ty, _) = expected.kind() {
                         // Consume both the inherited and inner references.
                         if pat_mutbl.is_mut() && inh_mut.is_mut() {
                             // As a special case, a `&mut` reference pattern will be able to match
@@ -3119,7 +3119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected = self.structurally_resolve_type(span, expected);
         debug!(?expected);
 
-        let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
+        let (element_ty, opt_slice_ty, inferred) = match expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
@@ -3314,7 +3314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(adt_def, _) if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did()) => {
                 (true, ty)
             }
-            ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(*ty),
+            ty::Ref(_, ty, _) => self.is_slice_or_array_or_vector(ty),
             ty::Slice(..) | ty::Array(..) => (true, ty),
             _ => (false, ty),
         }

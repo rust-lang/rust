@@ -115,7 +115,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 {
                     let def_id = self.tcx.hir_enclosing_body_owner(self.id);
                     let generics = self.tcx.generics_of(def_id);
-                    let param = generics.type_param(*param_ty, self.tcx);
+                    let param = generics.type_param(param_ty, self.tcx);
                     let span = self.tcx.def_span(param.def_id);
                     err.span_label(span, "constant depends on this generic parameter");
                     if let Some(ident) = self.tcx.def_ident_span(def_id)
@@ -380,8 +380,8 @@ impl<'tcx> ConstToPat<'tcx> {
                 let (&variant_index, fields) = valtree.to_branch().split_first().unwrap();
                 let variant_index = VariantIdx::from_u32(variant_index.to_leaf().to_u32());
                 PatKind::Variant {
-                    adt_def: *adt_def,
-                    args: *args,
+                    adt_def,
+                    args,
                     variant_index,
                     subpatterns: self
                         .lower_field_values_to_fieldpats(fields.iter().map(|ct| ct.to_value())),
@@ -439,11 +439,11 @@ impl<'tcx> ConstToPat<'tcx> {
                         // Lower the valtree to a pattern as the pointee type.
                         // This works because references have the same valtree
                         // representation as their pointee.
-                        subpattern: self.valtree_to_pat(ty::Value { ty: *pointee_ty, valtree }),
+                        subpattern: self.valtree_to_pat(ty::Value { ty: pointee_ty, valtree }),
                     }
                 } else {
                     return self.mk_err(
-                        tcx.dcx().create_err(UnsizedPattern { span, non_sm_ty: *pointee_ty }),
+                        tcx.dcx().create_err(UnsizedPattern { span, non_sm_ty: pointee_ty }),
                         ty,
                     );
                 }

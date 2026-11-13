@@ -97,9 +97,9 @@ pub(super) fn check<'tcx>(
         && !is_local_used(cx, assignval, local)
         && let arg_ty = cx.typeck_results().expr_ty(arg)
         && let ty::Ref(_, inner_ty, rustc_ast::Mutability::Mut) = arg_ty.kind()
-        && is_slice_like(cx, *inner_ty)
+        && is_slice_like(cx, inner_ty)
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
-        && implements_trait(cx, *inner_ty, clone_trait, &[])
+        && implements_trait(cx, inner_ty, clone_trait, &[])
         && msrv.meets(cx, msrvs::SLICE_FILL)
     {
         sugg(cx, body, expr, arg.span, assignval.span);

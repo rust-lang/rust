@@ -530,7 +530,7 @@ fn resolve_self_ty<'tcx>(
 /// This is used for resolving type aliases.
 fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
     use PrimitiveType::*;
-    Some(match *ty.kind() {
+    Some(match ty.kind() {
         ty::Bool => Res::Primitive(Bool),
         ty::Char => Res::Primitive(Char),
         ty::Int(ity) => Res::Primitive(ity.into()),
