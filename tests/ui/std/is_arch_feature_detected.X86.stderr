@@ -52,6 +52,17 @@ LL |     let _ = arch::is_mips_feature_detected!("msa");
    |
    = note: this error originates in the macro `arch::is_mips_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0658]: use of unstable library feature `feature_detection_boolean_syntax`
+  --> $DIR/is_arch_feature_detected.rs:59:13
+   |
+LL |     let _ = arch::is_x86_feature_detected!("sse" && "sse2");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #164651 <https://github.com/rust-lang/rust/issues/164651> for more information
+   = help: add `#![feature(feature_detection_boolean_syntax)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 warning: use of deprecated macro `deprecated_feature`: the `avx512gfni` feature has been renamed to `gfni`
   --> $DIR/is_arch_feature_detected.rs:32:13
    |
@@ -72,6 +83,6 @@ LL |     let _ = arch::is_x86_feature_detected!("xop");
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `$crate::detect_feature` which comes from the expansion of the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 7 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.
