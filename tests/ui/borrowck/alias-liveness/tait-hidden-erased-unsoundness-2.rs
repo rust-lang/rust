@@ -1,4 +1,7 @@
 // This test should never pass!
+//@ revisions: next old
+//@[next] compile-flags: -Znext-solver
+//@[old]  compile-flags: -Znext-solver=no
 
 #![feature(type_alias_impl_trait)]
 
@@ -21,11 +24,12 @@ pub type Step2<'a> = impl Send + 'a;
 // which must remain sound.
 #[define_opaque(Step2)]
 pub fn step2<'a, 'b: 'a>() -> Step2<'a>
+//[next]~^ ERROR hidden type for `Step2<'a>` captures lifetime that does not appear in bounds
 where
     Step1<'a, 'b>: Send,
 {
     step1::<'a, 'b>()
-    //~^ ERROR hidden type for `Step2<'a>` captures lifetime that does not appear in bounds
+    //[old]~^ ERROR hidden type for `Step2<'a>` captures lifetime that does not appear in bounds
 }
 
 fn step3<'a, 'b>() {

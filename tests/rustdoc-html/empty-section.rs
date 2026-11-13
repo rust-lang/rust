@@ -10,7 +10,8 @@
 #![feature(unsafe_unpin)]
 // tidy-alphabetical-end
 
-#![allow(incomplete_features)]
+// FIXME(move-trait): remove this when it's complete
+#![expect(incomplete_features)]
 
 pub struct Foo;
 

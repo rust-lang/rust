@@ -1110,12 +1110,13 @@ pub(crate) enum GenericBound {
 
 impl GenericBound {
     pub(crate) fn sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifiers::NONE)
+        Self::lang_item_with(cx, LangItem::Sized, hir::TraitBoundModifiers::NONE)
     }
 
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(
+        Self::lang_item_with(
             cx,
+            LangItem::Sized,
             hir::TraitBoundModifiers {
                 polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
                 constness: hir::BoundConstness::Never,
@@ -1123,8 +1124,12 @@ impl GenericBound {
         )
     }
 
-    fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
-        let did = cx.tcx.require_lang_item(LangItem::Sized, DUMMY_SP);
+    fn lang_item_with(
+        cx: &mut DocContext<'_>,
+        item: LangItem,
+        modifiers: hir::TraitBoundModifiers,
+    ) -> GenericBound {
+        let did = cx.tcx.require_lang_item(item, DUMMY_SP);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
         let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);

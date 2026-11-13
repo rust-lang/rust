@@ -46,7 +46,9 @@ use rustc_hir::{self as hir, HirId, PredicateOrigin};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::middle::resolve::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
+use rustc_middle::ty::{
+    self, AdtKind, ClausePolarity, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{ExpnKind, bug, span_bug};
@@ -475,6 +477,17 @@ fn clean_poly_trait_predicate<'tcx>(
     // `T: [const] Destruct` is hidden because `T: Destruct` is a no-op.
     // FIXME(const_trait_impl) check constness
     if Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait() {
+        return None;
+    }
+
+    // removing `T: Move`, added everywhere by default
+    // adding also the polarity check, i guess someone could write a `fn<T: !Move>` ?
+    //
+    // fixme: an explicit `?Move` in source also lowers to `ClausePolarity::Positive`
+    // (hir_ty_lowering maps `BoundPolarity::Maybe` to `Positive`)... for now we cannot distinguish?
+    if Some(pred.def_id()) == cx.tcx.lang_items().move_trait()
+        && pred.polarity() == ClausePolarity::Positive
+    {
         return None;
     }
 
@@ -967,6 +980,7 @@ fn clean_ty_generics_inner<'tcx>(
 
     for (idx, mut bounds) in impl_trait {
         let mut has_sized = false;
+
         bounds.retain(|b| {
             if b.is_sized_bound(cx.tcx) {
                 has_sized = true;
@@ -2234,11 +2248,17 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let lifetime = clean_trait_object_lifetime_bound(reg, container, obj, cx.tcx);
 
             let mut bounds = dids
-                .map(|did| {
+                .filter_map(|did| {
+                    // `?Move` cannot be written on a trait object, so all `Move` bounds
+                    // found on dyn existentials are implicit and never displayed.
+                    if Some(did) == cx.tcx.lang_items().move_trait() {
+                        return None;
+                    }
+
                     let empty = ty::Binder::dummy(ty::GenericArgs::empty());
                     let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
-                    PolyTrait { trait_: path, generic_params: Vec::new() }
+                    Some(PolyTrait { trait_: path, generic_params: Vec::new() })
                 })
                 .collect::<Vec<_>>();
 
@@ -2415,6 +2435,16 @@ fn clean_middle_opaque_bounds<'tcx>(
                 && trait_ref.def_id() == sized
             {
                 has_sized = true;
+                return None;
+            }
+
+            // All `Move` bounds on RPITs are hidden: the implicit bound is always present,
+            // and an explicit `?Move` is indistinguishable -.-
+            //
+            // fixme: we drop here also `!Move` because `clean_poly_trait_ref_with_constraints`
+            // hardcodes `TraitBoundModifiers::NONE`, losing polarity. Handle negative
+            // bounds (idk, `!Move`?? can we even have a bound like that?).
+            if cx.tcx.is_move_trait(trait_ref.def_id()) {
                 return None;
             }
 
