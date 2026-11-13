@@ -459,6 +459,9 @@ fn push_debuginfo_type_name<'tcx>(
                 t
             );
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 
     /// MSVC names enums differently than other platforms so that the debugging visualization

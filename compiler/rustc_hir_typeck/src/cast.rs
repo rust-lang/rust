@@ -168,6 +168,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
                 return Err(guar);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         })
     }
 }

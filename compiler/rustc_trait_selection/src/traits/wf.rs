@@ -1122,6 +1122,15 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     ))),
                 ));
             }
+
+            ty::View(def, args, _fields) => {
+                // FIXME(scrabsha): what should we require from fields?
+
+                // WfNominalType
+                self.nominal_obligations(def.did(), args, |this, obligation| {
+                    this.out.push(obligation)
+                });
+            }
         }
 
         t.super_visit_with(self)

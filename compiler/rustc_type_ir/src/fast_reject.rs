@@ -37,6 +37,7 @@ pub enum SimplifiedType<DefId> {
     Coroutine(DefId),
     CoroutineWitness(DefId),
     Function(usize),
+    View(DefId),
     UnsafeBinder,
     Placeholder,
     Error,
@@ -142,6 +143,7 @@ pub fn simplify_type<I: Interner>(
             TreatParams::AsRigid | TreatParams::InstantiateWithInfer => None,
         },
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id.into())),
+        ty::View(def, _, _) => Some(SimplifiedType::View(def.def_id().into())),
         ty::Error(_) => Some(SimplifiedType::Error),
         ty::Bound(..) | ty::Infer(_) => None,
     }
@@ -302,6 +304,9 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::Foreign(_)
             | ty::Placeholder(_)
             | ty::UnsafeBinder(_) => {}
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         // The type system needs to support exponentially large types
@@ -481,6 +486,9 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             },
 
             ty::Error(..) => true,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
