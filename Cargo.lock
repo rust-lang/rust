@@ -4348,8 +4348,7 @@ version = "0.0.0"
 dependencies = [
  "expect-test",
  "memchr",
- "unicode-ident",
- "unicode-properties",
+ "rustc_unicode",
 ]
 
 [[package]]
@@ -4380,10 +4379,10 @@ dependencies = [
  "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
+ "rustc_unicode",
  "smallvec",
  "thin-vec",
  "tracing",
- "unicode-security",
 ]
 
 [[package]]
@@ -4633,11 +4632,9 @@ dependencies = [
  "rustc_macros",
  "rustc_session",
  "rustc_span",
+ "rustc_unicode",
  "thin-vec",
  "tracing",
- "unicode-normalization",
- "unicode-properties",
- "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -4870,11 +4867,11 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_unicode",
  "scoped-tls",
  "sha1",
  "sha2",
  "tracing",
- "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -5075,6 +5072,18 @@ dependencies = [
  "quote",
  "syn 2.0.117",
  "synstructure",
+]
+
+[[package]]
+name = "rustc_unicode"
+version = "0.0.0"
+dependencies = [
+ "unicode-ident",
+ "unicode-normalization",
+ "unicode-properties",
+ "unicode-script",
+ "unicode-security",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -6230,9 +6239,9 @@ checksum = "7df058c713841ad818f1dc5d3fd88063241cc61f49f5fbea4b951e8cf5a8d71d"
 
 [[package]]
 name = "unicode-script"
-version = "0.5.7"
+version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fb421b350c9aff471779e262955939f565ec18b86c15364e6bdf0d662ca7c1f"
+checksum = "383ad40bb927465ec0ce7720e033cb4ca06912855fc35db31b5755d0de75b1ee"
 
 [[package]]
 name = "unicode-security"

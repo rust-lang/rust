@@ -1492,7 +1492,7 @@ mod snapshot {
     #[test]
     fn check_compiler_no_explicit_stage() {
         let ctx = TestCtx::new();
-        expect_test::expect![["[check] rustc 0 <host> -> rustc 1 <host> (78 crates)"]]
+        expect_test::expect!["[check] rustc 0 <host> -> rustc 1 <host> (79 crates)"]
             .assert_eq(&ctx.config("check").path("compiler").render_steps());
     }
 
@@ -1513,7 +1513,7 @@ mod snapshot {
     #[test]
     fn check_compiler_stage_1() {
         let ctx = TestCtx::new();
-        expect_test::expect![["[check] rustc 0 <host> -> rustc 1 <host> (78 crates)"]]
+        expect_test::expect!["[check] rustc 0 <host> -> rustc 1 <host> (79 crates)"]
             .assert_eq(&ctx.config("check").path("compiler").stage(1).render_steps());
     }
 
@@ -1524,7 +1524,7 @@ mod snapshot {
             [build] llvm <host>
             [build] rustc 0 <host> -> rustc 1 <host>
             [build] rustc 1 <host> -> std 1 <host>
-            [check] rustc 1 <host> -> rustc 2 <host> (78 crates)"#]]
+            [check] rustc 1 <host> -> rustc 2 <host> (79 crates)"#]]
         .assert_eq(&ctx.config("check").path("compiler").stage(2).render_steps());
     }
 
@@ -1536,7 +1536,7 @@ mod snapshot {
             [build] rustc 0 <host> -> rustc 1 <host>
             [build] rustc 1 <host> -> std 1 <host>
             [check] rustc 1 <host> -> std 1 <target1>
-            [check] rustc 1 <host> -> rustc 2 <target1> (78 crates)
+            [check] rustc 1 <host> -> rustc 2 <target1> (79 crates)
             [check] rustc 1 <host> -> rustc 2 <target1>
             [check] rustc 1 <host> -> Rustdoc 2 <target1>
             [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
@@ -1617,7 +1617,7 @@ mod snapshot {
         expect_test::expect![[""]]
             .assert_eq(&ctx.config("check").paths(&["library"]).args(&args).render_steps());
 
-        expect_test::expect![["[check] rustc 0 <host> -> rustc 1 <host> (78 crates)"]].assert_eq(
+        expect_test::expect!["[check] rustc 0 <host> -> rustc 1 <host> (79 crates)"].assert_eq(
             &ctx.config("check").paths(&["library", "compiler"]).args(&args).render_steps(),
         );
     }
@@ -2750,7 +2750,7 @@ mod snapshot {
     #[test]
     fn fix_compiler() {
         let ctx = TestCtx::new();
-        expect_test::expect![["[fix] rustc 0 <host> -> rustc 1 <host> (78 crates)"]]
+        expect_test::expect!["[fix] rustc 0 <host> -> rustc 1 <host> (79 crates)"]
             .assert_eq(&ctx.config("fix").path("compiler").render_steps());
     }
 }
