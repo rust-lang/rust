@@ -2,6 +2,10 @@
 //!
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
+#![expect(
+    clippy::large_unopt_stack_frames,
+    reason = "the clap::Subcommand derive on `Subcommand` triggers this lint"
+)]
 
 use std::path::{Path, PathBuf};
 
