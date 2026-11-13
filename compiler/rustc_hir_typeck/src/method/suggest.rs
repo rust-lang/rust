@@ -4226,9 +4226,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Some(*rcvr_ty),
                             );
                         if !trait_in_other_version_found {
-                            err.span_label(
-                                pick.item.ident(self.tcx).span,
-                                format!("the method is available for `{rcvr_ty}` here"),
+                            let sp = pick.item.ident(self.tcx).span;
+                            let mut span: MultiSpan = sp.into();
+                            span.push_span_context(
+                                self.tcx
+                                    .def_span(pick.item.container_id(self.tcx))
+                                    .shrink_to_lo(),
+                            );
+                            let mut on_trait = String::new();
+
+                            if self.tcx.def_kind(did) == DefKind::Trait {
+                                let name = self.tcx.item_name(did);
+                                on_trait = format!("on trait `{name}` ");
+                            }
+                            err.span_note(
+                                span,
+                                format!("the method is available {on_trait}for `{rcvr_ty}`"),
                             );
                         }
                         break;
