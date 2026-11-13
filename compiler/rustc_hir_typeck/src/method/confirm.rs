@@ -354,6 +354,22 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     );
                     upcast_trait_ref.args
                 })
+                .unwrap_or_else(|| {
+                    // An invalid receiver can still lead to an ObjectPick even when we
+                    // can't reach the trait object. if the method failed WF checking,
+                    // recover instead of ICEing.
+                    if pick.item.def_id.as_local().is_some_and(|def_id| {
+                        self.tcx.ensure_result().check_well_formed(def_id).is_err()
+                    }) {
+                        ty::GenericArgs::extend_with_error(self.tcx, trait_def_id, &[])
+                    } else {
+                        span_bug!(
+                            self.span,
+                            "self-type `{}` for ObjectPick never dereferenced to an object",
+                            self_ty
+                        )
+                    }
+                })
             }
 
             probe::TraitPick { .. } => {
@@ -375,7 +391,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         }
     }
 
-    fn extract_existential_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R
+    fn extract_existential_trait_ref<R, F>(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        mut closure: F,
+    ) -> Option<R>
     where
         F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>) -> R,
     {
@@ -394,25 +414,16 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             autoderef = autoderef.use_receiver_trait();
         }
 
-        autoderef
-            .include_raw_pointers()
-            .find_map(|(ty, _)| match ty.kind() {
-                ty::Dynamic(data, ..) => Some(closure(
-                    self,
-                    ty,
-                    data.principal().unwrap_or_else(|| {
-                        span_bug!(self.span, "calling trait method on empty object?")
-                    }),
-                )),
-                _ => None,
-            })
-            .unwrap_or_else(|| {
-                span_bug!(
-                    self.span,
-                    "self-type `{}` for ObjectPick never dereferenced to an object",
-                    self_ty
-                )
-            })
+        autoderef.include_raw_pointers().find_map(|(ty, _)| match ty.kind() {
+            ty::Dynamic(data, ..) => Some(closure(
+                self,
+                ty,
+                data.principal().unwrap_or_else(|| {
+                    span_bug!(self.span, "calling trait method on empty object?")
+                }),
+            )),
+            _ => None,
+        })
     }
 
     fn instantiate_method_args(
