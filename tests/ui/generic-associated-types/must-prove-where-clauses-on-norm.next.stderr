@@ -1,10 +1,10 @@
-error: higher-ranked lifetime error
+error: higher-ranked lifetime error: lifetime outlives placeholder
   --> $DIR/must-prove-where-clauses-on-norm.rs:23:61
    |
 LL |     let func: for<'a, 'b> fn((), &'b str) -> &'static str = foo::<()>;
-   |                                                             ^^^^^^^^^
+   |                                                             ^^^^^^^^^ `'b` would have to outlive placeholder in universe `U0`
    |
-   = note: could not normalize `for<'b> fn(<() as Trait>::Assoc<'_, 'b>, &'b str) -> &str`
+   = note: outer lifetimes cannot depend on placeholders declared in a higher universe
 
 error: aborting due to 1 previous error
 
