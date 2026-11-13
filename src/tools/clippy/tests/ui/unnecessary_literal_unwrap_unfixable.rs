@@ -190,4 +190,41 @@ fn unwrap_methods_result_context() {
     //~^ unnecessary_literal_unwrap
 }
 
+mod issue17990 {
+    fn payload() -> i32 {
+        println!("payload evaluated");
+        1
+    }
+
+    fn err_unwrap_or_preserves_payload_evaluation() {
+        let _ = Err::<i32, i32>(payload()).unwrap_or(2);
+        //~^ unnecessary_literal_unwrap
+    }
+
+    fn unwrap_or_preserves_eager_fallback() {
+        let _ = Some(1).unwrap_or({
+            //~^ unnecessary_literal_unwrap
+            println!("message");
+            2
+        });
+    }
+
+    fn expect_preserves_eager_fallback() {
+        let _ = Ok::<i32, ()>(1).expect({
+            //~^ unnecessary_literal_unwrap
+            //~^^ expect_fun_call
+            println!("stuff");
+            "message"
+        });
+    }
+
+    fn expect_err_preserves_eager_fallback() {
+        let _ = Err::<(), i32>(1).expect_err({
+            //~^ unnecessary_literal_unwrap
+            println!("stuff");
+            "message"
+        });
+    }
+}
+
 fn main() {}

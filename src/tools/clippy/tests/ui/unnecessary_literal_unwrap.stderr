@@ -636,5 +636,29 @@ LL -     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
 LL +     let _ = 123;
    |
 
-error: aborting due to 53 previous errors
+error: used `unwrap_or()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:156:17
+   |
+LL |         let _ = Err(1).unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_or()`
+   |
+LL -         let _ = Err(1).unwrap_or(2);
+LL +         let _ = 2;
+   |
+
+error: used `expect_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap.rs:161:17
+   |
+LL |         let _ = Err::<(), i32>(1).expect_err("message");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect_err()`
+   |
+LL -         let _ = Err::<(), i32>(1).expect_err("message");
+LL +         let _ = 1;
+   |
+
+error: aborting due to 55 previous errors
 
