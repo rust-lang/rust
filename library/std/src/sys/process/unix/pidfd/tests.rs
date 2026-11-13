@@ -109,6 +109,41 @@ fn test_pidfd() {
     assert_matches!(res, Err(e) if e.raw_os_error() == Some(libc::ESRCH));
 }
 
+#[test]
+fn test_pidfd_getfd() {
+    use crate::fs::File;
+    use crate::os::fd::OwnedFd;
+    use crate::os::unix::fs::MetadataExt;
+    use crate::process::Stdio;
+
+    if !probe_pidfd_support() {
+        return;
+    }
+
+    let mut child = Command::new("sleep")
+        .arg("1000")
+        .stdin(Stdio::piped())
+        .create_pidfd(true)
+        .spawn()
+        .expect("executing 'sleep' failed");
+    let stdin = File::from(OwnedFd::from(child.stdin.take().unwrap()));
+
+    match child.pidfd().unwrap().getfd(0) {
+        Ok(fd) => {
+            let flags = super::cvt(unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_GETFD) }).unwrap();
+            assert!(flags & libc::FD_CLOEXEC != 0);
+            let theirs = File::from(fd).metadata().unwrap();
+            let ours = stdin.metadata().unwrap();
+            assert_eq!((theirs.dev(), theirs.ino()), (ours.dev(), ours.ino()));
+        }
+        Err(e) if matches!(e.raw_os_error(), Some(libc::ENOSYS | libc::EPERM)) => {}
+        Err(e) => panic!("unexpected error from pidfd getfd: {}", e),
+    }
+
+    child.kill().expect("failed to kill child");
+    child.wait().expect("error waiting on child");
+}
+
 fn probe_pidfd_support() -> bool {
     InternalPidFd::current_process().is_ok()
 }
