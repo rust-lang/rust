@@ -69,31 +69,52 @@ jobs:
       - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
         id: auth
       - run: |
-          set -eux
+          set -eux -o pipefail
+
+          # Give GitHub some time to propagate the information that the PR was merged
+          sleep 60
+
+          # Find PR for the current commit
+          HEAD_PR=$(gh pr list --search "${GITHUB_SHA}" --state merged --json number --jq '.[0].number')
+          if [ -z "${HEAD_PR}" ]; then
+            echo "PR for commit SHA ${GITHUB_SHA} not found, exiting"
+            exit 1
+          fi
+          echo "HEAD: ${GITHUB_SHA} (#${HEAD_PR})"
 
           git submodule update --init library/backtrace
           cd library/backtrace
 
-          if cargo publish; then
-            # Find PR for the current commit
-            HEAD_PR=`gh pr list --search "${{ github.sha }}" --state merged --json number --jq '.[0].number'`
-            if [ -z "${HEAD_PR}" ]; then
-              echo "PR for commit SHA ${{ github.sha }} not found, exiting"
-              exit 1
-            fi
-            echo "HEAD: ${{ github.sha }} (#${HEAD_PR})"
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "backtrace") | .version')
+          CRATE=backtrace
 
-            VERSION=`cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "backtrace") | .version'`
+          # Check if the version exists on crates.io already with a HEAD request to the CDN
+          code=$(curl --head --silent -o /dev/null --write-out '%{http_code}' "https://static.crates.io/crates/${CRATE}/${CRATE}-${VERSION}.crate")
 
-            echo "backtrace \`${VERSION}\` published to crates.io" > output.log
-
-            gh pr comment ${HEAD_PR} -F output.log
-          else
-            echo "Nothing was published. Either there is no version update or some error has occurred."
+          # If the crate version already exists, then there is nothing left to do
+          if [[ $code == 200 ]]; then
+            exit 0
           fi
+
+          set +e
+          cargo publish --locked &> ${RUNNER_TEMP}/cargo-log.txt
+          STATUS=$?
+          set -e
+
+          if [[ ${STATUS} == 0 ]]; then
+            echo "backtrace \`${VERSION}\` published to crates.io" > comment.txt
+          else
+            echo "backtrace \`${VERSION}\` could not be published to crates.io" > comment.txt
+            printf "<details>\n<summary>Cargo publish log</summary>\n\n" >> comment.txt
+            printf '```\n' >> comment.txt
+            cat "${RUNNER_TEMP}/cargo-log.txt" >> comment.txt  
+            printf '\n```\n' >> comment.txt
+            printf "</details>\n\n" >> comment.txt
+          fi
+
+          gh pr comment "${HEAD_PR}" -F comment.txt
+          exit "${STATUS}"
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-          # Running `gh` commands in a submodule would cause it to load data from the submodule's
-          # repo. So we override it here to `rust-lang/rust`.
-          GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
+          GITHUB_SHA: ${{ github.sha }}
