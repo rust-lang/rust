@@ -2008,11 +2008,11 @@ impl<'a> Parser<'a> {
     ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
-        if self.check_ident()
+        if let Some(ident) = self.token.non_reserved_ident()
             && self.look_ahead(1, |t| *t == token::Comma || *t == token::CloseParen)
         {
             // `fn foo(String s) {}`
-            let ident = self.parse_ident_common(true).unwrap();
+            self.bump(); // ident
             let span = pat.span.with_hi(ident.span.hi());
 
             err.span_suggestion_verbose(
