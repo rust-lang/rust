@@ -1671,7 +1671,7 @@ impl<'a> Parser<'a> {
             }
         };
         let args = ast::ParenthesizedArgs {
-            span: fn_path_segment.span().to(self.prev_token.span),
+            span: inputs_lo.to(self.prev_token.span),
             inputs,
             inputs_span,
             output,

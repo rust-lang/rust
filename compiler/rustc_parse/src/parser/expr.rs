@@ -1227,10 +1227,14 @@ impl<'a> Parser<'a> {
         } else {
             // Field access `expr.f`
             let span = lo.to(self.prev_token.span);
-            if let Some(args) = seg.args {
+            if let Some(args) = &seg.args {
+                let span = match **args {
+                    ast::GenericArgs::Parenthesized(_) => seg.span(),
+                    _ => args.span(),
+                };
                 // See `StashKey::GenericInFieldExpr` for more info on why we stash this.
                 self.dcx()
-                    .create_err(crate::diagnostics::FieldExpressionWithGeneric(args.span()))
+                    .create_err(crate::diagnostics::FieldExpressionWithGeneric(span))
                     .stash(seg.ident.span, StashKey::GenericInFieldExpr);
             }
 

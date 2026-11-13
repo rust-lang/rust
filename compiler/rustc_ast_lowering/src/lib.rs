@@ -1280,10 +1280,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             args: Default::default(),
                             constraints: &[],
                             parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
-                            span: data.span,
+                            span: constraint.ident.span.to(data.span),
                         }
                     } else {
-                        let guar = self.emit_bad_parenthesized_trait_in_assoc_ty(data);
+                        let guar = self.emit_bad_parenthesized_trait_in_assoc_ty(
+                            data,
+                            constraint.ident.span.to(data.span),
+                        );
                         self.lower_angle_bracketed_parameter_data(
                             &data.as_angle_bracketed_args(),
                             ParamMode::Explicit,
@@ -1359,6 +1362,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn emit_bad_parenthesized_trait_in_assoc_ty(
         &self,
         data: &ParenthesizedArgs,
+        span: Span,
     ) -> ErrorGuaranteed {
         // Suggest removing empty parentheses: "Trait()" -> "Trait"
         let sub = if data.inputs.is_empty() {
@@ -1380,7 +1384,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 data.inputs.last().unwrap().span.shrink_to_hi().to(data.inputs_span.shrink_to_hi());
             AssocTyParenthesesSub::NotEmpty { open_param, close_param }
         };
-        self.dcx().emit_err(AssocTyParentheses { span: data.span, sub })
+        self.dcx().emit_err(AssocTyParentheses { span, sub })
     }
 
     #[instrument(level = "debug", skip(self))]
