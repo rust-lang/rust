@@ -266,6 +266,7 @@ macro_rules! generate_flat_map_visitor_fns {
 generate_flat_map_visitor_fns! {
     // tidy-alphabetical-start
     filter_map_expr, Box<Expr>; // the odd one out; it works because `Option` impls `IntoIterator`
+    flat_map_annotatable_use_tree, AnnotatableUseTree;
     flat_map_arm, Arm;
     flat_map_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
     flat_map_expr_field, ExprField;
@@ -304,6 +305,7 @@ macro_rules! generate_walk_flat_map_fns {
 
 generate_walk_flat_map_fns! {
     // tidy-alphabetical-start
+    walk_flat_map_annotatable_use_tree(AnnotatableUseTree)=>visit_annotatable_use_tree;
     walk_flat_map_arm(Arm) => visit_arm;
     walk_flat_map_assoc_item(Box<AssocItem>, ctxt: AssocCtxt) => visit_assoc_item;
     walk_flat_map_expr_field(ExprField) => visit_expr_field;
