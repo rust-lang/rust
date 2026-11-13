@@ -1,0 +1,30 @@
+error[E0277]: expected `FnOnce(&mut [u8])` signature, found `{closure@$DIR/hrtb-closure-suggest-type-annotation.rs:22:25: 22:30}`
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:35:16
+   |
+LL |     inner(buf, outer_closure)
+   |     -----      ^^^^^^^^^^^^^ expected `FnOnce(&mut [u8])` signature, found `{closure@$DIR/hrtb-closure-suggest-type-annotation.rs:22:25: 22:30}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `for<'a> FnOnce(&'a mut [u8])` is not implemented for closure `{closure@$DIR/hrtb-closure-suggest-type-annotation.rs:22:25: 22:30}`
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:22:25
+   |
+LL |     let outer_closure = |buf| {
+   |                         ^^^^^
+   = note: expected type with signature `for<'a> fn(&'a mut _)`
+           found closure with signature `fn(&mut _)`
+note: required by a bound in `inner`
+  --> $DIR/hrtb-closure-suggest-type-annotation.rs:10:8
+   |
+LL | fn inner<F>(buf: &mut [u8], func: F) -> usize
+LL | where
+LL |     F: FnOnce(&mut [u8]) -> Result<usize, isize>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `inner`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     let outer_closure = |buf: &mut [u8]| {
+   |                             +++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

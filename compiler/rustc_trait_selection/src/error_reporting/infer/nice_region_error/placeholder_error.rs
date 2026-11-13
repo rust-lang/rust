@@ -1,13 +1,12 @@
 use std::fmt;
 
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{Applicability, Diag, IntoDiagArg};
-use rustc_hir as hir;
+use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
-use rustc_middle::ty::{self, GenericArgs, IsSuggestable, RePlaceholder, Region, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, RePlaceholder, Region, TyCtxt};
 use rustc_span::{Span, bug};
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
@@ -451,48 +450,18 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             }
         }
 
-        // When the mismatched trait is an Fn-trait and the self type is a closure with
-        // unannotated parameters, suggest adding explicit type annotations. This turns
-        // the confusing lifetime-generality error into an actionable hint, e.g.:
-        //   |buf|  →  |buf: &mut [u8]|
-        if self.tcx().is_fn_trait(trait_def_id) {
-            let actual_self_ty = self.cx.deeply_resolve_ignoring_regions(
-                ty::TraitRef::new_from_args(self.cx.tcx, trait_def_id, actual_args).self_ty(),
+        // For Fn traits, args[1] is the tupled input types (e.g. `(&mut [u8],)`).
+        let mut types = expected_args.types();
+        if let _ = types.next()
+            && let Some(expected_input_tys) = types.next() // fallible `expected_args.type_at(1)`
+            && let ty::Tuple(input_tys) = *expected_input_tys.kind()
+        {
+            self.cx.check_closure_lifetime_mismatch(
+                &mut err,
+                trait_def_id,
+                &*input_tys,
+                actual_args,
             );
-            if let ty::Closure(closure_def_id, _) = *actual_self_ty.kind()
-                && let Some(local_def_id) = closure_def_id.as_local()
-                && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
-                    self.tcx().hir_node_by_def_id(local_def_id)
-            {
-                let body = self.tcx().hir_body(closure.body);
-                // For Fn traits, args[1] is the tupled input types (e.g. `(&mut [u8],)`).
-                let expected_input_tys = expected_args.type_at(1);
-                if let ty::Tuple(input_tys) = *expected_input_tys.kind() {
-                    let suggestions: Vec<_> = body
-                        .params
-                        .iter()
-                        .zip(input_tys.iter())
-                        .filter_map(|(param, ty)| {
-                            // ty_span == pat.span means no explicit type annotation was written.
-                            if param.ty_span == param.pat.span
-                                && ty.is_suggestable(self.tcx(), false)
-                            {
-                                Some((param.pat.span.shrink_to_hi(), format!(": {ty}")))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-                    if !suggestions.is_empty() {
-                        let msg = if suggestions.len() == 1 {
-                            "consider adding an explicit type annotation to the closure's argument"
-                        } else {
-                            "consider adding explicit type annotations to the closure's arguments"
-                        };
-                        err.multipart_suggestion(msg, suggestions, Applicability::MaybeIncorrect);
-                    }
-                }
-            }
         }
 
         err
