@@ -400,6 +400,8 @@ impl<'a> CrateLocator<'a> {
         let interface_prefix = rmeta_prefix;
 
         let rmeta_suffix = ".rmeta";
+        let validation_suffix = ".validation.rmeta";
+        let analysis_suffix = ".full-analysis.rmeta";
         let rlib_suffix = ".rlib";
         let dylib_suffix = &self.target.dll_suffix;
         let staticlib_suffix = &self.target.staticlib_suffix;
@@ -434,6 +436,8 @@ impl<'a> CrateLocator<'a> {
         for (prefix, suffix, kind) in [
             (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
             (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
+            (rmeta_prefix.as_str(), validation_suffix, CrateFlavor::Rmeta),
+            (rmeta_prefix.as_str(), analysis_suffix, CrateFlavor::Rmeta),
             (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
             (interface_prefix, interface_suffix, CrateFlavor::SDylib),
         ] {

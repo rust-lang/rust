@@ -34,7 +34,8 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{OptLevel, OutputType, TargetModifier};
+use rustc_session::config::{OptLevel, TargetModifier};
+use rustc_session::output::OutputType;
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::hygiene::{
     HygieneEncodeContext, HygieneRemapper, HygieneRemappingResults, LocalExpnIdRemapper,

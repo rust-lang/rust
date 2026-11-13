@@ -33,9 +33,11 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
     self, CFGuard, DebugInfo, InstrumentMcount, JobsMode, LinkerFeaturesCli, LinkerJobs,
-    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    OutFileName, OutputFilenames, PrintKind, SplitDwarfKind, Strip,
 };
-use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
+use rustc_session::output::{
+    OutputType, check_file_is_writeable, invalid_output_for_target, out_filename,
+};
 use rustc_session::search_paths::PathKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.

@@ -5,7 +5,7 @@
 //! There are various `Emitter` implementations that generate different output formats such as
 //! JSON and human readable output.
 //!
-//! The output types are defined in `rustc_session::config::ErrorOutputType`.
+//! The output types are defined in `rustc_session::output::ErrorOutputType`.
 
 use std::borrow::Cow;
 use std::io::prelude::*;

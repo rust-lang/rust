@@ -1,9 +1,6 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
-
-use std::collections::btree_map::{
-    Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
-};
+use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::hash::Hash;
@@ -15,7 +12,7 @@ use std::{cmp, fs, iter, thread};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
+use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtFlags};
 use rustc_feature::UnstableFeatures;
@@ -43,6 +40,7 @@ pub use crate::config::print_request::{
 use crate::diagnostics::FileWriteFail;
 use crate::macros::AllVariants;
 pub use crate::options::*;
+use crate::output::{ErrorOutputType, OutputType, OutputTypes, ResolveDocLinks};
 use crate::search_paths::SearchPath;
 use crate::utils::CanonicalizedPath;
 use crate::{EarlyDiagCtxt, Session, filesearch, lint};
@@ -58,6 +56,9 @@ pub const DEFAULT_STACK_SIZE: usize = 17 * 1024 * 1024;
 
 /// Special CPU name requesting the CPU of the current host.
 pub const NATIVE_CPU: &str = "native";
+
+const NIGHTLY_ONLY_OUTTYPES: [OutputType; 3] =
+    [OutputType::ThinLinkBitcode, OutputType::FullAnalysis, OutputType::Validation];
 
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -692,298 +693,6 @@ impl FromStr for SplitDwarfKind {
     }
 }
 
-macro_rules! define_output_types {
-    (
-        $(
-            $(#[doc = $doc:expr])*
-            $Variant:ident => {
-                shorthand: $shorthand:expr,
-                extension: $extension:expr,
-                description: $description:expr,
-                default_filename: $default_filename:expr,
-                is_text: $is_text:expr,
-                compatible_with_cgus_and_single_output: $compatible:expr
-            }
-        ),* $(,)?
-    ) => {
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, StableHash)]
-        #[derive(Encodable, Decodable)]
-        pub enum OutputType {
-            $(
-                $(#[doc = $doc])*
-                $Variant,
-            )*
-        }
-
-        impl StableOrd for OutputType {
-            const CAN_USE_UNSTABLE_SORT: bool = true;
-
-            // Trivial C-Style enums have a stable sort order across compilation sessions.
-            const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
-        }
-
-        impl OutputType {
-            pub fn iter_all() -> impl Iterator<Item = OutputType> {
-                static ALL_VARIANTS: &[OutputType] = &[
-                    $(
-                        OutputType::$Variant,
-                    )*
-                ];
-                ALL_VARIANTS.iter().copied()
-            }
-
-            fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
-                match *self {
-                    $(
-                        OutputType::$Variant => $compatible,
-                    )*
-                }
-            }
-
-            pub fn shorthand(&self) -> &'static str {
-                match *self {
-                    $(
-                        OutputType::$Variant => $shorthand,
-                    )*
-                }
-            }
-
-            fn from_shorthand(shorthand: &str) -> Option<Self> {
-                match shorthand {
-                    $(
-                        s if s == $shorthand => Some(OutputType::$Variant),
-                    )*
-                    _ => None,
-                }
-            }
-
-            fn shorthands_display() -> String {
-                let shorthands = vec![
-                    $(
-                        format!("`{}`", $shorthand),
-                    )*
-                ];
-                shorthands.join(", ")
-            }
-
-            pub fn extension(&self) -> &'static str {
-                match *self {
-                    $(
-                        OutputType::$Variant => $extension,
-                    )*
-                }
-            }
-
-            pub fn is_text_output(&self) -> bool {
-                match *self {
-                    $(
-                        OutputType::$Variant => $is_text,
-                    )*
-                }
-            }
-
-            pub fn description(&self) -> &'static str {
-                match *self {
-                    $(
-                        OutputType::$Variant => $description,
-                    )*
-                }
-            }
-
-            pub fn default_filename(&self) -> &'static str {
-                match *self {
-                    $(
-                        OutputType::$Variant => $default_filename,
-                    )*
-                }
-            }
-
-
-        }
-    }
-}
-
-define_output_types! {
-    Assembly => {
-        shorthand: "asm",
-        extension: "s",
-        description: "Generates a file with the crate's assembly code",
-        default_filename: "CRATE_NAME.s",
-        is_text: true,
-        compatible_with_cgus_and_single_output: false
-    },
-    #[doc = "This is the optimized bitcode, which could be either pre-LTO or non-LTO bitcode,"]
-    #[doc = "depending on the specific request type."]
-    Bitcode => {
-        shorthand: "llvm-bc",
-        extension: "bc",
-        description: "Generates a binary file containing the LLVM bitcode",
-        default_filename: "CRATE_NAME.bc",
-        is_text: false,
-        compatible_with_cgus_and_single_output: false
-    },
-    DepInfo => {
-        shorthand: "dep-info",
-        extension: "d",
-        description: "Generates a file with Makefile syntax that indicates all the source files that were loaded to generate the crate",
-        default_filename: "CRATE_NAME.d",
-        is_text: true,
-        compatible_with_cgus_and_single_output: true
-    },
-    Exe => {
-        shorthand: "link",
-        extension: "",
-        description: "Generates the crates specified by --crate-type. This is the default if --emit is not specified",
-        default_filename: "(platform and crate-type dependent)",
-        is_text: false,
-        compatible_with_cgus_and_single_output: true
-    },
-    LlvmAssembly => {
-        shorthand: "llvm-ir",
-        extension: "ll",
-        description: "Generates a file containing LLVM IR",
-        default_filename: "CRATE_NAME.ll",
-        is_text: true,
-        compatible_with_cgus_and_single_output: false
-    },
-    Metadata => {
-        shorthand: "metadata",
-        extension: "rmeta",
-        description: "Generates a file containing metadata about the crate",
-        default_filename: "libCRATE_NAME.rmeta",
-        is_text: false,
-        compatible_with_cgus_and_single_output: true
-    },
-    Mir => {
-        shorthand: "mir",
-        extension: "mir",
-        description: "Generates a file containing rustc's mid-level intermediate representation",
-        default_filename: "CRATE_NAME.mir",
-        is_text: true,
-        compatible_with_cgus_and_single_output: false
-    },
-    Object => {
-        shorthand: "obj",
-        extension: "o",
-        description: "Generates a native object file",
-        default_filename: "CRATE_NAME.o",
-        is_text: false,
-        compatible_with_cgus_and_single_output: false
-    },
-    #[doc = "This is the summary or index data part of the ThinLTO bitcode."]
-    ThinLinkBitcode => {
-        shorthand: "thin-link-bitcode",
-        extension: "indexing.o",
-        description: "Generates the ThinLTO summary as bitcode",
-        default_filename: "CRATE_NAME.indexing.o",
-        is_text: false,
-        compatible_with_cgus_and_single_output: false
-    },
-}
-
-/// The type of diagnostics output to generate.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum ErrorOutputType {
-    /// Output meant for the consumption of humans.
-    #[default]
-    HumanReadable {
-        kind: HumanReadableErrorType = HumanReadableErrorType { no_graphics: false, short: false, unicode: false },
-        color_config: ColorConfig = ColorConfig::Auto,
-    },
-    /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
-    Json {
-        /// Render the JSON in a human readable way (with indents and newlines).
-        pretty: bool,
-        /// The JSON output includes a `rendered` field that includes the rendered
-        /// human output.
-        json_rendered: HumanReadableErrorType,
-        color_config: ColorConfig,
-    },
-}
-
-#[derive(Clone, Hash, Debug)]
-pub enum ResolveDocLinks {
-    /// Do not resolve doc links.
-    None,
-    /// Resolve doc links on exported items only for crate types that have metadata.
-    ExportedMetadata,
-    /// Resolve doc links on exported items.
-    Exported,
-    /// Resolve doc links on all items.
-    All,
-}
-
-/// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
-/// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
-/// dependency tracking for command-line arguments. Also only hash keys, since tracking
-/// should only depend on the output types, not the paths they're written to.
-#[derive(Clone, Debug, Hash, StableHash, Encodable, Decodable)]
-pub struct OutputTypes(BTreeMap<OutputType, Option<OutFileName>>);
-
-impl OutputTypes {
-    pub fn new(entries: &[(OutputType, Option<OutFileName>)]) -> OutputTypes {
-        OutputTypes(BTreeMap::from_iter(entries.iter().map(|&(k, ref v)| (k, v.clone()))))
-    }
-
-    pub(crate) fn get(&self, key: &OutputType) -> Option<&Option<OutFileName>> {
-        self.0.get(key)
-    }
-
-    pub fn contains_key(&self, key: &OutputType) -> bool {
-        self.0.contains_key(key)
-    }
-
-    /// Returns `true` if user specified a name and not just produced type
-    pub fn contains_explicit_name(&self, key: &OutputType) -> bool {
-        matches!(self.0.get(key), Some(Some(..)))
-    }
-
-    pub fn iter(&self) -> BTreeMapIter<'_, OutputType, Option<OutFileName>> {
-        self.0.iter()
-    }
-
-    pub fn keys(&self) -> BTreeMapKeysIter<'_, OutputType, Option<OutFileName>> {
-        self.0.keys()
-    }
-
-    pub fn values(&self) -> BTreeMapValuesIter<'_, OutputType, Option<OutFileName>> {
-        self.0.values()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns `true` if any of the output types require codegen or linking.
-    pub fn should_codegen(&self) -> bool {
-        self.0.keys().any(|k| match *k {
-            OutputType::Bitcode
-            | OutputType::ThinLinkBitcode
-            | OutputType::Assembly
-            | OutputType::LlvmAssembly
-            | OutputType::Mir
-            | OutputType::Object
-            | OutputType::Exe => true,
-            OutputType::Metadata | OutputType::DepInfo => false,
-        })
-    }
-
-    /// Returns `true` if any of the output types require linking.
-    pub fn should_link(&self) -> bool {
-        self.0.keys().any(|k| match *k {
-            OutputType::Bitcode
-            | OutputType::ThinLinkBitcode
-            | OutputType::Assembly
-            | OutputType::LlvmAssembly
-            | OutputType::Mir
-            | OutputType::Metadata
-            | OutputType::Object
-            | OutputType::DepInfo => false,
-            OutputType::Exe => true,
-        })
-    }
-}
-
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
 /// *Do not* switch `BTreeMap` or `BTreeSet` out for an unsorted container type! That
 /// would break dependency tracking for command-line arguments.
@@ -1328,7 +1037,7 @@ impl OutputFilenames {
     fn output_path(&self, flavor: OutputType) -> PathBuf {
         let extension = flavor.extension();
         match flavor {
-            OutputType::Metadata => {
+            OutputType::Metadata | OutputType::Validation | OutputType::FullAnalysis => {
                 debug!("using crate_name={} for {extension}", self.crate_stem);
                 self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
             }
@@ -2555,10 +2264,10 @@ fn parse_output_types(
                         display = OutputType::shorthands_display(),
                     ))
                 });
-                if output_type == OutputType::ThinLinkBitcode && !unstable_opts.unstable_options {
+                if NIGHTLY_ONLY_OUTTYPES.contains(&output_type) && !unstable_opts.unstable_options {
                     early_dcx.early_fatal(format!(
                         "{} requested but -Zunstable-options not specified",
-                        OutputType::ThinLinkBitcode.shorthand()
+                        output_type.shorthand()
                     ));
                 }
                 output_types.insert(output_type, path);

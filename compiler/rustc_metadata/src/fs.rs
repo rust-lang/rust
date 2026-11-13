@@ -5,7 +5,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::TempDirBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::config::{OutFileName, OutputType};
+use rustc_session::config::OutFileName;
 use rustc_session::output::filename_for_metadata;
 use rustc_span::ErrorGuaranteed;
 use rustc_structures::CrateType;
@@ -79,7 +79,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> Result<EncodedMetadata, Err
     // If the user requests metadata as output, rename `metadata_filename`
     // to the expected output `out_filename`. The match above should ensure
     // this file always exists.
-    let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
+    let need_metadata_file = tcx.sess.opts.output_types.needs_metadata();
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
         let filename = match out_filename {
             OutFileName::Real(ref path) => {

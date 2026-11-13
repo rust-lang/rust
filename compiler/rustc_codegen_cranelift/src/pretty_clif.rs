@@ -65,7 +65,8 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::write::{FuncWriter, PlainWriter};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
-use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_session::config::OutputFilenames;
+use rustc_session::output::OutputType;
 use rustc_target::callconv::FnAbi;
 
 use crate::prelude::*;
@@ -282,7 +283,7 @@ pub(crate) fn write_ir_file(
     if let Err(err) = res {
         // Using early_warn as no Session is available here
         let handler =
-            rustc_session::EarlyDiagCtxt::new(rustc_session::config::ErrorOutputType::default());
+            rustc_session::EarlyDiagCtxt::new(rustc_session::output::ErrorOutputType::default());
         handler.early_warn(format!("error writing ir file: {}", err));
     }
 }

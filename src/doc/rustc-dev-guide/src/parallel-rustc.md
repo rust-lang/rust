@@ -118,14 +118,14 @@ the parallel iterator function has been used are as follows:
 | ------------------------------------------------------- | ------------------------------------------------------------ | ------------------------ |
 | rustc_metadata::rmeta::encoder::prefetch_mir            | Prefetch queries which will be needed later by metadata encoding | par_iter                 |
 | rustc_monomorphize::collector::collect_crate_mono_items | Collect monomorphized items reachable from non-generic items | par_for_each_in          |
-| rustc_interface::passes::analysis                       | Check the validity of the match statements                   | Map::par_body_owners     |
-| rustc_interface::passes::analysis                       | MIR borrow check                                             | Map::par_body_owners     |
+| rustc_interface::passes::full_analysis                       | Check the validity of the match statements                   | Map::par_body_owners     |
+| rustc_interface::passes::full_analysis                       | MIR borrow check                                             | Map::par_body_owners     |
 | rustc_typeck::check::typeck_item_bodies                 | Type check                                                   | Map::par_body_owners     |
 | rustc_interface::passes::hir_id_validator::check_crate  | Check the validity of hir                                    | Map::par_for_each_module |
-| rustc_interface::passes::analysis                       | Check the validity of loops body, attributes, naked functions, unstable abi, const bodys | Map::par_for_each_module |
-| rustc_interface::passes::analysis                       | Liveness and intrinsic checking of MIR                       | Map::par_for_each_module |
-| rustc_interface::passes::analysis                       | Deathness checking                                           | Map::par_for_each_module |
-| rustc_interface::passes::analysis                       | Privacy checking                                             | Map::par_for_each_module |
+| rustc_interface::passes::full_analysis                       | Check the validity of loops body, attributes, naked functions, unstable abi, const bodys | Map::par_for_each_module |
+| rustc_interface::passes::full_analysis                       | Liveness and intrinsic checking of MIR                       | Map::par_for_each_module |
+| rustc_interface::passes::full_analysis                       | Deathness checking                                           | Map::par_for_each_module |
+| rustc_interface::passes::full_analysis                       | Privacy checking                                             | Map::par_for_each_module |
 | rustc_lint::late::check_crate                           | Run per-module lints                                         | Map::par_for_each_module |
 | rustc_typeck::check_crate                               | Well-formedness checking                                         | Map::par_for_each_module |
 
