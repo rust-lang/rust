@@ -10,6 +10,8 @@ on:
       - release
       - trigger-nightly
 
+permissions: {}
+
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
@@ -201,6 +203,8 @@ jobs:
   publish:
     if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs: ["dist", "dist-x86_64-unknown-linux-musl"]
     steps:
       - name: Checkout repository
@@ -248,12 +252,18 @@ jobs:
     name: publish-extension (${{ matrix.cmd }})
     runs-on: ubuntu-latest
     needs: publish
+    environment: publish-extension
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - cmd: vsce
+            authentication: --oidc
           - cmd: ovsx
+            authentication: --trusted-publishing
     steps:
       - name: Install Nodejs
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
@@ -276,8 +286,6 @@ jobs:
 
       - name: Publish Extension
         if: github.repository == 'rust-lang/rust-analyzer'
-        env:
-          PUBLISH_PAT: ${{ (matrix.cmd == 'vsce' && secrets.MARKETPLACE_TOKEN) || (matrix.cmd == 'ovsx' && secrets.OPENVSX_TOKEN) }}
         working-directory: ./editors/code
-        run: npx ${{ matrix.cmd }} publish --skip-duplicate --pat "$PUBLISH_PAT" --packagePath ../../dist/rust-analyzer-*.vsix ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
+        run: npx ${{ matrix.cmd }} publish --skip-duplicate ${{ matrix.authentication }} --packagePath ../../dist/rust-analyzer-*.vsix ${{ github.ref != 'refs/heads/release' && '--pre-release' || '' }}
         timeout-minutes: 2
