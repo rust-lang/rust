@@ -37,6 +37,11 @@ type_alias! { "c_ulonglong.md", c_ulonglong = u64; }
 type_alias! { "c_float.md", c_float = f32; }
 type_alias! { "c_double.md", c_double= c_double_definition::c_double; #[doc(cfg(true))] }
 
+#[doc = include_str!("c_longdouble.md")]
+#[doc(cfg(true))]
+#[unstable(feature = "c_longdouble", issue = "161787")]
+pub type c_longdouble = c_longdouble_definition::c_longdouble;
+
 mod c_char_definition {
     crate::cfg_select! {
         // These are the targets on which c_char is unsigned. Usually the
@@ -198,6 +203,130 @@ mod c_double_definition {
         }
         _ => {
             pub(super) type c_double = f64;
+        }
+    }
+}
+
+mod c_longdouble_definition {
+    // The values here are based on Triple::getDefaultLongDoubleFormat in
+    // https://github.com/llvm/llvm-project/blob/main/llvm/lib/TargetParser/Triple.cpp.
+    crate::cfg_select! {
+        any(
+            target_arch = "loongarch64",
+            target_arch = "loongarch32",
+            target_arch = "riscv32",
+            target_arch = "riscv64",
+            target_arch = "sparc64",
+            target_arch = "s390x",
+            target_arch = "wasm32",
+            target_arch = "wasm64",
+        ) => {
+            pub(super) type c_longdouble = f128;
+        }
+        target_arch = "sparc" => {
+            // GCC uses IEEE double for bare-metal, NetBSD, and RTEMS SPARC V8 targets.
+            cfg_select! {
+                any(target_os = "none", target_os = "netbsd", target_os = "rtems") => {
+                    pub(super) type c_longdouble = f64;
+                }
+                _ => {
+                    pub(super) type c_longdouble = f128;
+                }
+            }
+        }
+        any(target_arch = "powerpc", target_arch = "powerpc64") => {
+            // PowerPC uses IBM double-double, except on a handful of OSes that use
+            // plain IEEE double. NetBSD only switches to IEEE double on 32-bit PowerPC.
+            cfg_select! {
+                any(
+                    target_os = "aix",
+                    target_os = "freebsd",
+                    target_os = "openbsd",
+                    target_env = "musl",
+                    target_abi = "spe",
+                    all(target_arch = "powerpc", target_os = "netbsd")
+                ) => {
+                    pub(super) type c_longdouble = f64;
+                }
+                target_arch = "powerpc" => {
+                    pub(super) type c_longdouble = crate::arch::powerpc::ppcf128;
+                }
+                _ => {
+                    pub(super) type c_longdouble = crate::arch::powerpc64::ppcf128;
+                }
+            }
+        }
+        any(target_arch = "x86", target_arch = "x86_64") => {
+            cfg_select! {
+                any(target_os = "android", target_env = "ohos") => {
+                    // Android and OHOS use IEEE double on 32-bit and IEEE quad on 64-bit.
+                    cfg_select! {
+                        target_arch = "x86" => {
+                            pub(super) type c_longdouble = f64;
+                        }
+                        target_arch = "x86_64" => {
+                            pub(super) type c_longdouble = f128;
+                        }
+                    }
+                }
+                any(target_env = "msvc", target_os = "uefi") => {
+                    // Windows-MSVC and UEFI use IEEE double. MinGW and Cygwin keep x87.
+                    pub(super) type c_longdouble = f64;
+                }
+                _ => {
+                    cfg_select! {
+                        target_arch = "x86" => {
+                            pub(super) type c_longdouble = crate::arch::x86::x87_f80;
+                        }
+                        target_arch = "x86_64" => {
+                            pub(super) type c_longdouble = crate::arch::x86_64::x87_f80;
+                        }
+                    }
+                }
+            }
+        }
+
+        any(target_arch = "aarch64", target_arch = "arm64ec") => {
+            cfg_select! {
+                any(target_os = "windows", target_vendor = "apple", target_os = "uefi") => {
+                    pub(super) type c_longdouble = f64;
+                }
+                _ => {
+                    pub(super) type c_longdouble = f128;
+                }
+            }
+        }
+
+        any(target_arch = "mips", target_arch = "mips32r6") => {
+            pub(super) type c_longdouble = f64;
+        }
+        any(target_arch = "mips64", target_arch = "mips64r6") => {
+            cfg_select! {
+                target_os = "freebsd" => {
+                    pub(super) type c_longdouble = f64;
+                }
+                _ => {
+                    pub(super) type c_longdouble = f128;
+                }
+            }
+        }
+
+        target_arch = "avr" => {
+            // AVR uses IEEE single precision.
+            pub(super) type c_longdouble = f32;
+        }
+
+        target_arch = "m68k" => {
+            // This matches clang, but not GCC which uses a custom 80-bit float.
+            pub(super) type c_longdouble = f64;
+        }
+
+        target_arch = "msp430" => {
+            pub(super) type c_longdouble = f64;
+        }
+
+        _ => {
+            pub(super) type c_longdouble = super::c_double;
         }
     }
 }

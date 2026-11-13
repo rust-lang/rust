@@ -28,6 +28,8 @@ mod va_list;
 pub use self::va_list::{VaArgSafe, VaList};
 
 mod primitives;
+#[unstable(feature = "c_longdouble", issue = "161787")]
+pub use self::primitives::c_longdouble;
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
 pub use self::primitives::{
     c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
