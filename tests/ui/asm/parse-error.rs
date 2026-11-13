@@ -1,7 +1,4 @@
 //@ needs-asm-support
-//@ reference: asm.syntax
-//@ reference: asm.ts-args.syntax
-//@ reference: asm.ts-args.one-or-more
 
 use std::arch::{asm, global_asm};
 
@@ -158,3 +155,10 @@ global_asm!("{}", inlateout(reg));
 //~^ ERROR the `inlateout` operand cannot be used with `global_asm!`
 global_asm!("{}", label(reg));
 //~^ ERROR the `label` operand cannot be used with `global_asm!`
+
+//@ reference: asm.operand-type.global_asm-restriction
+//@ reference: asm.options.global_asm-restriction
+//@ reference: asm.syntax
+//@ reference: asm.ts-args.before-other-args
+//@ reference: asm.ts-args.one-or-more
+//@ reference: asm.ts-args.syntax

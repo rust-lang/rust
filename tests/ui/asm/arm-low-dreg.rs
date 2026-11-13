@@ -20,3 +20,5 @@ fn f(x: f64) -> f64 {
     }
     out
 }
+
+//@ reference: asm.register-operands.supported-register-classes

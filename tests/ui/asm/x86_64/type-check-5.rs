@@ -55,3 +55,8 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
+
+//@ reference: asm.operand-type.supported-operands-in
+//@ reference: asm.operand-type.supported-operands-inout
+//@ reference: asm.operand-type.supported-operands-out
+//@ reference: asm.register-operands.allowed-types
