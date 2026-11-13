@@ -12,7 +12,8 @@ declare_tool_lint! {
     pub clippy::TEST_LINT,
     Warn,
     "",
-    @report_in_external_macro = true
+    @in_external_macro = Report
+
 }
 
 declare_tool_lint! {
@@ -20,7 +21,8 @@ declare_tool_lint! {
     pub clippy::TEST_LINT_DEFAULT,
     Warn,
     "default lint description",
-    @report_in_external_macro = true
+    @in_external_macro = Report
+
 }
 
 declare_lint_pass!(Pass => [TEST_LINT]);

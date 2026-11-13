@@ -30,7 +30,8 @@ declare_tool_lint! {
     pub clippy::INTERNING_LITERALS,
     Warn,
     "interning a symbol that is a literal",
-    @report_in_external_macro = true
+    @in_external_macro = Report
+
 }
 
 declare_tool_lint! {
@@ -52,7 +53,8 @@ declare_tool_lint! {
     pub clippy::SYMBOL_AS_STR,
     Warn,
     "calls to `Symbol::as_str`",
-    @report_in_external_macro = true
+    @in_external_macro = Report
+
 }
 
 #[derive(Default)]

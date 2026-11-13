@@ -192,7 +192,7 @@ declare_lint! {
     UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
     Warn,
     "detects unpredictable function pointer comparisons",
-    report_in_external_macro
+    @in_external_macro = Report,
 }
 
 #[derive(Copy, Clone, Default)]

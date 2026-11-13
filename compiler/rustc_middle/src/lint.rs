@@ -468,7 +468,10 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
                     })
                 });
 
-            if !incompatible && !lint.report_in_external_macro && !is_in_find_attr {
+            if !incompatible
+                && lint.in_external_macro == rustc_lint_defs::InExternalMacro::DontReport
+                && !is_in_find_attr
+            {
                 // Don't continue further, since we don't want to have
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
                 return;
