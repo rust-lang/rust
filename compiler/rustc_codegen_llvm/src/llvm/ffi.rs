@@ -2540,6 +2540,7 @@ unsafe extern "C" {
         InstrProfileOutput: *const c_char,
         PGOSampleUsePath: *const c_char,
         DebugInfoForProfiling: bool,
+        PseudoProbeForProfiling: bool,
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,

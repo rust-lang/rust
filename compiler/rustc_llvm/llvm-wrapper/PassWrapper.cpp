@@ -719,25 +719,27 @@ static void forceFullLTOSummary(Module *M) {
   M->addModuleFlag(Module::Error, "ThinLTO", Zero);
 }
 
-extern "C" LLVMRustResult LLVMRustOptimize(
-    LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
-    LLVMRustPassBuilderOptLevel OptLevelRust, LLVMRustOptStage OptStage,
-    bool IsLinkerPluginLTO, bool NoPrepopulatePasses, bool VerifyIR,
-    bool LintIR, LLVMRustBuffer **ThinLTOBufferRef,
-    LLVMRustBuffer **ThinLTOSummaryBufferRef, bool MergeFunctions,
-    bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
-    bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
-    registerEnzymeAndPassPipelineFn EnzymePtr, bool PrintBeforeEnzyme,
-    bool PrintAfterEnzyme, bool PrintPasses,
-    LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
-    const char *PGOUsePath, bool InstrumentCoverage,
-    const char *InstrProfileOutput, const char *PGOSampleUsePath,
-    bool DebugInfoForProfiling, void *LlvmSelfProfiler,
-    LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
-    LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
-    const char *PostEnzymePasses, size_t PostEnzymePassesLen,
-    const char *ExtraPasses, size_t ExtraPassesLen, const char *LLVMPlugins,
-    size_t LLVMPluginsLen) {
+extern "C" LLVMRustResult
+LLVMRustOptimize(LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
+                 LLVMRustPassBuilderOptLevel OptLevelRust,
+                 LLVMRustOptStage OptStage, bool IsLinkerPluginLTO,
+                 bool NoPrepopulatePasses, bool VerifyIR, bool LintIR,
+                 LLVMRustBuffer **ThinLTOBufferRef,
+                 LLVMRustBuffer **ThinLTOSummaryBufferRef, bool MergeFunctions,
+                 bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
+                 bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
+                 registerEnzymeAndPassPipelineFn EnzymePtr,
+                 bool PrintBeforeEnzyme, bool PrintAfterEnzyme,
+                 bool PrintPasses, LLVMRustSanitizerOptions *SanitizerOptions,
+                 const char *PGOGenPath, const char *PGOUsePath,
+                 bool InstrumentCoverage, const char *InstrProfileOutput,
+                 const char *PGOSampleUsePath, bool DebugInfoForProfiling,
+                 bool PseudoProbeForProfiling, void *LlvmSelfProfiler,
+                 LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
+                 LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
+                 const char *PostEnzymePasses, size_t PostEnzymePassesLen,
+                 const char *ExtraPasses, size_t ExtraPassesLen,
+                 const char *LLVMPlugins, size_t LLVMPluginsLen) {
   Module *TheModule = unwrap(ModuleRef);
   TargetMachine *TM = unwrap(TMRef);
   OptimizationLevel OptLevel = fromRust(OptLevelRust);
@@ -771,7 +773,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     PGOOpt =
         PGOOptions(PGOSampleUsePath, "", "", "", PGOOptions::SampleUse,
                    PGOOptions::NoCSAction, PGOOptions::ColdFuncOpt::Default,
-                   DebugInfoForProfiling);
+                   DebugInfoForProfiling, PseudoProbeForProfiling);
+  } else if (PseudoProbeForProfiling) {
+    PGOOpt =
+        PGOOptions("", "", "", "", PGOOptions::NoAction, PGOOptions::NoCSAction,
+                   PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling,
+                   PseudoProbeForProfiling);
   } else if (DebugInfoForProfiling) {
     PGOOpt =
         PGOOptions("", "", "", "", PGOOptions::NoAction, PGOOptions::NoCSAction,
