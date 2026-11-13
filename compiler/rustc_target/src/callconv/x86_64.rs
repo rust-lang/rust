@@ -319,9 +319,7 @@ where
     }
 
     fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
-        if !ret.is_ignore() {
-            self.x86_64_arg_or_ret(cx, ret, false);
-        }
+        self.x86_64_arg_or_ret(cx, ret, false);
     }
 
     fn compute_arg_abi(
@@ -331,9 +329,6 @@ where
         arg: &mut ArgAbi<'a, Ty>,
         _is_vararg: bool,
     ) {
-        if arg.is_ignore() {
-            return;
-        }
         self.x86_64_arg_or_ret(cx, arg, true);
     }
 }

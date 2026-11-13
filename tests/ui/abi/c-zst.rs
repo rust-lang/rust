@@ -1,5 +1,6 @@
 //@ add-minicore
 //@ normalize-stderr: "(align|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
+//@ normalize-stderr: "(randomization_seed): \d+" -> "$1: $$SEED"
 /*!
 C doesn't have zero-sized types... except it does.
 
@@ -10,8 +11,11 @@ e.g. despite being "zero-sized", sometimes C compilers decide ZSTs consume regis
 That means these two function signatures may not be compatible:
 
 ```
-extern "C" fn((), i32, i32);
-extern "C" fn(i32, (), i32);
+#[repr(C)]
+struct Czst;
+
+extern "C" fn(Czst, i32, i32);
+extern "C" fn(i32, Czst, i32);
 ```
 */
 
@@ -63,5 +67,8 @@ extern "C" fn(i32, (), i32);
 extern crate minicore;
 use minicore::*;
 
+#[repr(C)]
+struct Czst;
+
 #[rustc_abi(debug)]
-extern "C" fn pass_zst(_: ()) {} //~ ERROR: fn_abi
+extern "C" fn pass_zst(_: Czst) {} //~ ERROR: fn_abi

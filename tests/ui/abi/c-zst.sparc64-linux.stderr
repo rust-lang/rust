@@ -2,7 +2,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
            args: [
                ArgAbi {
                    layout: TyAndLayout {
-                       ty: (),
+                       ty: Czst,
                        layout: Layout {
                            size: Size(0 bytes),
                            align: $SOME_ALIGN,
@@ -20,11 +20,22 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
-                           repr_c: false,
-                           randomization_seed: 0,
+                           repr_c: true,
+                           randomization_seed: $SEED,
                        },
                    },
-                   mode: Ignore,
+                   mode: Indirect {
+                       attrs: ArgAttributes {
+                           regular: CapturesAddress | NoAlias | NonNull | NoUndef | NoFree,
+                           arg_ext: None,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: Some(
+                               Align(1 bytes),
+                           ),
+                       },
+                       address_space: None,
+                       mode: Pointer,
+                   },
                },
            ],
            ret: ArgAbi {
@@ -48,7 +59,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
                        repr_c: false,
-                       randomization_seed: 0,
+                       randomization_seed: $SEED,
                    },
                },
                mode: Ignore,
@@ -58,10 +69,10 @@ error: fn_abi_of(pass_zst) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/c-zst.rs:67:1
+  --> $DIR/c-zst.rs:74:1
    |
-LL | extern "C" fn pass_zst(_: ()) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "C" fn pass_zst(_: Czst) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

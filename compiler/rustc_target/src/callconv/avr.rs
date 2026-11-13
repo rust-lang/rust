@@ -64,9 +64,7 @@ where
     }
 
     fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
-        if !ret.is_ignore() {
-            classify_ret_ty(ret);
-        }
+        classify_ret_ty(ret);
     }
 
     fn compute_arg_abi(
@@ -76,10 +74,6 @@ where
         arg: &mut ArgAbi<'a, Ty>,
         _is_vararg: bool,
     ) {
-        if arg.is_ignore() {
-            return;
-        }
-
         classify_arg_ty(cx, arg);
     }
 }

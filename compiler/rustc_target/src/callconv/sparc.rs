@@ -75,6 +75,10 @@ where
         Self
     }
 
+    fn passes_zst(&self) -> bool {
+        true
+    }
+
     fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.is_ignore() {
             if let Some(component) = ret.layout.complex_number(cx) {
@@ -93,9 +97,7 @@ where
         _is_vararg: bool,
     ) {
         if arg.is_ignore() {
-            if arg.layout.is_zst() {
-                arg.make_indirect_from_ignore();
-            }
+            arg.make_indirect_from_ignore();
             return;
         }
         classify_arg(cx, arg);

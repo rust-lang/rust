@@ -672,11 +672,39 @@ where
 {
     let mut cc = CC::new(cx);
 
-    cc.compute_ret_abi(cx, fn_abi.conv, &mut fn_abi.ret);
+    // Some ABIs pass ZSTs by pointer indirection rather than ignoring them. We follow
+    // that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them), but
+    // `repr(Rust)` ones are always ignored (ensuring that `()` matches C `void`).
+    fn ignore_zst<'a, CC, Ty, C>(cc: &CC, arg: &ArgAbi<'a, Ty>) -> bool
+    where
+        CC: ComputeCallConv<'a, Ty, C>,
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if !arg.is_ignore() {
+            // Not a ZST
+            return false;
+        }
+
+        if !cc.passes_zst() {
+            // ZSTs ignored by callconv
+            return true;
+        }
+
+        // Rust ZSTs are always ignored
+        !arg.layout.is_repr_c()
+    }
+
+    if !ignore_zst(&cc, &fn_abi.ret) {
+        cc.compute_ret_abi(cx, fn_abi.conv, &mut fn_abi.ret);
+    }
 
     let c_variadic = fn_abi.c_variadic;
     let fixed_count = fn_abi.fixed_count as usize;
     for (idx, arg) in fn_abi.args.iter_mut().enumerate() {
+        if ignore_zst(&cc, arg) {
+            continue;
+        }
+
         cc.compute_arg_abi(cx, fn_abi.conv, arg, c_variadic && idx >= fixed_count);
     }
 }
@@ -686,6 +714,10 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
     fn new(cx: &C) -> Self;
+
+    fn passes_zst(&self) -> bool {
+        false
+    }
 
     fn compute_ret_abi(&mut self, cx: &C, conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>);
     fn compute_arg_abi(

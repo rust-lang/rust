@@ -151,9 +151,7 @@ where
     }
 
     fn compute_ret_abi(&mut self, cx: &C, conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
-        if !ret.is_ignore() {
-            classify_ret(cx, ret, self.kind, !C_VARIADIC && self.is_effectively_vfp(conv, true));
-        }
+        classify_ret(cx, ret, self.kind, !C_VARIADIC && self.is_effectively_vfp(conv, true));
     }
 
     fn compute_arg_abi(
@@ -164,9 +162,6 @@ where
         _is_vararg: bool,
     ) {
         let is_arg_vfp = !C_VARIADIC && self.is_effectively_vfp(conv, false);
-        if arg.is_ignore() {
-            return;
-        }
         classify_arg(cx, arg, self.kind, is_arg_vfp);
     }
 }
