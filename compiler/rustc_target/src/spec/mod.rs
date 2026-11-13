@@ -1702,6 +1702,9 @@ supported_targets! {
 
     ("aarch64-unknown-hyperlight", aarch64_unknown_hyperlight),
     ("x86_64-unknown-hyperlight", x86_64_unknown_hyperlight),
+
+    ("aarch64-unknown-serenity", aarch64_unknown_serenity),
+    ("x86_64-unknown-serenity", x86_64_unknown_serenity),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1879,6 +1882,7 @@ crate::target_spec_enum! {
         Qurt = "qurt",
         Redox = "redox",
         Rtems = "rtems",
+        Serenity = "serenity",
         Solaris = "solaris",
         SolidAsp3 = "solid_asp3",
         TeeOs = "teeos",
