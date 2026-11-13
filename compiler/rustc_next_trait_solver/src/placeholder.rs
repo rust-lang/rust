@@ -116,7 +116,7 @@ where
 
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _)
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, _))
                 if debruijn.as_usize()
                     >= self.current_index.as_usize() + self.universe_indices.len() =>
             {
@@ -125,7 +125,7 @@ where
                     self.universe_indices
                 );
             }
-            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn, br))
                 if debruijn >= self.current_index =>
             {
                 let universe = self.universe_for(debruijn);
@@ -139,7 +139,7 @@ where
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
-            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn, _))
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
@@ -148,7 +148,7 @@ where
                     self.universe_indices
                 );
             }
-            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_ty))
                 if debruijn >= self.current_index =>
             {
                 let universe = self.universe_for(debruijn);
@@ -163,7 +163,7 @@ where
 
     fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         match ct.kind() {
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), _)
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn, _))
                 if debruijn.as_usize() + 1
                     > self.current_index.as_usize() + self.universe_indices.len() =>
             {
@@ -172,7 +172,7 @@ where
                     self.universe_indices
                 );
             }
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn, bound_const))
                 if debruijn >= self.current_index =>
             {
                 let universe = self.universe_for(debruijn);

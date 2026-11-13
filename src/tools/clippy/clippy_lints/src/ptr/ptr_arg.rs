@@ -254,7 +254,10 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                                 .region_param(r, cx.tcx)
                                                 .def_id,
                                         ),
-                                        ty::ReBound(_, r) => r.kind.get_id(),
+                                        ty::ReBound(ty::BoundVarIndexKind::Bound(_, r)) => {
+                                            r.kind.get_id()
+                                        }
+                                        ty::ReBound(ty::BoundVarIndexKind::Canonical(_)) => None,
                                         ty::ReLateParam(r) => r.kind.get_id(),
                                         ty::ReStatic
                                         | ty::ReVar(_)

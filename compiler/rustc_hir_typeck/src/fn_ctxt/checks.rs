@@ -180,7 +180,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ty::ConstKind::Placeholder(_)
                 | ty::ConstKind::Alias(_, _) => enforce_copy_bound(element, element_ty),
 
-                ty::ConstKind::Bound(_, _) | ty::ConstKind::Infer(_) | ty::ConstKind::Error(_) => {
+                ty::ConstKind::Bound(_) | ty::ConstKind::Infer(_) | ty::ConstKind::Error(_) => {
                     unreachable!()
                 }
             }

@@ -650,7 +650,7 @@ pub fn try_evaluate_const<'tcx, E: Debug>(
         ty::ConstKind::Error(e) => Err(EvaluateConstErr::EvaluationFailure(e)),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Infer(_)
-        | ty::ConstKind::Bound(_, _)
+        | ty::ConstKind::Bound(_)
         | ty::ConstKind::Placeholder(_)
         | ty::ConstKind::Expr(_) => Err(EvaluateConstErr::HasGenericsOrInfers),
         ty::ConstKind::Alias(_, alias_const) => {

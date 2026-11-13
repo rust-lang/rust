@@ -236,7 +236,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // bounds of the RPITIT. Shift these binders back out when
             // constructing the top-level projection predicate.
             let shifted_alias_ty = fold_regions(self.tcx, unshifted_alias_ty, |re, depth| {
-                if let ty::ReBound(ty::BoundVarIndexKind::Bound(index), bv) = re.kind() {
+                if let ty::ReBound(ty::BoundVarIndexKind::Bound(index, bv)) = re.kind() {
                     if depth != ty::INNERMOST {
                         return ty::Region::new_error_with_message(
                             self.tcx,
@@ -389,7 +389,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::Tuple(_)
         | ty::Alias(_, _)
         | ty::Param(_)
-        | ty::Bound(_, _)
+        | ty::Bound(_)
         | ty::Placeholder(_)
         | ty::Infer(_)
         | ty::Error(_) => false,

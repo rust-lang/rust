@@ -242,32 +242,43 @@ where
         for (original_value, result_value) in iter::zip(original_values, var_values.iter()) {
             match result_value.kind() {
                 ty::GenericArgKind::Type(t) => {
-                    // We disable the instantiation guess for inference variables
-                    // and only use it for placeholders. We need to handle the
-                    // `sub_root` of type inference variables which would make this
-                    // more involved. They are also a lot rarer than region variables.
-                    if let ty::Bound(index_kind, b) = t.kind()
-                        && !matches!(
-                            response.var_kinds.get(b.var().as_usize()).unwrap(),
-                            CanonicalVarKind::Ty { .. }
-                        )
-                    {
-                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                        opt_values[b.var()] = Some(*original_value);
+                    match t.kind() {
+                        ty::Bound(ty::BoundVarIndexKind::Canonical(bv)) => {
+                            // We disable the instantiation guess for inference variables
+                            // and only use it for placeholders. We need to handle the
+                            // `sub_root` of type inference variables which would make this
+                            // more involved. They are also a lot rarer than region variables.
+                            if !matches!(
+                                response.var_kinds.get(bv.as_usize()).unwrap(),
+                                CanonicalVarKind::Ty { .. }
+                            ) {
+                                opt_values[bv] = Some(*original_value);
+                            }
+                        }
+                        ty::Bound(ty::BoundVarIndexKind::Bound(..)) => {
+                            panic!("only `Canonical` bound types allowed here");
+                        }
+                        _ => {}
                     }
                 }
-                ty::GenericArgKind::Lifetime(r) => {
-                    if let ty::ReBound(index_kind, br) = r.kind() {
-                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                        opt_values[br.var()] = Some(*original_value);
+                ty::GenericArgKind::Lifetime(r) => match r.kind() {
+                    ty::ReBound(ty::BoundVarIndexKind::Canonical(bv)) => {
+                        opt_values[bv] = Some(*original_value);
                     }
-                }
-                ty::GenericArgKind::Const(c) => {
-                    if let ty::ConstKind::Bound(index_kind, bc) = c.kind() {
-                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                        opt_values[bc.var()] = Some(*original_value);
+                    ty::ReBound(ty::BoundVarIndexKind::Bound(..)) => {
+                        panic!("only `Canonical` bound regions allowed here");
                     }
-                }
+                    _ => {}
+                },
+                ty::GenericArgKind::Const(c) => match c.kind() {
+                    ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical(bv)) => {
+                        opt_values[bv] = Some(*original_value);
+                    }
+                    ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(..)) => {
+                        panic!("only `Canonical` bound consts allowed here");
+                    }
+                    _ => {}
+                },
             }
         }
         opt_values
@@ -560,15 +571,15 @@ where
     fn canonical_bound_var<I: Interner>(arg: Canonicalized<I::GenericArg>) -> Option<ty::BoundVar> {
         match arg.into_uninstantiated().kind() {
             ty::GenericArgKind::Type(t) => match t.kind() {
-                ty::Bound(ty::BoundVarIndexKind::Canonical, bt) => Some(bt.var()),
+                ty::Bound(ty::BoundVarIndexKind::Canonical(bv)) => Some(bv),
                 _ => None,
             },
             ty::GenericArgKind::Lifetime(r) => match r.kind() {
-                ty::ReBound(ty::BoundVarIndexKind::Canonical, br) => Some(br.var()),
+                ty::ReBound(ty::BoundVarIndexKind::Canonical(bv)) => Some(bv),
                 _ => None,
             },
             ty::GenericArgKind::Const(c) => match c.kind() {
-                ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) => Some(bc.var()),
+                ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical(bv)) => Some(bv),
                 _ => None,
             },
         }

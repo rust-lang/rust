@@ -979,7 +979,7 @@ pub fn for_each_top_level_late_bound_region<'cx, B>(
     impl<'tcx, B, F: FnMut(BoundRegion<'tcx>) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type Result = ControlFlow<B>;
         fn visit_region(&mut self, r: Region<'tcx>) -> Self::Result {
-            if let RegionKind::ReBound(BoundVarIndexKind::Bound(idx), bound) = r.kind()
+            if let RegionKind::ReBound(BoundVarIndexKind::Bound(idx, bound)) = r.kind()
                 && idx.as_u32() == self.index
             {
                 (self.f)(bound)

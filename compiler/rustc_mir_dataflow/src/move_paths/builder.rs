@@ -167,7 +167,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             | ty::UnsafeBinder(_)
                             | ty::Alias(_, _)
                             | ty::Param(_)
-                            | ty::Bound(_, _)
+                            | ty::Bound(_)
                             | ty::Infer(_)
                             | ty::Error(_)
                             | ty::Placeholder(_) => {
@@ -207,7 +207,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                             | ty::UnsafeBinder(_)
                             | ty::Alias(_, _)
                             | ty::Param(_)
-                            | ty::Bound(_, _)
+                            | ty::Bound(_)
                             | ty::Infer(_)
                             | ty::Error(_)
                             | ty::Placeholder(_) => bug!(

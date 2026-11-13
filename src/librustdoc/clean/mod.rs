@@ -2011,9 +2011,10 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     match region.kind() {
         ty::ReStatic => Some(Lifetime::statik()),
         ty::ReEarlyParam(region) => Some(Lifetime(region.name)),
-        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id), .. }) => {
-            Some(Lifetime(tcx.item_name(def_id)))
-        }
+        ty::ReBound(ty::BoundVarIndexKind::Bound(
+            _,
+            ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id), .. },
+        )) => Some(Lifetime(tcx.item_name(def_id))),
         ty::ReBound(..)
         | ty::ReLateParam(_)
         | ty::ReVar(_)
@@ -2342,10 +2343,13 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
-        ty::Bound(_, ref ty) => match ty.kind {
+        ty::Bound(ty::BoundVarIndexKind::Bound(_, ref bt)) => match bt.kind {
             ty::BoundTyKind::Param(def_id) => Generic(cx.tcx.item_name(def_id)),
             ty::BoundTyKind::Anon => panic!("unexpected anonymous bound type variable"),
         },
+        ty::Bound(ty::BoundVarIndexKind::Canonical(_)) => {
+            panic!("unexpected canonical bound type variable")
+        }
 
         ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
             // If it's already in the same alias, don't get an infinite loop.

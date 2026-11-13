@@ -262,7 +262,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::CoroutineWitness(..) => (),
 
             // These are used in diagnostics or in the old solver.
-            ty::Param(_) | ty::Bound(_, _) => (),
+            ty::Param(_) | ty::Bound(_) => (),
 
             // These variants should not exist as a self type.
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

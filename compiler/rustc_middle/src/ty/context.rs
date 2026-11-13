@@ -300,13 +300,13 @@ const NUM_PREINTERNED_INFER_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_INFER_FRESH_FLOAT_TYS: u32 = 3;
 const NUM_PREINTERNED_BOUND_BOUND_ANONS_I: u32 = 3;
 const NUM_PREINTERNED_BOUND_BOUND_ANONS_V: u32 = 20;
-const NUM_PREINTERNED_BOUND_CANONICAL_ANONS: u32 = 128;
+const NUM_PREINTERNED_BOUND_CANONICALS: u32 = 128;
 const NUM_PREINTERNED_PLACEHOLDER_ROOT_ANONS: u32 = 128;
 
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
 const NUM_PREINTERNED_RE_BOUND_BOUND_ANONS_I: u32 = 3;
 const NUM_PREINTERNED_RE_BOUND_BOUND_ANONS_V: u32 = 20;
-const NUM_PREINTERNED_RE_BOUND_CANONICAL_ANONS: u32 = 20;
+const NUM_PREINTERNED_RE_BOUND_CANONICALS: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
@@ -373,17 +373,16 @@ pub struct CommonTypes<'tcx> {
     pub infer_fresh_float_tys: Vec<Ty<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `Bound(
-    ///     BoundVarIndexKind::Bound(DebruijnIndex(i)),
-    ///     BoundTy { var: v, kind: BoundTyKind::Anon }
-    /// )`
+    /// `Bound(BoundVarIndexKind::Bound(
+    ///     DebruijnIndex(i), BoundTy { var: v, kind: BoundTyKind::Anon }
+    /// ))`
     /// for small values of `i` and `v`.
     pub bound_bound_anons: Vec<Vec<Ty<'tcx>>>,
 
     /// Pre-interned values of the form:
-    /// `Bound(BoundVarIndexKind::Canonical, BoundTy { var: v, kind: BoundTyKind::Anon })`
+    /// `Bound(BoundVarIndexKind::Canonical(v))`
     /// for small values of `v`.
-    pub bound_canonical_anons: Vec<Ty<'tcx>>,
+    pub bound_canonicals: Vec<Ty<'tcx>>,
 
     /// Pre-interned values of the form:
     /// `Placeholder(Placeholder {
@@ -405,14 +404,17 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReBound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
+    /// `ReBound(BoundVarIndexKind::Bound(
+    ///      DebruijnIndex(i),
+    ///      BoundRegion { var: v, kind: BoundRegionKind::Anon }
+    /// ))`
     /// for small values of `i` and `v`.
     pub re_bound_bound_anons: Vec<Vec<Region<'tcx>>>,
 
     /// Pre-interned values of the form:
-    /// `ReBound(BoundVarIndexKind::Canonical, BoundRegion { var: v, kind: BoundRegionKind::Anon })`
+    /// `ReBound(BoundVarIndexKind::Canonical(v))`
     /// for small values of `v`.
-    pub re_bound_canonical_anons: Vec<Region<'tcx>>,
+    pub re_bound_canonicals: Vec<Region<'tcx>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -443,22 +445,17 @@ impl<'tcx> CommonTypes<'tcx> {
             .map(|i| {
                 (0..NUM_PREINTERNED_BOUND_BOUND_ANONS_V)
                     .map(|v| {
-                        mk(ty::Bound(
-                            ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
+                        mk(ty::Bound(ty::BoundVarIndexKind::Bound(
+                            ty::DebruijnIndex::from(i),
                             ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
-                        ))
+                        )))
                     })
                     .collect()
             })
             .collect();
 
-        let bound_canonical_anons = (0..NUM_PREINTERNED_BOUND_CANONICAL_ANONS)
-            .map(|v| {
-                mk(ty::Bound(
-                    ty::BoundVarIndexKind::Canonical,
-                    ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
-                ))
-            })
+        let bound_canonicals = (0..NUM_PREINTERNED_BOUND_CANONICALS)
+            .map(|v| mk(ty::Bound(ty::BoundVarIndexKind::Canonical(ty::BoundVar::from(v)))))
             .collect();
 
         let placeholder_root_anons = (0..NUM_PREINTERNED_PLACEHOLDER_ROOT_ANONS)
@@ -501,7 +498,7 @@ impl<'tcx> CommonTypes<'tcx> {
             infer_fresh_int_tys,
             infer_fresh_float_tys,
             bound_bound_anons,
-            bound_canonical_anons,
+            bound_canonicals,
             placeholder_root_anons,
         }
     }
@@ -522,25 +519,20 @@ impl<'tcx> CommonLifetimes<'tcx> {
             .map(|i| {
                 (0..NUM_PREINTERNED_RE_BOUND_BOUND_ANONS_V)
                     .map(|v| {
-                        mk(ty::ReBound(
-                            ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
+                        mk(ty::ReBound(ty::BoundVarIndexKind::Bound(
+                            ty::DebruijnIndex::from(i),
                             ty::BoundRegion {
                                 var: ty::BoundVar::from(v),
                                 kind: ty::BoundRegionKind::Anon,
                             },
-                        ))
+                        )))
                     })
                     .collect()
             })
             .collect();
 
-        let re_bound_canonical_anons = (0..NUM_PREINTERNED_RE_BOUND_CANONICAL_ANONS)
-            .map(|v| {
-                mk(ty::ReBound(
-                    ty::BoundVarIndexKind::Canonical,
-                    ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BoundRegionKind::Anon },
-                ))
-            })
+        let re_bound_canonicals = (0..NUM_PREINTERNED_RE_BOUND_CANONICALS)
+            .map(|v| mk(ty::ReBound(ty::BoundVarIndexKind::Canonical(ty::BoundVar::from(v)))))
             .collect();
 
         CommonLifetimes {
@@ -548,7 +540,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             re_erased: mk(ty::ReErased),
             re_vars,
             re_bound_bound_anons,
-            re_bound_canonical_anons,
+            re_bound_canonicals,
         }
     }
 }

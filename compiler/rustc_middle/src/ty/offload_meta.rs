@@ -177,7 +177,7 @@ impl MappingFlags {
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(_, _)
             | ty::Never
-            | ty::Bound(_, _)
+            | ty::Bound(_)
             | ty::Placeholder(_)
             | ty::Infer(_)
             | ty::Error(_) => {

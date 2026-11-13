@@ -35,7 +35,8 @@ impl<I: Interner> Region<I> {
     pub fn get_name(self, interner: I) -> Option<I::Symbol> {
         match self.kind() {
             RegionKind::ReEarlyParam(ebr) => ebr.get_name(interner),
-            RegionKind::ReBound(_, br) => br.kind.get_name(interner),
+            RegionKind::ReBound(BoundVarIndexKind::Bound(_, br)) => br.kind.get_name(interner),
+            RegionKind::ReBound(BoundVarIndexKind::Canonical(_)) => None,
             RegionKind::ReLateParam(fr) => fr.kind.get_name(interner),
             RegionKind::ReStatic => Some(I::Symbol::KW_STATIC_LIFETIME),
             RegionKind::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(interner),
@@ -66,7 +67,8 @@ impl<I: Interner> Region<I> {
     pub fn is_named(self, interner: I) -> bool {
         match self.kind() {
             RegionKind::ReEarlyParam(ebr) => ebr.is_named(interner),
-            RegionKind::ReBound(_, br) => br.kind.is_named(interner),
+            RegionKind::ReBound(BoundVarIndexKind::Bound(_, br)) => br.kind.is_named(interner),
+            RegionKind::ReBound(BoundVarIndexKind::Canonical(_)) => false,
             RegionKind::ReLateParam(fr) => fr.kind.is_named(interner),
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,
@@ -222,11 +224,11 @@ impl<I: Interner> Region<I> {
             RegionKind::ReStatic => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
-            RegionKind::ReBound(BoundVarIndexKind::Canonical, _) => {
+            RegionKind::ReBound(BoundVarIndexKind::Canonical(_)) => {
                 flags = flags | TypeFlags::HAS_RE_BOUND;
                 flags = flags | TypeFlags::HAS_CANONICAL_BOUND;
             }
-            RegionKind::ReBound(BoundVarIndexKind::Bound(..), _) => {
+            RegionKind::ReBound(BoundVarIndexKind::Bound(..)) => {
                 flags = flags | TypeFlags::HAS_RE_BOUND;
             }
             RegionKind::ReErased => {
@@ -250,7 +252,7 @@ impl<I: Interner> Region<I> {
     #[inline]
     pub fn bound_at_or_above_binder(self, index: DebruijnIndex) -> bool {
         match self.kind() {
-            RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), _) => debruijn >= index,
+            RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn, _)) => debruijn >= index,
             _ => false,
         }
     }
@@ -263,7 +265,7 @@ impl<I: Interner> Flags for Region<I> {
 
     fn outer_exclusive_binder(&self) -> DebruijnIndex {
         match self.kind() {
-            RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), _) => debruijn.shifted_in(1),
+            RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn, _)) => debruijn.shifted_in(1),
             _ => crate::INNERMOST,
         }
     }

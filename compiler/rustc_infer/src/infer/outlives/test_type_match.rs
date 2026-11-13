@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::bug;
 use rustc_type_ir::relate::relate_args_with_variances;
 use tracing::instrument;
 
@@ -49,8 +50,10 @@ pub fn extract_verify_if_eq<'tcx>(
     );
     m.relate(verify_if_eq.ty, test_ty).ok()?;
 
-    if let ty::RegionKind::ReBound(index_kind, br) = verify_if_eq.bound.kind() {
-        assert!(matches!(index_kind, ty::BoundVarIndexKind::Bound(ty::INNERMOST)));
+    if let ty::RegionKind::ReBound(index_kind) = verify_if_eq.bound.kind() {
+        let ty::BoundVarIndexKind::Bound(ty::INNERMOST, br) = index_kind else {
+            bug!("bad ReBound");
+        };
         match m.map.get(&br) {
             Some(&r) => Some(r),
             None => {
@@ -179,7 +182,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         pattern: ty::Region<'tcx>,
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(depth), br) = pattern.kind()
+        if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(depth, br)) = pattern.kind()
             && depth == self.pattern_depth
         {
             self.bind(br, value)

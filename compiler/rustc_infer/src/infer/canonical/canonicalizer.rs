@@ -313,9 +313,9 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(_), ..) => r,
+            ty::ReBound(ty::BoundVarIndexKind::Bound(..)) => r,
 
-            ty::ReBound(ty::BoundVarIndexKind::Canonical, _) => {
+            ty::ReBound(ty::BoundVarIndexKind::Canonical(_)) => {
                 bug!("canonicalized bound var found during canonicalization");
             }
 
@@ -390,9 +390,9 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 self.canonicalize_ty_var(CanonicalVarKind::PlaceholderTy(placeholder), t)
             }
 
-            ty::Bound(ty::BoundVarIndexKind::Bound(_), _) => t,
+            ty::Bound(ty::BoundVarIndexKind::Bound(..)) => t,
 
-            ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
+            ty::Bound(ty::BoundVarIndexKind::Canonical(_)) => {
                 bug!("canonicalized bound var found during canonicalization");
             }
 
@@ -464,10 +464,10 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                 bug!("encountered a fresh const during canonicalization")
             }
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(_), _) => {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(..)) => {
                 return ct;
             }
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, _) => {
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical(_)) => {
                 bug!("canonicalized bound var found during canonicalization");
             }
             ty::ConstKind::Placeholder(placeholder) => {

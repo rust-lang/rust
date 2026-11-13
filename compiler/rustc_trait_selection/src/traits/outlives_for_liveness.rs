@@ -411,7 +411,8 @@ fn live_args_for_outlives_clause<'tcx>(
         // Of course, you may ask: "what if the function has a `'a: 'static` bound?" See the corresponding
         // comment in `live_args_for_alias_from_outlives_bounds` for why we don't need to worry about that.
         ty::ReStatic => DenseBitSet::new_empty(clause_identity_args.len()),
-        ty::ReBound(_, br) => {
+        ty::ReBound(kind) => {
+            let ty::BoundVarIndexKind::Bound(_, br) = kind else { bug!() };
             // The bound is one of the clause's higher-ranked vars. Find the arg
             // positions it occupies, then (at the alias's identity level) find
             // all args that are known to outlive one of those positions given
@@ -423,10 +424,11 @@ fn live_args_for_outlives_clause<'tcx>(
             {
                 match clause_arg.kind() {
                     ty::GenericArgKind::Lifetime(r) => {
-                        if let ty::ReBound(_, arg_br) = r.kind()
-                            && arg_br.var == br.var
-                        {
-                            outlived_regions.push(identity_arg_idx);
+                        if let ty::ReBound(arg_kind) = r.kind() {
+                            let ty::BoundVarIndexKind::Bound(_, arg_br) = arg_kind else { bug!() };
+                            if arg_br.var == br.var {
+                                outlived_regions.push(identity_arg_idx);
+                            }
                         }
                     }
                     ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_) => {
@@ -512,7 +514,7 @@ where
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
         match r.kind() {
             // ignore bound regions, keep visiting
-            ty::ReBound(_, _) => {}
+            ty::ReBound(_) => {}
             _ => (self.op)(r),
         }
     }
