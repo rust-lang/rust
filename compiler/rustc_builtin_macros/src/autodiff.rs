@@ -14,11 +14,12 @@ mod llvm_enzyme {
     use rustc_ast::tokenstream::*;
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
-        self as ast, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
-        MetaItemInner, PatKind, TyKind, Visibility,
+        self as ast, AttrKind, FnRetTy, FnSig, GenericArg, GenericParamKind, Generics, ItemKind,
+        MetaItemInner, MetaItemLit, PatKind, TyKind, Visibility,
     };
     use rustc_attr_ir::RustcAutodiff;
     use rustc_expand::base::{Annotatable, ExtCtxt};
+    use rustc_feature::is_builtin_attr_name;
     use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
@@ -333,8 +334,6 @@ mod llvm_enzyme {
 
         // The first element of it is the name of the function to be generated
         let d_fn = ecx.item_fn(d_sig, first_ident(&meta_item_vec[0]), generics, Some(d_body));
-        let mut rustc_ad_attr =
-            Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
 
         let ts2 = vec![TokenTree::Token(
             Token::new(TokenKind::Ident(sym::never, IdentKind::Normal), span),
@@ -352,64 +351,62 @@ mod llvm_enzyme {
             span: DUMMY_SP,
         };
         let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
-        let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-        let attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
+        let autodiff_attr = ecx.attr_word(sym::rustc_autodiff, span);
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
-        // We're avoid duplicating the attribute `#[rustc_autodiff]`.
-        fn same_attribute(attr: &ast::AttrKind, item: &ast::AttrKind) -> bool {
-            match (attr, item) {
-                (ast::AttrKind::Normal(a), ast::AttrKind::Normal(b)) => {
-                    let a = &a.item.path;
-                    let b = &b.item.path;
-                    a.segments.iter().eq_by(&b.segments, |a, b| a.ident == b.ident)
-                }
-                _ => false,
-            }
-        }
-
         let mut has_inline_never = false;
-
-        // Don't add it multiple times:
-        let orig_annotatable = match item {
-            Annotatable::Item(ref mut iitem) => {
-                if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
-                    iitem.attrs.push(attr);
-                }
-                if iitem.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind)) {
-                    has_inline_never = true;
-                }
-                Annotatable::Item(iitem.clone())
-            }
-            Annotatable::AssocItem(ref mut assoc_item, ctxt @ (Impl { .. } | Trait)) => {
-                if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
-                    assoc_item.attrs.push(attr);
-                }
-                if assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind)) {
-                    has_inline_never = true;
-                }
-                Annotatable::AssocItem(assoc_item.clone(), ctxt)
-            }
-            Annotatable::Stmt(ref mut stmt) => {
-                match stmt.kind {
-                    ast::StmtKind::Item(ref mut iitem) => {
-                        if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
-                            iitem.attrs.push(attr);
-                        }
-                        if iitem.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind)) {
+        let mut has_autodiff_attribute = false;
+        let item_span = item.span();
+        let attrs = match &mut item {
+            Annotatable::Item(item) => &mut item.attrs,
+            Annotatable::AssocItem(assoc_item, ..) => &mut assoc_item.attrs,
+            Annotatable::Stmt(stmt) => match &mut stmt.kind {
+                ast::StmtKind::Item(item) => &mut item.attrs,
+                _ => unreachable!("stmt kind checked previously"),
+            },
+            _ => unreachable!("annotatable kind checked previously"),
+        };
+        for attr in attrs.iter() {
+            match &attr.kind {
+                AttrKind::Normal(normal) => match normal.item.name() {
+                    //supported attributes
+                    Some(sym::rustc_autodiff) => has_autodiff_attribute = true,
+                    Some(sym::inline) => {
+                        let Some(list) = normal.item.meta_item_list() else {
+                            continue;
+                        };
+                        if let Some(MetaItemInner::Lit(MetaItemLit {
+                            symbol: sym::never, ..
+                        })) = list.first()
+                        {
                             has_inline_never = true;
                         }
                     }
-                    _ => unreachable!("stmt kind checked previously"),
-                };
+                    Some(name)
+                        if is_builtin_attr_name(name)
+                            || name == sym::autodiff_forward
+                            || name == sym::autodiff_reverse =>
+                    {
+                        continue;
+                    }
 
-                Annotatable::Stmt(stmt.clone())
+                    _ => {
+                        ecx.dcx().emit_err(diagnostics::AutodiffAttributeNotSupported {
+                            span: item_span,
+                            attr_span: attr.span,
+                        });
+                    }
+                },
+                _ => {}
             }
-            _ => {
-                unreachable!("annotatable kind checked previously")
-            }
-        };
+        }
+        if !has_autodiff_attribute {
+            attrs.push(autodiff_attr);
+        }
+
+        let mut rustc_ad_attr =
+            Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
         // Now update for d_fn
         rustc_ad_attr.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
             dspan: DelimSpan::dummy(),
@@ -418,6 +415,8 @@ mod llvm_enzyme {
         });
 
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
+        // `d_attr` don't have a tokenstream, it will be a problem if we
+        // start to pass other macros on the generated function.
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
 
         // If the source function has the `#[inline(never)]` attribute, we'll also add it to the diff function
@@ -456,7 +455,7 @@ mod llvm_enzyme {
             }
         };
 
-        vec![orig_annotatable, d_annotatable]
+        vec![item, d_annotatable]
     }
 
     // shadow arguments (the extra ones which were not in the original (primal) function), in reverse mode must be
