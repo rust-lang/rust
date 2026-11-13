@@ -890,7 +890,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // is uninhabited.
     let dest = if !destination.is_stable_offset() {
         trace!("creating temp for return destination");
-        let dest = Rvalue::RawPtr(RawPtrKind::Mut, destination);
+        let dest = Rvalue::RawPtr(RawPtrKind::Mut { kind: RawMutBorrowKind::Default }, destination);
         let dest_ty = dest.ty(caller_body, tcx);
         let temp = Place::from(new_call_temp(caller_body, callsite, dest_ty, return_block));
         caller_body[callsite.block].statements.push(Statement::new(

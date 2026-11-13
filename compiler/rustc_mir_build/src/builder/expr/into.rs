@@ -8,8 +8,9 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::{Spanned, span_bug, sym};
+use rustc_span::{Span, Spanned, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -522,26 +523,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::ByUse { expr, span } => {
                 if this.use_expr_must_clone(expr) {
-                    let place = unpack!(block = this.as_read_only_place(block, expr));
-                    let ty = place.ty(&this.local_decls, this.tcx).ty;
+                    let source = unpack!(block = this.as_read_only_place(block, expr));
+                    let ty = source.ty(&this.local_decls, this.tcx).ty;
 
                     if this.infcx.type_is_copy_modulo_regions(this.param_env, ty) {
                         this.cfg.push_assign(
                             block,
                             source_info,
                             destination,
-                            Rvalue::Use(Operand::Copy(place), WithRetag::Yes),
+                            Rvalue::Use(Operand::Copy(source), WithRetag::Yes),
                         );
                         block.unit()
                     } else {
-                        // Convert `expr.use` to a call like `Clone::clone(&expr)`
-                        let success = this.cfg.start_new_block();
+                        // Convert `place.use` to a call like `Clone::clone(&place)`.
+
+                        let mut success = this.cfg.start_new_block();
                         let clone_trait = this.tcx.require_lang_item(LangItem::Clone, span);
                         let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
-                        let func =
-                            Operand::function_handle(this.tcx, clone_fn, &[ty.into()], expr_span);
+                        let func = Operand::function_handle(this.tcx, clone_fn, &[ty.into()], span);
                         let ref_ty = Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, ty);
                         let ref_place = this.temp(ref_ty, span);
+
+                        let (place, mut_ptr_place) = unpack!(
+                            block = this.make_aligned_copy_of_place(block, source, expr_span)
+                        );
+
                         this.cfg.push_assign(
                             block,
                             source_info,
@@ -562,6 +568,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 fn_span: expr_span,
                             },
                         );
+
+                        if let Some(mut_ptr_place) = mut_ptr_place {
+                            unpack!(
+                                success = this.write_through_ptr_unaligned(
+                                    success,
+                                    place,
+                                    Operand::Move(mut_ptr_place),
+                                    expr_span
+                                )
+                            )
+                        };
+
                         success.unit()
                     }
                 } else {
@@ -941,5 +959,119 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Scope { value, .. } => self.is_let(value),
             _ => false,
         }
+    }
+
+    /// If `source` is unaligned, make an aligned copy of it,
+    /// uniquely borrowing the unaligned place in the process.
+    /// Otherwise, return the original place unchanged.
+    /// The second element of the tuple is a mutable pointer to the unaligned place.
+    ///
+    /// Use [`Self::write_through_ptr_unaligned`] once you are done with the aligned copy.
+    fn make_aligned_copy_of_place(
+        &mut self,
+        block: BasicBlock,
+        source: Place<'tcx>,
+        span: Span,
+    ) -> BlockAnd<(Place<'tcx>, Option<Place<'tcx>>)> {
+        let this = self; // See "LET_THIS_SELF".
+
+        if alignment::place_unalignment(this.tcx, &this.local_decls, this.typing_env(), source)
+            .is_some()
+        {
+            let ty = source.ty(&this.local_decls, this.tcx).ty;
+            let source_info = this.source_info(span);
+            let mut_ptr_ty = Ty::new_mut_ptr(this.tcx, ty);
+            let mut_ptr_place = this.temp(mut_ptr_ty, span);
+            this.cfg.push_assign(
+                block,
+                source_info,
+                mut_ptr_place,
+                Rvalue::RawPtr(
+                    RawPtrKind::Mut { kind: RawMutBorrowKind::DotUseOfPackedField },
+                    source,
+                ),
+            );
+
+            let const_ptr_ty = Ty::new_imm_ptr(this.tcx, ty);
+            let const_ptr_place = this.temp(const_ptr_ty, span);
+            this.cfg.push_assign(
+                block,
+                source_info,
+                const_ptr_place,
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(
+                        PointerCoercion::MutToConstPointer,
+                        CoercionSource::Implicit,
+                    ),
+                    Operand::Copy(mut_ptr_place),
+                    const_ptr_ty,
+                ),
+            );
+
+            let aligned_place = this.temp(ty, span);
+            let post_read_block = this.cfg.start_new_block();
+
+            let ptr_read_unaligned_def =
+                this.tcx.require_lang_item(LangItem::PtrReadUnaligned, span);
+            let ptr_read_unaligned_fn =
+                Operand::function_handle(this.tcx, ptr_read_unaligned_def, &[ty.into()], span);
+
+            this.cfg.terminate(
+                block,
+                source_info,
+                TerminatorKind::Call {
+                    func: ptr_read_unaligned_fn,
+                    args: [Spanned { node: Operand::Move(const_ptr_place), span }].into(),
+                    unwind: UnwindAction::Unreachable,
+                    destination: aligned_place,
+                    target: Some(post_read_block),
+                    call_source: CallSource::Misc,
+                    fn_span: span,
+                },
+            );
+
+            BlockAnd(post_read_block, (aligned_place, Some(mut_ptr_place)))
+        } else {
+            BlockAnd(block, (source, None))
+        }
+    }
+
+    /// Write the value in `source` through the mutable, unaligned pointer in `ptr`.
+    fn write_through_ptr_unaligned(
+        &mut self,
+        block: BasicBlock,
+        source: Place<'tcx>,
+        ptr: Operand<'tcx>,
+        span: Span,
+    ) -> BlockAnd<()> {
+        let this = self; // See "LET_THIS_SELF".
+
+        let ty = source.ty(&this.local_decls, this.tcx).ty;
+        let source_info = this.source_info(span);
+
+        let post_write_block = this.cfg.start_new_block();
+
+        let ptr_write_unaligned_def = this.tcx.require_lang_item(LangItem::PtrWriteUnaligned, span);
+        let ptr_write_unaligned_fn =
+            Operand::function_handle(this.tcx, ptr_write_unaligned_def, &[ty.into()], span);
+
+        let unit_temp = this.get_unit_temp();
+
+        this.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::Call {
+                func: ptr_write_unaligned_fn,
+                args: [Spanned { node: ptr, span }, Spanned { node: Operand::Move(source), span }]
+                    .into(),
+                destination: unit_temp,
+                target: Some(post_write_block),
+                unwind: UnwindAction::Unreachable,
+                call_source: CallSource::Misc,
+                fn_span: span,
+            },
+        );
+
+        BlockAnd(post_write_block, ())
     }
 }

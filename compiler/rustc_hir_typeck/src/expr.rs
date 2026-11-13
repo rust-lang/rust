@@ -8,8 +8,8 @@
 use std::borrow::Cow;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
-use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::{self as ast, UnsafeBinderCastKind};
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -1592,9 +1592,78 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ObligationCauseCode::UseExpr(use_span),
                 ),
             );
+
+            // `.use`ing a non-`Copy` packed field may require mutable access to said field
+            if self.is_use_of_packed_field(used_expr) {
+                self.convert_place_derefs_to_mutable(used_expr);
+            }
         }
 
         used_expr_ty
+    }
+
+    fn is_use_of_packed_field(&self, expr: &'tcx hir::Expr<'tcx>) -> bool {
+        if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id)
+            && !adjustments.is_empty()
+        {
+            false
+        } else {
+            match expr.kind {
+                ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, inner, _)
+                | ExprKind::Type(inner, _) => self.is_use_of_packed_field(inner),
+
+                ExprKind::Index(inner, _, _)
+                    if !self.typeck_results.borrow().is_method_call(expr) =>
+                {
+                    self.is_use_of_packed_field(inner)
+                }
+
+                ExprKind::Field(inner, _) => {
+                    if let Some(adt_def) =
+                        self.typeck_results.borrow().expr_ty_adjusted(inner).ty_adt_def()
+                        && adt_def.repr().packed()
+                    {
+                        true
+                    } else {
+                        self.is_use_of_packed_field(inner)
+                    }
+                }
+
+                ExprKind::Path(..)
+                | ExprKind::If(..)
+                | ExprKind::Call(..)
+                | ExprKind::MethodCall(..)
+                | ExprKind::Index(..)
+                | ExprKind::Use(..)
+                | ExprKind::Binary(..)
+                | ExprKind::Unary(..)
+                | ExprKind::Cast(..)
+                | ExprKind::Loop(..)
+                | ExprKind::Let(..)
+                | ExprKind::Match(..)
+                | ExprKind::Block(..)
+                | ExprKind::Assign(..)
+                | ExprKind::AssignOp(..)
+                | ExprKind::AddrOf(..)
+                | ExprKind::Break(..)
+                | ExprKind::Continue(..)
+                | ExprKind::Ret(..)
+                | ExprKind::Become(..)
+                | ExprKind::ConstBlock(..)
+                | ExprKind::Repeat(..)
+                | ExprKind::Array(..)
+                | ExprKind::Tup(..)
+                | ExprKind::Struct(..)
+                | ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, _, _)
+                | ExprKind::Closure(..)
+                | ExprKind::Lit(..)
+                | ExprKind::OffsetOf(..)
+                | ExprKind::InlineAsm(..)
+                | ExprKind::Yield(..)
+                | ExprKind::DropTemps(..)
+                | ExprKind::Err(..) => false,
+            }
+        }
     }
 
     fn check_expr_cast(

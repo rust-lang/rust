@@ -2621,15 +2621,32 @@ fn truncate_place_to_len_and_update_capture_kind<'tcx>(
     }
 
     let is_mut_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Mut));
+    let is_packed = |ty: Ty<'_>| ty.ty_adt_def().is_some_and(|def| def.repr().packed());
 
     // If the truncated part of the place contains `Deref` of a `&mut` then convert MutBorrow ->
     // UniqueImmBorrow
     // Note that if the place contained Deref of a raw pointer it would've not been MutBorrow, so
     // we don't need to worry about that case here.
     match curr_mode {
-        // Any truncation of a `.use` capture makes it become by-ref.
+        // Any truncation of a `.use` capture makes it become by-ref,
+        // except if it's applied to a packed field,
+        // in which case we need a unique immutable borrow
         ty::UpvarCapture::ByUse => {
-            *curr_mode = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
+            let after_rightmost_dereference = place
+                .projections
+                .iter()
+                .rposition(|proj| proj.kind == ProjectionKind::Deref)
+                .map_or(0, |i| i + 1);
+
+            let borrow_kind = if (after_rightmost_dereference..place.projections.len())
+                .any(|i| is_packed(place.ty_before_projection(i)))
+            {
+                ty::BorrowKind::UniqueImmutable
+            } else {
+                ty::BorrowKind::Immutable
+            };
+
+            *curr_mode = ty::UpvarCapture::ByRef(borrow_kind);
         }
         ty::UpvarCapture::ByRef(ty::BorrowKind::Mutable) => {
             for i in len..place.projections.len() {
