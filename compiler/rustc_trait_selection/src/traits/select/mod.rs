@@ -1575,7 +1575,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         placeholder_trait_ref: ty::TraitRef<'tcx>,
-        trait_bound: ty::PolyTraitRef<'tcx>,
+        trait_bound: ty::Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>,
     ) -> Result<Option<ty::TraitRef<'tcx>>, ()> {
         debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
         if placeholder_trait_ref.def_id != trait_bound.def_id() {
@@ -1589,17 +1589,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        let trait_bound = self.infcx.instantiate_binder_with_fresh_vars(
-            obligation.cause.span,
-            HigherRankedType,
-            trait_bound,
-        );
+        let unnormalized_trait_bound = trait_bound.map(|bound| {
+            self.infcx.instantiate_binder_with_fresh_vars(
+                obligation.cause.span,
+                HigherRankedType,
+                bound,
+            )
+        });
         let Normalized { value: trait_bound, obligations: _ } = normalize_with_depth(
             self,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            ty::Unnormalized::new_wip(trait_bound),
+            unnormalized_trait_bound,
         );
         self.infcx
             .at(&obligation.cause, obligation.param_env)

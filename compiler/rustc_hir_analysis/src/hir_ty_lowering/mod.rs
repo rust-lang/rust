@@ -1655,7 +1655,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     || {
                         let trait_ref =
                             ty::Binder::dummy(trait_ref.instantiate_identity().skip_norm_wip());
-                        traits::supertraits(tcx, trait_ref)
+                        traits::supertraits(tcx, trait_ref).map(Unnormalized::skip_normalization)
                     },
                     AssocItemQSelf::SelfTyAlias,
                     assoc_tag,
