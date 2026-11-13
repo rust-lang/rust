@@ -8,7 +8,7 @@ use rustc_structures::Limit;
     "consider increasing the recursion limit by adding a `#![recursion_limit = \"{$suggested_limit}\"]` attribute to your crate (`{$crate_name}`)"
 )]
 #[diag("queries overflow the depth limit!")]
-pub(crate) struct QueryOverflow {
+pub struct QueryOverflow {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
@@ -19,21 +19,21 @@ pub(crate) struct QueryOverflow {
 
 #[derive(Subdiagnostic)]
 #[note("query depth increased by {$depth} when {$desc}")]
-pub(crate) struct QueryOverflowNote {
+pub struct QueryOverflowNote {
     pub desc: String,
     pub depth: usize,
 }
 
 #[derive(Subdiagnostic)]
 #[note("...which requires {$desc}...")]
-pub(crate) struct CycleStack {
+pub struct CycleStack {
     #[primary_span]
     pub span: Span,
     pub desc: String,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum StackCount {
+pub enum StackCount {
     #[note("...which immediately requires {$stack_bottom} again")]
     Single { stack_bottom: String },
     #[note("...which again requires {$stack_bottom}, completing the cycle")]
@@ -41,7 +41,7 @@ pub(crate) enum StackCount {
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum Alias {
+pub enum Alias {
     #[note("type aliases cannot be recursive")]
     #[help("consider using a struct, enum, or union instead to break the cycle")]
     #[help(
@@ -54,7 +54,7 @@ pub(crate) enum Alias {
 
 #[derive(Subdiagnostic)]
 #[note("cycle used when {$usage}")]
-pub(crate) struct CycleUsage {
+pub struct CycleUsage {
     #[primary_span]
     pub span: Span,
     pub usage: String,
@@ -62,7 +62,7 @@ pub(crate) struct CycleUsage {
 
 #[derive(Diagnostic)]
 #[diag("cycle detected when {$stack_bottom}", code = E0391)]
-pub(crate) struct Cycle {
+pub struct Cycle {
     #[primary_span]
     pub span: Span,
     pub stack_bottom: String,
@@ -83,13 +83,13 @@ pub(crate) struct Cycle {
 
 #[derive(Subdiagnostic)]
 #[note("...when {$stack_bottom}")]
-pub(crate) struct NestedCycleBottom {
+pub struct NestedCycleBottom {
     pub stack_bottom: String,
 }
 
 #[derive(Diagnostic)]
 #[diag("internal compiler error: query cycle when printing cycle detected")]
-pub(crate) struct NestedCycle {
+pub struct NestedCycle {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]

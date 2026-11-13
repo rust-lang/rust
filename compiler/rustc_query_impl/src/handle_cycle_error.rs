@@ -10,6 +10,9 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::QueryCycle;
+use rustc_middle::query::q_impl::diagnostics::{
+    Alias, Cycle, CycleStack, CycleUsage, NestedCycle, NestedCycleBottom, StackCount,
+};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
@@ -354,7 +357,7 @@ pub(crate) fn create_cycle_error<'tcx>(
 
     let mut cycle_stack = Vec::new();
 
-    use crate::diagnostics::StackCount;
+    use StackCount;
     let stack_bottom = frames[0].tagged_key.catch_description(tcx);
     let stack_count = if frames.len() == 1 {
         StackCount::Single { stack_bottom: stack_bottom.clone() }
@@ -366,7 +369,7 @@ pub(crate) fn create_cycle_error<'tcx>(
     for i in 1..frames.len() {
         let frame = &frames[i];
         let span = frame.tagged_key.catch_default_span(tcx, frames[(i + 1) % frames.len()].span);
-        cycle_stack.push(crate::diagnostics::CycleStack {
+        cycle_stack.push(CycleStack {
             span: if span == prev { DUMMY_SP } else { span },
             desc: frame.tagged_key.catch_description(tcx),
         });
@@ -375,7 +378,7 @@ pub(crate) fn create_cycle_error<'tcx>(
 
     let cycle_usage = usage.as_ref().map(|usage| {
         let cycle_span = usage.tagged_key.catch_default_span(tcx, usage.span);
-        crate::diagnostics::CycleUsage {
+        CycleUsage {
             span: if cycle_span != span { cycle_span } else { DUMMY_SP },
             usage: usage.tagged_key.catch_description(tcx),
         }
@@ -397,9 +400,9 @@ pub(crate) fn create_cycle_error<'tcx>(
 
     let alias = if !nested {
         if is_all_def_kind(DefKind::TyAlias) {
-            Some(crate::diagnostics::Alias::Ty)
+            Some(Alias::Ty)
         } else if is_all_def_kind(DefKind::TraitAlias) {
-            Some(crate::diagnostics::Alias::Trait)
+            Some(Alias::Trait)
         } else {
             None
         }
@@ -408,16 +411,16 @@ pub(crate) fn create_cycle_error<'tcx>(
     };
 
     if nested {
-        tcx.sess.dcx().create_err(crate::diagnostics::NestedCycle {
+        tcx.sess.dcx().create_err(NestedCycle {
             span,
             cycle_stack,
-            stack_bottom: crate::diagnostics::NestedCycleBottom { stack_bottom },
+            stack_bottom: NestedCycleBottom { stack_bottom },
             cycle_usage,
             stack_count,
             note_span: (),
         })
     } else {
-        tcx.sess.dcx().create_err(crate::diagnostics::Cycle {
+        tcx.sess.dcx().create_err(Cycle {
             span,
             cycle_stack,
             stack_bottom,
