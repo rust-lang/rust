@@ -621,6 +621,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     .map(|c| *c),
             )
         },
+        crate_name_with_rename: |tcx, c: CrateNum| {
+            CStore::from_tcx(tcx).opt_extern_crate_name(c).unwrap_or_else(|| tcx.crate_name(c))
+        },
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);
