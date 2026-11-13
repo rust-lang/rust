@@ -39,6 +39,7 @@ pub fn check_clippy_attr(sess: &Session, attr: &rustc_ast::ast::Attribute) {
             | sym::dump
             | sym::msrv
             | sym::has_significant_drop
+            | sym::may_panic
             | sym::format_args => {},
             _ => {
                 sess.dcx().span_err(path_span, "usage of unknown attribute");
@@ -69,12 +70,7 @@ pub fn get_clippy_attr(tcx: TyCtxt<'_>, did: impl Into<DefId>, name: Symbol) -> 
 /// Checks whether `attrs` contain any of `proc_macro`, `proc_macro_derive` or
 /// `proc_macro_attribute`
 pub fn is_proc_macro(attrs: &[rustc_attr_ir::Attribute]) -> bool {
-    find_attr!(
-        attrs,
-        ProcMacro
-        | ProcMacroAttribute
-        | ProcMacroDerive { .. }
-    )
+    find_attr!(attrs, ProcMacro | ProcMacroAttribute | ProcMacroDerive { .. })
 }
 
 /// Checks whether `attrs` contain `#[doc(hidden)]`

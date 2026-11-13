@@ -148,7 +148,7 @@ impl LateLintPass<'_> for MacroUseImports {
                     // a path should always consist of 2 or more segments
                     [] | [_] => return,
                     [root, item] => {
-                        if !check_dup.contains(&(*item).to_string()) {
+                        if check_dup.iter().all(|i| i != *item) {
                             used.entry((
                                 (*root).to_string(),
                                 OrdSpan(*span),
@@ -162,11 +162,11 @@ impl LateLintPass<'_> for MacroUseImports {
                         }
                     },
                     [root, rest @ ..] => {
-                        if rest.iter().all(|item| !check_dup.contains(&(*item).to_string())) {
+                        if rest.iter().all(|item| check_dup.iter().all(|f| f != item)) {
                             let filtered = rest
                                 .iter()
                                 .filter_map(|item| {
-                                    if check_dup.contains(&(*item).to_string()) {
+                                    if check_dup.iter().any(|f| f == item) {
                                         None
                                     } else {
                                         Some((*item).to_string())

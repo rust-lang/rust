@@ -1,11 +1,11 @@
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:215:64
+  --> tests/ui/unnecessary_to_owned.rs:217:64
    |
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                                                                ^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:215:20
+  --> tests/ui/unnecessary_to_owned.rs:217:20
    |
 LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,55 +13,55 @@ LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned())
    = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:217:40
+  --> tests/ui/unnecessary_to_owned.rs:219:40
    |
 LL |     require_os_str(&OsString::from("x").to_os_string());
    |                                        ^^^^^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:217:21
+  --> tests/ui/unnecessary_to_owned.rs:219:21
    |
 LL |     require_os_str(&OsString::from("x").to_os_string());
    |                     ^^^^^^^^^^^^^^^^^^^
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:219:48
+  --> tests/ui/unnecessary_to_owned.rs:221:48
    |
 LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
    |                                                ^^^^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:219:19
+  --> tests/ui/unnecessary_to_owned.rs:221:19
    |
 LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:221:35
+  --> tests/ui/unnecessary_to_owned.rs:223:35
    |
 LL |     require_str(&String::from("x").to_string());
    |                                   ^^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:221:18
+  --> tests/ui/unnecessary_to_owned.rs:223:18
    |
 LL |     require_str(&String::from("x").to_string());
    |                  ^^^^^^^^^^^^^^^^^
 
 error: redundant clone
-  --> tests/ui/unnecessary_to_owned.rs:223:39
+  --> tests/ui/unnecessary_to_owned.rs:225:39
    |
 LL |     require_slice(&[String::from("x")].to_owned());
    |                                       ^^^^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/unnecessary_to_owned.rs:223:20
+  --> tests/ui/unnecessary_to_owned.rs:225:20
    |
 LL |     require_slice(&[String::from("x")].to_owned());
    |                    ^^^^^^^^^^^^^^^^^^^
 
 error: unnecessary use of `into_owned`
-  --> tests/ui/unnecessary_to_owned.rs:63:36
+  --> tests/ui/unnecessary_to_owned.rs:65:36
    |
 LL |     require_c_str(&Cow::from(c_str).into_owned());
    |                                    ^^^^^^^^^^^^^ help: remove this
@@ -70,391 +70,391 @@ LL |     require_c_str(&Cow::from(c_str).into_owned());
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:65:19
+  --> tests/ui/unnecessary_to_owned.rs:67:19
    |
 LL |     require_c_str(&c_str.to_owned());
    |                   ^^^^^^^^^^^^^^^^^ help: use: `c_str`
 
 error: unnecessary use of `to_os_string`
-  --> tests/ui/unnecessary_to_owned.rs:68:20
+  --> tests/ui/unnecessary_to_owned.rs:70:20
    |
 LL |     require_os_str(&os_str.to_os_string());
    |                    ^^^^^^^^^^^^^^^^^^^^^^ help: use: `os_str`
 
 error: unnecessary use of `into_owned`
-  --> tests/ui/unnecessary_to_owned.rs:70:38
+  --> tests/ui/unnecessary_to_owned.rs:72:38
    |
 LL |     require_os_str(&Cow::from(os_str).into_owned());
    |                                      ^^^^^^^^^^^^^ help: remove this
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:72:20
+  --> tests/ui/unnecessary_to_owned.rs:74:20
    |
 LL |     require_os_str(&os_str.to_owned());
    |                    ^^^^^^^^^^^^^^^^^^ help: use: `os_str`
 
 error: unnecessary use of `to_path_buf`
-  --> tests/ui/unnecessary_to_owned.rs:75:18
+  --> tests/ui/unnecessary_to_owned.rs:77:18
    |
 LL |     require_path(&path.to_path_buf());
    |                  ^^^^^^^^^^^^^^^^^^^ help: use: `path`
 
 error: unnecessary use of `into_owned`
-  --> tests/ui/unnecessary_to_owned.rs:77:34
+  --> tests/ui/unnecessary_to_owned.rs:79:34
    |
 LL |     require_path(&Cow::from(path).into_owned());
    |                                  ^^^^^^^^^^^^^ help: remove this
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:79:18
+  --> tests/ui/unnecessary_to_owned.rs:81:18
    |
 LL |     require_path(&path.to_owned());
    |                  ^^^^^^^^^^^^^^^^ help: use: `path`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:82:17
+  --> tests/ui/unnecessary_to_owned.rs:84:17
    |
 LL |     require_str(&s.to_string());
    |                 ^^^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `into_owned`
-  --> tests/ui/unnecessary_to_owned.rs:84:30
+  --> tests/ui/unnecessary_to_owned.rs:86:30
    |
 LL |     require_str(&Cow::from(s).into_owned());
    |                              ^^^^^^^^^^^^^ help: remove this
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:86:17
+  --> tests/ui/unnecessary_to_owned.rs:88:17
    |
 LL |     require_str(&s.to_owned());
    |                 ^^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:88:17
+  --> tests/ui/unnecessary_to_owned.rs:90:17
    |
 LL |     require_str(&x_ref.to_string());
    |                 ^^^^^^^^^^^^^^^^^^ help: use: `x_ref.as_ref()`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:91:19
+  --> tests/ui/unnecessary_to_owned.rs:93:19
    |
 LL |     require_slice(&slice.to_vec());
    |                   ^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `into_owned`
-  --> tests/ui/unnecessary_to_owned.rs:93:36
+  --> tests/ui/unnecessary_to_owned.rs:95:36
    |
 LL |     require_slice(&Cow::from(slice).into_owned());
    |                                    ^^^^^^^^^^^^^ help: remove this
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:95:19
+  --> tests/ui/unnecessary_to_owned.rs:97:19
    |
 LL |     require_slice(&array.to_owned());
    |                   ^^^^^^^^^^^^^^^^^ help: use: `array.as_ref()`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:97:19
+  --> tests/ui/unnecessary_to_owned.rs:99:19
    |
 LL |     require_slice(&array_ref.to_owned());
    |                   ^^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref.as_ref()`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:99:19
+  --> tests/ui/unnecessary_to_owned.rs:101:19
    |
 LL |     require_slice(&slice.to_owned());
    |                   ^^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `into_owned`
-  --> tests/ui/unnecessary_to_owned.rs:103:42
+  --> tests/ui/unnecessary_to_owned.rs:105:42
    |
 LL |     require_x(&Cow::<X>::Owned(x.clone()).into_owned());
    |                                          ^^^^^^^^^^^^^ help: remove this
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:107:25
+  --> tests/ui/unnecessary_to_owned.rs:109:25
    |
 LL |     require_deref_c_str(c_str.to_owned());
    |                         ^^^^^^^^^^^^^^^^ help: use: `c_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:109:26
+  --> tests/ui/unnecessary_to_owned.rs:111:26
    |
 LL |     require_deref_os_str(os_str.to_owned());
    |                          ^^^^^^^^^^^^^^^^^ help: use: `os_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:111:24
+  --> tests/ui/unnecessary_to_owned.rs:113:24
    |
 LL |     require_deref_path(path.to_owned());
    |                        ^^^^^^^^^^^^^^^ help: use: `path`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:113:23
+  --> tests/ui/unnecessary_to_owned.rs:115:23
    |
 LL |     require_deref_str(s.to_owned());
    |                       ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:115:25
+  --> tests/ui/unnecessary_to_owned.rs:117:25
    |
 LL |     require_deref_slice(slice.to_owned());
    |                         ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:118:30
+  --> tests/ui/unnecessary_to_owned.rs:120:30
    |
 LL |     require_impl_deref_c_str(c_str.to_owned());
    |                              ^^^^^^^^^^^^^^^^ help: use: `c_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:120:31
+  --> tests/ui/unnecessary_to_owned.rs:122:31
    |
 LL |     require_impl_deref_os_str(os_str.to_owned());
    |                               ^^^^^^^^^^^^^^^^^ help: use: `os_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:122:29
+  --> tests/ui/unnecessary_to_owned.rs:124:29
    |
 LL |     require_impl_deref_path(path.to_owned());
    |                             ^^^^^^^^^^^^^^^ help: use: `path`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:124:28
+  --> tests/ui/unnecessary_to_owned.rs:126:28
    |
 LL |     require_impl_deref_str(s.to_owned());
    |                            ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:126:30
+  --> tests/ui/unnecessary_to_owned.rs:128:30
    |
 LL |     require_impl_deref_slice(slice.to_owned());
    |                              ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:129:29
+  --> tests/ui/unnecessary_to_owned.rs:131:29
    |
 LL |     require_deref_str_slice(s.to_owned(), slice.to_owned());
    |                             ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:129:43
+  --> tests/ui/unnecessary_to_owned.rs:131:43
    |
 LL |     require_deref_str_slice(s.to_owned(), slice.to_owned());
    |                                           ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:132:29
+  --> tests/ui/unnecessary_to_owned.rs:134:29
    |
 LL |     require_deref_slice_str(slice.to_owned(), s.to_owned());
    |                             ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:132:47
+  --> tests/ui/unnecessary_to_owned.rs:134:47
    |
 LL |     require_deref_slice_str(slice.to_owned(), s.to_owned());
    |                                               ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:136:26
+  --> tests/ui/unnecessary_to_owned.rs:138:26
    |
 LL |     require_as_ref_c_str(c_str.to_owned());
    |                          ^^^^^^^^^^^^^^^^ help: use: `c_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:138:27
+  --> tests/ui/unnecessary_to_owned.rs:140:27
    |
 LL |     require_as_ref_os_str(os_str.to_owned());
    |                           ^^^^^^^^^^^^^^^^^ help: use: `os_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:140:25
+  --> tests/ui/unnecessary_to_owned.rs:142:25
    |
 LL |     require_as_ref_path(path.to_owned());
    |                         ^^^^^^^^^^^^^^^ help: use: `path`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:142:24
+  --> tests/ui/unnecessary_to_owned.rs:144:24
    |
 LL |     require_as_ref_str(s.to_owned());
    |                        ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:144:24
+  --> tests/ui/unnecessary_to_owned.rs:146:24
    |
 LL |     require_as_ref_str(x.to_owned());
    |                        ^^^^^^^^^^^^ help: use: `&x`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:146:26
+  --> tests/ui/unnecessary_to_owned.rs:148:26
    |
 LL |     require_as_ref_slice(array.to_owned());
    |                          ^^^^^^^^^^^^^^^^ help: use: `array`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:148:26
+  --> tests/ui/unnecessary_to_owned.rs:150:26
    |
 LL |     require_as_ref_slice(array_ref.to_owned());
    |                          ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:150:26
+  --> tests/ui/unnecessary_to_owned.rs:152:26
    |
 LL |     require_as_ref_slice(slice.to_owned());
    |                          ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:153:31
+  --> tests/ui/unnecessary_to_owned.rs:155:31
    |
 LL |     require_impl_as_ref_c_str(c_str.to_owned());
    |                               ^^^^^^^^^^^^^^^^ help: use: `c_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:155:32
+  --> tests/ui/unnecessary_to_owned.rs:157:32
    |
 LL |     require_impl_as_ref_os_str(os_str.to_owned());
    |                                ^^^^^^^^^^^^^^^^^ help: use: `os_str`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:157:30
+  --> tests/ui/unnecessary_to_owned.rs:159:30
    |
 LL |     require_impl_as_ref_path(path.to_owned());
    |                              ^^^^^^^^^^^^^^^ help: use: `path`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:159:29
+  --> tests/ui/unnecessary_to_owned.rs:161:29
    |
 LL |     require_impl_as_ref_str(s.to_owned());
    |                             ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:161:29
+  --> tests/ui/unnecessary_to_owned.rs:163:29
    |
 LL |     require_impl_as_ref_str(x.to_owned());
    |                             ^^^^^^^^^^^^ help: use: `&x`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:163:31
+  --> tests/ui/unnecessary_to_owned.rs:165:31
    |
 LL |     require_impl_as_ref_slice(array.to_owned());
    |                               ^^^^^^^^^^^^^^^^ help: use: `array`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:165:31
+  --> tests/ui/unnecessary_to_owned.rs:167:31
    |
 LL |     require_impl_as_ref_slice(array_ref.to_owned());
    |                               ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:167:31
+  --> tests/ui/unnecessary_to_owned.rs:169:31
    |
 LL |     require_impl_as_ref_slice(slice.to_owned());
    |                               ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:170:30
+  --> tests/ui/unnecessary_to_owned.rs:172:30
    |
 LL |     require_as_ref_str_slice(s.to_owned(), array.to_owned());
    |                              ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:170:44
+  --> tests/ui/unnecessary_to_owned.rs:172:44
    |
 LL |     require_as_ref_str_slice(s.to_owned(), array.to_owned());
    |                                            ^^^^^^^^^^^^^^^^ help: use: `array`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:173:30
+  --> tests/ui/unnecessary_to_owned.rs:175:30
    |
 LL |     require_as_ref_str_slice(s.to_owned(), array_ref.to_owned());
    |                              ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:173:44
+  --> tests/ui/unnecessary_to_owned.rs:175:44
    |
 LL |     require_as_ref_str_slice(s.to_owned(), array_ref.to_owned());
    |                                            ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:176:30
+  --> tests/ui/unnecessary_to_owned.rs:178:30
    |
 LL |     require_as_ref_str_slice(s.to_owned(), slice.to_owned());
    |                              ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:176:44
+  --> tests/ui/unnecessary_to_owned.rs:178:44
    |
 LL |     require_as_ref_str_slice(s.to_owned(), slice.to_owned());
    |                                            ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:179:30
+  --> tests/ui/unnecessary_to_owned.rs:181:30
    |
 LL |     require_as_ref_slice_str(array.to_owned(), s.to_owned());
    |                              ^^^^^^^^^^^^^^^^ help: use: `array`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:179:48
+  --> tests/ui/unnecessary_to_owned.rs:181:48
    |
 LL |     require_as_ref_slice_str(array.to_owned(), s.to_owned());
    |                                                ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:182:30
+  --> tests/ui/unnecessary_to_owned.rs:184:30
    |
 LL |     require_as_ref_slice_str(array_ref.to_owned(), s.to_owned());
    |                              ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:182:52
+  --> tests/ui/unnecessary_to_owned.rs:184:52
    |
 LL |     require_as_ref_slice_str(array_ref.to_owned(), s.to_owned());
    |                                                    ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:185:30
+  --> tests/ui/unnecessary_to_owned.rs:187:30
    |
 LL |     require_as_ref_slice_str(slice.to_owned(), s.to_owned());
    |                              ^^^^^^^^^^^^^^^^ help: use: `slice`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:185:48
+  --> tests/ui/unnecessary_to_owned.rs:187:48
    |
 LL |     require_as_ref_slice_str(slice.to_owned(), s.to_owned());
    |                                                ^^^^^^^^^^^^ help: use: `s`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:189:20
+  --> tests/ui/unnecessary_to_owned.rs:191:20
    |
 LL |     let _ = x.join(&x_ref.to_string());
    |                    ^^^^^^^^^^^^^^^^^^ help: use: `x_ref`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:192:13
+  --> tests/ui/unnecessary_to_owned.rs:194:13
    |
 LL |     let _ = slice.to_vec().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:194:13
+  --> tests/ui/unnecessary_to_owned.rs:196:13
    |
 LL |     let _ = slice.to_owned().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:197:13
+  --> tests/ui/unnecessary_to_owned.rs:199:13
    |
 LL |     let _ = IntoIterator::into_iter(slice.to_vec());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:199:13
+  --> tests/ui/unnecessary_to_owned.rs:201:13
    |
 LL |     let _ = IntoIterator::into_iter(slice.to_owned());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
 
 error: allocating a new `String` only to create a temporary `&str` from it
-  --> tests/ui/unnecessary_to_owned.rs:227:26
+  --> tests/ui/unnecessary_to_owned.rs:229:26
    |
 LL |     let _ref_str: &str = &String::from_utf8(slice.to_vec()).expect("not UTF-8");
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -466,7 +466,7 @@ LL +     let _ref_str: &str = core::str::from_utf8(&slice).expect("not UTF-8");
    |
 
 error: allocating a new `String` only to create a temporary `&str` from it
-  --> tests/ui/unnecessary_to_owned.rs:229:26
+  --> tests/ui/unnecessary_to_owned.rs:231:26
    |
 LL |     let _ref_str: &str = &String::from_utf8(b"foo".to_vec()).unwrap();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -478,7 +478,7 @@ LL +     let _ref_str: &str = core::str::from_utf8(b"foo").unwrap();
    |
 
 error: allocating a new `String` only to create a temporary `&str` from it
-  --> tests/ui/unnecessary_to_owned.rs:231:26
+  --> tests/ui/unnecessary_to_owned.rs:233:26
    |
 LL |     let _ref_str: &str = &String::from_utf8(b"foo".as_slice().to_owned()).unwrap();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -490,7 +490,7 @@ LL +     let _ref_str: &str = core::str::from_utf8(b"foo".as_slice()).unwrap();
    |
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:289:14
+  --> tests/ui/unnecessary_to_owned.rs:293:14
    |
 LL |     for t in file_types.to_vec() {
    |              ^^^^^^^^^^^^^^^^^^^
@@ -503,58 +503,106 @@ LL ~         let path = match get_file_path(t) {
    |
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:354:24
+  --> tests/ui/unnecessary_to_owned.rs:358:24
    |
 LL |         Box::new(build(y.to_string()))
    |                        ^^^^^^^^^^^^^ help: use: `y`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:460:12
+  --> tests/ui/unnecessary_to_owned.rs:464:12
    |
 LL |         id("abc".to_string())
    |            ^^^^^^^^^^^^^^^^^ help: use: `"abc"`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:599:37
+  --> tests/ui/unnecessary_to_owned.rs:603:37
    |
 LL |         IntoFuture::into_future(foo([].to_vec(), &0));
    |                                     ^^^^^^^^^^^ help: use: `[]`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:610:18
+  --> tests/ui/unnecessary_to_owned.rs:614:18
    |
 LL |         s.remove(&a.to_vec());
    |                  ^^^^^^^^^^^ help: replace it with: `a`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:615:14
+  --> tests/ui/unnecessary_to_owned.rs:619:14
    |
 LL |     s.remove(&"b".to_owned());
    |              ^^^^^^^^^^^^^^^ help: replace it with: `"b"`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:617:14
+  --> tests/ui/unnecessary_to_owned.rs:621:14
    |
 LL |     s.remove(&"b".to_string());
    |              ^^^^^^^^^^^^^^^^ help: replace it with: `"b"`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:623:14
+  --> tests/ui/unnecessary_to_owned.rs:627:14
    |
 LL |     s.remove(&["b"].to_vec());
    |              ^^^^^^^^^^^^^^^ help: replace it with: `["b"].as_slice()`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:625:14
+  --> tests/ui/unnecessary_to_owned.rs:629:14
    |
 LL |     s.remove(&(&["b"]).to_vec());
    |              ^^^^^^^^^^^^^^^^^^ help: replace it with: `(&["b"]).as_slice()`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:677:10
+  --> tests/ui/unnecessary_to_owned.rs:681:10
    |
 LL |     take(format!("ouch{dot}").to_string());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `&format!("ouch{dot}")`
 
-error: aborting due to 83 previous errors
+error: unnecessary use of `.to_string()`
+  --> tests/ui/unnecessary_to_owned.rs:686:32
+   |
+LL |     let _ = ["X0".to_string()].contains(&"X1".to_string());
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use an iterator instead of `.contains(_)` to avoid cloning via `.to_string()`
+   |
+LL -     let _ = ["X0".to_string()].contains(&"X1".to_string());
+LL +     let _ = ["X0".to_string()].iter().any(|i| i == "X1");
+   |
+
+error: unnecessary use of `.to_string()`
+  --> tests/ui/unnecessary_to_owned.rs:689:54
+   |
+LL |     let _ = vec!["X0".to_string(), "X1".to_string()].contains(&"X2".to_string());
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use an iterator instead of `.contains(_)` to avoid cloning via `.to_string()`
+   |
+LL -     let _ = vec!["X0".to_string(), "X1".to_string()].contains(&"X2".to_string());
+LL +     let _ = vec!["X0".to_string(), "X1".to_string()].iter().any(|i: &String| i == "X2");
+   |
+
+error: unnecessary use of `.to_string()`
+  --> tests/ui/unnecessary_to_owned.rs:692:39
+   |
+LL |     let _ = VecDeque::<String>::new().contains(&"X".to_string());
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use an iterator instead of `.contains(_)` to avoid cloning via `.to_string()`
+   |
+LL -     let _ = VecDeque::<String>::new().contains(&"X".to_string());
+LL +     let _ = VecDeque::<String>::new().iter().any(|i| i == "X");
+   |
+
+error: unnecessary use of `.to_string()`
+  --> tests/ui/unnecessary_to_owned.rs:699:24
+   |
+LL |     let _ = Vec::new().contains(&"str".to_string());
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use an iterator instead of `.contains(_)` to avoid cloning via `.to_string()`
+   |
+LL -     let _ = Vec::new().contains(&"str".to_string());
+LL +     let _ = Vec::new().iter().any(|i: &String| i == "str");
+   |
+
+error: aborting due to 87 previous errors
 

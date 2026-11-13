@@ -39,6 +39,7 @@
 #![allow(invalid_null_arguments)]
 #![allow(invalid_value)]
 #![allow(invalid_from_utf8_unchecked)]
+#![allow(clippy::large_unopt_stack_frames)]
 #![allow(let_underscore_drop)]
 #![allow(clippy::overly_complex_bool_expr)]
 #![allow(unexpected_cfgs)]
@@ -107,6 +108,7 @@
 #![warn(invalid_null_arguments)] //~ ERROR: lint `clippy::invalid_null_ptr_usage`
 #![warn(invalid_value)] //~ ERROR: lint `clippy::invalid_ref`
 #![warn(invalid_from_utf8_unchecked)] //~ ERROR: lint `clippy::invalid_utf8_in_unchecked`
+#![warn(clippy::large_unopt_stack_frames)] //~ ERROR: lint `clippy::large_stack_frames`
 #![warn(let_underscore_drop)] //~ ERROR: lint `clippy::let_underscore_drop`
 #![warn(clippy::overly_complex_bool_expr)] //~ ERROR: lint `clippy::logic_bug`
 #![warn(unexpected_cfgs)] //~ ERROR: lint `clippy::maybe_misused_cfg`

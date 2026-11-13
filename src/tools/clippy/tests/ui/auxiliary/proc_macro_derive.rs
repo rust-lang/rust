@@ -257,3 +257,14 @@ pub fn derive_try_from_str(_: TokenStream) -> TokenStream {
         }
     }
 }
+
+#[proc_macro_derive(DeriveMayPanic)]
+pub fn derive_may_panic(_: TokenStream) -> TokenStream {
+    // Used for testing the `undocumented_may_panic_call` lint's handling of proc macros
+    quote! {
+        fn _derived_may_panic_fn() {
+            let mut v = Vec::new();
+            v.push(1);
+        }
+    }
+}

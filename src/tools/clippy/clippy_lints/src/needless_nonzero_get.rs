@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// # let nz = NonZero::new(2u32).unwrap();
     /// let _ = 4 / nz;
     /// ```
-    #[clippy::version = "1.99.0"]
+    #[clippy::version = "1.100.0"]
     pub NEEDLESS_NONZERO_GET,
     complexity,
     "unnecessary `NonZero::get` call"

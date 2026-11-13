@@ -29,6 +29,7 @@ fn explain() {
         let child = Command::new(&*CARGO_CLIPPY_PATH)
             .args(["--explain", arg])
             .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .spawn()
             .unwrap();
         (arg, found, child)

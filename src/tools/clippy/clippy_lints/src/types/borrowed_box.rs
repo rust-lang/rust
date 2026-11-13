@@ -69,6 +69,12 @@ pub(super) fn check(
                     // For example, type coercion doesn't work nicely.
                     Applicability::Unspecified,
                 );
+                // For unsized trait objects, `&Box<dyn Trait>` does not deref-coerce
+                // to `&dyn Trait`, so `.as_ref()` has to be inserted manually.
+                // Sized types coerce automatically, hence the trait-object-only check.
+                if matches!(inner.kind, TyKind::TraitObject(..)) {
+                    diag.help("call `.as_ref()` to convert the `&Box<dyn Trait>` to a `&dyn Trait`");
+                }
             },
         );
         true

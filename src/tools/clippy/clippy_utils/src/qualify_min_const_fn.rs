@@ -18,7 +18,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, GenericArgKind, Instance, TraitRef, Ty, TyCtxt, CallerBoundsIterator};
+use rustc_middle::ty::{self, CallerBoundsIterator as _, GenericArgKind, Instance, TraitRef, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::symbol::sym;
 use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
@@ -35,12 +35,18 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
     if !msrv.meets(cx, msrvs::CONST_FN_TRAIT_BOUND)
         && let Some(sized_did) = cx.tcx.lang_items().sized_trait()
         && let Some(meta_sized_did) = cx.tcx.lang_items().meta_sized_trait()
-        && cx.tcx.param_env(def_id).caller_bounds().all_clauses(cx.tcx).iter().any(|bound| {
-            bound.as_trait_clause().is_some_and(|clause| {
-                let did = clause.def_id();
-                did != sized_did && did != meta_sized_did
+        && cx
+            .tcx
+            .param_env(def_id)
+            .caller_bounds()
+            .all_clauses(cx.tcx)
+            .iter()
+            .any(|bound| {
+                bound.as_trait_clause().is_some_and(|clause| {
+                    let did = clause.def_id();
+                    did != sized_did && did != meta_sized_did
+                })
             })
-        })
     {
         return Err((
             body.span,
