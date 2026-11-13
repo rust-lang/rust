@@ -1971,6 +1971,12 @@ pub(crate) struct NonLocalDefinitionsCargoUpdateNote {
     pub crate_name: Symbol,
 }
 
+// cmse_uninitialized_leaks.rs
+#[derive(Diagnostic)]
+#[diag("value crossing a secure boundary contains a union which may leak secure information")]
+#[note("union values can have variant-dependent padding that may contain stale secure data")]
+pub(crate) struct CmseUninitializedMayLeakInformation;
+
 // precedence.rs
 #[derive(Diagnostic)]
 #[diag("`-` has lower precedence than method calls, which might be unexpected")]
