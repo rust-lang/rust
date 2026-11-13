@@ -247,6 +247,6 @@ where
     C: crate::move_paths::HasMoveData<'tcx>,
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", ctxt.move_data().move_paths[*self])
+        write!(f, "{}", ctxt.move_data().move_paths[ctxt.original_move_path(*self)])
     }
 }
