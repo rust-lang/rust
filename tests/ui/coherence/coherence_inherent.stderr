@@ -1,6 +1,9 @@
 error[E0599]: no method named `the_fn` found for reference `&TheStruct` in the current scope
   --> $DIR/coherence_inherent.rs:32:11
    |
+LL |         fn the_fn(&self);
+   |            ------ the method is available for `&TheStruct` here
+...
 LL |         s.the_fn();
    |           ^^^^^^ method not found in `&TheStruct`
    |

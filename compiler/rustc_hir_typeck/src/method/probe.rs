@@ -1890,7 +1890,7 @@ impl<'tcx> Pick<'tcx> {
                         // the code from `report_method_error()`.
                         lint.help(format!(
                             "call with fully qualified syntax `{}(...)` to keep using the current \
-                                 method",
+                             method",
                             tcx.def_path_str(this.item.def_id),
                         ));
                     }

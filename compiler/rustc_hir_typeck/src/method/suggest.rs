@@ -4214,8 +4214,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // We point at the method, but we just skip the rest of the check for arbitrary
                         // self types and rely on the suggestion to `use` the trait from
                         // `suggest_valid_traits`.
-                        let did = Some(pick.item.container_id(self.tcx));
-                        if skippable.contains(&did) {
+                        let did = pick.item.container_id(self.tcx);
+                        if skippable.contains(&Some(did)) {
                             continue;
                         }
                         trait_in_other_version_found = self
@@ -4225,7 +4225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 rcvr.hir_id,
                                 Some(*rcvr_ty),
                             );
-                        if pick.autoderefs == 0 && !trait_in_other_version_found {
+                        if !trait_in_other_version_found {
                             err.span_label(
                                 pick.item.ident(self.tcx).span,
                                 format!("the method is available for `{rcvr_ty}` here"),
