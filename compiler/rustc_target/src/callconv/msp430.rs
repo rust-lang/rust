@@ -44,6 +44,10 @@ where
         Self
     }
 
+    fn passes_zsts(&self) -> bool {
+        true
+    }
+
     fn compute_ret_abi(&mut self, _cx: &C, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.is_ignore() {
             classify_ret(ret);

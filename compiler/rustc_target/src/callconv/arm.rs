@@ -154,21 +154,16 @@ where
     }
 
     fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
-        if !ret.is_ignore() {
-            classify_ret(
-                cx,
-                ret,
-                self.abi_kind,
-                !self.c_variadic && self.is_effectively_vfp(self.conv, true),
-            );
-        }
+        classify_ret(
+            cx,
+            ret,
+            self.abi_kind,
+            !self.c_variadic && self.is_effectively_vfp(self.conv, true),
+        );
     }
 
     fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, _is_vararg: bool) {
         let is_arg_vfp = !self.c_variadic && self.is_effectively_vfp(self.conv, false);
-        if arg.is_ignore() {
-            return;
-        }
         classify_arg(cx, arg, self.abi_kind, is_arg_vfp);
     }
 }

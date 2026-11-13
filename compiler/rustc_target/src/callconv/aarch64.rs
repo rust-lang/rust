@@ -179,16 +179,10 @@ where
     }
 
     fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
-        if !ret.is_ignore() {
-            classify_ret(cx, ret, self.kind);
-        }
+        classify_ret(cx, ret, self.kind);
     }
 
     fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, is_vararg: bool) {
-        if arg.is_ignore() {
-            return;
-        }
-
         // On Arm64EC the variadic portion of a c-variadic call follows the MS x64 ABI:
         // "Any argument that doesn't fit in 8 bytes, or is not 1, 2, 4, or 8 bytes, must
         // be passed by reference".

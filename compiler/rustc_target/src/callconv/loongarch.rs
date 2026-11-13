@@ -438,15 +438,12 @@ where
     }
 
     fn compute_ret_abi(&mut self, cx: &C, ret: &mut ArgAbi<'a, Ty>) {
-        if !ret.is_ignore() && classify_ret(cx, ret, self.xlen, self.flen) {
+        if classify_ret(cx, ret, self.xlen, self.flen) {
             self.avail_gprs -= 1;
         }
     }
 
     fn compute_arg_abi(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, is_vararg: bool) {
-        if arg.is_ignore() {
-            return;
-        }
         classify_arg(
             cx,
             arg,
