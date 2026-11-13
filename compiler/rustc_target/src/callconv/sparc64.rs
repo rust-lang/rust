@@ -1,10 +1,10 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg,
-    RegKind, Size, TyAbiInterface, TyAndLayout, Variants,
+    Align, BackendRepr, CanonAbi, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive,
+    Reg, RegKind, Size, TyAbiInterface, TyAndLayout, Variants,
 };
 
-use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
+use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, ComputeCallConv, Uniform};
 use crate::spec::{HasTargetSpec, Os};
 
 // NOTE: GCC and Clang/LLVM have disagreements that the ABI doesn't resolve, we match the
@@ -202,32 +202,48 @@ fn classify_arg<'a, Ty, C>(
     arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), u8::from(pad));
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct Sparc64CallConv {
+    passes_zsts: bool,
+    double_word_count: usize,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for Sparc64CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !fn_abi.ret.is_ignore() && fn_abi.ret.layout.is_sized() {
-        // A return value of 32 bytes or smaller is passed via registers.
-        classify_arg(cx, &mut fn_abi.ret, Size::from_bytes(32), &mut 0);
+    fn new(cx: &C) -> Self {
+        // sparc64-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
+        let passes_zsts = matches!(cx.target_spec().os, Os::Linux);
+
+        Self { passes_zsts, double_word_count: 0 }
     }
 
-    // sparc64-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
-    let passes_zsts = matches!(cx.target_spec().os, Os::Linux);
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() && ret.layout.is_sized() {
+            // A return value of 32 bytes or smaller is passed via registers.
+            classify_arg(cx, ret, Size::from_bytes(32), &mut 0);
+        }
+    }
 
-    let mut double_word_count = 0;
-    for arg in fn_abi.args.iter_mut() {
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         if !arg.layout.is_sized() {
-            continue;
+            return;
         }
         if arg.is_ignore() {
-            if passes_zsts && arg.layout.is_repr_c() {
+            if self.passes_zsts && arg.layout.is_repr_c() {
                 arg.make_indirect_from_ignore();
-                double_word_count += 1;
+                self.double_word_count += 1;
             }
-            continue;
+            return;
         }
         // An argument of 16 bytes or smaller is passed via registers.
-        classify_arg(cx, arg, Size::from_bytes(16), &mut double_word_count);
+        classify_arg(cx, arg, Size::from_bytes(16), &mut self.double_word_count);
     }
 }

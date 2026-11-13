@@ -2,11 +2,11 @@
 // https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
 use rustc_abi::{
-    BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
-    Variants,
+    BackendRepr, CanonAbi, Float, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
+    TyAndLayout, Variants,
 };
 
-use crate::callconv::{ArgAbi, CastTarget, FnAbi};
+use crate::callconv::{ArgAbi, CastTarget, ComputeCallConv};
 use crate::spec::HasTargetSpec;
 
 /// Classification of "eightbyte" components.
@@ -214,22 +214,24 @@ fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
 const MAX_INT_REGS: usize = 6; // RDI, RSI, RDX, RCX, R8, R9
 const MAX_SSE_REGS: usize = 8; // XMM0-7
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
-where
-    Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout + HasTargetSpec,
-{
-    let mut int_regs = MAX_INT_REGS;
-    let mut sse_regs = MAX_SSE_REGS;
+pub(crate) struct X86_64CallConv {
+    int_regs: usize,
+    sse_regs: usize,
+}
 
-    let mut x86_64_arg_or_ret = |arg: &mut ArgAbi<'a, Ty>, is_arg: bool| {
+impl X86_64CallConv {
+    fn x86_64_arg_or_ret<'a, Ty, C>(&mut self, cx: &C, arg: &mut ArgAbi<'a, Ty>, is_arg: bool)
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+        C: HasDataLayout + HasTargetSpec,
+    {
         if !arg.layout.is_sized() {
             // FIXME: Update int_regs?
             // Not touching this...
             return;
         }
         if is_arg && arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
-            int_regs = int_regs.saturating_sub(1);
+            self.int_regs = self.int_regs.saturating_sub(1);
             arg.make_indirect();
             return;
         }
@@ -255,10 +257,11 @@ where
                         _ => {}
                     }
                 }
-                match (int_regs.checked_sub(needed_int), sse_regs.checked_sub(needed_sse)) {
+                match (self.int_regs.checked_sub(needed_int), self.sse_regs.checked_sub(needed_sse))
+                {
                     (Some(left_int), Some(left_sse)) => {
-                        int_regs = left_int;
-                        sse_regs = left_sse;
+                        self.int_regs = left_int;
+                        self.sse_regs = left_sse;
                     }
                     _ => {
                         // Not enough registers for this argument, so it will be
@@ -284,8 +287,8 @@ where
                     arg.make_indirect();
                     // NOTE(eddyb) return is handled first, so no registers
                     // should've been used yet.
-                    assert_eq!(int_regs, MAX_INT_REGS);
-                    int_regs -= 1;
+                    assert_eq!(self.int_regs, MAX_INT_REGS);
+                    self.int_regs -= 1;
                 }
             }
             Ok(ref cls) => {
@@ -303,16 +306,34 @@ where
                 }
             }
         }
-    };
+    }
+}
 
-    if !fn_abi.ret.is_ignore() {
-        x86_64_arg_or_ret(&mut fn_abi.ret, false);
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for X86_64CallConv
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+    C: HasDataLayout + HasTargetSpec,
+{
+    fn new(_cx: &C) -> Self {
+        Self { int_regs: MAX_INT_REGS, sse_regs: MAX_SSE_REGS }
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            self.x86_64_arg_or_ret(cx, ret, false);
         }
-        x86_64_arg_or_ret(arg, true);
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        if arg.is_ignore() {
+            return;
+        }
+        self.x86_64_arg_or_ret(cx, arg, true);
     }
 }

@@ -1,7 +1,9 @@
-use rustc_abi::{Float, HasDataLayout, Integer, Numeric, Reg, RegKind, Size, TyAbiInterface};
+use rustc_abi::{
+    CanonAbi, Float, HasDataLayout, Integer, Numeric, Reg, RegKind, Size, TyAbiInterface,
+};
 use rustc_span::bug;
 
-use crate::callconv::{ArgAbi, CastTarget, FnAbi, Uniform};
+use crate::callconv::{ArgAbi, CastTarget, ComputeCallConv, Uniform};
 
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
@@ -71,20 +73,35 @@ where
     *offset = offset.align_to(align) + size.align_to(align);
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct MipsCallConv {
+    offset: Size,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for MipsCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    let mut offset = Size::ZERO;
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, &mut offset);
+    fn new(_cx: &C) -> Self {
+        Self { offset: Size::ZERO }
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(cx, ret, &mut self.offset);
         }
-        classify_arg(cx, arg, &mut offset);
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        if arg.is_ignore() {
+            return;
+        }
+        classify_arg(cx, arg, &mut self.offset);
     }
 }

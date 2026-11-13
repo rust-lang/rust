@@ -5,9 +5,9 @@
 //! Section 8.1.4 & 8.1.5 of the Xtensa ISA reference manual, as well as snippets from
 //! Section 2.3 from the Xtensa programmers guide.
 
-use rustc_abi::{BackendRepr, HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, CanonAbi, HasDataLayout, Size, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, IndirectMode, Reg, Uniform};
+use crate::callconv::{ArgAbi, ComputeCallConv, IndirectMode, Reg, Uniform};
 use crate::spec::HasTargetSpec;
 
 const NUM_ARG_GPRS: u64 = 6;
@@ -108,22 +108,36 @@ fn classify_arg_ty<'a, Ty, C>(
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct XtensaCallConv {
+    arg_gprs_left: u64,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for XtensaCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret_ty(cx, &mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self { arg_gprs_left: NUM_ARG_GPRS }
     }
 
-    let mut arg_gprs_left = NUM_ARG_GPRS;
-
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret_ty(cx, ret);
         }
-        classify_arg_ty(cx, arg, &mut arg_gprs_left, false);
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        if arg.is_ignore() {
+            return;
+        }
+        classify_arg_ty(cx, arg, &mut self.arg_gprs_left, false);
     }
 }
 

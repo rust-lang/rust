@@ -4,28 +4,28 @@
 // Reference: Clang CSKY lowering code
 // https://github.com/llvm/llvm-project/blob/4a074f32a6914f2a8d7215d78758c24942dddc3d/clang/lib/CodeGen/Targets/CSKY.cpp#L76-L162
 
-use rustc_abi::TyAbiInterface;
+use rustc_abi::{CanonAbi, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, ComputeCallConv, Reg, Uniform};
 
-fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
-    if !arg.layout.is_sized() {
+fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
+    if !ret.layout.is_sized() {
         // Not touching this...
         return;
     }
     // For return type, aggregate which <= 2*XLen will be returned in registers.
     // Otherwise, aggregate will be returned indirectly.
-    if arg.layout.is_aggregate() {
-        let total = arg.layout.size;
+    if ret.layout.is_aggregate() {
+        let total = ret.layout.size;
         if total.bits() > 64 {
-            arg.make_indirect();
+            ret.make_indirect();
         } else if total.bits() > 32 {
-            arg.cast_to(Uniform::new(Reg::i32(), total));
+            ret.cast_to(Uniform::new(Reg::i32(), total));
         } else {
-            arg.cast_to(Reg::i32());
+            ret.cast_to(Reg::i32());
         }
     } else {
-        arg.extend_integer_width_to(32);
+        ret.extend_integer_width_to(32);
     }
 }
 
@@ -56,18 +56,33 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct CSkyCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for CSkyCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
+    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(ret);
         }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        if arg.is_ignore() {
+            return;
+        }
+
         classify_arg(cx, arg);
     }
 }

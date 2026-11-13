@@ -30,9 +30,9 @@
 //! compatible with AVR-GCC - Rust and AVR-GCC only differ in the small amount
 //! of compiler frontend specific calling convention logic implemented here.
 
-use rustc_abi::TyAbiInterface;
+use rustc_abi::{CanonAbi, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, ComputeCallConv};
 
 fn classify_ret_ty<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() {
@@ -53,17 +53,31 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnAbi<'a, Ty>)
+pub(crate) struct AvrCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for AvrCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
-    if !fty.ret.is_ignore() {
-        classify_ret_ty(&mut fty.ret);
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fty.args.iter_mut() {
+    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret_ty(ret);
+        }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         if arg.is_ignore() {
-            continue;
+            return;
         }
 
         classify_arg_ty(cx, arg);

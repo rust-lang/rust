@@ -1,8 +1,9 @@
 use rustc_abi::{
-    BackendRepr, Float, HasDataLayout, Integer, Numeric, Primitive, RegKind, TyAbiInterface,
+    BackendRepr, CanonAbi, Float, HasDataLayout, Integer, Numeric, Primitive, RegKind,
+    TyAbiInterface,
 };
 
-use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Reg};
+use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, ComputeCallConv, Reg};
 
 fn classify_shared<'a, Ty>(val: &mut ArgAbi<'a, Ty>) {
     if val.layout.is_aggregate() {
@@ -63,25 +64,39 @@ where
     classify_shared(arg)
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct SparcCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for SparcCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !fn_abi.ret.is_ignore() {
-        if let Some(component) = fn_abi.ret.layout.complex_number(cx) {
-            classify_complex_ret(&mut fn_abi.ret, component);
-        } else {
-            classify_shared(&mut fn_abi.ret);
-        };
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            if let Some(component) = ret.layout.complex_number(cx) {
+                classify_complex_ret(ret, component);
+            } else {
+                classify_shared(ret);
+            };
+        }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         if arg.is_ignore() {
             if arg.layout.is_zst() {
                 arg.make_indirect_from_ignore();
             }
-            continue;
+            return;
         }
         classify_arg(cx, arg);
     }

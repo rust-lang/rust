@@ -1,9 +1,11 @@
 // Reference: ELF Application Binary Interface s390x Supplement
 // https://github.com/IBM/s390x-abi
 
-use rustc_abi::{BackendRepr, FieldsShape, HasDataLayout, Primitive, TyAbiInterface, TyAndLayout};
+use rustc_abi::{
+    BackendRepr, CanonAbi, FieldsShape, HasDataLayout, Primitive, TyAbiInterface, TyAndLayout,
+};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg};
+use crate::callconv::{ArgAbi, ComputeCallConv, Reg};
 use crate::spec::{Env, HasTargetSpec, Os};
 
 /// Is this a struct with a single float field?
@@ -127,16 +129,30 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct S390XCallConv;
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for S390XCallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+    fn new(_cx: &C) -> Self {
+        Self
     }
 
-    for arg in fn_abi.args.iter_mut() {
+    fn compute_ret_abi(&mut self, _cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(ret);
+        }
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
         classify_arg(cx, arg);
     }
 }

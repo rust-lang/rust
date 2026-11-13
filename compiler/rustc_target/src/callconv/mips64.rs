@@ -1,10 +1,12 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    BackendRepr, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg, RegKind,
-    Size, TyAbiInterface,
+    BackendRepr, CanonAbi, FieldsShape, Float, HasDataLayout, Integer, Numeric, Primitive, Reg,
+    RegKind, Size, TyAbiInterface,
 };
 
-use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
+use crate::callconv::{
+    ArgAbi, ArgAttribute, ArgExtension, CastTarget, ComputeCallConv, PassMode, Uniform,
+};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
@@ -233,23 +235,37 @@ where
     *offset = offset.align_to(align) + size.align_to(align);
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) struct Mips64CallConv {
+    offset: Size,
+}
+
+impl<'a, Ty, C> ComputeCallConv<'a, Ty, C> for Mips64CallConv
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    // mips64 argument passing is also affected by the alignment of aggregates.
-    // see mips.rs for how the offset is used
-    let mut offset = Size::ZERO;
-
-    if !fn_abi.ret.is_ignore() && fn_abi.ret.layout.is_sized() {
-        classify_ret(cx, &mut fn_abi.ret, &mut offset);
+    fn new(_cx: &C) -> Self {
+        // mips64 argument passing is also affected by the alignment of aggregates.
+        // see mips.rs for how the offset is used
+        Self { offset: Size::ZERO }
     }
 
-    for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() || !arg.layout.is_sized() {
-            continue;
+    fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
+        if !ret.is_ignore() {
+            classify_ret(cx, ret, &mut self.offset);
         }
-        classify_arg(cx, arg, &mut offset);
+    }
+
+    fn compute_arg_abi(
+        &mut self,
+        cx: &C,
+        _conv: CanonAbi,
+        arg: &mut ArgAbi<'a, Ty>,
+        _is_vararg: bool,
+    ) {
+        if arg.is_ignore() || !arg.layout.is_sized() {
+            return;
+        }
+        classify_arg(cx, arg, &mut self.offset);
     }
 }
