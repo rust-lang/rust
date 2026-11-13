@@ -10,7 +10,7 @@ use crate::{
     MemoryMap, ParamEnvAndCrate, consteval,
     db::HirDatabase,
     mir::{IsSigned, pad16},
-    next_solver::{Const, Consts, ScalarInt, TyKind, WorldExposer},
+    next_solver::{Const, Consts, ScalarInt, TyKind, WorldExposer, impl_stored_interned},
 };
 
 use super::{DbInterner, Ty};
@@ -323,6 +323,7 @@ impl<'db> TypeFoldable<DbInterner<'db>> for ValTree<'db> {
 pub(in super::super) struct ValTreeInterned(ValTreeKind<'static>);
 
 impl_internable!(gc; ValTreeInterned);
+impl_stored_interned!(ValTreeInterned, ValTree, StoredValTree);
 
 const _: () = {
     const fn is_copy<T: Copy>() {}
@@ -339,9 +340,19 @@ impl<'db> IntoKind for ValTree<'db> {
 
 impl<'db> ValTree<'db> {
     #[inline]
+    // TODO: make this take `interner`, similarly to `Ty::new`?
     pub fn new(kind: ValTreeKind<'db>) -> Self {
         let kind = unsafe { std::mem::transmute::<ValTreeKind<'db>, ValTreeKind<'static>>(kind) };
         Self { interned: Interned::new_gc(ValTreeInterned(kind)) }
+    }
+
+    /// Returns the zero-sized valtree: `Branch([])`.
+    pub fn zst(interner: DbInterner<'db>) -> Self {
+        interner.default_types().consts.valtree_zst
+    }
+
+    pub fn is_zst(self) -> bool {
+        matches!(self.inner(), ValTreeKind::Branch(consts) if consts.is_empty())
     }
 
     #[inline]

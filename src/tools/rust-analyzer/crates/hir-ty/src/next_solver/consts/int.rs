@@ -1,6 +1,8 @@
 use std::{fmt, hash::Hash, num::NonZero};
 
 use rustc_abi::{Size, TargetDataLayout};
+use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 
 /// The raw bytes of a simple value.
 ///
@@ -131,6 +133,7 @@ impl ScalarInt {
     }
 
     #[inline]
+    // FIXME: delete this, it has been removed on the rustc side
     pub fn to_uint_unchecked(self) -> u128 {
         self.data
     }
@@ -196,6 +199,7 @@ impl ScalarInt {
     }
 
     #[inline]
+    // FIXME: delete this, it has been removed on the rustc side
     pub fn to_int_unchecked(self) -> i128 {
         self.size().sign_extend(self.data)
     }
@@ -233,6 +237,32 @@ impl ScalarInt {
     #[inline]
     pub fn to_target_isize(&self, data_layout: &TargetDataLayout) -> i64 {
         self.to_int(data_layout.pointer_size()).try_into().unwrap()
+    }
+
+    #[inline]
+    pub fn to_float<F: Float>(self) -> F {
+        // Going through `to_uint` to check size and truncation.
+        F::from_bits(self.to_bits(Size::from_bits(F::BITS)))
+    }
+
+    #[inline]
+    pub fn to_f16(self) -> Half {
+        self.to_float()
+    }
+
+    #[inline]
+    pub fn to_f32(self) -> Single {
+        self.to_float()
+    }
+
+    #[inline]
+    pub fn to_f64(self) -> Double {
+        self.to_float()
+    }
+
+    #[inline]
+    pub fn to_f128(self) -> Quad {
+        self.to_float()
     }
 }
 
@@ -342,6 +372,66 @@ impl TryFrom<ScalarInt> for char {
             Some(c) => Ok(c),
             None => Err(CharTryFromScalarInt),
         }
+    }
+}
+
+impl From<Half> for ScalarInt {
+    #[inline]
+    fn from(f: Half) -> Self {
+        // We trust apfloat to give us properly truncated data.
+        Self { data: f.to_bits(), size: NonZero::new((Half::BITS / 8) as u8).unwrap() }
+    }
+}
+
+impl From<ScalarInt> for Half {
+    #[inline]
+    fn from(int: ScalarInt) -> Self {
+        Self::from_bits(int.to_bits(Size::from_bytes(2)))
+    }
+}
+
+impl From<Single> for ScalarInt {
+    #[inline]
+    fn from(f: Single) -> Self {
+        // We trust apfloat to give us properly truncated data.
+        Self { data: f.to_bits(), size: NonZero::new((Single::BITS / 8) as u8).unwrap() }
+    }
+}
+
+impl From<ScalarInt> for Single {
+    #[inline]
+    fn from(int: ScalarInt) -> Self {
+        Self::from_bits(int.to_bits(Size::from_bytes(4)))
+    }
+}
+
+impl From<Double> for ScalarInt {
+    #[inline]
+    fn from(f: Double) -> Self {
+        // We trust apfloat to give us properly truncated data.
+        Self { data: f.to_bits(), size: NonZero::new((Double::BITS / 8) as u8).unwrap() }
+    }
+}
+
+impl From<ScalarInt> for Double {
+    #[inline]
+    fn from(int: ScalarInt) -> Self {
+        Self::from_bits(int.to_bits(Size::from_bytes(8)))
+    }
+}
+
+impl From<Quad> for ScalarInt {
+    #[inline]
+    fn from(f: Quad) -> Self {
+        // We trust apfloat to give us properly truncated data.
+        Self { data: f.to_bits(), size: NonZero::new((Quad::BITS / 8) as u8).unwrap() }
+    }
+}
+
+impl From<ScalarInt> for Quad {
+    #[inline]
+    fn from(int: ScalarInt) -> Self {
+        Self::from_bits(int.to_bits(Size::from_bytes(16)))
     }
 }
 
