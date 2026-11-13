@@ -3,7 +3,7 @@
 macro_rules! m {
     () => {
         /// A
-        //~^ WARNING
+        //~? WARNING
         #[path = "auxiliary/module_macro_doc.rs"]
         pub mod mymodule;
     }
