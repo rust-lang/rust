@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use rustc_abi::{Align, Scalar, Size, WrappingRange};
+use rustc_abi::{Align, Integer, Scalar, Size, WrappingRange};
 use rustc_ast::expand::typetree::{FncTree, TypeTree};
 use rustc_attr_ir::UnrollAttr;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -517,10 +517,37 @@ pub trait BuilderMethods<'a, 'tcx>:
         assert!(src.llextra.is_none(), "cannot directly copy from unsized values");
         assert!(dst.llextra.is_none(), "cannot directly copy into unsized values");
         if flags.contains(MemFlags::NONTEMPORAL) {
+            // This can't occur at the moment, so avoid implementing dead code by asserting.
+            assert!(!flags.contains(MemFlags::CAPTURES_READ_ONLY));
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-            let ty = self.backend_type(layout);
-            let val = self.load_from_place(ty, src);
-            self.store_to_place_with_flags(val, dst, flags);
+            if layout.backend_repr.is_scalar_or_simd() {
+                let ty = self.backend_type(layout);
+                let val = self.load_from_place(ty, src);
+                self.store_to_place_with_flags(val, dst, flags);
+            } else {
+                // Pick an appropriate integer: the size is always a multiple of the align.
+                let unit = Integer::approximate_align(self.cx(), layout.align);
+                let ty = self.type_from_integer(unit);
+                for offset in (Size::ZERO..layout.size).step_by(unit.size().bytes_usize()) {
+                    let src_ptr = if offset == Size::ZERO {
+                        src.llval
+                    } else {
+                        self.inbounds_ptradd(src.llval, self.const_usize(offset.bytes()))
+                    };
+                    let dst_ptr = if offset == Size::ZERO {
+                        dst.llval
+                    } else {
+                        self.inbounds_ptradd(dst.llval, self.const_usize(offset.bytes()))
+                    };
+                    let part = self.load(ty, src_ptr, src.align.restrict_for_offset(offset));
+                    self.store_with_flags(
+                        part,
+                        dst_ptr,
+                        dst.align.restrict_for_offset(offset),
+                        flags,
+                    );
+                }
+            }
         } else if self.sess().opts.optimize == OptLevel::No
             && layout.backend_repr.is_scalar_or_simd()
         {
