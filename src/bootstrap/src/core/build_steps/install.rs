@@ -27,7 +27,7 @@ fn sanitize_sh(path: &Path, is_cygwin: bool) -> String {
     return if is_cygwin { path } else { change_drive(unc_to_lfs(&path)).unwrap_or(path) };
 
     fn unc_to_lfs(s: &str) -> &str {
-        s.strip_prefix("//?/").unwrap_or(s)
+        s.trim_prefix("//?/")
     }
 
     fn change_drive(s: &str) -> Option<String> {
