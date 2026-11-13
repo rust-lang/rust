@@ -1,0 +1,7 @@
+error: cannot evaluate associated constant with unresolved type dependencies `aux::Adapter::<dyn aux::Project<Item = u16>>::SIZE`
+  --> $DIR/auxiliary/dyn-associated-const-cross-crate-aux-issue-311.rs:18:5
+   |
+LL |     pub const SIZE: usize = size_of::<T::Item>();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
