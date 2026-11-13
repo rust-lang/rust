@@ -63,6 +63,8 @@ pub fn walk_many(
         contents.clear();
         let mut file = t!(File::open(entry.path()), entry.path());
         t!(file.read_to_end(&mut contents), entry.path());
+        drop(file); // Drop it early so that tempfiles can persist to this file on Windows
+
         let contents_str = match std::str::from_utf8(&contents) {
             Ok(s) => s,
             Err(_) => return, // skip this file
