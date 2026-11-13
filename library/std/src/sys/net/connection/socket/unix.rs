@@ -112,7 +112,7 @@ impl Socket {
         }
     }
 
-    #[cfg(not(any(target_os = "vxworks", target_os = "wasi")))]
+    #[cfg(not(any(target_os = "vxworks", target_os = "wasi", target_os = "web")))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
@@ -270,7 +270,7 @@ impl Socket {
         self.0.duplicate().map(Socket)
     }
 
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "web")))]
     pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
         let len = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
@@ -357,7 +357,7 @@ impl Socket {
         self.recv_from_with_flags(buf, MSG_PEEK)
     }
 
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(not(any(target_os = "wasi", target_os = "web")))]
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }

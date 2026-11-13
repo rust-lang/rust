@@ -58,6 +58,8 @@ cfg_select! {
         pub mod wasi;
         #[cfg(target_env = "p2")]
         pub mod wasip2;
+        #[cfg(target_os = "web")]
+        pub mod web;
     }
     target_family = "windows" => {
         pub mod windows;
@@ -72,6 +74,7 @@ cfg_select! {
     target_os = "hermit",
     target_os = "trusty",
     target_os = "wasi",
+    target_os = "web",
     target_os = "motor",
     doc
 ))]

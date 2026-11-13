@@ -1514,6 +1514,7 @@ supported_targets! {
     ("wasm32-wasip3", wasm32_wasip3),
     ("wasm32-wasip1-threads", wasm32_wasip1_threads),
     ("wasm32-wali-linux-musl", wasm32_wali_linux_musl),
+    ("wasm32-webp2", wasm32_webp2),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
@@ -1891,6 +1892,7 @@ crate::target_spec_enum! {
         VxWorks = "vxworks",
         Wasi = "wasi",
         WatchOs = "watchos",
+        Web = "web",
         Windows = "windows",
         Xous = "xous",
         Zkvm = "zkvm",

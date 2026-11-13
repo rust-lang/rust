@@ -704,6 +704,7 @@ fn human_readable_target_os(os: Symbol) -> Option<&'static str> {
         VxWorks => "VxWorks",
         Wasi => "WASI",
         WatchOs => "watchOS",
+        Web => "Web",
         Windows => "Windows",
         Xous => "Xous",
         Zkvm => "zero knowledge Virtual Machine",

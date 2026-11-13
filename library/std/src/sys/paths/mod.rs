@@ -42,7 +42,7 @@ cfg_select! {
         mod unix;
         use unix as imp;
     }
-    target_os = "wasi" => {
+    any(target_os = "wasi", target_os = "web") => {
         mod wasi;
         #[expect(dead_code)]
         mod unsupported;
