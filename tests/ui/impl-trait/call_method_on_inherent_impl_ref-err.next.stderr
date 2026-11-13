@@ -4,12 +4,15 @@ error[E0599]: no method named `my_debug` found for type `_` in the current scope
 LL |         x.my_debug();
    |           ^^^^^^^^ method not found in `_`
    |
-note: the method is available on trait `MyDebug` for `&_`
-  --> $DIR/call_method_on_inherent_impl_ref-err.rs:6:8
+note: the method is available on trait `MyDebug` for `_`
+  --> $DIR/call_method_on_inherent_impl_ref-err.rs:13:5
    |
-LL | trait MyDebug {
-LL |     fn my_debug(&self);
-   |        ^^^^^^^^
+LL | impl<T> MyDebug for &T
+LL | where
+LL |     T: std::fmt::Debug,
+LL | {
+LL |     fn my_debug(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^ the method is available here
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyDebug` defines an item `my_debug`, perhaps you need to implement it
   --> $DIR/call_method_on_inherent_impl_ref-err.rs:5:1

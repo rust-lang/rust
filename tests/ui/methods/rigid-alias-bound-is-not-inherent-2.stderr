@@ -6,12 +6,12 @@ LL | fn foo(x: impl Deref<Target: module::Trait>) {
 LL |     x.method();
    |       ^^^^^^ method not found in `impl Deref<Target : module::Trait>`
    |
-note: the method is available on trait `Trait` for `impl Deref<Target : module::Trait>`
+note: the method is available on trait `Trait` for `<impl Deref<Target : module::Trait> as Deref>::Target`
   --> $DIR/rigid-alias-bound-is-not-inherent-2.rs:6:12
    |
 LL |     pub trait Trait {
 LL |         fn method(&self);
-   |            ^^^^^^
+   |            ^^^^^^ the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Trait` which provides `method` is implemented but not in scope; perhaps you want to import it
    |

@@ -5,11 +5,14 @@ LL |     a.ext();
    |       ^^^ method not found in `u8`
    |
 note: the method is available on trait `SettingsExt` for `u8`
-  --> $DIR/issue-114682-3.rs:10:12
+  --> $DIR/issue-114682-3.rs:13:5
    |
 LL |     pub trait SettingsExt {
 LL |         fn ext(&self) {}
-   |            ^^^
+   |            --- the method is available here
+...
+LL |     impl<T> SettingsExt for T {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `SettingsExt` which provides `ext` is implemented but not in scope; perhaps you want to import it
    |
