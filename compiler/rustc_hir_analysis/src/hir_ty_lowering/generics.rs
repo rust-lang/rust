@@ -320,7 +320,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                                 let (mut param_types_present, ordered_params): (
                                     Vec<ParamKindOrd>,
                                     Vec<GenericParamDef>,
-                                ) = param_types_present.into_iter().unzip();
+                                ) = param_types_present.into_iter().collect();
                                 param_types_present.dedup();
 
                                 generic_arg_mismatch_err(

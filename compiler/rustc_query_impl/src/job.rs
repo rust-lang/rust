@@ -321,7 +321,7 @@ fn process_cycle<'tcx>(
 ) -> QueryCycle<'tcx> {
     // The stack is a vector of pairs of spans and queries; reverse it so that
     // the earlier entries require later entries
-    let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().unzip();
+    let (mut spans, queries): (Vec<_>, Vec<_>) = stack.into_iter().rev().collect();
 
     // Shift the spans so that queries are matched with the span for their waitee
     spans.rotate_right(1);

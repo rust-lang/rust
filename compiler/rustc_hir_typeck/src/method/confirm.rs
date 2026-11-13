@@ -758,7 +758,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         self.tcx.def_span(item.def_id),
                     )
                 })
-                .unzip();
+                .collect();
             SupertraitItemShadowee::Several { traits: traits.into(), spans: spans.into() }
         };
 
