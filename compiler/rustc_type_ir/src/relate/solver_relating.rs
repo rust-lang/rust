@@ -242,7 +242,7 @@ where
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if self.cx().assumptions_on_binders() {
             let region_outlives = |a, b| {
-                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, NoSpan))
+                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b), NoSpan)
             };
 
             match self.ambient_variance {
