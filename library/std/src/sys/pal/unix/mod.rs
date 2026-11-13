@@ -210,6 +210,7 @@ static ON_BROKEN_PIPE_USED: crate::sync::atomic::Atomic<bool> =
     target_os = "vita",
     target_os = "nuttx",
     target_os = "l4re",
+    target_os = "qurt",
 )))]
 pub(crate) fn on_broken_pipe_used() -> bool {
     ON_BROKEN_PIPE_USED.load(crate::sync::atomic::Ordering::Relaxed)
