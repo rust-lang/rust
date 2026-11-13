@@ -138,6 +138,7 @@ const ALLOWED_CAPITALIZED_WORDS: &[&str] = &[
     "NaNs",
     "OK",
     "Rust",
+    "TPDE",
     "ThinLTO",
     "Unicode",
     "VS",
