@@ -474,6 +474,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 &mut sess.early_sess.opts.target_modifiers,
                 &target_config,
                 &sess.early_sess.target,
+                &*codegen_backend,
             );
 
             sess.check_config = parse_check_cfg(&sess, config.crate_check_cfg);

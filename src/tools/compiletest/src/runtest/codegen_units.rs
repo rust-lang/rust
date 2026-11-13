@@ -17,7 +17,7 @@ impl TestCx<'_> {
         const PREFIX: &str = "MONO_ITEM ";
         const CGU_MARKER: &str = "@@";
 
-        // Some MonoItems can contain {closure@/path/to/checkout/tests/codgen-units/test.rs}
+        // Some MonoItems can contain {closure@/path/to/checkout/tests/codegen-units/test.rs}
         // To prevent the current dir from leaking, we just replace the entire path to the test
         // file with TEST_PATH.
         let actual: Vec<MonoItem> = proc_res
