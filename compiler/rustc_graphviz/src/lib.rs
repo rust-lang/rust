@@ -319,22 +319,30 @@ pub enum Style {
     Bold,
     Rounded,
     Diagonals,
-    Filled,
+    Filled(FillColor),
     Striped,
     Wedged,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum FillColor {
+    Red,
+    Green,
+    Unspecified,
 }
 
 impl Style {
     pub fn as_slice(self) -> &'static str {
         match self {
-            Style::None => "",
+            Style::None
+            // Filling is handled later in `render_opts`
+            | Style::Filled(_) => "",
             Style::Solid => "solid",
             Style::Dashed => "dashed",
             Style::Dotted => "dotted",
             Style::Bold => "bold",
             Style::Rounded => "rounded",
             Style::Diagonals => "diagonals",
-            Style::Filled => "filled",
             Style::Striped => "striped",
             Style::Wedged => "wedged",
         }
@@ -624,7 +632,17 @@ where
 
         let style = g.node_style(n);
         if !options.contains(&RenderOption::NoNodeStyles) && style != Style::None {
-            write!(text, "[style=\"{}\"]", style.as_slice()).unwrap();
+            if let Style::Filled(fillcolor) = style {
+                // Filling needs separate handling
+                let fillcolor_str = match fillcolor {
+                    FillColor::Green => "green",
+                    FillColor::Red => "red",
+                    FillColor::Unspecified => "lightgrey",
+                };
+                write!(text, "[style=\"filled\" fillcolor=\"{fillcolor_str}\"]").unwrap();
+            } else {
+                write!(text, "[style=\"{}\"]", style.as_slice()).unwrap();
+            }
         }
 
         if let Some(s) = g.node_shape(n) {

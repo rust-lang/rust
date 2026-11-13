@@ -40,13 +40,15 @@ use std::io::Write;
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex, OUTGOING};
-use rustc_graphviz as dot;
+use rustc_graphviz::{self as dot, FillColor, Style};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeFilter, EdgeFilter, RetainedDepGraph};
+use rustc_middle::dep_graph::{
+    DepGraph, DepKind, DepNode, DepNodeColor, DepNodeFilter, EdgeFilter, RetainedDepGraph,
+};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, tls};
 use rustc_span::{Span, Symbol, bug, sym};
 use tracing::debug;
 
@@ -60,9 +62,7 @@ pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
         let retained_dep_graph = tcx.dep_graph.retained_dep_graph();
 
         if tcx.sess.opts.unstable_opts.dump_dep_graph {
-            if let Some(graph) = &retained_dep_graph {
-                dump_graph(graph);
-            }
+            dump_graph(&tcx.dep_graph);
         }
 
         if !tcx.sess.opts.unstable_opts.query_dep_graph {
@@ -206,7 +206,11 @@ fn check_paths<'tcx>(
     }
 }
 
-fn dump_graph(graph: &RetainedDepGraph) {
+fn dump_graph(graph: &DepGraph) {
+    let Some(retained) = &graph.retained_dep_graph() else {
+        return;
+    };
+
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
 
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
@@ -214,13 +218,13 @@ fn dump_graph(graph: &RetainedDepGraph) {
             // Expect one of: "-> target", "source -> target", or "source ->".
             let edge_filter =
                 EdgeFilter::new(&string).unwrap_or_else(|e| bug!("invalid filter: {}", e));
-            let sources = node_set(graph, &edge_filter.source);
-            let targets = node_set(graph, &edge_filter.target);
-            filter_nodes(graph, &sources, &targets)
+            let sources = node_set(retained, &edge_filter.source);
+            let targets = node_set(retained, &edge_filter.target);
+            filter_nodes(retained, &sources, &targets)
         }
-        Err(_) => graph.nodes().into_iter().map(|n| n.kind).collect(),
+        Err(_) => retained.nodes().into_iter().collect(),
     };
-    let edges = filter_edges(graph, &nodes);
+    let edges = filter_edges(retained, &nodes);
 
     {
         // dump a .txt file with just the edges:
@@ -235,39 +239,51 @@ fn dump_graph(graph: &RetainedDepGraph) {
         // dump a .dot file in graphviz format:
         let dot_path = format!("{path}.dot");
         let mut v = Vec::new();
-        dot::render(&GraphvizDepGraph(nodes, edges), &mut v).unwrap();
+        dot::render(
+            &GraphvizDepGraph {
+                dep_graph: graph.clone(),
+                nodes: nodes.clone(),
+                edges: edges.into_iter().map(|(&a, &b)| (a, b)).clone().collect(),
+            },
+            &mut v,
+        )
+        .unwrap();
         fs::write(dot_path, v).unwrap();
     }
 }
 
 #[allow(missing_docs)]
-struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
+struct GraphvizDepGraph<'g> {
+    dep_graph: DepGraph,
+    nodes: FxIndexSet<&'g DepNode>,
+    edges: Vec<(DepNode, DepNode)>,
+}
 
-impl<'a> dot::GraphWalk<'a> for GraphvizDepGraph {
-    type Node = DepKind;
-    type Edge = (DepKind, DepKind);
-    fn nodes(&self) -> dot::Nodes<'_, DepKind> {
-        let nodes: Vec<_> = self.0.iter().cloned().collect();
+impl<'a> dot::GraphWalk<'a> for GraphvizDepGraph<'a> {
+    type Node = DepNode;
+    type Edge = (DepNode, DepNode);
+    fn nodes(&self) -> dot::Nodes<'_, DepNode> {
+        let nodes: Vec<_> = self.nodes.iter().cloned().map(|&a| a).collect();
         nodes.into()
     }
-    fn edges(&self) -> dot::Edges<'_, (DepKind, DepKind)> {
-        self.1[..].into()
+    fn edges(&self) -> dot::Edges<'_, (DepNode, DepNode)> {
+        self.edges[..].into()
     }
-    fn source(&self, edge: &(DepKind, DepKind)) -> DepKind {
+    fn source(&self, edge: &(DepNode, DepNode)) -> DepNode {
         edge.0
     }
-    fn target(&self, edge: &(DepKind, DepKind)) -> DepKind {
+    fn target(&self, edge: &(DepNode, DepNode)) -> DepNode {
         edge.1
     }
 }
 
-impl<'a> dot::Labeller<'a> for GraphvizDepGraph {
-    type Node = DepKind;
-    type Edge = (DepKind, DepKind);
+impl<'a> dot::Labeller<'a> for GraphvizDepGraph<'a> {
+    type Node = DepNode;
+    type Edge = (DepNode, DepNode);
     fn graph_id(&self) -> dot::Id<'_> {
         dot::Id::new("DependencyGraph").unwrap()
     }
-    fn node_id(&self, n: &DepKind) -> dot::Id<'_> {
+    fn node_id(&self, n: &DepNode) -> dot::Id<'_> {
         let s: String = format!("{n:?}")
             .chars()
             .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
@@ -275,8 +291,25 @@ impl<'a> dot::Labeller<'a> for GraphvizDepGraph {
         debug!("n={:?} s={:?}", n, s);
         dot::Id::new(s).unwrap()
     }
-    fn node_label(&self, n: &DepKind) -> dot::LabelText<'_> {
-        dot::LabelText::label(format!("{n:?}"))
+    fn node_label(&self, n: &DepNode) -> dot::LabelText<'_> {
+        tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx
+                && let Some(def_id) = n.extract_def_id(tcx)
+            {
+                dot::LabelText::label(format!("{:?} ({})", n.kind, tcx.def_path_debug_str(def_id)))
+            } else {
+                dot::LabelText::label(format!("{:?}", n.kind))
+            }
+        })
+    }
+
+    /// Maps `n` to a style that will be used in the rendered output.
+    fn node_style(&'a self, n: &DepNode) -> Style {
+        Style::Filled(match self.dep_graph.node_color(n) {
+            DepNodeColor::Green(_) => FillColor::Green,
+            DepNodeColor::Red => FillColor::Red,
+            DepNodeColor::Unknown => FillColor::Unspecified,
+        })
     }
 }
 
@@ -300,7 +333,7 @@ fn filter_nodes<'g>(
     graph: &'g RetainedDepGraph,
     sources: &Option<FxIndexSet<&'g DepNode>>,
     targets: &Option<FxIndexSet<&'g DepNode>>,
-) -> FxIndexSet<DepKind> {
+) -> FxIndexSet<&'g DepNode> {
     if let Some(sources) = sources {
         if let Some(targets) = targets {
             walk_between(graph, sources, targets)
@@ -310,7 +343,7 @@ fn filter_nodes<'g>(
     } else if let Some(targets) = targets {
         walk_nodes(graph, targets, INCOMING)
     } else {
-        graph.nodes().into_iter().map(|n| n.kind).collect()
+        graph.nodes().into_iter().collect()
     }
 }
 
@@ -318,17 +351,17 @@ fn walk_nodes<'g>(
     graph: &'g RetainedDepGraph,
     starts: &FxIndexSet<&'g DepNode>,
     direction: Direction,
-) -> FxIndexSet<DepKind> {
+) -> FxIndexSet<&'g DepNode> {
     let mut set = FxIndexSet::default();
     for &start in starts {
         debug!("walk_nodes: start={:?} outgoing?={:?}", start, direction == OUTGOING);
-        if set.insert(start.kind) {
+        if set.insert(start) {
             let mut stack = vec![graph.indices[start]];
             while let Some(index) = stack.pop() {
                 for (_, edge) in graph.inner.adjacent_edges(index, direction) {
                     let neighbor_index = edge.source_or_target(direction);
                     let neighbor = graph.inner.node_data(neighbor_index);
-                    if set.insert(neighbor.kind) {
+                    if set.insert(neighbor) {
                         stack.push(neighbor_index);
                     }
                 }
@@ -342,7 +375,7 @@ fn walk_between<'g>(
     graph: &'g RetainedDepGraph,
     sources: &FxIndexSet<&'g DepNode>,
     targets: &FxIndexSet<&'g DepNode>,
-) -> FxIndexSet<DepKind> {
+) -> FxIndexSet<&'g DepNode> {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
     // have to be careful about cycles etc. Luckily efficiency is not
@@ -373,7 +406,6 @@ fn walk_between<'g>(
             let index = graph.indices[n];
             node_states[index.0] == State::Included
         })
-        .map(|n| n.kind)
         .collect();
 
     fn recurse(graph: &RetainedDepGraph, node_states: &mut [State], node: NodeIndex) -> bool {
@@ -409,12 +441,14 @@ fn walk_between<'g>(
     }
 }
 
-fn filter_edges(graph: &RetainedDepGraph, nodes: &FxIndexSet<DepKind>) -> Vec<(DepKind, DepKind)> {
+fn filter_edges<'g>(
+    graph: &'g RetainedDepGraph,
+    nodes: &'g FxIndexSet<&'g DepNode>,
+) -> Vec<(&'g DepNode, &'g DepNode)> {
     let uniq: FxIndexSet<_> = graph
         .edges()
         .into_iter()
-        .map(|(s, t)| (s.kind, t.kind))
-        .filter(|(source, target)| nodes.contains(source) && nodes.contains(target))
+        .filter(|&(&source, &target)| nodes.contains(&source) && nodes.contains(&target))
         .collect();
     uniq.into_iter().collect()
 }

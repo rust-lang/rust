@@ -5,7 +5,7 @@ use tracing::instrument;
 pub use self::dep_node::{DepKind, DepKindVTable, DepNode, WorkProductId, dep_kind_from_label};
 pub use self::dep_node_key::DepNodeKey;
 pub use self::graph::{
-    DepGraph, DepGraphData, DepNodeIndex, QuerySideEffect, TaskDepsRef, WorkProduct,
+    DepGraph, DepGraphData, DepNodeColor, DepNodeIndex, QuerySideEffect, TaskDepsRef, WorkProduct,
     WorkProductMap, hash_result,
 };
 use self::graph::{MarkFrame, print_markframe_trace};
