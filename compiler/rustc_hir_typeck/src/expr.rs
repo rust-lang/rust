@@ -2972,7 +2972,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         autoderef: &Autoderef<'_, 'tcx>,
         deref_base_ty: Ty<'tcx>,
     ) -> ControlFlow<Ty<'tcx>, Option<(Vec<Adjustment<'tcx>>, DefId)>> {
-        match deref_base_ty.kind() {
+        let (field_ty, field_idx) = match deref_base_ty.kind() {
             ty::Adt(base_def, args) if !base_def.is_enum() => {
                 debug!("struct named {:?}", deref_base_ty);
                 // we don't care to report errors for a struct if the struct itself is tainted
@@ -2987,19 +2987,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return ControlFlow::Continue(None);
                 };
 
-                self.write_field_index(expr.hir_id, idx);
-
-                let adjustments = self.adjust_steps(autoderef);
-
                 if !field.vis.is_accessible_from(def_scope, self.tcx) {
                     // The field is not accessible, fall through to error reporting.
+                    let adjustments = self.adjust_steps(autoderef);
                     return ControlFlow::Continue(Some((adjustments, base_def.did())));
                 }
 
-                self.apply_adjustments(base, adjustments);
-
                 self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                return ControlFlow::Break(self.field_ty(expr.span, field, *args));
+
+                (self.field_ty(expr.span, field, *args), idx)
             }
 
             ty::Tuple(tys) => {
@@ -3015,16 +3011,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return ControlFlow::Continue(None);
                 };
 
-                let adjustments = self.adjust_steps(autoderef);
-                self.apply_adjustments(base, adjustments); // self.register_predicates(autoderef.into_obligations());
-
-                self.write_field_index(expr.hir_id, FieldIdx::from_usize(index));
-                return ControlFlow::Break(field_ty);
+                (field_ty, FieldIdx::from_usize(index))
             }
-            _ => {}
-        }
+            _ => return ControlFlow::Continue(None),
+        };
 
-        ControlFlow::Continue(None)
+        let adjustments = self.adjust_steps(autoderef);
+        self.apply_adjustments(base, adjustments);
+
+        self.write_field_index(expr.hir_id, field_idx);
+
+        ControlFlow::Break(field_ty)
     }
 
     fn suggest_await_on_field_access(
