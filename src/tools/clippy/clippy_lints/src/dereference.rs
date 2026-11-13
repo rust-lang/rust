@@ -956,7 +956,7 @@ impl TyCoercionStability {
                 | ty::Placeholder(_)
                 | ty::Dynamic(..)
                 | ty::Param(_) => Self::Reborrow,
-                ty::Adt(_, args)
+                ty::Adt(_, args) | ty::View(_, args, _)
                     if ty.has_placeholders()
                         || ty.has_opaque_types()
                         || (!for_return && args.has_non_region_param()) =>
@@ -990,7 +990,8 @@ impl TyCoercionStability {
                         ..
                     },
                 )
-                | ty::UnsafeBinder(_) => Self::Deref,
+                | ty::UnsafeBinder(_)
+                | ty::View(..) => Self::Deref,
             };
         }
     }

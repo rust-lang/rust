@@ -2080,6 +2080,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Bound(..) => {
                 bug!("asked to assemble `Sized` of unexpected type: {:?}", self_ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2159,6 +2162,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2306,6 +2312,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     })
                 }
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         })
     }
 

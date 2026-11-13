@@ -307,6 +307,13 @@ pub enum TyKind<I: Interner> {
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(I::Tys),
 
+    /// A view over an [`Adt`].
+    ///
+    /// This variant contains the same data as `Adt` as well as a `Ty` field that represents the
+    /// set of fields that are viewed. This `Ty` should be either a type variable or a tuple of
+    /// `FieldRepresentingType`.
+    View(I::AdtDef, I::GenericArgs, I::Ty),
+
     /// A projection, opaque type, free type alias, or inherent associated type.
     ///
     /// All of these types are represented as pairs of def-id and args, and can
@@ -421,6 +428,9 @@ impl<I: Interner> TyKind<I> {
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }
@@ -488,6 +498,9 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
             TyKind::Error(_) => write!(f, "{{type error}}"),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

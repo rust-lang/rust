@@ -1938,6 +1938,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 Closure,
                 CoroutineClosure,
                 Tuple,
+                View,
                 Bound,
                 Param,
                 Infer,
@@ -2380,6 +2381,44 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::FreeConst { def_id } => {
                 debug_assert_matches!(self.def_kind(def_id), DefKind::Const);
+            }
+        }
+    }
+
+    pub(crate) fn debug_assert_adt_def_kind_compatible(self, def: AdtDef<'tcx>) {
+        if cfg!(debug_assertions) {
+            match self.def_kind(def.did()) {
+                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
+                DefKind::Mod
+                | DefKind::Variant
+                | DefKind::Trait
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::TyParam
+                | DefKind::Fn
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::Static { .. }
+                | DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::Macro(..)
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::OpaqueTy
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Impl { .. }
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody
+                | DefKind::TestBinderConstraints => {
+                    bug!("not an adt: {def:?} ({:?})", self.def_kind(def.did()))
+                }
             }
         }
     }

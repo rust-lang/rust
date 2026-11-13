@@ -71,6 +71,9 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
                 bug!("type_name: unexpected inherent projection")
             }
             ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
