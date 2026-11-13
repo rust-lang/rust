@@ -45,14 +45,14 @@ where
     let mut buf: [MaybeUninit<u8>; 1024] = [MaybeUninit::uninit(); 1024]; // enough for f32 and f64
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = [MaybeUninit::uninit(); 4];
     let formatted = flt2dec::to_exact_fixed_str(
-        flt2dec::strategy::grisu::format_exact,
+        flt2dec::format_fixed,
         *num,
         sign,
         precision.into(),
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_exact_fixed_str` and `format_exact` produce only ASCII characters.
+    // SAFETY: `to_exact_fixed_str` and `format_fixed` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
@@ -73,14 +73,14 @@ where
         [MaybeUninit::uninit(); flt2dec::MAX_SIG_DIGITS];
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 4] = [MaybeUninit::uninit(); 4];
     let formatted = flt2dec::to_shortest_str(
-        flt2dec::strategy::grisu::format_shortest,
+        flt2dec::format_short,
         *num,
         sign,
         precision.into(),
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_shortest_str` and `format_shortest` produce only ASCII characters.
+    // SAFETY: `to_shortest_str` and `format_short` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
@@ -118,7 +118,7 @@ where
     let mut buf: [MaybeUninit<u8>; 1024] = [MaybeUninit::uninit(); 1024]; // enough for f32 and f64
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = [MaybeUninit::uninit(); 6];
     let formatted = flt2dec::to_exact_exp_str(
-        flt2dec::strategy::grisu::format_exact,
+        flt2dec::format_fixed,
         *num,
         sign,
         precision.into(),
@@ -126,7 +126,7 @@ where
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_exact_exp_str` and `format_exact` produce only ASCII characters.
+    // SAFETY: `to_exact_exp_str` and `format_fixed` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
@@ -147,7 +147,7 @@ where
         [MaybeUninit::uninit(); flt2dec::MAX_SIG_DIGITS];
     let mut parts: [MaybeUninit<numfmt::Part<'_>>; 6] = [MaybeUninit::uninit(); 6];
     let formatted = flt2dec::to_shortest_exp_str(
-        flt2dec::strategy::grisu::format_shortest,
+        flt2dec::format_short,
         *num,
         sign,
         (0, 0),
@@ -155,7 +155,7 @@ where
         &mut buf,
         &mut parts,
     );
-    // SAFETY: `to_shortest_exp_str` and `format_shortest` produce only ASCII characters.
+    // SAFETY: `to_shortest_exp_str` and `format_short` produce only ASCII characters.
     unsafe { fmt.pad_formatted_parts(&formatted) }
 }
 
