@@ -25,7 +25,7 @@ cfg_select! {
 
         mod imp {
             pub use super::unsupported::{SystemTime, UNIX_EPOCH};
-            pub use super::vexos::Instant;
+            pub use super::vexos::now;
         }
     }
     target_os = "windows" => {
@@ -42,4 +42,15 @@ cfg_select! {
     }
 }
 
-pub use imp::{Instant, SystemTime, UNIX_EPOCH};
+#[cfg(any(target_family = "unix", target_os = "wasi"))]
+#[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
+pub(super) use imp::CLOCK_ID;
+pub use imp::{SystemTime, UNIX_EPOCH, now};
+
+#[cfg(not(target_os = "windows"))]
+pub fn epsilon() -> crate::time::Duration {
+    crate::time::Duration::ZERO
+}
+
+#[cfg(target_os = "windows")]
+pub use imp::epsilon;

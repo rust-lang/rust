@@ -1,8 +1,18 @@
 use crate::sys::pal::system_time;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+pub fn now() -> Instant {
+    // If we have a timestamp protocol, use it.
+    if let Some(x) = instant_internal::timestamp_protocol() {
+        return x;
+    }
+
+    if let Some(x) = instant_internal::platform_specific() {
+        return x;
+    }
+
+    panic!("time not implemented on this platform")
+}
 
 /// When a Timezone is specified, the stored Duration is in UTC. If timezone is unspecified, then
 /// the timezone is assumed to be in UTC.
@@ -40,33 +50,6 @@ const MAX_UEFI_TIME: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
     pad2: 0,
 })
 .unwrap();
-
-impl Instant {
-    pub fn now() -> Instant {
-        // If we have a timestamp protocol, use it.
-        if let Some(x) = instant_internal::timestamp_protocol() {
-            return x;
-        }
-
-        if let Some(x) = instant_internal::platform_specific() {
-            return x;
-        }
-
-        panic!("time not implemented on this platform")
-    }
-
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
-    }
-
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_add(*other)?))
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant(self.0.checked_sub(*other)?))
-    }
-}
 
 impl SystemTime {
     pub const MAX: SystemTime = MAX_UEFI_TIME;
@@ -137,19 +120,20 @@ impl SystemTime {
 }
 
 mod instant_internal {
+    use core::num::niche_types::Nanoseconds;
+
     use r_efi::protocols::timestamp;
 
     use super::*;
     use crate::mem::MaybeUninit;
     use crate::ptr::NonNull;
     use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
-    use crate::sys::helpers::mul_div_u64;
     use crate::sys::pal::helpers;
 
     const NS_PER_SEC: u64 = 1_000_000_000;
 
     pub fn timestamp_protocol() -> Option<Instant> {
-        fn try_handle(handle: NonNull<crate::ffi::c_void>) -> Option<u64> {
+        fn try_handle(handle: NonNull<crate::ffi::c_void>) -> Option<Instant> {
             let protocol: NonNull<timestamp::Protocol> =
                 helpers::open_protocol(handle, timestamp::PROTOCOL_GUID).ok()?;
             let mut properties: MaybeUninit<timestamp::Properties> = MaybeUninit::uninit();
@@ -161,23 +145,30 @@ mod instant_internal {
 
             let freq = unsafe { properties.assume_init().frequency };
             let ts = unsafe { ((*protocol.as_ptr()).get_timestamp)() };
-            Some(mul_div_u64(ts, NS_PER_SEC, freq))
+
+            let secs = (ts / freq) as i64;
+            let subsec_ts = ts % freq;
+
+            let nanos =
+                Nanoseconds::new((subsec_ts.widening_mul(NS_PER_SEC) / u128::from(freq)) as u32)
+                    .unwrap();
+            Some(Instant { secs, nanos })
         }
 
         static LAST_VALID_HANDLE: Atomic<*mut crate::ffi::c_void> =
             AtomicPtr::new(crate::ptr::null_mut());
 
         if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
-            if let Some(ns) = try_handle(handle) {
-                return Some(Instant(Duration::from_nanos(ns)));
+            if let Some(time) = try_handle(handle) {
+                return Some(time);
             }
         }
 
         if let Ok(handles) = helpers::locate_handles(timestamp::PROTOCOL_GUID) {
             for handle in handles {
-                if let Some(ns) = try_handle(handle) {
+                if let Some(time) = try_handle(handle) {
                     LAST_VALID_HANDLE.store(handle.as_ptr(), Ordering::Release);
-                    return Some(Instant(Duration::from_nanos(ns)));
+                    return Some(time);
                 }
             }
         }
@@ -187,48 +178,59 @@ mod instant_internal {
 
     pub fn platform_specific() -> Option<Instant> {
         cfg_select! {
-            any(target_arch = "x86_64", target_arch = "x86") => timestamp_rdtsc().map(Instant),
+            any(target_arch = "x86", target_arch = "x86_64") => timestamp_rdtsc(),
             _ => None,
         }
     }
 
-    #[cfg(target_arch = "x86_64")]
-    fn timestamp_rdtsc() -> Option<Duration> {
-        static FREQUENCY: crate::sync::OnceLock<u64> = crate::sync::OnceLock::new();
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    fn timestamp_rdtsc() -> Option<Instant> {
+        #[cfg(target_arch = "x86")]
+        use crate::arch::x86::{__cpuid, _rdtsc};
+        #[cfg(target_arch = "x86_64")]
+        use crate::arch::x86_64::{__cpuid, _rdtsc};
 
-        // Get Frequency in Mhz
-        // Inspired by [`edk2/UefiCpuPkg/Library/CpuTimerLib/CpuTimerLib.c`](https://github.com/tianocore/edk2/blob/master/UefiCpuPkg/Library/CpuTimerLib/CpuTimerLib.c)
-        let freq = FREQUENCY
+        struct Slope {
+            multiplier: u32,
+            divisor: u64,
+        }
+
+        static SLOPE: crate::sync::OnceLock<Slope> = crate::sync::OnceLock::new();
+
+        // Inspired by https://github.com/tianocore/edk2/blob/6d127c21406c89b50f6c7345f02c2b958660e231/UefiCpuPkg/Library/CpuTimerLib/CpuTimerLib.c
+        let slope = SLOPE
             .get_or_try_init(|| {
-                let cpuid = crate::arch::x86_64::__cpuid(0x15);
+                let cpuid = __cpuid(0x15);
                 if cpuid.eax == 0 || cpuid.ebx == 0 || cpuid.ecx == 0 {
                     return Err(());
                 }
-                Ok(mul_div_u64(cpuid.ecx as u64, cpuid.ebx as u64, cpuid.eax as u64))
+
+                let core_freq_mhz = cpuid.ecx;
+                let core_freq_tsc_mul = cpuid.ebx;
+                let core_freq_tsc_div = cpuid.eax;
+
+                // TSC_freq_hz = (core_freq_hz * core_freq_tsc_mul) / core_freq_tsc_div
+                // time = TSC / TSC_freq_hz
+                //      = TSC / ((core_freq_hz * core_freq_tsc_mul) / core_freq_tsc_div)
+                //      = (TSC * core_freq_tsc_div) / (core_freq_hz * core_freq_tsc_mul)
+
+                Ok(Slope {
+                    multiplier: core_freq_tsc_div,
+                    divisor: core_freq_mhz.widening_mul(core_freq_tsc_mul),
+                })
             })
             .ok()?;
 
-        let ts = unsafe { crate::arch::x86_64::_rdtsc() };
-        let ns = mul_div_u64(ts, 1000, *freq);
-        Some(Duration::from_nanos(ns))
-    }
+        let ts = unsafe { _rdtsc() };
 
-    #[cfg(target_arch = "x86")]
-    fn timestamp_rdtsc() -> Option<Duration> {
-        static FREQUENCY: crate::sync::OnceLock<u64> = crate::sync::OnceLock::new();
+        let divisor = u128::from(slope.divisor);
+        let numerator = ts.widening_mul(u64::from(slope.multiplier));
+        // The TSC definitely runs faster than 2 Hz, hence this cannot overflow.
+        let secs = (numerator / divisor) as i64;
+        let remainder = (numerator % divisor) as u64;
+        let nanos =
+            Nanoseconds::new((remainder.widening_mul(NS_PER_SEC) / divisor) as u32).unwrap();
 
-        let freq = FREQUENCY
-            .get_or_try_init(|| {
-                let cpuid = crate::arch::x86::__cpuid(0x15);
-                if cpuid.eax == 0 || cpuid.ebx == 0 || cpuid.ecx == 0 {
-                    return Err(());
-                }
-                Ok(mul_div_u64(cpuid.ecx as u64, cpuid.ebx as u64, cpuid.eax as u64))
-            })
-            .ok()?;
-
-        let ts = unsafe { crate::arch::x86::_rdtsc() };
-        let ns = mul_div_u64(ts, 1000, *freq);
-        Some(Duration::from_nanos(ns))
+        Some(Instant { secs, nanos })
     }
 }

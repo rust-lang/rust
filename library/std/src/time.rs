@@ -31,6 +31,7 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
+use core::num::niche_types::Nanoseconds;
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
@@ -43,7 +44,6 @@ use crate::sys::{FromInner, IntoInner, time};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 
-#[allow(unused)] // Only used on some platforms.
 pub(crate) mod ops {
     use core::num::niche_types::Nanoseconds;
 
@@ -222,10 +222,13 @@ pub(crate) mod ops {
 /// [`sub`]: Instant::sub
 /// [`checked_duration_since`]: Instant::checked_duration_since
 ///
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
-pub struct Instant(time::Instant);
+pub struct Instant {
+    pub(crate) secs: i64,
+    pub(crate) nanos: Nanoseconds,
+}
 
 /// A measurement of the system clock, useful for talking to
 /// external entities like the file system or other processes.
@@ -355,7 +358,7 @@ impl Instant {
     #[stable(feature = "time2", since = "1.8.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "instant_now")]
     pub fn now() -> Instant {
-        Instant(time::Instant::now())
+        time::now()
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -410,7 +413,14 @@ impl Instant {
     #[must_use]
     #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
-        self.0.checked_sub_instant(&earlier.0)
+        match ops::diff((self.secs, self.nanos), (earlier.secs, earlier.nanos)) {
+            // On Windows there is a threshold below which we consider two timestamps
+            // equivalent due to measurement error. For more details and documentation
+            // consult the documentation of `epsilon`.
+            Ok(dur) | Err(dur) if dur <= time::epsilon() => Some(Duration::ZERO),
+            Ok(dur) => Some(dur),
+            Err(_) => None,
+        }
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -466,7 +476,8 @@ impl Instant {
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_add_duration(&duration).map(Instant)
+        let (secs, nanos) = ops::add((self.secs, self.nanos), duration)?;
+        Some(Instant { secs, nanos })
     }
 
     /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
@@ -474,16 +485,8 @@ impl Instant {
     /// otherwise.
     #[stable(feature = "time_checked_add", since = "1.34.0")]
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
-        self.0.checked_sub_duration(&duration).map(Instant)
-    }
-
-    // Used by platform specific `sleep_until` implementations such as the one used on Linux.
-    #[cfg_attr(
-        not(target_os = "linux"),
-        allow(unused, reason = "not every platform has a specific `sleep_until`")
-    )]
-    pub(crate) fn into_inner(self) -> time::Instant {
-        self.0
+        let (secs, nanos) = ops::sub((self.secs, self.nanos), duration)?;
+        Some(Instant { secs, nanos })
     }
 }
 
@@ -541,13 +544,6 @@ impl Sub<Instant> for Instant {
     /// [Monotonicity]: Instant#monotonicity
     fn sub(self, other: Instant) -> Duration {
         self.duration_since(other)
-    }
-}
-
-#[stable(feature = "time2", since = "1.8.0")]
-impl fmt::Debug for Instant {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
 

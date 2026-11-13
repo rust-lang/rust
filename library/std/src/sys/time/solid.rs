@@ -1,36 +1,16 @@
+use core::num::niche_types::Nanoseconds;
+
 use crate::mem::MaybeUninit;
 use crate::sys::pal::error::expect_success;
 use crate::sys::pal::{abi, itron};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(itron::abi::SYSTIM);
-
-impl Instant {
-    pub fn now() -> Instant {
-        Instant(itron::time::get_tim())
-    }
-
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0).map(|ticks| {
-            // `SYSTIM` is measured in microseconds
-            Duration::from_micros(ticks)
-        })
-    }
-
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        // `SYSTIM` is measured in microseconds
-        let ticks = other.as_micros();
-
-        Some(Instant(self.0.checked_add(ticks.try_into().ok()?)?))
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        // `SYSTIM` is measured in microseconds
-        let ticks = other.as_micros();
-
-        Some(Instant(self.0.checked_sub(ticks.try_into().ok()?)?))
-    }
+pub fn now() -> Instant {
+    let time = itron::time::get_tim();
+    // `SYSTIM` is measured in microseconds
+    let secs = (time / 1_000_000) as i64;
+    let nanos = Nanoseconds::new(1000 * (time % 1_000_000) as u32).unwrap();
+    Instant { secs, nanos }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
