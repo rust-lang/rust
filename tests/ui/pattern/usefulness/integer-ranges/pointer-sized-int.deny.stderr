@@ -9,7 +9,7 @@ LL |     match 0usize {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         0..=usize::MAX => {},
-LL +         usize::MAX.. => todo!()
+LL +         usize::MAX.. => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
@@ -23,7 +23,7 @@ LL |     match 0isize {
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         isize::MIN..=isize::MAX => {},
-LL +         ..isize::MIN | isize::MAX.. => todo!()
+LL +         ..isize::MIN | isize::MAX.. => { todo!() }
    |
 
 error[E0004]: non-exhaustive patterns: `usize::MAX..` not covered
@@ -36,8 +36,8 @@ LL |     m!(0usize, 0..=usize::MAX);
    = note: `usize::MAX` is not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         match $s { $($t)+ => {}, usize::MAX.. => todo!() }
-   |                                +++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, usize::MAX.. => { todo!() } }
+   |                                +++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `usize::MAX..` not covered
   --> $DIR/pointer-sized-int.rs:24:8
@@ -49,8 +49,8 @@ LL |     m!(0usize, 0..5 | 5..=usize::MAX);
    = note: `usize::MAX` is not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         match $s { $($t)+ => {}, usize::MAX.. => todo!() }
-   |                                +++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, usize::MAX.. => { todo!() } }
+   |                                +++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `usize::MAX..` not covered
   --> $DIR/pointer-sized-int.rs:26:8
@@ -62,8 +62,8 @@ LL |     m!(0usize, 0..usize::MAX | usize::MAX);
    = note: `usize::MAX` is not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         match $s { $($t)+ => {}, usize::MAX.. => todo!() }
-   |                                +++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, usize::MAX.. => { todo!() } }
+   |                                +++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `(usize::MAX.., _)` not covered
   --> $DIR/pointer-sized-int.rs:28:8
@@ -75,8 +75,8 @@ LL |     m!((0usize, true), (0..5, true) | (5..=usize::MAX, true) | (0..=usize::
    = note: `usize::MAX` is not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         match $s { $($t)+ => {}, (usize::MAX.., _) => todo!() }
-   |                                ++++++++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, (usize::MAX.., _) => { todo!() } }
+   |                                ++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
   --> $DIR/pointer-sized-int.rs:37:8
@@ -88,8 +88,8 @@ LL |     m!(0isize, isize::MIN..=isize::MAX);
    = note: `isize::MIN` and `isize::MAX` are not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
-   |                                ++++++++++++++++++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => { todo!() } }
+   |                                ++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
   --> $DIR/pointer-sized-int.rs:39:8
@@ -101,8 +101,8 @@ LL |     m!(0isize, isize::MIN..5 | 5..=isize::MAX);
    = note: `isize::MIN` and `isize::MAX` are not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
-   |                                ++++++++++++++++++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => { todo!() } }
+   |                                ++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
   --> $DIR/pointer-sized-int.rs:41:8
@@ -114,8 +114,8 @@ LL |     m!(0isize, isize::MIN..=-1 | 0 | 1..=isize::MAX);
    = note: `isize::MIN` and `isize::MAX` are not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
-   |                                ++++++++++++++++++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => { todo!() } }
+   |                                ++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `..isize::MIN` and `isize::MAX..` not covered
   --> $DIR/pointer-sized-int.rs:43:8
@@ -127,8 +127,8 @@ LL |     m!(0isize, isize::MIN..isize::MAX | isize::MAX);
    = note: `isize::MIN` and `isize::MAX` are not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => todo!() }
-   |                                ++++++++++++++++++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, ..isize::MIN | isize::MAX.. => { todo!() } }
+   |                                ++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `(..isize::MIN, _)` and `(isize::MAX.., _)` not covered
   --> $DIR/pointer-sized-int.rs:46:9
@@ -140,8 +140,8 @@ LL |         (0isize, true),
    = note: `isize::MIN` and `isize::MAX` are not treated as exhaustive, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL |         match $s { $($t)+ => {}, (..isize::MIN, _) | (isize::MAX.., _) => todo!() }
-   |                                ++++++++++++++++++++++++++++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, (..isize::MIN, _) | (isize::MAX.., _) => { todo!() } }
+   |                                ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: type `usize` is non-empty
   --> $DIR/pointer-sized-int.rs:57:11
@@ -153,7 +153,7 @@ LL |     match 7usize {}
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match 7usize {
-LL +         _ => todo!(),
+LL +         _ => { todo!() }
 LL ~     }
    |
 

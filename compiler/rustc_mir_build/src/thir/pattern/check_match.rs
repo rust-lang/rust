@@ -1373,11 +1373,11 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             pattern
         } else {
             // ignore-tidy-todo
-            format!("{pattern} => todo!()")
+            format!("{pattern} => {{ todo!() }}")
         }
     } else {
         // ignore-tidy-todo
-        format!("_ => todo!()")
+        format!("_ => {{ todo!() }}")
     };
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
@@ -1391,7 +1391,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             suggestion = Some((
                 braces_span,
-                format!(" {{{indentation}{more}{suggested_arm},{indentation}}}",),
+                format!(" {{{indentation}{more}{suggested_arm}{indentation}}}",),
             ));
         }
         [only] => {
