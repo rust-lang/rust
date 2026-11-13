@@ -22,7 +22,10 @@ fn dent<C:BoxCar>(c: C, color: C::Color) {
 
 fn dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) {
     //~^ ERROR ambiguous associated type
-    //~| ERROR the value of the associated types
+}
+
+fn other_dent_object<COLOR>(c: &dyn BoxCar<Color=COLOR>) where COLOR: std::fmt::Debug {
+    //~^ ERROR ambiguous associated type
 }
 
 fn paint<C:BoxCar>(c: C, d: C::Color) {

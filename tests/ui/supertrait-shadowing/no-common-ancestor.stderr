@@ -28,8 +28,12 @@ LL +     B::hello(&());
 error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
   --> $DIR/no-common-ancestor.rs:37:23
    |
+LL | trait A {
+...
 LL |     type Assoc;
    |     ---------- ambiguous `Assoc` from `A`
+...
+LL | trait B {
 ...
 LL |     type Assoc;
    |     ---------- ambiguous `Assoc` from `B`
