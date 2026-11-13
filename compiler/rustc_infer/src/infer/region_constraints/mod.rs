@@ -466,6 +466,11 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         &self.storage.solver_data
     }
 
+    pub fn take_and_reset_solver_data(&mut self) -> SolverRegionConstraint<'tcx> {
+        assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
+        mem::take(&mut self.storage.solver_data).0
+    }
+
     pub fn overwrite_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
         assert!(
             !constraint.has_escaping_bound_vars(),

@@ -1,0 +1,11 @@
+error: higher-ranked lifetime bound could not be satisfied
+  --> $DIR/normalizing_implied_bounds.rs:28:1
+   |
+LL | / impl<'a, T: AliasHaver> TestTrait for [Normalizes<(T,)>; 1]
+LL | |
+LL | | where
+LL | |     T::Assoc: 'a,
+   | |_________________^
+
+error: aborting due to 1 previous error
+
