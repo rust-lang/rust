@@ -154,12 +154,12 @@ def var_matches(
 
     value_ok = var.value == expected.value
 
-    work_list = [c for _i, c in get_children(valobj)]
+    work_list = [c for _i, c in get_children(make_visualizer(valobj))]
     child_types_ok = Result.Ok
 
     while len(work_list) != 0:
         child = work_list.pop()
-        work_list.extend([c for _i, c in get_children(child)])
+        work_list.extend([c for _i, c in get_children(make_visualizer(child))])
 
         # similar to the above, child type mismatches aren't super important if the providers still
         # work fine. We do still want to output them so they're visible if something else fails
