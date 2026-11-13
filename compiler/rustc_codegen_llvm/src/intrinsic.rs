@@ -649,7 +649,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 };
                 let global = self.declare_global_in_addrspace(
                     name,
-                    self.type_array(self.type_i8(), 0),
+                    self.type_byte_array(Size::ZERO),
                     AddressSpace::GPU_WORKGROUP,
                 );
                 let ty::RawPtr(inner_ty, _) = result_layout.ty.kind() else { unreachable!() };
@@ -2409,7 +2409,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 // Convert the integer to a byte array
                 let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
-                let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
+                let array_ty = bx.type_byte_array(Size::from_bytes(expected_bytes));
                 return Ok(bx.load(array_ty, ptr, Align::ONE));
             }
             _ => return_error!(InvalidMonomorphization::CannotReturn {
