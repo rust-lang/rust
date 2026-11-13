@@ -95,10 +95,16 @@ fn check_bitcode(instructions: LibBuild) {
     }
 
     let objects = shallow_find_files(cwd(), |path| {
-        let mut output_path = instructions.output.clone();
-        output_path.set_extension("");
-        has_prefix(path, output_path.file_name().unwrap().to_str().unwrap())
-            && has_extension(path, "o")
+        if instructions.emit_obj {
+            let mut output_path = instructions.output.clone();
+            output_path.set_extension("");
+            has_prefix(path, output_path.file_name().unwrap().to_str().unwrap())
+                && has_extension(path, "o")
+        } else {
+            // Archive member names need not match the output archive name.
+            // Select this test crate's objects, excluding dependency objects.
+            (has_prefix(path, "lib.") || has_prefix(path, "liblib.")) && has_extension(path, "o")
+        }
     });
     assert!(!objects.is_empty());
     println!("objects: {:#?}", objects);
