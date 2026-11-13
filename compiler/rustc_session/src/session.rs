@@ -110,8 +110,8 @@ pub enum PointerAuthDiscrimination {
 pub enum PointerAuthAddressDiscriminator {
     /// Enable/disable hardware address discrimination.
     HardwareAddress(bool),
-    /// Use a synthetic value. For instance init/fini entries can not the address of the arrays,
-    /// they must use a synthetic value of `1`.
+    /// Use a synthetic value. Address-discriminated init/fini entries use a placeholder value of
+    /// `1`, (LLVM's `ConstantPtrAuth::AddrDiscriminator_CtorsDtors`).
     Synthetic(u64),
 }
 
@@ -158,6 +158,9 @@ pub struct PointerAuthConfig {
     pub function_pointers: Option<PointerAuthSchema>,
     /// The ABI for function addresses in .init_array and .fini_array
     pub init_fini: Option<PointerAuthSchema>,
+    /// Should init/fini entries be address discriminated? Kept apart from `init_fini`, as in Clang:
+    /// it is recorded in the PAuth ABI version even when init/fini signing is disabled.
+    pub init_fini_address_discrimination: bool,
     /// Use of pointer authentication intrinsics.
     pub intrinsics: bool,
     /// The following are used only for compatibility with C++ and control over generated abi
@@ -177,6 +180,7 @@ impl PointerAuthConfig {
             aarch64_jump_table_hardening: true,
             function_pointers: Some(PointerAuthSchema::function_pointers_default(target)),
             init_fini: Some(PointerAuthSchema::init_fini_default(target)),
+            init_fini_address_discrimination: true,
             intrinsics: true,
             typeinfo_vt_ptr_discrimination: true,
             vt_ptr_addr_discrimination: true,
@@ -215,13 +219,7 @@ impl PointerAuthConfig {
             | (u32::from(self.vt_ptr_addr_discrimination) << VT_PTR_ADDR_DISCR)
             | (u32::from(self.vt_ptr_type_discrimination) << VT_PTR_TYPE_DISCR)
             | (u32::from(self.init_fini.is_some()) << INIT_FINI)
-            | (u32::from(self.init_fini.as_ref().is_some_and(|schema| {
-                matches!(
-                    schema.is_address_discriminated,
-                    PointerAuthAddressDiscriminator::HardwareAddress(true)
-                        | PointerAuthAddressDiscriminator::Synthetic(_)
-                )
-            })) << INIT_FINI_ADDR_DISC)
+            | (u32::from(self.init_fini_address_discrimination) << INIT_FINI_ADDR_DISC)
             | (u32::from(self.elf_got) << GOT)
             | (u32::from(self.indirect_gotos) << GOTOS)
             | (u32::from(self.typeinfo_vt_ptr_discrimination) << TYPEINFO_VT_PTR_DISCR);
@@ -275,16 +273,7 @@ impl PointerAuthConfig {
                     }
                 }
                 PointerAuthOption::InitFiniAddressDiscrimination => {
-                    if *enabled {
-                        let schema = cfg
-                            .init_fini
-                            .get_or_insert_with(|| PointerAuthSchema::init_fini_default(target));
-                        schema.is_address_discriminated =
-                            PointerAuthAddressDiscriminator::HardwareAddress(true);
-                    } else if let Some(schema) = &mut cfg.init_fini {
-                        schema.is_address_discriminated =
-                            PointerAuthAddressDiscriminator::Synthetic(1);
-                    }
+                    cfg.init_fini_address_discrimination = *enabled
                 }
 
                 PointerAuthOption::Intrinsics => cfg.intrinsics = *enabled,
@@ -294,6 +283,17 @@ impl PointerAuthConfig {
                 PointerAuthOption::VTPtrAddrDisc => cfg.vt_ptr_addr_discrimination = *enabled,
                 PointerAuthOption::VTPtrTypeDisc => cfg.vt_ptr_type_discrimination = *enabled,
             }
+        }
+
+        // With address discrimination an entry carries the placeholder address discriminator `1`
+        // (see `PointerAuthAddressDiscriminator::Synthetic`), and without it no address
+        // discriminator at all.
+        if let Some(schema) = &mut cfg.init_fini {
+            schema.is_address_discriminated = if cfg.init_fini_address_discrimination {
+                PointerAuthAddressDiscriminator::Synthetic(1)
+            } else {
+                PointerAuthAddressDiscriminator::HardwareAddress(false)
+            };
         }
 
         Some(cfg)

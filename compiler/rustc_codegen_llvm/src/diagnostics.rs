@@ -18,6 +18,19 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 #[diag("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`")]
 pub(crate) struct SanitizerMemtagRequiresMte;
 
+#[derive(Diagnostic)]
+#[diag("`{$function}` is placed in `{$section}`, but pointer authentication does not sign its ABI")]
+#[note(
+    "the loader authenticates every entry of `.init_array` and `.fini_array` with the init/fini signing schema, so an unsigned entry fails authentication when the loader runs it"
+)]
+#[help("declare `{$function}` as `extern \"C\"`")]
+pub(crate) struct PtrauthUnsignedInitFiniEntry {
+    #[primary_span]
+    pub span: Span,
+    pub function: String,
+    pub section: String,
+}
+
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
 impl Diagnostic<'_> for ParseTargetMachineConfig<'_> {
