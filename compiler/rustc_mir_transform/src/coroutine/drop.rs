@@ -377,19 +377,20 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
     // call coroutine_drop()
-    let call_bb = body.basic_blocks_mut().push(BasicBlockData::maybe_unterminated(None, false));
-
-    // return Poll::Ready()
-    let ret_bb = insert_poll_ready_block(tcx, &mut body);
-
+    let expected_ret_bb = body.basic_blocks.next_index() + 1;
     let kind = TerminatorKind::Drop {
         place: Place::from(SELF_ARG),
-        target: ret_bb,
+        target: expected_ret_bb,
         unwind: UnwindAction::Continue,
         replace: false,
         drop: None,
     };
-    body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+    body.basic_blocks_mut().push(BasicBlockData::new(Terminator { source_info, kind }, false));
+
+    // return Poll::Ready()
+    let ret_bb = insert_poll_ready_block(tcx, &mut body);
+
+    assert_eq!(expected_ret_bb, ret_bb);
 
     make_coroutine_state_argument_pinned(tcx, &mut body);
 
