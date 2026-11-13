@@ -1,6 +1,8 @@
 // Check that crates in the sysroot are treated as unstable, unless they are
 // on a list of known-stable sysroot crates.
 
+//@ ignore-nvptx64-nvidia-cuda
+
 use std::path::{Path, PathBuf};
 use std::str;
 
