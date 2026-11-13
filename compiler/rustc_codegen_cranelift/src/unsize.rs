@@ -164,131 +164,307 @@ pub(crate) fn coerce_unsized_into<'tcx>(
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
-pub(crate) fn size_and_align_of<'tcx>(
+use rustc_codegen_ssa::size_of_val::unsized_tail_and_min_pack;
+
+fn codegen_foreign_panic<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> Value {
+    let trap_block = fx.bcx.create_block();
+    let true_ = fx.bcx.ins().iconst(types::I8, 1);
+    let next_block = fx.bcx.create_block();
+    fx.bcx.ins().brif(true_, trap_block, &[], next_block, &[]);
+    fx.bcx.seal_block(trap_block);
+    fx.bcx.seal_block(next_block);
+    fx.bcx.switch_to_block(trap_block);
+
+    // `extern` type. We cannot compute the size or alignment, so panic.
+    let msg_str = with_no_visible_paths!({
+        with_no_trimmed_paths!({
+            format!("attempted to compute the size or alignment of extern type `{ty}`")
+        })
+    });
+
+    codegen_panic_nounwind(fx, &msg_str, fx.mir.span);
+
+    fx.bcx.switch_to_block(next_block);
+
+    // This function does not return so we can now return whatever we want.
+    fx.bcx.ins().iconst(fx.pointer_type, 42)
+}
+
+fn clamp_dyn_align(
+    fx: &mut FunctionCx<'_, '_, '_>,
+    mut dyn_align: Value,
+    static_align: u64,
+    min_pack: u64,
+) -> Value {
+    if min_pack < u64::MAX {
+        let packed = fx.bcx.ins().iconst(fx.pointer_type, min_pack as i64);
+        let cmp = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, dyn_align, packed);
+        dyn_align = fx.bcx.ins().select(cmp, dyn_align, packed);
+    }
+    if static_align > 1 {
+        let sized_align = fx.bcx.ins().iconst(fx.pointer_type, static_align as i64);
+        let cmp = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, sized_align, dyn_align);
+        dyn_align = fx.bcx.ins().select(cmp, sized_align, dyn_align);
+    }
+    dyn_align
+}
+
+pub(crate) fn dst_field_offset<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    parent: TyAndLayout<'tcx>,
+    field: TyAndLayout<'tcx>,
+    offset: Size,
+    meta: Option<Value>,
+) -> Option<Value> {
+    if field.is_sized() || offset.bytes() == 0 {
+        return None;
+    }
+
+    let (tail_ty, min_pack) = unsized_tail_and_min_pack(fx.tcx, fx.typing_env(), parent.ty);
+    match tail_ty.kind() {
+        ty::Slice(_) | ty::Str => None,
+        ty::Dynamic(..) if offset.bytes().is_multiple_of(min_pack) => None,
+        ty::Dynamic(..) => {
+            let vtable_align = crate::vtable::align_of_obj(fx, meta.unwrap());
+            let field_static_align = field.align.bytes();
+            let offset_bytes = offset.bytes();
+            debug_assert!(offset_bytes.is_multiple_of(field_static_align));
+            debug_assert!(field_static_align < min_pack);
+            if offset_bytes == field_static_align {
+                Some(clamp_dyn_align(fx, vtable_align, field_static_align, min_pack))
+            } else {
+                let align = clamp_dyn_align(fx, vtable_align, 1, min_pack);
+                let align_minus_1 = fx.bcx.ins().iadd_imm_s(align, -1);
+                let mask = fx.bcx.ins().iconst(fx.pointer_type, offset_bytes.wrapping_neg() as i64);
+                let pad = fx.bcx.ins().band(align_minus_1, mask);
+                Some(fx.bcx.ins().iadd_imm_u(pad, offset_bytes as i64))
+            }
+        }
+        ty::Foreign(_) => Some(codegen_foreign_panic(fx, tail_ty)),
+        _ => bug!("dst_field_offset: unexpected unsized tail {tail_ty:?}"),
+    }
+}
+
+pub(crate) fn align_of_dst<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     layout: TyAndLayout<'tcx>,
     info: Option<Value>,
-) -> (Value, Value) {
+) -> Value {
     if layout.is_sized() {
-        return (
-            fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64),
-            fx.bcx.ins().iconst(fx.pointer_type, layout.align.bytes() as i64),
+        return fx.bcx.ins().iconst(fx.pointer_type, layout.align.bytes() as i64);
+    }
+
+    let (tail_ty, min_pack) = unsized_tail_and_min_pack(fx.tcx, fx.typing_env(), layout.ty);
+    match tail_ty.kind() {
+        ty::Slice(_) | ty::Str => fx.bcx.ins().iconst(fx.pointer_type, layout.align.bytes() as i64),
+        ty::Foreign(_) => codegen_foreign_panic(fx, tail_ty),
+        ty::Dynamic(..) => {
+            let static_align = layout.align.bytes();
+            if min_pack <= static_align {
+                return fx.bcx.ins().iconst(fx.pointer_type, static_align as i64);
+            }
+            let dyn_align = crate::vtable::align_of_obj(fx, info.unwrap());
+            clamp_dyn_align(fx, dyn_align, static_align, min_pack)
+        }
+        _ => bug!("align_of_dst: {} (tail {tail_ty}) not supported", layout.ty),
+    }
+}
+
+#[derive(Copy, Clone)]
+struct DstChainStep {
+    offset: u64,
+    align: u64,
+    pack: u64,
+}
+
+fn emit_aligned_static_size(
+    fx: &mut FunctionCx<'_, '_, '_>,
+    base: Value,
+    base_multiple: u64,
+    offset: u64,
+    align: u64,
+) -> Value {
+    let (addend, mask_align) = if base_multiple.is_multiple_of(align) {
+        (offset.next_multiple_of(align), 1)
+    } else {
+        (offset + (align - 1), align)
+    };
+    let sum = if addend == 0 { base } else { fx.bcx.ins().iadd_imm_u(base, addend as i64) };
+    if mask_align == 1 {
+        sum
+    } else {
+        let mask = fx.bcx.ins().iconst(fx.pointer_type, mask_align.wrapping_neg() as i64);
+        fx.bcx.ins().band(sum, mask)
+    }
+}
+
+fn emit_dyn_step(
+    fx: &mut FunctionCx<'_, '_, '_>,
+    cur_size: Value,
+    base_multiple: Option<u64>,
+    step: DstChainStep,
+    vtable_align: &mut Option<Value>,
+    vtable: Value,
+) -> Value {
+    if step.pack <= step.align {
+        return emit_aligned_static_size(
+            fx,
+            cur_size,
+            base_multiple.unwrap_or(1),
+            step.offset,
+            step.align,
         );
     }
 
-    let ty = layout.ty;
-    match ty.kind() {
-        ty::Dynamic(..) => {
-            // load size/align from vtable
-            (
-                crate::vtable::size_of_obj(fx, info.unwrap()),
-                crate::vtable::align_of_obj(fx, info.unwrap()),
-            )
-        }
-        ty::Slice(_) | ty::Str => {
-            let unit = layout.field(fx, 0);
-            // The info in this case is the length of the str, so the size is that
-            // times the unit size.
-            (
-                fx.bcx.ins().imul_imm_u(info.unwrap(), unit.size.bytes() as i64),
-                fx.bcx.ins().iconst(fx.pointer_type, unit.align.bytes() as i64),
-            )
-        }
-        ty::Foreign(_) => {
-            let trap_block = fx.bcx.create_block();
-            let true_ = fx.bcx.ins().iconst(types::I8, 1);
-            let next_block = fx.bcx.create_block();
-            fx.bcx.ins().brif(true_, trap_block, &[], next_block, &[]);
-            fx.bcx.seal_block(trap_block);
-            fx.bcx.seal_block(next_block);
-            fx.bcx.switch_to_block(trap_block);
+    let raw_dyn_align =
+        *vtable_align.get_or_insert_with(|| crate::vtable::align_of_obj(fx, vtable));
+    let full_align = clamp_dyn_align(fx, raw_dyn_align, step.align, step.pack);
 
-            // `extern` type. We cannot compute the size, so panic.
-            let msg_str = with_no_visible_paths!({
-                with_no_trimmed_paths!({
-                    format!("attempted to compute the size or alignment of extern type `{ty}`")
-                })
-            });
+    if base_multiple.is_none() && step.offset == 1 && step.align == 1 {
+        return fx.bcx.ins().iadd(cur_size, full_align);
+    }
 
-            codegen_panic_nounwind(fx, &msg_str, fx.mir.span);
+    let sum = if step.offset == 0 {
+        let addend = fx.bcx.ins().iadd_imm_s(full_align, -1);
+        fx.bcx.ins().iadd(cur_size, addend)
+    } else if step.offset == 1 {
+        fx.bcx.ins().iadd(cur_size, full_align)
+    } else {
+        let s = fx.bcx.ins().iadd_imm_u(cur_size, (step.offset - 1) as i64);
+        fx.bcx.ins().iadd(s, full_align)
+    };
+    let neg = fx.bcx.ins().ineg(full_align);
+    fx.bcx.ins().band(sum, neg)
+}
 
-            fx.bcx.switch_to_block(next_block);
+pub(crate) fn size_of_dst<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    layout: TyAndLayout<'tcx>,
+    info: Option<Value>,
+) -> Value {
+    if layout.is_sized() {
+        return fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64);
+    }
 
-            // This function does not return so we can now return whatever we want.
-            let size = fx.bcx.ins().iconst(fx.pointer_type, 42);
-            let align = fx.bcx.ins().iconst(fx.pointer_type, 42);
-            (size, align)
-        }
-        ty::Adt(..) | ty::Tuple(..) => {
-            // First get the size of all statically known fields.
-            // Don't use size_of because it also rounds up to alignment, which we
-            // want to avoid, as the unsized field's alignment could be smaller.
-            assert!(!layout.ty.is_simd());
+    let mut steps = Vec::new();
+    let mut cur_layout = layout;
+    loop {
+        let cur_ty = cur_layout.ty;
+        match cur_ty.kind() {
+            ty::Adt(..) | ty::Tuple(..) => {
+                assert!(!cur_ty.is_simd());
+                let i = cur_layout.fields.count() - 1;
+                let offset = cur_layout.fields.offset(i).bytes();
+                let align = cur_layout.align.bytes();
+                let pack = match cur_ty.kind() {
+                    ty::Adt(def, _) => def.repr().pack.map_or(u64::MAX, |p| p.bytes()),
+                    _ => u64::MAX,
+                };
+                steps.push(DstChainStep { offset, align, pack });
+                cur_layout = cur_layout.field(fx, i);
+            }
+            ty::Pat(..) => {
+                cur_layout = cur_layout.field(fx, 0);
+            }
+            ty::Slice(_) | ty::Str => {
+                let unit = cur_layout.field(fx, 0);
+                let elem_size = unit.size.bytes();
 
-            let i = layout.fields.count() - 1;
-            let unsized_offset_unadjusted = layout.fields.offset(i).bytes();
-            let unsized_offset_unadjusted =
-                fx.bcx.ins().iconst(fx.pointer_type, unsized_offset_unadjusted as i64);
-            let sized_align = layout.align.bytes();
-            let sized_align = fx.bcx.ins().iconst(fx.pointer_type, sized_align as i64);
+                if elem_size == 0 {
+                    let size = steps
+                        .iter()
+                        .rev()
+                        .fold(0u64, |size, step| (step.offset + size).next_multiple_of(step.align));
+                    return fx.bcx.ins().iconst(fx.pointer_type, size as i64);
+                }
 
-            // Recurse to get the size of the dynamically sized field (must be
-            // the last field).
-            let field_layout = layout.field(fx, i);
-            let (unsized_size, mut unsized_align) = size_and_align_of(fx, field_layout, info);
+                let len = info.unwrap();
+                let base = if elem_size == 1 {
+                    len
+                } else {
+                    fx.bcx.ins().imul_imm_u(len, elem_size as i64)
+                };
 
-            // # First compute the dynamic alignment
+                let mut offset = 0u64;
+                let mut outer_offset = 0u64;
+                let mut align = 1u64;
 
-            // For packed types, we need to cap the alignment.
-            if let ty::Adt(def, _) = ty.kind() {
-                if let Some(packed) = def.repr().pack {
-                    if packed.bytes() == 1 {
-                        // We know this will be capped to 1.
-                        unsized_align = fx.bcx.ins().iconst(fx.pointer_type, 1);
+                for step in steps.iter().rev() {
+                    if align <= step.align {
+                        offset += (outer_offset + step.offset).next_multiple_of(align);
+                        outer_offset = 0;
+                        align = step.align;
+                        if elem_size.is_multiple_of(align) {
+                            offset = offset.next_multiple_of(align);
+                            align = 1;
+                        }
                     } else {
-                        // We have to dynamically compute `min(unsized_align, packed)`.
-                        let packed = fx.bcx.ins().iconst(fx.pointer_type, packed.bytes() as i64);
-                        let cmp = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, unsized_align, packed);
-                        unsized_align = fx.bcx.ins().select(cmp, unsized_align, packed);
+                        let c = (outer_offset + step.offset).next_multiple_of(step.align);
+                        offset += c & !(align - 1);
+                        outer_offset = c & (align - 1);
                     }
                 }
+
+                let aligned = emit_aligned_static_size(fx, base, elem_size, offset, align);
+                return if outer_offset == 0 {
+                    aligned
+                } else {
+                    fx.bcx.ins().iadd_imm_u(aligned, outer_offset as i64)
+                };
             }
+            ty::Dynamic(..) => {
+                let vtable = info.unwrap();
+                let mut cur_size = crate::vtable::size_of_obj(fx, vtable);
+                let mut vtable_align: Option<Value> = None;
+                let mut base_multiple: Option<u64> = None;
+                let mut min_pack = u64::MAX;
+                let mut pending: Option<DstChainStep> = None;
 
-            // Choose max of two known alignments (combined value must
-            // be aligned according to more restrictive of the two).
-            let cmp = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, sized_align, unsized_align);
-            let full_align = fx.bcx.ins().select(cmp, sized_align, unsized_align);
+                for step in steps.iter().rev() {
+                    min_pack = min_pack.min(step.pack);
+                    let cur =
+                        DstChainStep { offset: step.offset, align: step.align, pack: min_pack };
 
-            // # Then compute the dynamic size
+                    let Some(prev) = &mut pending else {
+                        if cur.offset == 0 && cur.align == 1 {
+                            continue;
+                        }
+                        pending = Some(cur);
+                        continue;
+                    };
 
-            // The full formula for the size would be:
-            // let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
-            // let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
-            // However, `unsized_size` is a multiple of `unsized_align`.
-            // Therefore, we can equivalently do the `align_to(unsized_align)` *after* adding `unsized_size`:
-            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(unsized_align).align_to(full_align);
-            // Furthermore, `align >= unsized_align`, and therefore we only need to do:
-            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
+                    if prev.align <= cur.align
+                        && ((cur.offset == 0 && cur.pack == prev.pack)
+                            || (prev.pack <= prev.align && cur.pack <= cur.align))
+                    {
+                        debug_assert!(cur.offset.is_multiple_of(prev.align));
+                        prev.offset += cur.offset;
+                        prev.align = cur.align;
+                        prev.pack = cur.pack;
+                        continue;
+                    }
 
-            let full_size = fx.bcx.ins().iadd(unsized_offset_unadjusted, unsized_size);
+                    cur_size = emit_dyn_step(
+                        fx,
+                        cur_size,
+                        base_multiple,
+                        *prev,
+                        &mut vtable_align,
+                        vtable,
+                    );
+                    base_multiple = Some(prev.align);
+                    *prev = cur;
+                }
 
-            // Issue #27023: must add any necessary padding to `size`
-            // (to make it a multiple of `align`) before returning it.
-            //
-            // Namely, the returned size should be, in C notation:
-            //
-            //   `size + ((size & (align-1)) ? align : 0)`
-            //
-            // emulated via the semi-standard fast bit trick:
-            //
-            //   `(size + (align-1)) & -align`
-            let addend = fx.bcx.ins().iadd_imm_s(full_align, -1);
-            let add = fx.bcx.ins().iadd(full_size, addend);
-            let neg = fx.bcx.ins().ineg(full_align);
-            let full_size = fx.bcx.ins().band(add, neg);
+                if let Some(last) = pending {
+                    cur_size =
+                        emit_dyn_step(fx, cur_size, base_multiple, last, &mut vtable_align, vtable);
+                }
 
-            (full_size, full_align)
+                return cur_size;
+            }
+            ty::Foreign(_) => return codegen_foreign_panic(fx, cur_ty),
+            _ => bug!("size_of_dst: {} (tail {cur_ty}) not supported", layout.ty),
         }
-        _ => bug!("size_and_align_of_dst: {ty} not supported"),
     }
 }

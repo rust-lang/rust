@@ -461,7 +461,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             } else {
                 None
             };
-            let (size, _align) = crate::unsize::size_and_align_of(fx, layout, meta);
+            let size = crate::unsize::size_of_dst(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
         }
         sym::align_of_val => {
@@ -475,7 +475,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             } else {
                 None
             };
-            let (_size, align) = crate::unsize::size_and_align_of(fx, layout, meta);
+            let align = crate::unsize::align_of_dst(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         }
 
