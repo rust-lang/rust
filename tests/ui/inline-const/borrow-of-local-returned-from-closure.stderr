@@ -7,7 +7,7 @@ LL |         foo(&|_| &x)
    |               has type `&'0 u32`
 LL |
 LL |     }
-   |     - ...but `x` will be dropped here, when the enclosing constant expression returns
+   |     - ...but `x` will be dropped here, when the enclosing const block ends
    |
    = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
