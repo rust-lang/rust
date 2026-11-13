@@ -5,15 +5,15 @@
 
 extern crate pub_struct as foo;
 #[doc(inline)]
-//@ set crate_use_id = "$.index[?(@.docs=='Hack A')].id"
-//@ set foo_id = "$.index[?(@.docs=='Hack A')].inner.use.id"
+//@ set crate_use_id = "$.index[?(@.docs[0].text=='Hack A')].id"
+//@ set foo_id = "$.index[?(@.docs[0].text=='Hack A')].inner.use.id"
 /// Hack A
 pub use foo::Foo;
 
 //@ set bar_id = "$.index[?(@.name=='bar')].id"
 pub mod bar {
-    //@ is "$.index[?(@.docs=='Hack B')].inner.use.id" $foo_id
-    //@ set bar_use_id = "$.index[?(@.docs=='Hack B')].id"
+    //@ is "$.index[?(@.docs[0].text=='Hack B')].inner.use.id" $foo_id
+    //@ set bar_use_id = "$.index[?(@.docs[0].text=='Hack B')].id"
     //@ ismany "$.index[?(@.name=='bar')].inner.module.items[*]" $bar_use_id
     /// Hack B
     pub use foo::Foo;
