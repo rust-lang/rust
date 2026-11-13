@@ -25,13 +25,6 @@ LL |     arg.unwrap_or(&[])
    |
    = note: expected reference `&Vec<i32>`
               found reference `&[_; 0]`
-help: the return type of this call is `&[_; 0]` due to the type of the argument passed
-  --> $DIR/transforming-option-ref-issue-127545.rs:9:5
-   |
-LL |     arg.unwrap_or(&[])
-   |     ^^^^^^^^^^^^^^---^
-   |                   |
-   |                   this argument influences the return type of `unwrap_or`
 note: method defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: use `Option::map_or` to deref inner value of `Option`
@@ -52,13 +45,6 @@ LL |     arg.unwrap_or(v)
    |
    = note: expected reference `&Vec<i32>`
               found reference `&'a [i32]`
-help: the return type of this call is `&'a [i32]` due to the type of the argument passed
-  --> $DIR/transforming-option-ref-issue-127545.rs:13:5
-   |
-LL |     arg.unwrap_or(v)
-   |     ^^^^^^^^^^^^^^-^
-   |                   |
-   |                   this argument influences the return type of `unwrap_or`
 note: method defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: use `Option::map_or` to deref inner value of `Option`
@@ -79,13 +65,6 @@ LL |     arg.unwrap_or(&[])
    |
    = note: expected reference `&Vec<i32>`
               found reference `&[_; 0]`
-help: the return type of this call is `&[_; 0]` due to the type of the argument passed
-  --> $DIR/transforming-option-ref-issue-127545.rs:17:5
-   |
-LL |     arg.unwrap_or(&[])
-   |     ^^^^^^^^^^^^^^---^
-   |                   |
-   |                   this argument influences the return type of `unwrap_or`
 note: method defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
 help: use `Result::map_or` to deref inner value of `Result`
