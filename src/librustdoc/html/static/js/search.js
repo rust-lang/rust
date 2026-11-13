@@ -2467,7 +2467,8 @@ class DocSearch {
                     fnType.id === typeNameIds.typeNameIdOfUnit
                 ) {
                     const [ob, sb] =
-                        fnType.id === typeNameIds.typeNameIdOfArray ||
+                        fnType.id === typeNameIds.typeNameIdOfArray ?
+                          ["[", "; _]"] :
                             fnType.id === typeNameIds.typeNameIdOfSlice ?
                         ["[", "]"] :
                         ["(", ")"];
