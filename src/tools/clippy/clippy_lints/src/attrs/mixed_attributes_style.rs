@@ -14,6 +14,7 @@ enum SimpleAttrKind {
     Normal(Vec<Symbol>),
     CfgTrace,
     CfgAttrTrace,
+    TestEntrypoint,
 }
 
 impl From<&AttrKind> for SimpleAttrKind {
@@ -32,6 +33,7 @@ impl From<&AttrKind> for SimpleAttrKind {
             AttrKind::Synthetic(synthetic) => match &**synthetic {
                 SyntheticAttr::CfgTrace(_) => Self::CfgTrace,
                 SyntheticAttr::CfgAttrTrace(_) => Self::CfgAttrTrace,
+                SyntheticAttr::TestEntrypoint => Self::TestEntrypoint,
             },
             AttrKind::DocComment(..) => Self::Doc,
             AttrKind::Generated(generated) => Self::Normal(generated.path().iter().copied().collect()),
