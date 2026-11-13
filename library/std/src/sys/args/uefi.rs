@@ -104,8 +104,15 @@ fn parse_lp_cmd_line(code_units: &[u16]) -> Option<Vec<OsString>> {
                     cur.push(x.ok()?);
                 }
             }
-            // If quote then flip `in_quotes`
-            QUOTE => in_quotes = !in_quotes,
+            QUOTE if in_quotes => match code_units_iter.peek() {
+                // The end of the command line.
+                // Push `cur` even if empty, which we do by breaking while `in_quotes` is still set.
+                None | Some(Ok(NULL)) => break,
+                // Close `in_quotes`.
+                Some(_) => in_quotes = false,
+            },
+            // If not `in_quotes` and not escaped (see above) then a quote sets `in_quote`.
+            QUOTE => in_quotes = true,
             // Everything else is always taken literally.
             _ => cur.push(w),
         }
