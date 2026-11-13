@@ -289,20 +289,30 @@ impl<'tcx> MirPatch<'tcx> {
         // comment for `add_statement`.
         new_statements.sort_by_key(|s| s.0);
 
-        let mut delta = 0;
-        let mut last_bb = START_BLOCK;
-        for (mut loc, stmt) in new_statements {
-            if loc.block != last_bb {
-                delta = 0;
-                last_bb = loc.block;
+        while !new_statements.is_empty() {
+            // Identify a subslice of statements to be inserted to the same block: new_statements[i..].
+            let mut i = new_statements.len() - 1;
+            let block = new_statements[i].0.block;
+            while i != 0 && new_statements[i - 1].0.block == block {
+                i -= 1;
             }
-            debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
-            loc.statement_index += delta;
-            let source_info = Self::source_info_for_index(&bbs[loc.block], loc);
-            bbs[loc.block]
-                .statements
-                .insert(loc.statement_index, Statement::new(source_info, stmt));
-            delta += 1;
+            if i + 1 == new_statements.len() {
+                let (loc, s) = new_statements.pop().unwrap();
+                let source_info = Self::source_info_for_index(&bbs[block], loc);
+                bbs[block].statements.insert(loc.statement_index, Statement::new(source_info, s));
+            } else {
+                let new: Vec<(usize, Statement<'tcx>)> = new_statements
+                    .drain(i..)
+                    .enumerate()
+                    .map(|(idx, (loc, s))| {
+                        let source_info = Self::source_info_for_index(&bbs[block], loc);
+                        // Record the final statement index, after accounting for statements inserted before.
+                        (loc.statement_index + idx, Statement::new(source_info, s))
+                    })
+                    .collect();
+                let old = std::mem::take(&mut bbs[block].statements);
+                merge(old, new, &mut bbs[block].statements);
+            }
         }
 
         // The order in which we patch terminators does not change the result.
@@ -327,5 +337,30 @@ impl<'tcx> MirPatch<'tcx> {
     pub(crate) fn source_info_for_location(&self, body: &Body<'tcx>, loc: Location) -> SourceInfo {
         let data = self.block(body, loc.block);
         Self::source_info_for_index(data, loc)
+    }
+}
+
+fn merge<'tcx>(
+    xs: Vec<Statement<'tcx>>,
+    ys: Vec<(usize, Statement<'tcx>)>,
+    zs: &mut Vec<Statement<'tcx>>,
+) {
+    zs.reserve(xs.len() + ys.len());
+    let mut xs = xs.into_iter().peekable();
+    let mut ys = ys.into_iter().peekable();
+
+    let mut zi = 0;
+    while let (Some(_), Some((yi, _))) = (xs.peek(), ys.peek()) {
+        if *yi != zi {
+            zs.push(xs.next().unwrap());
+        } else {
+            zs.push(ys.next().unwrap().1);
+        }
+        zi += 1;
+    }
+
+    zs.extend(xs);
+    for (_, s) in ys {
+        zs.push(s);
     }
 }
