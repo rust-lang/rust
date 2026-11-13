@@ -59,7 +59,16 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
 
 #[instrument(
     level = "debug",
-    skip(tcx, typing_env, seen, involved, recursion_limiter, recursion_limit),
+    skip(
+        tcx,
+        typing_env,
+        seen,
+        callers,
+        reaches_root,
+        involved,
+        recursion_limiter,
+        recursion_limit
+    ),
     ret
 )]
 fn process<'tcx>(
@@ -67,13 +76,14 @@ fn process<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     caller: ty::Instance<'tcx>,
     target: LocalDefId,
-    seen: &mut FxHashMap<ty::Instance<'tcx>, bool>,
+    seen: &mut FxHashSet<ty::Instance<'tcx>>,
+    callers: &mut FxHashMap<ty::Instance<'tcx>, Vec<ty::Instance<'tcx>>>,
+    reaches_root: &mut FxHashSet<ty::Instance<'tcx>>,
     involved: &mut FxHashSet<LocalDefId>,
     recursion_limiter: &mut FxHashMap<DefId, usize>,
     recursion_limit: Limit,
-) -> Option<bool> {
+) -> Option<()> {
     trace!(%caller);
-    let mut reaches_root = false;
 
     for &(callee_def_id, args) in tcx.mir_inliner_callees(caller.def) {
         let Ok(args) = caller.try_instantiate_mir_and_normalize_erasing_regions(
@@ -92,8 +102,8 @@ fn process<'tcx>(
 
         // Found a path.
         if callee.def_id() == target.to_def_id() {
-            reaches_root = true;
-            seen.insert(callee, true);
+            mark_reaches_root(caller, target, reaches_root, callers, involved);
+
             continue;
         }
 
@@ -107,45 +117,81 @@ fn process<'tcx>(
             continue;
         }
 
-        let callee_reaches_root = if let Some(&c) = seen.get(&callee) {
-            // Even if we have seen this callee before, and thus don't need
-            // to recurse into it, we still need to propagate whether it reaches
-            // the root so that we can mark all the involved callers, in case we
-            // end up reaching that same recursive callee through some *other* cycle.
-            c
+        if reaches_root.contains(&callee) {
+            mark_reaches_root(caller, target, reaches_root, callers, involved);
         } else {
-            seen.insert(callee, false);
-            let recursion = recursion_limiter.entry(callee.def_id()).or_default();
-            trace!(?callee, recursion = *recursion);
-            let callee_reaches_root = if recursion_limit.value_within_limit(*recursion) {
-                *recursion += 1;
-
-                process(
-                    tcx,
-                    typing_env,
-                    callee,
-                    target,
-                    seen,
-                    involved,
-                    recursion_limiter,
-                    recursion_limit,
-                )?
-            } else {
-                return None;
-            };
-            seen.insert(callee, callee_reaches_root);
-            callee_reaches_root
-        };
-        if callee_reaches_root {
-            if let Some(callee_def_id) = callee.def_id().as_local() {
-                // Calling `optimized_mir` of a non-local definition cannot cycle.
-                involved.insert(callee_def_id);
-            }
-            reaches_root = true;
+            callers.entry(callee).or_default().push(caller);
         }
+
+        if !seen.insert(callee) {
+            continue;
+        }
+
+        let recursion = recursion_limiter.entry(callee.def_id()).or_default();
+
+        trace!(?callee, recursion = *recursion);
+
+        if !recursion_limit.value_within_limit(*recursion) {
+            return None;
+        }
+
+        *recursion += 1;
+
+        process(
+            tcx,
+            typing_env,
+            callee,
+            target,
+            seen,
+            callers,
+            reaches_root,
+            involved,
+            recursion_limiter,
+            recursion_limit,
+        )?;
     }
 
-    Some(reaches_root)
+    Some(())
+}
+
+fn mark_reaches_root<'tcx>(
+    start: ty::Instance<'tcx>,
+    target: LocalDefId,
+    reaches_root: &mut FxHashSet<ty::Instance<'tcx>>,
+    callers: &FxHashMap<ty::Instance<'tcx>, Vec<ty::Instance<'tcx>>>,
+    involved: &mut FxHashSet<LocalDefId>,
+) {
+    if !reaches_root.insert(start) {
+        return;
+    }
+
+    if let Some(def_id) = start.def_id().as_local()
+        && def_id != target
+    {
+        involved.insert(def_id);
+    }
+
+    let mut stack = vec![start];
+
+    while let Some(instance) = stack.pop() {
+        let Some(instance_callers) = callers.get(&instance) else {
+            continue;
+        };
+
+        for &caller in instance_callers {
+            if !reaches_root.insert(caller) {
+                continue;
+            }
+
+            if let Some(def_id) = caller.def_id().as_local()
+                && def_id != target
+            {
+                involved.insert(def_id);
+            }
+
+            stack.push(caller);
+        }
+    }
 }
 
 #[instrument(level = "debug", skip(tcx), ret)]
@@ -166,27 +212,36 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
     // the default recursion limits are quite generous for us. If we need to recurse 64 times
     // into the call graph, we're probably not going to find any useful MIR inlining.
     let recursion_limit = tcx.recursion_limit() / 8;
-    let mut involved = FxHashSet::default();
     let typing_env = ty::TypingEnv::post_analysis(tcx, root);
     let root_instance =
         ty::Instance::new_raw(root.to_def_id(), ty::GenericArgs::identity_for_item(tcx, root));
+    let mut involved = FxHashSet::default();
     if !should_recurse(tcx, root_instance) {
         trace!("cannot walk, skipping");
         return Some(tcx.arena.alloc(involved.into()));
     }
-    match process(
+
+    let mut seen = FxHashSet::default();
+    let mut callers = FxHashMap::default();
+    let mut reaches_root = FxHashSet::default();
+    let mut recursion_limiter = FxHashMap::default();
+
+    seen.insert(root_instance);
+
+    process(
         tcx,
         typing_env,
         root_instance,
         root,
-        &mut FxHashMap::default(),
+        &mut seen,
+        &mut callers,
+        &mut reaches_root,
         &mut involved,
-        &mut FxHashMap::default(),
+        &mut recursion_limiter,
         recursion_limit,
-    ) {
-        Some(_) => Some(tcx.arena.alloc(involved.into())),
-        _ => None,
-    }
+    )?;
+
+    Some(tcx.arena.alloc(involved.into()))
 }
 
 pub(crate) fn mir_inliner_callees<'tcx>(
