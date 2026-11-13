@@ -171,6 +171,7 @@ impl FileDesc {
             target_os = "vita",
             target_os = "nuttx",
             target_os = "wasi",
+            target_os = "web",
         )))
     }
 
@@ -409,6 +410,7 @@ impl FileDesc {
             target_os = "vita",
             target_os = "nuttx",
             target_os = "wasi",
+            target_os = "web",
         )))
     }
 
@@ -574,6 +576,7 @@ impl FileDesc {
         target_os = "nto",
         target_os = "qnx",
         target_os = "wasi",
+        target_os = "web",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -599,6 +602,7 @@ impl FileDesc {
         target_os = "nto",
         target_os = "qnx",
         target_os = "wasi",
+        target_os = "web",
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {

@@ -685,6 +685,9 @@
 //@ revisions: wasm32_wali_linux_musl
 //@ [wasm32_wali_linux_musl] compile-flags: --target wasm32-wali-linux-musl
 //@ [wasm32_wali_linux_musl] needs-llvm-components: webassembly
+//@ revisions: wasm32_webp2
+//@ [wasm32_webp2] compile-flags: --target wasm32-webp2
+//@ [wasm32_webp2] needs-llvm-components: webassembly
 //@ revisions: wasm64_unknown_emscripten
 //@ [wasm64_unknown_emscripten] compile-flags: --target wasm64-unknown-emscripten
 //@ [wasm64_unknown_emscripten] needs-llvm-components: webassembly

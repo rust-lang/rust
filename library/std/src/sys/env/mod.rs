@@ -10,6 +10,7 @@
     target_os = "solid_asp3",
     target_os = "uefi",
     target_os = "wasi",
+    target_os = "web",
     target_os = "xous",
 ))]
 mod common;
@@ -43,7 +44,7 @@ cfg_select! {
         mod uefi;
         pub use uefi::*;
     }
-    target_os = "wasi" => {
+    any(target_os = "wasi", target_os = "web") => {
         mod wasi;
         pub use wasi::*;
     }

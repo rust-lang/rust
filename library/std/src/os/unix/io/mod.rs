@@ -218,7 +218,10 @@ fn replace_stdio_fd(this: BorrowedFd<'_>, other: OwnedFd) -> io::Result<()> {
                 .map(|_| ())
         }
         not(any(
-            all(target_family = "wasm", not(target_os = "emscripten")),
+            all(
+                target_family = "wasm",
+                not(any(target_os = "emscripten", target_os = "wasi", target_os = "web",)),
+            ),
             target_os = "hermit",
             target_os = "trusty",
             target_os = "motor"

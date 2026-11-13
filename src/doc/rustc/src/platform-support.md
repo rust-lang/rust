@@ -450,6 +450,7 @@ target | std | host | notes
 [`wasm64-unknown-emscripten`](platform-support/wasm-unknown-emscripten.md) | ✓ | WebAssembly with Memory64 via Emscripten
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
+[`wasm32-webp2`](platform-support/wasm32-webp2.md) | ✓ |  | WebAssembly on the Web
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-lynx-lynxos178`](platform-support/lynxos178.md) |  |  | x86_64 LynxOS-178
