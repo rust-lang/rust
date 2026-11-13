@@ -177,6 +177,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_capture_analysis,
     sym::rustc_clean,
     sym::rustc_coherence_is_core,
+    sym::rustc_anti_fundamental,
     sym::rustc_coinductive,
     sym::rustc_comptime,
     sym::rustc_confusables,

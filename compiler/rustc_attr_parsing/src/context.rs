@@ -302,6 +302,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,
         Single<WithoutArgs<RustcAllowIncoherentImplParser>>,
         Single<WithoutArgs<RustcAllowLifetimeDependentSpecializationParser>>,
+        Single<WithoutArgs<RustcAntiFundamentalParser>>,
         Single<WithoutArgs<RustcCanonicalSymbolParser>>,
         Single<WithoutArgs<RustcCaptureAnalysisParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
