@@ -342,56 +342,47 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let self_ty = goal.predicate.self_ty();
-        match goal.predicate.polarity {
-            // impl FnPtr for FnPtr {}
-            ty::ClausePolarity::Positive => {
-                if self_ty.is_fn_ptr() {
-                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                } else {
-                    Err(NoSolution.into())
-                }
-            }
-            //  impl !FnPtr for T where T != FnPtr && T is rigid {}
-            ty::ClausePolarity::Negative => {
-                // If a type is rigid and not a fn ptr, then we know for certain
-                // that it does *not* implement `FnPtr`.
-                if !self_ty.is_fn_ptr() && self_ty.is_known_rigid() {
-                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                } else {
-                    Err(NoSolution.into())
-                }
-            }
+
+        // Is `Self` a function ptr? (none if it's unknown)
+        let is_fn_ptr = match self_ty.kind() {
+            ty::FnPtr(_, _) => Some(true),
+            _ if self_ty.is_known_rigid() => Some(false),
+            _ => None,
+        };
+
+        match (goal.predicate.polarity, is_fn_ptr) {
+            // impl FnAddr for FnPtr {}
+            (ty::ClausePolarity::Positive, Some(true))
+            //  impl !FnAddr for T where T != FnPtr && T is rigid {}
+            | (ty::ClausePolarity::Negative, Some(false)) => ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)),
+            _ => Err(NoSolution.into()),
         }
     }
 
-    fn consider_builtin_fn_static_trait_candidate(
+    fn consider_builtin_fn_addr_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let self_ty = goal.predicate.self_ty();
-        match goal.predicate.polarity {
-            // impl FnStatic for FnDef {}
-            ty::ClausePolarity::Positive => match self_ty.kind() {
-                ty::FnDef(_, _) => {
-                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                }
-                _ => Err(NoSolution.into()),
-            },
-            //  impl !FnStatic for T where T != FnDef && T is rigid {}
-            ty::ClausePolarity::Negative => match self_ty.kind() {
-                ty::FnDef(_, _) if self_ty.is_known_rigid() => {
-                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                }
-                _ => Err(NoSolution.into()),
-            },
+
+        // Is `Self` a function def/ptr? (none if it's unknown)
+        let is_fn = match self_ty.kind() {
+            ty::FnDef(_, _) | ty::FnPtr(_, _) => Some(true),
+            _ if self_ty.is_known_rigid() => Some(false),
+            _ => None,
+        };
+
+        match (goal.predicate.polarity, is_fn) {
+            // impl FnAddr for FnDef {}
+            // impl FnAddr for FnPtr {}
+            (ty::ClausePolarity::Positive, Some(true))
+            //  impl !FnAddr for T where T != FnDef && T != FnPtr && T is rigid {}
+            | (ty::ClausePolarity::Negative, Some(false)) => ecx
+                .probe_builtin_trait_candidate(BuiltinImplSource::Misc)
+                .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)),
+            _ => Err(NoSolution.into()),
         }
     }
 
