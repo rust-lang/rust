@@ -218,6 +218,24 @@ fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: String) {
 
 enum FieldAccessError {
     OutOfRange { field_count: usize },
+    NormalizationFailed(ErrorGuaranteed),
+}
+
+enum RelateUserTyError {
+    NoSolution(NoSolution),
+    Errored(ErrorGuaranteed),
+}
+
+impl From<NoSolution> for RelateUserTyError {
+    fn from(err: NoSolution) -> Self {
+        RelateUserTyError::NoSolution(err)
+    }
+}
+
+impl From<ErrorGuaranteed> for RelateUserTyError {
+    fn from(guar: ErrorGuaranteed) -> Self {
+        RelateUserTyError::Errored(guar)
+    }
 }
 
 /// The MIR type checker. Visits the MIR and enforces all the
@@ -453,7 +471,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         user_ty: &UserTypeProjection,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
-    ) -> Result<(), NoSolution> {
+    ) -> Result<(), RelateUserTyError> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
         trace!(?annotated_type);
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
@@ -480,10 +498,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         PlaceTy::field_ty(tcx, ty, variant_index, field_index),
                         locations,
                     )
+                    .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
                 },
                 |_| unreachable!(),
             );
             curr_projected_ty = projected_ty;
+
+            if let ty::Error(guar) = *curr_projected_ty.ty.kind() {
+                return Err(guar.into());
+            }
         }
         trace!(?curr_projected_ty);
 
@@ -496,8 +519,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let mut a = a;
         let mut ty = curr_projected_ty.ty;
         if !self.infcx.next_trait_solver() {
-            a = self.normalize(ty::Unnormalized::new_wip(a), locations);
-            ty = self.normalize(ty::Unnormalized::new_wip(ty), locations);
+            a = self.normalize(ty::Unnormalized::new_wip(a), locations)?;
+            ty = self.normalize(ty::Unnormalized::new_wip(ty), locations)?;
         }
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
@@ -646,11 +669,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 let place_ty = place.ty(self.body, tcx).ty;
                 debug!(?place_ty);
-                let place_ty = self.normalize(ty::Unnormalized::new_wip(place_ty), location);
+                let place_ty = self
+                    .normalize(ty::Unnormalized::new_wip(place_ty), location)
+                    .unwrap_or_else(|guar| Ty::new_error(tcx, guar));
                 debug!("place_ty normalized: {:?}", place_ty);
                 let rv_ty = rv.ty(self.body, tcx);
                 debug!(?rv_ty);
-                let rv_ty = self.normalize(ty::Unnormalized::new_wip(rv_ty), location);
+                let rv_ty = self
+                    .normalize(ty::Unnormalized::new_wip(rv_ty), location)
+                    .unwrap_or_else(|guar| Ty::new_error(tcx, guar));
                 debug!("normalized rv_ty: {:?}", rv_ty);
                 if let Err(terr) =
                     self.sub_types(rv_ty, place_ty, location.to_locations(), category)
@@ -666,13 +693,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 if let Some(annotation_index) = self.rvalue_user_ty(rv)
-                    && let Err(terr) = self.relate_type_and_user_type(
-                        rv_ty,
-                        ty::Invariant,
-                        &UserTypeProjection { base: annotation_index, projs: vec![] },
-                        location.to_locations(),
-                        ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
-                    )
+                    && let Err(RelateUserTyError::NoSolution(terr)) = self
+                        .relate_type_and_user_type(
+                            rv_ty,
+                            ty::Invariant,
+                            &UserTypeProjection { base: annotation_index, projs: vec![] },
+                            location.to_locations(),
+                            ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
+                        )
                 {
                     let annotation = &self.user_type_annotations[annotation_index];
                     span_mirbug!(
@@ -700,7 +728,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             StatementKind::AscribeUserType((place, projection), variance) => {
                 let place_ty = place.ty(self.body, tcx).ty;
-                if let Err(terr) = self.relate_type_and_user_type(
+                if let Err(RelateUserTyError::NoSolution(terr)) = self.relate_type_and_user_type(
                     place_ty,
                     *variance,
                     projection,
@@ -827,7 +855,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 );
 
                 let sig = match self
-                    .deeply_normalize(ty::Unnormalized::new_wip(unnormalized_sig), term_location)
+                    .normalize(ty::Unnormalized::new_wip(unnormalized_sig), term_location)
                 {
                     Ok(sig) => sig,
                     Err(guar) => {
@@ -946,7 +974,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
             };
 
-            if let Err(terr) = self.relate_type_and_user_type(
+            if let Err(RelateUserTyError::NoSolution(terr)) = self.relate_type_and_user_type(
                 ty,
                 ty::Invariant,
                 user_ty,
@@ -1094,18 +1122,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 },
                             );
 
-                            let src_ty =
-                                self.normalize(ty::Unnormalized::new_wip(src_ty), location);
-                            if let Err(terr) = self.sub_types(
-                                src_ty,
-                                *ty,
-                                location.to_locations(),
-                                ConstraintCategory::Cast {
-                                    is_raw_ptr_dyn_type_cast: false,
-                                    is_implicit_coercion,
-                                    unsize_to: None,
-                                },
-                            ) {
+                            if let Ok(src_ty) =
+                                self.normalize(ty::Unnormalized::new_wip(src_ty), location)
+                                && let Err(terr) = self.sub_types(
+                                    src_ty,
+                                    *ty,
+                                    location.to_locations(),
+                                    ConstraintCategory::Cast {
+                                        is_raw_ptr_dyn_type_cast: false,
+                                        is_implicit_coercion,
+                                        unsize_to: None,
+                                    },
+                                )
+                            {
                                 span_mirbug!(
                                     self,
                                     rvalue,
@@ -1137,7 +1166,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let src_ty = self.normalize(ty::Unnormalized::new_wip(src_ty), location);
+                        let Ok(src_ty) =
+                            self.normalize(ty::Unnormalized::new_wip(src_ty), location)
+                        else {
+                            return;
+                        };
                         if let Err(terr) = self.sub_types(
                             src_ty,
                             *ty,
@@ -1203,7 +1236,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         // function definition. When we extract the
                         // signature, it comes from the `fn_sig` query,
                         // and hence may contain unnormalized results.
-                        let fn_sig = self.normalize(ty::Unnormalized::new_wip(fn_sig), location);
+                        let Ok(fn_sig) =
+                            self.normalize(ty::Unnormalized::new_wip(fn_sig), location)
+                        else {
+                            return;
+                        };
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
@@ -1743,7 +1780,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
         let locations = location.to_locations();
         if let Some(annotation_index) = constant.user_ty {
-            if let Err(terr) = self.relate_type_and_user_type(
+            if let Err(RelateUserTyError::NoSolution(terr)) = self.relate_type_and_user_type(
                 constant.const_.ty(),
                 ty::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
@@ -1810,11 +1847,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
-                let normalized_ty = self.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
 
-                if let Err(terr) =
-                    self.eq_types(literal_ty, normalized_ty, locations, ConstraintCategory::Boring)
+                if let Ok(normalized_ty) = self.normalize(unnormalized_ty, locations)
+                    && let Err(terr) = self.eq_types(
+                        literal_ty,
+                        normalized_ty,
+                        locations,
+                        ConstraintCategory::Boring,
+                    )
                 {
                     span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
                 }
@@ -1900,9 +1941,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(..) => {}
             ProjectionElem::Field(field, fty) => {
-                let fty = self.normalize(ty::Unnormalized::new_wip(fty), location);
+                let Ok(fty) = self.normalize(ty::Unnormalized::new_wip(fty), location) else {
+                    return;
+                };
                 let ty = PlaceTy::field_ty(tcx, base_ty.ty, base_ty.variant_index, field);
-                let ty = self.normalize(ty, location);
+                let Ok(ty) = self.normalize(ty, location) else {
+                    return;
+                };
                 debug!(?fty, ?ty);
 
                 if let Err(terr) = self.relate_types(
@@ -1916,7 +1961,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::OpaqueCast(ty) => {
-                let ty = self.normalize(ty::Unnormalized::new_wip(ty), location);
+                let Ok(ty) = self.normalize(ty::Unnormalized::new_wip(ty), location) else {
+                    return;
+                };
                 self.relate_types(
                     ty,
                     context.ambient_variance(),
@@ -1969,7 +2016,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         } else {
             let dest_ty = destination.ty(self.body, tcx).ty;
-            let dest_ty = self.normalize(ty::Unnormalized::new_wip(dest_ty), term_location);
+            let Ok(dest_ty) = self.normalize(ty::Unnormalized::new_wip(dest_ty), term_location)
+            else {
+                return;
+            };
             let category = match destination.as_local() {
                 Some(RETURN_PLACE) => {
                     if let DefiningTy::Const(def_id, _) | DefiningTy::InlineConst(def_id, _) =
@@ -2054,7 +2104,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.node.ty(self.body, self.tcx());
 
-            let op_arg_ty = self.normalize(ty::Unnormalized::new_wip(op_arg_ty), term_location);
+            let Ok(op_arg_ty) = self.normalize(ty::Unnormalized::new_wip(op_arg_ty), term_location)
+            else {
+                continue;
+            };
             let category = if call_source.from_hir_call() {
                 ConstraintCategory::CallArgument(Some(
                     self.infcx.tcx.erase_and_anonymize_regions(func_ty),
@@ -2222,7 +2275,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let variant = &def.variant(variant_index);
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
-                    Ok(self.normalize(field.ty(tcx, args), location))
+                    self.normalize(field.ty(tcx, args), location)
+                        .map_err(FieldAccessError::NormalizationFailed)
                 } else {
                     Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
                 }
@@ -2325,9 +2379,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                     continue;
                 }
+                Err(FieldAccessError::NormalizationFailed(_)) => continue,
             };
             let operand_ty = operand.ty(self.body, tcx);
-            let operand_ty = self.normalize(ty::Unnormalized::new_wip(operand_ty), location);
+            let Ok(operand_ty) = self.normalize(ty::Unnormalized::new_wip(operand_ty), location)
+            else {
+                continue;
+            };
 
             if let Err(terr) = self.sub_types(
                 operand_ty,
@@ -2596,8 +2654,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 // These field types can still contain projections from the source or target type
                 // and normalize them before handing them to `NllTypeRelating`
-                let dst_ty = self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations());
-                let src_ty = self.normalize(src_field.ty(tcx, *src_args), location.to_locations());
+                let (Ok(dst_ty), Ok(src_ty)) = (
+                    self.normalize(dst_field.ty(tcx, *dst_args), location.to_locations()),
+                    self.normalize(src_field.ty(tcx, *src_args), location.to_locations()),
+                ) else {
+                    continue;
+                };
 
                 if let (
                     ty::Ref(src_region, _, Mutability::Mut),
