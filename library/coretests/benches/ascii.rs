@@ -50,7 +50,7 @@ macro_rules! benches {
                 fn $name(bencher: &mut Bencher) {
                     bencher.bytes = $input.len() as u64;
                     bencher.iter(|| {
-                        let mut vec = $input.as_bytes().to_vec();
+                        let mut vec = black_box($input).as_bytes().to_vec();
                         {
                             let $arg = &mut vec[..];
                             black_box($body);
