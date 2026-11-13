@@ -52,18 +52,27 @@ yields ()
     let mut _48: &mut impl std::future::Future<Output = ()>;
     let mut _49: std::pin::Pin<&mut AsyncEnum>;
     let mut _50: &mut AsyncEnum;
+    let mut _51: &mut AsyncEnum;
+    let mut _52: &mut AsyncEnum;
 
     bb0: {
-        _3 = move (_1.0: &mut AsyncEnum);
+        StorageLive(_51);
+        StorageLive(_52);
+        _52 = no_retag move (_1.0: &mut AsyncEnum);
+        _51 = no_retag move _52;
+        StorageDead(_52);
+        _3 = move _51;
         goto -> bb64;
     }
 
     bb1: {
         _0 = const ();
+        StorageDead(_51);
         return;
     }
 
     bb2 (cleanup): {
+        StorageDead(_51);
         resume;
     }
 

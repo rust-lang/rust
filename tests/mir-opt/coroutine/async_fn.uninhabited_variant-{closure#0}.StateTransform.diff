@@ -134,7 +134,7 @@
 -         _43 = const false;
 -         _8 = move _3;
 -         _7 = <{async block@$DIR/async_fn.rs:106:13: 106:18} as IntoFuture>::into_future(move _8) -> [return: bb4, unwind: bb51];
-+         (((*_46) as variant#4).2: bool) = const false;
++         (((*_46) as variant#3).1: bool) = const false;
 +         _8 = move (((*_46) as variant#4).0: {async block@$DIR/async_fn.rs:106:13: 106:18});
 +         _7 = <{async block@$DIR/async_fn.rs:106:13: 106:18} as IntoFuture>::into_future(move _8) -> [return: bb4, unwind: bb40];
       }
@@ -365,7 +365,7 @@
 -         _43 = const false;
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb27, unwind: bb56];
-+         (((*_46) as variant#4).2: bool) = const false;
++         (((*_46) as variant#3).1: bool) = const false;
 +         nop;
 +         goto -> bb27;
       }
@@ -564,7 +564,7 @@
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb56, unwind terminate(cleanup)];
 +     bb44 (cleanup): {
-+         (((*_46) as variant#4).2: bool) = const false;
++         (((*_46) as variant#3).1: bool) = const false;
 +         nop;
 +         goto -> bb45;
       }
@@ -588,7 +588,7 @@
 -         StorageDead(_24);
 -         goto -> bb61;
 +     bb47: {
-+         switchInt(copy (((*_46) as variant#4).2: bool)) -> [0: bb26, otherwise: bb46];
++         switchInt(copy (((*_46) as variant#3).1: bool)) -> [0: bb26, otherwise: bb46];
       }
   
 -     bb59 (cleanup): {
@@ -603,7 +603,7 @@
 -         StorageDead(_6);
 -         goto -> bb61;
 +     bb49 (cleanup): {
-+         switchInt(copy (((*_46) as variant#4).2: bool)) -> [0: bb44, otherwise: bb48];
++         switchInt(copy (((*_46) as variant#3).1: bool)) -> [0: bb44, otherwise: bb48];
       }
   
 -     bb61 (cleanup): {
@@ -672,9 +672,9 @@
 -     bb70 (cleanup): {
 -         switchInt(copy _43) -> [0: bb62, otherwise: bb69];
 +     bb55: {
-+         (((*_46) as variant#4).2: bool) = const false;
++         (((*_46) as variant#3).1: bool) = const false;
 +         nop;
-+         (((*_46) as variant#4).2: bool) = const true;
++         (((*_46) as variant#3).1: bool) = const true;
 +         (((*_46) as variant#4).0: {async block@$DIR/async_fn.rs:106:13: 106:18}) = {coroutine@$DIR/async_fn.rs:106:13: 106:18 (#0)};
 +         StorageLive(_4);
 +         _4 = Option::<Never>::None;

@@ -156,6 +156,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                 tcx,
                 &mut body,
                 &[
+                    &crate::coroutine::RelocateUpvars, // We must always relocate to ensure valid MIR
                     &mentioned_items::MentionedItems,
                     &abort_unwinding_calls::AbortUnwindingCalls,
                     &add_call_guards::CriticalCallEdges,

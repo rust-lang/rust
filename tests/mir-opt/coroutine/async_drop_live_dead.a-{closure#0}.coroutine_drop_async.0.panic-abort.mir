@@ -2,7 +2,7 @@
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _24;
-    debug x => ((*_23).0: T);
+    debug x => (((*_23) as variant#0).0: T);
     let mut _0: std::task::Poll<()>;
     let _3: T;
     let mut _4: impl std::future::Future<Output = ()>;
@@ -28,7 +28,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     let mut _24: std::future::ResumeTy;
     let mut _25: std::ptr::NonNull<std::task::Context<'_>>;
     scope 1 {
-        debug x => (((*_23) as variant#4).1: T);
+        debug x => (((*_23) as variant#3).0: T);
     }
 
     bb0: {
@@ -88,7 +88,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb10: {
-        _11 = &mut (((*_23) as variant#4).2: impl std::future::Future<Output = ()>);
+        _11 = &mut (((*_23) as variant#3).1: impl std::future::Future<Output = ()>);
         _8 = Pin::<&mut impl Future<Output = ()>>::new_unchecked(move _11) -> [return: bb9, unwind unreachable];
     }
 
@@ -108,7 +108,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb14: {
-        drop(((*_23).0: T)) -> [return: bb12, unwind unreachable];
+        drop((((*_23) as variant#0).0: T)) -> [return: bb12, unwind unreachable];
     }
 
     bb15: {

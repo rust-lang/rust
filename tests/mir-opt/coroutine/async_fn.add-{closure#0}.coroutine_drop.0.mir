@@ -2,8 +2,8 @@
 
 fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     debug _task_context => _2;
-    debug x => ((*_1).0: u32);
-    debug y => ((*_1).1: u32);
+    debug x => (((*_1) as variant#0).0: u32);
+    debug y => (((*_1) as variant#0).1: u32);
     let mut _0: ();
     let mut _2: std::future::ResumeTy;
     let _3: u32;
