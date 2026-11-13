@@ -1431,11 +1431,10 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
             accum = f(accum, n)?;
         }
 
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
+        let (n, o) = Step::forward_overflowing(self.start.clone(), 1);
+        let last = mem::replace(&mut self.start, n);
+        self.exhausted = o;
+        accum = f(accum, last)?;
 
         try { accum }
     }
@@ -1460,11 +1459,10 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
             accum = f(accum, n)?;
         }
 
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
+        let (n, o) = Step::backward_overflowing(self.end.clone(), 1);
+        let last = mem::replace(&mut self.end, n);
+        self.exhausted = o;
+        accum = f(accum, last)?;
 
         try { accum }
     }
@@ -1491,11 +1489,10 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
             accum = f(accum, n)?;
         }
 
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start)?;
-        }
+        let (n, o) = Step::forward_overflowing(self.start, 1);
+        let last = mem::replace(&mut self.start, n);
+        self.exhausted = o;
+        accum = f(accum, last)?;
 
         try { accum }
     }
@@ -1520,11 +1517,10 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
             accum = f(accum, n)?;
         }
 
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start)?;
-        }
+        let (n, o) = Step::backward_overflowing(self.end, 1);
+        let last = mem::replace(&mut self.end, n);
+        self.exhausted = o;
+        accum = f(accum, last)?;
 
         try { accum }
     }
