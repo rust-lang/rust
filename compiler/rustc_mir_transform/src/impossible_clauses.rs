@@ -67,6 +67,10 @@ pub(crate) struct ImpossibleClauses;
 
 pub(crate) fn has_impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     let clauses = tcx.clauses_of(def_id).instantiate_identity(tcx);
+    if clauses.is_empty() {
+        return false;
+    }
+
     tracing::trace!(?clauses);
 
     // Some `Sized` clauses that mention local generics are still impossible
