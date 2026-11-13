@@ -1,13 +1,20 @@
 # `async_fn_traits`
 
-See Also: [`fn_traits`](../library-features/fn-traits.md)
+The tracking issue for this feature is: [#146790]
+
+[#146790]: https://github.com/rust-lang/rust/issues/146790
+
+See also: [`fn_traits`](../library-features/fn-traits.md)
 
 ----
 
-The `async_fn_traits` feature allows for implementation of the [`AsyncFn*`] traits
-for creating custom closure-like types that return futures.
+The [`AsyncFn*`] traits are stable for use as bounds on async callables.
+The `async_fn_traits` feature enables their unstable methods and associated
+types, allowing custom implementations and explicit bounds on the futures
+they return.
+
+Unlike `Fn` and `FnMut`, whose returned type cannot borrow from the callable,
+`AsyncFn` and `AsyncFnMut` support futures that borrow from the callable.
+This is represented by the lifetime parameter on `AsyncFnMut::CallRefFuture`.
 
 [`AsyncFn*`]: ../../std/ops/trait.AsyncFn.html
-
-The main difference to the `Fn*` family of traits is that `AsyncFn` can return a future
-that borrows from itself (`FnOnce::Output` has no lifetime parameters, while `AsyncFnMut::CallRefFuture` does).
