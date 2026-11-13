@@ -2732,6 +2732,45 @@ fn test_cursor() {
 }
 
 #[test]
+fn test_cursor_find_lower() {
+    let map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
+
+    // Cursor should be pointing to Some(&1, &'a)
+    let mut cur = map.lower_bound(Bound::Unbounded);
+    assert_eq!(cur.peek_next(), Some((&1, &'a')));
+    assert_eq!(cur.peek_prev(), None);
+
+    cur.find_lower(Bound::Included(&3));
+
+    assert_eq!(cur.peek_next(), Some((&3, &'c')));
+    assert_eq!(cur.peek_prev(), Some((&2, &'b')));
+
+    let map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
+
+    // Cursor should be pointing to Some(&1, &'a)
+    let mut cur = map.lower_bound(Bound::Included(&3));
+
+    assert_eq!(cur.peek_next(), Some((&3, &'c')));
+    assert_eq!(cur.peek_prev(), Some((&2, &'b')));
+
+    cur.find_lower(Bound::Included(&1));
+
+    assert_eq!(cur.peek_next(), Some((&1, &'a')));
+    assert_eq!(cur.peek_prev(), None);
+
+    let vec = Vec::from_iter((0..=1000).map(|i| (i, i)));
+    let map = BTreeMap::from_iter(vec);
+    let mut cur = map.lower_bound(Bound::Included(&1000));
+    assert_eq!(cur.peek_next(), Some((&1000, &1000)));
+    assert_eq!(cur.peek_prev(), Some((&999, &999)));
+
+    cur.find_lower(Bound::Included(&500));
+
+    assert_eq!(cur.peek_next(), Some((&500, &500)));
+    assert_eq!(cur.peek_prev(), Some((&499, &499)));
+}
+
+#[test]
 fn test_cursor_mut() {
     let mut map = BTreeMap::from([(1, 'a'), (3, 'c'), (5, 'e')]);
     let mut cur = map.lower_bound_mut(Bound::Excluded(&3));
