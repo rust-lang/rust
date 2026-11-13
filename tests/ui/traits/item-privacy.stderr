@@ -25,12 +25,15 @@ error[E0599]: no method named `b` found for struct `S` in the current scope
 LL | struct S;
    | -------- method `b` not found for this struct
 ...
-LL |         fn b(&self) { }
-   |            - the method is available for `S` here
-...
 LL |     S.b();
    |       ^
    |
+note: the method is available on trait `B` for `S`
+  --> $DIR/item-privacy.rs:12:12
+   |
+LL |     pub trait B {
+LL |         fn b(&self) { }
+   |            ^
    = help: items from traits can only be used if the trait is in scope
 help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
