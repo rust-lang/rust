@@ -3391,7 +3391,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     builder.do_if_verbose(|| println!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
-    // FIXME(#160895): While the new solver is enabled by default on nightly,
+    // FIXME(#160895): While the new solver is already enabled by default,
     // we don't want to use it in our tests for now.
     cmd.arg("-Znext-solver=coherence");
     // allow for unstable options such as new editions
@@ -3480,7 +3480,7 @@ fn run_cargo_test<'a>(
         _ => compiler.stage + 1,
     };
 
-    // FIXME(#160895): While the new solver is enabled by default on nightly,
+    // FIXME(#160895): While the new solver is already enabled by default,
     // we don't want to use it in our tests for now.
     cargo.rustdocflag("-Znext-solver=coherence");
 
