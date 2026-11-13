@@ -3,8 +3,8 @@
     .fg { fill: #AAAAAA }
     .bg { fill: #000000 }
     .fg-bright-blue { fill: #5555FF }
+    .fg-bright-cyan { fill: #55FFFF }
     .fg-bright-red { fill: #FF5555 }
-    .fg-magenta { fill: #AA00AA }
     .container {
       padding: 0 10px;
       line-height: 18px;
@@ -48,9 +48,9 @@
 </tspan>
     <tspan x="10px" y="262px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected associated type `&lt;&lt;&lt;&lt;_ as FooBar&gt;::</tspan><tspan class="fg-magenta bold">Wrapper</tspan><tspan>&lt;_&gt; as FooBar&gt;::Assoc as FooBar&gt;::Assoc as FooBar&gt;::Wrapper&lt;_&gt;`</tspan>
+    <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected associated type `&lt;&lt;&lt;&lt;_ as FooBar&gt;::</tspan><tspan class="fg-bright-cyan bold">Wrapper</tspan><tspan>&lt;_&gt; as FooBar&gt;::Assoc as FooBar&gt;::Assoc as FooBar&gt;::Wrapper&lt;_&gt;`</tspan>
 </tspan>
-    <tspan x="10px" y="298px"><tspan>              found associated type `&lt;&lt;&lt;&lt;_ as FooBar&gt;::</tspan><tspan class="fg-magenta bold">Assoc</tspan><tspan> as FooBar&gt;::Assoc as FooBar&gt;::Assoc as FooBar&gt;::Wrapper&lt;_&gt;`</tspan>
+    <tspan x="10px" y="298px"><tspan>              found associated type `&lt;&lt;&lt;&lt;_ as FooBar&gt;::</tspan><tspan class="fg-bright-cyan bold">Assoc</tspan><tspan> as FooBar&gt;::Assoc as FooBar&gt;::Assoc as FooBar&gt;::Wrapper&lt;_&gt;`</tspan>
 </tspan>
     <tspan x="10px" y="316px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: an associated type was expected, but a different one was found</tspan>
 </tspan>
@@ -78,9 +78,9 @@
 </tspan>
     <tspan x="10px" y="532px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="550px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected associated type `&lt;_ as Bar&lt;</tspan><tspan class="fg-magenta bold">u16</tspan><tspan>&gt;&gt;::Assoc`</tspan>
+    <tspan x="10px" y="550px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected associated type `&lt;_ as Bar&lt;</tspan><tspan class="fg-bright-cyan bold">u16</tspan><tspan>&gt;&gt;::Assoc`</tspan>
 </tspan>
-    <tspan x="10px" y="568px"><tspan>              found associated type `&lt;_ as Bar&lt;</tspan><tspan class="fg-magenta bold">u8</tspan><tspan>&gt;&gt;::Assoc`</tspan>
+    <tspan x="10px" y="568px"><tspan>              found associated type `&lt;_ as Bar&lt;</tspan><tspan class="fg-bright-cyan bold">u8</tspan><tspan>&gt;&gt;::Assoc`</tspan>
 </tspan>
     <tspan x="10px" y="586px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: an associated type was expected, but a different one was found</tspan>
 </tspan>
@@ -104,9 +104,9 @@
 </tspan>
     <tspan x="10px" y="766px"><tspan>   </tspan><tspan class="fg-bright-blue bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="784px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected associated type `&lt;_ as Qux&gt;::Assoc&lt;</tspan><tspan class="fg-magenta bold">u16</tspan><tspan>&gt;`</tspan>
+    <tspan x="10px" y="784px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: expected associated type `&lt;_ as Qux&gt;::Assoc&lt;</tspan><tspan class="fg-bright-cyan bold">u16</tspan><tspan>&gt;`</tspan>
 </tspan>
-    <tspan x="10px" y="802px"><tspan>              found associated type `&lt;_ as Qux&gt;::Assoc&lt;</tspan><tspan class="fg-magenta bold">u8</tspan><tspan>&gt;`</tspan>
+    <tspan x="10px" y="802px"><tspan>              found associated type `&lt;_ as Qux&gt;::Assoc&lt;</tspan><tspan class="fg-bright-cyan bold">u8</tspan><tspan>&gt;`</tspan>
 </tspan>
     <tspan x="10px" y="820px"><tspan>   </tspan><tspan class="fg-bright-blue bold">= </tspan><tspan class="bold">note</tspan><tspan>: an associated type was expected, but a different one was found</tspan>
 </tspan>
