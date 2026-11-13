@@ -20,7 +20,7 @@
 //~^ ERROR malformed
 #[optimize(size(x, y, z))]
 //~^ ERROR malformed
-//~| ERROR multiple `optimize` attributes
+//~| ERROR duplicate `optimize` attributes
 #[coverage(off = 5)]
 //~^ ERROR malformed
 #[coverage(off(x, y, z))]

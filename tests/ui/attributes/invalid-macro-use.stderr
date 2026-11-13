@@ -100,7 +100,7 @@ LL - #[macro_use(a::b)]
 LL + #[macro_use(name1, name2, ...)]
    |
 
-error: unused attribute
+error: duplicate `macro_use` attributes
   --> $DIR/invalid-macro-use.rs:34:1
    |
 LL | #[macro_use(a)]
@@ -117,7 +117,7 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: unused attribute
+error: duplicate `macro_use` attributes
   --> $DIR/invalid-macro-use.rs:42:1
    |
 LL | #[macro_use(a)]
@@ -129,7 +129,7 @@ note: attribute also specified here
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
-error: unused attribute
+error: duplicate `macro_use` attributes
   --> $DIR/invalid-macro-use.rs:48:1
    |
 LL | #[macro_use]
