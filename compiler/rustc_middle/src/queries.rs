@@ -1649,6 +1649,22 @@ rustc_queries! {
         desc { "finding trait impls of `{}`", tcx.def_path_str(trait_id) }
     }
 
+    /// Given a trait `trait_id`, for the given simplified type `simp`, return a list with one
+    /// entry per trait impl. Each entry is `Some(self_ty)` if that `self_ty` is an exact-match
+    /// type, or `None` otherwise.
+    ///
+    /// The length and order of the list matches that for the `simp` entry within
+    /// `trait_impls_of(trait_id)`.
+    query trait_impl_exact_match_self_tys((trait_id, simp): (DefId, SimplifiedType))
+        -> &'tcx [Option<Ty<'tcx>>]
+    {
+        desc {
+            "finding exact-match self tys for trait impls of `{}` that match `{:?}`",
+            tcx.def_path_str(trait_id),
+            simp
+        }
+    }
+
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk

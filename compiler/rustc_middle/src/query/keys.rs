@@ -248,6 +248,12 @@ impl QueryKey for (DefId, ty::SizedTraitKind) {
     }
 }
 
+impl QueryKey for (DefId, SimplifiedType) {
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
 impl<'tcx> QueryKey for GenericArgs<'tcx> {
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP

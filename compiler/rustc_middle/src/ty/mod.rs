@@ -2425,6 +2425,7 @@ pub fn provide(providers: &mut Providers) {
     super::util::bug::provide(providers);
     *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
+        trait_impl_exact_match_self_tys: trait_def::trait_impl_exact_match_self_tys_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
         trait_impls_in_crate: trait_def::trait_impls_in_crate_provider,
         traits: trait_def::traits_provider,

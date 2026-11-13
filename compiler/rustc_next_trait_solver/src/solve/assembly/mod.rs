@@ -597,7 +597,7 @@ where
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
         let goal_trait_ref = goal.predicate.trait_ref(cx);
-        cx.for_each_relevant_impl(goal_trait_ref, |impl_def_id| -> Result<_, _> {
+        cx.for_each_candidate_impl(goal_trait_ref, |impl_def_id| -> Result<_, _> {
             match G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })

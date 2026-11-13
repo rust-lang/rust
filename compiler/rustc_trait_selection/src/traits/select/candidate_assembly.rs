@@ -612,7 +612,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         let drcx = DeepRejectCtxt::relate_rigid_infer(self.tcx());
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
-        self.tcx().for_each_relevant_impl(
+        self.tcx().for_each_candidate_impl(
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
             |impl_def_id| {
