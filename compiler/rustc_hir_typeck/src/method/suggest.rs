@@ -24,6 +24,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath, is_range_literal};
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
+use rustc_infer::traits::ImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
     PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
@@ -39,7 +40,8 @@ use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    FulfillmentError, Obligation, ObligationCauseCode, supertraits,
+    FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, SelectionContext,
+    supertraits,
 };
 use tracing::{debug, info, instrument};
 
@@ -400,7 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     self.suggest_use_candidates(
                         candidates,
-                        |accessible_sugg, inaccessible_sugg, span| {
+                        |accessible_sugg, inaccessible_sugg, _, inaccessible, span| {
                             let suggest_for_access =
                                 |err: &mut Diag<'_>, mut msg: String, sugg: Vec<_>| {
                                     msg += &format!(
@@ -416,8 +418,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     );
                                 };
                             let suggest_for_privacy =
-                                |err: &mut Diag<'_>, mut msg: String, suggs: Vec<String>| {
-                                    if let [sugg] = suggs.as_slice() {
+                                |err: &mut Diag<'_>, mut msg: String, suggs: Vec<String>, inaccessible: Vec<DefId>| {
+                                    if let [def_id] = inaccessible.as_slice() && let [sugg] = suggs.as_slice() {
+                                        err.span_help(self.tcx.def_span(*def_id), format!("\
+                                            trait `{}` provides `{item_name}` is implemented but not reachable",
+                                            sugg.trim(),
+                                        ));
+                                    } else if let [sugg] = suggs.as_slice() {
                                         err.help(format!("\
                                             trait `{}` provides `{item_name}` is implemented but not reachable",
                                             sugg.trim(),
@@ -429,12 +436,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                             if accessible_sugg.is_empty() {
                                 // `inaccessible_sugg` must not be empty
-                                suggest_for_privacy(&mut err, help, inaccessible_sugg);
+                                suggest_for_privacy(&mut err, help, inaccessible_sugg, inaccessible);
                             } else if inaccessible_sugg.is_empty() {
                                 suggest_for_access(&mut err, help, accessible_sugg);
                             } else {
                                 suggest_for_access(&mut err, help.clone(), accessible_sugg);
-                                suggest_for_privacy(&mut err, help, inaccessible_sugg);
+                                suggest_for_privacy(&mut err, help, inaccessible_sugg, inaccessible);
                             }
                         },
                     );
@@ -3985,7 +3992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_use_candidates<F>(&self, candidates: Vec<DefId>, handle_candidates: F)
     where
-        F: FnOnce(Vec<String>, Vec<String>, Span),
+        F: FnOnce(Vec<String>, Vec<String>, Vec<DefId>, Vec<DefId>, Span),
     {
         let parent_map = self.tcx.visible_parent_map(());
 
@@ -3999,19 +4006,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .all(|id| self.tcx.def_kind(id) == DefKind::Mod)
             });
 
-        let sugg = |candidates: Vec<_>, visible| {
+        let sugg = |candidates: &[DefId], visible| {
             // Separate out candidates that must be imported with a glob, because they are named `_`
             // and cannot be referred with their identifier.
             let (candidates, globs): (Vec<_>, Vec<_>) =
                 candidates.into_iter().partition(|trait_did| {
                     if let Some(parent_did) = parent_map.get(trait_did) {
                         // If the item is re-exported as `_`, we should suggest a glob-import instead.
-                        if *parent_did != self.tcx.parent(*trait_did)
+                        if *parent_did != self.tcx.parent(**trait_did)
                             && self
                                 .tcx
                                 .module_children(*parent_did)
                                 .iter()
-                                .filter(|child| child.res.opt_def_id() == Some(*trait_did))
+                                .filter(|child| child.res.opt_def_id() == Some(**trait_did))
                                 .all(|child| child.ident.name == kw::Underscore)
                         {
                             return false;
@@ -4047,12 +4054,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sugg
         };
 
-        let accessible_sugg = sugg(accessible_candidates, true);
-        let inaccessible_sugg = sugg(inaccessible_candidates, false);
+        let accessible_sugg = sugg(&accessible_candidates, true);
+        let inaccessible_sugg = sugg(&inaccessible_candidates, false);
 
         let (module, _) = self.tcx.hir_get_module(self.mod_id);
         let span = module.spans.inject_use_span;
-        handle_candidates(accessible_sugg, inaccessible_sugg, span);
+        handle_candidates(
+            accessible_sugg,
+            inaccessible_sugg,
+            accessible_candidates,
+            inaccessible_candidates,
+            span,
+        );
     }
 
     fn suggest_valid_traits(
@@ -4090,39 +4103,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             );
 
-            self.suggest_use_candidates(candidates, |accessible_sugg, inaccessible_sugg, span| {
-                let suggest_for_access = |err: &mut Diag<'_>, mut msg: String, suggs: Vec<_>| {
-                    msg += &format!(
-                        "; perhaps you want to import {one_of}",
-                        one_of = if suggs.len() == 1 { "it" } else { "one of them" },
-                    );
-                    err.span_suggestions(span, msg, suggs, Applicability::MaybeIncorrect);
-                };
-                let suggest_for_privacy = |err: &mut Diag<'_>, suggs: Vec<String>| {
-                    let msg = format!(
-                        "{this_trait_is} implemented but not reachable",
-                        this_trait_is = if let [sugg] = suggs.as_slice() {
-                            format!("trait `{}` which provides `{item_name}` is", sugg.trim())
-                        } else {
-                            format!("the following traits which provide `{item_name}` are")
-                        }
-                    );
-                    if suggs.len() == 1 {
-                        err.help(msg);
+            self.suggest_use_candidates(
+                candidates,
+                |accessible_sugg, inaccessible_sugg, _, inaccessible, span| {
+                    let suggest_for_access =
+                        |err: &mut Diag<'_>, mut msg: String, suggs: Vec<_>| {
+                            msg += &format!(
+                                "; perhaps you want to import {one_of}",
+                                one_of = if suggs.len() == 1 { "it" } else { "one of them" },
+                            );
+                            err.span_suggestions(span, msg, suggs, Applicability::MaybeIncorrect);
+                        };
+                    let suggest_for_privacy =
+                        |err: &mut Diag<'_>, suggs: Vec<String>, inaccessible: Vec<DefId>| {
+                            let msg = format!(
+                                "{this_trait_is} implemented but not reachable",
+                                this_trait_is = if let [sugg] = suggs.as_slice() {
+                                    format!(
+                                        "trait `{}` which provides `{item_name}` is",
+                                        sugg.trim()
+                                    )
+                                } else {
+                                    format!("the following traits which provide `{item_name}` are")
+                                }
+                            );
+                            if let [def_id] = inaccessible {
+                                err.span_help(self.tcx.def_span(def_id), msg);
+                            } else if suggs.len() == 1 {
+                                err.help(msg);
+                            } else {
+                                err.help(format!("{msg}:\n{}", suggs.join("").trim_end()));
+                            }
+                        };
+                    if accessible_sugg.is_empty() {
+                        // `inaccessible_sugg` must not be empty
+                        suggest_for_privacy(err, inaccessible_sugg, inaccessible);
+                    } else if inaccessible_sugg.is_empty() {
+                        suggest_for_access(err, msg, accessible_sugg);
                     } else {
-                        err.help(format!("{msg}:\n{}", suggs.join("").trim_end()));
+                        suggest_for_access(err, msg, accessible_sugg);
+                        suggest_for_privacy(err, inaccessible_sugg, inaccessible);
                     }
-                };
-                if accessible_sugg.is_empty() {
-                    // `inaccessible_sugg` must not be empty
-                    suggest_for_privacy(err, inaccessible_sugg);
-                } else if inaccessible_sugg.is_empty() {
-                    suggest_for_access(err, msg, accessible_sugg);
-                } else {
-                    suggest_for_access(err, msg, accessible_sugg);
-                    suggest_for_privacy(err, inaccessible_sugg);
-                }
-            });
+                },
+            );
 
             if let Some(did) = edition_fix {
                 err.note(format!(
@@ -4193,8 +4216,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // We point at the method, but we just skip the rest of the check for arbitrary
                         // self types and rely on the suggestion to `use` the trait from
                         // `suggest_valid_traits`.
-                        let did = Some(pick.item.container_id(self.tcx));
-                        if skippable.contains(&did) {
+                        let did = pick.item.container_id(self.tcx);
+                        if skippable.contains(&Some(did)) {
                             continue;
                         }
                         trait_in_other_version_found = self
@@ -4204,10 +4227,80 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 rcvr.hir_id,
                                 Some(*rcvr_ty),
                             );
-                        if pick.autoderefs == 0 && !trait_in_other_version_found {
-                            err.span_label(
-                                pick.item.ident(self.tcx).span,
-                                format!("the method is available for `{rcvr_ty}` here"),
+                        if !trait_in_other_version_found {
+                            let sp = pick.item.ident(self.tcx).span;
+                            let mut span: MultiSpan = sp.into();
+                            let mut pointing_at_method = false;
+                            let mut on_trait = String::new();
+
+                            if self.tcx.def_kind(did) == DefKind::Trait {
+                                let name = self.tcx.item_name(did);
+                                on_trait = format!("on trait `{name}` ");
+                                let result = self.probe(|_| {
+                                    let trait_ref = ty::TraitRef::new(
+                                        self.tcx,
+                                        did,
+                                        ty::GenericArgs::for_item(self.tcx, did, |param, _| {
+                                            if param.index == 0 {
+                                                (*rcvr_ty).into()
+                                            } else {
+                                                self.var_for_def(rcvr.span, param)
+                                            }
+                                        }),
+                                    );
+                                    let obligation = Obligation::new(
+                                        self.tcx,
+                                        ObligationCause::dummy(),
+                                        self.param_env,
+                                        trait_ref,
+                                    );
+                                    SelectionContext::new(self).select(&obligation)
+                                });
+                                if let Ok(Some(ImplSource::UserDefined(source))) = result {
+                                    let impl_sp = self.tcx.def_span(source.impl_def_id);
+
+                                    if let Some(assoc) = self
+                                        .tcx
+                                        .associated_items(source.impl_def_id)
+                                        .filter_by_name_unhygienic(item_name.name)
+                                        .next()
+                                    {
+                                        pointing_at_method = true;
+                                        let assoc_sp = self.tcx.def_span(assoc.def_id);
+                                        span = assoc_sp.into();
+                                        span.push_span_label(
+                                            assoc_sp,
+                                            "the method is available here",
+                                        );
+                                        span.push_span_context(impl_sp);
+                                    } else {
+                                        span = impl_sp.into();
+                                        span.push_span_label(
+                                            impl_sp,
+                                            format!("the trait is implemented here"),
+                                        );
+                                    }
+                                }
+                            }
+
+                            if !pointing_at_method {
+                                span.push_span_context(
+                                    self.tcx
+                                        .def_span(pick.item.container_id(self.tcx))
+                                        .shrink_to_lo(),
+                                );
+                                span.push_span_label(sp, format!("the method is available here"));
+                            }
+
+                            // If the method is available through an auto-deref, then we will be
+                            // pointing only at the trait and the method therein, not the `impl`, as
+                            // it will not be found in the logic above.
+
+                            let rcvr_ty =
+                                self.tcx.short_string(pick.self_ty.peel_refs(), err.long_ty_path());
+                            err.span_note(
+                                span,
+                                format!("the method is available {on_trait}for `{rcvr_ty}`"),
                             );
                         }
                         break;

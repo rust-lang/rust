@@ -37,12 +37,18 @@ LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method2();
 error[E0599]: no method named `method` found for type `char` in the current scope
   --> $DIR/no-method-suggested-traits.rs:33:9
    |
-LL |         fn method(&self) {}
-   |            ------ the method is available for `char` here
-...
 LL |     'a'.method();
    |         ^^^^^^
    |
+note: the method is available on trait `Bar` for `char`
+  --> $DIR/no-method-suggested-traits.rs:19:5
+   |
+LL |     pub trait Bar {
+LL |         fn method(&self) {}
+   |            ------ the method is available here
+...
+LL |     impl Bar for char {}
+   |     ^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
@@ -59,6 +65,12 @@ error[E0599]: no method named `method` found for struct `Rc<&mut Box<&char>>` in
 LL |     std::rc::Rc::new(&mut Box::new(&'a')).method();
    |                                           ^^^^^^
    |
+note: the method is available on trait `Bar` for `char`
+  --> $DIR/no-method-suggested-traits.rs:12:12
+   |
+LL |     pub trait Bar {
+LL |         fn method(&self) {}
+   |            ^^^^^^ the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
@@ -75,11 +87,15 @@ error[E0599]: no method named `method` found for type `i32` in the current scope
 LL |     1i32.method();
    |          ^^^^^^
    |
-  ::: $DIR/auxiliary/no_method_suggested_traits.rs:8:12
+note: the method is available on trait `PubPub` for `i32`
+  --> $DIR/auxiliary/no_method_suggested_traits.rs:14:5
    |
+LL |     pub trait PubPub {
 LL |         fn method(&self) {}
-   |            ------ the method is available for `i32` here
-   |
+   |            ------ the method is available here
+...
+LL |     impl PubPub for i32 {}
+   |     ^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
@@ -96,6 +112,12 @@ error[E0599]: no method named `method` found for struct `Rc<&mut Box<&i32>>` in 
 LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
    |                                            ^^^^^^
    |
+note: the method is available on trait `PubPub` for `i32`
+  --> $DIR/auxiliary/no_method_suggested_traits.rs:8:12
+   |
+LL |     pub trait PubPub {
+LL |         fn method(&self) {}
+   |            ^^^^^^ the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
