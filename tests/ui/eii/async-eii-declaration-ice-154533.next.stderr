@@ -1,5 +1,5 @@
 error: functions in `extern` blocks cannot have `async` qualifier
-  --> $DIR/async-eii-declaration-ice-154533.rs:14:1
+  --> $DIR/async-eii-declaration-ice-154533.rs:15:1
    |
 LL | #[eii]
    | ------ in this `extern` block
@@ -7,18 +7,18 @@ LL | async fn hello_impl() {}
    | ^^^^^ help: remove the `async` qualifier
 
 error[E0806]: function `hello_impl` has a type that is incompatible with the declaration of `#[hello_impl]`
-  --> $DIR/async-eii-declaration-ice-154533.rs:14:22
+  --> $DIR/async-eii-declaration-ice-154533.rs:15:22
    |
 LL | async fn hello_impl() {}
    |                      ^ expected `()`, found future
    |
 note: expected this because of this attribute
-  --> $DIR/async-eii-declaration-ice-154533.rs:13:1
+  --> $DIR/async-eii-declaration-ice-154533.rs:14:1
    |
 LL | #[eii]
    | ^^^^^^
 note: type in declaration
-  --> $DIR/async-eii-declaration-ice-154533.rs:14:22
+  --> $DIR/async-eii-declaration-ice-154533.rs:15:22
    |
 LL | async fn hello_impl() {}
    |                      ^

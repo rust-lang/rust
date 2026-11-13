@@ -1,6 +1,7 @@
 // `#[track_caller]` is derived onto EII implementations during codegen, so
 // implementations must not repeat it manually.
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 #[eii]
 fn decl1(x: u64) {
