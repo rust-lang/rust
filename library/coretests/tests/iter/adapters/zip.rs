@@ -370,3 +370,11 @@ fn test_issue_82291() {
     zip.next();
     assert_eq!(called.get(), 1);
 }
+
+#[test]
+fn test_zip_next_back_one_sided_side_effects_shorter() {
+    let a = [1u8, 2, 3];
+    let b = [1u8, 2, 3, 4, 5];
+    let mut it = a.iter().map(|x| *x).zip(b.iter());
+    let _ = it.next_back();
+}
