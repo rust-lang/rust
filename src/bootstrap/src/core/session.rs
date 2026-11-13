@@ -26,8 +26,8 @@ use crate::utils::build_stamp::BuildStamp;
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{
-    self, dir_is_empty, exe, is_symlink_dir, libdir, set_file_times, split_debuginfo, symlink_dir,
-    t,
+    self, dir_is_empty, exe, is_symlink_dir, lazily_copy_recursively, libdir, set_file_times,
+    split_debuginfo, symlink_dir, t,
 };
 use crate::{debug, trace};
 
@@ -441,6 +441,50 @@ impl Session {
             }
             // Now, update all existing submodules.
             sess.update_existing_submodules();
+
+            if let Some(suffix) = &sess.config.snapshot_sources {
+                // Run the rest of bootstrap in a backed-up version of the repo.
+                let snapshot_root = sess.out.join(format!("snapshot-{suffix}"));
+                let initial_root = &sess.config.src;
+
+                t!(fs::create_dir_all(&snapshot_root));
+
+                const TO_BACKUP: &[&str] = &[
+                    "compiler",
+                    "Cargo.toml",
+                    "Cargo.lock",
+                    "src",
+                    "tests/ui/attributes",
+                    "tests/auxiliary",
+                    ".gitignore",
+                    ".gitmodules",
+                    "library",
+                ];
+
+                for path in TO_BACKUP {
+                    lazily_copy_recursively(&initial_root.join(path), &snapshot_root.join(path));
+                }
+
+                let snapshot_build_dir = snapshot_root.join("build");
+
+                t!(fs::create_dir_all(&snapshot_build_dir));
+
+                // Share the rustc-perf between snapshots.
+                let initial_rustc_perf_out_path = sess.out.join("tmp/rustc-perf");
+                if !t!(fs::exists(&initial_rustc_perf_out_path)) {
+                    t!(fs::create_dir_all(&initial_rustc_perf_out_path));
+                }
+                t!(fs::create_dir_all(snapshot_root.join("build/tmp/")));
+
+                t!(symlink_dir(
+                    &sess,
+                    &initial_rustc_perf_out_path,
+                    &snapshot_root.join("build/tmp/rustc-perf"),
+                ));
+
+                sess.config.src = snapshot_root;
+                sess.config.out = snapshot_build_dir;
+            }
 
             sess.do_if_verbose(|| println!("learning about cargo"));
             crate::core::metadata::build(&mut sess);
