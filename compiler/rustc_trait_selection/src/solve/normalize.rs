@@ -240,6 +240,10 @@ where
             thin_vec![E::from_solver_error(at.infcx, NextSolverError::TrueError(obligation))]
         })?;
 
+    if obligations.is_empty() {
+        return Ok((value, vec![]));
+    }
+
     let mut fulfill_cx = FulfillmentCtxt::new(at.infcx);
     for pred in obligations {
         fulfill_cx.register_predicate_obligation(at.infcx, pred);
