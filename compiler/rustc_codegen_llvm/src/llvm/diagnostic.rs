@@ -23,7 +23,7 @@ pub(crate) struct OptimizationDiagnostic<'ll> {
     pub kind: OptimizationDiagnosticKind,
     pub pass_name: String,
     #[expect(dead_code)]
-    pub function: &'ll Value,
+    pub function: Value<'ll>,
     pub line: c_uint,
     pub column: c_uint,
     pub filename: String,

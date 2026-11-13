@@ -352,32 +352,13 @@ impl Interned {
 }
 const _: () = Interned::INDEX.assert_is_bottom();
 
-// This code is very hot, and converting span to an enum and matching on it doesn't optimize away
-// properly. So we are using a macro emulating such a match, but expand it directly to an if-else
-// chain.
-macro_rules! match_span_kind {
-    (
-        $span:expr,
-        InlineCtxt($span1:ident) => $arm1:expr,
-        InlineParent($span2:ident) => $arm2:expr,
-        InlinePair($span3:ident) => $arm3:expr,
-        Interned($span4:ident) => $arm4:expr,
-    ) => {{
-        let span64 = $span.0;
-        if InlineCtxt::PREFIX.get(span64) == InlineCtxt::PREFIX_VALUE {
-            let $span1 = InlineCtxt::from_span($span);
-            $arm1
-        } else if InlineParent::PREFIX.get(span64) == InlineParent::PREFIX_VALUE {
-            let $span2 = InlineParent::from_span($span);
-            $arm2
-        } else if InlinePair::PREFIX.get(span64) == InlinePair::PREFIX_VALUE {
-            let $span3 = InlinePair::from_span($span);
-            $arm3
-        } else {
-            let $span4 = Interned::from_span($span);
-            $arm4
-        }
-    }};
+/// Values of this type should never actually be materialized, because they are just temporaries
+/// and `Span::kind` is inlined.
+enum SpanKind {
+    InlineCtxt(InlineCtxt),
+    InlineParent(InlineParent),
+    InlinePair(InlinePair),
+    Interned(Interned),
 }
 
 /// The dummy span has zero position, length, and context, and no parent.
@@ -447,6 +428,20 @@ impl Span {
     }
 
     #[inline]
+    fn kind(self) -> SpanKind {
+        let span64 = self.0;
+        if InlineCtxt::PREFIX.get(span64) == InlineCtxt::PREFIX_VALUE {
+            SpanKind::InlineCtxt(InlineCtxt::from_span(self))
+        } else if InlineParent::PREFIX.get(span64) == InlineParent::PREFIX_VALUE {
+            SpanKind::InlineParent(InlineParent::from_span(self))
+        } else if InlinePair::PREFIX.get(span64) == InlinePair::PREFIX_VALUE {
+            SpanKind::InlinePair(InlinePair::from_span(self))
+        } else {
+            SpanKind::Interned(Interned::from_span(self))
+        }
+    }
+
+    #[inline]
     pub fn data(self) -> SpanData {
         let data = self.data_untracked();
         if let Some(parent) = data.parent {
@@ -459,12 +454,11 @@ impl Span {
     /// This function must not be used outside the incremental engine.
     #[inline]
     pub fn data_untracked(self) -> SpanData {
-        match_span_kind! {
-            self,
-            InlineCtxt(span) => span.data(),
-            InlineParent(span) => span.data(),
-            InlinePair(span) => span.data(),
-            Interned(span) => span.data(),
+        match self.kind() {
+            SpanKind::InlineCtxt(span) => span.data(),
+            SpanKind::InlineParent(span) => span.data(),
+            SpanKind::InlinePair(span) => span.data(),
+            SpanKind::Interned(span) => span.data(),
         }
     }
 
@@ -478,20 +472,18 @@ impl Span {
     /// means it's not the same as an equality comparison with `DUMMY_SP`.
     #[inline]
     pub fn is_dummy(self) -> bool {
-        match_span_kind! {
-            self,
-            InlineCtxt(span) => span.lo == 0 && span.len == 0,
-            InlineParent(span) => span.lo == 0 && span.len == 0,
-            InlinePair(span) => span.lo == 0 && span.len == 0,
-            Interned(span) => span.data().is_dummy(),
+        match self.kind() {
+            SpanKind::InlineCtxt(span) => span.lo == 0 && span.len == 0,
+            SpanKind::InlineParent(span) => span.lo == 0 && span.len == 0,
+            SpanKind::InlinePair(span) => span.lo == 0 && span.len == 0,
+            SpanKind::Interned(span) => span.data().is_dummy(),
         }
     }
 
     #[inline]
     pub fn map_ctxt(self, map: impl FnOnce(SyntaxContext) -> SyntaxContext) -> Span {
-        let data = match_span_kind! {
-            self,
-            InlineCtxt(span) => {
+        let data = match self.kind() {
+            SpanKind::InlineCtxt(span) => {
                 // This format occurs 1-2 orders of magnitude more often than others (#125017),
                 // so it makes sense to micro-optimize it to avoid `span.data()` and `Span::new()`.
                 let new_ctxt = map(SyntaxContext::from_u32(span.ctxt));
@@ -501,10 +493,10 @@ impl Span {
                 } else {
                     span.data().with_ctxt(new_ctxt)
                 };
-            },
-            InlineParent(span) => span.data(),
-            InlinePair(span) => span.data(),
-            Interned(span) => span.data(),
+            }
+            SpanKind::InlineParent(span) => span.data(),
+            SpanKind::InlinePair(span) => span.data(),
+            SpanKind::Interned(span) => span.data(),
         };
 
         data.with_ctxt(map(data.ctxt))
@@ -514,37 +506,35 @@ impl Span {
     /// It's a cut-down version of `data_untracked` and doesn't require taking the interner lock.
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
-        let ctxt32 = match_span_kind! {
-            self,
-            InlineCtxt(span) => span.ctxt,
-            InlineParent(_span) => return SyntaxContext::root(),
-            InlinePair(span) => span.ctxt,
-            Interned(span) => span.ctxt,
-        };
-        SyntaxContext::from_u32(ctxt32)
+        SyntaxContext::from_u32(match self.kind() {
+            SpanKind::InlineCtxt(span) => span.ctxt,
+            SpanKind::InlineParent(_span) => return SyntaxContext::root(),
+            SpanKind::InlinePair(span) => span.ctxt,
+            SpanKind::Interned(span) => span.ctxt,
+        })
     }
 
     #[inline]
     pub fn with_parent(self, parent: Option<LocalDefId>) -> Span {
-        let data = match_span_kind! {
-            self,
-            InlineCtxt(span) => {
+        let data = match self.kind() {
+            SpanKind::InlineCtxt(span) => {
                 // This format occurs 1-2 orders of magnitude more often than others (#126544),
                 // so it makes sense to micro-optimize it to avoid `span.data()`.
                 match parent {
                     None => return self,
                     Some(parent)
-                        if let Some(span) =
-                            Span::try_new_span_with_parent(span.lo, span.len, span.ctxt, parent) =>
+                        if let Some(span) = Span::try_new_span_with_parent(
+                            span.lo, span.len, span.ctxt, parent,
+                        ) =>
                     {
                         return span;
                     }
                     _ => span.data(),
                 }
-            },
-            InlineParent(span) => span.data(),
-            InlinePair(span) => span.data(),
-            Interned(span) => span.data(),
+            }
+            SpanKind::InlineParent(span) => span.data(),
+            SpanKind::InlinePair(span) => span.data(),
+            SpanKind::Interned(span) => span.data(),
         };
 
         if let Some(old_parent) = data.parent {
@@ -556,12 +546,11 @@ impl Span {
     #[inline]
     pub fn parent(self) -> Option<LocalDefId> {
         let to_parent = |parent| Some(LocalDefId { local_def_index: DefIndex::from_u32(parent) });
-        match_span_kind! {
-            self,
-            InlineCtxt(_span) => None,
-            InlineParent(span) => to_parent(span.parent),
-            InlinePair(span) => to_parent(span.parent),
-            Interned(span) => span.data().parent,
+        match self.kind() {
+            SpanKind::InlineCtxt(_span) => None,
+            SpanKind::InlineParent(span) => to_parent(span.parent),
+            SpanKind::InlinePair(span) => to_parent(span.parent),
+            SpanKind::Interned(span) => span.data().parent,
         }
     }
 

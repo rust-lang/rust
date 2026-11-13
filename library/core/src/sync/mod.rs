@@ -4,5 +4,5 @@
 
 pub mod atomic;
 mod sync_view;
-#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "exclusive_wrapper", since = "1.101.0")]
 pub use sync_view::SyncView;

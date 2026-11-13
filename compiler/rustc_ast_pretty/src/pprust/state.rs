@@ -1437,9 +1437,12 @@ impl<'a> State<'a> {
                 self.word("...");
             }
             ast::TyKind::Pat(ty, pat) => {
+                self.word("k#pattern_type");
+                self.popen();
                 self.print_type(ty);
                 self.word(" is ");
                 self.print_ty_pat(pat);
+                self.pclose();
             }
             ast::TyKind::FieldOf(ty, variant, field) => {
                 self.word("k#field_of");
@@ -1459,8 +1462,11 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             ast::TyKind::View(ty, fields) => {
+                self.word("k#view_type");
+                self.popen();
                 self.print_type(ty);
                 self.print_view(fields);
+                self.pclose();
             }
             ast::TyKind::GcaMacro(expr) => {
                 self.word_nbsp("core::gca!");

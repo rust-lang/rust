@@ -2045,7 +2045,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    #[stable(feature = "arc_is_unique", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "arc_is_unique", since = "1.101.0")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }

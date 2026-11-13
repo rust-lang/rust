@@ -434,8 +434,8 @@ pub(super) fn emit_frag_parse_err(
                 }
             }
         },
-        _ => annotate_err_with_kind(&mut e, kind, site_span),
-    };
+        _ => {}
+    }
 
     if parser.token.kind == token::Dollar {
         let dollar_span = parser.token.span;
@@ -502,18 +502,6 @@ pub(super) fn emit_frag_parse_err(
         }
     }
     e.emit_err()
-}
-
-pub(crate) fn annotate_err_with_kind(err: &mut Diag<'_>, kind: AstFragmentKind, span: Span) {
-    match kind {
-        AstFragmentKind::Ty => {
-            err.span_label(span, "this macro call doesn't expand to a type");
-        }
-        AstFragmentKind::Pat => {
-            err.span_label(span, "this macro call doesn't expand to a pattern");
-        }
-        _ => {}
-    };
 }
 
 #[derive(Subdiagnostic)]

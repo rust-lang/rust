@@ -43,6 +43,7 @@ pub enum SolverTraitLangItem {
     Drop,
     Field,
     Fn,
+    FnAddrTrait,
     FnMut,
     FnOnce,
     FnPtrTrait,

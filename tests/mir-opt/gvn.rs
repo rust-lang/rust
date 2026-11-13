@@ -6,7 +6,7 @@
 #![feature(rustc_attrs)]
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
-#![feature(freeze, pattern_type_range_trait, const_trait_impl, pattern_types, pattern_type_macro)]
+#![feature(freeze, pattern_type_range_trait, const_trait_impl, pattern_types)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(unconditional_panic)]
 #![allow(unnecessary_transmutes)]

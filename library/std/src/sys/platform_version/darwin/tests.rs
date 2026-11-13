@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // macOS version APIs are not supported in Miri
+
 use super::public_extern::*;
 use super::*;
 use crate::process::Command;

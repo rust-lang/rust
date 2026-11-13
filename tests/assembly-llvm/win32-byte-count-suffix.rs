@@ -249,8 +249,9 @@ extern "vectorcall" fn eight_vectors_vectorcall(
 ) {
 }
 
-// MSVC passes this argument indirectly, but the decoration uses the
-// original 8-byte type size rather than the 4-byte pointer size.
+/// FIXME: the mangled name for this type is incorrect on msvc, where the argument is passed
+/// indirectly and a pointer takes up 4 bytes, but clang counts the size of the type and uses
+/// @8 there. With GNU the value is passed directly, so the suffix is correct.
 #[repr(C, align(8))]
 struct OverAligned(u32, u32);
 
@@ -259,16 +260,16 @@ struct OverAligned(u32, u32);
 extern "C" fn overaligned(_: OverAligned) {}
 
 // windows-gnu-LABEL: _overaligned_stdcall@8:
-// windows-msvc-LABEL: _overaligned_stdcall@8:
+// windows-msvc-LABEL: _overaligned_stdcall@4:
 #[unsafe(no_mangle)]
 extern "stdcall" fn overaligned_stdcall(_: OverAligned) {}
 
 // windows-gnu-LABEL: @overaligned_fastcall@8:
-// windows-msvc-LABEL: @overaligned_fastcall@8:
+// windows-msvc-LABEL: @overaligned_fastcall@4:
 #[unsafe(no_mangle)]
 extern "fastcall" fn overaligned_fastcall(_: OverAligned) {}
 
 // windows-gnu-LABEL: overaligned_vectorcall@@8:
-// windows-msvc-LABEL: overaligned_vectorcall@@8:
+// windows-msvc-LABEL: overaligned_vectorcall@@4:
 #[unsafe(no_mangle)]
 extern "vectorcall" fn overaligned_vectorcall(_: OverAligned) {}

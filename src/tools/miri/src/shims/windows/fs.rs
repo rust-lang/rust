@@ -302,11 +302,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         unreachable!()
                     }
 
-                    let Some(fd_num) = ecx.machine.fds.insert_new(DirHandle {
-                        dir,
-                        #[cfg(bootstrap)]
-                        fallback: file_name.canonicalize().unwrap(),
-                    }) else {
+                    let Some(fd_num) = ecx.machine.fds.insert_new(DirHandle { dir }) else {
                         throw_unsup_format!("we ran out of FD numbers")
                     };
                     interp_ok(Handle::File(fd_num))

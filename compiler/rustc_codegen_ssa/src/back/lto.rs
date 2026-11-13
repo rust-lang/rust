@@ -12,7 +12,7 @@ use rustc_session::config::Lto;
 use rustc_structures::CrateType;
 use tracing::info;
 
-use crate::back::symbol_export::{self, allocator_shim_symbols};
+use crate::back::symbol_export::{self, allocator_shim_symbols, symbol_name_for_instance_in_crate};
 use crate::back::write::CodegenContext;
 use crate::base::allocator_kind_for_codegen;
 use crate::diagnostics::{DynamicLinkingWithLTO, LtoDisallowed, LtoDylib, LtoProcMacro};
@@ -104,11 +104,11 @@ pub(crate) fn exported_symbols_for_lto(
         tcx.exported_non_generic_symbols(cnum)
             .iter()
             .chain(tcx.exported_generic_symbols(cnum))
-            .flat_map(|&(s, info): &(ExportedSymbol<'_>, SymbolExportInfo)| {
+            .filter_map(|&(s, info): &(ExportedSymbol<'_>, SymbolExportInfo)| {
                 if info.level.is_below_threshold(export_threshold) || info.used {
-                    symbol_export::symbol_names_for_lto(tcx, s, cnum)
+                    Some(symbol_name_for_instance_in_crate(tcx, s, cnum))
                 } else {
-                    vec![]
+                    None
                 }
             })
             .collect::<Vec<_>>()

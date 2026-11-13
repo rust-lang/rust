@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // process spawning is not supported in Miri
+
 use super::child_pipe::{Pipes, child_pipe};
 use super::{Arg, make_command_line};
 use crate::ffi::{OsStr, OsString};

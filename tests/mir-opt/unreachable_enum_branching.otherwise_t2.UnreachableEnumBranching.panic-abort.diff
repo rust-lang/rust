@@ -6,6 +6,7 @@
       let _1: &str;
       let mut _2: Test2;
       let mut _3: isize;
+      let _4: &str;
   
       bb0: {
           StorageLive(_1);
@@ -17,7 +18,10 @@
       }
   
       bb1: {
-          _1 = const "E";
+          StorageLive(_4);
+          _4 = const "E";
+          _1 = &(*_4);
+          StorageDead(_4);
           goto -> bb3;
       }
   

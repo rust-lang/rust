@@ -28,7 +28,7 @@ pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Buil
 /// section.
 pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> &'ll Value {
+) -> Value<'ll> {
     let c_section_var_name = c"__rustc_debug_gdb_scripts_section__";
     let section_var_name = c_section_var_name.to_str().unwrap();
 

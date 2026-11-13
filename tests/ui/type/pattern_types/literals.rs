@@ -1,7 +1,6 @@
 //! Check where literals can be used to initialize pattern types and where not.
 
 #![feature(pattern_types, const_trait_impl, pattern_type_range_trait)]
-#![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;
 

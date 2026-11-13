@@ -6027,12 +6027,10 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// #[no_link]
     /// extern crate std;
-    #[cfg_attr(bootstrap, doc = "```")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     ///
     /// {{produces}}
     ///

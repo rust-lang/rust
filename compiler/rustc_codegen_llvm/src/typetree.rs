@@ -75,7 +75,7 @@ enum TTLocation {
     Callsite,
 }
 
-pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: FncTree) {
+pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: Value<'ll>, tt: FncTree) {
     // TypeTree processing uses functions from Enzyme. This feature is not strictly necessary,
     // but skipping this function increases the chance that Enzyme fails to compile some code.
 

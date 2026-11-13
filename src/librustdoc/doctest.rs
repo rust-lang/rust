@@ -648,9 +648,12 @@ fn run_test(
         },
     ]);
     if let ErrorOutputType::HumanReadable { kind, color_config } = rustdoc_options.error_format {
-        let short = kind.short();
-        let unicode = kind == HumanReadableErrorType { unicode: true, short };
+        let HumanReadableErrorType { no_graphics, short, unicode } = kind;
 
+        if no_graphics {
+            compiler_args
+                .extend_from_slice(&["--error-format".to_owned(), "human-no-graphics".to_owned()]);
+        }
         if short {
             compiler_args.extend_from_slice(&["--error-format".to_owned(), "short".to_owned()]);
         }
