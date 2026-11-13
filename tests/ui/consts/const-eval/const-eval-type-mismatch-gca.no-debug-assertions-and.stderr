@@ -1,0 +1,24 @@
+error: the constant `N` is not of type `usize`
+  --> $DIR/const-eval-type-mismatch-gca.rs:33:1
+   |
+LL | const GCA<const N: ConcreteUsize>: usize = gca!(INNER::<N>);
+   | ^^^^^^^^^^----------------------^^^^^^^^
+   | |         |
+   | |         `N` defined here
+   | expected `usize`, found `u64`
+
+error: the constant `INNER::<N>` is not of type `usize`
+  --> $DIR/const-eval-type-mismatch-gca.rs:33:1
+   |
+LL | const GCA<const N: ConcreteUsize>: usize = gca!(INNER::<N>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found a different `usize`
+
+error[E0271]: type mismatch resolving `GCA<0> == _`
+  --> $DIR/const-eval-type-mismatch-gca.rs:37:47
+   |
+LL | const ARR: [(); gca!(INNER::<0>)] = [(); gca!(GCA::<0>)];
+   |                                               ^^^^^^^^ types differ
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

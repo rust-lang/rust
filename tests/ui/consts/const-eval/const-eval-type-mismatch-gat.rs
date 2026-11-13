@@ -1,4 +1,5 @@
-//@ known-bug: #118778
+// This test verifies ICE doesn't happen on mismatched types of the result of binary
+// or unary operations during const eval. See issues #118778, #161532.
 //@ edition:2021
 //@ needs-rustc-debug-assertions
 
@@ -10,7 +11,9 @@ trait Owner {
 }
 
 impl Owner for () {
-    type T<const N: u32> = U32<{ N + 1 }>
+    type T<const N: u32>
+        //~^ ERROR associated type `T` has an incompatible type for const generic parameter [E0053]
+        = U32<{ N + 1 }>
     where
         U32<{ N + 1 }>:;
 }

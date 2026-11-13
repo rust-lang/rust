@@ -1,0 +1,15 @@
+error[E0053]: associated type `T` has an incompatible type for const generic parameter
+  --> $DIR/const-eval-type-mismatch-gat.rs:14:21
+   |
+LL |     type T<const N: u32>
+   |                     ^^^ expected `u16`, found `u32`
+   |
+note: type in trait
+  --> $DIR/const-eval-type-mismatch-gat.rs:10:21
+   |
+LL |     type T<const N: u16>;
+   |                     ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

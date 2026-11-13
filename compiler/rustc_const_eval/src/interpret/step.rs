@@ -19,6 +19,7 @@ use super::{
     EnteredTraceSpan, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine,
     MemPlaceMeta, PlaceTy, Projectable, RetagMode, interp_ok, throw_ub, throw_unsup_format,
 };
+use crate::interpret::eval_context::span_delayed_layout_mismatch_bug;
 use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
@@ -191,7 +192,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let layout = util::binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
                 let result = self.binary_op(bin_op, &left, &right)?;
-                assert_eq!(result.layout, dest.layout, "layout mismatch for result of {bin_op:?}");
+                if result.layout != dest.layout {
+                    span_delayed_layout_mismatch_bug(
+                        self.tcx,
+                        dest.layout,
+                        result.layout,
+                        format_args!("layout mismatch for result of {bin_op:?}"),
+                    )?;
+                }
                 self.write_immediate(*result, &dest)?;
             }
 
@@ -199,7 +207,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let layout = util::unop_homogeneous(un_op).then_some(dest.layout);
                 let val = self.read_immediate(&self.eval_operand(operand, layout)?)?;
                 let result = self.unary_op(un_op, &val)?;
-                assert_eq!(result.layout, dest.layout, "layout mismatch for result of {un_op:?}");
+                if result.layout != dest.layout {
+                    span_delayed_layout_mismatch_bug(
+                        self.tcx,
+                        dest.layout,
+                        result.layout,
+                        format_args!("layout mismatch for result of {un_op:?}"),
+                    )?;
+                }
                 self.write_immediate(*result, &dest)?;
             }
 

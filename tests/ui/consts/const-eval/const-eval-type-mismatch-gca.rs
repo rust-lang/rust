@@ -1,5 +1,6 @@
 //@ revisions: debug-assertions-add no-debug-assertions-add debug-assertions-and no-debug-assertions-and debug-assertions-not no-debug-assertions-not
-// Issue: #165685
+// This test verifies ICE doesn't happen on mismatched types of the result of binary
+// or unary operations during const eval. See Issue #165685.
 //@ [no-debug-assertions-add] compile-flags: -Znext-solver=globally -Cdebug_assertions=no
 //@ [no-debug-assertions-and] compile-flags: -Znext-solver=globally -Cdebug_assertions=no
 //@ [no-debug-assertions-not] compile-flags: -Znext-solver=globally -Cdebug_assertions=no
@@ -29,17 +30,11 @@ const INNER<const N: usize>: usize = cfg_select! {
     any(debug_assertions_not, no_debug_assertions_not) => !N,
 };
 
-const GCA_U64<const N: u64>: usize = gca!(INNER::<N>);
+const GCA<const N: ConcreteUsize>: usize = gca!(INNER::<N>);
 //~^ ERROR the constant `N` is not of type `usize`
 //~| ERROR the constant `INNER::<N>` is not of type `usize`
 
-const GCA_CONCRETE_USIZE<const N: ConcreteUsize>: usize = gca!(INNER::<N>);
-//~^ ERROR the constant `N` is not of type `usize`
-//~| ERROR the constant `INNER::<N>` is not of type `usize`
-
-const ARR_U64: [(); gca!(INNER::<0>)] = [(); gca!(GCA_U64::<0>)];
-//~^ ERROR type mismatch resolving `GCA_U64<0> == _` [E0271]
-const ARR_CONCRETE_USIZE: [(); gca!(INNER::<0>)] = [(); gca!(GCA_CONCRETE_USIZE::<0>)];
-//~^ ERROR type mismatch resolving `GCA_CONCRETE_USIZE<0> == _` [E0271]
+const ARR: [(); gca!(INNER::<0>)] = [(); gca!(GCA::<0>)];
+//~^ ERROR type mismatch resolving `GCA<0> == _` [E0271]
 
 fn main() {}
