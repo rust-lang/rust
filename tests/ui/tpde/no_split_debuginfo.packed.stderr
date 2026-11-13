@@ -1,0 +1,2 @@
+error: using -Zllvm-tpde with split debuginfo is not supported
+
