@@ -340,9 +340,12 @@ impl Command {
         &mut self.env
     }
 
-    pub fn capture_env(&mut self) -> Option<CStringArray> {
+    pub fn capture_env(&mut self) -> io::Result<Option<CStringArray>> {
         let maybe_env = self.env.capture_if_changed();
-        maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
+        match maybe_env {
+            Some(env) => Ok(Some(construct_envp(env)?)),
+            None => Ok(None),
+        }
     }
 
     #[allow(dead_code)]
@@ -381,7 +384,7 @@ fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
     })
 }
 
-fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
+fn construct_envp(env: BTreeMap<OsString, OsString>) -> io::Result<CStringArray> {
     let mut result = CStringArray::with_capacity(env.len());
     for (mut k, v) in env {
         // Reserve additional space for '=' and null terminator
@@ -393,11 +396,14 @@ fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStr
         if let Ok(item) = CString::new(k.into_vec()) {
             result.push(item);
         } else {
-            *saw_nul = true;
+            return Err(io::const_error!(
+                core::io::ErrorKind::InvalidInput,
+                "nul byte found in provided data",
+            ));
         }
     }
 
-    result
+    Ok(result)
 }
 
 impl Stdio {

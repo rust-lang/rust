@@ -19,7 +19,7 @@ impl Command {
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
         use crate::sys::cvt_r;
-        let envp = self.capture_env();
+        let envp = self.capture_env()?;
 
         if self.saw_nul() {
             return Err(io::const_error!(
