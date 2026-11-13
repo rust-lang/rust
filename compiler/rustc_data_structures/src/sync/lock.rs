@@ -1,19 +1,13 @@
 //! This module implements a lock which only uses synchronization if `might_be_dyn_thread_safe` is true.
 //! It implements `DynSend` and `DynSync` instead of the typical `Send` and `Sync` traits.
 
-use std::{fmt, hint};
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum Mode {
-    NoSync,
-    Sync,
-}
-
 use std::cell::{Cell, UnsafeCell};
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut};
+use std::{fmt, hint};
 
+use mode::Mode;
 use parking_lot::RawMutex;
 use parking_lot::lock_api::RawMutex as _;
 
