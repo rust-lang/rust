@@ -67,7 +67,7 @@
 //!
 //! Likewise, manually deallocating the raw pointer acquired from a `Box` is only sound
 //! if the size of the pointee is non-zero, as zero-sized values may be represented by
-//! a pointer that is not [*currently allocated*] by that allocator. It is recommended to
+//! a pointer that did not come from that allocator. It is recommended to
 //! pair [`Box::into_raw_with_allocator`] with [`Box::from_raw_in`], rather than
 //! doing this.
 //!
@@ -178,7 +178,6 @@
 //! and it's best to avoid relying on this edition-dependent behavior if you wish to preserve
 //! compatibility with future versions of the compiler.
 //!
-//! [*currently allocated*]: Allocator#currently-allocated-memory
 //! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
 //! [ucg#326]: https://github.com/rust-lang/unsafe-code-guidelines/issues/326
 //! [dereferencing]: core::ops::Deref

@@ -61,7 +61,8 @@
 //! The parts of a [`Vec`] have the following invariants:
 //!
 //! * If [`size_of::<T>()`](size_of) and `cap` are non-zero, then:
-//!   - `ptr` must point to the start of a memory block [*currently allocated*] via `alloc`.
+//!   - `ptr` must point to the start of a memory block allocated with `alloc`; the vector takes
+//!     ownership of this memory block.
 //!   - [`Layout::array::<T>(cap)`] must [*fit*] the memory block of `ptr`. In particular,
 //!     * `T` must have the same alignment as the [`Layout`] `ptr` was allocated with, and
 //!     * `size_of::<T>() * cap` must be at least the size of the [`Layout`] `ptr` was
@@ -89,7 +90,6 @@
 //! deallocating.
 //!
 //! [*fit*]: crate::alloc::Allocator#memory-fitting
-//! [*currently allocated*]: crate::alloc::Allocator#currently-allocated-memory
 //! [`allocate`]: crate::alloc::Allocator::allocate
 //! [`push`]: Vec::push
 //! [`ptr::NonNull::dangling`]: NonNull::dangling
