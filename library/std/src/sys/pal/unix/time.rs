@@ -110,61 +110,17 @@ impl Timespec {
     }
 
     pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
-        // When a >= b, the difference fits in u64.
-        fn sub_ge_to_unsigned(a: i64, b: i64) -> u64 {
-            debug_assert!(a >= b);
-            a.wrapping_sub(b).cast_unsigned()
-        }
-
-        if self >= other {
-            let (secs, nsec) = if self.tv_nsec.as_inner() >= other.tv_nsec.as_inner() {
-                (
-                    sub_ge_to_unsigned(self.tv_sec, other.tv_sec),
-                    self.tv_nsec.as_inner() - other.tv_nsec.as_inner(),
-                )
-            } else {
-                // Following sequence of assertions explain why `self.tv_sec - 1` does not underflow.
-                debug_assert!(self.tv_nsec < other.tv_nsec);
-                debug_assert!(self.tv_sec > other.tv_sec);
-                debug_assert!(self.tv_sec > i64::MIN);
-                (
-                    sub_ge_to_unsigned(self.tv_sec - 1, other.tv_sec),
-                    self.tv_nsec.as_inner() + (NSEC_PER_SEC as u32) - other.tv_nsec.as_inner(),
-                )
-            };
-
-            Ok(Duration::new(secs, nsec))
-        } else {
-            match other.sub_timespec(self) {
-                Ok(d) => Err(d),
-                Err(d) => Ok(d),
-            }
-        }
+        crate::time::ops::diff((self.tv_sec, self.tv_nsec), (other.tv_sec, other.tv_nsec))
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = self.tv_sec.checked_add_unsigned(other.as_secs())?;
-
-        // Nano calculations can't overflow because nanos are <1B which fit
-        // in a u32.
-        let mut nsec = other.subsec_nanos() + self.tv_nsec.as_inner();
-        if nsec >= NSEC_PER_SEC as u32 {
-            nsec -= NSEC_PER_SEC as u32;
-            secs = secs.checked_add(1)?;
-        }
-        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
+    pub fn checked_add_duration(&self, &other: &Duration) -> Option<Timespec> {
+        let (tv_sec, tv_nsec) = crate::time::ops::add((self.tv_sec, self.tv_nsec), other)?;
+        Some(Timespec { tv_sec, tv_nsec })
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = self.tv_sec.checked_sub_unsigned(other.as_secs())?;
-
-        // Similar to above, nanos can't overflow.
-        let mut nsec = self.tv_nsec.as_inner() as i32 - other.subsec_nanos() as i32;
-        if nsec < 0 {
-            nsec += NSEC_PER_SEC as i32;
-            secs = secs.checked_sub(1)?;
-        }
-        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
+    pub fn checked_sub_duration(&self, &other: &Duration) -> Option<Timespec> {
+        let (tv_sec, tv_nsec) = crate::time::ops::sub((self.tv_sec, self.tv_nsec), other)?;
+        Some(Timespec { tv_sec, tv_nsec })
     }
 
     #[allow(dead_code)]

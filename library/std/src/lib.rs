@@ -388,6 +388,7 @@
 #![feature(uint_carryless_mul)]
 #![feature(unsafe_pinned)]
 #![feature(used_with_arg)]
+#![feature(widening_mul)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
 //
