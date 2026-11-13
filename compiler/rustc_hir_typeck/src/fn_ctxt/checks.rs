@@ -102,7 +102,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::ExprKind::ConstBlock(..) => return None,
                     hir::ExprKind::Path(qpath) => {
                         let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
-                        if let Res::Def(DefKind::Const | DefKind::AssocConst, _) = res {
+                        if let Res::Def(
+                            DefKind::Const
+                            | DefKind::AssocConst
+                            | DefKind::ConstParam
+                            | DefKind::Fn
+                            | DefKind::AssocFn
+                            | DefKind::Ctor(_, CtorKind::Fn)
+                            | DefKind::Ctor(CtorOf::Struct, CtorKind::Const),
+                            _,
+                        )
+                        | Res::SelfCtor(_) = res
+                        {
                             return None;
                         }
                     }

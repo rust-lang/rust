@@ -1484,6 +1484,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
+            | Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Const), _)
             | Res::SelfCtor(_) => {
                 let user_ty = self.user_args_applied_to_res(expr.hir_id, res);
                 ExprKind::ZstLiteral { user_ty }
@@ -1509,7 +1510,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::NamedConst { def_id, args, user_ty }
             }
 
-            Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
+            Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), def_id) => {
                 let user_provided_types = self.typeck_results.user_provided_types();
                 let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
                 debug!("convert_path_expr: user_ty={:?}", user_ty);
