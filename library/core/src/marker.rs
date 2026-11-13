@@ -487,6 +487,22 @@ impl Copy for ! {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Copy for &T {}
 
+/// Checks if a given type definitely implements `Copy`.
+///
+/// May have false negatives.
+#[unstable(feature = "copy_clone_spec_internals", reason = "Internal API", issue = "none")]
+#[rustc_const_unstable(
+    feature = "copy_clone_spec_internals",
+    reason = "Internal API",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub const fn is_definitely_copy<T: ?Sized>() -> bool {
+    trait IsCopy {}
+    impl<T: Copy> IsCopy for crate::marker::PhantomData<T> {}
+    crate::any::try_as_dyn::<_, dyn IsCopy>(&crate::marker::PhantomData::<T>).is_some()
+}
+
 /// Marker trait for the types that are allowed in union fields and unsafe
 /// binder types.
 ///
