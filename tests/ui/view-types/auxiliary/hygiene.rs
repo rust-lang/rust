@@ -1,6 +1,6 @@
 //@ edition:2015
 
-#![feature(view_types, view_type_macro)]
+#![feature(view_types)]
 
 pub use std::view::view_type;
 

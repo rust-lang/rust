@@ -537,7 +537,7 @@ pub(crate) fn inline_asm_call<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
     asm: &str,
     cons: &str,
-    inputs: &[&'ll Value],
+    inputs: &[Value<'ll>],
     output: llvm::Type<'ll>,
     labels: &[&'ll llvm::BasicBlock],
     volatile: bool,
@@ -547,7 +547,7 @@ pub(crate) fn inline_asm_call<'ll>(
     unwind: bool,
     dest: Option<&'ll llvm::BasicBlock>,
     catch_funclet: Option<(&'ll llvm::BasicBlock, Option<&Funclet<'ll>>)>,
-) -> Option<&'ll Value> {
+) -> Option<Value<'ll>> {
     let argtys = inputs
         .iter()
         .map(|v| {
@@ -1170,11 +1170,11 @@ fn any_target_feature_enabled(
 /// Fix up an input value to work around LLVM bugs.
 fn llvm_fixup_input<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    mut value: &'ll Value,
+    mut value: Value<'ll>,
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
     instance: Instance<'_>,
-) -> &'ll Value {
+) -> Value<'ll> {
     use InlineAsmRegClass::*;
     let dl = &bx.tcx.data_layout;
     match (reg, layout.backend_repr) {
@@ -1373,11 +1373,11 @@ fn llvm_fixup_input<'ll, 'tcx>(
 /// Fix up an output value to work around LLVM bugs.
 fn llvm_fixup_output<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    mut value: &'ll Value,
+    mut value: Value<'ll>,
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
     instance: Instance<'_>,
-) -> &'ll Value {
+) -> Value<'ll> {
     use InlineAsmRegClass::*;
     match (reg, layout.backend_repr) {
         (AArch64(AArch64InlineAsmRegClass::vreg), BackendRepr::Scalar(s)) => {

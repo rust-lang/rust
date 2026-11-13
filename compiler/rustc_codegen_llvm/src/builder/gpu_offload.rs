@@ -21,18 +21,18 @@ use crate::llvm::{self, Linkage, Type, TypeKind, Value};
 
 // LLVM kernel-independent globals required for offloading
 pub(crate) struct OffloadGlobals<'ll> {
-    pub launcher_fn: &'ll llvm::Value,
+    pub launcher_fn: llvm::Value<'ll>,
     pub launcher_ty: llvm::Type<'ll>,
 
     pub kernel_args_ty: KernelArgsTy,
 
     pub offload_entry_ty: llvm::Type<'ll>,
 
-    pub begin_mapper: &'ll llvm::Value,
-    pub end_mapper: &'ll llvm::Value,
+    pub begin_mapper: llvm::Value<'ll>,
+    pub end_mapper: llvm::Value<'ll>,
     pub mapper_fn_ty: llvm::Type<'ll>,
 
-    pub ident_t_global: &'ll llvm::Value,
+    pub ident_t_global: llvm::Value<'ll>,
 }
 
 impl<'ll> OffloadGlobals<'ll> {
@@ -61,22 +61,22 @@ impl<'ll> OffloadGlobals<'ll> {
 }
 
 pub(crate) struct OffloadKernelDims<'ll> {
-    num_workgroups: &'ll Value,
-    threads_per_block: &'ll Value,
-    workgroup_dims: [&'ll Value; 3],
-    thread_dims: [&'ll Value; 3],
+    num_workgroups: Value<'ll>,
+    threads_per_block: Value<'ll>,
+    workgroup_dims: [Value<'ll>; 3],
+    thread_dims: [Value<'ll>; 3],
 }
 
 impl<'ll> OffloadKernelDims<'ll> {
     pub(crate) fn from_operands<'tcx>(
         builder: &mut Builder<'_, 'll, 'tcx>,
-        workgroup_op: &OperandRef<'tcx, &'ll llvm::Value>,
-        thread_op: &OperandRef<'tcx, &'ll llvm::Value>,
+        workgroup_op: &OperandRef<'tcx, llvm::Value<'ll>>,
+        thread_op: &OperandRef<'tcx, llvm::Value<'ll>>,
     ) -> Self {
         fn load_3_u32<'ll>(
             builder: &mut Builder<'_, 'll, '_>,
-            place: PlaceValue<&'ll Value>,
-        ) -> [&'ll Value; 3] {
+            place: PlaceValue<Value<'ll>>,
+        ) -> [Value<'ll>; 3] {
             let ty = builder.type_i32();
             let size = 4;
             let v0 = builder.load(ty, place.llval, place.align);
@@ -100,8 +100,8 @@ impl<'ll> OffloadKernelDims<'ll> {
 
         fn mul_dim3<'ll, 'tcx>(
             builder: &mut Builder<'_, 'll, 'tcx>,
-            [x, y, z]: [&'ll Value; 3],
-        ) -> &'ll Value {
+            [x, y, z]: [Value<'ll>; 3],
+        ) -> Value<'ll> {
             let xy = builder.mul(x, y);
             builder.mul(xy, z)
         }
@@ -120,7 +120,7 @@ impl<'ll> OffloadKernelDims<'ll> {
 
 // ; Function Attrs: nounwind
 // declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr) #2
-fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, llvm::Type<'ll>) {
+fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (llvm::Value<'ll>, llvm::Type<'ll>) {
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
@@ -137,7 +137,7 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, llvm::T
 /// declaration together with its type.
 pub(crate) fn declare_omp_get_num_devices<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (&'ll llvm::Value, llvm::Type<'ll>) {
+) -> (llvm::Value<'ll>, llvm::Type<'ll>) {
     let ti32 = cx.type_i32();
     let tgt_fn_ty = cx.type_func(&[], ti32);
     let name = "omp_get_num_devices";
@@ -152,7 +152,7 @@ pub(crate) fn declare_omp_get_num_devices<'ll>(
 // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
 // FIXME(offload): @0 should include the file name (e.g. lib.rs) in which the function to be
 // offloaded was defined.
-pub(crate) fn generate_at_one<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll llvm::Value {
+pub(crate) fn generate_at_one<'ll>(cx: &CodegenCx<'ll, '_>) -> llvm::Value<'ll> {
     let unknown_txt = ";unknown;unknown;0;0;;";
     let c_entry_name = CString::new(unknown_txt).unwrap();
     let c_val = c_entry_name.as_bytes_with_nul();
@@ -205,9 +205,9 @@ impl TgtOffloadEntry {
 
     fn new<'ll>(
         cx: &CodegenCx<'ll, '_>,
-        region_id: &'ll Value,
-        llglobal: &'ll Value,
-    ) -> [&'ll Value; 9] {
+        region_id: Value<'ll>,
+        llglobal: Value<'ll>,
+    ) -> [Value<'ll>; 9] {
         let reserved = cx.get_const_i64(0);
         let version = cx.get_const_i16(1);
         let kind = cx.get_const_i16(1);
@@ -291,12 +291,12 @@ impl KernelArgsTy {
     fn new<'ll, 'tcx>(
         cx: &CodegenCx<'ll, 'tcx>,
         num_args: u64,
-        memtransfer_types: &'ll Value,
-        geps: [&'ll Value; 3],
-        workgroup_dims: [&'ll Value; 3],
-        thread_dims: [&'ll Value; 3],
-        dyn_cache: &'ll Value,
-    ) -> [&'ll Value; Self::FIELD_COUNT] {
+        memtransfer_types: Value<'ll>,
+        geps: [Value<'ll>; 3],
+        workgroup_dims: [Value<'ll>; 3],
+        thread_dims: [Value<'ll>; 3],
+        dyn_cache: Value<'ll>,
+    ) -> [Value<'ll>; Self::FIELD_COUNT] {
         [
             // Version
             cx.get_const_i32(KernelArgsTy::OFFLOAD_VERSION),
@@ -336,16 +336,16 @@ impl KernelArgsTy {
 // Contains LLVM values needed to manage offloading for a single kernel.
 #[derive(Copy, Clone)]
 pub(crate) struct OffloadKernelGlobals<'ll> {
-    pub offload_sizes: &'ll llvm::Value,
-    pub memtransfer_begin: &'ll llvm::Value,
-    pub memtransfer_kernel: &'ll llvm::Value,
-    pub memtransfer_end: &'ll llvm::Value,
-    pub region_id: &'ll llvm::Value,
+    pub offload_sizes: llvm::Value<'ll>,
+    pub memtransfer_begin: llvm::Value<'ll>,
+    pub memtransfer_kernel: llvm::Value<'ll>,
+    pub memtransfer_end: llvm::Value<'ll>,
+    pub region_id: llvm::Value<'ll>,
 }
 
 fn gen_tgt_data_mappers<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, llvm::Type<'ll>) {
+) -> (llvm::Value<'ll>, llvm::Value<'ll>, llvm::Value<'ll>, llvm::Type<'ll>) {
     let tptr = cx.type_ptr();
     let ti64 = cx.type_i64();
     let ti32 = cx.type_i32();
@@ -367,7 +367,7 @@ fn gen_tgt_data_mappers<'ll>(
     (begin_mapper_decl, update_mapper_decl, end_mapper_decl, mapper_fn_ty)
 }
 
-fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'ll llvm::Value {
+fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> llvm::Value<'ll> {
     let ti64 = cx.type_i64();
     let mut size_val = Vec::with_capacity(vals.len());
     for &val in vals {
@@ -380,9 +380,9 @@ fn add_priv_unnamed_arr<'ll>(cx: &SimpleCx<'ll>, name: &str, vals: &[u64]) -> &'
 pub(crate) fn add_unnamed_global<'ll>(
     cx: &SimpleCx<'ll>,
     name: &str,
-    initializer: &'ll llvm::Value,
+    initializer: llvm::Value<'ll>,
     l: Linkage,
-) -> &'ll llvm::Value {
+) -> llvm::Value<'ll> {
     let llglobal = add_global(cx, name, initializer, l);
     llvm::LLVMSetUnnamedAddress(llglobal, llvm::UnnamedAddr::Global);
     llglobal
@@ -391,11 +391,11 @@ pub(crate) fn add_unnamed_global<'ll>(
 pub(crate) fn add_global<'ll>(
     cx: &SimpleCx<'ll>,
     name: &str,
-    initializer: &'ll llvm::Value,
+    initializer: llvm::Value<'ll>,
     l: Linkage,
-) -> &'ll llvm::Value {
+) -> llvm::Value<'ll> {
     let c_name = CString::new(name).unwrap();
-    let llglobal: &'ll llvm::Value = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name);
+    let llglobal: llvm::Value<'ll> = llvm::add_global(cx.llmod, cx.val_ty(initializer), &c_name);
     llvm::set_global_constant(llglobal, true);
     llvm::set_linkage(llglobal, l);
     llvm::set_initializer(llglobal, initializer);
@@ -513,7 +513,7 @@ fn declare_offload_fn<'ll>(
     cx: &CodegenCx<'ll, '_>,
     name: &str,
     ty: llvm::Type<'ll>,
-) -> &'ll llvm::Value {
+) -> llvm::Value<'ll> {
     crate::declare::declare_simple_fn(
         cx,
         name,
@@ -538,10 +538,10 @@ pub(crate) fn scalar_width<'ll>(cx: &SimpleCx<'ll>, ty: Type<'ll>) -> u64 {
 
 fn get_runtime_size<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
-    args: &[&'ll Value],
+    args: &[Value<'ll>],
     index: usize,
     meta: &OffloadMetadata,
-) -> &'ll Value {
+) -> Value<'ll> {
     match meta.payload_size {
         OffloadSize::Slice { element_size } => {
             let length_idx = index + 1;
@@ -574,23 +574,23 @@ fn get_runtime_size<'ll, 'tcx>(
 pub(crate) fn gen_call_handling<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     offload_data: &OffloadKernelGlobals<'ll>,
-    args: &[&'ll Value],
+    args: &[Value<'ll>],
     types: &[Type<'ll>],
     metadata: &[OffloadMetadata],
     offload_globals: &OffloadGlobals<'ll>,
     offload_dims: &OffloadKernelDims<'ll>,
-    dyn_cache: &'ll Value,
-    device_id: &'ll Value,
+    dyn_cache: Value<'ll>,
+    device_id: Value<'ll>,
 ) {
     let cx = builder.cx;
-    let OffloadKernelGlobals {
+    let &OffloadKernelGlobals {
         offload_sizes,
         memtransfer_begin,
         memtransfer_kernel,
         memtransfer_end,
         region_id,
     } = offload_data;
-    let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
+    let &OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
         offload_dims;
 
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
@@ -696,22 +696,22 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     // offload_{baseptrs,ptrs,sizes}. We will probably improve this along with our gpu frontend pr.
     fn get_geps<'ll, 'tcx>(
         _builder: &mut Builder<'_, 'll, 'tcx>,
-        a1: &'ll Value,
-        a2: &'ll Value,
-        a4: &'ll Value,
+        a1: Value<'ll>,
+        a2: Value<'ll>,
+        a4: Value<'ll>,
         _is_dynamic: bool,
-    ) -> [&'ll Value; 3] {
+    ) -> [Value<'ll>; 3] {
         [a1, a2, a4]
     }
 
     fn generate_mapper_call<'ll, 'tcx>(
         builder: &mut Builder<'_, 'll, 'tcx>,
-        geps: [&'ll Value; 3],
-        o_type: &'ll Value,
-        fn_to_call: &'ll Value,
+        geps: [Value<'ll>; 3],
+        o_type: Value<'ll>,
+        fn_to_call: Value<'ll>,
         fn_ty: Type<'ll>,
         num_args: u64,
-        s_ident_t: &'ll Value,
+        s_ident_t: Value<'ll>,
     ) {
         let cx = builder.cx;
         let nullptr = cx.const_null(cx.type_ptr());
@@ -739,8 +739,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         num_args,
         memtransfer_kernel,
         geps,
-        *workgroup_dims,
-        *thread_dims,
+        workgroup_dims,
+        thread_dims,
         dyn_cache,
     );
 

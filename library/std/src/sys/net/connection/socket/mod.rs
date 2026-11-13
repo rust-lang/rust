@@ -50,12 +50,11 @@ use netc as c;
 //
 // On Windows, the relevant syscall takes an `i32` (unlike for read/write!),
 // so we need to clamp to i32::MAX.
-const MAX_SEND_LEN: usize =
-    cfg_select! {
-        any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => c_int::MAX as usize,
-        target_os = "windows" => i32::MAX as usize,
-        _ => libc::ssize_t::MAX as usize,
-    };
+const MAX_SEND_LEN: usize = cfg_select! {
+    any(target_vendor = "apple", target_os = "nto", target_os = "qnx") => c_int::MAX as usize,
+    target_os = "windows" => i32::MAX as usize,
+    _ => libc::ssize_t::MAX as usize,
+};
 
 /// Some systems support setting the nonblocking mode upon socket creation, which
 /// saves a syscall.

@@ -40,7 +40,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
     alloc: &Allocation,
     is_static: IsStatic,
     is_init_fini: IsInitOrFini,
-) -> &'ll Value {
+) -> Value<'ll> {
     // We expect that callers of const_alloc_to_llvm will instead directly codegen a pointer or
     // integer for any &ZST where the ZST is a constant (i.e. not a static). We should never be
     // producing empty LLVM allocations as they're just adding noise to binaries and forcing less
@@ -59,7 +59,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
     // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`, so `range`
     // must be within the bounds of `alloc` and not contain or overlap a pointer provenance.
     fn append_chunks_of_init_and_uninit_bytes<'ll, 'a, 'b>(
-        llvals: &mut Vec<&'ll Value>,
+        llvals: &mut Vec<Value<'ll>>,
         cx: &'a CodegenCx<'ll, 'b>,
         alloc: &'a Allocation,
         range: Range<usize>,
@@ -157,7 +157,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
 fn codegen_static_initializer<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
-) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
+) -> Result<(Value<'ll>, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     let attrs = cx.tcx.codegen_fn_attrs(def_id);
     // FIXME(jchlanda) Decide if this could be better served by `ctor` crate. See the discussion
@@ -176,7 +176,7 @@ fn codegen_static_initializer<'ll, 'tcx>(
     Ok((const_alloc_to_llvm(cx, alloc.inner(), IsStatic::Yes, is_in_init_fini), alloc))
 }
 
-fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
+fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: Value<'ll>, mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller. Rust doesn't support this yet.
@@ -192,7 +192,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     llty: Type<'ll>,
     sym: &str,
     def_id: DefId,
-) -> &'ll Value {
+) -> Value<'ll> {
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
@@ -281,11 +281,11 @@ fn check_and_apply_linkage<'ll, 'tcx>(
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    pub(crate) fn const_bitcast(&self, val: &'ll Value, ty: Type<'ll>) -> &'ll Value {
+    pub(crate) fn const_bitcast(&self, val: Value<'ll>, ty: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
-    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: Type<'ll>) -> &'ll Value {
+    pub(crate) fn const_pointercast(&self, val: Value<'ll>, ty: Type<'ll>) -> Value<'ll> {
         unsafe { llvm::LLVMConstPointerCast(val, ty) }
     }
 
@@ -295,10 +295,10 @@ impl<'ll> CodegenCx<'ll, '_> {
     /// Fails if a symbol with the given name already exists.
     pub(crate) fn static_addr_of_mut(
         &self,
-        cv: &'ll Value,
+        cv: Value<'ll>,
         align: Align,
         kind: Option<&str>,
-    ) -> &'ll Value {
+    ) -> Value<'ll> {
         let gv = match kind {
             Some(kind) if !self.tcx.sess.fewer_names() => {
                 let name = self.generate_local_symbol_name(kind);
@@ -323,10 +323,10 @@ impl<'ll> CodegenCx<'ll, '_> {
     /// The returned global variable is a pointer in the default address space for globals.
     pub(crate) fn static_addr_of_impl(
         &self,
-        cv: &'ll Value,
+        cv: Value<'ll>,
         align: Align,
         kind: Option<&str>,
-    ) -> &'ll Value {
+    ) -> Value<'ll> {
         if let Some(&gv) = self.const_globals.borrow().get(&cv) {
             unsafe {
                 // Upgrade the alignment in cases where the same constant is used with different
@@ -346,7 +346,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn get_static(&self, def_id: DefId) -> &'ll Value {
+    pub(crate) fn get_static(&self, def_id: DefId) -> Value<'ll> {
         let instance = Instance::mono(self.tcx, def_id);
         trace!(?instance);
 
@@ -364,7 +364,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     #[instrument(level = "debug", skip(self, llty))]
-    fn get_static_inner(&self, def_id: DefId, llty: Type<'ll>) -> &'ll Value {
+    fn get_static_inner(&self, def_id: DefId, llty: Type<'ll>) -> Value<'ll> {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             trace!("used cached value");
@@ -474,7 +474,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     fn codegen_static_item(&mut self, def_id: DefId) {
         assert!(
             llvm::LLVMGetInitializer(
-                self.instances.borrow().get(&Instance::mono(self.tcx, def_id)).unwrap()
+                self.instances.borrow().get(&Instance::mono(self.tcx, def_id)).copied().unwrap()
             )
             .is_none()
         );
@@ -678,20 +678,20 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
-    pub(crate) fn add_used_global(&mut self, global: &'ll Value) {
+    pub(crate) fn add_used_global(&mut self, global: Value<'ll>) {
         self.used_statics.push(global);
     }
 
     /// Add a global value to a list to be stored in the `llvm.compiler.used` variable,
     /// an array of ptr.
-    pub(crate) fn add_compiler_used_global(&self, global: &'ll Value) {
+    pub(crate) fn add_compiler_used_global(&self, global: Value<'ll>) {
         self.compiler_used_statics.borrow_mut().push(global);
     }
 
     // We do our best here to match what Clang does when compiling Objective-C natively.
     // See Clang's `CGObjCCommonMac::CreateCStringLiteral`:
     // https://github.com/llvm/llvm-project/blob/llvmorg-20.1.8/clang/lib/CodeGen/CGObjCMac.cpp#L4134
-    fn define_objc_classname(&self, classname: &str) -> &'ll Value {
+    fn define_objc_classname(&self, classname: &str) -> Value<'ll> {
         assert_eq!(self.objc_abi_version(), 1);
 
         let llval = self.null_terminate_const_bytes(classname.as_bytes());
@@ -742,7 +742,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     // deduplicate references within a CGU, but we need a reference definition in each referencing
     // CGU. All attempts at using external references to a single reference definition result in
     // linker errors.
-    fn get_objc_classref(&self, classname: Symbol) -> &'ll Value {
+    fn get_objc_classref(&self, classname: Symbol) -> Value<'ll> {
         let mut classrefs = self.objc_classrefs.borrow_mut();
         if let Some(classref) = classrefs.get(&classname).copied() {
             return classref;
@@ -800,7 +800,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     // Newer versions of Apple Clang generate calls to `@"objc_msgSend$methname"` selector stub
     // functions. We don't currently do that. The code we generate is closer to what Apple Clang
     // generates with the `-fno-objc-msgsend-selector-stubs` option.
-    fn get_objc_selref(&self, methname: Symbol) -> &'ll Value {
+    fn get_objc_selref(&self, methname: Symbol) -> Value<'ll> {
         let mut selrefs = self.objc_selrefs.borrow_mut();
         if let Some(selref) = selrefs.get(&methname).copied() {
             return selref;
@@ -911,7 +911,7 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     ///
     /// The pointer will always be in the default address space. If global variables default to a
     /// different address space, an addrspacecast is inserted.
-    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> &'ll Value {
+    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> Value<'ll> {
         // FIXME: should we cache `const_alloc_to_llvm` to avoid repeating this for the
         // same `ConstAllocation`?
         let cv = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No);

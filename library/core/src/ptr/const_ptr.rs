@@ -65,7 +65,7 @@ impl<T: PointeeSized> *const T {
     /// assert!(aligned.try_cast_aligned::<u32>().is_some());
     /// assert!(unaligned.try_cast_aligned::<u32>().is_none());
     /// ```
-    #[stable(feature = "pointer_try_cast_aligned", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "pointer_try_cast_aligned", since = "1.101.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -1422,8 +1422,8 @@ impl<T> *const T {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ptr_cast_slice", since = "1.101.0")]
+    #[rustc_const_stable(feature = "ptr_cast_slice", since = "1.101.0")]
     pub const fn cast_slice(self, len: usize) -> *const [T] {
         slice_from_raw_parts(self, len)
     }

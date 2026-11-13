@@ -5,10 +5,11 @@ LL |         pub(super) use foo::bar::f as g;
    |                        ^^^^^^^^^^^^^^^^
    |
 note: consider marking `f` as `pub` in the imported module
-  --> $DIR/test.rs:22:24
+  --> $DIR/test.rs:9:9
    |
-LL |         pub(super) use foo::bar::f as g;
-   |                        ^^^^^^^^^^^^^^^^
+LL |     pub mod bar {
+LL |         pub(super) fn f() {}
+   |         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0433]: cannot find module or crate `bad` in the crate root
   --> $DIR/test.rs:51:12

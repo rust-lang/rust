@@ -37,10 +37,7 @@ error: `field_of` expects dot-separated field and variant names
   --> $DIR/invalid.rs:28:12
    |
 LL |     let _: field_of!(Enum, Variant..field);
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |            |
-   |            in this macro invocation
-   |            this macro call doesn't expand to a type
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
 
 error: offset_of expects dot-separated field and variant names
   --> $DIR/invalid.rs:30:30
@@ -52,19 +49,13 @@ error: `field_of` expects dot-separated field and variant names
   --> $DIR/invalid.rs:30:12
    |
 LL |     let _: field_of!(Struct, [42]);
-   |            ^^^^^^^^^^^^^^^^^^^^^^^
-   |            |
-   |            in this macro invocation
-   |            this macro call doesn't expand to a type
+   |            ^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
 
 error: `field_of` only supports a single field or a variant with a field
   --> $DIR/invalid.rs:32:30
    |
 LL |     let _: field_of!(Struct, field1.field2.field3);
-   |            ------------------^^^^^^-^^^^^^-^^^^^^-
-   |            |
-   |            in this macro invocation
-   |            this macro call doesn't expand to a type
+   |            ------------------^^^^^^-^^^^^^-^^^^^^- in this macro invocation
 
 error: aborting due to 8 previous errors
 

@@ -1,7 +1,7 @@
 //@ known-bug: unknown
 //@ run-pass
 
-#![feature(view_types, view_type_macro)]
+#![feature(view_types)]
 #![allow(unused)]
 
 use std::view::view_type;

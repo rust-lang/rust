@@ -57,7 +57,7 @@ pub fn rustc_minicore() -> Rustc {
     let mut builder = rustc();
 
     let minicore_path = source_root().join("tests/auxiliary/minicore.rs");
-    builder.input(minicore_path).crate_name("minicore").crate_type("rlib");
+    builder.input(minicore_path).crate_name("minicore").crate_type("rlib").edition("2024");
 
     builder
 }

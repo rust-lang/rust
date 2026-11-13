@@ -659,8 +659,8 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
     // Returns the new function, or `None` if nothing was wrapped
     fn handle_offload<'ll>(
         cx: &SimpleCx<'ll>,
-        old_fn: &'ll llvm::Value,
-    ) -> Option<&'ll llvm::Value> {
+        old_fn: llvm::Value<'ll>,
+    ) -> Option<llvm::Value<'ll>> {
         let old_fn_ty = cx.get_type_of_global(old_fn);
         let old_param_types = cx.func_params_types(old_fn_ty);
         let old_param_count = old_param_types.len();

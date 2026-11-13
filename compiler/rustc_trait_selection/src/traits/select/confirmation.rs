@@ -261,6 +261,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | LangItem::DiscriminantKind
                 | LangItem::Field
                 | LangItem::FnPtrTrait
+                | LangItem::FnAddrTrait
                 | LangItem::PointeeTrait
                 | LangItem::Tuple
                 | LangItem::Unpin,

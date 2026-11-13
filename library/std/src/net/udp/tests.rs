@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // UDP sockets are not supported in Miri
+
 use crate::io::ErrorKind;
 use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
 use crate::net::*;

@@ -4,6 +4,7 @@
 //@ needs-target-std
 
 //@ normalize-stderr: "dev release channel" -> "nightly release channel"
+//@ normalize-stderr: "beta release channel" -> "nightly release channel"
 //@ normalize-stderr: "stable release channel" -> "nightly release channel"
 //@ compile-flags: --check-cfg=cfg(feature_enabled)
 

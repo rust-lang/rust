@@ -1,15 +1,13 @@
 #![allow(non_camel_case_types)]
 
-use rustc_abi::{CanonAbi, X86Call};
 use rustc_attr_ir::PeImportNameType;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{DllCallingConvention, DllImport, DllImportSymbolType};
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, Instance, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, ScalarInt, TyCtxt};
 use rustc_span::{Span, bug, span_bug};
-use rustc_target::callconv::ArgAbi;
-use rustc_target::spec::{Arch, CfgAbi, Env, Os, Target};
+use rustc_target::spec::{CfgAbi, Env, Os, Target};
 
 use crate::traits::*;
 
@@ -174,55 +172,6 @@ pub fn asm_const_ptr_clean<'tcx>(tcx: TyCtxt<'tcx>, scalar: Scalar) -> Scalar {
 
 pub fn is_using_dlltool(target: &Target) -> bool {
     target.os == Os::Windows && target.env == Env::Gnu && target.cfg_abi == CfgAbi::Unspecified
-}
-
-/// Computes the total argument size used for Windows calling-convention
-/// symbol decoration. Each argument is rounded up to the pointer width.
-fn windows_abi_argument_byte_sum<'tcx>(args: &[ArgAbi<'tcx, Ty<'tcx>>], target: &Target) -> u64 {
-    let pointer_bytes = target.pointer_width as u64 / 8;
-
-    args.iter().map(|arg| arg.layout.size.bytes().next_multiple_of(pointer_bytes)).sum()
-}
-
-/// Computes the linker-visible decorated symbol name for supported Windows
-/// calling conventions using the original `FnAbi` argument layouts.
-/// Vectorcall is also decorated on non-Windows targets.
-///
-/// The byte count is computed before backend-specific argument lowering,
-/// which may replace indirectly passed arguments with pointers.
-///
-/// For example, on 32-bit Windows, `extern "fastcall" fn foo(i32, i32)`
-/// is decorated as `@foo@8`. On 64-bit targets,
-/// `extern "vectorcall" fn foo(i32)` is decorated as `foo@@8`.
-///
-/// Returns `None` if no decoration is required or if the name begins with
-/// `\x01` or `?`, indicating that it must not be decorated further.
-///
-/// This function does not add LLVM's `\x01` escape prefix. Backend-specific
-/// handling of that marker is the responsibility of the caller.
-pub fn windows_calling_convention_name<'tcx>(
-    target: &Target,
-    conv: CanonAbi,
-    name: &str,
-    args: &[ArgAbi<'tcx, Ty<'tcx>>],
-) -> Option<String> {
-    if !target.is_like_windows && conv != CanonAbi::X86(X86Call::Vectorcall) {
-        return None;
-    }
-
-    if name.starts_with('\x01') || name.starts_with('?') {
-        return None;
-    }
-
-    let (prefix, suffix) = match (&target.arch, conv) {
-        (Arch::X86, CanonAbi::X86(X86Call::Fastcall)) => ("@", "@"),
-        (Arch::X86, CanonAbi::X86(X86Call::Stdcall)) => ("_", "@"),
-        (Arch::X86 | Arch::X86_64, CanonAbi::X86(X86Call::Vectorcall)) => ("", "@@"),
-        _ => return None,
-    };
-
-    let args_in_bytes = windows_abi_argument_byte_sum(args, target);
-    Some(format!("{prefix}{name}{suffix}{args_in_bytes}"))
 }
 
 pub fn i686_decorated_name(

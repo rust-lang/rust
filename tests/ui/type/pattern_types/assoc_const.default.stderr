@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/assoc_const.rs:17:41
+  --> $DIR/assoc_const.rs:15:41
    |
 LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
    |                                         ^ cannot perform const operation using `T`
@@ -9,7 +9,7 @@ LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
-  --> $DIR/assoc_const.rs:17:61
+  --> $DIR/assoc_const.rs:15:61
    |
 LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
    |                                                             ^ cannot perform const operation using `T`
@@ -19,7 +19,7 @@ LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
-  --> $DIR/assoc_const.rs:20:40
+  --> $DIR/assoc_const.rs:18:40
    |
 LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    |                                        ^ cannot perform const operation using `T`
@@ -29,7 +29,7 @@ LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    = help: alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: generic parameters may not be used in const operations
-  --> $DIR/assoc_const.rs:20:51
+  --> $DIR/assoc_const.rs:18:51
    |
 LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    |                                                   ^ cannot perform const operation using `T`

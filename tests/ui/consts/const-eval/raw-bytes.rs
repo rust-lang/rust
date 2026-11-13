@@ -4,7 +4,7 @@
 // ignore-tidy-file-linelength
 
 #![allow(invalid_value, unnecessary_transmutes)]
-#![feature(pattern_types, pattern_type_macro)]
+#![feature(pattern_types)]
 #![feature(rustc_attrs, ptr_metadata, slice_from_ptr_range, const_slice_from_ptr_range)]
 
 use std::mem;

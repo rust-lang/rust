@@ -354,7 +354,10 @@ pub(crate) struct DocInlineOnlyUse {
 #[note(
     "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
 )]
-pub(crate) struct AttrCrateLevelOnly;
+pub(crate) struct AttrCrateLevelOnly {
+    #[primary_span]
+    pub attr_span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
