@@ -2,10 +2,10 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::source::{snippet, snippet_with_context};
-use clippy_utils::{fn_def_id, get_expr_use_site, std_or_core, sym};
+use clippy_utils::{fn_def_id, get_expr_use_site, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 
 use super::MANUAL_REPEAT_N;
 

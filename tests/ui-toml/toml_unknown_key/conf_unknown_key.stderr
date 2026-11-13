@@ -70,6 +70,7 @@ LL | foobar = 42
            max-struct-bools
            max-suggested-slice-pattern-length
            max-trait-bounds
+           may-panic-functions
            min-ident-chars-lint-trait-impl
            min-ident-chars-threshold
            missing-docs-allow-unused

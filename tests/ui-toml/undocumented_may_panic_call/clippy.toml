@@ -1,0 +1,1 @@
+may-panic-functions = ["alloc::vec::Vec::push"]

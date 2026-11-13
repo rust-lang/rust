@@ -1,0 +1,99 @@
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:16:13
+   |
+LL |     let _ = dangerous(1);
+   |             ^^^^^^^^^^^^
+   |
+   = note: `-D clippy::undocumented-may-panic-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::undocumented_may_panic_call)]`
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:27:12
+   |
+LL |         && dangerous(1);
+   |            ^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:48:13
+   |
+LL |     let _ = s.panic_method();
+   |             ^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:73:13
+   |
+LL |     let _ = t.trait_panic_method();
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:83:13
+   |
+LL |     let _ = t.trait_panic_method();
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:106:13
+   |
+LL |     let _ = call_dangerous!();
+   |             ^^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:124:13
+   |
+LL |     let _ = nested_macro!();
+   |             ^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:135:9
+   |
+LL |         t.trait_panic_method() == 0
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:199:5
+   |
+LL |     external_macro_may_panic!(external_may_panic);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:206:5
+   |
+LL |     wrap_external!();
+   |     ^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:236:5
+   |
+LL |     multi_call!();
+   |     ^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:236:5
+   |
+LL |     multi_call!();
+   |     ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:236:5
+   |
+LL |     multi_call!();
+   |     ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:245:5
+   |
+LL |     comment_between!();
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: call to a function that may panic is not documented with a `// Panic:` comment
+  --> tests/ui/undocumented_may_panic_call.rs:261:16
+   |
+LL |     wrap_expr!(dangerous(1));
+   |                ^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+

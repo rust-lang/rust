@@ -328,7 +328,6 @@ fn same_except_params<'tcx>(subs1: ty::GenericArgs<'tcx>, subs2: ty::GenericArgs
             (ty::TermKind::Ty(ty1), ty::TermKind::Ty(ty2)) => match (ty1.kind(), ty2.kind()) {
                 (ty::Param(_), _) | (_, ty::Param(_)) => (),
                 (ty::Adt(adt1, subs1), ty::Adt(adt2, subs2)) if adt1 == adt2 && same_except_params(*subs1, *subs2) => {
-                    ()
                 },
                 _ => return false,
             },
