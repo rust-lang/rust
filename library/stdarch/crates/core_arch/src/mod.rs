@@ -255,7 +255,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `PowerPC` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "powerpc", doc))]
+    #[cfg(any(target_arch = "powerpc", all(doc, not(doctest))))]
     #[doc(cfg(target_arch = "powerpc"))]
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub mod powerpc {
@@ -265,7 +265,7 @@ pub mod arch {
     /// Platform-specific intrinsics for the `PowerPC64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "powerpc64", doc))]
+    #[cfg(any(target_arch = "powerpc64", all(doc, not(doctest))))]
     #[doc(cfg(target_arch = "powerpc64"))]
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub mod powerpc64 {
@@ -370,11 +370,15 @@ mod wasm32;
 #[doc(cfg(any(target_arch = "mips", target_arch = "mips64")))]
 mod mips;
 
-#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64", doc))]
+#[cfg(any(
+    target_arch = "powerpc",
+    target_arch = "powerpc64",
+    all(doc, not(doctest))
+))]
 #[doc(cfg(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 mod powerpc;
 
-#[cfg(any(target_arch = "powerpc64", doc))]
+#[cfg(any(target_arch = "powerpc64", all(doc, not(doctest))))]
 #[doc(cfg(target_arch = "powerpc64"))]
 mod powerpc64;
 
