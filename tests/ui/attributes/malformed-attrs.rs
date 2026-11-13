@@ -60,6 +60,8 @@
 //~^ ERROR malformed
 #[optimize(none, speed)]
 //~^ ERROR malformed
+#[optimize(banana)]
+//~^ ERROR malformed
 #[cold = 1]
 //~^ ERROR malformed
 #[must_use()]

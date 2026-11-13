@@ -1541,6 +1541,7 @@ symbols! {
         opt_out_copy,
         optimize,
         optimize_attribute,
+        optimize_speed,
         optimized,
         optin_builtin_traits,
         option,

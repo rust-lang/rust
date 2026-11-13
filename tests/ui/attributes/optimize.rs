@@ -1,3 +1,4 @@
+#![feature(optimize_speed)]
 #![feature(stmt_expr_attributes)]
 #![deny(unused_attributes)]
 #![allow(dead_code)]
