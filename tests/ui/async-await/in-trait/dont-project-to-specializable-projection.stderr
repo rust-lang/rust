@@ -30,6 +30,9 @@ LL |         match fut.as_mut().poll(ctx) {
    |
 note: the method is available on trait `Future` for `Pin<&mut impl Future<Output = ()>>`
   --> $SRC_DIR/core/src/future/future.rs:LL:COL
+  ::: $SRC_DIR/core/src/future/future.rs:LL:COL
+   |
+   = note: the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Future` which provides `poll` is implemented but not in scope; perhaps you want to import it
    |

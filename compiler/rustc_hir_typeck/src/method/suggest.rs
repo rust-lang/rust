@@ -24,6 +24,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath, is_range_literal};
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
+use rustc_infer::traits::ImplSource;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::print::{
     PrintTraitRefExt as _, with_crate_prefix, with_forced_trimmed_paths,
@@ -39,7 +40,8 @@ use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    FulfillmentError, Obligation, ObligationCauseCode, supertraits,
+    FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, SelectionContext,
+    supertraits,
 };
 use tracing::{debug, info, instrument};
 
@@ -4228,17 +4230,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if !trait_in_other_version_found {
                             let sp = pick.item.ident(self.tcx).span;
                             let mut span: MultiSpan = sp.into();
-                            span.push_span_context(
-                                self.tcx
-                                    .def_span(pick.item.container_id(self.tcx))
-                                    .shrink_to_lo(),
-                            );
+                            let mut pointing_at_method = false;
                             let mut on_trait = String::new();
 
                             if self.tcx.def_kind(did) == DefKind::Trait {
                                 let name = self.tcx.item_name(did);
                                 on_trait = format!("on trait `{name}` ");
+                                let result = self.probe(|_| {
+                                    let trait_ref = ty::TraitRef::new(
+                                        self.tcx,
+                                        did,
+                                        ty::GenericArgs::for_item(self.tcx, did, |param, _| {
+                                            if param.index == 0 {
+                                                (*rcvr_ty).into()
+                                            } else {
+                                                self.var_for_def(rcvr.span, param)
+                                            }
+                                        }),
+                                    );
+                                    let obligation = Obligation::new(
+                                        self.tcx,
+                                        ObligationCause::dummy(),
+                                        self.param_env,
+                                        trait_ref,
+                                    );
+                                    SelectionContext::new(self).select(&obligation)
+                                });
+                                if let Ok(Some(ImplSource::UserDefined(source))) = result {
+                                    let impl_sp = self.tcx.def_span(source.impl_def_id);
+
+                                    if let Some(assoc) = self
+                                        .tcx
+                                        .associated_items(source.impl_def_id)
+                                        .filter_by_name_unhygienic(item_name.name)
+                                        .next()
+                                    {
+                                        pointing_at_method = true;
+                                        let assoc_sp = self.tcx.def_span(assoc.def_id);
+                                        span = assoc_sp.into();
+                                        span.push_span_label(
+                                            assoc_sp,
+                                            "the method is available here",
+                                        );
+                                        span.push_span_context(impl_sp);
+                                    } else {
+                                        span = impl_sp.into();
+                                        span.push_span_label(
+                                            impl_sp,
+                                            format!("the trait is implemented here"),
+                                        );
+                                    }
+                                }
                             }
+
+                            if !pointing_at_method {
+                                span.push_span_context(
+                                    self.tcx
+                                        .def_span(pick.item.container_id(self.tcx))
+                                        .shrink_to_lo(),
+                                );
+                                span.push_span_label(sp, format!("the method is available here"));
+                            }
+
+                            // If the method is available through an auto-deref, then we will be
+                            // pointing only at the trait and the method therein, not the `impl`, as
+                            // it will not be found in the logic above.
+
+                            let rcvr_ty =
+                                self.tcx.short_string(pick.self_ty.peel_refs(), err.long_ty_path());
                             err.span_note(
                                 span,
                                 format!("the method is available {on_trait}for `{rcvr_ty}`"),

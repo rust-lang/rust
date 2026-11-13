@@ -4,12 +4,12 @@ error[E0599]: no method named `the_fn` found for reference `&TheStruct` in the c
 LL |         s.the_fn();
    |           ^^^^^^ method not found in `&TheStruct`
    |
-note: the method is available on trait `TheTrait` for `&TheStruct`
+note: the method is available on trait `TheTrait` for `TheStruct`
   --> $DIR/coherence_inherent.rs:7:12
    |
 LL |     pub trait TheTrait {
 LL |         fn the_fn(&self);
-   |            ^^^^^^
+   |            ^^^^^^ the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: trait `TheTrait` which provides `the_fn` is implemented but not in scope; perhaps you want to import it
    |

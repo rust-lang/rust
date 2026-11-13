@@ -4,12 +4,12 @@ error[E0599]: no method named `foo` found for reference `&B` in the current scop
 LL |             b.foo();
    |               ^^^ method not found in `&B`
    |
-note: the method is available on trait `A` for `&B`
+note: the method is available on trait `A` for `B`
   --> $DIR/nested-mod-trait-method-lookup-leak-10465.rs:6:12
    |
 LL |     pub trait A {
 LL |         fn foo(&self);
-   |            ^^^
+   |            ^^^ the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: trait `A` which provides `foo` is implemented but not in scope; perhaps you want to import it
    |

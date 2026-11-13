@@ -5,11 +5,14 @@ LL |     ().a();
    |        ^ method not found in `()`
    |
 note: the method is available on trait `A` for `()`
-  --> $DIR/auxiliary/xcrate-issue-43189-a.rs:5:8
+  --> $DIR/auxiliary/xcrate-issue-43189-a.rs:7:1
    |
 LL | pub trait A {
 LL |     fn a(&self) {}
-   |        ^
+   |        - the method is available here
+LL | }
+LL | impl A for () {}
+   | ^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `A` which provides `a` is implemented but not in scope; perhaps you want to import it
    |

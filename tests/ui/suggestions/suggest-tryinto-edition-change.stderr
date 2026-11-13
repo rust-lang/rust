@@ -47,6 +47,9 @@ LL |     let _i: i16 = 0_i32.try_into().unwrap();
    |
 note: the method is available on trait `TryInto` for `i32`
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+   = note: the method is available here
    = help: items from traits can only be used if the trait is in scope
    = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 help: trait `TryInto` which provides `try_into` is implemented but not in scope; perhaps you want to import it

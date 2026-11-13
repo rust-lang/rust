@@ -5,7 +5,10 @@ LL |     h.finish()
    |       ^^^^^^ method not found in `DefaultHasher`
    |
 note: the method is available on trait `Hasher` for `DefaultHasher`
-  --> $SRC_DIR/core/src/hash/mod.rs:LL:COL
+  --> $SRC_DIR/std/src/hash/random.rs:LL:COL
+  ::: $SRC_DIR/std/src/hash/random.rs:LL:COL
+   |
+   = note: the method is available here
    = help: items from traits can only be used if the trait is in scope
 help: trait `Hasher` which provides `finish` is implemented but not in scope; perhaps you want to import it
    |

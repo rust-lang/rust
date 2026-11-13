@@ -5,10 +5,12 @@ LL |     ().f()
    |        ^ method not found in `()`
    |
 note: the method is available on trait `T` for `()`
-  --> $DIR/shadowed-trait-methods.rs:5:22
+  --> $DIR/shadowed-trait-methods.rs:6:5
    |
 LL |     pub trait T { fn f(&self) {} }
-   |                      ^
+   |                      - the method is available here
+LL |     impl T for () {}
+   |     ^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `T` which provides `f` is implemented but not in scope; perhaps you want to import it
    |

@@ -5,11 +5,14 @@ LL |     ().hello();
    |        ^^^^^ method not found in `()`
    |
 note: the method is available on trait `Hello` for `()`
-  --> $DIR/block-scoped-trait-import-issue-134146.rs:9:16
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:13:9
    |
 LL |         trait Hello {
 LL |             fn hello(&self) {
-   |                ^^^^^
+   |                ----- the method is available here
+...
+LL |         impl<T> Hello for T {}
+   |         ^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `crate::main::Hello` which provides `hello` is implemented but not reachable
   --> $DIR/block-scoped-trait-import-issue-134146.rs:8:9
@@ -24,11 +27,14 @@ LL |     ().nested();
    |        ^^^^^^ method not found in `()`
    |
 note: the method is available on trait `Nested` for `()`
-  --> $DIR/block-scoped-trait-import-issue-134146.rs:23:16
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:25:9
    |
 LL |         pub trait Nested {
 LL |             fn nested(&self) {}
-   |                ^^^^^^
+   |                ------ the method is available here
+LL |         }
+LL |         impl Nested for () {}
+   |         ^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `crate::nested_module::inner::Nested` which provides `nested` is implemented but not reachable
   --> $DIR/block-scoped-trait-import-issue-134146.rs:22:9
@@ -43,11 +49,14 @@ LL |     ().in_const();
    |        ^^^^^^^^ method not found in `()`
    |
 note: the method is available on trait `InConst` for `()`
-  --> $DIR/block-scoped-trait-import-issue-134146.rs:36:12
+  --> $DIR/block-scoped-trait-import-issue-134146.rs:38:5
    |
 LL |     trait InConst {
 LL |         fn in_const(&self) {}
-   |            ^^^^^^^^
+   |            -------- the method is available here
+LL |     }
+LL |     impl InConst for () {}
+   |     ^^^^^^^^^^^^^^^^^^^ the trait is implemented here
    = help: items from traits can only be used if the trait is in scope
 help: trait `crate::_::InConst` which provides `in_const` is implemented but not reachable
   --> $DIR/block-scoped-trait-import-issue-134146.rs:35:5
