@@ -1,0 +1,6 @@
+warning: using -Zllvm-tpde with optimization levels higher than 1 is not recommended
+   |
+   = note: compilation with TPDE at higher opt levels is more likely to fail, and to have worse runtime performance than LLVM even if it succeeds
+
+warning: 1 warning emitted
+
