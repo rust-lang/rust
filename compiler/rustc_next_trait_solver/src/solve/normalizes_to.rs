@@ -261,21 +261,6 @@ where
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         let cx = ecx.cx();
 
-        let alias_def_id = goal.predicate.alias.expect_projection_def_id();
-        let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::relate_rigid_infer(ecx.cx())
-            .args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args)
-        {
-            return Err(NoSolution.into());
-        }
-
-        // For every `default impl`, there's always a non-default `impl` that will *also* apply.
-        // There's no reason to register a candidate for this impl, since it is *not* proof that
-        // the trait goal holds.
-        if cx.impl_is_default(impl_def_id) {
-            return Err(NoSolution.into());
-        }
-
         // We have to ignore negative impls when projecting.
         let impl_polarity = cx.impl_polarity(impl_def_id);
         match impl_polarity {
@@ -285,6 +270,7 @@ where
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
+            let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
             let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
 
             ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
@@ -305,6 +291,7 @@ where
             // Add GAT where clauses from the trait's definition. This is necessary
             // for soundness until we properly handle implied bounds on binders,
             // see tests/ui/generic-associated-types/must-prove-where-clauses-on-norm.rs.
+            let alias_def_id = goal.predicate.alias.expect_projection_def_id();
             ecx.add_goals(
                 GoalSource::AliasWellFormed,
                 cx.own_clauses_of(alias_def_id.into())
