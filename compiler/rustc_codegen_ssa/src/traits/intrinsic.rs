@@ -35,6 +35,7 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
+        memory_return_place: Option<PlaceValue<Self::Value>>,
         is_cleanup: bool,
     ) -> Self::Value;
 
