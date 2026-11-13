@@ -5,7 +5,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'0 mut V)` must implement `FnOnce<(&mut V,)>`, for some specific lifetime `'0`...
-  --> $DIR/ice-106874.rs:28:10
+  --> $DIR/ice-106874.rs:26:10
    |
 LL | struct B<T>(Rc<T>);
    |          ^ required by this bound in `B`
@@ -22,7 +22,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'0 mut V)` must implement `FnOnce<(&mut V,)>`, for some specific lifetime `'0`...
-  --> $DIR/ice-106874.rs:28:10
+  --> $DIR/ice-106874.rs:26:10
    |
 LL | struct B<T>(Rc<T>);
    |          ^ required by this bound in `B`
@@ -32,20 +32,6 @@ help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
    |                               ++++++++
-
-error: higher-ranked subtype error
-  --> $DIR/ice-106874.rs:8:5
-   |
-LL |     A(B(C::new(D::new(move |st| f(st)))))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: higher-ranked subtype error
-  --> $DIR/ice-106874.rs:8:5
-   |
-LL |     A(B(C::new(D::new(move |st| f(st)))))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/ice-106874.rs:8:7
@@ -114,7 +100,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut V)` must implement `FnOnce<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $DIR/ice-106874.rs:28:10
+  --> $DIR/ice-106874.rs:26:10
    |
 LL | struct B<T>(Rc<T>);
    |          ^ required by this bound in `B`
@@ -131,7 +117,7 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut V)` must implement `Fn<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $DIR/ice-106874.rs:28:10
+  --> $DIR/ice-106874.rs:26:10
    |
 LL | struct B<T>(Rc<T>);
    |          ^ required by this bound in `B`
@@ -141,5 +127,5 @@ help: consider adding an explicit type annotation to the closure's argument
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
    |                               ++++++++
 
-error: aborting due to 10 previous errors
+error: aborting due to 8 previous errors
 

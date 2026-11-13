@@ -1,0 +1,60 @@
+// MIR for `yield_value::{closure#0}` after built
+
+fn yield_value::{closure#0}(_1: {coroutine@$DIR/moved_drops.rs:64:5: 64:7}, _2: ()) -> ()
+yields String
+ {
+    let mut _0: ();
+    let _3: ();
+    let mut _4: std::string::String;
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = String::new() -> [return: bb1, unwind: bb7];
+    }
+
+    bb1: {
+        _3 = yield(move _4) -> [resume: bb2, drop: bb4];
+    }
+
+    bb2: {
+        StorageDead(_4);
+        StorageDead(_3);
+        _0 = const ();
+        drop(_1) -> [return: bb3, unwind: bb8, drop: bb6];
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4: {
+        drop(_4) -> [return: bb5, unwind: bb9];
+    }
+
+    bb5: {
+        StorageDead(_4);
+        StorageDead(_3);
+        drop(_1) -> [return: bb6, unwind: bb8];
+    }
+
+    bb6: {
+        coroutine_drop;
+    }
+
+    bb7 (cleanup): {
+        StorageDead(_4);
+        StorageDead(_3);
+        drop(_1) -> [return: bb8, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
+        resume;
+    }
+
+    bb9 (cleanup): {
+        StorageDead(_4);
+        StorageDead(_3);
+        drop(_1) -> [return: bb8, unwind terminate(cleanup)];
+    }
+}
