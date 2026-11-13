@@ -144,4 +144,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
     );
+
+    /// Report that normalizing `alias` overflowed and abort compilation.
+    fn report_normalization_overflow(&self, alias: ty::AliasTerm<Self::Interner>) -> !;
 }
