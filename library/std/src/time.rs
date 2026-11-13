@@ -41,6 +41,78 @@ use crate::fmt;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::{FromInner, IntoInner, time};
 
+const NANOS_PER_SEC: u32 = 1_000_000_000;
+
+#[allow(unused)] // Only used on some platforms.
+pub(crate) mod ops {
+    use core::num::niche_types::Nanoseconds;
+
+    use super::{Duration, NANOS_PER_SEC};
+
+    type Timeval = (i64, Nanoseconds);
+
+    pub(crate) fn add((secs, nanos): Timeval, dur: Duration) -> Option<Timeval> {
+        let mut secs = secs.checked_add_unsigned(dur.as_secs())?;
+
+        // Nanosecond calculations can't overflow because `Nanoseconds` can only
+        // represent values lower than 1B, hence this sum must be lower than 2B.
+        let mut nanos = dur.subsec_nanos() + nanos.as_inner();
+        if nanos >= NANOS_PER_SEC {
+            nanos -= NANOS_PER_SEC;
+            secs = secs.checked_add(1)?;
+        }
+
+        let nanos = unsafe { Nanoseconds::new_unchecked(nanos) };
+        Some((secs, nanos))
+    }
+
+    pub(crate) fn sub((secs, nanos): Timeval, dur: Duration) -> Option<Timeval> {
+        let mut secs = secs.checked_sub_unsigned(dur.as_secs())?;
+
+        // The value represented by `Nanoseconds` is always lower than 1B, hence
+        // this subtraction cannot wrap.
+        let mut nanos = nanos.as_inner() as i32 - dur.subsec_nanos() as i32;
+        if nanos < 0 {
+            nanos += NANOS_PER_SEC as i32;
+            secs = secs.checked_sub(1)?;
+        }
+
+        let nanos = unsafe { Nanoseconds::new_unchecked(nanos as u32) };
+        Some((secs, nanos))
+    }
+
+    pub(crate) fn diff(from: Timeval, to: Timeval) -> Result<Duration, Duration> {
+        let mut nanos = from.1.as_inner() as i32 - to.1.as_inner() as i32;
+        if from.0 > to.0 {
+            let mut secs = from.0.wrapping_sub(to.0).cast_unsigned();
+            if nanos < 0 {
+                nanos += NANOS_PER_SEC as i32;
+                secs -= 1;
+            }
+
+            Ok(Duration::new(secs, nanos as u32))
+        } else if from.0 == to.0 {
+            if nanos >= 0 {
+                Ok(Duration::new(0, nanos as u32))
+            } else {
+                Err(Duration::new(0, (-nanos) as u32))
+            }
+        } else {
+            // `to` is definitely smaller than `from`. Continue as if `to` and
+            // `from` were flipped in the subtraction.
+            let mut secs = to.0.wrapping_sub(from.0).cast_unsigned();
+            nanos = -nanos;
+
+            if nanos < 0 {
+                nanos += NANOS_PER_SEC as i32;
+                secs -= 1;
+            }
+
+            Err(Duration::new(secs, nanos as u32))
+        }
+    }
+}
+
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].
 ///
