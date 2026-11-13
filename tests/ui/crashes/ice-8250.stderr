@@ -1,0 +1,11 @@
+error: unnecessary use of `splitn`
+  --> tests/ui/crashes/ice-8250.rs:2:13
+   |
+LL |     let _ = s[1..].splitn(2, '.').next()?;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `s[1..].split('.')`
+   |
+   = note: `-D clippy::needless-splitn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_splitn)]`
+
+error: aborting due to 1 previous error
+

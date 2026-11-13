@@ -1,0 +1,63 @@
+#![feature(const_trait_impl)]
+#![warn(clippy::missing_const_for_fn)]
+
+// Reduced test case from https://github.com/rust-lang/rust-clippy/issues/14658
+
+const trait ConstTrait {
+    fn method(self);
+}
+
+impl ConstTrait for u32 {
+    fn method(self) {}
+}
+
+const impl ConstTrait for u64 {
+    fn method(self) {}
+}
+
+fn cannot_be_const() {
+    0u32.method();
+}
+
+//~v missing_const_for_fn
+const fn can_be_const() {
+    0u64.method();
+}
+
+// False negative, see FIXME comment in `clippy_utils::qualify_min_const_fn`
+fn could_be_const_but_does_not_trigger<T>(t: T)
+where
+    T: const ConstTrait,
+{
+    t.method();
+}
+
+mod issue16946 {
+    struct ShouldNotLintInConstImpl;
+    const impl ShouldNotLintInConstImpl {
+        fn method_1() -> usize {
+            1234
+        }
+
+        fn method_2() -> usize {
+            0
+        }
+    }
+
+    const trait ShouldNotLintInConstTrait {
+        fn trait_method1(&self) -> usize;
+        fn trait_method2(&self) -> u8;
+    }
+    struct ShouldNotLintInConstTraitImpl<T>(T);
+    const impl<T: ShouldNotLintInConstTrait> ShouldNotLintInConstTraitImpl<T> {
+        fn trait_method1(&self) -> usize {
+            123
+        }
+
+        fn trait_method2(&self) -> u8 {
+            u8::MAX
+        }
+    }
+}
+
+fn main() {}

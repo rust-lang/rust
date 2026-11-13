@@ -1,0 +1,224 @@
+#![warn(clippy::assert_is_empty)]
+#![expect(clippy::needless_ifs, clippy::useless_vec)]
+#![allow(clippy::const_is_empty)]
+
+fn main() {
+    let vec = vec![1, 2, 3];
+    assert!(vec.is_empty());
+    //~^ assert_is_empty
+    assert!(!vec.is_empty());
+    //~^ assert_is_empty
+    debug_assert!(vec.is_empty());
+    //~^ assert_is_empty
+    debug_assert!(!vec.is_empty());
+    //~^ assert_is_empty
+
+    let vec_ref = &vec;
+    assert!(vec_ref.is_empty());
+    //~^ assert_is_empty
+    assert!(!vec_ref.is_empty());
+    //~^ assert_is_empty
+
+    let vec_mut_ref = &mut vec![1, 2, 3];
+    assert!(vec_mut_ref.is_empty());
+    //~^ assert_is_empty
+
+    let slice: &[i32] = &[1, 2, 3];
+    assert!(slice.is_empty());
+    //~^ assert_is_empty
+    assert!(!slice.is_empty());
+    //~^ assert_is_empty
+
+    let array = [1, 2, 3];
+    assert!(array.is_empty());
+    //~^ assert_is_empty
+    assert!(!array.is_empty());
+    //~^ assert_is_empty
+
+    let array_ref = &array;
+    assert!(array_ref.is_empty());
+    //~^ assert_is_empty
+
+    let string = String::from("foo");
+    assert!(string.is_empty());
+    //~^ assert_is_empty
+    assert!(!string.is_empty());
+    //~^ assert_is_empty
+
+    let str_ref = "foo";
+    assert!(str_ref.is_empty());
+    //~^ assert_is_empty
+    assert!(!str_ref.is_empty());
+    //~^ assert_is_empty
+
+    // Don't lint: has assert message.
+    assert!(vec.is_empty(), "items should be empty");
+    assert!(!vec.is_empty(), "items should not be empty");
+    assert!(vec.is_empty(), "unexpected values: {vec:?}");
+    assert!(!vec.is_empty(), "unexpected values: {vec:?}");
+
+    // Common chained assertion shape. The first assertion can hide the value
+    // that the second assertion would otherwise help diagnose.
+    let items = vec!["baz"];
+    assert!(!items.is_empty());
+    //~^ assert_is_empty
+    assert_eq!(items[0], "bar");
+
+    // Don't lint: the outer `assert!` is written here, but the condition comes
+    // from a macro expansion. Rewriting the expanded condition span would make
+    // the suggestion point at generated code rather than source code.
+    macro_rules! is_empty {
+        ($value:expr) => {
+            $value.is_empty()
+        };
+    }
+    assert!(is_empty!(vec));
+
+    // Don't lint: the `assert!` itself comes from a macro expansion. The lint
+    // only rewrites assert calls that are present at the call site.
+    macro_rules! assert_empty {
+        ($value:expr) => {
+            assert!($value.is_empty())
+        };
+    }
+    assert_empty!(vec);
+
+    // Don't lint: not an assert macro.
+    if vec.is_empty() {}
+    if !vec.is_empty() {}
+
+    // Don't lint: maps do not have a compact empty literal suggestion. This is
+    // a conservative call; comparing against `HashMap::new()` may be worth
+    // revisiting if the type inference cost and constructor path are acceptable
+    // for aliases, custom hashers, and similar map types.
+    let map = std::collections::HashMap::<i32, i32>::new();
+    assert!(map.is_empty());
+    assert!(!map.is_empty());
+
+    // Don't lint: assert_eq! would require Debug and PartialEq for the element type.
+    struct NotDebugOrPartialEq;
+    let not_debug_or_partial_eq = vec![NotDebugOrPartialEq];
+    assert!(not_debug_or_partial_eq.is_empty());
+
+    #[derive(Debug)]
+    struct NotPartialEq;
+    let not_partial_eq = vec![NotPartialEq];
+    assert!(not_partial_eq.is_empty());
+
+    #[derive(PartialEq)]
+    struct NotDebug;
+    let not_debug = vec![NotDebug];
+    assert!(not_debug.is_empty());
+}
+
+mod issue17935 {
+    use std::collections::BinaryHeap;
+
+    fn binary_heap() {
+        let mut heap = BinaryHeap::new();
+        heap.push(42);
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+        assert!(!heap.is_empty());
+        //~^ assert_is_empty
+        debug_assert!(heap.is_empty());
+        //~^ assert_is_empty
+        debug_assert!(!heap.is_empty());
+        //~^ assert_is_empty
+
+        // Don't lint: has assert message.
+        assert!(heap.is_empty(), "expected an empty heap");
+    }
+
+    trait ElementExists {
+        const ELEMENT: Self;
+    }
+
+    fn binaryheap_eq<T: ElementExists + Ord + std::fmt::Debug>() {
+        let mut heap = BinaryHeap::new();
+        heap.push(T::ELEMENT);
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+    }
+
+    fn cross_eq<T: Ord + std::fmt::Debug + PartialEq<u8>>(heap: BinaryHeap<T>) {
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+    }
+
+    fn references(heap: &mut BinaryHeap<i32>) {
+        assert!(heap.is_empty());
+        //~^ assert_is_empty
+
+        let heap_ref = &*heap;
+        assert!(heap_ref.is_empty());
+        //~^ assert_is_empty
+
+        let heap_ref_ref = &heap_ref;
+        assert!(!heap_ref_ref.is_empty());
+        //~^ assert_is_empty
+
+        let heap = &&heap;
+        assert!(!heap.is_empty());
+        //~^ assert_is_empty
+    }
+
+    // Don't lint: these element types do not support the suggestion.
+    fn not_debug() {
+        #[derive(Eq, Ord, PartialEq, PartialOrd)]
+        struct NotDebug;
+
+        let mut not_debug = BinaryHeap::new();
+        not_debug.push(NotDebug);
+        assert!(not_debug.is_empty());
+    }
+
+    fn binaryheap_normal<T: ElementExists + Ord>() {
+        let mut heap = BinaryHeap::new();
+        heap.push(T::ELEMENT);
+        assert!(heap.is_empty());
+    }
+
+    fn opaque(heap: BinaryHeap<impl Ord + std::fmt::Debug>) {
+        assert!(heap.is_empty());
+    }
+
+    fn not_comparable<T: std::fmt::Debug>(heap: BinaryHeap<T>) {
+        assert!(heap.is_empty());
+    }
+
+    const fn const_heap(heap: &BinaryHeap<i32>) {
+        assert!(heap.is_empty());
+        assert!(!heap.is_empty());
+        debug_assert!(heap.is_empty());
+        debug_assert!(!heap.is_empty());
+    }
+}
+
+// TODO: turn into an MSRV aware lint after const traits are stable and `PartialEq` is const stable
+mod issue17930 {
+    const NOT_EMPTY: &str = "string";
+    const EMPTY: &str = "";
+    const X: () = assert!(!NOT_EMPTY.is_empty());
+    static Y: () = assert!(EMPTY.is_empty());
+
+    const fn in_constant_fn() {
+        assert!(EMPTY.is_empty())
+    }
+
+    fn in_constant() {
+        const {
+            assert!(!NOT_EMPTY.is_empty());
+        }
+    }
+
+    struct ImplWithConstMethod;
+
+    impl ImplWithConstMethod {
+        const Z: () = assert!(!NOT_EMPTY.is_empty());
+
+        const fn const_method(&self) {
+            assert!(EMPTY.is_empty());
+        }
+    }
+}

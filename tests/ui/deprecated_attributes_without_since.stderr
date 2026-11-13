@@ -1,0 +1,98 @@
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:10:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+   |
+note: the lint level is defined here
+  --> tests/ui/deprecated_attributes_without_since.rs:3:9
+   |
+LL | #![deny(clippy::deprecated_attributes_without_since)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:14:5
+   |
+LL |     #[deprecated(note = "I don't feel like maintaining this anymore, sorry")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a version: `#[deprecated(note = "I don't feel like maintaining this anymore, sorry", since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:18:5
+   |
+LL |     #[deprecated = "probably a bad idea to use this"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a version: `#[deprecated(note = "probably a bad idea to use this", since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:22:5
+   |
+LL |     #[deprecated = ""]
+   |     ^^^^^^^^^^^^^^^^^^ help: add a version: `#[deprecated(note = "", since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:26:22
+   |
+LL |     #[cfg_attr(true, deprecated)]
+   |                      ^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:30:22
+   |
+LL |     #[cfg_attr(true, deprecated(note = "look down!"))]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a version: `#[deprecated(note = "look down!", since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:34:22
+   |
+LL |     #[cfg_attr(true, deprecated = "the note below me always lies")]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a version: `#[deprecated(note = "the note below me always lies", since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:38:5
+   |
+LL |     #[deprecated(note = "kinda weird to deprecate everything inside too")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a version: `#[deprecated(note = "kinda weird to deprecate everything inside too", since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:41:9
+   |
+LL |         #[deprecated]
+   |         ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:44:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:50:9
+   |
+LL |         #[deprecated]
+   |         ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:53:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:58:9
+   |
+LL |         #[deprecated]
+   |         ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:61:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: `deprecated` attribute without specifying what version of the crate deprecated the item
+  --> tests/ui/deprecated_attributes_without_since.rs:65:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a version: `#[deprecated(since = /* version */)]`
+
+error: aborting due to 15 previous errors
+

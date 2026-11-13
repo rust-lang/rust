@@ -1,0 +1,1 @@
+ignore-interior-mutability = ["borrow_interior_mutable_const_ignore::Counted"]

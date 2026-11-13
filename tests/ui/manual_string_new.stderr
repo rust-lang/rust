@@ -1,0 +1,59 @@
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:14:13
+   |
+LL |     let _ = "".to_string();
+   |             ^^^^^^^^^^^^^^ help: consider using: `String::new()`
+   |
+   = note: `-D clippy::manual-string-new` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_string_new)]`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:18:13
+   |
+LL |     let _ = "".to_owned();
+   |             ^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:22:21
+   |
+LL |     let _: String = "".into();
+   |                     ^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:30:13
+   |
+LL |     let _ = String::from("");
+   |             ^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:32:13
+   |
+LL |     let _ = <String>::from("");
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:38:13
+   |
+LL |     let _ = String::try_from("").unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:45:21
+   |
+LL |     let _: String = From::from("");
+   |                     ^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:51:21
+   |
+LL |     let _: String = TryFrom::try_from("").unwrap();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: empty String is being created manually
+  --> tests/ui/manual_string_new.rs:55:21
+   |
+LL |     let _: String = TryFrom::try_from("").expect("this should warn");
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
+
+error: aborting due to 9 previous errors
+

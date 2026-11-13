@@ -1,0 +1,47 @@
+error: `allow` attribute without specifying a reason
+  --> tests/ui/allow_attributes_without_reason.rs:3:1
+   |
+LL | #![allow(unfulfilled_lint_expectations, clippy::duplicated_attributes)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a reason at the end with `, reason = ".."`
+note: the lint level is defined here
+  --> tests/ui/allow_attributes_without_reason.rs:2:9
+   |
+LL | #![deny(clippy::allow_attributes_without_reason)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `allow` attribute without specifying a reason
+  --> tests/ui/allow_attributes_without_reason.rs:10:1
+   |
+LL | #[allow(dead_code)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a reason at the end with `, reason = ".."`
+
+error: `allow` attribute without specifying a reason
+  --> tests/ui/allow_attributes_without_reason.rs:12:1
+   |
+LL | #[allow(dead_code, deprecated)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a reason at the end with `, reason = ".."`
+
+error: `expect` attribute without specifying a reason
+  --> tests/ui/allow_attributes_without_reason.rs:14:1
+   |
+LL | #[expect(dead_code)]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a reason at the end with `, reason = ".."`
+
+error: `allow` attribute without specifying a reason
+  --> tests/ui/allow_attributes_without_reason.rs:50:5
+   |
+LL |     #[allow(unused)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a reason at the end with `, reason = ".."`
+
+error: aborting due to 5 previous errors
+

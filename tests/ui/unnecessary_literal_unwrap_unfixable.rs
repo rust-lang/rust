@@ -1,0 +1,230 @@
+#![warn(clippy::unnecessary_literal_unwrap)]
+#![expect(clippy::let_unit_value, clippy::unnecessary_lazy_evaluations)]
+//@no-rustfix
+fn unwrap_option_some() {
+    let val = Some(1);
+    let _val2 = val.unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect("this never happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_option_some_context() {
+    let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Some::<usize>([1, 2, 3].iter().sum()).expect("this never happens");
+    //~^ unnecessary_literal_unwrap
+
+    let val = Some::<usize>([1, 2, 3].iter().sum());
+    let _val2 = val.unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect("this never happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_option_none() {
+    let val = None::<()>;
+    let _val2 = val.unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect("this always happens");
+    //~^ unnecessary_literal_unwrap
+
+    let _val3: u8 = None.unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+
+    None::<()>.unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_result_ok() {
+    let val = Ok::<_, ()>(1);
+    let _val2 = val.unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect("this never happens");
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_err();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect_err("this always happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_result_ok_context() {
+    let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).expect("this never happens");
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_err();
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).expect_err("this always happens");
+    //~^ unnecessary_literal_unwrap
+
+    let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+    let _val2 = val.unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect("this never happens");
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_err();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect_err("this always happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_result_err() {
+    let val = Err::<(), _>(1);
+    let _val2 = val.unwrap_err();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect_err("this never happens");
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect("this always happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_result_err_context() {
+    let _val = Err::<(), usize>([1, 2, 3].iter().sum()).unwrap_err();
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect_err("this never happens");
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Err::<(), usize>([1, 2, 3].iter().sum()).unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect("this always happens");
+    //~^ unnecessary_literal_unwrap
+
+    let val = Err::<(), usize>([1, 2, 3].iter().sum());
+    let _val2 = val.unwrap_err();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect_err("this never happens");
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.expect("this always happens");
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_methods_option() {
+    let val = Some(1);
+    let _val2 = val.unwrap_or(2);
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_else(|| 2);
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_methods_option_context() {
+    let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or(2);
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or_else(|| 2);
+    //~^ unnecessary_literal_unwrap
+
+    let val = Some::<usize>([1, 2, 3].iter().sum());
+    let _val2 = val.unwrap_or(2);
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_else(|| 2);
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_methods_result() {
+    let val = Ok::<_, ()>(1);
+    let _val2 = val.unwrap_or(2);
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_else(|_| 2);
+    //~^ unnecessary_literal_unwrap
+}
+
+fn unwrap_methods_result_context() {
+    let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or(2);
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+
+    let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or_else(|_| 2);
+    //~^ unnecessary_literal_unwrap
+
+    let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
+    let _val2 = val.unwrap_or(2);
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_default();
+    //~^ unnecessary_literal_unwrap
+
+    let _val2 = val.unwrap_or_else(|_| 2);
+    //~^ unnecessary_literal_unwrap
+}
+
+mod issue17990 {
+    fn payload() -> i32 {
+        println!("payload evaluated");
+        1
+    }
+
+    fn err_unwrap_or_preserves_payload_evaluation() {
+        let _ = Err::<i32, i32>(payload()).unwrap_or(2);
+        //~^ unnecessary_literal_unwrap
+    }
+
+    fn unwrap_or_preserves_eager_fallback() {
+        let _ = Some(1).unwrap_or({
+            //~^ unnecessary_literal_unwrap
+            println!("message");
+            2
+        });
+    }
+
+    fn expect_preserves_eager_fallback() {
+        let _ = Ok::<i32, ()>(1).expect({
+            //~^ unnecessary_literal_unwrap
+            //~^^ expect_fun_call
+            println!("stuff");
+            "message"
+        });
+    }
+
+    fn expect_err_preserves_eager_fallback() {
+        let _ = Err::<(), i32>(1).expect_err({
+            //~^ unnecessary_literal_unwrap
+            println!("stuff");
+            "message"
+        });
+    }
+}
+
+fn main() {}

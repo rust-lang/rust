@@ -1,0 +1,197 @@
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:245:13
+   |
+LL |             unsafe { $e }
+   |             ^^^^^^^^^^^^^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+   = note: `-D clippy::macro-metavars-in-unsafe` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::macro_metavars_in_unsafe)]`
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:19:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             dbg!($v);
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:30:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             $r#mod;
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:42:13
+   |
+LL | /             unsafe {
+LL | |
+LL | |                 $v;
+LL | |             }
+   | |_____________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:67:17
+   |
+LL | /                 unsafe {
+LL | |
+LL | |                     $v;
+LL | |                 }
+   | |_________________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:95:21
+   |
+LL |                     unsafe { $inside_unsafe }
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:110:17
+   |
+LL | /                 unsafe {
+LL | |
+LL | |                     $inside_unsafe;
+LL | |                 }
+   | |_________________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:122:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             $inside_unsafe;
+LL | |             let inside_unsafe = 1;
+LL | |             inside_unsafe;
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:137:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             $inside_unsafe;
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:146:13
+   |
+LL | /             unsafe {
+LL | |
+LL | |                 $x;
+LL | |             }
+   | |_____________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:171:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         $v;
+LL | |     }
+   | |_____^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:158:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             $x;
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:162:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             $x;
+LL | |             $y;
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:222:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             $v;
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: this macro expands metavariables in an unsafe block
+  --> tests/ui-toml/macro_metavars_in_unsafe/default/test.rs:232:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             nested_macro_helper!($v);
+LL | |             $v;
+LL | |         }
+   | |_________^
+   |
+   = note: this allows the user of the macro to write unsafe code outside of an unsafe block
+   = help: consider expanding any metavariables outside of this block, e.g. by storing them in a variable
+   = help: ... or also expand referenced metavariables in a safe context to require an unsafe block at callsite
+
+error: aborting due to 15 previous errors
+

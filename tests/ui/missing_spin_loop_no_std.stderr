@@ -1,0 +1,11 @@
+error: busy-waiting loop should at least have a spin loop hint
+  --> tests/ui/missing_spin_loop_no_std.rs:11:37
+   |
+LL |     while b.load(Ordering::Acquire) {}
+   |                                     ^^ help: try: `{ core::hint::spin_loop() }`
+   |
+   = note: `-D clippy::missing-spin-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_spin_loop)]`
+
+error: aborting due to 1 previous error
+

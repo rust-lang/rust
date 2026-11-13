@@ -1,0 +1,26 @@
+error: you appear to be counting bytes the naive way
+  --> tests/ui/bytecount.rs:10:13
+   |
+LL |     let _ = x.iter().filter(|&&a| a == 0).count();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the bytecount crate: `bytecount::count(x, 0)`
+   |
+note: the lint level is defined here
+  --> tests/ui/bytecount.rs:5:8
+   |
+LL | #[deny(clippy::naive_bytecount)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you appear to be counting bytes the naive way
+  --> tests/ui/bytecount.rs:14:13
+   |
+LL |     let _ = (&x[..]).iter().filter(|&a| *a == 0).count();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the bytecount crate: `bytecount::count((&x[..]), 0)`
+
+error: you appear to be counting bytes the naive way
+  --> tests/ui/bytecount.rs:32:13
+   |
+LL |     let _ = x.iter().filter(|a| b + 1 == **a).count();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the bytecount crate: `bytecount::count(x, b + 1)`
+
+error: aborting due to 3 previous errors
+

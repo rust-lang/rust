@@ -1,0 +1,19 @@
+error: `extract_msrv_attr!` macro missing from `EarlyLintPass` implementation
+  --> tests/ui-internal/invalid_msrv_attr_impl.rs:28:1
+   |
+LL | impl EarlyLintPass for Pass {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui-internal/invalid_msrv_attr_impl.rs:1:9
+   |
+LL | #![deny(clippy::missing_msrv_attr_impl)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add `extract_msrv_attr!()` to the `EarlyLintPass` implementation
+   |
+LL ~ impl EarlyLintPass for Pass {
+LL +     extract_msrv_attr!();
+   |
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,43 @@
+error: unnecessary `get` before `leading_zeros`
+  --> tests/ui/needless_nonzero_get_unfixable.rs:13:10
+   |
+LL |         .get()
+   |          ^^^^^
+   |
+   = note: `-D clippy::needless-nonzero-get` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_nonzero_get)]`
+help: remove this
+   |
+LL -     let _ = nz /* keep this comment */
+LL -         .get()
+LL +     let _ = nz
+   |
+
+error: unnecessary `get` before `/`
+  --> tests/ui/needless_nonzero_get_unfixable.rs:20:14
+   |
+LL |             .get();
+   |              ^^^^^
+   |
+help: remove this
+   |
+LL -         / nz /* keep this comment */
+LL -             .get();
+LL +         / nz;
+   |
+
+error: unnecessary `get` before `%=`
+  --> tests/ui/needless_nonzero_get_unfixable.rs:24:10
+   |
+LL |         .get();
+   |          ^^^^^
+   |
+help: remove this
+   |
+LL -     value %= nz /* keep this comment */
+LL -         .get();
+LL +     value %= nz;
+   |
+
+error: aborting due to 3 previous errors
+

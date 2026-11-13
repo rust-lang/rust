@@ -1,0 +1,29 @@
+error: manual arithmetic check found
+  --> tests/ui/manual_arithmetic_check.rs:9:18
+   |
+LL |     let result = if a > b { a - b } else { 0 };
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b)`
+   |
+   = note: `-D clippy::implicit-saturating-sub` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_sub)]`
+
+error: manual arithmetic check found
+  --> tests/ui/manual_arithmetic_check.rs:12:18
+   |
+LL |     let result = if b < a { a - b } else { 0 };
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b)`
+
+error: manual arithmetic check found
+  --> tests/ui/manual_arithmetic_check.rs:15:18
+   |
+LL |     let result = if a < b { 0 } else { a - b };
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b)`
+
+error: manual arithmetic check found
+  --> tests/ui/manual_arithmetic_check.rs:18:18
+   |
+LL |     let result = if b > a { 0 } else { a - b };
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b)`
+
+error: aborting due to 4 previous errors
+

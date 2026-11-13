@@ -1,0 +1,64 @@
+//@aux-build:proc_macros.rs
+
+#![warn(clippy::must_use_without_reason)]
+#![allow(clippy::must_use_unit)]
+
+extern crate proc_macros;
+use proc_macros::external;
+
+// Should trigger lint
+#[must_use]
+//~^ ERROR: `#[must_use]` attribute without a reason
+fn no_note() -> i32 {
+    42
+}
+
+// Should NOT trigger lint - has a note
+#[must_use = "expensive operation"]
+fn with_note() -> i32 {
+    42
+}
+
+struct MyStruct;
+
+impl MyStruct {
+    // Should trigger lint
+    #[must_use]
+    //~^ ERROR: `#[must_use]` attribute without a reason
+    fn method_no_note(&self) -> i32 {
+        42
+    }
+
+    // Should NOT trigger lint
+    #[must_use = "important result"]
+    fn method_with_note(&self) -> i32 {
+        42
+    }
+}
+
+trait MyTrait {
+    // Should trigger lint
+    #[must_use]
+    //~^ ERROR: `#[must_use]` attribute without a reason
+    fn trait_method_no_note(&self) -> i32;
+
+    // Should NOT trigger lint
+    #[must_use = "trait method note"]
+    fn trait_method_with_note(&self) -> i32;
+}
+
+// Should NOT trigger lint - external macro
+external! {
+    #[must_use]
+    fn external_macro_no_note() -> i32 {
+        42
+    }
+}
+
+fn main() {
+    let _ = no_note();
+    let _ = with_note();
+    let s = MyStruct;
+    let _ = s.method_no_note();
+    let _ = s.method_with_note();
+}

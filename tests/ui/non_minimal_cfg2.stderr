@@ -1,0 +1,11 @@
+error: unneeded sub `cfg` when there is no condition
+  --> tests/ui/non_minimal_cfg2.rs:4:7
+   |
+LL | #[cfg(all())]
+   |       ^^^^^
+   |
+   = note: `-D clippy::non-minimal-cfg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_minimal_cfg)]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,108 @@
+name: Lintcheck summary
+
+# The workflow_run event runs in the context of the Clippy repo giving it write
+# access, needed here to create a PR comment when the PR originates from a fork
+#
+# The summary artifact is a JSON file that we verify in this action to prevent
+# the creation of arbitrary comments
+#
+# This action must not checkout/run code from the originating workflow_run
+# or directly interpolate ${{}} untrusted fields into code
+#
+# https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#workflow_run
+# https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
+
+on:
+  workflow_run:
+    workflows: [Lintcheck]
+    types: [completed]
+
+# Restrict the default permission scope https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#defining-access-for-the-github_token-scopes
+permissions: {}
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Required by `gh pr comment` to create/update comments on PRs
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: summary
+          path: untrusted
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Format comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require("fs");
+            const assert = require("assert/strict");
+
+            function validateName(s) {
+              assert.match(s, /^[a-z0-9_:]+$/);
+              return s;
+            }
+
+            function validateInt(i) {
+              assert.ok(Number.isInteger(i));
+              return i;
+            }
+
+            function tryReadSummary() {
+              try {
+                return JSON.parse(fs.readFileSync("untrusted/summary.json"));
+              } catch {
+                return null;
+              }
+            }
+
+            const prNumber = parseInt(fs.readFileSync("untrusted/pr.txt"), 10);
+            core.exportVariable("PR", prNumber.toString());
+
+            const untrustedSummary = tryReadSummary();
+            if (!Array.isArray(untrustedSummary)) {
+              return;
+            }
+
+            let summary = `Lintcheck changes for ${context.payload.workflow_run.head_sha}
+            
+            | Lint | Added | Removed | Changed |
+            | ---- | ----: | ------: | ------: |
+            `;
+
+            for (const untrustedRow of untrustedSummary) {
+              const name = validateName(untrustedRow.name);
+
+              const added = validateInt(untrustedRow.added);
+              const removed = validateInt(untrustedRow.removed);
+              const changed = validateInt(untrustedRow.changed);
+
+              const id = name.replace("clippy::", "user-content-").replaceAll("_", "-");
+              const url = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.payload.workflow_run.id}#${id}`;
+
+              summary += `| [\`${name}\`](${url}) | ${added} | ${removed} | ${changed} |\n`;
+            }
+
+            summary += "\nThis comment will be updated if you push new changes";
+
+            fs.writeFileSync("summary.md", summary);
+
+      - name: Create/update comment
+        run: |
+          if [[ -f summary.md ]]; then
+             gh pr comment "$PR" --body-file summary.md --edit-last --create-if-none
+          else
+            # There were no changes detected by Lintcheck
+            # - If a comment exists from a previous run that did detect changes, edit it (--edit-last)
+            # - If no comment exists do not create one, the `gh` command exits with an error which
+            #   `|| true` ignores
+            gh pr comment "$PR" --body "No changes for ${GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA}" --edit-last || true
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
