@@ -20,7 +20,7 @@ use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation, TraitErrors};
 use rustc_middle::ty::{
     self, CallerBoundsIterator, CantBeErased, Const, Flags, Ty, TyCtxt, TypeVisitableExt,
-    TypingMode, Unnormalized,
+    TypingMode, Unnormalized, Upcast,
 };
 use rustc_session::Session;
 use rustc_span::def_id::LocalModId;
@@ -313,10 +313,14 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                     .caller_bounds()
                     .trait_clauses(tcx)
                     .validate_self_ty(|actual_self_ty| actual_self_ty.is_param(index))
-                    .interned()
                     .iter()
                     .map(|trait_clause| {
-                        (ty::set_aliases_to_non_rigid(tcx, trait_clause).skip_norm_wip(), span)
+                        (
+                            ty::set_aliases_to_non_rigid(tcx, trait_clause)
+                                .skip_norm_wip()
+                                .upcast(tcx),
+                            span,
+                        )
                     }),
             ),
         )

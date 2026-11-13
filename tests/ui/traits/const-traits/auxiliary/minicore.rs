@@ -298,7 +298,7 @@ fn from_str(s: &str) -> Result<bool, ()> {
     }
 }
 
-#[lang = "eq"]
+#[lang = "partial_eq"]
 pub const trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool {

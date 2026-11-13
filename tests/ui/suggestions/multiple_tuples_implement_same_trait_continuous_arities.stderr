@@ -6,9 +6,6 @@ LL |     testing_debug((1, Foo));
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the following other types implement trait `Debug`:
-             (T₁, T₂, …, Tₙ) up to tuples of arity 12
-           and 5 others
    = note: required for `({integer}, Foo)` to implement `Debug`
 note: required by a bound in `testing_debug`
   --> $DIR/multiple_tuples_implement_same_trait_continuous_arities.rs:3:21

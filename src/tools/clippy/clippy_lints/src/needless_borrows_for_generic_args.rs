@@ -189,7 +189,7 @@ fn needless_borrow_count<'tcx>(
         .tcx
         .param_env(fn_id)
         .caller_bounds()
-        .all_clauses(cx.tcx)
+        .all_clauses_interned(cx.tcx)
         .iter()
         // TODO: remove filter once https://github.com/rust-lang/rust/issues/160895 is in stable
         //

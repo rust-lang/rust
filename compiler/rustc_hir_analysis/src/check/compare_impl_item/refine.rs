@@ -148,8 +148,8 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         .into_iter()
         .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx, hybrid_clauses);
-    let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
+    let param_env =
+        normalize_param_env_or_error(tcx, hybrid_clauses.collect(), ObligationCause::dummy());
 
     let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new(infcx);
