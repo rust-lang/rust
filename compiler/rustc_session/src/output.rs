@@ -297,9 +297,9 @@ define_output_types! {
     },
     FullAnalysis => {
         shorthand: "full-analysis",
-        extension: "analysis.rmeta",
+        extension: "full-analysis.rmeta",
         description: "Generates metadata and exits after doing all analysis",
-        default_filename: "CRATE_NAME.analysis.rmeta",
+        default_filename: "CRATE_NAME.full-analysis.rmeta",
         is_text: false,
         compatible_with_cgus_and_single_output: true
     },
@@ -545,6 +545,10 @@ impl OutputTypes {
                 _ => Some(out),
             })
             .unwrap_or(OutputType::Metadata)
+    }
+
+    pub fn needs_metadata(&self) -> bool {
+        self.iter().any(|(k, _)| *k == OutputType::Metadata)
     }
 
     pub fn needs_mir(&self) -> bool {

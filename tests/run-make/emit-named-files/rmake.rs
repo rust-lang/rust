@@ -22,6 +22,11 @@ fn main() {
     emit_and_check(&out_dir, "libfoo.rlib", "link", &[]);
     emit_and_check(&out_dir, "libfoo.d", "dep-info", &[]);
     emit_and_check(&out_dir, "libfoo.mir", "mir", &[]);
-    emit_and_check(&out_dir, "libfoo.analysis.rmeta", "full-analysis", &["-Zunstable-options"]);
+    emit_and_check(
+        &out_dir,
+        "libfoo.full-analysis.rmeta",
+        "full-analysis",
+        &["-Zunstable-options"],
+    );
     emit_and_check(&out_dir, "libfoo.validation.rmeta", "validation", &["-Zunstable-options"]);
 }

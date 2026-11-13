@@ -6,7 +6,7 @@ error: Argument to option 'emit' missing
                                Each TYPE has the default FILE name:
                                * validation - CRATE_NAME.validation.rmeta
                                * dep-info - CRATE_NAME.d
-                               * full-analysis - CRATE_NAME.analysis.rmeta
+                               * full-analysis - CRATE_NAME.full-analysis.rmeta
                                * mir - CRATE_NAME.mir
                                * metadata - libCRATE_NAME.rmeta
                                * thin-link-bitcode - CRATE_NAME.indexing.o

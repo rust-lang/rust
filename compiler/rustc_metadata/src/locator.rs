@@ -401,7 +401,7 @@ impl<'a> CrateLocator<'a> {
 
         let rmeta_suffix = ".rmeta";
         let validation_suffix = ".validation.rmeta";
-        let analysis_suffix = ".analysis.rmeta";
+        let analysis_suffix = ".full-analysis.rmeta";
         let rlib_suffix = ".rlib";
         let dylib_suffix = &self.target.dll_suffix;
         let staticlib_suffix = &self.target.staticlib_suffix;
