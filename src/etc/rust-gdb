@@ -28,11 +28,11 @@ set -- \
   -iex "set substitute-path /rustc/$RUSTC_COMMIT_HASH $RUSTC_SYSROOT/lib/rustlib/src/rust" \
   "$@"
 
-# Unstable (nightly-only) trim-paths feature, activated only if
-#  - RUST_GDB_TRIM_PATHS=unstable is set
-#  - and if the python file is present (only shipped on nightly)
+# Load Cargo trim-paths unremap files beside each loaded binary.
+#
+# Set RUST_GDB_TRIM_PATHS=0 to disable this feature.
 GDB_TRIM_PATHS="$GDB_PYTHON_MODULE_DIRECTORY/gdb_trim_paths.py"
-if [ "${RUST_GDB_TRIM_PATHS:-}" = "unstable" ] && [ -f "$GDB_TRIM_PATHS" ]; then
+if [ "${RUST_GDB_TRIM_PATHS:-}" != "0" ] && [ -f "$GDB_TRIM_PATHS" ]; then
   set -- -x "$GDB_TRIM_PATHS" "$@"
 fi
 
