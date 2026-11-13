@@ -374,10 +374,6 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         (str_global, self.const_usize(len as u64))
     }
 
-    fn const_struct(&self, elts: &[Value<'ll>], packed: bool) -> Value<'ll> {
-        struct_in_context(self.llcx, elts, packed)
-    }
-
     fn const_vector(&self, elts: &[Value<'ll>]) -> Value<'ll> {
         let len = c_uint::try_from(elts.len()).expect("LLVMConstVector elements len overflow");
         unsafe { llvm::LLVMConstVector(elts.as_ptr(), len) }
