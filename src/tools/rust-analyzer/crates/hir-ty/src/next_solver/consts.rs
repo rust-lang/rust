@@ -48,7 +48,7 @@ const _: () = {
 };
 
 impl<'db> Const<'db> {
-    /// You should avoid using this if you can, since we want `Ty` to be defined in `rustc_type_ir` and then this method
+    /// You should avoid using this if you can, since we want `Const` to be defined in `rustc_type_ir` and then this method
     /// will become more difficult to use.
     #[inline]
     pub fn new_without_interner(kind: ConstKind<'db>) -> Self {
