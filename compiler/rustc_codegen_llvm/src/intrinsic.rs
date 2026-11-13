@@ -1086,7 +1086,7 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: Type<'ll>, llvm_ty: Type<
         _ if let Some((llvm_element_ty, element_count)) =
             cx.vector_element_type_and_length(llvm_ty) =>
         {
-            if llvm_element_ty == cx.type_bf16() {
+            if llvm_element_ty == cx.type_f16b() {
                 rust_ty == cx.type_vector(cx.type_i16(), element_count)
             } else if llvm_element_ty == cx.type_i1() {
                 let int_width = element_count.next_power_of_two().max(8);
