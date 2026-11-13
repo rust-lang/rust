@@ -37,6 +37,13 @@ pub(super) fn count_chars(s: &str) -> usize {
 }
 
 fn do_count_chars(s: &str) -> usize {
+    #[cfg(any(
+        all(target_arch = "x86_64", target_feature = "sse2"),
+        all(target_arch = "aarch64", target_feature = "neon")
+    ))]
+    if s.len() >= SIMD_MIN_LEN {
+        return char_count_simd(s);
+    }
     // For correctness, `CHUNK_SIZE` must be:
     //
     // - Less than or equal to 255, otherwise we'll overflow bytes in `counts`.
@@ -134,4 +141,77 @@ fn sum_bytes_in_usize(values: usize) -> usize {
 // returned by `slice::align_to`).
 fn char_count_general_case(s: &[u8]) -> usize {
     s.iter().filter(|&&byte| !super::validations::utf8_is_cont_byte(byte)).count()
+}
+
+#[cfg(any(
+    all(target_arch = "x86_64", target_feature = "sse2"),
+    all(target_arch = "aarch64", target_feature = "neon")
+))]
+const SIMD_MIN_LEN: usize = 128;
+
+/// Computes how many bytes of `s` are UTF-8 non-continuation bytes
+/// with SIMD.
+#[cfg(any(
+    all(target_arch = "x86_64", target_feature = "sse2"),
+    all(target_arch = "aarch64", target_feature = "neon")
+))]
+fn char_count_simd(s: &str) -> usize {
+    use core::simd::cmp::SimdPartialOrd;
+    use core::simd::num::SimdUint;
+    use core::simd::{Select, i8x16, u8x16};
+    const TAIL_CHUNK_SIZE: usize = 16;
+    const CHUNK_SIZE: usize = 64;
+    const BLOCK_SIZE: usize = 255;
+
+    // The number of chunks of every block can't be over `u8::MAX`
+    // to avoid overflow in loops of every block.
+    const _: () = assert!(BLOCK_SIZE < 256);
+
+    /// UTF-8 non-continuation bytes are >= -64 when interpreted as i8.
+    const THRESHOLD: i8 = -64;
+
+    let s = s.as_bytes();
+    let (body, tail) = s.as_chunks::<CHUNK_SIZE>();
+    let mut total = 0;
+
+    // Group chunks into blocks to reduce the number of horizontal reductions.
+    for block in body.chunks(BLOCK_SIZE) {
+        let mut a = u8x16::splat(0);
+        let mut b = u8x16::splat(0);
+        let mut c = u8x16::splat(0);
+        let mut d = u8x16::splat(0);
+        let threshold = i8x16::splat(THRESHOLD);
+        let one = u8x16::splat(1);
+        let zero = u8x16::splat(0);
+
+        // Computes how many bytes are UTF-8 non-continuation bytes.
+        for chunk in block {
+            a += u8x16::from_slice(&chunk[..16]).cast::<i8>().simd_ge(threshold).select(one, zero);
+            b +=
+                u8x16::from_slice(&chunk[16..32]).cast::<i8>().simd_ge(threshold).select(one, zero);
+            c +=
+                u8x16::from_slice(&chunk[32..48]).cast::<i8>().simd_ge(threshold).select(one, zero);
+            d += u8x16::from_slice(&chunk[48..]).cast::<i8>().simd_ge(threshold).select(one, zero);
+        }
+
+        // Computes the total number of non-continuation bytes in the block.
+        // Converts to `u16` to avoid overflow.
+        total += a.cast::<u16>().reduce_sum() as usize
+            + b.cast::<u16>().reduce_sum() as usize
+            + c.cast::<u16>().reduce_sum() as usize
+            + d.cast::<u16>().reduce_sum() as usize;
+    }
+
+    // Handle the tail with small chunks.
+    let (chunks, rest) = tail.as_chunks::<TAIL_CHUNK_SIZE>();
+    let mut acc = u8x16::splat(0);
+    for chunk in chunks {
+        let mask = u8x16::from_array(*chunk).cast::<i8>().simd_ge(i8x16::splat(THRESHOLD));
+        acc += mask.select(u8x16::splat(1), u8x16::splat(0));
+    }
+
+    // Handle the remaining bytes when fewer than 16 are left.
+    total += acc.reduce_sum() as usize + char_count_general_case(rest);
+
+    total
 }
