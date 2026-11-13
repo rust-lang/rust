@@ -236,9 +236,6 @@ impl TestContext {
                 // FIXME(#160895): While the new solver is enabled by default on nightly,
                 // we don't want to use it in our tests for now.
                 "-Znext-solver=coherence",
-                // Run tests with the sequential frontend, for now, because the parallel frontend can
-                // produce non-deterministic order of diagnostics
-                "-Zthreads=1",
                 "-Dwarnings",
             ]
             .map(OsString::from),
