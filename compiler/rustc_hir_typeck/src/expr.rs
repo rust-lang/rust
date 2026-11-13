@@ -2983,33 +2983,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (ident, def_scope) =
                     self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
 
-                if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
-                    self.write_field_index(expr.hir_id, idx);
+                let Some((idx, field)) = self.find_adt_field(*base_def, ident) else {
+                    return ControlFlow::Continue(None);
+                };
 
-                    let adjustments = self.adjust_steps(autoderef);
-                    if field.vis.is_accessible_from(def_scope, self.tcx) {
-                        self.apply_adjustments(base, adjustments);
+                self.write_field_index(expr.hir_id, idx);
 
-                        self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                        return ControlFlow::Break(self.field_ty(expr.span, field, *args));
-                    }
+                let adjustments = self.adjust_steps(autoderef);
 
+                if !field.vis.is_accessible_from(def_scope, self.tcx) {
                     // The field is not accessible, fall through to error reporting.
                     return ControlFlow::Continue(Some((adjustments, base_def.did())));
                 }
-            }
-            ty::Tuple(tys) => {
-                if let Ok(index) = field.as_str().parse::<usize>() {
-                    if field.name == sym::integer(index) {
-                        if let Some(&field_ty) = tys.get(index) {
-                            let adjustments = self.adjust_steps(autoderef);
-                            self.apply_adjustments(base, adjustments); // self.register_predicates(autoderef.into_obligations());
 
-                            self.write_field_index(expr.hir_id, FieldIdx::from_usize(index));
-                            return ControlFlow::Break(field_ty);
-                        }
-                    }
+                self.apply_adjustments(base, adjustments);
+
+                self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
+                return ControlFlow::Break(self.field_ty(expr.span, field, *args));
+            }
+
+            ty::Tuple(tys) => {
+                let Ok(index) = field.as_str().parse::<usize>() else {
+                    return ControlFlow::Continue(None);
+                };
+
+                if field.name != sym::integer(index) {
+                    return ControlFlow::Continue(None);
                 }
+
+                let Some(&field_ty) = tys.get(index) else {
+                    return ControlFlow::Continue(None);
+                };
+
+                let adjustments = self.adjust_steps(autoderef);
+                self.apply_adjustments(base, adjustments); // self.register_predicates(autoderef.into_obligations());
+
+                self.write_field_index(expr.hir_id, FieldIdx::from_usize(index));
+                return ControlFlow::Break(field_ty);
             }
             _ => {}
         }
