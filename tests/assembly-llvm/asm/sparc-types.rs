@@ -26,20 +26,26 @@ extern crate minicore;
 use minicore::*;
 
 type ptr = *const i32;
+type nonnull = NonNull<i32>;
 
 extern "C" {
     fn extern_func();
     static extern_static: u8;
 }
 
-macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[unsafe(no_mangle)]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov," {}, {}"), in($class) x, out($class) y);
-        y
-    }
-};}
+macro_rules! check {
+    ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
+        check!($func, $ty:$ty, $class, $mov);
+    };
+    ($func:ident, $in_ty:ty:$out_ty:ty, $class:ident, $mov:literal) => {
+        #[unsafe(no_mangle)]
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
+            let y;
+            asm!(concat!($mov," {}, {}"), in($class) x, out($class) y);
+            y
+        }
+    };
+}
 
 macro_rules! check_reg {
     ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
@@ -109,6 +115,12 @@ check!(reg_i64, i64, reg, "mov");
 // CHECK-NEXT: mov %{{[goli]}}{{[0-9]+}}, %{{[goli]}}{{[0-9]+}}
 // CHECK-NEXT: !NO_APP
 check!(reg_ptr, ptr, reg, "mov");
+
+// CHECK-LABEL: reg_nonnull:
+// CHECK: !APP
+// CHECK-NEXT: mov %{{[goli]}}{{[0-9]+}}, %{{[goli]}}{{[0-9]+}}
+// CHECK-NEXT: !NO_APP
+check!(reg_nonnull, nonnull:ptr, reg, "mov");
 
 // CHECK-LABEL: o0_i8:
 // CHECK: !APP

@@ -17,20 +17,26 @@ use minicore::simd::*;
 use minicore::*;
 
 type ptr = *const i32;
+type nonnull = NonNull<i32>;
 
 extern "C" {
     fn extern_func();
     static extern_static: u8;
 }
 
-macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
-        y
-    }
-};}
+macro_rules! check {
+    ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
+        check!($func, $ty:$ty, $class, $mov);
+    };
+    ($func:ident, $in_ty:ty:$out_ty:ty, $class:ident, $mov:literal) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
+            let y;
+            asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
+            y
+        }
+    };
+}
 
 macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
     #[no_mangle]
@@ -130,6 +136,12 @@ check!(reg_f64, f64, freg, "ldr");
 // CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr, ptr, reg, "lgr");
+
+// CHECK-LABEL: reg_nonnull:
+// CHECK: #APP
+// CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
+// CHECK: #NO_APP
+check!(reg_nonnull, nonnull:ptr, reg, "lgr");
 
 // s390x_vector-LABEL: vreg_i8x16:
 // s390x_vector: #APP
