@@ -116,6 +116,7 @@ impl<'a> Parser<'a> {
                 let leading_if_span = self.prev_token.span;
                 let cond = self.parse_expr()?;
                 let cond_span = cond.span;
+                self.gate_ambiguous_attributes(&cond);
                 Box::new(Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) })
             };
 
@@ -799,6 +800,7 @@ impl<'a> Parser<'a> {
             if let Some(re) = self.parse_range_end() {
                 self.parse_pat_range_begin_with(const_expr, re)?
             } else {
+                self.gate_ambiguous_attributes(&const_expr);
                 PatKind::Expr(const_expr)
             }
         } else if self.eat_forced_keyword_noexpect(kw::Deref) {
@@ -1382,6 +1384,10 @@ impl<'a> Parser<'a> {
             }
             None
         };
+        self.gate_ambiguous_attributes(&begin);
+        if let Some(expr) = &end {
+            self.gate_ambiguous_attributes(&expr);
+        }
         Ok(PatKind::Range(Some(begin), end, re))
     }
 
@@ -1423,6 +1429,7 @@ impl<'a> Parser<'a> {
             *syn = RangeSyntax::DotDotEq;
             self.dcx().emit_err(DotDotDotRangeToPatternNotAllowed { span: re.span });
         }
+        self.gate_ambiguous_attributes(&end);
         Ok(PatKind::Range(None, Some(end), re))
     }
 

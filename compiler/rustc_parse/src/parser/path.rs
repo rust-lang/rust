@@ -934,6 +934,7 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_unambiguous_unbraced_const_arg()?
         };
+        self.gate_ambiguous_attributes(&value);
         Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 

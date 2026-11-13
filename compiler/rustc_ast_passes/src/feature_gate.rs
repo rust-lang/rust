@@ -458,6 +458,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "`fn(#[rustc_splat] (a, ...))` is incomplete",
         "call as func((a, ...)) instead"
     );
+    gate_all!(stmt_expr_attributes, "ambiguous expression attributes are unstable");
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(try_blocks_heterogeneous, "`try bikeshed` expression is experimental");
     gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
@@ -573,6 +574,14 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
             && !span.allows_unstable(sym::min_specialization)
         {
             feature_warn(visitor.sess, sym::specialization, span, "specialization is experimental");
+        }
+    }
+    for &span in spans.get(&sym::stmt_expr_attributes_soft).into_flat_iter() {
+        if !visitor.features.stmt_expr_attributes()
+            && !span.allows_unstable(sym::stmt_expr_attributes)
+        {
+            let explain = "ambiguous expression attributes are unstable";
+            feature_warn(visitor.sess, sym::stmt_expr_attributes, span, explain);
         }
     }
 
