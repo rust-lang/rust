@@ -3,7 +3,7 @@
 
 fn foo() -> for<'a> fn(&'a i32) {
     become bar();
-    //~^ ERROR mismatched signatures
+    //~^ ERROR mismatched types
 }
 
 fn bar() -> fn(&'static i32) {
