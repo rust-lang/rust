@@ -1,6 +1,9 @@
 error[E0599]: no method named `foo` found for reference `&B` in the current scope
   --> $DIR/nested-mod-trait-method-lookup-leak-10465.rs:20:15
    |
+LL |         fn foo(&self);
+   |            --- the method is available for `&B` here
+...
 LL |             b.foo();
    |               ^^^ method not found in `&B`
    |
