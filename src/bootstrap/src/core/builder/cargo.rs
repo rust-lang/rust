@@ -1319,16 +1319,12 @@ impl Builder<'_> {
             cargo.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
         }
 
-        cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
+        let verbosity = self.verbosity.to_string();
+        cargo.env("RUSTC_VERBOSE", &verbosity);
 
-        // Downstream forks of the Rust compiler might want to use a custom libc to add support for
-        // targets that are not yet available upstream. Adding a patch to replace libc with a
-        // custom one would cause compilation errors though, because Cargo would interpret the
-        // custom libc as part of the workspace, and apply the check-cfg lints on it.
-        //
-        // The libc build script emits check-cfg flags only when this environment variable is set,
-        // so this line allows the use of custom libcs.
-        cargo.env("LIBC_CHECK_CFG", "1");
+        // These crates emit additional information about how they are configured
+        cargo.env("LIBC_BUILD_VERBOSE", &verbosity);
+        cargo.env("LIBM_BUILD_VERBOSE", &verbosity);
 
         let mut lint_flags = Vec::new();
 
@@ -1494,6 +1490,8 @@ impl Builder<'_> {
             rustflags.arg("-Zinline-mir-preserve-debug");
 
             rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
+
+            rustflags.arg("--cfg=libc_unstable_time64");
         }
 
         // take target-specific extra rustflags if any otherwise take `rust.rustflags`
