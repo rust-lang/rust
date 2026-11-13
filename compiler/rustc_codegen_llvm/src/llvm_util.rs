@@ -15,7 +15,7 @@ use rustc_codegen_ssa::{TargetConfig, target_features};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
-use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
+use rustc_session::config::{CFProtection, NATIVE_CPU, PrintKind, PrintRequest};
 use rustc_session::{EarlySession, Session};
 use rustc_span::{bug, sym};
 use rustc_target::spec::{
@@ -680,6 +680,21 @@ fn llvm_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
         } else {
             features.push("+reserve-x18".into());
         }
+    }
+
+    // -Zcf-protection
+    if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64)
+        && matches!(
+            sess.opts.unstable_opts.cf_protection,
+            CFProtection::Branch | CFProtection::Full
+        )
+        && get_version() < (24, 0, 0)
+    {
+        // Before LLVM 24, the RISC-V backend tail calls through `t1` instead of `t2` unless Zicfilp
+        // is enabled, and only `t2` is exempt from landing pad checks, see
+        // <https://github.com/llvm/llvm-project/pull/220657>. Landing pads are hints, so the code
+        // still runs without Zicfilp.
+        features.push("+experimental-zicfilp".into());
     }
 }
 

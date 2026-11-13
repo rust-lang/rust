@@ -2468,6 +2468,7 @@ symbols! {
         zca,
         zfh,
         zfhmin,
+        zimop,
         zmm_reg,
         ztso,
         // tidy-alphabetical-end
