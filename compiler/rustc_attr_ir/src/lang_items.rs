@@ -157,6 +157,8 @@ language_item_table! {
     AlignOf,                 sym::mem_align_const,     align_const,                Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     SizeOf,                  sym::mem_size_const,      size_const,                 Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
     OffsetOf,                kw::OffsetOf,             offset_of,                  Target::Fn,             GenericRequirement::Exact(1);
+    RawEq,                   sym::raw_eq,              raw_eq,                     Target::Fn,             GenericRequirement::Exact(1);
+    CompareBytes,            sym::compare_bytes,       compare_bytes,              Target::Fn,             GenericRequirement::Exact(0);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
