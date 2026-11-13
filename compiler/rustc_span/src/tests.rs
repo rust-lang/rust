@@ -117,3 +117,32 @@ fn test_unnormalized_source_length() {
     assert_eq!(sf.unnormalized_source_len, 19);
     assert_eq!(sf.normalized_source_len.0, 14);
 }
+
+#[test]
+fn test_lookup_file_pos_with_col_display() {
+    // Only the second source, which has no tab, takes the fast path.
+    for source in [
+        "fn main() {\n\tlet x = \"é\";\n\t\tx\t+ 1;\n日本語\u{301}\t\u{7}a\u{1F600}b\n\nend",
+        "fn main() {\n    let x = \"é\";\n日本語\u{301}\u{7}a\u{1F600}b\n\nend",
+    ] {
+        let sf = SourceFile::new(
+            FileName::Anon(Hash64::ZERO),
+            source.to_owned(),
+            SourceFileHashAlgorithm::Sha256,
+            Some(SourceFileHashAlgorithm::Sha256),
+        )
+        .unwrap();
+        let mut line_start = 0;
+        let mut line = 1;
+        for (pos, ch) in source.char_indices().chain([(source.len(), '\n')]) {
+            let prefix = &source[line_start..pos];
+            let expected =
+                (line, CharPos(prefix.chars().count()), prefix.chars().map(char_width).sum());
+            assert_eq!(sf.lookup_file_pos_with_col_display(BytePos::from_usize(pos)), expected);
+            if ch == '\n' {
+                line_start = pos + 1;
+                line += 1;
+            }
+        }
+    }
+}
