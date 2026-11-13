@@ -150,7 +150,13 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(n, Size::from_bytes(1)))
         }
-        (ast::LitKind::Int(n, _), ty::Uint(_)) if !neg => trunc(n.get()),
+        // Only reachable through a user `impl Neg` for an unsigned type, which violates the
+        // orphan rules and has already been reported.
+        (ast::LitKind::Int(..), ty::Uint(_)) if neg => {
+            let guar = tcx.dcx().delayed_bug("negated unsigned literal without a prior error");
+            return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
+        }
+        (ast::LitKind::Int(n, _), ty::Uint(_)) => trunc(n.get()),
         (ast::LitKind::Int(n, _), ty::Int(_)) => {
             // Unsigned "negation" has the same bitwise effect as signed negation,
             // which gets the result we want without additional casts.
