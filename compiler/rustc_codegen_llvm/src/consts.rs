@@ -16,7 +16,7 @@ use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_span::{Symbol, bug, span_bug};
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, BinaryFormat};
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
@@ -166,7 +166,9 @@ fn codegen_static_initializer<'ll, 'tcx>(
         .link_section
         .map(|link_section| {
             let s = link_section.as_str();
-            if s.starts_with(".init_array") || s.starts_with(".fini_array") {
+            if cx.sess().target.binary_format == BinaryFormat::Elf
+                && (s.starts_with(".init_array") || s.starts_with(".fini_array"))
+            {
                 IsInitOrFini::Yes
             } else {
                 IsInitOrFini::No
@@ -212,7 +214,8 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
                 // Decide if the initializer needs to be signed
                 if cx.sess().pointer_authentication_functions().is_some()
-                    && matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. })
+                    && (cx.sess().pointer_authentication_covers_all_abis()
+                        || matches!(fn_sig.abi(), ExternAbi::C { .. } | ExternAbi::System { .. }))
                 {
                     should_sign = true;
                 }

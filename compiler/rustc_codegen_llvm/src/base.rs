@@ -25,7 +25,7 @@ use rustc_middle::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, Offload};
 use rustc_span::Symbol;
-use rustc_target::spec::SanitizerSet;
+use rustc_target::spec::{LlvmAbi, SanitizerSet};
 
 use crate::builder::Builder;
 use crate::builder::gpu_offload::OffloadGlobals;
@@ -163,7 +163,9 @@ pub(crate) fn compile_codegen_unit(
                 cx.add_objc_module_flags();
             }
 
-            if cx.sess().pointer_authentication() {
+            if cx.sess().pointer_authentication()
+                && cx.sess().target.llvm_abiname == LlvmAbi::Pauthtest
+            {
                 let cfg = cx.sess().pointer_auth_config.as_ref().unwrap();
 
                 let aarch64_elf_pauthabi_version =

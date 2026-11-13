@@ -469,6 +469,17 @@ pub(crate) fn add_module_flag_str<'ll>(
     }
 }
 
+pub(crate) fn add_module_flag_metadata<'ll>(
+    module: Module<'ll>,
+    merge_behavior: ModuleFlagMergeBehavior,
+    key: &str,
+    value: &'ll Metadata,
+) {
+    unsafe {
+        LLVMRustAddModuleFlagMetadata(module, merge_behavior, key.as_ptr(), key.len(), value);
+    }
+}
+
 pub(crate) fn set_dllimport_storage_class<'ll>(v: Value<'ll>) {
     unsafe {
         LLVMSetDLLStorageClass(v, DLLStorageClass::DllImport);

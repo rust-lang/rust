@@ -2155,9 +2155,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     ) -> Option<llvm::OperandBundleBox<'ll>> {
         let schema = self.sess().pointer_authentication_functions()?;
 
-        // Pointer authentication support is currently limited to extern "C" calls; filter out other
-        // ABIs.
-        if fn_abi?.conv != CanonAbi::C {
+        if self.sess().pointer_authentication_covers_all_abis() {
+            // A bare function symbol was never signed, so authenticating it would be invalid.
+            if !unsafe { llvm::LLVMRustIsNonGVFunctionPointerTy(llfn) } {
+                return None;
+            }
+        } else if fn_abi?.conv != CanonAbi::C {
             return None;
         }
         // Filter out LLVM intrinsics.
@@ -2165,13 +2168,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return None;
         }
 
-        // FIXME(jchlanda) Operand bundles should only be attached to indirect function calls.
-        // However, function pointer signing is currently performed in `get_fn_addr`, which causes
-        // the logic to be applied too broadly, including to function values (not just pointers).
-        // As a result, direct calls using signed function values must also receive operand
-        // bundles.
-        // Once this is resolved, we should analyze each call and skip direct calls. See the
-        // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
+        // FIXME(jchlanda) The pauthtest ABI still signs known direct callees in `get_fn_addr`,
+        // so those calls must also receive operand bundles. See
+        // <https://github.com/rust-lang/rust/issues/152532>.
         Some(llvm::OperandBundleBox::new(
             "ptrauth",
             &[

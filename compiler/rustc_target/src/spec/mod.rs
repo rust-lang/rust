@@ -2875,6 +2875,10 @@ impl DerefMut for Target {
 }
 
 impl Target {
+    pub fn is_arm64e_apple(&self) -> bool {
+        self.is_like_darwin && self.llvm_target.starts_with("arm64e-")
+    }
+
     pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
         let abi_map = AbiMap::from_target(self);
         abi_map.canonize_abi(abi, false).is_mapped()

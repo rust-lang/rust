@@ -576,7 +576,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 DUMMY_SP,
             );
             let start_fn =
-                cx.get_fn_addr(start_instance, cx.sess().pointer_authentication_functions());
+                cx.get_fn_addr(start_instance, cx.sess().pointer_authentication_direct_calls());
 
             let i8_ty = cx.type_i8();
             let arg_sigpipe = bx.const_u8(sigpipe);

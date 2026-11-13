@@ -449,6 +449,20 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: ll
         }
     }
 
+    if sess.target.is_arm64e_apple() {
+        // Match Clang's user-space ABI version so Apple-derived LLVMs emit versioned objects.
+        let version = cx.md_node_in_context(&[
+            llvm::LLVMValueAsMetadata(cx.get_const_i32(0)),
+            llvm::LLVMValueAsMetadata(cx.get_const_int(cx.type_i1(), 0)),
+        ]);
+        llvm::add_module_flag_metadata(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::AppendUnique,
+            "ptrauth.abi-version",
+            cx.md_node_in_context(&[version]),
+        );
+    }
+
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
     if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::add_module_flag_u32(
