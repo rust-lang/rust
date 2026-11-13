@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::{Ident, Span, Symbol, sym};
-use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::ast::{
@@ -135,15 +134,6 @@ impl Attribute {
         }
     }
 
-    pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_kind(),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => None,
-            AttrKind::Generated(..) => None,
-        }
-    }
-
     pub fn append_token_trees_to(&self, res: &mut Vec<TokenTree>) {
         match &self.kind {
             AttrKind::Normal(normal) => normal
@@ -200,15 +190,6 @@ impl Attribute {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
-        }
-    }
-
-    pub fn path_span(&self) -> Option<Span> {
-        match &self.kind {
-            AttrKind::Normal(attr) => Some(attr.item.path.span),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(_, _) => None,
-            AttrKind::Generated(generated) => generated.path_span(),
         }
     }
 }
@@ -281,6 +262,11 @@ impl AttrItem {
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         MetaItemKind::from_attr_args(&self.args)
+    }
+
+    /// Returns whether the attribute is a path, without any arguments.
+    pub fn is_word(&self) -> bool {
+        matches!(self.args, AttrArgs::Empty)
     }
 }
 
@@ -890,29 +876,6 @@ impl Attribute {
     #[inline]
     pub fn has_any_name(&self, names: &[Symbol]) -> bool {
         names.iter().any(|&name| self.has_name(name))
-    }
-
-    /// Returns whether the attribute is a path, without any arguments.
-    pub fn is_word(&self) -> bool {
-        match &self.kind {
-            AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => false,
-            AttrKind::Generated(generated) => generated.is_word(),
-        }
-    }
-
-    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
-        use SyntheticAttr::*;
-        match &self.kind {
-            AttrKind::Normal(normal) => {
-                normal.item.path.segments.iter().map(|i| i.ident.name).collect()
-            }
-            AttrKind::Synthetic(CfgTrace(_)) => smallvec![sym::cfg],
-            AttrKind::Synthetic(CfgAttrTrace(_)) => smallvec![sym::cfg_attr],
-            AttrKind::DocComment(_, _) => smallvec![sym::doc],
-            AttrKind::Generated(generated) => generated.path().iter().copied().collect(),
-        }
     }
 
     /// Returns the documentation if this is a doc comment or a sugared doc comment.
