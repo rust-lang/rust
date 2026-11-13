@@ -1,0 +1,93 @@
+error[E0277]: the size for values of type `view_type!(A.{})` cannot be known at compilation time
+  --> $DIR/unsized.rs:16:20
+   |
+LL |     assert_sized::<view_type!(A.{})>();
+   |                    ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `view_type!(A.{})`
+note: required by an implicit `Sized` bound in `assert_sized`
+  --> $DIR/unsized.rs:11:17
+   |
+LL | fn assert_sized<T>() {}
+   |                 ^ required by the implicit `Sized` requirement on this type parameter in `assert_sized`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() {}
+   |                  ++++++++
+
+error[E0277]: the size for values of type `view_type!(A.{})` cannot be known
+  --> $DIR/unsized.rs:18:24
+   |
+LL |     assert_metasized::<view_type!(A.{})>();
+   |                        ^^^^^^^^^^^^^^^^ doesn't have a known size
+   |
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `view_type!(A.{})`
+note: required by a bound in `assert_metasized`
+  --> $DIR/unsized.rs:12:24
+   |
+LL | fn assert_metasized<T: MetaSized>() {}
+   |                        ^^^^^^^^^ required by this bound in `assert_metasized`
+
+error[E0277]: the size for values of type `view_type!(A.{ b })` cannot be known at compilation time
+  --> $DIR/unsized.rs:23:20
+   |
+LL |     assert_sized::<view_type!(A.{ b })>();
+   |                    ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `view_type!(A.{ b })`
+note: required by an implicit `Sized` bound in `assert_sized`
+  --> $DIR/unsized.rs:11:17
+   |
+LL | fn assert_sized<T>() {}
+   |                 ^ required by the implicit `Sized` requirement on this type parameter in `assert_sized`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() {}
+   |                  ++++++++
+
+error[E0277]: the size for values of type `view_type!(A.{ b })` cannot be known
+  --> $DIR/unsized.rs:25:24
+   |
+LL |     assert_metasized::<view_type!(A.{ b })>();
+   |                        ^^^^^^^^^^^^^^^^^^^ doesn't have a known size
+   |
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `view_type!(A.{ b })`
+note: required by a bound in `assert_metasized`
+  --> $DIR/unsized.rs:12:24
+   |
+LL | fn assert_metasized<T: MetaSized>() {}
+   |                        ^^^^^^^^^ required by this bound in `assert_metasized`
+
+error[E0277]: the size for values of type `view_type!(A.{ b, c })` cannot be known at compilation time
+  --> $DIR/unsized.rs:29:20
+   |
+LL |     assert_sized::<view_type!(A.{ b, c })>();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `view_type!(A.{ b, c })`
+note: required by an implicit `Sized` bound in `assert_sized`
+  --> $DIR/unsized.rs:11:17
+   |
+LL | fn assert_sized<T>() {}
+   |                 ^ required by the implicit `Sized` requirement on this type parameter in `assert_sized`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn assert_sized<T: ?Sized>() {}
+   |                  ++++++++
+
+error[E0277]: the size for values of type `view_type!(A.{ b, c })` cannot be known
+  --> $DIR/unsized.rs:31:24
+   |
+LL |     assert_metasized::<view_type!(A.{ b, c })>();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
+   |
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `view_type!(A.{ b, c })`
+note: required by a bound in `assert_metasized`
+  --> $DIR/unsized.rs:12:24
+   |
+LL | fn assert_metasized<T: MetaSized>() {}
+   |                        ^^^^^^^^^ required by this bound in `assert_metasized`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

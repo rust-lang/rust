@@ -6,6 +6,7 @@
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
 use std::borrow::Cow;
+use std::ops::ControlFlow;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast as ast;
@@ -24,6 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
+use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, RegionVariableOrigin};
@@ -31,7 +33,9 @@ use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{
+    self, AdtKind, ConstKind, FieldInfo, GenericArgs, Ty, TypeVisitableExt, Unnormalized,
+};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
@@ -46,10 +50,10 @@ use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, DelegationInvalidAdtForReturnWrapping,
-    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
-    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind,
-    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
-    YieldExprOutsideOfCoroutine,
+    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FieldNotPartOfView,
+    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn,
+    NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
+    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -2836,48 +2840,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut autoderef = self.autoderef(expr.span, base_ty);
         while let Some((deref_base_ty, _)) = autoderef.next() {
             debug!("deref_base_ty: {:?}", deref_base_ty);
-            match deref_base_ty.kind() {
-                ty::Adt(base_def, args) if !base_def.is_enum() => {
-                    debug!("struct named {:?}", deref_base_ty);
-                    // we don't care to report errors for a struct if the struct itself is tainted
-                    if let Err(guar) = base_def.non_enum_variant().has_errors() {
-                        return Ty::new_error(self.tcx(), guar);
-                    }
-
-                    let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
-
-                    if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
-                        self.write_field_index(expr.hir_id, idx);
-
-                        let adjustments = self.adjust_steps(&autoderef);
-                        if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            self.apply_adjustments(base, adjustments);
-                            self.register_predicates(autoderef.into_obligations());
-
-                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                            return self.field_ty(expr.span, field, *args);
-                        }
-
-                        // The field is not accessible, fall through to error reporting.
-                        private_candidate = Some((adjustments, base_def.did()));
-                    }
+            match self.check_field_access_for_deref_step(
+                expr,
+                base,
+                field,
+                &autoderef,
+                deref_base_ty,
+                base_ty,
+            ) {
+                ControlFlow::Continue(private_candidate_) => {
+                    private_candidate = private_candidate.xor(private_candidate_);
                 }
-                ty::Tuple(tys) => {
-                    if let Ok(index) = field.as_str().parse::<usize>() {
-                        if field.name == sym::integer(index) {
-                            if let Some(&field_ty) = tys.get(index) {
-                                let adjustments = self.adjust_steps(&autoderef);
-                                self.apply_adjustments(base, adjustments);
-                                self.register_predicates(autoderef.into_obligations());
-
-                                self.write_field_index(expr.hir_id, FieldIdx::from_usize(index));
-                                return field_ty;
-                            }
-                        }
-                    }
+                ControlFlow::Break(ty) => {
+                    self.register_predicates(autoderef.into_obligations());
+                    return ty;
                 }
-                _ => {}
             }
         }
         // We failed to check the expression, report an error.
@@ -2988,6 +2965,126 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         Ty::new_error(self.tcx(), guar)
+    }
+
+    fn check_field_access_for_deref_step(
+        &self,
+        expr: &'tcx rustc_hir::Expr<'tcx>,
+        base: &'tcx rustc_hir::Expr<'tcx>,
+        field: Ident,
+        autoderef: &Autoderef<'_, 'tcx>,
+        deref_base_ty: Ty<'tcx>,
+        base_ty: Ty<'tcx>,
+    ) -> ControlFlow<Ty<'tcx>, Option<(Vec<Adjustment<'tcx>>, DefId)>> {
+        let (field_ty, field_idx) = match deref_base_ty.kind() {
+            ty::Adt(base_def, args) if !base_def.is_enum() => {
+                debug!("struct named {:?}", deref_base_ty);
+                // we don't care to report errors for a struct if the struct itself is tainted
+                if let Err(guar) = base_def.non_enum_variant().has_errors() {
+                    return ControlFlow::Break(Ty::new_error(self.tcx(), guar));
+                }
+
+                let (ident, def_scope) =
+                    self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
+
+                let Some((idx, field)) = self.find_adt_field(*base_def, ident) else {
+                    return ControlFlow::Continue(None);
+                };
+
+                if !field.vis.is_accessible_from(def_scope, self.tcx) {
+                    // The field is not accessible, fall through to error reporting.
+                    let adjustments = self.adjust_steps(autoderef);
+                    return ControlFlow::Continue(Some((adjustments, base_def.did())));
+                }
+
+                self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
+
+                (self.field_ty(expr.span, field, *args), idx)
+            }
+
+            ty::Tuple(tys) => {
+                let Ok(index) = field.as_str().parse::<usize>() else {
+                    return ControlFlow::Continue(None);
+                };
+
+                if field.name != sym::integer(index) {
+                    return ControlFlow::Continue(None);
+                }
+
+                let Some(&field_ty) = tys.get(index) else {
+                    return ControlFlow::Continue(None);
+                };
+
+                (field_ty, FieldIdx::from_usize(index))
+            }
+            ty::View(base_def, args, fields) => {
+                debug!("viewed struct named {base_def:?}");
+                // we don't care to report errors for a struct if the struct itself is tainted
+                if let Err(guar) = base_def.non_enum_variant().has_errors() {
+                    return ControlFlow::Break(Ty::new_error(self.tcx(), guar));
+                }
+
+                let (ident, def_scope) =
+                    self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
+
+                let Some((idx, field_def)) = self.find_adt_field(*base_def, ident) else {
+                    return ControlFlow::Continue(None);
+                };
+
+                // check that the field we are accessing is part of the view
+                let tuple_elems = match fields.kind() {
+                    ty::Tuple(fields) => fields,
+                    // FIXME(scrabsha): can we still have inferred views?
+                    _ => bug!("malformed view type viewed field set"),
+                };
+                let extract_frt = |ty: Ty<'tcx>| -> FieldInfo<_> {
+                    match ty.kind() {
+                        ty::Adt(base_def_, args_)
+                            if let Some(frt) =
+                                base_def_.field_representing_type_info(self.tcx(), *args_) =>
+                        {
+                            // sanity check: view types on enums are not a thing.
+                            debug_assert!(frt.variant.is_none());
+                            frt
+                        }
+
+                        _ => bug!("malformed view type viewed field set"),
+                    }
+                };
+
+                let mut field_idxs =
+                    tuple_elems.iter().map(extract_frt).map(|field| field.field_idx);
+                if field_idxs.all(|viewed_idx| viewed_idx != idx) {
+                    let fields = tuple_elems.iter().map(extract_frt).map(|frt| frt.name).collect();
+                    let guar = self.tcx.dcx().emit_err(FieldNotPartOfView {
+                        field: ident.name,
+                        span: ident.span,
+                        fields,
+                        note: base.span,
+                        ty: base_ty,
+                    });
+                    return ControlFlow::Break(Ty::new_error(self.tcx, guar));
+                }
+
+                if !field_def.vis.is_accessible_from(def_scope, self.tcx) {
+                    // The field is not accessible, fall through to error reporting.
+                    let adjustments = self.adjust_steps(&autoderef);
+                    return ControlFlow::Continue(Some((adjustments, base_def.did())));
+                }
+
+                self.tcx.check_stability(field_def.did, Some(expr.hir_id), expr.span, None);
+
+                (self.field_ty(expr.span, field_def, *args), idx)
+            }
+            _ => return ControlFlow::Continue(None),
+        };
+
+        let adjustments = self.adjust_steps(autoderef);
+        self.apply_adjustments(base, adjustments);
+
+        self.write_field_index(expr.hir_id, field_idx);
+
+        ControlFlow::Break(field_ty)
     }
 
     fn suggest_await_on_field_access(
