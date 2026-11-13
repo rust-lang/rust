@@ -355,3 +355,7 @@ fn issue_14932_3() {
     let _n: usize = Def::def();
     //~^ identity_op
 }
+
+fn issue_17962() {
+    i128::MIN % 7; // no error
+}

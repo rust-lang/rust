@@ -6,7 +6,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass, std_or_core};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -76,7 +76,7 @@ impl LateLintPass<'_> for ManualTake {
             && let ExprKind::Path(_) = mut_c.kind
             && let ctxt = expr.span.ctxt()
             && !ctxt.in_external_macro(cx.sess().source_map())
-            && let Some(std_or_core) = clippy_utils::std_or_core(cx)
+            && let Some(std_or_core) = std_or_core(cx)
             && self.msrv.meets(cx, MEM_TAKE)
             && SpanlessEq::new(cx).eq_expr(ctxt, cond, mut_c)
             && Some(false) == as_const_bool(possible_false)

@@ -14,7 +14,8 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionClause, Ty, Unnormalized, CallerBoundsIterator,
+    self, CallerBoundsIterator as _, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy,
+    ProjectionClause, Ty, Unnormalized,
 };
 use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;

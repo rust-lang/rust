@@ -3,10 +3,10 @@
 //@compile-flags: --test
 //@check-pass
 
-#![warn(clippy::large_stack_frames)]
+#![warn(clippy::large_unopt_stack_frames)]
 
 #[cfg(test)]
-#[expect(clippy::large_stack_frames)]
+#[expect(clippy::large_unopt_stack_frames)]
 mod test {
     #[test]
     fn main_test() {}
