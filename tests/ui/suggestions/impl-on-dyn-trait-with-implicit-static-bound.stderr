@@ -61,6 +61,11 @@ help: consider relaxing the implicit `'static` requirement
    |
 LL |     impl dyn ObjectTrait + '_ {
    |                          ++++
+help: this trait object's lifetime defaults to the reference's lifetime; consider adding an explicit `'static` bound to the trait object
+   |
+LL -     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+LL +     fn use_it<'a>(val: &'a (dyn ObjectTrait + 'static)) -> impl OtherTrait<'a> + 'a {
+   |
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:92:9
