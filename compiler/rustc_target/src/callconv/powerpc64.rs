@@ -95,7 +95,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if arg.is_ignore() || !arg.layout.is_sized() {
+    if !arg.layout.is_sized() {
         // Not touching this...
         return;
     }

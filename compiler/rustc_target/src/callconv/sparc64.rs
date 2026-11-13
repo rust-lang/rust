@@ -219,6 +219,10 @@ where
         Self { passes_zsts, double_word_count: 0 }
     }
 
+    fn passes_zst(&self) -> bool {
+        true
+    }
+
     fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
         if !ret.is_ignore() && ret.layout.is_sized() {
             // A return value of 32 bytes or smaller is passed via registers.
@@ -237,7 +241,7 @@ where
             return;
         }
         if arg.is_ignore() {
-            if self.passes_zsts && arg.layout.is_repr_c() {
+            if self.passes_zsts {
                 arg.make_indirect_from_ignore();
                 self.double_word_count += 1;
             }

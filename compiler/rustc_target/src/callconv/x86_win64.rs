@@ -62,11 +62,13 @@ where
     // We follow that for `repr(C)` ZSTs (and `repr(transparent)` wrappers around them),
     // but `repr(Rust)` ones are always ignored (ensuring that `()` matches C `void`).
 
+    fn passes_zst(&self) -> bool {
+        true
+    }
+
     fn compute_ret_abi(&mut self, cx: &C, _conv: CanonAbi, ret: &mut ArgAbi<'a, Ty>) {
         if ret.is_ignore() {
-            if ret.layout.is_repr_c() {
-                ret.make_indirect_from_ignore();
-            }
+            ret.make_indirect_from_ignore();
         } else {
             Self::fixup(cx, ret, true);
         }
@@ -80,9 +82,7 @@ where
         _is_vararg: bool,
     ) {
         if arg.is_ignore() {
-            if arg.layout.is_repr_c() {
-                arg.make_indirect_from_ignore();
-            }
+            arg.make_indirect_from_ignore();
 
             return;
         }

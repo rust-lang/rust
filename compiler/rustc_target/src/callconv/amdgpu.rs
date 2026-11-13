@@ -81,9 +81,6 @@ where
     ) {
         // Try to fill first registers with values and pass by_ref pointers for later indirect arguments
 
-        if arg.is_ignore() {
-            return;
-        }
         if conv == CanonAbi::GpuKernel {
             if arg.layout.is_aggregate() {
                 if let Some(uniform) = single_element_struct_to_reg(cx, arg.layout) {
