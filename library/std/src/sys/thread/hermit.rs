@@ -51,7 +51,7 @@ impl Thread {
 
             // Run all destructors.
             unsafe {
-                crate::sys::thread_local::destructors::run();
+                crate::sys::thread_local::native::destructors::run();
             }
             crate::rt::thread_cleanup();
         }
