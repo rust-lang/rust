@@ -58,8 +58,6 @@ use self::spec_extend::{SpecExtend, SpecExtendFront};
 
 mod spec_extend;
 
-use self::spec_from_iter::SpecFromIter;
-
 mod spec_from_iter;
 
 #[cfg(not(no_global_oom_handling))]
@@ -3617,102 +3615,16 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
     }
 }
 
+// Specialization trait for `T: TrivialClone`
+trait TrivialCloneElem<T: TrivialClone> {}
+impl<T: TrivialClone, A: Allocator> TrivialCloneElem<T> for VecDeque<T, A> {}
+
 /// Associated functions have the following preconditions:
 ///
 /// - `src` needs to be a valid range: `src.start <= src.end <= self.len()`.
 /// - The buffer must have enough spare capacity: `self.capacity() - self.len() >= src.len()`.
 #[cfg(not(no_global_oom_handling))]
-trait SpecExtendFromWithin {
-    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
-
-    unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>);
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl<T: Clone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
-    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
-        let dst = self.len();
-        let count = src.end - src.start;
-        let src = src.start;
-
-        // SAFETY:
-        // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
-        // - Ranges are in bounds: guaranteed by the caller.
-        let ranges = unsafe { self.nonoverlapping_ranges(src, dst, count, self.head) };
-
-        // `len` is updated after every clone to prevent leaking and
-        // leave the deque in the right state when a clone implementation panics
-
-        for (src, dst, count) in ranges {
-            for offset in 0..count {
-                // SAFETY: The allocations of `dst` and `src` go up to `count` elems,
-                // and `nonoverlapping_ranges` ensures `dst` and `src` are valid
-                // for writes and reads respectively.
-                unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
-                self.len += 1;
-            }
-        }
-    }
-
-    default unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>) {
-        let dst = 0;
-        let count = src.end - src.start;
-        let src = src.start + count;
-
-        let new_head = self.wrap_sub(self.head, count);
-        let cap = self.capacity();
-
-        // SAFETY:
-        // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
-        // - Ranges are in bounds: guaranteed by the caller.
-        let ranges = unsafe { self.nonoverlapping_ranges(src, dst, count, new_head) };
-
-        // Cloning is done in reverse because we prepend to the front of the deque,
-        // we can't get holes in the *logical* buffer.
-        // `head` and `len` are updated after every clone to prevent leaking and
-        // leave the deque in the right state when a clone implementation panics
-
-        // Clone the first range
-        let (src, dst, count) = ranges[1];
-        for offset in (0..count).rev() {
-            // ignore-tidy-undocumented-unsafe
-            unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
-            // ignore-tidy-undocumented-unsafe
-            self.head = unsafe { self.head.sub(1) };
-            self.len += 1;
-        }
-
-        // Clone the second range
-        let (src, dst, count) = ranges[0];
-        let mut iter = (0..count).rev();
-        if let Some(offset) = iter.next() {
-            // ignore-tidy-undocumented-unsafe
-            unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
-            // After the first clone of the second range, wrap `head` around
-            if self.head.is_zero() {
-                // SAFETY: the wrapped index may be temporarily equal to the capacity even if it
-                // is not zero, because we subtract it one line below.
-                // FIXME: should `from_arbitrary_number` be unsafe? its docs imply so...
-                self.head = WrappedIndex::from_arbitrary_number(cap);
-            }
-            // ignore-tidy-undocumented-unsafe
-            self.head = unsafe { self.head.sub(1) };
-            self.len += 1;
-
-            // Continue like normal
-            for offset in iter {
-                // ignore-tidy-undocumented-unsafe
-                unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
-                // ignore-tidy-undocumented-unsafe
-                self.head = unsafe { self.head.sub(1) };
-                self.len += 1;
-            }
-        }
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl<T: TrivialClone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
+impl<T: Clone, A: Allocator> VecDeque<T, A> {
     unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
         let dst = self.len();
         let count = src.end - src.start;
@@ -3722,14 +3634,32 @@ impl<T: TrivialClone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
         // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
         // - Ranges are in bounds: guaranteed by the caller.
         let ranges = unsafe { self.nonoverlapping_ranges(src, dst, count, self.head) };
-        for (src, dst, count) in ranges {
-            // SAFETY: Ditto.
-            unsafe { ptr::copy_nonoverlapping(src, dst, count) };
-        }
+        if let Some(_this) = core::any::try_as_dyn::<Self, dyn TrivialCloneElem<T>>(self) {
+            // Specialization for `T: TrivialClone`
+            for (src, dst, count) in ranges {
+                // SAFETY: Ditto.
+                unsafe { ptr::copy_nonoverlapping(src, dst, count) };
+            }
 
-        // SAFETY:
-        // - The elements were just initialized by `copy_nonoverlapping`
-        self.len += count;
+            // SAFETY:
+            // - The elements were just initialized by `copy_nonoverlapping`
+            self.len += count;
+        } else {
+            // Default implementation for `T: Clone`
+
+            // `len` is updated after every clone to prevent leaking and
+            // leave the deque in the right state when a clone implementation panics
+
+            for (src, dst, count) in ranges {
+                for offset in 0..count {
+                    // SAFETY: The allocations of `dst` and `src` go up to `count` elems,
+                    // and `nonoverlapping_ranges` ensures `dst` and `src` are valid
+                    // for writes and reads respectively.
+                    unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
+                    self.len += 1;
+                }
+            }
+        }
     }
 
     unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>) {
@@ -3743,15 +3673,65 @@ impl<T: TrivialClone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
         // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
         // - Ranges are in bounds: guaranteed by the caller.
         let ranges = unsafe { self.nonoverlapping_ranges(src, dst, count, new_head) };
-        for (src, dst, count) in ranges {
-            // SAFETY: Ditto.
-            unsafe { ptr::copy_nonoverlapping(src, dst, count) };
-        }
 
-        // SAFETY:
-        // - The elements were just initialized by `copy_nonoverlapping`
-        self.head = new_head;
-        self.len += count;
+        if let Some(_this) = core::any::try_as_dyn::<Self, dyn TrivialCloneElem<T>>(self) {
+            // Specialization for `T: TrivialClone`
+            for (src, dst, count) in ranges {
+                // SAFETY: Ditto.
+                unsafe { ptr::copy_nonoverlapping(src, dst, count) };
+            }
+
+            // SAFETY:
+            // - The elements were just initialized by `copy_nonoverlapping`
+            self.head = new_head;
+            self.len += count;
+        } else {
+            // Default implementation for `T: Clone`
+
+            let cap = self.capacity();
+
+            // Cloning is done in reverse because we prepend to the front of the deque,
+            // we can't get holes in the *logical* buffer.
+            // `head` and `len` are updated after every clone to prevent leaking and
+            // leave the deque in the right state when a clone implementation panics
+
+            // Clone the first range
+            let (src, dst, count) = ranges[1];
+            for offset in (0..count).rev() {
+                // ignore-tidy-undocumented-unsafe
+                unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
+                // ignore-tidy-undocumented-unsafe
+                self.head = unsafe { self.head.sub(1) };
+                self.len += 1;
+            }
+
+            // Clone the second range
+            let (src, dst, count) = ranges[0];
+            let mut iter = (0..count).rev();
+            if let Some(offset) = iter.next() {
+                // ignore-tidy-undocumented-unsafe
+                unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
+                // After the first clone of the second range, wrap `head` around
+                if self.head.is_zero() {
+                    // SAFETY: the wrapped index may be temporarily equal to the capacity even if it
+                    // is not zero, because we subtract it one line below.
+                    // FIXME: should `from_arbitrary_number` be unsafe? its docs imply so...
+                    self.head = WrappedIndex::from_arbitrary_number(cap);
+                }
+                // ignore-tidy-undocumented-unsafe
+                self.head = unsafe { self.head.sub(1) };
+                self.len += 1;
+
+                // Continue like normal
+                for offset in iter {
+                    // ignore-tidy-undocumented-unsafe
+                    unsafe { dst.add(offset).write((*src.add(offset)).clone()) };
+                    // ignore-tidy-undocumented-unsafe
+                    self.head = unsafe { self.head.sub(1) };
+                    self.len += 1;
+                }
+            }
+        }
     }
 }
 
@@ -3959,7 +3939,7 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
-        SpecFromIter::spec_from_iter(iter.into_iter())
+        Self::spec_from_iter(iter.into_iter())
     }
 }
 
