@@ -687,11 +687,14 @@ where
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::FnAddrTrait) => {
-                    if matches!(goal.predicate.self_ty().kind(), ty::FnDef(..)) {
+                    if matches!(goal.predicate.self_ty().kind(), ty::FnDef(..) | ty::Closure(..)) {
                         G::consider_builtin_fn_static_trait_candidate(self, goal)
                     } else {
                         G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                     }
+                }
+                Some(SolverTraitLangItem::FnStatic) => {
+                    G::consider_builtin_fn_static_trait_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)

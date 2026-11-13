@@ -664,9 +664,12 @@ pub(crate) fn transform_instance<'tcx>(
         // and `<T as FnPtr>::from_ptr` implementations): the FnPtr trait is not dyn compatible, so
         // they can not be called through a vtable and are not transformed (i.e., type ids are
         // encoded for them as is).
-        ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..) | ty::ShimKind::FnPtrFromPtr(..)) => {
-            instance
-        }
+        ty::InstanceKind::Shim(
+            ty::ShimKind::FnAddrAsPtr(..)
+            | ty::ShimKind::FnPtrFromPtr(..)
+            | ty::ShimKind::FnStaticInstance(..)
+            | ty::ShimKind::FnStaticAsPtr(..),
+        ) => instance,
 
         // AsyncDropGlueCtorShims (i.e., `core::future::async_drop::async_drop_in_place::<'_,
         // T>`, the constructors of the async drop glue coroutines): do not implement any trait

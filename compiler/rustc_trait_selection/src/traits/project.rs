@@ -1082,6 +1082,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | LangItem::Fn
                         | LangItem::FnMut
                         | LangItem::FnOnce
+                        | LangItem::FnStatic
                         | LangItem::AsyncFn
                         | LangItem::AsyncFnMut
                         | LangItem::AsyncFnOnce,
@@ -1651,6 +1652,21 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             (ty.into(), PredicateObligations::new())
         } else {
             bug!("unexpected associated type {:?} in `Field`", obligation.predicate);
+        }
+    } else if tcx.is_lang_item(trait_def_id, LangItem::FnStatic) {
+        match tcx.as_lang_item(item_def_id) {
+            Some(LangItem::FnStaticFnPtr) => {
+                let sig = match self_ty.kind() {
+                    ty::FnDef(..) => self_ty.fn_sig(tcx),
+                    ty::Closure(_, args) => {
+                        let closure_sig = args.as_closure().sig();
+                        tcx.signature_unclosure(closure_sig, closure_sig.safety())
+                    }
+                    _ => bug!("unexpected self type {:?} in `FnStatic::FnPtr`", self_ty),
+                };
+                (Ty::new_fn_ptr(tcx, sig).into(), PredicateObligations::new())
+            }
+            _ => bug!("unexpected associated type {:?} in `FnStatic`", obligation.predicate),
         }
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);

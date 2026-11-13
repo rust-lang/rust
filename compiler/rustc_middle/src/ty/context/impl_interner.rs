@@ -807,6 +807,7 @@ bidirectional_lang_item_map! {
     CoroutineYield,
     FieldBase,
     FieldType,
+    FnStaticFnPtr,
     FutureOutput,
     Metadata,
 // tidy-alphabetical-end
@@ -845,6 +846,7 @@ bidirectional_lang_item_map! {
     FnMut,
     FnOnce,
     FnPtrTrait,
+    FnStatic,
     Freeze,
     FusedIterator,
     Future,

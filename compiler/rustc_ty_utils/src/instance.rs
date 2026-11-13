@@ -312,7 +312,7 @@ fn resolve_associated_item<'tcx>(
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnAddrTrait) {
                 let self_ty = trait_ref.self_ty();
-                if !matches!(self_ty.kind(), ty::FnPtr(..) | ty::FnDef(..)) {
+                if !matches!(self_ty.kind(), ty::FnPtr(..) | ty::FnDef(..) | ty::Closure(..)) {
                     return Ok(None);
                 }
                 match tcx.as_lang_item(trait_item_id) {
@@ -328,6 +328,28 @@ fn resolve_associated_item<'tcx>(
                         args: rcvr_args,
                     }),
                     _ => bug!("Unknown item for FnAddr: {:?}", trait_item_id),
+                }
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnStatic) {
+                let self_ty = trait_ref.self_ty();
+                if !matches!(self_ty.kind(), ty::FnDef(..) | ty::Closure(..)) {
+                    return Ok(None);
+                }
+                match tcx.as_lang_item(trait_item_id) {
+                    Some(LangItem::FnStaticInstance) => Some(Instance {
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnStaticInstance(
+                            trait_item_id,
+                            self_ty,
+                        )),
+                        args: rcvr_args,
+                    }),
+                    Some(LangItem::FnStaticAsPtr) => Some(Instance {
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnStaticAsPtr(
+                            trait_item_id,
+                            self_ty,
+                        )),
+                        args: rcvr_args,
+                    }),
+                    _ => bug!("Unknown item for FnStatic: {:?}", trait_item_id),
                 }
             } else if let Some(target_kind) = tcx.fn_trait_kind_from_def_id(trait_ref.def_id) {
                 // FIXME: This doesn't check for malformed libcore that defines, e.g.,

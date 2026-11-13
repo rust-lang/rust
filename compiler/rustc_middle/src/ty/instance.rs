@@ -135,7 +135,11 @@ pub enum ShimKind<'tcx> {
     ///
     /// This generates a body that will just borrow the (owned) self type,
     /// and dispatch to the `FnMut::call_mut` instance for the closure.
-    ClosureOnce { call_once: DefId, closure: DefId, track_caller: bool },
+    ClosureOnce {
+        call_once: DefId,
+        closure: DefId,
+        track_caller: bool,
+    },
 
     /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once`
     ///
@@ -190,6 +194,9 @@ pub enum ShimKind<'tcx> {
     ///
     /// The `DefId` is for `FnPtr::from_ptr`, the `Ty` is the type `T`.
     FnPtrFromPtr(DefId, Ty<'tcx>),
+
+    FnStaticInstance(DefId, Ty<'tcx>),
+    FnStaticAsPtr(DefId, Ty<'tcx>),
 
     /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
     ///
@@ -353,6 +360,8 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::Clone(def_id, _)
             | ShimKind::FnAddrAsPtr(def_id, _)
             | ShimKind::FnPtrFromPtr(def_id, _)
+            | ShimKind::FnStaticInstance(def_id, _)
+            | ShimKind::FnStaticAsPtr(def_id, _)
             | ShimKind::FutureDropPoll(def_id, _, _)
             | ShimKind::AsyncDropGlue(def_id, _)
             | ShimKind::AsyncDropGlueCtor(def_id, _) => def_id,
@@ -375,6 +384,8 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::DropGlue(..)
             | ShimKind::Clone(..)
             | ShimKind::FnAddrAsPtr(..)
+            | ShimKind::FnStaticInstance(..)
+            | ShimKind::FnStaticAsPtr(..)
             | ShimKind::FnPtrFromPtr(..) => None,
         }
     }
@@ -397,6 +408,8 @@ impl<'tcx> ShimKind<'tcx> {
             | ShimKind::FnPtr(..)
             | ShimKind::FnAddrAsPtr(..)
             | ShimKind::FnPtrFromPtr(..)
+            | ShimKind::FnStaticInstance(..)
+            | ShimKind::FnStaticAsPtr(..)
             | ShimKind::DropGlue(_, Some(_))
             | ShimKind::FutureDropPoll(..)
             | ShimKind::AsyncDropGlue(_, _) => false,
