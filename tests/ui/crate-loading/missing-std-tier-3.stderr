@@ -5,7 +5,7 @@ LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ can't find crate
    |
    = note: the `m68k-unknown-linux-gnu` target may not be installed
-   = help: consider building the standard library from source with `cargo build -Zbuild-std`
+   = help: consider building the core library from source with `cargo build -Zbuild-std=core`
 
 error: aborting due to 1 previous error
 

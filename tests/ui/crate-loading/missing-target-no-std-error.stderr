@@ -2,7 +2,7 @@ error[E0463]: can't find crate for `core`
    |
    = note: the `thumbv7em-none-eabihf` target may not be installed
    = help: consider downloading the target with `rustup target add thumbv7em-none-eabihf`
-   = help: consider building the standard library from source with `cargo build -Zbuild-std`
+   = help: consider building the core library from source with `cargo build -Zbuild-std=core`
 
 error[E0463]: can't find crate for `cortex_m`
   --> $DIR/missing-target-no-std-error.rs:12:1
