@@ -887,22 +887,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
                 )
             }
-            ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
-                let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
-                let ty::UnsafeBinder(binder_ty) = *binder_ty.ty.kind() else {
+            ProjectionElem::Transmute(target_ty) => {
+                let src_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+
+                if !self
+                    .tcx
+                    .normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(src_ty))
+                    .is_sized(self.tcx, self.typing_env)
+                {
+                    self.fail(location, format!("Cannot transmute from non-`Sized` type {src_ty}"));
+                }
+
+                if !self
+                    .tcx
+                    .normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(target_ty))
+                    .is_sized(self.tcx, self.typing_env)
+                {
                     self.fail(
                         location,
-                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
-                    );
-                    return;
-                };
-                let binder_inner_ty = self.tcx.instantiate_bound_regions_with_erased(*binder_ty);
-                if !self.mir_assign_valid_types(unwrapped_ty, binder_inner_ty) {
-                    self.fail(
-                        location,
-                        format!(
-                            "Cannot unwrap unsafe binder {binder_ty:?} into type {unwrapped_ty}"
-                        ),
+                        format!("Cannot transmute to non-`Sized` type {target_ty:?}"),
                     );
                 }
             }
