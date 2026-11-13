@@ -75,13 +75,13 @@ fn compute_assumptions<'tcx>(
         }));
         let _errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-        let region_obligations = infcx.take_registered_region_obligations();
+        let type_outlives_constraints = infcx.take_registered_type_outlives_constraints();
         let region_assumptions = infcx.take_registered_region_assumptions();
         let region_constraints = infcx.take_and_reset_region_constraints();
 
         let constraints = infcx.deeply_resolve_via_unification_table(
             make_query_region_constraints(
-                region_obligations,
+                type_outlives_constraints,
                 &region_constraints,
                 region_assumptions,
             )

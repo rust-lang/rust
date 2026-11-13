@@ -387,13 +387,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn make_deduplicated_region_constraints(
         &self,
     ) -> Vec<(ty::RegionConstraint<'tcx>, ty::VisibleForLeakCheck)> {
-        // Cannot use `take_registered_region_obligations` as we may compute the response
+        // Cannot use `take_registered_type_outlives_constraints` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
-        let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
+        let type_outlives_constraints =
+            self.0.inner.borrow().type_outlives_constraints().to_owned();
         let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                region_obligations,
+                type_outlives_constraints,
                 region_constraints,
                 region_assumptions,
             )

@@ -78,8 +78,12 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             }
             UndoLog::ProjectionCache(undo) => self.projection_cache.reverse(undo),
             UndoLog::PushTypeOutlivesConstraint => {
-                let popped = self.region_obligations.pop();
-                assert_matches!(popped, Some(_), "pushed region constraint but could not pop it");
+                let popped = self.type_outlives_constraints.pop();
+                assert_matches!(
+                    popped,
+                    Some(_),
+                    "pushed type outlives constraints but could not pop it"
+                );
             }
             UndoLog::PushRegionAssumption => {
                 let popped = self.region_assumptions.pop();

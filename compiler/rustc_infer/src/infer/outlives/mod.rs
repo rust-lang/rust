@@ -46,15 +46,15 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.process_registered_region_obligations(outlives_env);
+        self.process_registered_type_outlives_constraints(outlives_env);
 
         let mut storage = {
             let mut inner = self.inner.borrow_mut();
             let inner = &mut *inner;
             assert!(
-                self.tainted_by_errors().is_some() || inner.region_obligations.is_empty(),
-                "region_obligations not empty: {:#?}",
-                inner.region_obligations,
+                self.tainted_by_errors().is_some() || inner.type_outlives_constraints.is_empty(),
+                "type_outlives_constraints not empty: {:#?}",
+                inner.type_outlives_constraints,
             );
             assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
             inner.region_constraint_storage.take().expect("regions already resolved")
@@ -111,9 +111,9 @@ impl<'tcx> InferCtxt<'tcx> {
     /// understands. See the NLL module for mode details.
     pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
         assert!(
-            self.inner.borrow().region_obligations.is_empty(),
-            "region_obligations not empty: {:#?}",
-            self.inner.borrow().region_obligations
+            self.inner.borrow().type_outlives_constraints.is_empty(),
+            "type_outlives_constraints not empty: {:#?}",
+            self.inner.borrow().type_outlives_constraints
         );
         assert!(
             self.inner.borrow().region_assumptions.is_empty(),

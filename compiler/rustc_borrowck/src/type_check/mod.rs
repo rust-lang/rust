@@ -122,10 +122,10 @@ pub(crate) fn type_check<'tcx>(
 
     {
         // Scope these variables so it's clear they're not used later
-        let pre_obligations = infcx.take_registered_region_obligations();
+        let pre_type_outlives = infcx.take_registered_type_outlives_constraints();
         assert!(
-            pre_obligations.is_empty(),
-            "there should be no incoming region obligations = {pre_obligations:#?}",
+            pre_type_outlives.is_empty(),
+            "there should be no incoming type outlives constraints = {pre_type_outlives:#?}",
         );
         let pre_assumptions = infcx.take_registered_region_assumptions();
         assert!(

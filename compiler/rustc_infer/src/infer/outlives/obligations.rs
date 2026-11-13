@@ -125,10 +125,10 @@ impl<'tcx> InferCtxt<'tcx> {
         self.sub_regions(origin, r_b, r_a, vis);
     }
 
-    /// Registers that the given region obligation must be resolved
+    /// Registers that the given type outlives constraints must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
     /// and later processed by regionck, when full type information is
-    /// available (see `region_obligations` field for more
+    /// available (see `type_outlives_constraints` field for more
     /// information).
     #[instrument(level = "debug", skip(self))]
     pub fn register_type_outlives_constraint_inner(
@@ -137,7 +137,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         let mut inner = self.inner.borrow_mut();
         inner.undo_log.push(UndoLog::PushTypeOutlivesConstraint);
-        inner.region_obligations.push(obligation);
+        inner.type_outlives_constraints.push(obligation);
     }
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
@@ -186,24 +186,27 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     /// Trait queries just want to pass back type obligations "as is"
-    pub fn take_registered_region_obligations(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
-        assert!(!self.in_snapshot(), "cannot take registered region obligations in a snapshot");
-        std::mem::take(&mut self.inner.borrow_mut().region_obligations)
+    pub fn take_registered_type_outlives_constraints(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
+        assert!(
+            !self.in_snapshot(),
+            "cannot take registered type outlives constraints in a snapshot"
+        );
+        std::mem::take(&mut self.inner.borrow_mut().type_outlives_constraints)
     }
 
-    pub fn num_registered_region_obligations(&self) -> usize {
-        self.inner.borrow().region_obligations.len()
+    pub fn num_registered_type_outlives_constraints(&self) -> usize {
+        self.inner.borrow().type_outlives_constraints.len()
     }
 
-    pub fn registered_region_obligations_since(
+    pub fn registered_type_outlives_constraints_since(
         &self,
         prev: usize,
     ) -> Vec<TypeOutlivesConstraint<'tcx>> {
-        self.inner.borrow().region_obligations.iter().skip(prev).cloned().collect()
+        self.inner.borrow().type_outlives_constraints.iter().skip(prev).cloned().collect()
     }
 
-    pub fn clone_registered_region_obligations(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
-        self.inner.borrow().region_obligations.clone()
+    pub fn clone_registered_type_outlives_constraints(&self) -> Vec<TypeOutlivesConstraint<'tcx>> {
+        self.inner.borrow().type_outlives_constraints.clone()
     }
 
     pub fn register_region_assumption(&self, assumption: ty::ArgOutlivesClause<'tcx>) {
@@ -334,27 +337,33 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
-    /// Process the region obligations that must be proven (during
+    /// Process the type outlives constraints that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth.
     ///
-    /// See the `region_obligations` field of `InferCtxt` for some
+    /// See the `type_outlives_constraints` field of `InferCtxt` for some
     /// comments about how this function fits into the overall expected
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
     #[instrument(level = "debug", skip(self, outlives_env))]
-    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
-        assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
+    pub fn process_registered_type_outlives_constraints(
+        &self,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
+        assert!(
+            !self.in_snapshot(),
+            "cannot process registered type outlives constraints in a snapshot"
+        );
 
         if self.tcx.assumptions_on_binders() {
             self.destructure_solver_region_constraints_for_regionck(outlives_env);
         }
 
-        // Must loop since the process of normalizing may itself register region obligations.
+        // Must loop since the process of normalizing may itself register type outlives constraints.
         for iteration in 0.. {
-            let my_region_obligations = self.take_registered_region_obligations();
-            if my_region_obligations.is_empty() {
+            let my_type_outlives_constraints = self.take_registered_type_outlives_constraints();
+            if my_type_outlives_constraints.is_empty() {
                 break;
             }
 
@@ -363,11 +372,13 @@ impl<'tcx> InferCtxt<'tcx> {
                 // this to a proper error/consider whether we should detect
                 // this somewhere else.
                 bug!(
-                    "unexpected overflowed when processing region obligations: {my_region_obligations:#?}"
+                    "unexpected overflowed when processing type outlives constraints: {my_type_outlives_constraints:#?}"
                 );
             }
 
-            for TypeOutlivesConstraint { sup_type, sub_region, origin } in my_region_obligations {
+            for TypeOutlivesConstraint { sup_type, sub_region, origin } in
+                my_type_outlives_constraints
+            {
                 // `TypeOutlives` is structural, so we should try to opportunistically resolve all
                 // region vids before processing regions, so we have a better chance to match clauses
                 // in our param-env.
@@ -434,7 +445,7 @@ pub struct TypeOutlives<'cx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {
-    // See the comments on `process_registered_region_obligations` for the meaning
+    // See the comments on `process_registered_type_outlives_constraints` for the meaning
     // of these fields.
     delegate: D,
     tcx: TyCtxt<'tcx>,
