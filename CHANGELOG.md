@@ -6,7 +6,7 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[d818180...master](https://github.com/rust-lang/rust-clippy/compare/d818180...master)
+[d818180...main](https://github.com/rust-lang/rust-clippy/compare/d818180...main)
 
 ## Rust 1.100
 
