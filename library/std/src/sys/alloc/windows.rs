@@ -192,7 +192,11 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 
             // SAFETY: Because of the contract of `System`, `ptr` is guaranteed to be non-null
             // and have a header readable directly before it.
-            unsafe { ptr::read((ptr as *mut Header).sub(1)).0 }
+            let block_ptr = unsafe { ptr::read((ptr as *mut Header).sub(1)).0 };
+            // Always deallocate using the provenance that was passed to us, not what we stored in
+            // the header. The passed-in provenance may be protected, for example because it is from
+            // a Box argument to mem::drop.
+            ptr.with_addr(block_ptr.addr())
         }
     };
 
