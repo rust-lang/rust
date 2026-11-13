@@ -10,6 +10,8 @@ body:
         Please provide a short summary of the bug, along with any information you feel relevant to replicating the bug.
 
         If you cannot produce a minimal reproduction case (something that would work in isolation), please provide the steps or even link to a repository that causes the problematic output to occur.
+
+        DO NOT POST LLM-GENERATED TEXT without clearly marking it.
   - type: textarea
     id: code
     attributes:

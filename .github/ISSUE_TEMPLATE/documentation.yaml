@@ -23,6 +23,8 @@ body:
 
         All other documentation issues should be filed here.
 
+        DO NOT POST LLM-GENERATED TEXT without clearly marking it.
+
   - type: textarea
     id: location
     attributes:

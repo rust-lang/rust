@@ -7,6 +7,8 @@ labels: C-bug, T-rustdoc
 Thank you for filing a rustdoc issue! Rustdoc is the tool that handles the generation of docs.  It is usually invoked via `cargo doc`, but can also be used directly.
 
 If you have an issue with the actual content of the docs, use the "Documentation problem" template instead.
+
+DO NOT POST LLM-GENERATED TEXT without clearly marking it.
 -->
 
 # Code

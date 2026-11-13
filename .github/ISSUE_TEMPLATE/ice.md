@@ -9,6 +9,8 @@ Thank you for finding an Internal Compiler Error! 🧊  If possible, try to prov
 a minimal verifiable example. You can read "Rust Bug Minimization Patterns" for
 how to create smaller examples.
 http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/
+
+DO NOT POST LLM-GENERATED TEXT without clearly marking it.
 -->
 
 ### Code

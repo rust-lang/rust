@@ -7,6 +7,8 @@ labels: C-bug, regression-untriaged
 Thank you for filing a regression report! 🐛 A regression is something that changed between versions of Rust but was not supposed to.
 
 Please provide a short summary of the regression, along with any information you feel is relevant to replicate it.
+
+DO NOT POST LLM-GENERATED TEXT without clearly marking it.
 -->
 
 ### Code
