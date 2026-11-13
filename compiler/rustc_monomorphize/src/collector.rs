@@ -632,11 +632,17 @@ fn check_normalization_error<'tcx>(
     struct NormalizationChecker<'tcx> {
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
+        instance_has_aliases: bool,
     }
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for NormalizationChecker<'tcx> {
         type Result = ControlFlow<()>;
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+            // Only instances and types with aliases can be changed by normalization.
+            if !self.instance_has_aliases && !t.has_aliases() {
+                return ControlFlow::Continue(());
+            }
+
             match self.instance.try_instantiate_mir_and_normalize_erasing_regions(
                 self.tcx,
                 ty::TypingEnv::fully_monomorphized(),
@@ -648,7 +654,8 @@ fn check_normalization_error<'tcx>(
         }
     }
 
-    let mut checker = NormalizationChecker { tcx, instance };
+    let mut checker =
+        NormalizationChecker { tcx, instance, instance_has_aliases: instance.has_aliases() };
     if body.visit_with(&mut checker).is_break() { Err(NormalizationErrorInMono) } else { Ok(()) }
 }
 
