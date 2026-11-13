@@ -35,6 +35,7 @@
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/TargetParser/Host.h"
+#include "llvm/Transforms/IPO/FatLTOCleanup.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/IPO/Internalize.h"
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
@@ -717,6 +718,17 @@ static void forceFullLTOSummary(Module *M) {
 
   auto *Zero = ConstantInt::get(Type::getInt32Ty(M->getContext()), 0);
   M->addModuleFlag(Module::Error, "ThinLTO", Zero);
+}
+
+// Lower llvm.type.checked.load into standard loads.
+//
+// Rustc emits checked loads when using `-Zvirtual-function-elimination`.
+// This flag implies fat LTO, but for non-LTO compilations (e.g. building
+// an rlib, or when passing --emit=asm) the checked loads are not supported,
+// and they must be removed.
+extern "C" void LLVMRustRunFatLtoCleanup(LLVMModuleRef M) {
+  ModuleAnalysisManager MAM;
+  FatLtoCleanup().run(*unwrap(M), MAM);
 }
 
 extern "C" LLVMRustResult LLVMRustOptimize(

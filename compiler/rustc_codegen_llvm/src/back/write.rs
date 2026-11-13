@@ -1076,6 +1076,13 @@ pub(crate) fn codegen(
                 .unwrap_or_else(|()| llvm_err(dcx, LlvmError::WriteIr { path: &out }));
         }
 
+        // Lower llvm.type.checked.load into standard loads.
+        //
+        // Rustc emits checked loads when using `-Zvirtual-function-elimination`.
+        // This flag implies fat LTO, but for non-LTO compilations (e.g. building
+        // an rlib, or when passing --emit=asm) the checked loads are not supported.
+        unsafe { llvm::LLVMRustRunFatLtoCleanup(llmod) };
+
         if config.emit_asm {
             let _timer =
                 prof.generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
