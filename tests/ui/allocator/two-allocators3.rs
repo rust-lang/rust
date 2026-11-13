@@ -7,4 +7,4 @@ extern crate system_allocator2;
 
 fn main() {}
 
-//~? ERROR the `#[global_allocator]` in system_allocator conflicts with global allocator in: system_allocator2
+//~? ERROR the `#[global_allocator]` in `system_allocator` conflicts with global allocator in `system_allocator2`
