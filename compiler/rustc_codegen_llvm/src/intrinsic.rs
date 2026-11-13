@@ -829,6 +829,17 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         _ => unreachable!(),
                     };
                     self.type_vector(elem_ll_ty, size)
+                } else if let ty::Array(elem, _) = result_layout.ty.kind()
+                    && let ty::Uint(ty::UintTy::U8) = elem.kind()
+                {
+                    // Byte arrays are used to represent iN.
+                    assert_matches!(
+                        result_layout.backend_repr,
+                        BackendRepr::Memory { sized: true }
+                    );
+                    self.type_ix(result_layout.size.bits())
+                } else if result_layout.is_zst() {
+                    self.type_void()
                 } else {
                     result_layout.llvm_type(self)
                 };
@@ -2439,12 +2450,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             {
                 // Zero-extend iN to the array length:
                 let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
-
-                // Convert the integer to a byte array
-                let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
-                bx.store(ze, ptr, Align::ONE);
-                let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
-                return Ok(bx.load(array_ty, ptr, Align::ONE));
+                // `codegen_intrinsic_call` will store the result to the return place for
+                // `BackendRepr::Memory` types.
+                return Ok(ze);
             }
             _ => return_error!(InvalidMonomorphization::CannotReturn {
                 span,
