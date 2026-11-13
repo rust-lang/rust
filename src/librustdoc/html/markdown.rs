@@ -1796,6 +1796,18 @@ pub(crate) struct MarkdownLink {
     pub range: MarkdownLinkRange,
 }
 
+#[derive(Debug)]
+pub(crate) struct MarkdownLinks<R> {
+    pub links: Vec<R>,
+    pub reference_labels: Vec<String>,
+}
+
+impl<R> Default for MarkdownLinks<R> {
+    fn default() -> Self {
+        Self { links: Vec::new(), reference_labels: Vec::new() }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum MarkdownLinkRange {
     /// Normally, markdown link warnings point only at the destination.
@@ -1819,10 +1831,10 @@ impl MarkdownLinkRange {
 pub(crate) fn markdown_links<'md, R>(
     md: &'md str,
     preprocess_link: impl Fn(MarkdownLink) -> Option<R>,
-) -> Vec<R> {
+) -> MarkdownLinks<R> {
     use itertools::Itertools;
     if md.is_empty() {
-        return vec![];
+        return MarkdownLinks::default();
     }
 
     // FIXME: remove this function once pulldown_cmark can provide spans for link definitions.
@@ -2019,7 +2031,11 @@ pub(crate) fn markdown_links<'md, R>(
         }
     }
 
-    for (_label, (is_used, dest_url, span)) in refdefs.into_iter() {
+    let mut reference_labels = Vec::with_capacity(refdefs.len());
+
+    for (label, (is_used, dest_url, span)) in refdefs {
+        reference_labels.push(label);
+
         if !is_used
             && let Some(link) = preprocess_link(MarkdownLink {
                 kind: LinkType::Reference,
@@ -2031,7 +2047,7 @@ pub(crate) fn markdown_links<'md, R>(
         }
     }
 
-    links
+    MarkdownLinks { links, reference_labels }
 }
 
 #[derive(Debug)]
