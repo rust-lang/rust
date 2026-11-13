@@ -541,6 +541,12 @@ fn fn_abi_new_uncached<'tcx>(
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
 
+    assert_ne!(
+        sig.abi(),
+        ExternAbi::LlvmIntrinsic,
+        "fn_abi_of_instance should not be called on LLVM intrinsics"
+    );
+
     let abi_map = AbiMap::from_target(&tcx.sess.target);
     let conv = abi_map.canonize_abi(sig.abi(), sig.c_variadic()).unwrap();
 
@@ -614,28 +620,18 @@ fn fn_abi_new_uncached<'tcx>(
             sig.abi(),
         ),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi());
+    fn_abi_adjust_for_abi(cx, &mut fn_abi);
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi());
     Ok(tcx.arena.alloc(fn_abi))
 }
 
 #[tracing::instrument(level = "trace", skip(cx))]
-fn fn_abi_adjust_for_abi<'tcx>(
-    cx: &LayoutCx<'tcx>,
-    fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
-    abi: ExternAbi,
-) {
-    assert_ne!(
-        abi,
-        ExternAbi::LlvmIntrinsic,
-        "fn_abi_of_instance should not be called on LLVM intrinsics"
-    );
-
-    if abi.is_rustic_abi() {
+fn fn_abi_adjust_for_abi<'tcx>(cx: &LayoutCx<'tcx>, fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>) {
+    if fn_abi.conv.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
     } else {
-        fn_abi.adjust_for_foreign_abi(cx, abi);
+        fn_abi.adjust_for_foreign_abi(cx);
     }
 }
 

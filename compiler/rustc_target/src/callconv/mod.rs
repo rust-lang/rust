@@ -2,8 +2,8 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Primitive,
-    Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants,
+    AddressSpace, Align, BackendRepr, CanonAbi, FieldsShape, HasDataLayout, InterruptKind,
+    Primitive, Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants, X86Call,
 };
 use rustc_macros::StableHash;
 
@@ -730,12 +730,12 @@ where
 }
 
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: ExternAbi)
+    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec + HasX86AbiOpt,
     {
-        if abi == ExternAbi::X86Interrupt {
+        if self.conv == CanonAbi::Interrupt(InterruptKind::X86) {
             if let Some(arg) = self.args.first_mut() {
                 arg.pass_by_stack_offset(None);
             }
@@ -745,11 +745,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch {
             Arch::X86 => {
-                let flavor = match abi {
-                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
+                let flavor = match self.conv {
+                    CanonAbi::X86(X86Call::Fastcall | X86Call::Vectorcall) => {
                         x86::Flavor::FastcallOrVectorcall
                     }
-                    ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
+                    CanonAbi::C | CanonAbi::X86(X86Call::Stdcall) => {
                         x86::Flavor::General { regparam: cx.x86_abi_opt().regparm }
                     }
                     _ => x86::Flavor::General { regparam: None },
@@ -762,9 +762,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     x86::compute_abi_info(cx, self, opts);
                 }
             }
-            Arch::X86_64 => match abi {
-                ExternAbi::SysV64 { .. } => compute_abi::<x86_64::X86_64CallConv, _, _>(cx, self),
-                ExternAbi::Win64 { .. } | ExternAbi::Vectorcall { .. } => {
+            Arch::X86_64 => match self.conv {
+                CanonAbi::X86(X86Call::SysV64) => {
+                    compute_abi::<x86_64::X86_64CallConv, _, _>(cx, self)
+                }
+                CanonAbi::X86(X86Call::Win64 | X86Call::Vectorcall) => {
                     compute_abi::<x86_win64::X86Win64CallConv, _, _>(cx, self)
                 }
                 _ => {
@@ -801,7 +803,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             Arch::Sparc => compute_abi::<sparc::SparcCallConv, _, _>(cx, self),
             Arch::Sparc64 => compute_abi::<sparc64::Sparc64CallConv, _, _>(cx, self),
             Arch::Nvptx64 => {
-                if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
+                if self.conv == CanonAbi::GpuKernel {
                     compute_abi::<nvptx64::Nvptx64KernelCallConv, _, _>(cx, self)
                 } else {
                     compute_abi::<nvptx64::Nvptx64CallConv, _, _>(cx, self)
