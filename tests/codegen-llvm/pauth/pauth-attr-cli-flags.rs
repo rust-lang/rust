@@ -59,7 +59,7 @@ pub fn main() {}
 // DISABLE_AUTH_TRAPS-SAME: "ptrauth-indirect-gotos"
 // DISABLE_AUTH_TRAPS-SAME: "ptrauth-returns"
 // DISABLE_AUTH_TRAPS: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
-// DISABLE_AUTH_TRAPS-NEXT !{i32 1, !"aarch64-elf-pauthabi-version", i32 1783}
+// DISABLE_AUTH_TRAPS-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1783}
 
 // DISABLE_CALLS-NOT: ptrauth-calls
 // DISABLE_CALLS: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
@@ -67,7 +67,7 @@ pub fn main() {}
 // DISABLE_CALLS-SAME: "ptrauth-indirect-gotos"
 // DISABLE_CALLS-SAME: "ptrauth-returns"
 // DISABLE_CALLS: !{i32 1, !"aarch64-elf-pauthabi-platform", i32 268435458}
-// DISABLE_CALLS-SAME-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1789}
+// DISABLE_CALLS-NEXT: !{i32 1, !"aarch64-elf-pauthabi-version", i32 1789}
 
 // DISABLE_INDIRCT_GOTOS-NOT: ptrauth-indirect-gotos
 // DISABLE_INDIRCT_GOTOS: attributes [[ATTR_MAIN]] = { {{.*}}"aarch64-jump-table-hardening"
