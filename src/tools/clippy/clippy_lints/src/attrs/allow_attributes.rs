@@ -8,10 +8,10 @@ use rustc_lint::EarlyContext;
 // Separate each crate's features.
 pub fn check<'cx>(cx: &EarlyContext<'cx>, attr: &'cx Attribute) {
     if let AttrStyle::Outer = attr.style
-        && let Some(path_span) = attr.path_span()
         && !attr.span.from_expansion()
         && !is_from_proc_macro(cx, attr)
     {
+        let path_span = attr.get_normal_item().path.span;
         #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
         span_lint_and_then(cx, ALLOW_ATTRIBUTES, path_span, "#[allow] attribute found", |diag| {
             diag.span_suggestion(path_span, "replace it with", "expect", Applicability::MachineApplicable);
