@@ -10,6 +10,7 @@ use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModId};
 use rustc_hir::{self as hir, HirId, Mutability};
 use rustc_metadata::creader::{CStore, LoadedMacro};
+use rustc_middle::middle::resolve::ModChild;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
@@ -732,6 +733,57 @@ fn build_module_items(
     allowed_def_ids: Option<&DefIdSet>,
     attrs: Option<(&[rustc_attr_ir::Attribute], Option<LocalDefId>)>,
 ) -> Vec<clean::Item> {
+    #[inline]
+    fn make_import_item(
+        tcx: TyCtxt<'_>,
+        module_def_id: DefId,
+        module_name: Symbol,
+        def_id: Option<DefId>,
+        items: &mut Vec<clean::Item>,
+        item: &ModChild,
+        res: Res,
+    ) {
+        // We don't inline foreign `use`.
+        if should_ignore_res(res) || matches!(res, Res::Def(DefKind::Use, _)) {
+            return;
+        }
+        let mut segments = ThinVec::new();
+        if !module_def_id.is_local() && !module_def_id.is_crate_root() {
+            segments.push(clean::PathSegment {
+                name: tcx.crate_name(module_def_id.krate),
+                args: clean::GenericArgs::AngleBracketed {
+                    args: Default::default(),
+                    constraints: ThinVec::new(),
+                },
+            });
+        }
+        segments.push(clean::PathSegment {
+            name: module_name,
+            args: clean::GenericArgs::AngleBracketed {
+                args: Default::default(),
+                constraints: ThinVec::new(),
+            },
+        });
+        segments.push(clean::PathSegment {
+            name: def_id.map(|def_id| tcx.item_name(def_id)).unwrap_or(item.ident.name),
+            args: clean::GenericArgs::AngleBracketed {
+                args: Default::default(),
+                constraints: ThinVec::new(),
+            },
+        });
+        let item = Item::from_def_id_and_parts(
+            module_def_id,
+            None,
+            ItemKind::Import(clean::Import::new_simple(
+                item.ident.name,
+                clean::ImportSource { path: clean::Path { res, segments }, did: None },
+                true,
+            )),
+            tcx,
+        );
+        items.push(item);
+    }
+
     let mut items = Vec::new();
 
     // If we're re-exporting a re-export it may actually re-export something in
@@ -791,6 +843,17 @@ fn build_module_items(
                     inline_stmt_id: None,
                 }),
             });
+        } else if item.ident.name == rustc_span::kw::Underscore {
+            // We don't inline items (re)named `_`.
+            make_import_item(
+                cx.tcx,
+                module_def_id,
+                module_name,
+                res.opt_def_id(),
+                &mut items,
+                item,
+                res,
+            );
         } else if let Some(def_id) = res.opt_def_id()
             && let Some(reexport) = item.reexport_chain.first()
             && let Some(reexport_def_id) = reexport.id()
@@ -801,43 +864,16 @@ fn build_module_items(
                 if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline)
             )
         {
-            // We don't inline foreign `use`.
-            if should_ignore_res(res) || matches!(res, Res::Def(DefKind::Use, _)) {
-                continue;
-            }
             // This item is reexported as `no_inline` so it shouldn't be inlined.
-            let item = Item::from_def_id_and_parts(
-                module_def_id,
-                None,
-                ItemKind::Import(clean::Import::new_simple(
-                    item.ident.name,
-                    clean::ImportSource {
-                        path: clean::Path {
-                            res,
-                            segments: thin_vec![
-                                clean::PathSegment {
-                                    name: module_name,
-                                    args: clean::GenericArgs::AngleBracketed {
-                                        args: Default::default(),
-                                        constraints: ThinVec::new(),
-                                    },
-                                },
-                                clean::PathSegment {
-                                    name: cx.tcx.item_name(def_id),
-                                    args: clean::GenericArgs::AngleBracketed {
-                                        args: Default::default(),
-                                        constraints: ThinVec::new(),
-                                    },
-                                },
-                            ],
-                        },
-                        did: None,
-                    },
-                    true,
-                )),
+            make_import_item(
                 cx.tcx,
+                module_def_id,
+                module_name,
+                Some(def_id),
+                &mut items,
+                item,
+                res,
             );
-            items.push(item);
         } else if let Some(i) = try_inline(cx, res, item.ident.name, attrs, visited) {
             items.extend(i)
         }
