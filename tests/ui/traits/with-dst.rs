@@ -1,4 +1,4 @@
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ check-pass
 // #55266
 
 struct VTable<DST: ?Sized> {
