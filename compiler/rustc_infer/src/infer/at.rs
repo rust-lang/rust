@@ -200,7 +200,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// If possible, prefer the wrapper methods on `ObligationCtxt`,
     /// `FnCtxt`, or `TypeChecker`.
     pub fn eq_raw<T>(
-        self,
+        &self,
         cause: &ObligationCause<'tcx>,
         param_env: ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
@@ -225,7 +225,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// If possible, prefer the wrapper methods on `ObligationCtxt`,
     /// `FnCtxt`, or `TypeChecker`.
     pub fn eq_trace_raw<T>(
-        self,
+        &self,
         cause: &ObligationCause<'tcx>,
         param_env: ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
@@ -236,7 +236,22 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        self.at(cause, param_env).eq_trace(define_opaque_types, trace, expected, actual)
+        if self.next_trait_solver {
+            return NextSolverRelate::relate(
+                self,
+                param_env,
+                expected,
+                ty::Invariant,
+                actual,
+                cause.span,
+            )
+            .map(|goals| self.goals_to_obligations(cause, goals));
+        } else {
+            let mut op =
+                TypeRelating::new(self, trace, param_env, define_opaque_types, ty::Invariant);
+            op.relate(expected, actual)?;
+            return Ok(InferOk { value: (), obligations: op.into_obligations() });
+        }
     }
 
     /// If possible, prefer the wrapper methods on `ObligationCtxt`,
@@ -299,62 +314,6 @@ pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
-    /// Makes `expected == actual`.
-    ///
-    /// FIXME: To be removed in favor of the [`InferCtxt::eq_raw`] method instead.
-    pub fn eq<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        self.eq_trace(
-            define_opaque_types,
-            ToTrace::to_trace(self.cause, expected, actual),
-            expected,
-            actual,
-        )
-    }
-
-    /// Makes `expected == actual`.
-    ///
-    /// FIXME: To be removed in favor of the [`InferCtxt::eq_trace_raw`] method instead.
-    pub fn eq_trace<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        trace: TypeTrace<'tcx>,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: Relate<TyCtxt<'tcx>>,
-    {
-        if self.infcx.next_trait_solver {
-            NextSolverRelate::relate(
-                self.infcx,
-                self.param_env,
-                expected,
-                ty::Invariant,
-                actual,
-                self.cause.span,
-            )
-            .map(|goals| self.goals_to_obligations(goals))
-        } else {
-            let mut op = TypeRelating::new(
-                self.infcx,
-                trace,
-                self.param_env,
-                define_opaque_types,
-                ty::Invariant,
-            );
-            op.relate(expected, actual)?;
-            Ok(InferOk { value: (), obligations: op.into_obligations() })
-        }
-    }
-
     /// FIXME: To be removed in favor of the [`InferCtxt::relate_raw`] method instead.
     pub fn relate<T>(
         self,
@@ -374,7 +333,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                 expected,
                 actual,
             ),
-            ty::Invariant => self.eq(define_opaque_types, expected, actual),
+            ty::Invariant => {
+                self.infcx.eq_raw(self.cause, self.param_env, define_opaque_types, expected, actual)
+            }
             ty::Contravariant => self.infcx.sup_raw(
                 self.cause,
                 self.param_env,
@@ -411,27 +372,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         );
         let value = op.relate(expected, actual)?;
         Ok(InferOk { value, obligations: op.into_obligations() })
-    }
-
-    /// FIXME: To be removed in favor of the [`InferCtxt::goals_to_obligations`] method instead.
-    fn goals_to_obligations(
-        &self,
-        goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) -> InferOk<'tcx, ()> {
-        InferOk {
-            value: (),
-            obligations: goals
-                .into_iter()
-                .map(|goal| {
-                    Obligation::new(
-                        self.infcx.tcx,
-                        self.cause.clone(),
-                        goal.param_env,
-                        goal.predicate,
-                    )
-                })
-                .collect(),
-        }
     }
 }
 

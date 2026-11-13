@@ -1112,8 +1112,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // This is `fcx.demand_eqtype`, but inlined to give a better error.
                         let cause = fcx.misc(self.span);
                         if fcx
-                            .at(&cause, fcx.param_env)
-                            .eq(DefineOpaqueTypes::Yes, src_obj, dst_obj)
+                            .eq_raw(&cause, fcx.param_env, DefineOpaqueTypes::Yes, src_obj, dst_obj)
                             .map(|infer_ok| fcx.register_infer_ok_obligations(infer_ok))
                             .is_err()
                         {
