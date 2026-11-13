@@ -14,6 +14,8 @@ macro_rules! match_any {
     };
 }
 
+macro_rules! pat_colon { ($p:pat :) => {}; } //~ERROR `$p:pat` is followed by `:`
+
 fn main() {
     let result: Result<i64, i32> = Err(42);
     let int: i64 = match_any!(result, Ok(i) | Err(i) => i.into());
