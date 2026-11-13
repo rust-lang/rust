@@ -217,6 +217,8 @@ fn split_attrs(
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
             }
+            // Drop the test entrypoint marker -- unclear how that would interact.
+            AttrKind::Synthetic(SyntheticAttr::TestEntrypoint) => {}
             // Doc attributes should be forwarded to the macro and the foreign item, since those are
             // the two items you interact with as a user.
             // FIXME: idk yet how EIIs show up in docs, might want to customize
