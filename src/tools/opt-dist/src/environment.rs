@@ -50,6 +50,8 @@ pub struct Environment {
     /// so local runs can avoid it.
     #[builder(default = "true")]
     pub(crate) optimize_rustdoc: bool,
+
+    pub(crate) download_ci_llvm: bool,
 }
 
 impl Environment {
