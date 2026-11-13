@@ -1,5 +1,6 @@
 //! Things related to consts in the next-trait-solver.
 
+mod int;
 mod valtree;
 
 use std::hash::Hash;
@@ -25,7 +26,7 @@ use crate::{
 
 use super::{DbInterner, ErrorGuaranteed, GenericArgs, Ty};
 
-pub use self::valtree::*;
+pub use self::{int::*, valtree::*};
 
 pub type ConstKind<'db> = rustc_type_ir::ConstKind<DbInterner<'db>>;
 pub type UnevaluatedConst<'db> = rustc_type_ir::UnevaluatedConst<DbInterner<'db>>;
