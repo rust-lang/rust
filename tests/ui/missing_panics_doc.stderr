@@ -181,61 +181,61 @@ LL |         *v.last().expect("passed an empty thing")
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:264:1
+  --> tests/ui/missing_panics_doc.rs:262:1
    |
 LL | pub const fn unwrap_expect_etc_in_const_fn_fails() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:266:13
+  --> tests/ui/missing_panics_doc.rs:264:13
    |
 LL |     let a = std::num::NonZeroUsize::new(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:270:1
+  --> tests/ui/missing_panics_doc.rs:268:1
    |
 LL | pub const fn assert_in_const_fn_fails() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:274:9
+  --> tests/ui/missing_panics_doc.rs:272:9
    |
 LL |         panic!();
    |         ^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:279:1
+  --> tests/ui/missing_panics_doc.rs:277:1
    |
 LL | pub const fn in_const_fn<const N: usize>(n: usize) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:281:5
+  --> tests/ui/missing_panics_doc.rs:279:5
    |
 LL |     assert!(N > n);
    |     ^^^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:296:13
+  --> tests/ui/missing_panics_doc.rs:294:13
    |
 LL |             pub fn foo1() { panic!() }
    |             ^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:296:29
+  --> tests/ui/missing_panics_doc.rs:294:29
    |
 LL |             pub fn foo1() { panic!() }
    |                             ^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:307:17
+  --> tests/ui/missing_panics_doc.rs:305:17
    |
 LL |                 pub fn foo() { panic!() }
    |                 ^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:307:32
+  --> tests/ui/missing_panics_doc.rs:305:32
    |
 LL |                 pub fn foo() { panic!() }
    |                                ^^^^^^^^
