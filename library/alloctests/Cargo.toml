@@ -15,7 +15,7 @@ bench = true
 doc = false
 
 [dev-dependencies]
-rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
+rand = { version = "0.10.0", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.4.0"
 
 [[test]]
