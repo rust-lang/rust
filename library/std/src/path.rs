@@ -1344,23 +1344,26 @@ impl PathBuf {
         let buf = self.inner.as_encoded_bytes();
         let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
-        // in the special case of `C:` on Windows, do *not* add a separator
-        let comps = self.components();
+        let self_comps = self.components();
+        let self_prefix_len = self_comps.prefix_len();
 
-        if comps.prefix_len() > 0
-            && comps.prefix_len() == comps.path.len()
-            && comps.prefix.unwrap().is_drive()
+        // in the special case of `C:` on Windows, do *not* add a separator
+        if self_prefix_len > 0
+            && self_prefix_len == self_comps.path.len()
+            && self_comps.prefix.unwrap().is_drive()
         {
             need_sep = false
         }
 
-        let need_clear = if cfg!(target_os = "cygwin") {
-            // If path is absolute and its prefix is none, it is like `/foo`,
-            // and will be handled below.
-            path.prefix().is_some()
+        let path_comps = path.components();
+
+        let need_clear = if cfg!(any(target_os = "windows", target_os = "cygwin")) {
+            // Windows/Cygwin: If path is absolute and its prefix is none, it is like `\foo`
+            // (Windows) or `/foo` (Cygwin), and will be handled below.
+            path_comps.prefix.is_some()
         } else {
             // On Unix: prefix is always None.
-            path.is_absolute() || path.prefix().is_some()
+            path.is_absolute() || path_comps.prefix.is_some()
         };
 
         // absolute `path` replaces `self`
@@ -1368,9 +1371,9 @@ impl PathBuf {
             self.inner.clear();
 
         // verbatim paths need . and .. removed
-        } else if comps.prefix_verbatim() && !path.inner.is_empty() {
-            let mut buf: Vec<_> = comps.collect();
-            for c in path.components() {
+        } else if self_comps.prefix_verbatim() && !path.inner.is_empty() {
+            let mut buf: Vec<_> = self_comps.collect();
+            for c in path_comps {
                 match c {
                     Component::RootDir => {
                         buf.truncate(1);
@@ -1394,23 +1397,15 @@ impl PathBuf {
                     res.push(MAIN_SEPARATOR_STR);
                 }
                 res.push(c.as_os_str());
-
-                need_sep = match c {
-                    Component::RootDir => false,
-                    Component::Prefix(prefix) => {
-                        !prefix.parsed.is_drive() && prefix.parsed.len() > 0
-                    }
-                    _ => true,
-                }
+                need_sep = c != Component::RootDir;
             }
 
             self.inner = res;
             return;
 
         // `path` has a root but no prefix, e.g., `\windows` (Windows only)
-        } else if path.has_root() {
-            let prefix_len = self.components().prefix_remaining();
-            self.inner.truncate(prefix_len);
+        } else if path_comps.has_root() {
+            self.inner.truncate(self_prefix_len);
 
         // `path` is a pure relative path
         } else if need_sep {
