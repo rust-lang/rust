@@ -832,8 +832,13 @@ fn mir_for_direct_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Body<'tc
             let kind = ty::AliasConstKind::Free { def_id: def_id.into() };
             ty::AliasConst::new(tcx, kind, args)
         }
-        DefKind::AssocConst => {
-            if let Some(trait_item_def_id) = tcx.trait_item_of(def_id) {
+        DefKind::AssocConst => match tcx.associated_item(def_id).container {
+            ty::AssocContainer::Trait => {
+                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
+                let kind = ty::AliasConstKind::Projection { def_id: def_id.into() };
+                ty::AliasConst::new(tcx, kind, args)
+            }
+            ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) => {
                 // HACK(khyperia): The trait solver does not support Projection aliases to impl item
                 // def_ids. So, instead, unresolve the impl back to the trait item's def_id, and
                 // construct a Self arg that will resolve us back to the same impl.
@@ -846,12 +851,14 @@ fn mir_for_direct_const<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Body<'tc
                 let args = impl_args.rebase_onto(tcx, parent, trait_ref.args);
                 let kind = ty::AliasConstKind::Projection { def_id: trait_item_def_id };
                 ty::AliasConst::new(tcx, kind, args)
-            } else {
+            }
+            ty::AssocContainer::TraitImpl(Err(guar)) => return construct_error(tcx, def_id, guar),
+            ty::AssocContainer::InherentImpl => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 let kind = ty::AliasConstKind::InherentImpl { def_id: def_id.into() };
                 ty::AliasConst::new(tcx, kind, args)
             }
-        }
+        },
         def_kind => span_bug!(tcx.def_span(def_id), "unexpected def_kind {def_kind:?}"),
     };
     let ty_const = ty::Const::new_alias(tcx, ty::IsRigid::No, alias_const);
