@@ -1107,7 +1107,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
-            Rvalue::BinaryOp(op, (ref mut lhs, ref mut rhs)) => {
+            Rvalue::BinaryOp(ref mut op, (ref mut lhs, ref mut rhs)) => {
                 return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
@@ -1383,7 +1383,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_binary(
         &mut self,
-        op: BinOp,
+        op: &mut BinOp,
         lhs_operand: &mut Operand<'tcx>,
         rhs_operand: &mut Operand<'tcx>,
         location: Location,
@@ -1391,7 +1391,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let lhs = self.simplify_operand(lhs_operand, location);
         let rhs = self.simplify_operand(rhs_operand, location);
 
-        let (lhs, rhs) = if canonicalization::canonicalize_binary_operands(
+        let (lhs, rhs) = if canonicalization::canonicalize_binary_operations(
             self.tcx,
             self.local_decls,
             op,
@@ -1405,6 +1405,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
         // Only short-circuit options after we called `simplify_operand`
         // on both operands for side effect.
+        let op = *op;
         let mut lhs = lhs?;
         let mut rhs = rhs?;
 
