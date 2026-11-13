@@ -1,0 +1,106 @@
+error: the constant `A` is not of type `i64`
+  --> $DIR/const-eval-type-mismatch-gce.rs:10:38
+   |
+LL | impl<const A: usize, const B: usize> Outer<A, B>
+   |      -------------- `A` defined here ^^^^^^^^^^^ expected `i64`, found `usize`
+   |
+note: required by a const generic parameter in `Outer`
+  --> $DIR/const-eval-type-mismatch-gce.rs:9:14
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   |              ^^^^^^^^^^^^ required by this const generic parameter in `Outer`
+
+error: the constant `B` is not of type `i64`
+  --> $DIR/const-eval-type-mismatch-gce.rs:10:38
+   |
+LL | impl<const A: usize, const B: usize> Outer<A, B>
+   |                      --------------  ^^^^^^^^^^^ expected `i64`, found `usize`
+   |                      |
+   |                      `B` defined here
+   |
+note: required by a const generic parameter in `Outer`
+  --> $DIR/const-eval-type-mismatch-gce.rs:9:28
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   |                            ^^^^^^^^^^^^ required by this const generic parameter in `Outer`
+
+error: the constant `A` is not of type `i64`
+  --> $DIR/const-eval-type-mismatch-gce.rs:16:15
+   |
+LL |     fn i() -> Self {
+   |               ^^^^ expected `i64`, found `usize`
+   |
+note: required by a const generic parameter in `Outer`
+  --> $DIR/const-eval-type-mismatch-gce.rs:9:14
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   |              ^^^^^^^^^^^^ required by this const generic parameter in `Outer`
+
+error: the constant `B` is not of type `i64`
+  --> $DIR/const-eval-type-mismatch-gce.rs:16:15
+   |
+LL |     fn i() -> Self {
+   |               ^^^^ expected `i64`, found `usize`
+   |
+note: required by a const generic parameter in `Outer`
+  --> $DIR/const-eval-type-mismatch-gce.rs:9:28
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   |                            ^^^^^^^^^^^^ required by this const generic parameter in `Outer`
+
+error[E0308]: mismatched types
+  --> $DIR/const-eval-type-mismatch-gce.rs:19:9
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   | ---------------------------------------- `Outer` defines a struct constructor here, which should be called
+...
+LL |     fn i() -> Self {
+   |               ---- expected `Outer<A, B>` because of return type
+...
+LL |         Self
+   |         ^^^^ expected `Outer<A, B>`, found struct constructor
+   |
+   = note:          expected struct `Outer<A, B>`
+           found struct constructor `fn() -> Outer<A, B> {Outer::<A, B>}`
+help: use parentheses to construct this tuple struct
+   |
+LL |         Self()
+   |             ++
+
+error: the constant `A` is not of type `i64`
+  --> $DIR/const-eval-type-mismatch-gce.rs:19:9
+   |
+LL |         Self
+   |         ^^^^ expected `i64`, found `usize`
+   |
+note: required by a const generic parameter in `Outer`
+  --> $DIR/const-eval-type-mismatch-gce.rs:9:14
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   |              ^^^^^^^^^^^^ required by this const generic parameter in `Outer`
+
+error: the constant `B` is not of type `i64`
+  --> $DIR/const-eval-type-mismatch-gce.rs:19:9
+   |
+LL |         Self
+   |         ^^^^ expected `i64`, found `usize`
+   |
+note: required by a const generic parameter in `Outer`
+  --> $DIR/const-eval-type-mismatch-gce.rs:9:28
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   |                            ^^^^^^^^^^^^ required by this const generic parameter in `Outer`
+
+error[E0599]: no associated function or constant named `o` found for struct `Outer<A, B>` in the current scope
+  --> $DIR/const-eval-type-mismatch-gce.rs:27:20
+   |
+LL | struct Outer<const A: i64, const B: i64>();
+   | ---------------------------------------- associated function or constant `o` not found for this struct
+...
+LL |     Outer::<1, 1>::o();
+   |                    ^ associated function or constant not found in `Outer<1, 1>`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.
