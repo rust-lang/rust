@@ -14,8 +14,6 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
     None
 }
 
-pub const HAS_PREFIXES: bool = false;
-
 /// Make a POSIX path absolute without changing its semantics.
 pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     // This is mostly a wrapper around collecting `Path::components`, with
@@ -58,9 +56,5 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
 }
 
 pub(crate) fn is_absolute(path: &Path) -> bool {
-    if cfg!(any(unix, target_os = "hermit", target_os = "wasi", target_os = "motor")) {
-        path.has_root()
-    } else {
-        path.has_root() && path.prefix().is_some()
-    }
+    path.has_root()
 }
