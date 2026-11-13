@@ -1981,7 +1981,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
         let generics = match item.kind {
             hir::ItemKind::Struct(_, generics, _)
             | hir::ItemKind::Enum(_, generics, _)
-            | hir::ItemKind::Union(_, generics, _) => generics,
+            | hir::ItemKind::Union(_, generics, _)
+            | hir::ItemKind::Const(_, generics, _, _) => generics,
             hir::ItemKind::TyAlias(_, generics, _) if cx.tcx.type_alias_is_checked(def_id) => {
                 generics
             }
