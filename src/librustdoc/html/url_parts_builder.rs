@@ -115,6 +115,15 @@ impl UrlPartsBuilder {
     }
 }
 
+impl From<String> for UrlPartsBuilder {
+    fn from(mut buf: String) -> Self {
+        if buf.ends_with('/') {
+            buf.pop();
+        }
+        Self { buf }
+    }
+}
+
 /// This is just a guess at the average length of a URL part,
 /// used for [`String::with_capacity`] calls in the [`FromIterator`]
 /// and [`Extend`] impls.
