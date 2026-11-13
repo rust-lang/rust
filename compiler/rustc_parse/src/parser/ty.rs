@@ -1101,6 +1101,42 @@ impl<'a> Parser<'a> {
     fn parse_dyn_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
         self.bump(); // `dyn`
 
+        if self.token == token::OpenBrace
+            && self.may_recover()
+            && self.look_ahead(1, |t| t.is_path_start() || t.is_lifetime())
+        {
+            let snapshot = self.create_snapshot_for_diagnostic();
+
+            // Recover from `&dyn {Trait + Other}`.
+            let dyn_span = self.prev_token.span;
+            let open_span = self.token.span;
+            self.bump(); // `{`
+
+            // Empty bounds should be handled outside this branch
+            match self.parse_generic_bounds() {
+                Ok(bounds) if !bounds.is_empty() && self.token == token::CloseBrace => {
+                    let close_span = self.token.span;
+                    self.bump(); // `}`
+
+                    self.dcx().emit_err(diagnostics::IncorrectBracesTraitBounds {
+                        span: vec![open_span, close_span],
+                        sugg: diagnostics::IncorrectBracesTraitBoundsSugg {
+                            wrong_span: dyn_span.shrink_to_hi().to(open_span),
+                            new_open_span: dyn_span.shrink_to_lo(),
+                            new_close_span: close_span,
+                        },
+                    });
+
+                    return Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn));
+                }
+                Ok(_) => self.restore_snapshot(snapshot),
+                Err(err) => {
+                    err.cancel();
+                    self.restore_snapshot(snapshot);
+                }
+            };
+        }
+
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;

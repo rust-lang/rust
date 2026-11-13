@@ -1,0 +1,23 @@
+error: expected parameter name, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces-2015.rs:3:27
+   |
+LL | fn path_named_dyn(_: &dyn {Send + Sync}) {}
+   |                           ^ expected parameter name
+
+error: expected one of `!`, `(`, `)`, `,`, `::`, or `<`, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces-2015.rs:3:27
+   |
+LL | fn path_named_dyn(_: &dyn {Send + Sync}) {}
+   |                          -^ expected one of `!`, `(`, `)`, `,`, `::`, or `<`
+   |                          |
+   |                          help: missing `,`
+
+error[E0425]: cannot find type `dyn` in this scope
+  --> $DIR/dyn-trait-bounds-in-braces-2015.rs:3:23
+   |
+LL | fn path_named_dyn(_: &dyn {Send + Sync}) {}
+   |                       ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

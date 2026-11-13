@@ -1,0 +1,35 @@
+error: expected parameter name, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces-not-bounds.rs:6:28
+   |
+LL | fn comma_in_braces(_: &dyn {Send, Sync}) {}
+   |                            ^ expected parameter name
+
+error: expected one of `!`, `(`, `)`, `,`, `?`, `[`, `async`, `const`, `for`, `use`, `~`, lifetime, or path, found `{`
+  --> $DIR/dyn-trait-bounds-in-braces-not-bounds.rs:6:28
+   |
+LL | fn comma_in_braces(_: &dyn {Send, Sync}) {}
+   |                           -^ expected one of 13 possible tokens
+   |                           |
+   |                           help: missing `,`
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/dyn-trait-bounds-in-braces-not-bounds.rs:3:24
+   |
+LL | fn body_after_dyn() -> dyn { 0 }
+   |                        ^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/dyn-trait-bounds-in-braces-not-bounds.rs:6:24
+   |
+LL | fn comma_in_braces(_: &dyn {Send, Sync}) {}
+   |                        ^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/dyn-trait-bounds-in-braces-not-bounds.rs:11:6
+   |
+LL | impl dyn {}
+   |      ^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

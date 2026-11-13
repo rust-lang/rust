@@ -1,0 +1,38 @@
+error: incorrect braces around trait bounds
+  --> $DIR/dyn-trait-bounds-in-braces.rs:3:24
+   |
+LL | fn auto_traits(_: &dyn {Send + Sync}) {}
+   |                        ^           ^
+   |
+help: fix the braces
+   |
+LL - fn auto_traits(_: &dyn {Send + Sync}) {}
+LL + fn auto_traits(_: &(dyn Send + Sync)) {}
+   |
+
+error: incorrect braces around trait bounds
+  --> $DIR/dyn-trait-bounds-in-braces.rs:6:25
+   |
+LL | fn single_bound(_: &dyn {Send}) {}
+   |                         ^    ^
+   |
+help: fix the braces
+   |
+LL - fn single_bound(_: &dyn {Send}) {}
+LL + fn single_bound(_: &(dyn Send)) {}
+   |
+
+error: incorrect braces around trait bounds
+  --> $DIR/dyn-trait-bounds-in-braces.rs:9:29
+   |
+LL | fn with_lifetime(_: Box<dyn {Send + 'static}>) {}
+   |                             ^              ^
+   |
+help: fix the braces
+   |
+LL - fn with_lifetime(_: Box<dyn {Send + 'static}>) {}
+LL + fn with_lifetime(_: Box<(dyn Send + 'static)>) {}
+   |
+
+error: aborting due to 3 previous errors
+

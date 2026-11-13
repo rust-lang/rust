@@ -4048,6 +4048,26 @@ pub(crate) struct IncorrectParensTraitBoundsSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag("incorrect braces around trait bounds")]
+pub(crate) struct IncorrectBracesTraitBounds {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg: IncorrectBracesTraitBoundsSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("fix the braces", applicability = "machine-applicable")]
+pub(crate) struct IncorrectBracesTraitBoundsSugg {
+    #[suggestion_part(code = " ")]
+    pub wrong_span: Span,
+    #[suggestion_part(code = "(")]
+    pub new_open_span: Span,
+    #[suggestion_part(code = ")")]
+    pub new_close_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("keyword `{$kw}` is written in the wrong case")]
 pub(crate) struct KwBadCase<'a> {
     #[primary_span]
