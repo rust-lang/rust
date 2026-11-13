@@ -1,5 +1,8 @@
 #![deny(improper_ctypes_definitions)]
 
+// Issue: https://github.com/rust-lang/rust/issues/113436
+// `()` in (fnptr!) return types and ADT fields should be safe
+
 #[repr(C)]
 pub struct Foo {
     a: u8,
@@ -20,8 +23,8 @@ pub struct Bar {
 }
 
 extern "C" fn bar(x: Bar) -> Bar {
-    //~^ ERROR `extern` fn uses type `NotSafe`, which is not FFI-safe
-    //~^^ ERROR `extern` fn uses type `NotSafe`, which is not FFI-safe
+    //~^ ERROR `extern` fn uses type `Bar`, which is not FFI-safe
+    //~^^ ERROR `extern` fn uses type `Bar`, which is not FFI-safe
     todo!()
 }
 

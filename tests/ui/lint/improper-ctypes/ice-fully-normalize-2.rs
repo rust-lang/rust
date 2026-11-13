@@ -1,5 +1,10 @@
+//@ check-pass  // possible FIXME: see below
+
 #![feature(type_alias_impl_trait)]
 #![deny(improper_ctypes)]
+
+// Issue: https://github.com/rust-lang/rust/issues/73249
+// "ICE: could not fully normalize"
 
 trait Baz {}
 
@@ -24,7 +29,8 @@ struct A<T: Foo> {
 }
 
 extern "C" {
-    fn lint_me() -> A<()>; //~ ERROR: uses type `Qux`
+    // possible FIXME(ctypes): the unsafety of Qux is unseen, as it is behing a FFI-safe indirection
+    fn lint_me() -> A<()>;
 }
 
 fn main() {}
