@@ -1,5 +1,6 @@
 error[E0453]: allow(unused_variables) incompatible with previous forbid
    |
+   = note: `allow` lint level was set on command line (`-A unused_variables`)
    = note: `forbid` lint level was set on command line (`-F unused`)
 
 error: aborting due to 1 previous error

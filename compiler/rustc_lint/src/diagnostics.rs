@@ -33,6 +33,9 @@ pub(crate) struct OverruledAttribute<'a> {
     pub overruled: Option<Span>,
     pub lint_level: &'a str,
     pub lint_name: LintName,
+    pub flag: &'static str,
+    #[note("`{$lint_level}` lint level was set on command line (`{$flag} {$lint_name}`)")]
+    pub command_line: bool,
     #[subdiagnostic]
     pub sub: OverruledAttributeSub,
 }

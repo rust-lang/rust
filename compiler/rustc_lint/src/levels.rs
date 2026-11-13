@@ -619,6 +619,8 @@ where
                     overruled: span,
                     lint_level: level.as_str(),
                     lint_name: src.name(),
+                    flag: if span.is_none() { level.to_cmd_flag() } else { "" },
+                    command_line: span.is_none(),
                     sub,
                 });
             } else {
