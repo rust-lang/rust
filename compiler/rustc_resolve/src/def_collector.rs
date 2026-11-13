@@ -2,6 +2,7 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
+use rustc_attr_ir::LangItem;
 use rustc_attr_ir::target::AstTarget;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_expand::expand::AstFragment;

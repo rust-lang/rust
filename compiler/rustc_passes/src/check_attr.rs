@@ -646,9 +646,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Some(directive) = directive {
             if let Node::Item(Item {
                 kind:
-                    ItemKind::Struct(_, generics, _)
-                    | ItemKind::Enum(_, generics, _)
-                    | ItemKind::Union(_, generics, _),
+                    ItemKind::Struct(_, generics, _, _)
+                    | ItemKind::Enum(_, generics, _, _)
+                    | ItemKind::Union(_, generics, _, _),
                 ..
             }) = self.tcx.hir_node(hir_id)
             {
@@ -680,9 +680,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Some(directive) = directive {
             if let Node::Item(Item {
                 kind:
-                    ItemKind::Struct(_, generics, _)
-                    | ItemKind::Enum(_, generics, _)
-                    | ItemKind::Union(_, generics, _),
+                    ItemKind::Struct(_, generics, _, _)
+                    | ItemKind::Enum(_, generics, _, _)
+                    | ItemKind::Union(_, generics, _, _),
                 ..
             }) = self.tcx.hir_node(hir_id)
             {
@@ -833,7 +833,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
         match item.kind {
-            ItemKind::Enum(_, generics, _) | ItemKind::Struct(_, generics, _)
+            ItemKind::Enum(_, generics, _, _) | ItemKind::Struct(_, generics, _, _)
                 if generics.params.len() != 0 => {}
             ItemKind::Trait { generics, items, .. }
                 if generics.params.len() != 0
@@ -1490,7 +1490,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 }
 
 fn is_c_like_enum(item: &Item<'_>) -> bool {
-    if let ItemKind::Enum(_, _, ref def) = item.kind {
+    if let ItemKind::Enum(_, _, ref def, _) = item.kind {
         for variant in def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }

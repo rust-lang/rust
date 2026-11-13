@@ -2,10 +2,10 @@ use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_attr_ir::target::AstTarget;
-use rustc_attr_ir::{AttributeKind, EiiImplResolution, find_attr};
+use rustc_attr_ir::{AttributeKind, EiiImplResolution, LangItem, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin};
+use rustc_hir::{self as hir, DropImpl, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin};
 use rustc_middle::ty::data_structures::IndexMap;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -370,7 +370,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     },
                 );
-                hir::ItemKind::Enum(ident, generics, hir::EnumDef { variants })
+                let drop_impl = DropImpl::HasNoImpl;
+                hir::ItemKind::Enum(ident, generics, hir::EnumDef { variants }, drop_impl)
             }
             ItemKind::Struct(ident, generics, struct_def) => {
                 let ident = self.lower_ident(*ident);
@@ -379,7 +380,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, i, struct_def),
                 );
-                hir::ItemKind::Struct(ident, generics, struct_def)
+
+                let drop_impl = self.drop_impl_of_ty(hir_id);
+
+                hir::ItemKind::Struct(ident, generics, struct_def, drop_impl)
             }
             ItemKind::Union(ident, generics, vdata) => {
                 let ident = self.lower_ident(*ident);
@@ -388,7 +392,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, i, vdata),
                 );
-                hir::ItemKind::Union(ident, generics, vdata)
+
+                let drop_impl = self.drop_impl_of_ty(hir_id);
+
+                hir::ItemKind::Union(ident, generics, vdata, drop_impl)
             }
             ItemKind::Impl(Impl {
                 generics: ast_generics,
@@ -2173,6 +2180,40 @@ impl<'hir> LoweringContext<'_, 'hir> {
             params: generics.params,
             lhs,
             rhs,
+        }
+    }
+
+    fn drop_impl_of_ty(&self, hir_id: HirId) -> DropImpl {
+        let Some(drop) = self.tcx.lang_items().get(LangItem::Drop) else {
+            return DropImpl::HasNoImpl;
+        };
+
+        let impl_constness = self
+            .tcx
+            .resolutions(())
+            .trait_impls
+            .get(&drop)
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .copied()
+            .find_map(|trait_impl_id| {
+                let trait_impl_id = self.tcx.local_def_id_to_hir_id(trait_impl_id);
+                let impl_ = self.tcx.hir_node(trait_impl_id).expect_item().expect_impl();
+
+                if let rustc_hir::TyKind::Path(path) = impl_.self_ty.kind
+                    && let rustc_hir::QPath::Resolved(None, path) = path
+                    && path.res.def_id() == hir_id.owner.to_def_id()
+                {
+                    Some(impl_.constness)
+                } else {
+                    None
+                }
+            });
+
+        match impl_constness {
+            Some(constness) => DropImpl::HasImpl(constness),
+            None => DropImpl::HasNoImpl,
         }
     }
 }

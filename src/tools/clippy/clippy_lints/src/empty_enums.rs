@@ -53,7 +53,7 @@ declare_lint_pass!(EmptyEnums => [EMPTY_ENUMS]);
 
 impl LateLintPass<'_> for EmptyEnums {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if let ItemKind::Enum(.., def) = item.kind
+        if let ItemKind::Enum(.., def, _) = item.kind
             && def.variants.is_empty()
             && !span_contains_cfg(cx, item.span)
         {

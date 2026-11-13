@@ -13,9 +13,9 @@ use rustc_data_structures::stable_hash::{
     StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::Constness;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;
@@ -69,9 +69,20 @@ bitflags::bitflags! {
         /// Note that this is not the only type with "maybe dangling" semantics!
         /// Use `ty.is_like_maybe_dangling()` to check for that.
         const IS_MAYBE_DANGLING             = 1 << 14;
+        /// Whether the ADT has a `Drop` impl or not.
+        const HAS_DROP_IMPL                 = 1 << 15;
+        /// Whether the ADT has a `const` `Drop` impl or not.
+        const HAS_CONST_DROP_IMPL           = 1 << 16;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
+
+/// Allows representing whether a type has a `Drop` impl or not.
+#[derive(Clone, Copy, Debug, PartialEq, StableHash, TyEncodable, TyDecodable)]
+pub enum DropImpl {
+    HasImpl(Constness),
+    HasNoImpl,
+}
 
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///
@@ -327,11 +338,14 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     }
 
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
-        Some(match tcx.constness(self.destructor(tcx)?.did) {
-            hir::Constness::Const { always: true } => unimplemented!("FIXME(comptime)"),
-            hir::Constness::Const { always: false } => AdtDestructorKind::Const,
-            hir::Constness::NotConst => AdtDestructorKind::NotConst,
-        })
+        match tcx.drop_impl(self.did()) {
+            DropImpl::HasImpl(Constness::NotConst) => Some(AdtDestructorKind::NotConst),
+            DropImpl::HasImpl(Constness::Const { always: false }) => Some(AdtDestructorKind::Const),
+            DropImpl::HasNoImpl => None,
+            DropImpl::HasImpl(Constness::Const { always: true }) => {
+                unimplemented!("FIXME(comptime)")
+            }
+        }
     }
 }
 
@@ -371,6 +385,7 @@ impl AdtDefData {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, VariantDef>,
         repr: ReprOptions,
+        drop_impl: DropImpl,
     ) -> Self {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
@@ -408,6 +423,15 @@ impl AdtDefData {
             Some(LangItem::FieldRepresentingType) => AdtFlags::IS_FIELD_REPRESENTING_TYPE,
             _ => AdtFlags::NO_ADT_FLAGS,
         };
+
+        if let DropImpl::HasImpl(constness) = drop_impl {
+            match constness {
+                Constness::Const { always: false } => flags |= AdtFlags::HAS_CONST_DROP_IMPL,
+                Constness::NotConst => flags |= AdtFlags::HAS_DROP_IMPL,
+
+                Constness::Const { always: true } => bug!("FIXME(comptime)"),
+            }
+        }
 
         AdtDefData { did, variants, flags, repr }
     }

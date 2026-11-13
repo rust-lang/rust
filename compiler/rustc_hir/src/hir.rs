@@ -4443,14 +4443,14 @@ impl<'hir> Item<'hir> {
         expect_ty_alias, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>),
             ItemKind::TyAlias(ident, generics, ty), (*ident, generics, ty);
 
-        expect_enum, (Ident, &'hir Generics<'hir>, &EnumDef<'hir>),
-            ItemKind::Enum(ident, generics, def), (*ident, generics, def);
+        expect_enum, (Ident, &'hir Generics<'hir>, &EnumDef<'hir>, DropImpl),
+            ItemKind::Enum(ident, generics, def, has_drop), (*ident, generics, def, *has_drop);
 
-        expect_struct, (Ident, &'hir Generics<'hir>, &VariantData<'hir>),
-            ItemKind::Struct(ident, generics, data), (*ident, generics, data);
+        expect_struct, (Ident, &'hir Generics<'hir>, &VariantData<'hir>, DropImpl),
+            ItemKind::Struct(ident, generics, data, has_drop), (*ident, generics, data, *has_drop);
 
-        expect_union, (Ident, &'hir Generics<'hir>, &VariantData<'hir>),
-            ItemKind::Union(ident, generics, data), (*ident, generics, data);
+        expect_union, (Ident, &'hir Generics<'hir>, &VariantData<'hir>, DropImpl),
+            ItemKind::Union(ident, generics, data, has_drop), (*ident, generics, data, *has_drop);
 
         expect_trait,
             (
@@ -4721,11 +4721,11 @@ pub enum ItemKind<'hir> {
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> { C<A>, D<B> }`.
-    Enum(Ident, &'hir Generics<'hir>, EnumDef<'hir>),
+    Enum(Ident, &'hir Generics<'hir>, EnumDef<'hir>, DropImpl),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
-    Struct(Ident, &'hir Generics<'hir>, VariantData<'hir>),
+    Struct(Ident, &'hir Generics<'hir>, VariantData<'hir>, DropImpl),
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
-    Union(Ident, &'hir Generics<'hir>, VariantData<'hir>),
+    Union(Ident, &'hir Generics<'hir>, VariantData<'hir>, DropImpl),
     /// A trait definition.
     Trait {
         impl_restriction: &'hir ImplRestriction<'hir>,
@@ -4803,9 +4803,9 @@ impl ItemKind<'_> {
             ItemKind::Fn { generics, .. }
             | ItemKind::TyAlias(_, generics, _)
             | ItemKind::Const(_, generics, _, _)
-            | ItemKind::Enum(_, generics, _)
-            | ItemKind::Struct(_, generics, _)
-            | ItemKind::Union(_, generics, _)
+            | ItemKind::Enum(_, generics, _, _)
+            | ItemKind::Struct(_, generics, _, _)
+            | ItemKind::Union(_, generics, _, _)
             | ItemKind::Trait { generics, .. }
             | ItemKind::TraitAlias(_, _, generics, _)
             | ItemKind::Impl(Impl { generics, .. })
@@ -4820,13 +4820,15 @@ impl ItemKind<'_> {
                 _,
                 _,
                 VariantData::Struct { recovered: ast::Recovered::Yes(_), .. },
+                _,
             ) => true,
             ItemKind::Union(
                 _,
                 _,
                 VariantData::Struct { recovered: ast::Recovered::Yes(_), .. },
+                _,
             ) => true,
-            ItemKind::Enum(_, _, def) => def.variants.iter().any(|v| match v.data {
+            ItemKind::Enum(_, _, def, _) => def.variants.iter().any(|v| match v.data {
                 VariantData::Struct { recovered: ast::Recovered::Yes(_), .. } => true,
                 _ => false,
             }),
@@ -4907,6 +4909,12 @@ pub struct TraitCandidate<'hir> {
     // If this is set to true and the trait is used as a result of method lookup, this
     // lint is thrown.
     pub lint_ambiguous: bool,
+}
+
+#[derive(Copy, Clone, Debug, StableHash)]
+pub enum DropImpl {
+    HasImpl(Constness),
+    HasNoImpl,
 }
 
 #[derive(Copy, Clone, Debug, StableHash)]

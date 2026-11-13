@@ -59,7 +59,7 @@ impl PubUnderscoreFields {
 impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         // This lint only pertains to structs.
-        let ItemKind::Struct(_, _, variant_data) = &item.kind else {
+        let ItemKind::Struct(_, _, variant_data, _) = &item.kind else {
             return;
         };
 

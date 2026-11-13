@@ -256,6 +256,15 @@ fixed_size_enum! {
     }
 }
 
+fixed_size_enum! {
+    DropImpl {
+        ( HasImpl(hir::Constness::NotConst)   )
+        ( HasImpl(hir::Constness::Const { always: false })   )
+        ( HasImpl(hir::Constness::Const { always: true })   )
+        ( HasNoImpl )
+    }
+}
+
 // We directly encode RawDefId because using a `LazyValue` would incur a 50% overhead in the worst case.
 impl FixedSizeEncoding for Option<RemappedRawDefId> {
     type ByteArray = [u8; 8];

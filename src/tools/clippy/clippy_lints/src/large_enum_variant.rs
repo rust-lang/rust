@@ -73,7 +73,7 @@ impl LargeEnumVariant {
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        if let ItemKind::Enum(ident, _, ref def) = item.kind
+        if let ItemKind::Enum(ident, _, ref def, _) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && let ty::Adt(adt, subst) = ty.kind()
             && adt.variants().len() > 1

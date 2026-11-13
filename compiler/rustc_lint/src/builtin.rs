@@ -460,21 +460,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             return;
         }
         let (def, ty) = match item.kind {
-            hir::ItemKind::Struct(_, generics, _) => {
+            hir::ItemKind::Struct(_, generics, _, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
                 (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
-            hir::ItemKind::Union(_, generics, _) => {
+            hir::ItemKind::Union(_, generics, _, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
                 (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
-            hir::ItemKind::Enum(_, generics, _) => {
+            hir::ItemKind::Enum(_, generics, _, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
@@ -606,9 +606,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         }
 
         let is_generic = match item.kind {
-            hir::ItemKind::Struct(_, generics, _)
-            | hir::ItemKind::Union(_, generics, _)
-            | hir::ItemKind::Enum(_, generics, _) => !generics.params.is_empty(),
+            hir::ItemKind::Struct(_, generics, _, _)
+            | hir::ItemKind::Union(_, generics, _, _)
+            | hir::ItemKind::Enum(_, generics, _, _) => !generics.params.is_empty(),
             _ => return,
         };
 
@@ -1878,9 +1878,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
         let def_id = item.owner_id.def_id;
 
         let generics = match item.kind {
-            hir::ItemKind::Struct(_, generics, _)
-            | hir::ItemKind::Enum(_, generics, _)
-            | hir::ItemKind::Union(_, generics, _) => generics,
+            hir::ItemKind::Struct(_, generics, _, _)
+            | hir::ItemKind::Enum(_, generics, _, _)
+            | hir::ItemKind::Union(_, generics, _, _) => generics,
             hir::ItemKind::TyAlias(_, generics, _) if cx.tcx.type_alias_is_checked(def_id) => {
                 generics
             }

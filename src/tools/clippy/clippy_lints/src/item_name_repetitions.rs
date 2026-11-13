@@ -221,13 +221,13 @@ impl ItemNameRepetitions {
                 Some(ident)
             },
 
-            ItemKind::Enum(ident, _, def) => {
+            ItemKind::Enum(ident, _, def, _) => {
                 if !ident.span.in_external_macro(cx.tcx.sess.source_map()) {
                     self.check_variants(cx, item, &def);
                 }
                 Some(ident)
             },
-            ItemKind::Struct(ident, _, data) => {
+            ItemKind::Struct(ident, _, data, _) => {
                 if let VariantData::Struct { fields, .. } = data
                     && !ident.span.in_external_macro(cx.tcx.sess.source_map())
                 {

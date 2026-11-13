@@ -122,6 +122,7 @@ trivially_parameterized_over_tcx! {
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
     rustc_middle::mir::ConstQualifs,
     rustc_middle::mir::ConstValue,
+    rustc_middle::ty::DropImpl,
     rustc_middle::ty::AnonConstKind,
     rustc_middle::ty::AssocContainer,
     rustc_middle::ty::AsyncDestructor,
@@ -236,6 +237,7 @@ trivial_encode_from! {
     rustc_hir::Safety,
     rustc_hir::def::DefKind,
     rustc_middle::ty::Asyncness,
+    rustc_middle::ty::DropImpl,
     // tidy-alphabetical-end
 }
 

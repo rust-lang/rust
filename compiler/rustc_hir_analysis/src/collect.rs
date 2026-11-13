@@ -660,9 +660,9 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                         .tcx
                         .hir_expect_item(self.tcx.hir_get_parent_item(self.hir_id()).def_id);
                     match &item.kind {
-                        hir::ItemKind::Enum(_, generics, _)
-                        | hir::ItemKind::Struct(_, generics, _)
-                        | hir::ItemKind::Union(_, generics, _) => {
+                        hir::ItemKind::Enum(_, generics, _, _)
+                        | hir::ItemKind::Struct(_, generics, _, _)
+                        | hir::ItemKind::Union(_, generics, _, _) => {
                             let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
                             let (lt_sp, sugg) = match generics.params {
                                 [] => (generics.span, format!("<{lt_name}>")),
@@ -1059,8 +1059,8 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
     };
 
     let repr = tcx.repr_options_of_def(def_id);
-    let (kind, variants) = match &item.kind {
-        ItemKind::Enum(_, _, def) => {
+    let (kind, variants, drop_impl) = match &item.kind {
+        ItemKind::Enum(_, _, def, drop_impl) => {
             let mut distance_from_explicit = 0;
             let variants = def
                 .variants
@@ -1086,9 +1086,9 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                 })
                 .collect();
 
-            (AdtKind::Enum, variants)
+            (AdtKind::Enum, variants, *drop_impl)
         }
-        ItemKind::Struct(ident, _, def) | ItemKind::Union(ident, _, def) => {
+        ItemKind::Struct(ident, _, def, drop_impl) | ItemKind::Union(ident, _, def, drop_impl) => {
             let adt_kind = match item.kind {
                 ItemKind::Struct(..) => AdtKind::Struct,
                 _ => AdtKind::Union,
@@ -1104,11 +1104,17 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
             ))
             .collect();
 
-            (adt_kind, variants)
+            (adt_kind, variants, *drop_impl)
         }
         _ => bug!("{:?} is not an ADT", item.owner_id.def_id),
     };
-    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
+
+    let drop_impl = match drop_impl {
+        hir::DropImpl::HasImpl(constness) => ty::DropImpl::HasImpl(constness),
+        hir::DropImpl::HasNoImpl => ty::DropImpl::HasNoImpl,
+    };
+
+    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr, drop_impl)
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {

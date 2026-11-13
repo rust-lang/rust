@@ -690,7 +690,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let generics = match tcx.hir_node_by_def_id(parent_item) {
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Struct(_, generics, variant),
+                kind: hir::ItemKind::Struct(_, generics, variant, _),
                 ..
             }) => {
                 if !variant.fields().iter().any(|field| field.hir_id == parent_hir_id) {
@@ -698,7 +698,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
                 generics
             }
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, generics, def), .. }) => {
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Enum(_, generics, def, _), ..
+            }) => {
                 if !def
                     .variants
                     .iter()
@@ -823,7 +825,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::Node::Field(field) => {
                 // Enums can't have unsized fields, fields can only have an unsized tail field.
                 if let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(_, _, variant), ..
+                    kind: hir::ItemKind::Struct(_, _, variant, _),
+                    ..
                 }) = tcx.parent_hir_node(field.hir_id)
                     && variant
                         .fields()

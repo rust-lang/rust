@@ -254,6 +254,7 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_middle::ty::ConstConditions<'_>,
     rustc_middle::ty::GenericArgs<'_>,
     rustc_middle::ty::GenericClauses<'_>,
+    rustc_middle::ty::DropImpl,
     rustc_middle::ty::ImplTraitHeader<'_>,
     rustc_middle::ty::ParamEnv<'_>,
     rustc_middle::ty::SymbolName<'_>,

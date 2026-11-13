@@ -1103,6 +1103,14 @@ impl CrateMetadata {
             .unwrap_or_else(|| self.missing("def_kind", item_id))
     }
 
+    fn drop_impl(&self, item_id: DefIndex) -> DropImpl {
+        self.root
+            .tables
+            .drop_impl
+            .get(self, item_id)
+            .unwrap_or_else(|| self.missing("drop_impl", item_id))
+    }
+
     fn get_span(&self, tcx: TyCtxt<'_>, index: DefIndex) -> Span {
         self.root
             .tables
@@ -1223,11 +1231,14 @@ impl CrateMetadata {
 
         variants.sort_by_key(|(idx, _)| *idx);
 
+        let drop_impl = self.drop_impl(item_id);
+
         tcx.mk_adt_def(
             did,
             adt_kind,
             variants.into_iter().map(|(_, variant)| variant).collect(),
             repr,
+            drop_impl,
         )
     }
 

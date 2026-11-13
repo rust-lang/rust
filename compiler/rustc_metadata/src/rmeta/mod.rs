@@ -42,7 +42,7 @@ use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, DropImpl, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
@@ -666,6 +666,7 @@ define_tables! {
     visibility: Table<LazyValue<ty::Visibility<LocalDefId>>>,
     def_span: Table<LazyValue<Span>>,
     def_ident_span: Table<LazyValue<Span>>,
+    drop_impl: Table<DropImpl>,
     lookup_stability: Table<LazyValue<Stability>>,
     lookup_const_stability: Table<LazyValue<ConstStability>>,
     lookup_default_body_stability: Table<LazyValue<DefaultBodyStability>>,

@@ -526,6 +526,9 @@ pub trait Visitor<'v>: Sized {
     ) -> Self::Result {
         walk_test_binder_bound_type_constraint(self, bound_type)
     }
+    fn visit_drop_impl(&mut self, _drop_impl: DropImpl) -> Self::Result {
+        Self::Result::output()
+    }
 
     /// Named `visit_ty_unambig` instead of `visit_unambig_ty` to aid in discovery
     /// by IDes when `v.visit_ty` is written.
@@ -608,10 +611,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_ty_unambig(ty));
         }
-        ItemKind::Enum(ident, ref generics, ref enum_definition) => {
+        ItemKind::Enum(ident, ref generics, ref enum_definition, drop_impl) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
+            // FIXME(scrabsha): i genuinely cannot tell whether i'm doing it right.
+            try_visit!(visitor.visit_drop_impl(drop_impl));
         }
         ItemKind::Impl(Impl { generics, of_trait, self_ty, items, constness: _ }) => {
             try_visit!(visitor.visit_generics(generics));
@@ -628,11 +633,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ty_unambig(self_ty));
             walk_list!(visitor, visit_impl_item_ref, items);
         }
-        ItemKind::Struct(ident, ref generics, ref struct_definition)
-        | ItemKind::Union(ident, ref generics, ref struct_definition) => {
+        ItemKind::Struct(ident, ref generics, ref struct_definition, drop_impl)
+        | ItemKind::Union(ident, ref generics, ref struct_definition, drop_impl) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_variant_data(struct_definition));
+            try_visit!(visitor.visit_drop_impl(drop_impl))
         }
         ItemKind::Trait {
             impl_restriction,

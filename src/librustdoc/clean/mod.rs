@@ -2977,7 +2977,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 ));
                 return ret;
             }
-            hir::ItemKind::Enum(_, generics, def) => ItemKind::Enum(Enum {
+            hir::ItemKind::Enum(_, generics, def, _) => ItemKind::Enum(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
@@ -2985,11 +2985,11 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
-            hir::ItemKind::Union(_, generics, variant_data) => ItemKind::Union(Union {
+            hir::ItemKind::Union(_, generics, variant_data, _) => ItemKind::Union(Union {
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            hir::ItemKind::Struct(_, generics, variant_data) => ItemKind::Struct(Struct {
+            hir::ItemKind::Struct(_, generics, variant_data, _) => ItemKind::Struct(Struct {
                 ctor_kind: variant_data.ctor_kind(),
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),

@@ -28,9 +28,9 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
-use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
+use rustc_middle::ty::{AdtFlags, AssocContainer, DropImpl, Flags};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
@@ -1835,6 +1835,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if let Some(destructor) = tcx.adt_async_destructor(local_def_id) {
             self.table_writer().adt_async_destructor(local_def_id, destructor);
         }
+
+        self.table_writer().drop_impl(local_def_id, tcx.drop_impl(def_id));
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2864,6 +2866,18 @@ pub(crate) fn provide(providers: &mut Providers) {
             tcx.resolutions(()).doc_link_traits_in_scope.get(&def_id).unwrap_or_else(|| {
                 span_bug!(tcx.def_span(def_id), "no traits in scope for a doc link")
             })
+        },
+        drop_impl: |tcx, def_id| {
+            let flags = tcx.adt_def(def_id).flags();
+
+            if flags.contains(AdtFlags::HAS_DROP_IMPL) {
+                DropImpl::HasImpl(rustc_hir::Constness::NotConst)
+            } else if flags.contains(AdtFlags::HAS_CONST_DROP_IMPL) {
+                // FIXME(reflection):
+                DropImpl::HasImpl(rustc_hir::Constness::Const { always: false })
+            } else {
+                DropImpl::HasNoImpl
+            }
         },
 
         ..*providers
