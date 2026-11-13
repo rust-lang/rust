@@ -2478,12 +2478,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             let mut r = Ok(());
 
             let mut validate_and = |and: &And<TyCtxt<'_>, _>| {
-                for c in and.iter() {
+                for (c, span) in and.iter() {
                     match c {
-                        LeafRegionConstraint::Ambiguity(_)
+                        LeafRegionConstraint::Ambiguity
                         | LeafRegionConstraint::RegionOutlives(..)
                         | LeafRegionConstraint::AliasTyOutlivesViaEnv(..) => (), // OK
-                        LeafRegionConstraint::PlaceholderTyOutlives(ty, _, span) => {
+                        LeafRegionConstraint::PlaceholderTyOutlives(ty, _) => {
                             // we can't check this during lowering, because the ty is a ty::Bound that gets
                             // instantiated with a placeholder when entering the containing forall.
                             if let ty::Placeholder(_) | ty::Param(_) = ty.kind() {
@@ -2607,18 +2607,19 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         expected: &SolverRegionConstraint<'tcx>,
         actual: &SolverRegionConstraint<'tcx>,
     ) {
-        let span_of_and =
-            |c: &And<_, _>| c.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span));
+        let span_of_and = |c: &And<_, _>| {
+            c.iter().map(|(_, span)| *span).reduce(|span: Span, acc: Span| acc.to(span))
+        };
 
         let span_of_or = |c: &Or<_, _>| {
-            c.iter().flat_map(|and| span_of_and(and)).reduce(|span, acc| acc.to(span))
+            c.iter().flat_map(|and| span_of_and(and)).reduce(|span, acc: Span| acc.to(span))
         };
 
         let check_leaf_constraint =
-            |expected: &LeafRegionConstraint<_, _>, actual: &LeafRegionConstraint<_, _>| {
-                if let LeafRegionConstraint::AliasTyOutlivesViaEnv(expected, expected_span) =
-                    expected
-                    && let LeafRegionConstraint::AliasTyOutlivesViaEnv(actual, actual_span) = actual
+            |(expected, expected_span): &(LeafRegionConstraint<_>, Span),
+             (actual, actual_span): &(LeafRegionConstraint<_>, Span)| {
+                if let LeafRegionConstraint::AliasTyOutlivesViaEnv(expected) = expected
+                    && let LeafRegionConstraint::AliasTyOutlivesViaEnv(actual) = actual
                 {
                     let expected_anon = self.tcx().anonymize_bound_vars(expected.clone());
                     let actual_anon = self.tcx().anonymize_bound_vars(actual.clone());
@@ -2628,10 +2629,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                         Err((Some(*expected_span), Some(*actual_span)))
                     }
                 } else {
-                    if expected.clone().without_span() == actual.clone().without_span() {
+                    if expected == actual {
                         Ok(())
                     } else {
-                        Err((Some(expected.span()), Some(actual.span())))
+                        Err((Some(*expected_span), Some(*actual_span)))
                     }
                 }
             };
