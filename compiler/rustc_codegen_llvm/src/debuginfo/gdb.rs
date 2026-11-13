@@ -1,6 +1,6 @@
 // .debug_gdb_scripts binary section.
 
-use rustc_abi::Align;
+use rustc_abi::{Align, Size};
 use rustc_attr_ir::DebuggerVisualizerType;
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
@@ -63,7 +63,7 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
 
         unsafe {
             let section_contents = section_contents.as_slice();
-            let llvm_type = cx.type_array(cx.type_i8(), section_contents.len() as u64);
+            let llvm_type = cx.type_byte_array(Size::from_bytes(section_contents.len()));
 
             let section_var = cx
                 .define_global(section_var_name, llvm_type)
