@@ -6,6 +6,33 @@ mod float;
 mod lemire;
 mod parse;
 
+#[test]
+fn input_length() {
+    use core::num::imp::dec2flt::check_input_length;
+
+    assert_eq!(check_input_length(0), Ok(()));
+    assert_eq!(check_input_length(100), Ok(()));
+
+    #[cfg(target_pointer_width = "64")]
+    {
+        use core::num::FloatErrorKind;
+
+        let limit = 1usize << 50;
+        assert_eq!(check_input_length(limit - 1), Ok(()));
+        for len in [limit, limit + 1, usize::MAX] {
+            let error = check_input_length(len).unwrap_err();
+            assert_eq!(error.kind(), &FloatErrorKind::TooLong);
+            assert_eq!(
+                error.to_string(),
+                "ERROR: Your input is very large. Only input lengths < 2^50 are supported"
+            );
+        }
+    }
+
+    #[cfg(any(target_pointer_width = "16", target_pointer_width = "32"))]
+    assert_eq!(check_input_length(usize::MAX), Ok(()));
+}
+
 // Take a float literal, turn it into a string in various ways (that are all trusted
 // to be correct) and see if those strings are parsed back to the value of the literal.
 // Requires a *polymorphic literal*, i.e., one that can serve as f64 as well as f32.
