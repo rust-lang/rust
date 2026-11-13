@@ -1,3 +1,8 @@
+// Test file compiling a program with incrementals under dir `a` then renaming to dir `b` and
+// compiling again. Expects incremental reuse on the second invocation.
+//
+// Used to ensure incrementals aren't invalidated due to a dependency on the
+// filesystem path.
 //@ only-linux
 //@ needs-backends: llvm
 
