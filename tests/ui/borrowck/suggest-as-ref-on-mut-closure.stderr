@@ -16,6 +16,10 @@ help: consider calling `.as_mut()` to mutably borrow the value's contents
    |
 LL |     cb.as_mut().map(|cb| cb());
    |       +++++++++
+help: consider calling `.take()` to replace the value and return the old
+   |
+LL |     cb.take().map(|cb| cb());
+   |       +++++++
 help: you could `clone` the value and consume it, if the `&mut dyn FnMut(): Clone` trait bound could be satisfied
    |
 LL |     <Option<&mut dyn FnMut()> as Clone>::clone(&cb).map(|cb| cb());
