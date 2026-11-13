@@ -221,9 +221,11 @@ impl ParseSess {
         diagnostic: DecorateDiagCompat,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
+            let Some(buffered_lints) = buffered_lints.as_mut() else {
+                self.dcx.handle().delayed_bug("An early lint has been emitted after the early lints buffer was already emptied");
+                return
+            };
             buffered_lints
-                .as_mut()
-                .expect("Buffered lints are not stolen yet")
                 .push(BufferedEarlyLint { span, node_id, lint_id: LintId::of(lint), diagnostic });
         });
     }
