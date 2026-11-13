@@ -1,10 +1,10 @@
 error: cannot define duplicate `where` clauses on an item
-  --> $DIR/duplicate-where-clauses.rs:1:32
+  --> $DIR/duplicate-where-clauses.rs:1:26
    |
 LL | struct A where (): Sized where (): Sized {}
-   |                -               ^
-   |                |
-   |                previous `where` clause starts here
+   |          -----           ^^^^^
+   |          |
+   |          previous `where` clause starts here
    |
 help: consider joining the two `where` clauses into one
    |
@@ -13,12 +13,12 @@ LL + struct A where (): Sized, (): Sized {}
    |
 
 error: cannot define duplicate `where` clauses on an item
-  --> $DIR/duplicate-where-clauses.rs:4:30
+  --> $DIR/duplicate-where-clauses.rs:4:24
    |
 LL | fn b() where (): Sized where (): Sized {}
-   |              -               ^
-   |              |
-   |              previous `where` clause starts here
+   |        -----           ^^^^^
+   |        |
+   |        previous `where` clause starts here
    |
 help: consider joining the two `where` clauses into one
    |
@@ -27,12 +27,12 @@ LL + fn b() where (): Sized, (): Sized {}
    |
 
 error: cannot define duplicate `where` clauses on an item
-  --> $DIR/duplicate-where-clauses.rs:7:30
+  --> $DIR/duplicate-where-clauses.rs:7:24
    |
 LL | enum C where (): Sized where (): Sized {}
-   |              -               ^
-   |              |
-   |              previous `where` clause starts here
+   |        -----           ^^^^^
+   |        |
+   |        previous `where` clause starts here
    |
 help: consider joining the two `where` clauses into one
    |
@@ -41,12 +41,12 @@ LL + enum C where (): Sized, (): Sized {}
    |
 
 error: cannot define duplicate `where` clauses on an item
-  --> $DIR/duplicate-where-clauses.rs:10:33
+  --> $DIR/duplicate-where-clauses.rs:10:27
    |
 LL | struct D where (): Sized, where (): Sized {}
-   |                -                ^
-   |                |
-   |                previous `where` clause starts here
+   |          -----            ^^^^^
+   |          |
+   |          previous `where` clause starts here
    |
 help: consider joining the two `where` clauses into one
    |
@@ -55,12 +55,12 @@ LL + struct D where (): Sized, (): Sized {}
    |
 
 error: cannot define duplicate `where` clauses on an item
-  --> $DIR/duplicate-where-clauses.rs:13:31
+  --> $DIR/duplicate-where-clauses.rs:13:25
    |
 LL | fn e() where (): Sized, where (): Sized {}
-   |              -                ^
-   |              |
-   |              previous `where` clause starts here
+   |        -----            ^^^^^
+   |        |
+   |        previous `where` clause starts here
    |
 help: consider joining the two `where` clauses into one
    |
@@ -69,12 +69,12 @@ LL + fn e() where (): Sized, (): Sized {}
    |
 
 error: cannot define duplicate `where` clauses on an item
-  --> $DIR/duplicate-where-clauses.rs:16:31
+  --> $DIR/duplicate-where-clauses.rs:16:25
    |
 LL | enum F where (): Sized, where (): Sized {}
-   |              -                ^
-   |              |
-   |              previous `where` clause starts here
+   |        -----            ^^^^^
+   |        |
+   |        previous `where` clause starts here
    |
 help: consider joining the two `where` clauses into one
    |
@@ -82,5 +82,20 @@ LL - enum F where (): Sized, where (): Sized {}
 LL + enum F where (): Sized, (): Sized {}
    |
 
-error: aborting due to 6 previous errors
+error: cannot define duplicate `where` clauses on an item
+  --> $DIR/duplicate-where-clauses.rs:24:1
+   |
+LL | where (): Sized // OK
+   | ----- previous `where` clause starts here
+LL | where (): Sized;
+   | ^^^^^
+   |
+help: consider joining the two `where` clauses into one
+   |
+LL - where (): Sized // OK
+LL - where (): Sized;
+LL + where (): Sized, (): Sized;
+   |
+
+error: aborting due to 7 previous errors
 
