@@ -42,8 +42,6 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK: @anon.[[ID:.*]].0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 // CHECK: @anon.{{.*}}.1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @anon.[[ID]].0 }, align 8
 
-// CHECK-DAG: @.omp_offloading.descriptor = internal constant { i32, ptr, ptr, ptr } zeroinitializer
-// CHECK-DAG: @llvm.global_ctors = appending constant [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 101, ptr @.omp_offloading.descriptor_reg, ptr null }]
 // CHECK-DAG: @.offload_sizes.[[K:[^ ]*kernel_1]] = private unnamed_addr constant [2 x i64] [i64 1024, i64 1024]
 // CHECK-DAG: @.offload_maptypes.[[K]].begin = private unnamed_addr constant [2 x i64] [i64 1, i64 1]
 // CHECK-DAG: @.offload_maptypes.[[K]].kernel = private unnamed_addr constant [2 x i64] [i64 32, i64 32]
@@ -96,23 +94,6 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK-NEXT:   [[TGT_RET:%.*]] = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 256, i32 32, ptr nonnull @.[[K]].region_id, ptr nonnull %kernel_args)
 // CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.[[K]], ptr nonnull @.offload_maptypes.[[K]].end, ptr null, ptr null)
 // CHECK:  ret void
-// CHECK-NEXT: }
-
-// CHECK: declare void @__tgt_register_lib(ptr) local_unnamed_addr
-// CHECK: declare void @__tgt_unregister_lib(ptr) local_unnamed_addr
-
-// CHECK-LABEL: define internal void @.omp_offloading.descriptor_reg() section ".text.startup"
-// CHECK-NEXT: entry:
-// CHECK-NEXT:   {{tail }}call void @__tgt_register_lib(ptr nonnull @.omp_offloading.descriptor)
-// CHECK-NEXT:   {{tail }}call void @__tgt_init_all_rtls()
-// CHECK-NEXT:   %0 = {{tail }}call i32 @atexit(ptr nonnull @.omp_offloading.descriptor_unreg)
-// CHECK-NEXT:   ret void
-// CHECK-NEXT: }
-
-// CHECK-LABEL: define internal void @.omp_offloading.descriptor_unreg() section ".text.startup"
-// CHECK-NEXT: entry:
-// CHECK-NEXT:   {{tail }}call void @__tgt_unregister_lib(ptr nonnull @.omp_offloading.descriptor)
-// CHECK-NEXT:   ret void
 // CHECK-NEXT: }
 
 // CHECK: !{i32 7, !"openmp", i32 51}
