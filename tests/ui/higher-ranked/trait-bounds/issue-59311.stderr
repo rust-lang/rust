@@ -29,6 +29,14 @@ LL |     for<'a> &'a V: Trait + 'static,
    = note: ...but `Trait` is actually implemented for the type `&'0 V`, for some specific lifetime `'0`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error: higher-ranked lifetime error
+  --> $DIR/issue-59311.rs:17:9
+   |
+LL |     v.t(|| {});
+   |         ^^^^^
+   |
+   = note: could not prove `for<'a> &'a V: '_`
+
 error: implementation of `Trait` is not general enough
   --> $DIR/issue-59311.rs:17:9
    |
@@ -43,14 +51,6 @@ LL | where
 LL |     for<'a> &'a V: Trait + 'static,
    |                    ^^^^^ required by this bound in `crash`
    = note: ...but `Trait` is actually implemented for the type `&'0 V`, for some specific lifetime `'0`
-
-error: higher-ranked lifetime error
-  --> $DIR/issue-59311.rs:17:9
-   |
-LL |     v.t(|| {});
-   |         ^^^^^
-   |
-   = note: could not prove `for<'a> &'a V: '_`
 
 error: aborting due to 4 previous errors
 
