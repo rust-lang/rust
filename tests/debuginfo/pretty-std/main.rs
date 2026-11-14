@@ -22,33 +22,14 @@
 
 //@ gdb-command: run
 
-//@ gdb-command: print slice
-//@ gdb-check:$1 = &[i32](size=4) = {0, 1, 2, 3}
-
-//@ gdb-command: print vec
-//@ gdb-check:$2 = Vec(size=4) = {4, 5, 6, 7}
-
-//@ gdb-command: print str_slice
-//@ gdb-check:$3 = "IAMA string slice!"
-
-//@ gdb-command: print string
-//@ gdb-check:$4 = "IAMA string!"
-
-//@ gdb-command: print some
-//@ gdb-check:$5 = core::option::Option<i16>::Some(8)
-
-//@ gdb-command: print none
-//@ gdb-check:$6 = core::option::Option<i64>::None
-
-//@ gdb-command: print os_string
-//@ gdb-check:$7 = "IAMA OS string [...]"
-
-//@ gdb-command: print some_string
-//@ gdb-check:$8 = core::option::Option<alloc::string::String>::Some("IAMA optional string!")
-
-//@ gdb-command: set print elements 5
-//@ gdb-command: print some_string
-//@ gdb-check:$9 = core::option::Option<alloc::string::String>::Some("IAMA "...)
+//@ gdb-repr:slice
+//@ gdb-repr:vec
+//@ gdb-repr:str_slice
+//@ gdb-repr:string
+//@ gdb-repr:some
+//@ gdb-repr:none
+//@ gdb-repr:os_string
+//@ gdb-repr:some_string
 
 // === LLDB TESTS ==================================================================================
 

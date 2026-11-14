@@ -14,28 +14,34 @@ from ..common import (
     Variable,
 )
 
+try:
+    from gdb.printing import make_visualizer
+except:  # noqa: E722
+    # (Walnut356): The below was true for older versions of gdb I think? In newer versions, this
+    # workaround results in an error during import:
+    #    "pretty-printer already registered: builtin"
+    # so we just try both
 
-# For whatever reason, gdb doesn't export several of the modules it distributes. It adds its own
-# top level module to the search path, but that doesn't let us import the unexported parts inside
-# the `gdb` package. To sidestep that, we can manually invoke Python's import pipeline on the
-# desired file.
-def import_from_path(module_name, file_path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
+    # For whatever reason, gdb doesn't export several of the modules it distributes. It adds its own
+    # top level module to the search path, but that doesn't let us import the unexported parts
+    # inside the `gdb` package. To sidestep that, we can manually invoke Python's import pipeline on
+    # the desired file.
+    def import_from_path(module_name, file_path) -> ModuleType:
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        return module
 
+    gdb_printing = import_from_path("gdb_printing", gdb.PYTHONDIR + "/gdb/printing.py")
 
-gdb_printing = import_from_path("gdb_printing", gdb.PYTHONDIR + "/gdb/printing.py")
-
-make_visualizer: Callable[[gdb.Value], "gdb._PrettyPrinter"] = (
-    gdb_printing.make_visualizer
-)
-"""If a pretty printer exists that handles this value's type, returns the pretty printer
-instantiated with the given value. If none can be found, returns a "NoOp" pretty printer with the
-same interface as a custom pretty printer.
-"""
+    make_visualizer: Callable[[gdb.Value], "gdb._PrettyPrinter"] = (
+        gdb_printing.make_visualizer
+    )
+    """If a pretty printer exists that handles this value's type, returns the pretty printer
+    instantiated with the given value. If none can be found, returns a "NoOp" pretty printer with
+    the same interface as a custom pretty printer.
+    """
 
 
 # Same trick as from_lldb.TypeClass/from_lldb.BasicType
@@ -106,7 +112,7 @@ def type_from_gdb(ty: gdb.Type) -> Type:
 
 
 def field_from_gdb(field: gdb.Field) -> Field:
-    return Field(field.name, field.type.name, field.bitpos // 8)
+    return Field(field.name, get_type_name(field.type), field.bitpos // 8)
 
 
 def variable_from_gdb(var: gdb.Value) -> Variable:
@@ -177,7 +183,7 @@ def get_children(obj) -> List[Tuple[str, gdb.Value]]:
     if children is None:
         return []
 
-    return children()
+    return list(children())
 
 
 def child_from_gdb(ident: str, child: gdb.Value) -> Child:
