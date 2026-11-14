@@ -25,12 +25,12 @@ fn main() {
         .emit("obj")
         .run();
 
-    rfs::write(cwd().join("device.bin"), [0u8; 8]);
+    rfs::write(cwd().join("device.elf"), [0u8; 8]);
 
     rustc()
         .input("example.rs")
         .arg("-Zunstable-options")
-        .arg(format!("-Zoffload=Host={}", cwd().join("device.bin").display()))
+        .arg(format!("-Zoffload=Host={}", cwd().join("device.elf").display()))
         .arg("-Csymbol-mangling-version=v0")
         .arg("-Clto=fat")
         .emit("obj")
