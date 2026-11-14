@@ -216,15 +216,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
                 alloc
             }
-            GlobalAlloc::VTable(ty, dyn_ty) => {
-                self.tcx
-                    .global_alloc(self.tcx.vtable_allocation((
-                        ty,
-                        dyn_ty.principal().map(|principal| {
-                            self.tcx.instantiate_bound_regions_with_erased(principal)
-                        }),
-                    )))
-                    .unwrap_memory()
+            GlobalAlloc::VTable(self_ty, dyn_ty) => {
+                let principal = dyn_ty
+                    .principal()
+                    .map(|principal| self.tcx.instantiate_bound_regions_with_erased(principal));
+
+                return Ok(rustc_codegen_ssa::meth::get_vtable(self, self_ty, principal));
             }
         };
 

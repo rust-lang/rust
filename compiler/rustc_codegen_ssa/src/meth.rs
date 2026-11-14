@@ -142,7 +142,7 @@ fn dyn_trait_in_self<'tcx>(
 /// making an object `Foo<dyn Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T: Trait`.
 #[instrument(level = "debug", skip(cx))]
-pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
+pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     self_ty: Ty<'tcx>,
     trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
