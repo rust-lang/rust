@@ -25,6 +25,8 @@ path = "tests/lib.rs"
 [[test]]
 name = "c_str_alloc_error"
 path = "tests/c_str_alloc_error.rs"
+# libtest allocations may interfere with the test
+harness = false
 
 [[test]]
 name = "vec_deque_alloc_error"
