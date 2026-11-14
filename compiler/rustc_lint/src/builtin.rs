@@ -28,8 +28,7 @@ use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin};
+use rustc_hir::{self as hir, ImplItemImplKind, PatKind, PredicateOrigin};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
@@ -47,17 +46,16 @@ use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 use crate::diagnostics::{
-    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
+    BuiltinAnonymousParams, BuiltinDerefNullptr, BuiltinDoubleNegations,
     BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatterns,
     BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
     BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
     BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
     BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
-    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinTypeAliasBounds, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
+    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
+    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -895,25 +893,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
-            hir::ItemKind::Const(ident, generics, ..) => {
-                if find_attr!(attrs, NoMangle(..)) {
-                    let suggestion =
-                        if generics.params.is_empty() && generics.where_clause_span.is_empty() {
-                            // account for "pub const" (#45562)
-                            Some(it.span.until(ident.span))
-                        } else {
-                            None
-                        };
-
-                    // Const items do not refer to a particular location in memory, and therefore
-                    // don't have anything to attach a symbol to
-                    cx.emit_span_lint(
-                        NO_MANGLE_CONST_ITEMS,
-                        it.span,
-                        BuiltinConstNoMangle { suggestion },
-                    );
-                }
-            }
             _ => {}
         }
     }
@@ -1070,29 +1049,7 @@ declare_lint_pass!(
     UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
 );
 
-impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'_>,
-        fn_kind: HirFnKind<'_>,
-        _: &'tcx FnDecl<'_>,
-        _: &'tcx Body<'_>,
-        span: Span,
-        def_id: LocalDefId,
-    ) {
-        if fn_kind.asyncness().is_async()
-            && !cx.tcx.features().async_fn_track_caller()
-            // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr_span) = find_attr!(cx.tcx, def_id, TrackCaller(span) => *span)
-        {
-            cx.emit_span_lint(
-                UNGATED_ASYNC_FN_TRACK_CALLER,
-                attr_span,
-                BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
-            );
-        }
-    }
-}
+impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {}
 
 declare_lint! {
     /// The `unreachable_pub` lint triggers for `pub` items not reachable from other crates - that

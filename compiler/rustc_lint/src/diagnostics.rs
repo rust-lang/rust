@@ -15,9 +15,8 @@ use rustc_hir::intravisit::Visitor;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
-use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol};
 use rustc_structures::LintName;
 
 use crate::LateContext;
@@ -331,13 +330,6 @@ pub(crate) enum BuiltinUnusedDocCommentSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("const items should never be `#[no_mangle]`")]
-pub(crate) struct BuiltinConstNoMangle {
-    #[suggestion("try a static value", code = "pub static ", applicability = "machine-applicable")]
-    pub suggestion: Option<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell"
 )]
@@ -346,25 +338,6 @@ pub(crate) struct BuiltinMutablesTransmutes;
 #[derive(Diagnostic)]
 #[diag("use of an unstable feature")]
 pub(crate) struct BuiltinUnstableFeatures;
-
-// lint_ungated_async_fn_track_caller
-pub(crate) struct BuiltinUngatedAsyncFnTrackCaller<'a> {
-    pub label: Span,
-    pub session: &'a Session,
-}
-
-impl<'a> Diagnostic<'a> for BuiltinUngatedAsyncFnTrackCaller<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
-        let mut diag = Diag::new(dcx, level, "`#[track_caller]` on async functions is a no-op")
-            .with_span_label(self.label, "this function will not propagate the caller location");
-        rustc_session::diagnostics::add_feature_diagnostics(
-            &mut diag,
-            self.session,
-            sym::async_fn_track_caller,
-        );
-        diag
-    }
-}
 
 #[derive(Diagnostic)]
 #[diag("unreachable `pub` {$what}")]

@@ -28,7 +28,7 @@ use crate::diagnostics::{
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
-use crate::target_checking::Policy::{Allow, AllowSilent};
+use crate::target_checking::Policy::Allow;
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -286,10 +286,7 @@ impl DocParser {
 
                 cx.check_target(
                     sym::no_crate_inject.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[
-                        Allow(Target::Crate),
-                        AllowSilent(Target::Param),
-                    ]),
+                    &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
                 );
 
                 self.attribute.no_crate_inject = Some(path.span())
@@ -679,10 +676,7 @@ impl DocParser {
                 let span = path.span();
                 cx.check_target(
                     concat!("(", stringify!($ident), ")"),
-                    &AllowedTargets::AllowListWarnRest(&[
-                        Allow(Target::Crate),
-                        AllowSilent(Target::Param), // Param has a custom error
-                    ]),
+                    &AllowedTargets::AllowList(&[Allow(Target::Crate)]),
                 );
                 self.attribute.$ident = Some(span);
             }};
@@ -699,13 +693,7 @@ impl DocParser {
                     return;
                 };
 
-                cx.check_target(
-                    s.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[
-                        Allow(Target::Crate),
-                        AllowSilent(Target::Param), // Param has a custom error
-                    ]),
-                );
+                cx.check_target(s.as_str(), &AllowedTargets::AllowList(&[Allow(Target::Crate)]));
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.
