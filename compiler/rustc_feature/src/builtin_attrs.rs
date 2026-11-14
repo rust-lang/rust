@@ -229,7 +229,6 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_main,
     sym::rustc_mir,
     sym::rustc_must_implement_one_of,
-    sym::rustc_must_match_exhaustively,
     sym::rustc_no_implicit_bounds,
     sym::rustc_no_mir_inline,
     sym::rustc_no_writable,

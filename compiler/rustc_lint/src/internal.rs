@@ -18,10 +18,10 @@ use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
 use crate::diagnostics::{
     AttributeKindInFindAttr, BadOptAccessDiag, DefaultHashTypesDiag,
-    ImplicitSysrootCrateImportDiag, LintPassByHand, MissingGenericTypeVisitableDeriveDiag,
-    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked,
-    RustcMustMatchExhaustivelyNotExhaustive, SymbolInternStringLiteralDiag, TyQualified,
-    TykindDiag, TykindKind, TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage,
+    ImplicitSysrootCrateImportDiag, LintMustMatchExhaustivelyNotExhaustive, LintPassByHand,
+    MissingGenericTypeVisitableDeriveDiag, NonGlobImportTypeIrInherent, QueryInstability,
+    QueryUntracked, SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind,
+    TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -736,14 +736,14 @@ impl EarlyLintPass for BadUseOfFindAttr {
 }
 
 declare_tool_lint! {
-    pub rustc::RUSTC_MUST_MATCH_EXHAUSTIVELY,
+    pub rustc::MUST_MATCH_EXHAUSTIVELY,
     Allow,
-    "Forbids matches with wildcards, or if-let matching on enums marked with `#[rustc_must_match_exhaustively]`",
+    "Forbids matches with wildcards, or if-let matching on enums marked with `#[lint::must_match_exhaustively]`",
     report_in_external_macro: true
 }
-declare_lint_pass!(RustcMustMatchExhaustively => [RUSTC_MUST_MATCH_EXHAUSTIVELY]);
+declare_lint_pass!(LintMustMatchExhaustively => [MUST_MATCH_EXHAUSTIVELY]);
 
-fn is_rustc_must_match_exhaustively(cx: &LateContext<'_>, id: HirId) -> Option<Span> {
+fn is_must_match_exhaustively(cx: &LateContext<'_>, id: HirId) -> Option<Span> {
     let res = cx.typeck_results();
 
     let ty = res.node_type(id);
@@ -753,7 +753,7 @@ fn is_rustc_must_match_exhaustively(cx: &LateContext<'_>, id: HirId) -> Option<S
     if let Some(adt_def) = ty.ty_adt_def()
         && adt_def.is_enum()
     {
-        find_attr!(cx.tcx, adt_def.did(), RustcMustMatchExhaustively(span) => *span)
+        find_attr!(cx.tcx, adt_def.did(), LintMustMatchExhaustively(span) => *span)
     } else {
         None
     }
@@ -780,19 +780,19 @@ fn pat_is_not_exhaustive_heuristic(pat: &hir::Pat<'_>) -> Option<(Span, &'static
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
+impl<'tcx> LateLintPass<'tcx> for LintMustMatchExhaustively {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         match expr.kind {
             // This is not perfect exhaustiveness checking, that's why this is just a rustc internal
             // attribute. But it catches most reasonable cases
             hir::ExprKind::Match(expr, arms, _) => {
-                if let Some(attr_span) = is_rustc_must_match_exhaustively(cx, expr.hir_id) {
+                if let Some(attr_span) = is_must_match_exhaustively(cx, expr.hir_id) {
                     for arm in arms {
                         if let Some((span, message)) = pat_is_not_exhaustive_heuristic(arm.pat) {
                             cx.emit_span_lint(
-                                RUSTC_MUST_MATCH_EXHAUSTIVELY,
+                                MUST_MATCH_EXHAUSTIVELY,
                                 expr.span,
-                                RustcMustMatchExhaustivelyNotExhaustive {
+                                LintMustMatchExhaustivelyNotExhaustive {
                                     attr_span,
                                     pat_span: span,
                                     message,
@@ -803,11 +803,11 @@ impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
                 }
             }
             hir::ExprKind::Let(expr, ..) => {
-                if let Some(attr_span) = is_rustc_must_match_exhaustively(cx, expr.init.hir_id) {
+                if let Some(attr_span) = is_must_match_exhaustively(cx, expr.init.hir_id) {
                     cx.emit_span_lint(
-                        RUSTC_MUST_MATCH_EXHAUSTIVELY,
+                        MUST_MATCH_EXHAUSTIVELY,
                         expr.span,
-                        RustcMustMatchExhaustivelyNotExhaustive {
+                        LintMustMatchExhaustivelyNotExhaustive {
                             attr_span,
                             pat_span: expr.span,
                             message: "using `if let` only matches on one variant (try using `match`)",
@@ -823,13 +823,12 @@ impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
         match stmt.kind {
             rustc_hir::StmtKind::Let(let_stmt) => {
                 if let_stmt.els.is_some()
-                    && let Some(attr_span) =
-                        is_rustc_must_match_exhaustively(cx, let_stmt.pat.hir_id)
+                    && let Some(attr_span) = is_must_match_exhaustively(cx, let_stmt.pat.hir_id)
                 {
                     cx.emit_span_lint(
-                        RUSTC_MUST_MATCH_EXHAUSTIVELY,
+                        MUST_MATCH_EXHAUSTIVELY,
                         let_stmt.span,
-                        RustcMustMatchExhaustivelyNotExhaustive {
+                        LintMustMatchExhaustivelyNotExhaustive {
                             attr_span,
                             pat_span: let_stmt.pat.span,
                             message: "using `let else` only matches on one variant (try using `match`)",
