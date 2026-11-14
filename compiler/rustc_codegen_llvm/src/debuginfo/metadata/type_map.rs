@@ -321,7 +321,8 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
 
     debug_context(cx).type_map.insert(stub_info.unique_type_id, stub_info.metadata);
 
-    let members: SmallVec<_> = members(cx, stub_info.metadata).into_iter().map(Some).collect();
+    let members: SmallVec<_> =
+        members(cx, stub_info.metadata).into_iter().map(|node| Some(node)).collect();
     let generics = generics(cx);
 
     if !(members.is_empty() && generics.is_empty()) {

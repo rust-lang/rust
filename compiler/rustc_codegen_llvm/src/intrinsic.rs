@@ -251,8 +251,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 if let CVariadicStatus::Unstable { feature } = stability
                     && !self.tcx.features().enabled(feature)
                 {
-                    let msg = "C-variadic function definitions on this target are unstable";
-                    feature_err(self.sess(), feature, span, msg).emit();
+                    let msg =
+                        format!("C-variadic function definitions on this target are unstable");
+                    feature_err(&*self.sess(), feature, span, msg).emit();
                 }
 
                 let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
@@ -1498,7 +1499,17 @@ fn codegen_msvc_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
+    ret
 }
 
 // WASM's definition of the `rust_try` function.
@@ -1589,7 +1600,17 @@ fn codegen_wasm_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
+    ret
 }
 
 // Definition of the standard `try` function for Rust using the GNU-like model
@@ -1664,7 +1685,17 @@ fn codegen_gnu_try<'ll, 'tcx>(
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    bx.call(llty, None, None, llfn, ReturnSlot::Direct, &[try_func, data, catch_func], None, None)
+    let ret = bx.call(
+        llty,
+        None,
+        None,
+        llfn,
+        ReturnSlot::Direct,
+        &[try_func, data, catch_func],
+        None,
+        None,
+    );
+    ret
 }
 
 // Helper function to give a Block to a closure to codegen a shim function.
@@ -1807,7 +1838,7 @@ fn codegen_autodiff<'ll, 'tcx>(
     };
 
     let val_arr = get_args_from_tuple(bx, args[2], fn_diff);
-    let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff, LOCAL_CRATE);
+    let diff_symbol = symbol_name_for_instance_in_crate(tcx, fn_diff.clone(), LOCAL_CRATE);
 
     let Some(Some(mut diff_attrs)) =
         find_attr!(tcx, fn_diff.def_id(), RustcAutodiff(attr) => attr.clone())
@@ -1909,7 +1940,7 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
     let offload_data =
-        gpu_offload::gen_define_handling(cx, &metadata, target_symbol, offload_globals);
+        gpu_offload::gen_define_handling(&cx, &metadata, target_symbol, offload_globals);
     gpu_offload::gen_call_handling(
         bx,
         &offload_data,
@@ -2142,7 +2173,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(splat);
     }
 
-    let supports_scalable = matches!(name, sym::simd_cast | sym::simd_select);
+    let supports_scalable = match name {
+        sym::simd_cast | sym::simd_select => true,
+        _ => false,
+    };
 
     // Every intrinsic below takes a SIMD vector as its first argument. Some intrinsics also accept
     // scalable vectors. `require_simd_or_scalable` is used regardless as it'll do the right thing
@@ -2264,7 +2298,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Check that the indices are in-bounds.
         let indices = args[2].immediate();
         for i in 0..n {
-            let val = bx.const_get_elt(indices, i);
+            let val = bx.const_get_elt(indices, i as u64);
             let idx = bx
                 .const_to_opt_u128(val, true)
                 .unwrap_or_else(|| bug!("typeck should have already ensured that these are const"));
@@ -2356,7 +2390,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 }),
             };
             let i1 = bx.type_i1();
-            let i1xn = bx.type_scalable_vector(i1, m_len);
+            let i1xn = bx.type_scalable_vector(i1, m_len as u64);
             bx.trunc(args[0].immediate(), i1xn)
         } else {
             let in_elem_bitwidth = require_int_or_uint_ty!(
@@ -3306,7 +3340,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     in_elem
                 }),
             },
-            in_len,
+            in_len as u64,
         );
         let llvm_intrinsic = match name {
             sym::simd_bswap => "llvm.bswap",
@@ -3393,7 +3427,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             if signed { 's' } else { 'u' },
             if is_add { "add" } else { "sub" },
         );
-        let vec_ty = bx.cx.type_vector(elem_ty, in_len);
+        let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         return Ok(bx.call_intrinsic(llvm_intrinsic, &[vec_ty], &[lhs, rhs]));
     }

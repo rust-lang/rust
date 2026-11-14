@@ -94,12 +94,12 @@ fn prepare_lto(
     let mut upstream_modules = Vec::new();
     for path in each_linked_rlib_for_lto {
         let archive_data = unsafe {
-            Mmap::map(std::fs::File::open(path).expect("couldn't open rlib"))
+            Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
                 .expect("couldn't map rlib")
         };
         let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
         let metadata_link =
-            rmeta_link::read(&archive, &archive_data, path, cgcx.target_is_like_aix).unwrap();
+            rmeta_link::read(&archive, &archive_data, &path, cgcx.target_is_like_aix).unwrap();
         let obj_files = archive
             .members()
             .filter_map(|child| {
@@ -465,7 +465,7 @@ fn thin_lto(
             incr_comp_session.new_session_directory.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME)
         });
 
-        let prev_key_map = if let Some(old_incr_comp_session_dir) = incr_comp_session
+        let prev_key_map = if let Some(ref old_incr_comp_session_dir) = incr_comp_session
             .and_then(|incr_comp_session| incr_comp_session.old_session_directory.as_deref())
         {
             let old_path = old_incr_comp_session_dir.join(THIN_LTO_KEYS_INCR_COMP_FILE_NAME);
@@ -548,7 +548,7 @@ pub(crate) fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
             }
             config::AutoDiff::PrintTAFn(fun) => {
                 enzyme.set_print_type(true); // Enable general type printing
-                enzyme.set_print_type_fun(fun); // Set specific function to analyze
+                enzyme.set_print_type_fun(&fun); // Set specific function to analyze
             }
             config::AutoDiff::Inline => {
                 enzyme.set_inline(true);

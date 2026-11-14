@@ -216,7 +216,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 {
                     should_sign = true;
                 }
-                cx.declare_fn(sym, fn_abi, None)
+                cx.declare_fn(sym, &fn_abi, None)
             } else {
                 cx.declare_global(sym, cx.type_i8())
             }
@@ -302,9 +302,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         let gv = match kind {
             Some(kind) if !self.tcx.sess.fewer_names() => {
                 let name = self.generate_local_symbol_name(kind);
-                self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
+                let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", name);
-                })
+                });
+                gv
             }
             _ => self.define_global("", self.val_ty(cv)).unwrap_or_else(|| {
                 bug!("anonymous global symbol is already defined");
@@ -730,7 +731,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         let class_t = self.type_named_struct("struct._class_t");
         let els = [self.type_ptr(); 5];
-        self.set_struct_body(class_t, &els);
+        let packed = false;
+        self.set_struct_body(class_t, &els, packed);
 
         self.objc_class_t.set(Some(class_t));
         class_t
@@ -882,7 +884,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         let llty = self.type_named_struct("struct._objc_module");
         let i32_llty = self.type_i32();
         let ptr_llty = self.type_ptr();
-        self.set_struct_body(llty, &[i32_llty, i32_llty, ptr_llty, ptr_llty]);
+        let packed = false;
+        self.set_struct_body(llty, &[i32_llty, i32_llty, ptr_llty, ptr_llty], packed);
 
         let version = self.const_uint(i32_llty, 7);
         let size = self.const_uint(i32_llty, 16);
@@ -891,7 +894,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let llval = crate::common::named_struct(llty, &[version, size, name, symtab]);
 
         let sym = "OBJC_MODULES";
-        let g = self.define_global(sym, llty).unwrap_or_else(|| {
+        let g = self.define_global(&sym, llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", sym);
         });
         set_global_alignment(self, g, self.tcx.data_layout.pointer_align());
