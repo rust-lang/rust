@@ -2,113 +2,99 @@
 
 Clippy currently gets built with a pinned nightly version.
 
-In the `rust-lang/rust` repository, where rustc resides, there's a copy of
-Clippy that compiler hackers modify from time to time to adapt to changes in the
-unstable API of the compiler.
+In the `rust-lang/rust` repository, where rustc resides, there's a copy of Clippy that compiler devs modify from time to
+time to adapt to changes in the unstable API of the compiler.
 
-We need to sync these changes back to this repository periodically, and the
-changes made to this repository in the meantime also need to be synced to the
-`rust-lang/rust` repository.
+We need to sync these changes back to this repository periodically, and the changes made to this repository in the
+meantime also need to be synced to the `rust-lang/rust` repository.
 
-To avoid flooding the `rust-lang/rust` PR queue, this two-way sync process is
-done in a bi-weekly basis if there's no urgent changes. This is done starting on
-the day of the Rust stable release and then every other week. That way we
-guarantee that we keep this repo up to date with the latest compiler API, and
-every feature in Clippy is available for 2 weeks in nightly, before it can get
-to beta. For reference, the first sync following this cadence was performed the
+To avoid flooding the `rust-lang/rust` PR queue, this two-way sync process is done in a bi-weekly basis if there's no
+urgent changes. This is done starting on the day of the Rust stable release and then every other week. That way we
+guarantee that we keep this repo up to date with the latest compiler API, and every feature in Clippy is available for 2
+weeks in nightly, before it can get to beta. For reference, the first sync following this cadence was performed on
 2020-08-27.
 
-This process is described in detail in the following sections. For general
-information about `subtree`s in the Rust repository see [the rustc-dev-guide][subtree].
+This process is described in detail in the following sections.
 
-[subtree]: https://rustc-dev-guide.rust-lang.org/external-repos.html#external-dependencies-subtree
+## Installing `rustc-josh-sync`
 
-## Patching git-subtree to work with big repos
+The sync is done with [JOSH] through the [`rustc-josh-sync`] tool. Install this tool with the following command:
 
-Currently, there's a bug in `git-subtree` that prevents it from working properly
-with the [`rust-lang/rust`] repo. There's an open PR to fix that, but it's
-stale. Before continuing with the following steps, we need to manually apply
-that fix to our local copy of `git-subtree`.
-
-You can get the patched version of `git-subtree` from [here][gitgitgadget-pr].
-Put this file under `/usr/lib/git-core` (making a backup of the previous file)
-and make sure it has the proper permissions:
-
-```bash
-sudo cp --backup /path/to/patched/git-subtree.sh /usr/lib/git-core/git-subtree
-sudo chmod --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
-sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
+```sh
+cargo install --locked --git https://github.com/rust-lang/josh-sync
 ```
 
-> [!NOTE]
-> The first time running `git subtree push` a cache has to be built.
-> This involves going through the complete Clippy history once. For this you
-> have to increase the stack limit though, which you can do with `ulimit -s
-> 60000`. Make sure to run the `ulimit` command from the same session you call
-> git subtree.
-
-> [!NOTE]
-> If you are a Debian user, `dash` is the shell used by default for
-> scripts instead of `sh`. This shell has a hardcoded recursion limit set to
-> 1,000. In order to make this process work, you need to force the script to run
-> `bash` instead. You can do this by editing the first line of the `git-subtree`
-> script and changing `sh` to `bash`.
-
-> [!NOTE]
-> The following sections assume that you have set up remotes following the
-> instructions in [defining remotes].
-
-[gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
-[defining remotes]: release.md#defining-remotes
+[JOSH]: https://josh-project.github.io/josh/
+[`rustc-josh-sync`]: https://github.com/rust-lang/josh-sync
 
 ## Performing the sync from [`rust-lang/rust`] to Clippy
 
-Here is a TL;DR version of the sync process (all the following commands have
-to be run inside the `rust` directory):
+First, checkout a new branch called `rustup` on top of the latest `main` branch:
 
-1. Clone the [`rust-lang/rust`] repository or make sure it is up-to-date.
-2. Checkout the commit from the latest available nightly. You can get it using
-   `rustup check`.
-3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
-   ```bash
-   # Be sure to either use a net-new branch, e.g. `rustup`, or delete the branch beforehand
-   # because changes cannot be fast forwarded and you have to run this command again.
-   git subtree push -P src/tools/clippy clippy-local rustup
-   ```
+```
+git switch -c rustup upstream/main
+```
+
+To do the sync, run:
+
+```
+rustc-josh-sync pull
+```
+
+This command will update the nightly toolchain in the `rust-toolchain` file and will pull the changes from the Rust
+repository.
+
+If there should be merge conflicts `rustc-josh-sync` will prompt you to resolve the conflict. After resolving them and
+run `git merge --continue`. Then, respond to the prompt from `rustc-josh-sync` with `y` to continue the sync process.
+
+Finally, make sure `cargo test --features=internal` passes and potentially commit any necessary changes.
 
 > [!NOTE]
-> Most of the time you have to create a merge commit in the
-> `rust-clippy` repo (this has to be done in the Clippy repo, not in the
-> rust-copy of Clippy):
-> ```bash
-> git fetch upstream  # assuming upstream is the rust-lang/rust remote
-> git switch rustup
-> git merge upstream/main --no-ff
-> ```
-> 
-> This is one of the few instances where a merge commit is allowed in
-> a PR.
+> If the version tests fail, refer to [bump version] in the release documentation.
 
-4. Bump the nightly version in the Clippy repository by running these commands:
-   ```bash
-   cargo dev sync update_nightly
-   git commit -m "Bump nightly version -> YYYY-MM-DD" rust-toolchain.toml clippy_utils/README.md
-   ```
-5. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
-   accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
-   ask them in the [Zulip] stream.)
+If there were no merge conflicts, the tool will ask you if it should create a PR with `gh`. Either do that or create a
+PR manually.
 
-[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/t-clippy
-[`rust-lang/rust`]: https://github.com/rust-lang/rust
+> [!NOTE]
+> If you are a Clippy maintainer, you can add `r? @ghost` to the PR description and merge the PR yourself, after a
+> quick sanity review.
+
+[bump version]: release.md#bump-version
 
 ## Performing the sync from Clippy to [`rust-lang/rust`]
 
-All the following commands have to be run inside the `rust` directory.
+The other direction is done by running
 
-1. Make sure you have checked out the latest `main` of `rust-lang/rust`.
-2. Sync the `rust-lang/rust-clippy` main to the rust-copy of Clippy:
-    ```bash
-    git switch -c clippy-subtree-update
-    git subtree pull -P src/tools/clippy clippy-upstream main
-    ```
-3. Open a PR to [`rust-lang/rust`]
+```
+rustc-josh-sync push clippy-subtree-update <GitHub-name>
+```
+
+Where the `<GitHub-name>` is your GitHub user name. This is required for pushing the sync to GitHub and opening a PR.
+
+> [!NOTE]
+> By default, rustc-josh-sync will create a new `rustc-checkout` dir and clones the `rust-lang/rust` repository
+> into it. If you want to use an existing checkout, you can prefix the command with `RUSTC_GIT=/path/to/rust`.
+
+If everything went right, there will be a GitHub link that has to be used to open the sync PR in the Rust repository.
+The PR description should look something like this:
+
+```
+rust-clippy subtree update
+
+Subtree update of `rust-clippy` to https://github.com/rust-lang/rust-clippy/commit/{head}.
+
+Created using https://github.com/rust-lang/josh-sync.
+
+r? @ghost
+```
+
+The title must be kept as is, to [tell triagebot] that this is a sync PR.
+
+The first line of the body must be kept as is, to [find the Clippy commit] during a release.
+
+Change `r? @ghost` to the GitHub handle of a Clippy maintainer, so that they can review and approve the PR.
+
+[find the Clippy commit]: release.md#find-the-clippy-commit
+[tell triagebot]: https://github.com/rust-lang/rust/pull/114157
+
+[`rust-lang/rust`]: https://github.com/rust-lang/rust
