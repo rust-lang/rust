@@ -15,7 +15,7 @@ declare_tool_lint! {
     pub clippy::UNSORTED_CLIPPY_UTILS_PATHS,
     Warn,
     "various things that will negatively affect your clippy experience",
-    report_in_external_macro: true
+    @report_in_external_macro = true
 }
 
 declare_lint_pass!(UnsortedClippyUtilsPaths => [UNSORTED_CLIPPY_UTILS_PATHS]);
