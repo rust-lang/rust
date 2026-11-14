@@ -395,6 +395,7 @@ pub fn link_binary(
                         &crate_info,
                         &metadata,
                         path.as_ref(),
+                        outputs,
                         codegen_backend,
                     );
                 }
@@ -1239,6 +1240,7 @@ fn link_natively(
     crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
     tmpdir: &Path,
+    outputs: &OutputFilenames,
     codegen_backend: &'static str,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
@@ -1254,6 +1256,18 @@ fn link_natively(
         should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
     let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
 
+    // Follow the same naming convention as regular codegen objects.
+    let metadata_object = outputs.temp_path_for_cgu(OutputType::Object, "rustc_link_metadata");
+    let symbols_object = outputs.temp_path_for_cgu(OutputType::Object, "rustc_link_symbols");
+
+    // Clean up the generated linker inputs even if linking fails.
+    let _cleanup = rustc_data_structures::defer(|| {
+        if !sess.opts.cg.save_temps {
+            ensure_removed(sess.dcx(), &metadata_object);
+            ensure_removed(sess.dcx(), &symbols_object);
+        }
+    });
+
     let (mut cmd, jobserver_tokens) = linker_with_args(
         &linker_path,
         flavor,
@@ -1262,6 +1276,8 @@ fn link_natively(
         rmeta_link_cache,
         crate_type,
         tmpdir,
+        &metadata_object,
+        &symbols_object,
         temp_filename,
         compiled_modules,
         crate_info,
@@ -2537,7 +2553,7 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor
 fn add_linked_symbol_object(
     cmd: &mut dyn Linker,
     sess: &Session,
-    tmpdir: &Path,
+    symbols_path: &Path,
     crate_type: CrateType,
     linked_symbols: &[(String, SymbolExportKind)],
     exported_symbols: &[SymbolExport],
@@ -2672,12 +2688,11 @@ fn add_linked_symbol_object(
         file.append_section_data(section, drectve.as_bytes(), 1);
     }
 
-    let path = tmpdir.join("symbols.o");
-    let result = std::fs::write(&path, file.write().unwrap());
-    if let Err(error) = result {
-        sess.dcx().emit_fatal(diagnostics::FailedToWrite { path, error });
-    }
-    cmd.add_object(&path);
+    fs::write(symbols_path, file.write().unwrap()).unwrap_or_else(|error| {
+        sess.dcx()
+            .emit_fatal(diagnostics::FailedToWrite { path: symbols_path.to_path_buf(), error })
+    });
+    cmd.add_object(symbols_path);
 }
 
 /// Add object files containing code from the current crate.
@@ -2717,7 +2732,7 @@ fn add_local_crate_metadata_objects(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     crate_type: CrateType,
-    tmpdir: &Path,
+    metadata_path: &Path,
     crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
 ) {
@@ -2730,9 +2745,11 @@ fn add_local_crate_metadata_objects(
             &metadata,
             &crate_info.metadata_symbol,
         );
-        let obj = emit_wrapper_file(sess, &data, tmpdir, "rmeta.o");
-
-        cmd.add_object(&obj);
+        fs::write(metadata_path, data).unwrap_or_else(|error| {
+            sess.dcx()
+                .emit_fatal(diagnostics::FailedToWrite { path: metadata_path.to_path_buf(), error })
+        });
+        cmd.add_object(metadata_path);
     }
 }
 
@@ -2915,6 +2932,8 @@ fn linker_with_args(
     rmeta_link_cache: &mut RmetaLinkCache,
     crate_type: CrateType,
     tmpdir: &Path,
+    metadata_object: &Path,
+    symbols_object: &Path,
     out_filename: &Path,
     compiled_modules: &CompiledModules,
     crate_info: &CrateInfo,
@@ -2975,7 +2994,7 @@ fn linker_with_args(
     add_linked_symbol_object(
         cmd,
         sess,
-        tmpdir,
+        symbols_object,
         crate_type,
         &crate_info.linked_symbols[&crate_type],
         &export_symbols,
@@ -3017,7 +3036,7 @@ fn linker_with_args(
         sess,
         archive_builder_builder,
         crate_type,
-        tmpdir,
+        metadata_object,
         crate_info,
         metadata,
     );
