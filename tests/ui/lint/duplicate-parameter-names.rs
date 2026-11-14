@@ -15,6 +15,8 @@ trait Test {
     fn three_args(x: usize, x: usize, x: u8);
     //~^ WARN identifier `x` is bound more than once in this parameter list
     //~| WARN identifier `x` is bound more than once in this parameter list
+
+    fn underscore(_: bool, _: bool);
 }
 
 unsafe extern "C" {
