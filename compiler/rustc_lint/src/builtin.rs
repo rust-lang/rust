@@ -82,7 +82,7 @@ declare_lint! {
     /// expresses the intent of the loop.
     WHILE_TRUE,
     Warn,
-    "suggest using `loop { }` instead of `while true { }`"
+    "suggest using `loop { }` instead of `while true { }`",
 }
 
 declare_lint_pass!(WhileTrue => [WHILE_TRUE]);
@@ -142,7 +142,7 @@ declare_lint! {
     /// field name and the binding name if both identifiers are the same.
     NON_SHORTHAND_FIELD_PATTERNS,
     Warn,
-    "using `Struct { x: x }` instead of `Struct { x }` in a pattern"
+    "using `Struct { x: x }` instead of `Struct { x }` in a pattern",
 }
 
 declare_lint_pass!(NonShorthandFieldPatterns => [NON_SHORTHAND_FIELD_PATTERNS]);
@@ -451,7 +451,7 @@ declare_lint! {
     /// large data which can impact performance.
     pub MISSING_COPY_IMPLEMENTATIONS,
     Allow,
-    "detects potentially-forgotten implementations of `Copy`"
+    "detects potentially-forgotten implementations of `Copy`",
 }
 
 declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS]);
@@ -592,7 +592,7 @@ declare_lint! {
     /// boilerplate to be added to every type, which can be an impediment.
     MISSING_DEBUG_IMPLEMENTATIONS,
     Allow,
-    "detects missing implementations of Debug"
+    "detects missing implementations of Debug",
 }
 
 #[derive(Default)]
@@ -704,7 +704,7 @@ declare_lint! {
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2018 "trait-fn-parameters"),
-    };
+    },
 }
 
 declare_lint_pass!(
@@ -842,7 +842,7 @@ declare_lint! {
     /// [`const`]: https://doc.rust-lang.org/reference/items/constant-items.html
     NO_MANGLE_CONST_ITEMS,
     Deny,
-    "const items will not have their symbols exported"
+    "const items will not have their symbols exported",
 }
 
 declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS]);
@@ -937,7 +937,7 @@ declare_lint! {
     /// [`UnsafeCell`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html
     MUTABLE_TRANSMUTES,
     Deny,
-    "transmuting &T to &mut T is undefined behavior, even if the reference is unused"
+    "transmuting &T to &mut T is undefined behavior, even if the reference is unused",
 }
 
 declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
@@ -1000,7 +1000,7 @@ declare_lint! {
     /// this lint may come in handy to enforce policies of these kinds.
     UNSTABLE_FEATURES,
     Allow,
-    "enabling unstable features"
+    "enabling unstable features",
 }
 
 declare_lint_pass!(
@@ -1041,7 +1041,7 @@ declare_lint! {
     /// [`async_fn_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/async-fn-track-caller.html
     UNGATED_ASYNC_FN_TRACK_CALLER,
     Warn,
-    "enabling track_caller on an async fn is a no-op unless the async_fn_track_caller feature is enabled"
+    "enabling track_caller on an async fn is a no-op unless the async_fn_track_caller feature is enabled",
 }
 
 declare_lint_pass!(
@@ -1109,7 +1109,7 @@ declare_lint! {
     /// [`unnameable_types`]: #unnameable-types
     pub UNREACHABLE_PUB,
     Allow,
-    "`pub` items not reachable from crate root"
+    "`pub` items not reachable from crate root",
 }
 
 declare_lint_pass!(
@@ -1232,7 +1232,7 @@ declare_lint! {
     /// [^2]: <https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes>
     TYPE_ALIAS_BOUNDS,
     Warn,
-    "bounds in type aliases are not enforced"
+    "bounds in type aliases are not enforced",
 }
 
 declare_lint_pass!(TypeAliasBounds => [TYPE_ALIAS_BOUNDS]);
@@ -1379,7 +1379,7 @@ declare_lint! {
     /// [tracking issue #48214]: https://github.com/rust-lang/rust/issues/48214
     TRIVIAL_BOUNDS,
     Warn,
-    "these bounds don't depend on an type parameters"
+    "these bounds don't depend on an type parameters",
 }
 
 declare_lint_pass!(
@@ -1449,7 +1449,7 @@ declare_lint! {
     /// To decrement a value, use `x -= 1` instead.
     pub DOUBLE_NEGATIONS,
     Warn,
-    "detects expressions of the form `--x`"
+    "detects expressions of the form `--x`",
 }
 
 declare_lint_pass!(
@@ -1536,7 +1536,7 @@ declare_lint! {
     "`...` range patterns are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2021 "warnings-promoted-to-error"),
-    };
+    },
 }
 
 #[derive(Default)]
@@ -1671,7 +1671,7 @@ declare_lint! {
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2018 "new-keywords"),
-    };
+    },
 }
 
 declare_lint! {
@@ -1715,7 +1715,7 @@ declare_lint! {
     "detects edition keywords being used as an identifier",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionError 2024 "gen-keyword"),
-    };
+    },
 }
 
 declare_lint_pass!(
@@ -2181,7 +2181,7 @@ declare_lint! {
     /// experience problems with it.
     pub INCOMPLETE_FEATURES,
     Warn,
-    "incomplete features that may function improperly in some or all cases"
+    "incomplete features that may function improperly in some or all cases",
 }
 
 declare_lint! {
@@ -2205,7 +2205,7 @@ declare_lint! {
     /// library and are not supposed to be used in user code.
     pub INTERNAL_FEATURES,
     Warn,
-    "internal features are not supposed to be used"
+    "internal features are not supposed to be used",
 }
 
 declare_lint_pass!(
@@ -2275,7 +2275,7 @@ declare_lint! {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub INVALID_VALUE,
     Warn,
-    "an invalid value is being created (such as a null reference)"
+    "an invalid value is being created (such as a null reference)",
 }
 
 declare_lint_pass!(InvalidValue => [INVALID_VALUE]);
@@ -2607,7 +2607,7 @@ declare_lint! {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub DEREF_NULLPTR,
     Deny,
-    "detects when an null pointer is dereferenced"
+    "detects when an null pointer is dereferenced",
 }
 
 declare_lint_pass!(DerefNullPtr => [DEREF_NULLPTR]);
@@ -3133,7 +3133,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #152336),
         report_in_deps: false,
-    };
+    },
 }
 
 declare_lint_pass!(InternalEqTraitMethodImpls => [INTERNAL_EQ_TRAIT_METHOD_IMPLS]);

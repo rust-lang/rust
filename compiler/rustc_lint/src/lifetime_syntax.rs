@@ -69,7 +69,7 @@ declare_lint! {
     /// inconsistent lifetime syntax may result in unsound code.
     pub MISMATCHED_LIFETIME_SYNTAXES,
     Warn,
-    "detects when a lifetime uses different syntax between arguments and return values"
+    "detects when a lifetime uses different syntax between arguments and return values",
 }
 
 declare_lint_pass!(LifetimeSyntax => [MISMATCHED_LIFETIME_SYNTAXES]);
