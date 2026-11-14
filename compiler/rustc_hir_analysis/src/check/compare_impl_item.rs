@@ -2298,16 +2298,51 @@ pub(super) fn compare_const_directness<'tcx>(
     }
 
     let guar = if trait_is_gca {
-        tcx.dcx()
-            .struct_span_err(
+        let diag = if tcx.features().gca_macroless_items() {
+            // When `#![feature(gca_macroless_items)]` is enabled,
+            // expressions that are allowed in `gca!` are considered to be direct.
+            // We are here because the expression is not allowed in `gca!`.
+            let local_def_id = impl_const_item.def_id.expect_local();
+            let const_rhs = match tcx.hir_node_by_def_id(local_def_id) {
+                hir::Node::ImplItem(item) => item.expect_const().1,
+                hir::Node::TraitItem(item) => {
+                    let rhs = item.expect_const().1;
+                    if let Some(rhs) = rhs {
+                        rhs
+                    } else {
+                        span_bug!(
+                            tcx.def_span(local_def_id),
+                            "cannot call `compare_const_directness` on trait item without default value"
+                        )
+                    }
+                }
+                _ => span_bug!(
+                    tcx.def_span(local_def_id),
+                    "impl_const_item should be impl item or trait item with default value"
+                ),
+            };
+
+            if let hir::ConstItemRhs::Body(body_id) = const_rhs
+                && let hir::ExprKind::Err(guar) = tcx.hir_body(body_id).value.kind
+            {
+                return Err(guar);
+            }
+
+            tcx.dcx()
+                .struct_span_err(const_rhs.span(tcx), "this expression cannot be marked as direct")
+                .with_note("`#![feature(gca_macroless_items)]` only supports expressions that are allowed in `gca!`")
+        } else {
+            tcx.dcx().struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
                 "implementation of a `#[rustc_always_gca]` must have a `gca!` RHS",
             )
-            .with_span_note(
-                tcx.def_span(trait_const_item.def_id),
-                "trait declaration of const is marked as `#[rustc_always_gca]`",
-            )
-            .emit_err()
+        };
+
+        diag.with_span_note(
+            tcx.def_span(trait_const_item.def_id),
+            "trait declaration of const is marked as `#[rustc_always_gca]`",
+        )
+        .emit_err()
     } else {
         tcx.dcx()
             .struct_span_err(

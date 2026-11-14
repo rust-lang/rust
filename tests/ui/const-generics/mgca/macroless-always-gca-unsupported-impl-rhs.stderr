@@ -1,0 +1,23 @@
+error: associated constant in `impl` without body
+  --> $DIR/macroless-always-gca-unsupported-impl-rhs.rs:15:5
+   |
+LL |     const ASSOC: usize;
+   |     ^^^^^^^^^^^^^^^^^^-
+   |                       |
+   |                       help: provide a definition for the constant: `= <expr>;`
+
+error: this expression cannot be marked as direct
+  --> $DIR/macroless-always-gca-unsupported-impl-rhs.rs:9:26
+   |
+LL |     const ASSOC: usize = N + 1;
+   |                          ^^^^^
+   |
+   = note: `#![feature(gca_macroless_items)]` only supports expressions that are allowed in `gca!`
+note: trait declaration of const is marked as `#[rustc_always_gca]`
+  --> $DIR/macroless-always-gca-unsupported-impl-rhs.rs:5:5
+   |
+LL |     const ASSOC: usize;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
