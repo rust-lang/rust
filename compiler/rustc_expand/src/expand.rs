@@ -2285,7 +2285,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     );
                 }
                 AttrKind::Normal(_) => {}
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::Generated(..) => {}
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_) | TestEntrypoint)
+                | AttrKind::Generated(..) => {}
                 AttrKind::DocComment(..) => unreachable!(), // handled above
             }
         }
