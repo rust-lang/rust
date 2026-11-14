@@ -3637,6 +3637,22 @@ This feature adds a `may_unwind` option to `asm!` which allows an `asm` block to
         deny_since: None,
     },
     Lint {
+        label: "associated_const_underscore",
+        description: r##"# `associated_const_underscore`
+
+Allows `_` for the name of associated constants.
+
+The tracking issue for this feature is: [#158944]
+
+[#158944]: https://github.com/rust-lang/rust/issues/158944
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "associated_type_defaults",
         description: r##"# `associated_type_defaults`
 
@@ -12361,6 +12377,22 @@ The tracking issue for this feature is: [#155050]
         deny_since: None,
     },
     Lint {
+        label: "move_trait",
+        description: r##"# `move_trait`
+
+The `Move` autotrait.
+
+The tracking issue for this feature is: [#149607]
+
+[#149607]: https://github.com/rust-lang/rust/issues/149607
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "movrs_target_feature",
         description: r##"# `movrs_target_feature`
 
@@ -13559,22 +13591,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
-        label: "pattern_type_macro",
-        description: r##"# `pattern_type_macro`
-
-
-
-The tracking issue for this feature is: [#123646]
-
-[#123646]: https://github.com/rust-lang/rust/issues/123646
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "pattern_type_range_trait",
         description: r##"# `pattern_type_range_trait`
 
@@ -13594,7 +13610,7 @@ The tracking issue for this feature is: [#123646]
         label: "pattern_types",
         description: r##"# `pattern_types`
 
-Allows using pattern types.
+
 
 The tracking issue for this feature is: [#123646]
 
@@ -14147,9 +14163,9 @@ The tracking issue for this feature is: [#148197]
 
 
 
-The tracking issue for this feature is: [#102070]
+The tracking issue for this feature is: [#165719]
 
-[#102070]: https://github.com/rust-lang/rust/issues/102070
+[#165719]: https://github.com/rust-lang/rust/issues/165719
 
 ------------------------
 "##,
@@ -17481,7 +17497,7 @@ fn main () {
         label: "type_info",
         description: r##"# `type_info`
 
-
+Allows using reflection features
 
 The tracking issue for this feature is: [#146922]
 
@@ -18126,26 +18142,10 @@ The tracking issue for this feature is: [#81944]
         deny_since: None,
     },
     Lint {
-        label: "view_type_macro",
-        description: r##"# `view_type_macro`
-
-
-
-The tracking issue for this feature is: [#155938]
-
-[#155938]: https://github.com/rust-lang/rust/issues/155938
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "view_types",
         description: r##"# `view_types`
 
-Allows view types.
+
 
 The tracking issue for this feature is: [#155938]
 
