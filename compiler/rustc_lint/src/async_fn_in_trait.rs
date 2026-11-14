@@ -80,7 +80,7 @@ declare_lint! {
     /// [auto traits]: https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits
     pub ASYNC_FN_IN_TRAIT,
     Warn,
-    "use of `async fn` in definition of a publicly-reachable trait"
+    "use of `async fn` in definition of a publicly-reachable trait",
 }
 
 declare_lint_pass!(

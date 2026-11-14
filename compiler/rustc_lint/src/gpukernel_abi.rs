@@ -42,7 +42,7 @@ declare_lint! {
     /// This lint is issued when it detects a probable mistake in a signature.
     IMPROPER_GPU_KERNEL_ARG,
     Warn,
-    "GPU kernel entry points have a limited ABI"
+    "GPU kernel entry points have a limited ABI",
 }
 
 declare_lint! {
@@ -85,7 +85,7 @@ declare_lint! {
     /// ```
     MISSING_GPU_KERNEL_EXPORT_NAME,
     Warn,
-    "mangled gpu-kernel function"
+    "mangled gpu-kernel function",
 }
 
 declare_lint_pass!(ImproperGpuKernelLint => [

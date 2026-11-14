@@ -34,7 +34,7 @@ declare_lint! {
     /// It is usually a mistake to have a statement that has no effect.
     pub PATH_STATEMENTS,
     Warn,
-    "path statements with no effect"
+    "path statements with no effect",
 }
 
 declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
@@ -662,7 +662,7 @@ declare_lint! {
     /// preferred style for writing these expressions.
     pub(super) UNUSED_PARENS,
     Warn,
-    "`if`, `match`, `while` and `return` do not need parentheses"
+    "`if`, `match`, `while` and `return` do not need parentheses",
 }
 
 #[derive(Default)]
@@ -1152,7 +1152,7 @@ declare_lint! {
     /// preferred style for writing these expressions.
     pub(super) UNUSED_BRACES,
     Warn,
-    "unnecessary braces around an expression"
+    "unnecessary braces around an expression",
 }
 
 declare_lint_pass!(UnusedBraces => [UNUSED_BRACES]);
@@ -1340,7 +1340,7 @@ declare_lint! {
     /// stylistic choice.
     UNUSED_IMPORT_BRACES,
     Allow,
-    "unnecessary braces around an imported item"
+    "unnecessary braces around an imported item",
 }
 
 declare_lint_pass!(UnusedImportBraces => [UNUSED_IMPORT_BRACES]);
@@ -1407,7 +1407,7 @@ declare_lint! {
     /// should be used instead to avoid the allocation.
     pub(super) UNUSED_ALLOCATION,
     Warn,
-    "detects unnecessary allocations that can be eliminated"
+    "detects unnecessary allocations that can be eliminated",
 }
 
 declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);

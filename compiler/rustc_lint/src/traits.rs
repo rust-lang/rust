@@ -40,7 +40,7 @@ declare_lint! {
     /// some obscure corner cases, which can use `#[allow(drop_bounds)]`.
     pub DROP_BOUNDS,
     Warn,
-    "bounds of the form `T: Drop` are most likely incorrect"
+    "bounds of the form `T: Drop` are most likely incorrect",
 }
 
 declare_lint! {
@@ -77,7 +77,7 @@ declare_lint! {
     /// ```
     pub DYN_DROP,
     Warn,
-    "trait objects of the form `dyn Drop` are useless"
+    "trait objects of the form `dyn Drop` are useless",
 }
 
 declare_lint_pass!(

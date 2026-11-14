@@ -38,7 +38,7 @@ declare_lint! {
     pub UNQUALIFIED_LOCAL_IMPORTS,
     Allow,
     "`use` of a local item without leading `self::`, `super::`, or `crate::`",
-    @feature_gate = unqualified_local_imports;
+    @feature_gate = unqualified_local_imports,
 }
 
 declare_lint_pass!(UnqualifiedLocalImports => [UNQUALIFIED_LOCAL_IMPORTS]);

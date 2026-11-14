@@ -30,7 +30,7 @@ declare_lint! {
     /// for `std::str::from_utf8_unchecked` and `std::str::from_utf8_unchecked_mut`.
     pub INVALID_FROM_UTF8_UNCHECKED,
     Deny,
-    "using a non UTF-8 literal in `std::str::from_utf8_unchecked`"
+    "using a non UTF-8 literal in `std::str::from_utf8_unchecked`",
 }
 
 declare_lint! {
@@ -53,7 +53,7 @@ declare_lint! {
     /// for `std::str::from_utf8` and `std::str::from_utf8_mut`.
     pub INVALID_FROM_UTF8,
     Warn,
-    "using a non UTF-8 literal in `std::str::from_utf8`"
+    "using a non UTF-8 literal in `std::str::from_utf8`",
 }
 
 declare_lint_pass!(InvalidFromUtf8 => [INVALID_FROM_UTF8_UNCHECKED, INVALID_FROM_UTF8]);

@@ -42,7 +42,7 @@ declare_lint! {
     /// non-letters (such as `X86_64`).
     pub NON_CAMEL_CASE_TYPES,
     Warn,
-    "types, variants, traits and type parameters should have camel case names"
+    "types, variants, traits and type parameters should have camel case names",
 }
 
 declare_lint_pass!(NonCamelCaseTypes => [NON_CAMEL_CASE_TYPES]);
@@ -228,7 +228,7 @@ declare_lint! {
     /// single underscore, such as `my_value`.
     pub NON_SNAKE_CASE,
     Warn,
-    "variables, methods, functions, lifetime parameters and modules should have snake case names"
+    "variables, methods, functions, lifetime parameters and modules should have snake case names",
 }
 
 declare_lint_pass!(NonSnakeCase => [NON_SNAKE_CASE]);
@@ -475,7 +475,7 @@ declare_lint! {
     /// letters such as `MAX_POINTS`.
     pub NON_UPPER_CASE_GLOBALS,
     Warn,
-    "static constants should have uppercase identifiers"
+    "static constants should have uppercase identifiers",
 }
 
 declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);

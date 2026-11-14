@@ -69,7 +69,7 @@ declare_lint! {
     /// are less likely to accidentally result in unsoundness.
     pub UNNECESSARY_TRANSMUTES,
     Warn,
-    "detects transmutes that can also be achieved by other operations"
+    "detects transmutes that can also be achieved by other operations",
 }
 
 declare_lint! {

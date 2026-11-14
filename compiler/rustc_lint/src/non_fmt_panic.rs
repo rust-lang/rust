@@ -40,7 +40,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2021 "panic-macro-consistency"),
         explain_reason: false,
-    };
+    },
     report_in_external_macro
 }
 

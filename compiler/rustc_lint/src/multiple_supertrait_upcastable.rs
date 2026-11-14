@@ -31,7 +31,7 @@ declare_lint! {
     pub MULTIPLE_SUPERTRAIT_UPCASTABLE,
     Allow,
     "detect when a dyn-compatible trait has multiple supertraits",
-    @feature_gate = multiple_supertrait_upcastable;
+    @feature_gate = multiple_supertrait_upcastable,
 }
 
 declare_lint_pass!(MultipleSupertraitUpcastable => [MULTIPLE_SUPERTRAIT_UPCASTABLE]);

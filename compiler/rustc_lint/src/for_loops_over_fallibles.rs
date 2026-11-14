@@ -41,7 +41,7 @@ declare_lint! {
     /// to optionally add a value to an iterator.
     pub FOR_LOOPS_OVER_FALLIBLES,
     Warn,
-    "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
+    "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`",
 }
 
 declare_lint_pass!(ForLoopsOverFallibles => [FOR_LOOPS_OVER_FALLIBLES]);
