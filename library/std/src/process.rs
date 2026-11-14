@@ -27,6 +27,7 @@
 //! Spawning a command returns an error if:
 //! - The command does not exist, or is not in the platform-specific PATH search list.
 //! - A platform-specific limit on memory, number of processes, or number of threads is reached.
+//! - The current process doesn't have enough permissions to spawn the command.
 //! - A dynamic library required by the command could not be found.
 //!
 //! # Handling I/O
