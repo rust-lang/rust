@@ -331,10 +331,10 @@ LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect_err("this ne
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove the `Err` and `expect_err()`
-  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:104:16
    |
-LL |     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect_err("this never happens");
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL -     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect_err("this never happens");
+LL +     let _val = [1, 2, 3].iter().sum();
+   |
 
 error: used `unwrap()` on `Err` value
   --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:107:16
@@ -624,5 +624,93 @@ help: remove the `Ok` and `unwrap_or_else()`
 LL |     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 52 previous errors
+error: used `unwrap_or()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:200:17
+   |
+LL |         let _ = Err::<i32, i32>(payload()).unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:200:17
+   |
+LL |         let _ = Err::<i32, i32>(payload()).unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or()` on `Some` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:205:17
+   |
+LL |           let _ = Some(1).unwrap_or({
+   |  _________________^
+LL | |
+LL | |             println!("message");
+LL | |             2
+LL | |         });
+   | |__________^
+   |
+help: remove the `Some` and `unwrap_or()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:205:17
+   |
+LL |         let _ = Some(1).unwrap_or({
+   |                 ^^^^^^^
+
+error: used `expect()` on `Ok` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:213:17
+   |
+LL |           let _ = Ok::<i32, ()>(1).expect({
+   |  _________________^
+LL | |
+LL | |
+LL | |             println!("stuff");
+LL | |             "message"
+LL | |         });
+   | |__________^
+   |
+help: remove the `Ok` and `expect()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:213:17
+   |
+LL |         let _ = Ok::<i32, ()>(1).expect({
+   |                 ^^^^^^^^^^^^^^^^
+
+error: function call inside of `expect`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:213:34
+   |
+LL |           let _ = Ok::<i32, ()>(1).expect({
+   |  __________________________________^
+LL | |
+LL | |
+LL | |             println!("stuff");
+LL | |             "message"
+LL | |         });
+   | |__________^
+   |
+   = note: `-D clippy::expect-fun-call` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::expect_fun_call)]`
+help: try
+   |
+LL ~         let _ = Ok::<i32, ()>(1).unwrap_or_else(|_| panic!("{}", {
+LL +
+LL +
+LL +             println!("stuff");
+LL +             "message"
+LL ~         }));
+   |
+
+error: used `expect_err()` on `Err` value
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:222:17
+   |
+LL |           let _ = Err::<(), i32>(1).expect_err({
+   |  _________________^
+LL | |
+LL | |             println!("stuff");
+LL | |             "message"
+LL | |         });
+   | |__________^
+   |
+help: remove the `Err` and `expect_err()`
+  --> tests/ui/unnecessary_literal_unwrap_unfixable.rs:222:17
+   |
+LL |         let _ = Err::<(), i32>(1).expect_err({
+   |                 ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 57 previous errors
 
