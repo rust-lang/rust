@@ -1,4 +1,4 @@
-error: the constant `*b"\x01\x02\x03"` is not of type `[u8; <T as Trait>::LEN]`
+error: the constant `[1, 2, 3]` is not of type `[u8; <T as Trait>::LEN]`
   --> $DIR/generic_const_items-mismatched-array-len.rs:27:11
    |
 LL |     foo::<T, { [1, 2, 3] }>()
