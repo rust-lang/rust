@@ -539,10 +539,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { attrs, address_space: _, mode } => {
                 assert!(*mode == IndirectMode::Pointer);
                 let i = apply(attrs);
-                let sret = llvm::CreateStructRetAttr(
-                    cx.llcx,
-                    cx.type_array(cx.type_i8(), self.ret.layout.size.bytes()),
-                );
+                let sret =
+                    llvm::CreateStructRetAttr(cx.llcx, cx.type_byte_array(self.ret.layout.size));
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
                 if cx.sess().opts.optimize != config::OptLevel::No {
                     attributes::apply_to_llfn(
@@ -566,10 +564,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => {}
                 PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::OnStack } => {
                     let i = apply(attrs);
-                    let byval = llvm::CreateByValAttr(
-                        cx.llcx,
-                        cx.type_array(cx.type_i8(), arg.layout.size.bytes()),
-                    );
+                    let byval = llvm::CreateByValAttr(cx.llcx, cx.type_byte_array(arg.layout.size));
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byval]);
                 }
                 PassMode::Indirect {
@@ -578,10 +573,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     mode: IndirectMode::AmdgpuKernelArg,
                 } => {
                     let i = apply(attrs);
-                    let byref = llvm::CreateByRefAttr(
-                        cx.llcx,
-                        cx.type_array(cx.type_i8(), arg.layout.size.bytes()),
-                    );
+                    let byref = llvm::CreateByRefAttr(cx.llcx, cx.type_byte_array(arg.layout.size));
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byref]);
                 }
                 PassMode::Direct(attrs) => {
@@ -683,7 +675,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 let i = apply(bx.cx, attrs);
                 let sret = llvm::CreateStructRetAttr(
                     bx.cx.llcx,
-                    bx.cx.type_array(bx.cx.type_i8(), self.ret.layout.size.bytes()),
+                    bx.cx.type_byte_array(self.ret.layout.size),
                 );
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
@@ -702,10 +694,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => {}
                 PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::OnStack } => {
                     let i = apply(bx.cx, attrs);
-                    let byval = llvm::CreateByValAttr(
-                        bx.cx.llcx,
-                        bx.cx.type_array(bx.cx.type_i8(), arg.layout.size.bytes()),
-                    );
+                    let byval =
+                        llvm::CreateByValAttr(bx.cx.llcx, bx.cx.type_byte_array(arg.layout.size));
                     attributes::apply_to_callsite(
                         callsite,
                         llvm::AttributePlace::Argument(i),
@@ -718,10 +708,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     mode: IndirectMode::AmdgpuKernelArg,
                 } => {
                     let i = apply(bx.cx, attrs);
-                    let byref = llvm::CreateByRefAttr(
-                        bx.cx.llcx,
-                        bx.cx.type_array(bx.cx.type_i8(), arg.layout.size.bytes()),
-                    );
+                    let byref =
+                        llvm::CreateByRefAttr(bx.cx.llcx, bx.cx.type_byte_array(arg.layout.size));
                     attributes::apply_to_callsite(
                         callsite,
                         llvm::AttributePlace::Argument(i),

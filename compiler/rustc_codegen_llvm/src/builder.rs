@@ -146,7 +146,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     // to manually do that. FIXME(offload): improve the genericCx and add more llvm wrappers to
     // handle this.
     pub(crate) fn direct_alloca(&mut self, size: Size, align: Align, name: &str) -> Value<'ll> {
-        let ty = self.cx.type_array(self.cx.type_i8(), size.bytes());
+        let ty = self.cx.type_byte_array(size);
         let val = unsafe {
             let alloca = llvm::LLVMBuildAlloca(self.llbuilder(), ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
@@ -170,7 +170,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
             // LLVM prefers `i8` as the canonical form for a single-byte GEP.
             self.cx.type_i8()
         } else {
-            self.cx.type_array(self.cx.type_i8(), stride.bytes())
+            self.cx.type_byte_array(stride)
         };
         let indices = &[index];
         unsafe {
