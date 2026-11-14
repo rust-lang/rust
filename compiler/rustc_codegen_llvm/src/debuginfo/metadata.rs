@@ -1735,10 +1735,59 @@ fn find_vtable_behind_cast<'ll>(vtable: Value<'ll>) -> Value<'ll> {
     vtable
 }
 
+/// From where can virtual calls using this vtable be made?
+///
+/// See also <https://llvm.org/docs/TypeMetadata.html#vcall-visibility-metadata>.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum VCallVisibility {
+    /// Virtual function calls using this vtable could be made from external code.
+    Public = 0,
+    /// All virtual function calls which might use this vtable are in the current LTO unit,
+    /// meaning they will be in the current module once LTO linking has been performed.
+    LinkageUnit = 1,
+    /// All virtual function calls which might use this vtable are in the current module.
+    TranslationUnit = 2,
+}
+
+impl VCallVisibility {
+    fn for_trait<'ll, 'tcx>(
+        cx: &CodegenCx<'ll, 'tcx>,
+        trait_ref: &ExistentialTraitRef<'tcx>,
+    ) -> Self {
+        let lto = cx.sess().lto();
+        let trait_vis = cx.tcx.visibility(trait_ref.def_id);
+        let cgus = cx.sess().codegen_units().as_usize();
+        let single_cgu = cgus == 1;
+
+        // Because LLVM requires full LTO for the virtual function elimination optimization to
+        // apply, only the `Lto::Fat` cases are relevant currently.
+        match (lto, trait_vis, single_cgu) {
+            // If there is not LTO and the visibility in public, we have to assume that the vtable
+            // can be seen from anywhere. With multiple CGUs, the vtable is quasi-public.
+            (Lto::No | Lto::ThinLocal, Visibility::Public, _)
+            | (Lto::No, Visibility::Restricted(_), false) => VCallVisibility::Public,
+            // With LTO and a quasi-public visibility, the usages of the functions of the vtable are
+            // all known by the `LinkageUnit`.
+            // FIXME: LLVM only supports this optimization for `Lto::Fat` currently. Once it also
+            // supports `Lto::Thin` the `VCallVisibility` may have to be adjusted for those.
+            (Lto::Fat | Lto::Thin, Visibility::Public, _)
+            | (Lto::ThinLocal | Lto::Thin | Lto::Fat, Visibility::Restricted(_), false) => {
+                VCallVisibility::LinkageUnit
+            }
+            // If there is only one CGU, private vtables can only be seen by that CGU/translation
+            // unit and therefore we know of all usages of functions in the vtable.
+            (_, Visibility::Restricted(_), true) => VCallVisibility::TranslationUnit,
+        }
+    }
+}
+
+/// Apply the virtual call visibility metadata to the vtable.
+///
+/// Adds a !type annotation for every trait in the trait hierarchy, and a !vcall_visibility
+/// annotation based on the most visible trait in the hierarchy.
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    ty: Ty<'tcx>,
-    trait_ref: Option<ExistentialTraitRef<'tcx>>,
+    trait_hierarchy: &[ExistentialTraitRef<'tcx>],
     vtable: Value<'ll>,
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
@@ -1747,51 +1796,29 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
         return;
     }
 
-    enum VCallVisibility {
-        Public = 0,
-        LinkageUnit = 1,
-        TranslationUnit = 2,
-    }
-
-    let Some(trait_ref) = trait_ref else { return };
-
-    // Unwrap potential addrspacecast
-    let vtable = find_vtable_behind_cast(vtable);
-    let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
-    let trait_def_id = trait_ref_self.def_id;
-    let trait_vis = cx.tcx.visibility(trait_def_id);
-
-    let cgus = cx.sess().codegen_units().as_usize();
-    let single_cgu = cgus == 1;
-
-    let lto = cx.sess().lto();
-
-    // Since LLVM requires full LTO for the virtual function elimination optimization to apply,
-    // only the `Lto::Fat` cases are relevant currently.
-    let vcall_visibility = match (lto, trait_vis, single_cgu) {
-        // If there is not LTO and the visibility in public, we have to assume that the vtable can
-        // be seen from anywhere. With multiple CGUs, the vtable is quasi-public.
-        (Lto::No | Lto::ThinLocal, Visibility::Public, _)
-        | (Lto::No, Visibility::Restricted(_), false) => VCallVisibility::Public,
-        // With LTO and a quasi-public visibility, the usages of the functions of the vtable are
-        // all known by the `LinkageUnit`.
-        // FIXME: LLVM only supports this optimization for `Lto::Fat` currently. Once it also
-        // supports `Lto::Thin` the `VCallVisibility` may have to be adjusted for those.
-        (Lto::Fat | Lto::Thin, Visibility::Public, _)
-        | (Lto::ThinLocal | Lto::Thin | Lto::Fat, Visibility::Restricted(_), false) => {
-            VCallVisibility::LinkageUnit
-        }
-        // If there is only one CGU, private vtables can only be seen by that CGU/translation unit
-        // and therefore we know of all usages of functions in the vtable.
-        (_, Visibility::Restricted(_), true) => VCallVisibility::TranslationUnit,
+    // Find the smallest "scope" from which virtual calls using this vtable can be made.
+    let Some(vcall_visibility) =
+        trait_hierarchy.iter().map(|trait_ref| VCallVisibility::for_trait(cx, trait_ref)).min()
+    else {
+        return;
     };
 
-    let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
-    let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
+    // Unwrap a potential addrspacecast.
+    let vtable = find_vtable_behind_cast(vtable);
 
-    let type_ = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
-    cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+    // The start of a Rust vtable is at offset 0 of a `&dyn T`'s address.
+    let vtable_offset = 0;
 
+    // Add `!type !{i64 0, !"typeid"}` to the vtable for each trait in the hierarchy.
+    for trait_ref in trait_hierarchy {
+        let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, *trait_ref);
+        let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
+
+        let type_ = [llvm::LLVMValueAsMetadata(cx.const_u64(vtable_offset)), typeid];
+        cx.global_add_metadata_node(vtable, llvm::MD_type, &type_);
+    }
+
+    // Add `!vcall_visibility !{i64 vis}` to the vtable.
     let vcall_visibility = [llvm::LLVMValueAsMetadata(cx.const_u64(vcall_visibility as u64))];
     cx.global_set_metadata_node(vtable, llvm::MD_vcall_visibility, &vcall_visibility);
 }

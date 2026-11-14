@@ -1,9 +1,8 @@
 //@ compile-flags: -Zvirtual-function-elimination -Clto -Copt-level=3 -Csymbol-mangling-version=v0
-//@ ignore-32bit
 
 // CHECK: @vtable.0 = {{.*}}, !type ![[TYPE0:[0-9]+]], !vcall_visibility ![[VCALL_VIS0:[0-9]+]]
-// CHECK: @vtable.1 = {{.*}}, !type ![[TYPE1:[0-9]+]], !vcall_visibility ![[VCALL_VIS0:[0-9]+]]
-// CHECK: @vtable.2 = {{.*}}, !type ![[TYPE2:[0-9]+]], !vcall_visibility ![[VCALL_VIS2:[0-9]+]]
+// CHECK: @vtable.1 = {{.*}}, !type ![[TYPE1:[0-9]+]], !vcall_visibility ![[VCALL_VIS0]]
+// CHECK: @vtable.2 = {{.*}}, !type ![[TYPE2:[0-9]+]], !vcall_visibility ![[VCALL_VIS0]]
 
 #![crate_type = "lib"]
 
@@ -61,25 +60,33 @@ impl V for S {
     }
 }
 
+// CHECK-LABEL: taking_t
+#[unsafe(no_mangle)]
 fn taking_t(t: &dyn T) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 24, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 {{12|24}}, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
     t.used()
 }
 
+// CHECK-LABEL: taking_rc_t
+#[unsafe(no_mangle)]
 fn taking_rc_t(t: Rc<dyn T>) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 40, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 {{20|40}}, metadata !"[[MANGLED_TYPE0:[0-9a-zA-Z_]+]]")
     t.by_rc()
 }
 
+// CHECK-LABEL: taking_u
+#[unsafe(no_mangle)]
 fn taking_u(u: &dyn U) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 64, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 24, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 32, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 {{32|64}}, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 {{12|24}}, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 {{16|32}}, metadata !"[[MANGLED_TYPE1:[0-9a-zA-Z_]+]]")
     u.subtrait_used() + u.used() + u.used_through_sub_trait()
 }
 
+// CHECK-LABEL: taking_v
+#[unsafe(no_mangle)]
 pub fn taking_v(v: &dyn V) -> i32 {
-    // CHECK: @llvm.type.checked.load({{.*}}, i32 24, metadata !"NtC[[CRATE_IDENT:[a-zA-Z0-9]{12}]]_28virtual_function_elimination1V")
+    // CHECK: @llvm.type.checked.load({{.*}}, i32 {{12|24}}, metadata !"NtC[[CRATE_IDENT:[a-zA-Z0-9]{12}]]_28virtual_function_elimination1V")
     v.public_function()
 }
 
@@ -91,8 +98,10 @@ pub fn main() {
     taking_v(&s);
 }
 
+// MetaSized is an implicit supertrait of all dyn-compatible traits.
+// CHECK: !0 = !{i64 0, !"[[MANGLED_CORE_MARKER:[0-9a-zA-Z_]+]]MetaSized"}
+//
 // CHECK: ![[TYPE0]] = !{i64 0, !"[[MANGLED_TYPE0]]"}
-// CHECK: ![[VCALL_VIS0]] = !{i64 2}
+// CHECK: ![[VCALL_VIS0]] = !{i64 1}
 // CHECK: ![[TYPE1]] = !{i64 0, !"[[MANGLED_TYPE1]]"}
 // CHECK: ![[TYPE2]] = !{i64 0, !"NtC[[CRATE_IDENT]]_28virtual_function_elimination1V"}
-// CHECK: ![[VCALL_VIS2]] = !{i64 1}
