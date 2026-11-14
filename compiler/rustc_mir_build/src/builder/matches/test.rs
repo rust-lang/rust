@@ -191,33 +191,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let mut actual_value_place = place;
 
+                let mut transmute_to = |to: Ty<'tcx>| {
+                    assert!(to.is_trivially_pure_clone_copy());
+
+                    let transmuted_place = self.temp(to, test.span);
+                    self.cfg.push_assign(
+                        block,
+                        self.source_info(scrutinee_span),
+                        transmuted_place,
+                        Rvalue::Cast(CastKind::Transmute, Operand::Copy(actual_value_place), to),
+                    );
+
+                    let transmuted_expect = self.temp(to, test.span);
+                    self.cfg.push_assign(
+                        block,
+                        self.source_info(test.span),
+                        transmuted_expect,
+                        Rvalue::Cast(CastKind::Transmute, expected_value_operand.clone(), to),
+                    );
+
+                    actual_value_place = transmuted_place;
+                    expected_value_operand = Operand::Copy(transmuted_expect);
+                    expected_value_ty = to;
+                };
+
                 match value.ty.kind() {
-                    &ty::Pat(base, _) => {
-                        assert!(base.is_trivially_pure_clone_copy());
-
-                        let transmuted_place = self.temp(base, test.span);
-                        self.cfg.push_assign(
-                            block,
-                            self.source_info(scrutinee_span),
-                            transmuted_place,
-                            Rvalue::Cast(
-                                CastKind::Transmute,
-                                Operand::Copy(actual_value_place),
-                                base,
-                            ),
-                        );
-
-                        let transmuted_expect = self.temp(base, test.span);
-                        self.cfg.push_assign(
-                            block,
-                            self.source_info(test.span),
-                            transmuted_expect,
-                            Rvalue::Cast(CastKind::Transmute, expected_value_operand, base),
-                        );
-
-                        actual_value_place = transmuted_place;
-                        expected_value_operand = Operand::Copy(transmuted_expect);
-                        expected_value_ty = base;
+                    &ty::Pat(base, _) => transmute_to(base),
+                    &ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::TypeId) => {
+                        transmute_to(tcx.types.u128)
                     }
                     _ => {}
                 }

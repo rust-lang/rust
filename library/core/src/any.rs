@@ -87,7 +87,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::intrinsics::reflection::{type_id, type_id_vtable};
-use crate::intrinsics::{self};
+use crate::intrinsics;
+use crate::marker::{ConstParamTy_, StructuralPartialEq};
 use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
 use crate::{fmt, hash, ptr};
@@ -872,6 +873,11 @@ impl fmt::Debug for TypeId {
         write!(f, "TypeId({:#034x})", self.as_u128())
     }
 }
+
+#[unstable(feature = "type_id_structural_match", issue = "10000000")]
+impl StructuralPartialEq for TypeId {}
+#[unstable(feature = "type_id_structural_match", issue = "10000000")]
+impl ConstParamTy_ for TypeId {}
 
 /// Returns the name of a type as a string slice.
 ///

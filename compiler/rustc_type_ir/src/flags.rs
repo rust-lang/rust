@@ -521,7 +521,7 @@ impl<I: Interner> FlagComputation<I> {
             ty::ConstKind::Value(cv) => {
                 self.add_ty(cv.ty());
                 match cv.valtree().kind() {
-                    ty::ValTreeKind::Leaf(_) => (),
+                    ty::ValTreeKind::Leaf(_) | ty::ValTreeKind::TypeId(_) => (),
                     ty::ValTreeKind::Branch(cts) => {
                         for ct in cts.iter() {
                             self.add_const(ct);

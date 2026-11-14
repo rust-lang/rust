@@ -2471,8 +2471,8 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
 }
 
 /// The constituent parts of a type level constant of kind ADT or array.
-#[derive(Copy, Clone, Debug, StableHash)]
-pub struct DestructuredAdtConst<'tcx> {
-    pub variant: VariantIdx,
-    pub fields: &'tcx [ty::Const<'tcx>],
+#[derive(Copy, Clone, Debug)]
+pub enum DestructuredAdtConst<'tcx> {
+    Aggregate { variant: VariantIdx, fields: &'tcx [ty::Const<'tcx>] },
+    TypeId { ty: Ty<'tcx> },
 }

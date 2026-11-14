@@ -1225,12 +1225,13 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // FIXME(mgca): no need to feature-gate once valtree lifetimes are not erased
                 if tcx.features().gca() {
                     match val.ty.kind() {
-                        ty::Adt(adt_def, args) => {
-                            let adt_val = val.destructure_adt_const();
-                            let variant_def = adt_def.variant(adt_val.variant);
-                            let cause =
-                                self.cause(ObligationCauseCode::WellFormed(WellFormedLoc::None));
-                            self.out.extend(variant_def.fields.iter().zip(adt_val.fields).map(
+                        ty::Adt(adt_def, args)
+                            if let ty::DestructuredAdtConst::Aggregate { variant, fields } =
+                                val.destructure_adt_const() =>
+                        {
+                            let variant_def = adt_def.variant(variant);
+                            let cause = self.cause(ObligationCauseCode::WellFormed(WellFormedLoc::None));
+                            self.out.extend(variant_def.fields.iter().zip(fields).map(
                                 |(field_def, &field_val)| {
                                     let field_ty = tcx
                                         .type_of(field_def.did)
