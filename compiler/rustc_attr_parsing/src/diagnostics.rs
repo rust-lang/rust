@@ -1097,22 +1097,11 @@ pub(crate) struct DocAttrNotTraitLevel {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "`#[target_feature]` cannot be applied to a {$kind ->
-        [panic_handler] `#[panic_handler]`
-        *[other] lang item
-    } function"
-)]
+#[diag("`#[target_feature]` cannot be applied to a lang item function")]
 pub(crate) struct TargetFeatureOnLangItem {
     #[primary_span]
     pub attr_span: Span,
-    pub kind: Symbol,
-    #[label(
-        "{$kind ->
-            [panic_handler] `#[panic_handler]`
-            *[other] lang item
-        } function is not allowed to have `#[target_feature]`"
-    )]
+    #[label("lang item function is not allowed to have `#[target_feature]`")]
     pub item_span: Span,
 }
 

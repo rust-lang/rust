@@ -1,8 +1,12 @@
-error: should have no type parameters
+error: `panic` cannot have generic parameters other than lifetimes
   --> $DIR/panic-handler-bad-signature-4.rs:9:1
    |
+LL | #[panic_handler]
+   | ---------------- required by this attribute
 LL | fn panic<T>(pi: &PanicInfo) -> ! {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[panic_handler]` marks the implementation of an "externally implementable item"
 
 error: aborting due to 1 previous error
 
