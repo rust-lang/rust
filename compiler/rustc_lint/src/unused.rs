@@ -943,14 +943,10 @@ impl EarlyLintPass for UnusedParens {
                     // FIXME(pin_ergonomics): Remove this gate once pinned patterns are stable.
                     || cx.builder.features().pin_ergonomics() =>
             {
-                // Avoid linting on patterns like `&(x @ S{a, b})`, as without parens `&x @ S{a, b}`
+                // Avoid linting on patterns like `&(x @ _)`, as without parens `&x @ _`
                 // it creates confusion and seems like `x` is binding by reference, #165636.
                 if let Paren(ref pat) = p.kind
-                    && let Ident(_, _, Some(ref inner_pat)) = pat.kind
-                    && matches!(
-                        inner_pat.kind,
-                        Struct(..) | Tuple(..) | TupleStruct(..) | Slice(..)
-                    )
+                    && let Ident(_, _, Some(..)) = pat.kind
                 {
                     return;
                 }
