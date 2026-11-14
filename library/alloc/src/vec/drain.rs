@@ -59,7 +59,6 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-    #[must_use]
     #[inline]
     pub fn allocator(&self) -> &A {
         // SAFETY: `vec` is valid for reads.
