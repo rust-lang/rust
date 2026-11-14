@@ -1,4 +1,4 @@
-error: the constant `&*b""` is not of type `&'static [u8; usize::MAX]`
+error: the constant `&[]` is not of type `&'static [u8; usize::MAX]`
   --> $DIR/byte-str-len-mismatch-ice-163904.rs:4:1
    |
 LL | const X4: &[u8; usize::MAX] = b"";

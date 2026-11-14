@@ -11,6 +11,9 @@ struct ConstString<const T: &'static str>;
 struct ConstBytes<const T: &'static [u8]>;
 //[min]~^ ERROR
 //[adt_const_params]~^^ ERROR
+struct ConstU32s<const T: &'static [u32]>;
+//[min]~^ ERROR
+//[adt_const_params]~^^ ERROR
 
 pub fn main() {
     let _: ConstString<"Hello"> = ConstString::<"Hello">;
@@ -19,4 +22,5 @@ pub fn main() {
     let _: ConstString<"ℇ㇈↦"> = ConstString::<"ℇ㇈↥">; //~ ERROR mismatched types
     let _: ConstBytes<b"AAA"> = ConstBytes::<{ &[0x41, 0x41, 0x41] }>;
     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">; //~ ERROR mismatched types
+    let _: ConstU32s<{ &[1, 2, 3] }> = ConstU32s::<{ &[4, 5, 6] }>; //~ ERROR mismatched types
 }
