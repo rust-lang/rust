@@ -1619,8 +1619,14 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Converts the vector into a boxed slice.
     ///
-    /// This conversion is in-place if `vec.len() == vec.capacity()`. Otherwise excess capacity
-    /// is discarded by reallocating before doing the conversion.
+    /// This conversion is in-place if `vec.len() == vec.capacity()`.
+    ///
+    /// Before doing the conversion, this method adjusts the vector's allocation as
+    /// needed so that, if a backing allocation is present, the layout of the returned
+    /// slice [*fits*] that allocation. Thus, the vector's former capacity is not needed
+    /// to determine a layout suitable for deallocation.
+    ///
+    /// [*fits*]: crate::alloc::Allocator#memory-fitting
     ///
     /// # Examples
     ///
@@ -1630,7 +1636,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let slice = v.into_boxed_slice();
     /// ```
     ///
-    /// Any excess capacity is removed:
+    /// The vector's spare capacity is not retained:
     ///
     /// ```
     /// let mut vec = Vec::with_capacity(10);
@@ -1654,7 +1660,7 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Converts the Vec into a boxed array. This conversion will discard any spare capacity,
-    /// if there is any, see [`Vec::shrink_to_fit`].
+    /// if there is any, see [`Vec::into_boxed_slice`].
     /// If you merely wish for a reference to an array, use [`as_array`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_array).
     ///
     /// # Errors
@@ -4695,7 +4701,6 @@ where
     }
 }
 
-// note: test pulls in std, which causes errors here
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     /// Converts a boxed slice into a vector by transferring ownership of
@@ -4712,27 +4717,17 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     }
 }
 
-// note: test pulls in std, which causes errors here
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// Converts a vector into a boxed slice.
     ///
-    /// This conversion is in-place if `vec.len() == vec.capacity()`. Otherwise, excess capacity
-    /// is discarded by reallocating before doing the conversion.
+    /// This is equivalent to [`Vec::into_boxed_slice`].
     ///
     /// # Examples
     ///
     /// ```
     /// assert_eq!(Box::from(vec![1, 2, 3]), vec![1, 2, 3].into_boxed_slice());
-    /// ```
-    ///
-    /// Any excess capacity is removed:
-    /// ```
-    /// let mut vec = Vec::with_capacity(10);
-    /// vec.extend([1, 2, 3]);
-    ///
-    /// assert_eq!(Box::from(vec), vec![1, 2, 3].into_boxed_slice());
     /// ```
     fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()
