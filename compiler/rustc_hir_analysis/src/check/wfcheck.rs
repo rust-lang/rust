@@ -970,6 +970,7 @@ pub(crate) fn check_associated_item(
                     let ty = wfcx.deeply_normalize(span, WellFormedLoc::Ty(def_id), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
+                check_where_clauses(wfcx, def_id);
                 Ok(())
             }
         }
