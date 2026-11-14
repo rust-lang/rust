@@ -4,40 +4,6 @@ error: implementation of `FnOnce` is not general enough
 LL |     A(B(C::new(D::new(move |st| f(st)))))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: closure with signature `fn(&'2 mut V)` must implement `FnOnce<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $DIR/ice-106874.rs:32:10
-   |
-LL | struct B<T>(Rc<T>);
-   |          ^ required by this bound in `B`
-   = note: ...but it actually implements `FnOnce<(&'2 mut V,)>`, for some specific lifetime `'2`
-help: consider adding an explicit type annotation to the closure's argument
-   |
-LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
-   |                               ++++++++
-
-error: implementation of `Fn` is not general enough
-  --> $DIR/ice-106874.rs:8:5
-   |
-LL |     A(B(C::new(D::new(move |st| f(st)))))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: closure with signature `fn(&'2 mut V)` must implement `Fn<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $DIR/ice-106874.rs:32:10
-   |
-LL | struct B<T>(Rc<T>);
-   |          ^ required by this bound in `B`
-   = note: ...but it actually implements `Fn<(&'2 mut V,)>`, for some specific lifetime `'2`
-help: consider adding an explicit type annotation to the closure's argument
-   |
-LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
-   |                               ++++++++
-
-error: implementation of `FnOnce` is not general enough
-  --> $DIR/ice-106874.rs:8:5
-   |
-LL |     A(B(C::new(D::new(move |st| f(st)))))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
 note: closure with signature `fn(&'0 mut V)` must implement `FnOnce<(&mut V,)>`, for some specific lifetime `'0`...
   --> $DIR/ice-106874.rs:32:10
    |
@@ -62,6 +28,40 @@ LL | struct B<T>(Rc<T>);
    |          ^ required by this bound in `B`
    = note: ...but it actually implements `FnOnce<(&'1 mut V,)>`, for some specific lifetime `'1`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
+   |                               ++++++++
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/ice-106874.rs:8:5
+   |
+LL |     A(B(C::new(D::new(move |st| f(st)))))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: closure with signature `fn(&'2 mut V)` must implement `FnOnce<(&'1 mut V,)>`, for any lifetime `'1`...
+  --> $DIR/ice-106874.rs:32:10
+   |
+LL | struct B<T>(Rc<T>);
+   |          ^ required by this bound in `B`
+   = note: ...but it actually implements `FnOnce<(&'2 mut V,)>`, for some specific lifetime `'2`
+help: consider adding an explicit type annotation to the closure's argument
+   |
+LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
+   |                               ++++++++
+
+error: implementation of `Fn` is not general enough
+  --> $DIR/ice-106874.rs:8:5
+   |
+LL |     A(B(C::new(D::new(move |st| f(st)))))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: closure with signature `fn(&'2 mut V)` must implement `Fn<(&'1 mut V,)>`, for any lifetime `'1`...
+  --> $DIR/ice-106874.rs:32:10
+   |
+LL | struct B<T>(Rc<T>);
+   |          ^ required by this bound in `B`
+   = note: ...but it actually implements `Fn<(&'2 mut V,)>`, for some specific lifetime `'2`
 help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
@@ -148,12 +148,11 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut V)` must implement `FnOnce<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
-  ::: $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
+  --> $DIR/ice-106874.rs:32:10
    |
-   = note: required by this bound in `Rc`
+LL | struct B<T>(Rc<T>);
+   |          ^ required by this bound in `B`
    = note: ...but it actually implements `FnOnce<(&'2 mut V,)>`, for some specific lifetime `'2`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
@@ -166,12 +165,11 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut V)` must implement `Fn<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
-  ::: $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
+  --> $DIR/ice-106874.rs:32:10
    |
-   = note: required by this bound in `Rc`
+LL | struct B<T>(Rc<T>);
+   |          ^ required by this bound in `B`
    = note: ...but it actually implements `Fn<(&'2 mut V,)>`, for some specific lifetime `'2`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
@@ -184,11 +182,12 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut V)` must implement `FnOnce<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $DIR/ice-106874.rs:32:10
+  --> $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
    |
-LL | struct B<T>(Rc<T>);
-   |          ^ required by this bound in `B`
+   = note: required by this bound in `Rc`
    = note: ...but it actually implements `FnOnce<(&'2 mut V,)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
@@ -201,11 +200,12 @@ LL |     A(B(C::new(D::new(move |st| f(st)))))
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: closure with signature `fn(&'2 mut V)` must implement `Fn<(&'1 mut V,)>`, for any lifetime `'1`...
-  --> $DIR/ice-106874.rs:32:10
+  --> $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/rcs/rc.rs:LL:COL
    |
-LL | struct B<T>(Rc<T>);
-   |          ^ required by this bound in `B`
+   = note: required by this bound in `Rc`
    = note: ...but it actually implements `Fn<(&'2 mut V,)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider adding an explicit type annotation to the closure's argument
    |
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
