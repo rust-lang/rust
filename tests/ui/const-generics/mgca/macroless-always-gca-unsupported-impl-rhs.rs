@@ -10,7 +10,7 @@ impl<const N: usize> Trait for [u8; N] {
     //~^ ERROR this expression cannot be marked as direct
 }
 
-// "this expression cannot be marked as direct" error not shown when rhs does not exists
+// "this expression cannot be marked as direct" error not shown when rhs does not exist
 impl<const N: usize> Trait for [u16; N] {
     const ASSOC: usize;
     //~^ ERROR associated constant in `impl` without body
