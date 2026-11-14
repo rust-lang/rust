@@ -1,0 +1,8 @@
+error: mixing codegen backends while using backend-specific target features may cause an ABI mismatch in crate `llvm_target_features`
+   |
+   = help: this crate has `-Zllvm-target-feature` set, which means different codegen backends could interpret the target features differently, or ignore them entirely
+   = help: some target features modify the ABI so Rust crates compiled with different target features cannot be used together safely
+   = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=codegen-backend-name` to silence this warning
+
+error: aborting due to 1 previous error
+
