@@ -100,7 +100,7 @@ impl<'tcx> Visitor<'tcx> for MutArgVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match expr.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
+            ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) | ExprKind::If(..) => {
                 self.found = true;
                 return;
             },
