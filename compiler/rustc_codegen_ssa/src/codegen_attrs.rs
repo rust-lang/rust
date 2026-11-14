@@ -13,8 +13,8 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self as ty, TyCtxt};
-use rustc_span::{Span, bug};
+use rustc_middle::ty::{self as ty, Instance, TyCtxt};
+use rustc_span::{Span, Symbol, bug};
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -257,11 +257,21 @@ fn process_builtin_attrs(
                     continue;
                 }
 
-                codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                    foreign_item,
-                    if i.is_default { Linkage::WeakAny } else { Linkage::External },
-                    Visibility::Default,
-                ));
+                assert!(codegen_fn_attrs.foreign_item_symbol_alias.is_none());
+                if !i.is_default {
+                    if tcx.generics_of(foreign_item).requires_monomorphization(tcx) {
+                        tcx.dcx().delayed_bug("Generic EII should have emitted an error");
+                    } else {
+                        // FIXME is tcx.symbol_name() here safe or should we move this to
+                        // rustc_symbol_mangling?
+                        codegen_fn_attrs.symbol_name = Some(Symbol::intern(
+                            tcx.symbol_name(Instance::mono(tcx, foreign_item)).name,
+                        ));
+                    }
+                } else {
+                    codegen_fn_attrs.foreign_item_symbol_alias =
+                        Some((foreign_item, Linkage::WeakAny, Visibility::Default));
+                }
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
 
                 // If the declaration is `#[track_caller]`, derive it onto the implementation
