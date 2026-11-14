@@ -2098,6 +2098,166 @@ fn suggest_path_name_typo(
     true
 }
 
+/// Checks whether the entire candidate parses as an indexing expression,
+/// without emitting diagnostics.
+fn is_indexing_expression(code: &str) -> bool {
+    use std::sync::Arc;
+
+    use rustc_ast::{ExprKind, token};
+    use rustc_errors::emitter::SilentEmitter;
+    use rustc_errors::{DiagCtxt, catch_fatal_errors};
+    use rustc_parse::lexer::StripTokens;
+    use rustc_parse::new_parser_from_source_str;
+    use rustc_parse::parser::Recovery;
+    use rustc_session::parse::ParseSess;
+    use rustc_span::FileName;
+    use rustc_span::source_map::{FilePathMapping, SourceMap};
+
+    // This is a speculative parse: invalid candidates must not produce
+    // additional errors or affect rustdoc's actual compilation session.
+    let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
+    let dcx = DiagCtxt::new(Box::new(SilentEmitter));
+    let psess = ParseSess::with_dcx(dcx, source_map);
+
+    // Some lexer/parser failures abort through a fatal-error unwind.
+    // For this check, those failures simply mean "not a suitable candidate".
+    let is_indexing = catch_fatal_errors(|| {
+        let mut parser = match new_parser_from_source_str(
+            &psess,
+            FileName::anon_source_code(code),
+            code.to_owned(),
+            StripTokens::Nothing,
+        ) {
+            // Do not repair malformed code and then accept the repaired AST.
+            Ok(parser) => parser.recovery(Recovery::Forbidden),
+            Err(errors) => {
+                for error in errors {
+                    error.cancel();
+                }
+                return false;
+            }
+        };
+
+        match parser.parse_expr() {
+            Ok(expr) => {
+                // Require the whole candidate, not just a valid prefix.
+                // Also require indexing: an ordinary name parses as a path.
+                parser.token == token::Eof && matches!(expr.kind, ExprKind::Index(..))
+            }
+            Err(error) => {
+                // Returned diagnostics must be explicitly consumed.
+                error.cancel();
+                false
+            }
+        }
+    })
+    .unwrap_or(false);
+
+    // Lexing or parsing can emit errors internally even when an AST is returned.
+    let accepted = is_indexing && psess.dcx().has_errors_or_delayed_bugs().is_none();
+
+    // Discard diagnostics belonging only to this speculative session.
+    // Never reset rustdoc's real diagnostic context here.
+    psess.dcx().reset_err_count();
+
+    accepted
+}
+
+/// Returns a span and replacement for wrapping a likely indexing expression in backticks.
+///
+/// Requires the candidate to parse as a complete indexing expression and match its
+/// mapped source text exactly. For expanded documentation, the edit must also fall
+/// within a plain, unescaped local documentation literal.
+fn indexing_code_suggestion(
+    tcx: TyCtxt<'_>,
+    diag_info: &DiagnosticInfo<'_>,
+) -> Option<(rustc_span::Span, String)> {
+    let MarkdownLinkRange::Destination(label_range) = &diag_info.link_range else {
+        return None;
+    };
+
+    let dox = diag_info.dox;
+    let open = label_range.start.checked_sub(1)?;
+    let end = label_range.end.checked_add(1)?;
+    if dox.as_bytes().get(open) != Some(&b'[') || dox.as_bytes().get(label_range.end) != Some(&b']')
+    {
+        return None;
+    }
+
+    let prefix = dox.get(..open)?;
+
+    // Include field separators and path separators when selecting the receiver.
+    // This selects "state.arr" or "module::ARR", rather than just "arr" or "ARR".
+    let start = prefix
+        .trim_end_matches(|ch| rustc_lexer::is_id_continue(ch) || matches!(ch, '.' | ':'))
+        .len();
+
+    // There must be some receiver text before the opening bracket.
+    if start == prefix.len() {
+        return None;
+    }
+
+    // Preserve the existing protection against starting inside a raw identifier,
+    // or immediately after an escape or backtick.
+    if prefix[..start].chars().next_back().is_some_and(|ch| matches!(ch, '#' | '\\' | '`')) {
+        return None;
+    }
+
+    let after = dox.get(end..)?.trim_start();
+    if after.starts_with('[') || after.starts_with('(') {
+        return None;
+    }
+
+    let expression_range = start..end;
+    let code = dox.get(expression_range.clone())?;
+
+    if code.contains(['`', '\n', '\r']) || !is_indexing_expression(code) {
+        return None;
+    }
+
+    let source_map = tcx.sess.source_map();
+
+    let (span, from_expansion) = source_span_for_markdown_range(
+        tcx,
+        dox,
+        &expression_range,
+        &diag_info.item.attrs.doc_strings,
+    )?;
+
+    // The replacement must cover exactly the recognized expression.
+    let snippet = source_map.span_to_snippet(span).ok()?;
+    if snippet.as_str() != code {
+        return None;
+    }
+
+    if from_expansion {
+        // Do not suggest editing a dependency's macro definition.
+        if span.in_external_macro(source_map) || source_map.is_imported(span) {
+            return None;
+        }
+
+        // Expanded docs may be assembled from tokens rather than a source literal.
+        // Only accept an exact, unescaped string literal.
+        let in_plain_doc_literal = diag_info.item.attrs.doc_strings.iter().any(|fragment| {
+            if let rustc_ast::token::DocFragmentKind::Raw(value_span) = fragment.kind
+                && value_span.contains(span)
+                && let Ok(literal) = source_map.span_to_snippet(value_span)
+                && let Some(contents) = literal.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+            {
+                !contents.contains(['\\', '"']) && contents == fragment.doc.as_str()
+            } else {
+                false
+            }
+        });
+
+        if !in_plain_doc_literal {
+            return None;
+        }
+    }
+
+    Some((span, format!("`{code}`")))
+}
+
 /// Reports a link that failed to resolve.
 ///
 /// This also tries to resolve any intermediate path segments that weren't
@@ -2223,6 +2383,24 @@ fn resolution_failure(
                             diag.span_label(span, note);
                         } else {
                             diag.note(note);
+                        }
+
+                        // A disambiguator or resolved path prefix suggests an intended item link.
+                        // Otherwise, prefer formatting a likely indexing expression as code instead
+                        // of offering competing typo or bracket-escaping suggestions.
+                        if disambiguator.is_none()
+                            && partial_res.is_none()
+                            && let Some((span, replacement)) =
+                                indexing_code_suggestion(tcx, &diag_info)
+                        {
+                            diag.span_suggestion_verbose(
+                                span,
+                                "try marking as source code",
+                                replacement,
+                                Applicability::MaybeIncorrect,
+                            );
+
+                            continue;
                         }
 
                         // Prefer a concrete correction over generic advice about external links.
