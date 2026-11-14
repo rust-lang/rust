@@ -4,7 +4,9 @@
 
 trait Z<'a, T: ?Sized>
 where
-    T: Z<'a, ()>, //~ ERROR: the trait bound `(): Z<'a, ()>` is not satisfied
+    T: Z<'a, ()>,
+    //~^ ERROR: the trait bound `(): Z<'a, ()>` is not satisfied
+    //~| ERROR: the trait bound `(): Z<'a, ()>` is not satisfied
     for<'b> <T as Z<'b, ()>>::W: 'a,
 {
     type W;
