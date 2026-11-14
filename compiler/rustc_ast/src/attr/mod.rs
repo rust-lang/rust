@@ -866,10 +866,9 @@ impl Attribute {
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn name(&self) -> Option<Symbol> {
-        use SyntheticAttr::*;
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.name(),
-            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
+            AttrKind::Synthetic(_) => None,
             AttrKind::DocComment(..) => None,
             AttrKind::Generated(generated) => match generated.path() {
                 [name] => Some(*name),
@@ -910,6 +909,7 @@ impl Attribute {
             }
             AttrKind::Synthetic(CfgTrace(_)) => smallvec![sym::cfg],
             AttrKind::Synthetic(CfgAttrTrace(_)) => smallvec![sym::cfg_attr],
+            AttrKind::Synthetic(TestEntrypoint) => smallvec![],
             AttrKind::DocComment(_, _) => smallvec![sym::doc],
             AttrKind::Generated(generated) => generated.path().iter().copied().collect(),
         }
