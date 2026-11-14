@@ -220,18 +220,22 @@ fn encode_const_value<'tcx>(
         // User-defined types
         // Struct and enum values are encoded as their field values as literal arguments, preceded
         // by V<variant-index> for enum values.
-        ty::Adt(adt_def, ..) => {
-            let contents = cv.destructure_adt_const();
-            if adt_def.is_enum() {
-                let _ = write!(s, "V{}", contents.variant.as_u32());
+        ty::Adt(adt_def, ..) => match cv.destructure_adt_const() {
+            ty::DestructuredAdtConst::Aggregate { variant, fields } => {
+                if adt_def.is_enum() {
+                    let _ = write!(s, "V{}", variant.as_u32());
+                }
+                for field in fields {
+                    let ty::ConstKind::Value(field_cv) = field.kind() else {
+                        bug!("encode_const_value: unexpected kind `{:?}`", field.kind());
+                    };
+                    s.push_str(&encode_const(tcx, *field, field_cv.ty, dict, options));
+                }
             }
-            for field in contents.fields {
-                let ty::ConstKind::Value(field_cv) = field.kind() else {
-                    bug!("encode_const_value: unexpected kind `{:?}`", field.kind());
-                };
-                s.push_str(&encode_const(tcx, *field, field_cv.ty, dict, options));
+            ty::DestructuredAdtConst::TypeId { ty } => {
+                s.push_str(&encode_ty(tcx, ty, dict, options))
             }
-        }
+        },
 
         // Pointer types
         // Reference values are encoded as the values of their referents (i.e., the valtree of a

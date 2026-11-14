@@ -249,6 +249,8 @@ pub enum ValTreeKind<I: Interner> {
     ///
     /// ZST types are represented as an empty slice.
     Branch(I::Consts),
+
+    TypeId(I::Ty),
 }
 
 impl<I: Interner> ValTreeKind<I> {
@@ -258,7 +260,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn to_leaf(&self) -> I::ScalarInt {
         match self {
             ValTreeKind::Leaf(s) => *s,
-            ValTreeKind::Branch(..) => panic!("expected leaf, got {:?}", self),
+            _ => panic!("expected leaf, got {:?}", self),
         }
     }
 
@@ -268,7 +270,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn to_branch(&self) -> I::Consts {
         match self {
             ValTreeKind::Branch(branch) => *branch,
-            ValTreeKind::Leaf(..) => panic!("expected branch, got {:?}", self),
+            _ => panic!("expected branch, got {:?}", self),
         }
     }
 
@@ -276,7 +278,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn try_to_leaf(&self) -> Option<I::ScalarInt> {
         match self {
             ValTreeKind::Leaf(s) => Some(*s),
-            ValTreeKind::Branch(_) => None,
+            _ => None,
         }
     }
 
@@ -284,7 +286,7 @@ impl<I: Interner> ValTreeKind<I> {
     pub fn try_to_branch(&self) -> Option<I::Consts> {
         match self {
             ValTreeKind::Branch(branch) => Some(*branch),
-            ValTreeKind::Leaf(_) => None,
+            _ => None,
         }
     }
 }

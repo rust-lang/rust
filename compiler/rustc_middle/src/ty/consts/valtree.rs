@@ -61,6 +61,10 @@ impl<'tcx> ValTree<'tcx> {
     pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt) -> Self {
         tcx.intern_valtree(ty::ValTreeKind::Leaf(i))
     }
+
+    pub fn from_type_id(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
+        tcx.intern_valtree(ty::ValTreeKind::TypeId(ty))
+    }
 }
 
 impl<'tcx> Deref for ValTree<'tcx> {
@@ -171,7 +175,7 @@ impl<'tcx> Value<'tcx> {
     pub fn to_leaf(self) -> ScalarInt {
         match &**self.valtree {
             ValTreeKind::Leaf(s) => *s,
-            ValTreeKind::Branch(..) => bug!("expected leaf, got {:?}", self),
+            _ => bug!("expected leaf, got {:?}", self),
         }
     }
 
@@ -181,7 +185,7 @@ impl<'tcx> Value<'tcx> {
     pub fn to_branch(self) -> &'tcx [ty::Const<'tcx>] {
         match &**self.valtree {
             ValTreeKind::Branch(branch) => &**branch,
-            ValTreeKind::Leaf(..) => bug!("expected branch, got {:?}", self),
+            _ => bug!("expected branch, got {:?}", self),
         }
     }
 
@@ -189,7 +193,7 @@ impl<'tcx> Value<'tcx> {
     pub fn try_to_leaf(self) -> Option<ScalarInt> {
         match &**self.valtree {
             ValTreeKind::Leaf(s) => Some(*s),
-            ValTreeKind::Branch(_) => None,
+            _ => None,
         }
     }
 
@@ -202,13 +206,19 @@ impl<'tcx> Value<'tcx> {
     pub fn try_to_branch(self) -> Option<&'tcx [ty::Const<'tcx>]> {
         match &**self.valtree {
             ValTreeKind::Branch(branch) => Some(&**branch),
-            ValTreeKind::Leaf(_) => None,
+            _ => None,
         }
     }
 
     /// Destructures ADT constants into the constants of their fields.
     pub fn destructure_adt_const(&self) -> ty::DestructuredAdtConst<'tcx> {
-        let fields = self.to_branch();
+        let fields = match **self.valtree {
+            ValTreeKind::Leaf(_) => {
+                bug!("destructure_adt_const: expected branch or type id `{:?}`", self.ty)
+            }
+            ValTreeKind::Branch(branch) => &**branch,
+            ValTreeKind::TypeId(ty) => return ty::DestructuredAdtConst::TypeId { ty },
+        };
 
         let (variant, fields) = match self.ty.kind() {
             ty::Adt(def, _) if def.variants().is_empty() => {
@@ -222,7 +232,7 @@ impl<'tcx> Value<'tcx> {
             _ => bug!("destructure_adt_const called on non-ADT type: {:?}", self.ty),
         };
 
-        ty::DestructuredAdtConst { variant, fields }
+        ty::DestructuredAdtConst::Aggregate { variant, fields }
     }
 }
 

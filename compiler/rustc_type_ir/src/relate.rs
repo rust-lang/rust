@@ -605,6 +605,7 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
                         .zip(branches_b.iter())
                         .all(|(a, b)| relation.relate(a, b).is_ok())
                 }
+                (ty::ValTreeKind::TypeId(a), ty::ValTreeKind::TypeId(b)) => a == b,
                 _ => false,
             }
         }

@@ -2000,9 +2000,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 return Ok(());
             }
-            (ty::ValTreeKind::Branch(_), ty::Adt(def, args)) => {
-                let contents = cv.destructure_adt_const();
-                let fields = contents.fields.iter().copied();
+            (ty::ValTreeKind::Branch(_), ty::Adt(def, args))
+                if let ty::DestructuredAdtConst::Aggregate { variant, fields } =
+                    cv.destructure_adt_const() =>
+            {
+                let fields = fields.iter().copied();
 
                 if def.variants().is_empty() {
                     self.typed_value(
@@ -2014,8 +2016,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         ": ",
                     )?;
                 } else {
-                    let variant_idx = contents.variant;
-                    let variant_def = &def.variant(variant_idx);
+                    let variant_def = &def.variant(variant);
                     self.pretty_print_value_path(variant_def.def_id, args)?;
                     match variant_def.ctor_kind() {
                         Some(CtorKind::Const) => {}
