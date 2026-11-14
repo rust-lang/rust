@@ -107,14 +107,9 @@ jobs:
         shell: pwsh -Command $ErrorActionPreference='stop'; $PSNativeCommandUseErrorActionPreference=$true; & '{0}'
         run: |
           echo "uninstalling..."
-          &"${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -nologo
           $installPath=&"${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath -format value
-          # echo "before:"
           # &"${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -include packages -format json
-          Start-Process "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe" -Wait -ArgumentList "modify --installPath `"$installPath`" --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64 --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64EC --remove Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --noUpdateInstaller --force --passive --quiet"
-          exit 1
-          echo "after:"
-          &"${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -include packages -format json
+          Start-Process "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe" -Wait -ArgumentList "modify --installPath `"$installPath`" --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64 --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64EC --remove Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --noUpdateInstaller --noWeb --force --passive --quiet"
 
       - name: Install cargo in AWS CodeBuild
         if: matrix.codebuild
