@@ -946,6 +946,7 @@ impl EarlyLintPass for UnusedParens {
                 // Avoid linting on patterns like `&(x @ _)`, as without parens `&x @ _`
                 // it creates confusion and seems like `x` is binding by reference, #165636.
                 if let Paren(ref pat) = p.kind
+                    && *pinned == Pinnedness::Not
                     && let Ident(_, _, Some(..)) = pat.kind
                 {
                     return;
