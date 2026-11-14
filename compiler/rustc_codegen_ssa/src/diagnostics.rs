@@ -598,13 +598,6 @@ pub(crate) struct LinkScriptWriteFailure {
 }
 
 #[derive(Diagnostic)]
-#[diag("failed to write {$path}: {$error}")]
-pub(crate) struct FailedToWrite {
-    pub path: PathBuf,
-    pub error: Error,
-}
-
-#[derive(Diagnostic)]
 #[diag("unable to write debugger visualizer file `{$path}`: {$error}")]
 pub(crate) struct UnableToWriteDebuggerVisualizer {
     pub path: PathBuf,
