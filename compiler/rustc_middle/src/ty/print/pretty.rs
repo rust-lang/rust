@@ -1911,19 +1911,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(());
         }
 
-        let u8_type = self.tcx().types.u8;
         match (*cv.valtree, *cv.ty.kind()) {
             (ty::ValTreeKind::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
-                ty::Slice(t) if *t == u8_type => {
-                    let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
-                        bug!(
-                            "expected to convert valtree {:?} to raw bytes for type {:?}",
-                            cv.valtree,
-                            t
-                        )
-                    });
-                    return self.pretty_print_byte_str(bytes);
-                }
                 ty::Str => {
                     let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                         bug!("expected to convert valtree to raw bytes for type {:?}", cv.ty)
@@ -1938,21 +1927,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     return Ok(());
                 }
             },
-            // If it is a branch with an array, and this array can be printed as raw bytes, then dump its bytes
-            (ty::ValTreeKind::Branch(_), ty::Array(t, _))
-                if t == u8_type
-                    && let Some(bytes) = cv.try_to_raw_bytes(self.tcx()) =>
-            {
-                write!(self, "*")?;
-                self.pretty_print_byte_str(bytes)?;
-                return Ok(());
-            }
-            // Otherwise, print the array separated by commas (or if it's a tuple)
-            (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Tuple(..)) => {
+            // Print the elements of the array, slice, or tuple separated by commas
+            (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Slice(..) | ty::Tuple(..)) => {
                 let fields_iter = fields.iter();
 
                 match *cv.ty.kind() {
-                    ty::Array(..) => {
+                    ty::Array(..) | ty::Slice(..) => {
                         write!(self, "[")?;
                         self.comma_sep(fields_iter)?;
                         write!(self, "]")?;

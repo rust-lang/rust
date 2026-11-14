@@ -18,8 +18,18 @@ LL | struct ConstBytes<const T: &'static [u8]>;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: required for `&'static [u8]` to implement `ConstParamTy_`
 
+error[E0658]: use of unstable library feature `unsized_const_params`
+  --> $DIR/slice-const-param-mismatch.rs:14:18
+   |
+LL | struct ConstU32s<const T: &'static [u32]>;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unsized_const_params)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: required for `&'static [u32]` to implement `ConstParamTy_`
+
 error[E0308]: mismatched types
-  --> $DIR/slice-const-param-mismatch.rs:17:35
+  --> $DIR/slice-const-param-mismatch.rs:20:35
    |
 LL |     let _: ConstString<"Hello"> = ConstString::<"World">;
    |            --------------------   ^^^^^^^^^^^^^^^^^^^^^^ expected `"Hello"`, found `"World"`
@@ -30,7 +40,7 @@ LL |     let _: ConstString<"Hello"> = ConstString::<"World">;
               found struct `ConstString<"World">`
 
 error[E0308]: mismatched types
-  --> $DIR/slice-const-param-mismatch.rs:19:33
+  --> $DIR/slice-const-param-mismatch.rs:22:33
    |
 LL |     let _: ConstString<"ℇ㇈↦"> = ConstString::<"ℇ㇈↥">;
    |            -------------------   ^^^^^^^^^^^^^^^^^^^^^ expected `"ℇ㇈↦"`, found `"ℇ㇈↥"`
@@ -41,17 +51,28 @@ LL |     let _: ConstString<"ℇ㇈↦"> = ConstString::<"ℇ㇈↥">;
               found struct `ConstString<"ℇ㇈↥">`
 
 error[E0308]: mismatched types
-  --> $DIR/slice-const-param-mismatch.rs:21:33
+  --> $DIR/slice-const-param-mismatch.rs:24:33
    |
 LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
-   |            ------------------   ^^^^^^^^^^^^^^^^^^^^ expected `b"AAA"`, found `b"BBB"`
+   |            ------------------   ^^^^^^^^^^^^^^^^^^^^ expected `&[65, 65, 65]`, found `&[66, 66, 66]`
    |            |
    |            expected due to this
    |
-   = note: expected struct `ConstBytes<b"AAA">`
-              found struct `ConstBytes<b"BBB">`
+   = note: expected struct `ConstBytes<&[65, 65, 65]>`
+              found struct `ConstBytes<&[66, 66, 66]>`
 
-error: aborting due to 5 previous errors
+error[E0308]: mismatched types
+  --> $DIR/slice-const-param-mismatch.rs:25:40
+   |
+LL |     let _: ConstU32s<{ &[1, 2, 3] }> = ConstU32s::<{ &[4, 5, 6] }>;
+   |            -------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&[1, 2, 3]`, found `&[4, 5, 6]`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `ConstU32s<&[1, 2, 3]>`
+              found struct `ConstU32s<&[4, 5, 6]>`
+
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.

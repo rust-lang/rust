@@ -1,4 +1,4 @@
-error: the constant `*b""` is not of type `[u8; 2]`
+error: the constant `[]` is not of type `[u8; 2]`
   --> $DIR/array-const-arg-len-mismatch.rs:36:11
    |
 LL |     foo::<u8, 2, { [] }>();
@@ -10,7 +10,7 @@ note: required by a const generic parameter in `foo`
 LL | fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
    |                                          ^^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 
-error: the constant `*b"\x00\x00\x00"` is not of type `[u8; 2]`
+error: the constant `[0, 0, 0]` is not of type `[u8; 2]`
   --> $DIR/array-const-arg-len-mismatch.rs:38:11
    |
 LL |     foo::<u8, 2, { [0, 0, 0] }>();
@@ -22,7 +22,7 @@ note: required by a const generic parameter in `foo`
 LL | fn foo<T: ConstParamTy_, const N: usize, const M: [T; N]>() -> [T; N] {
    |                                          ^^^^^^^^^^^^^^^ required by this const generic parameter in `foo`
 
-error: the constant `*b""` is not of type `[u8; 2]`
+error: the constant `[]` is not of type `[u8; 2]`
   --> $DIR/array-const-arg-len-mismatch.rs:40:13
    |
 LL |     bar::<{ [] }>();
@@ -34,7 +34,7 @@ note: required by a const generic parameter in `bar`
 LL | fn bar<const A: [u8; 2]>() {}
    |        ^^^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
 
-error: the constant `*b"\x01\x02\x03"` is not of type `[u8; 2]`
+error: the constant `[1, 2, 3]` is not of type `[u8; 2]`
   --> $DIR/array-const-arg-len-mismatch.rs:42:13
    |
 LL |     bar::<{ [1, 2, 3] }>();
@@ -46,7 +46,7 @@ note: required by a const generic parameter in `bar`
 LL | fn bar<const A: [u8; 2]>() {}
    |        ^^^^^^^^^^^^^^^^ required by this const generic parameter in `bar`
 
-error: the constant `*b"*"` is not of type `[u8; 3]`
+error: the constant `[42]` is not of type `[u8; 3]`
   --> $DIR/array-const-arg-len-mismatch.rs:44:13
    |
 LL |     baz::<{ [42] }>();

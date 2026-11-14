@@ -1,8 +1,8 @@
 // MIR for `main` after built
 
 | User Type Annotations
-| 0: user_ty: Canonical { value: TypeOf(function_with_bytes<&*b"AAAA">), max_universe: U0, var_kinds: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
-| 1: user_ty: Canonical { value: TypeOf(function_with_bytes<{ &[0x41, 0x41, 0x41, 0x41] }>), max_universe: U0, var_kinds: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 0: user_ty: Canonical { value: TypeOf(function_with_bytes<&[65, 65, 65, 65]>), max_universe: U0, var_kinds: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&[65, 65, 65, 65]>}
+| 1: user_ty: Canonical { value: TypeOf(function_with_bytes<{ &[0x41, 0x41, 0x41, 0x41] }>), max_universe: U0, var_kinds: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&[65, 65, 65, 65]>}
 |
 fn main() -> () {
     let mut _0: ();
@@ -67,7 +67,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = function_with_bytes::<&*b"AAAA">() -> [return: bb1, unwind: bb23];
+        _4 = function_with_bytes::<&[65, 65, 65, 65]>() -> [return: bb1, unwind: bb23];
     }
 
     bb1: {
@@ -173,7 +173,7 @@ fn main() -> () {
         StorageLive(_23);
         StorageLive(_24);
         StorageLive(_25);
-        _25 = function_with_bytes::<&*b"AAAA">() -> [return: bb12, unwind: bb23];
+        _25 = function_with_bytes::<&[65, 65, 65, 65]>() -> [return: bb12, unwind: bb23];
     }
 
     bb12: {
