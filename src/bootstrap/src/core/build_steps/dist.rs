@@ -857,7 +857,8 @@ fn copy_target_libs(
                 &self_contained_dst.join(path.file_name().unwrap()),
                 FileType::NativeLibrary,
             );
-        } else if dependency_type == DependencyType::Target || builder.config.is_host_target(target)
+        } else if matches!(dependency_type, DependencyType::Target { .. })
+            || builder.config.is_host_target(target)
         {
             builder.copy_link(&path, &dst.join(path.file_name().unwrap()), FileType::NativeLibrary);
         }
