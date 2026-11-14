@@ -2165,8 +2165,9 @@ fn is_indexing_expression(code: &str) -> bool {
 
 /// Returns a span and replacement for wrapping a likely indexing expression in backticks.
 ///
-/// Only handles `ident[ident]` where the bracketed name was parsed as a link.
-/// Returns `None` if the expression cannot be mapped to matching, non-expanded source text.
+/// Requires the candidate to parse as a complete indexing expression and match its
+/// mapped source text exactly. For expanded documentation, the edit must also fall
+/// within a plain, unescaped local documentation literal.
 fn indexing_code_suggestion(
     tcx: TyCtxt<'_>,
     diag_info: &DiagnosticInfo<'_>,
@@ -2207,8 +2208,8 @@ fn indexing_code_suggestion(
         return None;
     }
 
-    let range = start..end;
-    let code = dox.get(range.clone())?;
+    let expression_range = start..end;
+    let code = dox.get(expression_range.clone())?;
 
     if code.contains(['`', '\n', '\r']) || !is_indexing_expression(code) {
         return None;
@@ -2216,8 +2217,12 @@ fn indexing_code_suggestion(
 
     let source_map = tcx.sess.source_map();
 
-    let (span, from_expansion) =
-        source_span_for_markdown_range(tcx, dox, &range, &diag_info.item.attrs.doc_strings)?;
+    let (span, from_expansion) = source_span_for_markdown_range(
+        tcx,
+        dox,
+        &expression_range,
+        &diag_info.item.attrs.doc_strings,
+    )?;
 
     // The replacement must cover exactly the recognized expression.
     let snippet = source_map.span_to_snippet(span).ok()?;
