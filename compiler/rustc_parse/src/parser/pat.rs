@@ -119,8 +119,7 @@ impl<'a> Parser<'a> {
                 Box::new(Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) })
             };
 
-            // Feature-gate guard patterns
-            self.psess.gated_spans.gate(sym::guard_patterns, guard.span());
+            self.psess.gated_spans.gate(sym::guard_patterns, guard.span_with_leading_if);
             let span = pat.span.to(guard.span());
             Ok(self.mk_pat(span, PatKind::Guard(Box::new(pat), guard)))
         } else {
