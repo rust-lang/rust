@@ -109,8 +109,9 @@ jobs:
           echo "uninstalling..."
           rm $env:TMP\dd_*.log
           $installPath=&"${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath -format value
-          Start-Process "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe" -Wait -ArgumentList "modify --installPath `"$installPath`" --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64 --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64EC --remove Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --noUpdateInstaller --noWeb --force --passive --quiet"
+          Start-Process "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe" -Wait -ArgumentList "modify --installPath `"$installPath`" --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64 --remove Microsoft.VisualStudio.Component.VC.Tools.ARM64EC --remove Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --noUpdateInstaller --noWeb --force --passive"
           cat $env:TMP\dd_*.log
+          exit 1
 
       - name: Install cargo in AWS CodeBuild
         if: matrix.codebuild
