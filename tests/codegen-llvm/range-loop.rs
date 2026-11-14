@@ -21,7 +21,7 @@ pub fn call_for_zero_to_n(n: u32, f: fn(u32)) {
 
     // CHECK: [[HEAD]]:
     // CHECK: %[[T1:.+]] = load i32, ptr %[[IND]],
-    // CHECK: %[[NOT_DONE:.+]] = icmp ugt i32 %n, %[[T1]]
+    // CHECK: %[[NOT_DONE:.+]] = icmp ult i32 %[[T1]], %n
     // CHECK: br i1 %[[NOT_DONE]], label %[[BODY:.+]], label %[[BREAK:.+]]
 
     // CHECK: [[BREAK]]:
