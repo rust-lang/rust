@@ -236,7 +236,10 @@ impl LlvmType for CastTarget {
 
         // The x87_f80 type has a store size of 10 bytes, but an allocation size of 12 or 16 bytes.
         // Ensure we don't cast to it, because that could have unintened behavior.
-        assert!(args.iter().all(|a| *a != cx.type_x87_f80()));
+        //
+        // Make an exception when using a `rest_offset`, which is used when returning
+        // `Complex<x87_f80>`.
+        assert!(self.rest_offset.is_some() || args.iter().all(|a| *a != cx.type_x87_f80()));
 
         cx.type_struct(&args)
     }
