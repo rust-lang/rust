@@ -353,7 +353,7 @@ fn copy_third_party_objects(
         target_deps.extend(
             copy_sanitizers(builder, compiler, target)
                 .into_iter()
-                .map(|d| (d, DependencyType::Target)),
+                .map(|d| (d, DependencyType::Target { proc_macro: false })),
         );
     }
 
@@ -366,7 +366,7 @@ fn copy_third_party_objects(
     {
         let libunwind_path =
             copy_llvm_libunwind(builder, target, &builder.sysroot_target_libdir(*compiler, target));
-        target_deps.push((libunwind_path, DependencyType::Target));
+        target_deps.push((libunwind_path, DependencyType::Target { proc_macro: false }));
     }
 
     target_deps
@@ -946,7 +946,7 @@ impl CommandLineStep for StartupObjects {
 
             let obj = sysroot_dir.join((*file).to_string() + ".o");
             builder.copy_link(dst_file, &obj, FileType::NativeLibrary);
-            target_deps.push((obj, DependencyType::Target));
+            target_deps.push((obj, DependencyType::Target { proc_macro: false }));
         }
 
         target_deps
@@ -2363,12 +2363,12 @@ impl CommandLineStep for Assemble {
         let proc_macros = builder
             .read_stamp_file(&stamp)
             .into_iter()
-            .filter_map(|(path, dependency_type)| {
-                if dependency_type == DependencyType::Host {
+            .filter_map(|(path, dependency_type)| match dependency_type {
+                DependencyType::HostProcMacro | DependencyType::Target { proc_macro: true } => {
                     Some(path.file_name().unwrap().to_owned().into_string().unwrap())
-                } else {
-                    None
                 }
+                DependencyType::Target { proc_macro: false }
+                | DependencyType::TargetSelfContained => None,
             })
             .collect::<HashSet<_>>();
 
@@ -2616,7 +2616,7 @@ pub fn add_to_sysroot(
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         let filename = path.file_name().unwrap().to_str().unwrap();
         let dst = match dependency_type {
-            DependencyType::Host => {
+            DependencyType::HostProcMacro => {
                 if sysroot_dst == sysroot_host_dst {
                     // Only insert the part before the . to deduplicate different files for the same crate.
                     // For example foo-1234.dll and foo-1234.dll.lib.
@@ -2625,7 +2625,7 @@ pub fn add_to_sysroot(
 
                 sysroot_host_dst
             }
-            DependencyType::Target => {
+            DependencyType::Target { .. } => {
                 // Only insert the part before the . to deduplicate different files for the same crate.
                 // For example foo-1234.dll and foo-1234.dll.lib.
                 crates.insert(filename.split_once('.').unwrap().0.to_owned(), path.clone());
@@ -2739,17 +2739,19 @@ pub fn run_cargo(
 
             let filename = Path::new(&*filename);
 
+            let is_proc_macro = crate_types.iter().any(|t| t == "proc-macro");
+
             // If this was an output file in the "host dir" we don't actually
             // worry about it, it's not relevant for us
             if filename.starts_with(&host_root_dir) {
                 // Unless it's a proc macro used in the compiler
-                if crate_types.iter().any(|t| t == "proc-macro") {
+                if is_proc_macro {
                     // Cargo will compile proc-macros that are part of the rustc workspace twice.
                     // Once as libmacro-hash.so as build dependency and once as libmacro.so as
                     // output artifact. Only keep the former to avoid ambiguity when trying to use
                     // the proc macro from the sysroot.
                     if filename.file_name().unwrap().to_str().unwrap().contains("-") {
-                        deps.push((filename.to_path_buf(), DependencyType::Host));
+                        deps.push((filename.to_path_buf(), DependencyType::HostProcMacro));
                     }
                 }
                 continue;
@@ -2758,7 +2760,10 @@ pub fn run_cargo(
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
             if filename.starts_with(&target_build_dir) {
-                deps.push((filename.to_path_buf(), DependencyType::Target));
+                deps.push((
+                    filename.to_path_buf(),
+                    DependencyType::Target { proc_macro: is_proc_macro },
+                ));
                 continue;
             }
 
@@ -2778,7 +2783,7 @@ pub fn run_cargo(
             let file_stem = parts.next().unwrap().to_owned();
             let extension = parts.next().unwrap().to_owned();
 
-            toplevel.push((file_stem, extension, expected_len));
+            toplevel.push((file_stem, extension, expected_len, is_proc_macro));
         }
     });
 
@@ -2806,7 +2811,7 @@ pub fn run_cargo(
         .flat_map(|e| read_dir(&e.path()))
         .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
         .collect::<Vec<_>>();
-    for (prefix, extension, expected_len) in toplevel {
+    for (prefix, extension, expected_len, is_proc_macro) in toplevel {
         let candidates = contents.iter().filter(|&(_, filename, meta)| {
             meta.len() == expected_len
                 && filename
@@ -2825,10 +2830,10 @@ pub fn run_cargo(
             let candidate = format!("{path_to_add}.lib");
             let candidate = PathBuf::from(candidate);
             if candidate.exists() {
-                deps.push((candidate, DependencyType::Target));
+                deps.push((candidate, DependencyType::Target { proc_macro: is_proc_macro }));
             }
         }
-        deps.push((path_to_add.into(), DependencyType::Target));
+        deps.push((path_to_add.into(), DependencyType::Target { proc_macro: is_proc_macro }));
     }
 
     deps.extend(additional_target_deps);
@@ -2836,8 +2841,9 @@ pub fn run_cargo(
     let mut new_contents = Vec::new();
     for (dep, dependency_type) in deps.iter() {
         new_contents.extend(match *dependency_type {
-            DependencyType::Host => b"h",
-            DependencyType::Target => b"t",
+            DependencyType::HostProcMacro => b"h",
+            DependencyType::Target { proc_macro: false } => b"t",
+            DependencyType::Target { proc_macro: true } => b"p",
             DependencyType::TargetSelfContained => b"s",
         });
         new_contents.extend(dep.to_str().unwrap().as_bytes());
