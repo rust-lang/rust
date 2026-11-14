@@ -36,7 +36,7 @@ declare_lint! {
     /// as references are copy. This lint detects these calls and warns the user about them.
     pub NOOP_METHOD_CALL,
     Warn,
-    "detects the use of well-known noop methods"
+    "detects the use of well-known noop methods",
 }
 
 declare_lint! {
@@ -61,7 +61,7 @@ declare_lint! {
     /// reference, instead of cloning the inner type which should be what was intended.
     pub SUSPICIOUS_DOUBLE_REF_OP,
     Warn,
-    "suspicious call of trait method on `&&T`"
+    "suspicious call of trait method on `&&T`",
 }
 
 declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL, SUSPICIOUS_DOUBLE_REF_OP]);

@@ -37,7 +37,7 @@ declare_lint! {
     /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     pub C_VOID_RETURNS,
     Warn,
-    "detects use of `c_void` as a return type"
+    "detects use of `c_void` as a return type",
 }
 
 declare_lint_pass!(CVoidReturns => [C_VOID_RETURNS]);

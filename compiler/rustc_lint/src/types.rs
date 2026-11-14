@@ -51,7 +51,7 @@ declare_lint! {
     /// removed.
     UNUSED_COMPARISONS,
     Warn,
-    "comparisons made useless by limits of the types involved"
+    "comparisons made useless by limits of the types involved",
 }
 
 declare_lint! {
@@ -72,7 +72,7 @@ declare_lint! {
     /// within the range of its type.
     OVERFLOWING_LITERALS,
     Deny,
-    "literal out of range for its type"
+    "literal out of range for its type",
 }
 
 declare_lint! {
@@ -109,7 +109,7 @@ declare_lint! {
     /// [`Box`]: https://doc.rust-lang.org/std/boxed/index.html
     VARIANT_SIZE_DIFFERENCES,
     Allow,
-    "detects enums with widely varying variant sizes"
+    "detects enums with widely varying variant sizes",
 }
 
 declare_lint! {
@@ -131,7 +131,7 @@ declare_lint! {
     /// Use the `is_nan` method to check whether a value is NaN.
     INVALID_NAN_COMPARISONS,
     Warn,
-    "detects invalid floating point NaN comparisons"
+    "detects invalid floating point NaN comparisons",
 }
 
 declare_lint! {
@@ -162,7 +162,7 @@ declare_lint! {
     /// The comparison includes metadata which may not be expected.
     AMBIGUOUS_WIDE_POINTER_COMPARISONS,
     Warn,
-    "detects ambiguous wide pointer comparisons"
+    "detects ambiguous wide pointer comparisons",
 }
 
 declare_lint! {
@@ -1134,7 +1134,7 @@ declare_lint! {
     ///   `AtomicType::try_update`.
     INVALID_ATOMIC_ORDERING,
     Deny,
-    "usage of invalid atomic ordering in atomic operations and memory fences"
+    "usage of invalid atomic ordering in atomic operations and memory fences",
 }
 
 declare_lint_pass!(InvalidAtomicOrdering => [INVALID_ATOMIC_ORDERING]);

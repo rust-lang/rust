@@ -664,20 +664,15 @@ pub type RegisteredTools = FxIndexSet<Ident>;
 /// commands to avoid rebuilding the compiler.
 #[macro_export]
 macro_rules! declare_lint {
-    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
-        $crate::declare_lint!(
-            $(#[$attr])* $vis $NAME, $Level, $desc,
-        );
-    );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $(@eval_always = $eval_always:literal)?
-     $(@feature_gate = $gate:ident;)?
+     $(@eval_always = $eval_always:literal,)?
+     $(@feature_gate = $gate:ident,)?
      $(@future_incompatible = FutureIncompatibleInfo {
         reason: $reason:expr,
         $($field:ident : $val:expr),* $(,)*
-     }; )?
-     $(@edition $lint_edition:ident => $edition_level:ident;)?
-     $(@msrv = $msrv:literal;)?
+     },)?
+     $(@edition $lint_edition:ident => $edition_level:ident,)?
+     $(@msrv = $msrv:literal,)?
      $($v:ident),*) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {

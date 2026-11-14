@@ -85,7 +85,7 @@ declare_lint! {
     rewriting in `match` is an option to preserve the semantics up to Edition 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "temporary-if-let-scope"),
-    };
+    },
 }
 
 /// Lint for potential change in program semantics of `if let`s

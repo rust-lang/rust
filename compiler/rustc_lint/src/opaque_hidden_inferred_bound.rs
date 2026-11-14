@@ -61,7 +61,7 @@ declare_lint! {
     /// fixed by changing `Tait = impl Sized` into `Tait = impl Sized + Duh`.
     pub OPAQUE_HIDDEN_INFERRED_BOUND,
     Warn,
-    "detects the use of nested `impl Trait` types in associated type bounds that are not general enough"
+    "detects the use of nested `impl Trait` types in associated type bounds that are not general enough",
 }
 
 declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);

@@ -70,7 +70,7 @@ declare_lint! {
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "rpit-lifetime-capture"),
-    };
+    },
 }
 
 declare_lint! {

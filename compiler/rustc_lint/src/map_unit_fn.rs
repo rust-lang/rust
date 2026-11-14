@@ -33,7 +33,7 @@ declare_lint! {
     /// Mapping to `()` is almost always a mistake.
     pub MAP_UNIT_FN,
     Warn,
-    "`Iterator::map` call that discard the iterator's values"
+    "`Iterator::map` call that discard the iterator's values",
 }
 
 declare_lint_pass!(MapUnitFn => [MAP_UNIT_FN]);

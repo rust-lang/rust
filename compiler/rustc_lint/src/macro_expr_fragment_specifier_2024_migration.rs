@@ -72,7 +72,7 @@ declare_lint! {
     To keep the existing behavior, use the `expr_2021` fragment specifier.",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "macro-fragment-specifiers"),
-    };
+    },
 }
 
 declare_lint_pass!(Expr2024 => [EDITION_2024_EXPR_FRAGMENT_SPECIFIER,]);

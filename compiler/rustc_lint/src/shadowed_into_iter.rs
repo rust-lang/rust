@@ -31,7 +31,7 @@ declare_lint! {
     "detects calling `into_iter` on arrays in Rust 2015 and 2018",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2021 "IntoIterator-for-arrays"),
-    };
+    },
 }
 
 declare_lint! {
@@ -59,7 +59,7 @@ declare_lint! {
     "detects calling `into_iter` on boxed slices in Rust 2015, 2018, and 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(EditionSemanticsChange 2024 "intoiterator-box-slice"),
-    };
+    },
 }
 
 #[derive(Copy, Clone)]
