@@ -138,6 +138,20 @@ pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
         res
     }
 
+    fn encoder_with_record_mode<'a, F, T>(
+        ecx: &mut EncodeContext<'a, 'tcx, Self>,
+        mode: RecordMode<'tcx>,
+        f: F,
+    ) -> T
+    where
+        F: FnOnce(&mut EncodeContext<'a, 'tcx, Self>) -> T,
+    {
+        ecx.spec_encoder_data.push_record_mode(mode);
+        let res = f(ecx);
+        ecx.spec_encoder_data.pop_record_mode();
+        res
+    }
+
     fn push_record_mode(&mut self, mode: RecordMode<'tcx>);
     fn pop_record_mode(&mut self);
 }
@@ -775,6 +789,14 @@ where
                 }
             }
         }
+    }
+
+    #[inline(always)]
+    pub(super) fn with_record_mode<F, T>(&mut self, mode: RecordMode<'tcx>, f: F) -> T
+    where
+        F: FnOnce(&mut Self) -> T,
+    {
+        M::encoder_with_record_mode(self, mode, f)
     }
 }
 
@@ -2435,22 +2457,18 @@ where
             &Rc::clone(&self.encoder.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), ctxt, ctxt_data| {
-                this.with_record_mode(RecordMode::From(ctxt.into()), |this| {
-                    syntax_contexts.set_some_hashed(ctxt, ctxt_data, this.encoder, this.hcx);
-                });
+                syntax_contexts.set_some_hashed(ctxt, ctxt_data, this.encoder, this.hcx);
             },
             |(this, _, expn_data_table, expn_hash_table), expn_id, expn_data, hash| {
                 if let Some(expn_id) = expn_id.as_local() {
-                    this.with_record_mode(RecordMode::From(expn_id.into()), |this| {
-                        expn_data_table.set_some_hashed(
-                            expn_id,
-                            expn_data.expect("local expn"),
-                            this.encoder,
-                            this.hcx,
-                        );
-                        // don't need to hash it since it is already included with `expn_data_table`
-                        expn_hash_table.set_some_unhashed(expn_id, hash, this.encoder);
-                    });
+                    expn_data_table.set_some_hashed(
+                        expn_id,
+                        expn_data.expect("local expn"),
+                        this.encoder,
+                        this.hcx,
+                    );
+                    // don't need to hash it since it is already included with `expn_data_table`
+                    expn_hash_table.set_some_unhashed(expn_id, hash, this.encoder);
                 }
             },
         );

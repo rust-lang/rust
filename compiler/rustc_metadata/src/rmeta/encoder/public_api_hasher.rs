@@ -143,19 +143,20 @@ impl<I: StableHash> TablePublicApiHasher<I> for RDRHashAll<I> {
         I: TableIdx + Into<Node<'tcx>>,
         T: EncodeFrom<'tcx, V, M>,
     {
-        if !hcx.enabled() {
-            (index.to_encoded(encoder), T::encode_from(encoder, value))
-        } else {
-            let mut hasher = PublicApiHasher::default();
-            hasher.digest(index, hcx);
-            let res = (
-                index.to_encoded(encoder),
-                T::encode_from_hashed(encoder, value, hcx, &mut hasher),
-            );
-            let hash: Fingerprint = hasher.finish(hcx).unwrap();
-            hcx.add_node_hash(&index.into(), hash);
-            res
-        }
+        encoder.with_record_mode(RecordMode::From(index.into()), |encoder| {
+            if !hcx.enabled() {
+                (index.to_encoded(encoder), T::encode_from(encoder, value))
+            } else {
+                let mut hasher = PublicApiHasher::default();
+                let res = (
+                    index.to_encoded(encoder),
+                    T::encode_from_hashed(encoder, value, hcx, &mut hasher),
+                );
+                let hash: Fingerprint = hasher.finish(hcx).unwrap();
+                hcx.add_node_hash(&index.into(), hash);
+                res
+            }
+        })
     }
 }
 
@@ -180,7 +181,9 @@ impl<I> TablePublicApiHasher<I> for RDRHashNone<I> {
         I: TableIdx + Into<Node<'tcx>>,
         T: EncodeFrom<'tcx, V, M>,
     {
-        (index.to_encoded(encoder), T::encode_from(encoder, value))
+        encoder.with_record_mode(RecordMode::None, |encoder| {
+            (index.to_encoded(encoder), T::encode_from(encoder, value))
+        })
     }
 }
 

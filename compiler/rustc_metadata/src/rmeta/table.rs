@@ -6,7 +6,7 @@ use rustc_span::{LocalExpnId, SyntaxContext};
 
 use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::encoder::public_api_hasher::{
-    GraphHashed, Node, PublicApiHashState, TablePublicApiHasher,
+    GraphHashed, Node, PublicApiHashState, RecordMode, TablePublicApiHasher,
 };
 use crate::rmeta::remapped_def_id::RemappedWideRawDefId;
 use crate::rmeta::*;
@@ -775,6 +775,8 @@ where
         T: EncodeFrom<'tcx, V, M>,
         M: MetadataEncoder<'tcx>,
     {
-        self.set(i.to_encoded(encoder), Some(T::encode_from(encoder, value)))
+        encoder.with_record_mode(RecordMode::None, |encoder| {
+            self.set(i.to_encoded(encoder), Some(T::encode_from(encoder, value)))
+        })
     }
 }
