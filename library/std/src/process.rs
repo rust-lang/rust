@@ -30,6 +30,8 @@
 //! - The current process doesn't have enough permissions to spawn the command.
 //! - A dynamic library required by the command could not be found.
 //!
+//! This list is not exhaustive. Other errors may occur depending on the platform.
+//!
 //! # Handling I/O
 //!
 //! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be
