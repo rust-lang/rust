@@ -1,0 +1,22 @@
+// MIR for `repeat_once_val_packed` after built
+
+fn repeat_once_val_packed() -> [Foo; 1] {
+    let mut _0: [Foo; 1];
+    let mut _1: Foo;
+    let mut _2: Packed;
+    let mut _3: Foo;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = Foo(const 42_u16);
+        _2 = Packed(move _3);
+        StorageDead(_3);
+        _1 = move (_2.0: Foo);
+        _0 = [move _1; 1];
+        StorageDead(_1);
+        StorageDead(_2);
+        return;
+    }
+}

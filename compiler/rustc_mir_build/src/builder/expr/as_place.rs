@@ -557,6 +557,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::NeverToAny { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
+            | ExprKind::RepeatUse { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::RawBorrow { .. }
             | ExprKind::Match { .. }

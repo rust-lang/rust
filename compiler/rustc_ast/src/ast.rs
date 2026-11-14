@@ -1657,6 +1657,28 @@ impl Expr {
             tokens: None,
         }
     }
+
+    /// Peel off an outer `.use`, if there is one.
+    /// Used in array repeat lowering.
+    /// The list of attributes peeled off is also returned.
+    pub fn peel_use(&self) -> Option<(&Expr, Vec<&[Attribute]>)> {
+        let mut attrs = Vec::new();
+        self.peel_use_inner(&mut attrs).map(|e| (e, attrs))
+    }
+
+    fn peel_use_inner<'a, 'b>(&'a self, attrs: &'b mut Vec<&'a [Attribute]>) -> Option<&'a Expr> {
+        match &self.kind {
+            ExprKind::Use(expr, _) => {
+                attrs.push(&self.attrs);
+                Some(&**expr)
+            }
+            ExprKind::Paren(expr) => {
+                attrs.push(&self.attrs);
+                expr.peel_use_inner(attrs)
+            }
+            _ => None,
+        }
+    }
 }
 
 impl From<Box<Expr>> for Expr {
@@ -2008,21 +2030,12 @@ pub struct QSelf {
 /// A capture clause used in closures and `async` blocks.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, StableHash, Walkable)]
 pub enum CaptureBy {
+    /// `move` keyword was not specified.
+    Ref,
     /// `move |x| y + x`.
     Value {
         /// The span of the `move` keyword.
         move_kw: Span,
-    },
-    /// `move` or `use` keywords were not specified.
-    Ref,
-    /// `use |x| y + x`.
-    ///
-    /// Note that if you have a regular closure like `|| x.use`, this will *not* result
-    /// in a `Use` capture. Instead, the `ExprUseVisitor` will look at the type
-    /// of `x` and treat `x.use` as either a copy/clone/move as appropriate.
-    Use {
-        /// The span of the `use` keyword.
-        use_kw: Span,
     },
 }
 

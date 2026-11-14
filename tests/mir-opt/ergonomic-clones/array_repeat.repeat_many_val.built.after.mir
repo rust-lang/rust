@@ -1,0 +1,61 @@
+// MIR for `repeat_many_val` after built
+
+fn repeat_many_val() -> [Foo; 42] {
+    let mut _0: [Foo; 42];
+    let mut _1: [std::mem::MaybeUninit<Foo>; 42];
+    let _2: Foo;
+    let mut _3: bool;
+    let mut _4: usize;
+    let mut _5: usize;
+    let mut _6: &Foo;
+    let mut _7: *const Foo;
+    let mut _8: bool;
+
+    bb0: {
+        _1 = [const std::mem::MaybeUninit::<Foo>::UNINIT; 42];
+        StorageLive(_2);
+        _2 = Foo(const 42_u16);
+        _3 = Eq(const 42_usize, const 0_usize);
+        switchInt(move _3) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb1: {
+        _0 = MaybeUninit::<Foo>::array_assume_init::<42>(move _1) -> [return: bb7, unwind unreachable];
+    }
+
+    bb2: {
+        _4 = const 0_usize;
+        ((_1[_4].1: std::mem::ManuallyDrop<Foo>).0: Foo) = move _2;
+        _5 = const 1_usize;
+        _7 = &raw const ((_1[_4].1: std::mem::ManuallyDrop<Foo>).0: Foo);
+        _6 = &(*_7);
+        goto -> bb6;
+    }
+
+    bb3: {
+        drop(_2) -> [return: bb1, unwind: bb8];
+    }
+
+    bb4: {
+        ((_1[_5].1: std::mem::ManuallyDrop<Foo>).0: Foo) = <Foo as Clone>::clone(copy _6) -> [return: bb5, unwind terminate(abi)];
+    }
+
+    bb5: {
+        _5 = AddUnchecked(copy _5, const 1_usize);
+        goto -> bb6;
+    }
+
+    bb6: {
+        _8 = Eq(copy _5, const 42_usize);
+        switchInt(move _8) -> [0: bb4, otherwise: bb1];
+    }
+
+    bb7: {
+        StorageDead(_2);
+        return;
+    }
+
+    bb8 (cleanup): {
+        resume;
+    }
+}

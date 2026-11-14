@@ -1,0 +1,46 @@
+// MIR for `repeat_once` after built
+
+fn repeat_once() -> [Foo; 1] {
+    let mut _0: [Foo; 1];
+    let _1: Foo;
+    let mut _2: [std::mem::MaybeUninit<Foo>; 1];
+    let mut _3: usize;
+    let mut _4: &Foo;
+    let mut _5: bool;
+    scope 1 {
+        debug foo => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = Foo(const 42_u16);
+        FakeRead(ForLet(None), _1);
+        _2 = [const std::mem::MaybeUninit::<Foo>::UNINIT; 1];
+        _3 = const 0_usize;
+        _4 = &_1;
+        goto -> bb4;
+    }
+
+    bb1: {
+        _0 = MaybeUninit::<Foo>::array_assume_init::<1>(move _2) -> [return: bb5, unwind unreachable];
+    }
+
+    bb2: {
+        ((_2[_3].1: std::mem::ManuallyDrop<Foo>).0: Foo) = <Foo as Clone>::clone(copy _4) -> [return: bb3, unwind terminate(abi)];
+    }
+
+    bb3: {
+        _3 = AddUnchecked(copy _3, const 1_usize);
+        goto -> bb4;
+    }
+
+    bb4: {
+        _5 = Eq(copy _3, const 1_usize);
+        switchInt(move _5) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb5: {
+        StorageDead(_1);
+        return;
+    }
+}

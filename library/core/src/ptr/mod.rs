@@ -1823,8 +1823,9 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[inline(always)]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-#[track_caller]
+#[lang = "ptr_read_unaligned"]
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
+#[track_caller]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     // Always true thanks to the repr, but to demonstrate
     const {
@@ -2033,6 +2034,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 #[inline(always)]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
+#[lang = "ptr_write_unaligned"]
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[track_caller]
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {

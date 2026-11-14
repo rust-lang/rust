@@ -8,8 +8,8 @@
 use std::borrow::Cow;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
-use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_ast::{self as ast, UnsafeBinderCastKind};
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -27,8 +27,8 @@ use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, RegionVariableOrigin};
-use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
@@ -375,7 +375,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
             ExprKind::Block(body, _) => self.check_expr_block(body, expected),
             ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
-            ExprKind::Use(used_expr, _) => self.check_expr_use(used_expr, expected),
+            ExprKind::Use(used_expr, use_span) => {
+                self.check_expr_use(used_expr, use_span, expected)
+            }
             ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.check_expr_method_call(expr, segment, receiver, args, expected)
             }
@@ -393,7 +395,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
             ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected),
             ExprKind::Repeat(element, ref count) => {
-                self.check_expr_repeat(element, count, expected, expr)
+                self.check_expr_repeat(element, count, expected, expr, false)
+            }
+            ExprKind::RepeatUse(element, ref count) => {
+                self.check_expr_repeat(element, count, expected, expr, true)
             }
             ExprKind::Tup(elts) => self.check_expr_tuple(elts, expected, expr),
             ExprKind::Struct(qpath, fields, ref base_expr) => {
@@ -1574,9 +1579,95 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_use(
         &self,
         used_expr: &'tcx hir::Expr<'tcx>,
+        use_span: Span,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation(used_expr, expected)
+        let used_expr_ty = self.check_expr_with_expectation(used_expr, expected);
+
+        // FIXME(ergonomic_clones): remove condition once `Copy` implies `UseCloned`
+        if !self.type_is_copy_modulo_regions(self.param_env, used_expr_ty) {
+            self.register_bound(
+                used_expr_ty,
+                self.tcx.require_lang_item(LangItem::UseCloned, use_span),
+                ObligationCause::new(
+                    used_expr.span,
+                    self.body_def_id,
+                    ObligationCauseCode::UseExpr(use_span),
+                ),
+            );
+
+            // `.use`ing a non-`Copy` packed field may require mutable access to said field
+            if self.is_use_of_packed_field(used_expr) {
+                self.convert_place_derefs_to_mutable(used_expr);
+            }
+        }
+
+        used_expr_ty
+    }
+
+    fn is_use_of_packed_field(&self, expr: &'tcx hir::Expr<'tcx>) -> bool {
+        if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id)
+            && !adjustments.is_empty()
+        {
+            false
+        } else {
+            match expr.kind {
+                ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, inner, _)
+                | ExprKind::Type(inner, _) => self.is_use_of_packed_field(inner),
+
+                ExprKind::Index(inner, _, _)
+                    if !self.typeck_results.borrow().is_method_call(expr) =>
+                {
+                    self.is_use_of_packed_field(inner)
+                }
+
+                ExprKind::Field(inner, _) => {
+                    if let Some(adt_def) =
+                        self.typeck_results.borrow().expr_ty_adjusted(inner).ty_adt_def()
+                        && adt_def.repr().packed()
+                    {
+                        true
+                    } else {
+                        self.is_use_of_packed_field(inner)
+                    }
+                }
+
+                ExprKind::Path(..)
+                | ExprKind::If(..)
+                | ExprKind::Call(..)
+                | ExprKind::MethodCall(..)
+                | ExprKind::Index(..)
+                | ExprKind::Use(..)
+                | ExprKind::Binary(..)
+                | ExprKind::Unary(..)
+                | ExprKind::Cast(..)
+                | ExprKind::Loop(..)
+                | ExprKind::Let(..)
+                | ExprKind::Match(..)
+                | ExprKind::Block(..)
+                | ExprKind::Assign(..)
+                | ExprKind::AssignOp(..)
+                | ExprKind::AddrOf(..)
+                | ExprKind::Break(..)
+                | ExprKind::Continue(..)
+                | ExprKind::Ret(..)
+                | ExprKind::Become(..)
+                | ExprKind::ConstBlock(..)
+                | ExprKind::Repeat(..)
+                | ExprKind::RepeatUse(..)
+                | ExprKind::Array(..)
+                | ExprKind::Tup(..)
+                | ExprKind::Struct(..)
+                | ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, _, _)
+                | ExprKind::Closure(..)
+                | ExprKind::Lit(..)
+                | ExprKind::OffsetOf(..)
+                | ExprKind::InlineAsm(..)
+                | ExprKind::Yield(..)
+                | ExprKind::DropTemps(..)
+                | ExprKind::Err(..) => false,
+            }
+        }
     }
 
     fn check_expr_cast(
@@ -1758,12 +1849,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
+    /// `used` if this is an [`ExprKind::RepeatUse`]
     fn check_expr_repeat(
         &self,
         element: &'tcx hir::Expr<'tcx>,
         count: &'tcx hir::ConstArg<'tcx>,
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
+        used: bool,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let count_span = count.span;
@@ -1831,10 +1924,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        // We defer checking whether the element type is `Copy` as it is possible to have
-        // an inference variable as a repeat count and it seems unlikely that `Copy` would
-        // have inference side effects required for type checking to succeed.
-        self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
+        if used {
+            // FIXME(ergonomic_clones): remove condition once `Copy` implies `UseCloned`
+            if !self.type_is_copy_modulo_regions(self.param_env, element_ty) {
+                self.register_bound(
+                    element_ty,
+                    self.tcx.require_lang_item(LangItem::UseCloned, expr.span),
+                    ObligationCause::new(
+                        element.span,
+                        self.body_def_id,
+                        ObligationCauseCode::UseExpr(expr.span),
+                    ),
+                );
+
+                // `.use`ing a non-`Copy` packed field may require mutable access to said field
+                // FIXME: don't do this if the count is known to be 0
+                if self.is_use_of_packed_field(element) {
+                    self.convert_place_derefs_to_mutable(element);
+                }
+            }
+        } else {
+            // We defer checking whether the element type is `Copy` as it is possible to have
+            // an inference variable as a repeat count and it seems unlikely that `Copy` would
+            // have inference side effects required for type checking to succeed.
+            self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
+        }
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
         self.register_wf_obligation(

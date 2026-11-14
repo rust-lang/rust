@@ -261,9 +261,49 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
             ExprKind::ConstBlock(c) => hir::ExprKind::ConstBlock(self.lower_const_block(c)),
             ExprKind::Repeat(expr, count) => {
-                let expr = self.lower_expr(expr);
                 let count = self.lower_array_length_to_const_arg(count);
-                hir::ExprKind::Repeat(expr, count)
+
+                if let Some((used_expr, attrs)) = expr.peel_use() {
+                    let expr = self.lower_expr(used_expr);
+
+                    // Merge attributes into the inner expression.
+                    if attrs.iter().any(|a| !a.is_empty()) {
+                        let old_attrs = self
+                            .curr_owner
+                            .attrs
+                            .get(&expr.hir_id.local_id)
+                            .copied()
+                            .unwrap_or(&[]);
+
+                        let new_attrs: Vec<_> = attrs
+                            .into_iter()
+                            .filter_map(|a| {
+                                if a.is_empty() {
+                                    None
+                                } else {
+                                    Some(self.lower_attrs_vec(
+                                        a,
+                                        used_expr.span,
+                                        expr.hir_id,
+                                        AstTarget::Expression(used_expr),
+                                    ))
+                                }
+                            })
+                            .flatten()
+                            .chain(old_attrs.iter().cloned())
+                            .collect();
+
+                        if !new_attrs.is_empty() {
+                            let new_attrs = &*self.arena.alloc_from_iter(new_attrs.into_iter());
+                            self.curr_owner.attrs.insert(expr.hir_id.local_id, new_attrs);
+                        }
+                    }
+
+                    hir::ExprKind::RepeatUse(expr, count)
+                } else {
+                    let expr = self.lower_expr(expr);
+                    hir::ExprKind::Repeat(expr, count)
+                }
             }
             ExprKind::Tup(elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
             ExprKind::Call(f, args) => {
@@ -846,7 +886,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_capture_clause(&mut self, capture_clause: CaptureBy) -> CaptureBy {
         match capture_clause {
             CaptureBy::Ref => CaptureBy::Ref,
-            CaptureBy::Use { use_kw } => CaptureBy::Use { use_kw: self.lower_span(use_kw) },
             CaptureBy::Value { move_kw } => CaptureBy::Value { move_kw: self.lower_span(move_kw) },
         }
     }

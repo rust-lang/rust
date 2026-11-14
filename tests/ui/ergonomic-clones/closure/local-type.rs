@@ -4,6 +4,6 @@
 #![allow(incomplete_features)]
 
 fn main() {
-    let _ = use |x: x| x; //~ ERROR cannot find type `x` in this scope
-    let _ = use |x: bool| -> x { x }; //~ ERROR cannot find type `x` in this scope
+    let _ = |x: x| x.use; //~ ERROR cannot find type `x` in this scope
+    let _ = |x: bool| -> x { x.use }; //~ ERROR cannot find type `x` in this scope
 }

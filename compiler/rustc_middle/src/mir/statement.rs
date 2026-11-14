@@ -1011,7 +1011,7 @@ impl<'tcx> BinOp {
 impl From<Mutability> for RawPtrKind {
     fn from(other: Mutability) -> Self {
         match other {
-            Mutability::Mut => RawPtrKind::Mut,
+            Mutability::Mut => RawPtrKind::Mut { kind: RawMutBorrowKind::Default },
             Mutability::Not => RawPtrKind::Const,
         }
     }
@@ -1020,14 +1020,14 @@ impl From<Mutability> for RawPtrKind {
 impl RawPtrKind {
     pub fn is_fake(self) -> bool {
         match self {
-            RawPtrKind::Mut | RawPtrKind::Const => false,
+            RawPtrKind::Mut { .. } | RawPtrKind::Const => false,
             RawPtrKind::FakeForPtrMetadata => true,
         }
     }
 
     pub fn to_mutbl_lossy(self) -> Mutability {
         match self {
-            RawPtrKind::Mut => Mutability::Mut,
+            RawPtrKind::Mut { .. } => Mutability::Mut,
             RawPtrKind::Const => Mutability::Not,
 
             // We have no type corresponding to a fake borrow, so use
@@ -1038,7 +1038,7 @@ impl RawPtrKind {
 
     pub fn ptr_str(self) -> &'static str {
         match self {
-            RawPtrKind::Mut => "mut",
+            RawPtrKind::Mut { .. } => "mut",
             RawPtrKind::Const => "const",
             RawPtrKind::FakeForPtrMetadata => "const (fake)",
         }

@@ -1822,7 +1822,8 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             } else if tcx.features().gca() {
                 ty::AnonConstKind::MCG
             } else if let hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Repeat(_, repeat_count),
+                kind:
+                    hir::ExprKind::Repeat(_, repeat_count) | hir::ExprKind::RepeatUse(_, repeat_count),
                 ..
             }) = tcx.parent_hir_node(parent_node_id)
                 && repeat_count.hir_id == parent_node_id

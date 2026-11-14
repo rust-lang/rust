@@ -180,7 +180,9 @@ pub enum BorrowKind {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, StableHash)]
 pub enum RawPtrKind {
-    Mut,
+    Mut {
+        kind: RawMutBorrowKind,
+    },
     Const,
     /// Creates a raw pointer to a place that will only be used to access its metadata,
     /// not the data behind the pointer. Note that this limitation is *not* enforced
@@ -241,6 +243,26 @@ pub enum MutBorrowKind {
     /// This solves the problem. For simplicity, we don't give users the way to express this
     /// borrow, it's just used when translating closures.
     ClosureCapture,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, StableHash)]
+pub enum RawMutBorrowKind {
+    Default,
+    /// Analogous to [`MutBorrowKind::ClosureCapture`]: does not require the local
+    /// to be `mut`, but does conflict with any other borrows of the place.
+    ///
+    /// Used in the desugaring of `.use` expressions applied to packed fields.
+    DotUseOfPackedField,
+}
+
+impl From<RawMutBorrowKind> for MutBorrowKind {
+    fn from(value: RawMutBorrowKind) -> Self {
+        match value {
+            RawMutBorrowKind::Default => MutBorrowKind::Default,
+            RawMutBorrowKind::DotUseOfPackedField => MutBorrowKind::ClosureCapture,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
