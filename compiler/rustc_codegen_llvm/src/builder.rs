@@ -1750,6 +1750,30 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             instr
         }
     }
+    pub(crate) fn vector_reduce_fadd_algebraic(
+        &mut self,
+        acc: Value<'ll>,
+        src: Value<'ll>,
+    ) -> Value<'ll> {
+        unsafe {
+            let instr =
+                self.call_intrinsic("llvm.vector.reduce.fadd", &[self.val_ty(src)], &[acc, src]);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+    pub(crate) fn vector_reduce_fmul_algebraic(
+        &mut self,
+        acc: Value<'ll>,
+        src: Value<'ll>,
+    ) -> Value<'ll> {
+        unsafe {
+            let instr =
+                self.call_intrinsic("llvm.vector.reduce.fmul", &[self.val_ty(src)], &[acc, src]);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
     pub(crate) fn vector_reduce_add(&mut self, src: Value<'ll>) -> Value<'ll> {
         self.call_intrinsic("llvm.vector.reduce.add", &[self.val_ty(src)], &[src])
     }

@@ -2865,7 +2865,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     macro_rules! arith_red {
-        ($name:ident : $integer_reduce:ident, $float_reduce:ident, $ordered:expr, $op:ident,
+        ($name:ident : $integer_reduce:ident, $float_reduce:ident, ordered: $ordered:expr, allow_int: $int:expr, $op:ident,
          $identity:expr) => {
             if name == sym::$name {
                 require!(
@@ -2873,7 +2873,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
-                    ty::Int(_) | ty::Uint(_) => {
+                    ty::Int(_) | ty::Uint(_) if $int => {
                         let r = bx.$integer_reduce(args[0].immediate());
                         if $ordered {
                             // if overflow occurs, the result is the
@@ -2920,19 +2920,37 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
     }
 
-    arith_red!(simd_reduce_add_ordered: vector_reduce_add, vector_reduce_fadd, true, add, -0.0);
-    arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, true, mul, 1.0);
+    arith_red!(simd_reduce_add_ordered: vector_reduce_add, vector_reduce_fadd, ordered: true, allow_int: true, add, -0.0);
+    arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, ordered: true, allow_int: true, mul, 1.0);
     arith_red!(
         simd_reduce_add_unordered: vector_reduce_add,
         vector_reduce_fadd_reassoc,
-        false,
+        ordered: false,
+        allow_int: true,
         add,
         -0.0
     );
     arith_red!(
         simd_reduce_mul_unordered: vector_reduce_mul,
         vector_reduce_fmul_reassoc,
-        false,
+        ordered: false,
+        allow_int: true,
+        mul,
+        1.0
+    );
+    arith_red!(
+        simd_reduce_add_algebraic: vector_reduce_add,
+        vector_reduce_fadd_algebraic,
+        ordered: false,
+        allow_int: false,
+        add,
+        0.0
+    );
+    arith_red!(
+        simd_reduce_mul_algebraic: vector_reduce_mul,
+        vector_reduce_fmul_algebraic,
+        ordered: false,
+        allow_int: false,
         mul,
         1.0
     );
@@ -3262,6 +3280,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_xor: Uint, Int => xor;
         simd_maximum_number_nsz: Float => maximum_number_nsz;
         simd_minimum_number_nsz: Float => minimum_number_nsz;
+        simd_add_algebraic: Float => fadd_algebraic;
+        simd_sub_algebraic: Float => fsub_algebraic;
+        simd_mul_algebraic: Float => fmul_algebraic;
+        simd_div_algebraic: Float => fdiv_algebraic;
+        simd_rem_algebraic: Float => frem_algebraic;
 
     }
     macro_rules! arith_unary {

@@ -1277,6 +1277,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         simd_xor: Uint, Int => xor;
         simd_minimum_number_nsz: Float => vector_minimum_number_nsz;
         simd_maximum_number_nsz: Float => vector_maximum_number_nsz;
+        simd_add_algebraic: Float => fadd;
+        simd_sub_algebraic: Float => fsub;
+        simd_mul_algebraic: Float => fmul;
+        simd_div_algebraic: Float => fdiv;
+        simd_rem_algebraic: Float => frem;
     }
 
     macro_rules! arith_unary {
@@ -1395,7 +1400,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     }
 
     macro_rules! arith_red {
-        ($name:ident : $vec_op:expr, $float_reduce:ident, $ordered:expr, $op:ident,
+        ($name:ident : $vec_op:expr, $float_reduce:ident, ordered: $ordered:expr, allow_int: $int:expr, $op:ident,
          $identity:expr) => {
             if name == sym::$name {
                 require!(
@@ -1403,7 +1408,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match *in_elem.kind() {
-                    ty::Int(_) | ty::Uint(_) => {
+                    ty::Int(_) | ty::Uint(_) if $int => {
                         let r = bx.vector_reduce_op(args[0].immediate(), $vec_op);
                         if $ordered {
                             // if overflow occurs, the result is the
@@ -1438,28 +1443,48 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     arith_red!(
         simd_reduce_add_unordered: BinaryOp::Plus,
         vector_reduce_fadd_reassoc,
-        false,
+        ordered: false,
+        allow_int: true,
         add,
         0.0 // FIXME: Use this argument.
     );
     arith_red!(
         simd_reduce_mul_unordered: BinaryOp::Mult,
         vector_reduce_fmul_reassoc,
-        false,
+        ordered: false,
+        allow_int: true,
+        mul,
+        1.0
+    );
+    arith_red!(
+        simd_reduce_add_algebraic: BinaryOp::Plus,
+        vector_reduce_fadd_algebraic,
+        ordered: false,
+        allow_int: false,
+        add,
+        0.0
+    );
+    arith_red!(
+        simd_reduce_mul_algebraic: BinaryOp::Mult,
+        vector_reduce_fmul_algebraic,
+        ordered: false,
+        allow_int: false,
         mul,
         1.0
     );
     arith_red!(
         simd_reduce_add_ordered: BinaryOp::Plus,
         vector_reduce_fadd,
-        true,
+        ordered: true,
+        allow_int: true,
         add,
         0.0
     );
     arith_red!(
         simd_reduce_mul_ordered: BinaryOp::Mult,
         vector_reduce_fmul,
-        true,
+        ordered: true,
+        allow_int: true,
         mul,
         1.0
     );

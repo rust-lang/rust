@@ -417,7 +417,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         | sym::simd_shr
         | sym::simd_and
         | sym::simd_or
-        | sym::simd_xor => {
+        | sym::simd_xor
+        | sym::simd_add_algebraic
+        | sym::simd_sub_algebraic
+        | sym::simd_mul_algebraic
+        | sym::simd_div_algebraic
+        | sym::simd_rem_algebraic => {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
             // FIXME use vector instructions when possible
@@ -439,32 +444,49 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                         (ty::Int(_), sym::simd_div) => fx.bcx.ins().sdiv(x_lane, y_lane),
                         (ty::Int(_), sym::simd_rem) => fx.bcx.ins().srem(x_lane, y_lane),
 
-                        (ty::Float(_), sym::simd_add) => fx.bcx.ins().fadd(x_lane, y_lane),
-                        (ty::Float(_), sym::simd_sub) => fx.bcx.ins().fsub(x_lane, y_lane),
-                        (ty::Float(_), sym::simd_mul) => fx.bcx.ins().fmul(x_lane, y_lane),
-                        (ty::Float(_), sym::simd_div) => fx.bcx.ins().fdiv(x_lane, y_lane),
-                        (ty::Float(FloatTy::F16), sym::simd_rem) => fx.lib_call(
-                            "fmodf",
-                            vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
-                            vec![AbiParam::new(types::F32)],
-                            // FIXME(bytecodealliance/wasmtime#8312): Already converted
-                            // by the FIXME above.
-                            // fx.bcx.ins().fpromote(types::F32, lhs),
-                            // fx.bcx.ins().fpromote(types::F32, rhs),
-                            &[x_lane, y_lane],
-                        )[0],
-                        (ty::Float(FloatTy::F32), sym::simd_rem) => fx.lib_call(
-                            "fmodf",
-                            vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
-                            vec![AbiParam::new(types::F32)],
-                            &[x_lane, y_lane],
-                        )[0],
-                        (ty::Float(FloatTy::F64), sym::simd_rem) => fx.lib_call(
-                            "fmod",
-                            vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
-                            vec![AbiParam::new(types::F64)],
-                            &[x_lane, y_lane],
-                        )[0],
+                        (ty::Float(_), sym::simd_add | sym::simd_add_algebraic) => {
+                            fx.bcx.ins().fadd(x_lane, y_lane)
+                        }
+                        (ty::Float(_), sym::simd_sub | sym::simd_sub_algebraic) => {
+                            fx.bcx.ins().fsub(x_lane, y_lane)
+                        }
+                        (ty::Float(_), sym::simd_mul | sym::simd_mul_algebraic) => {
+                            fx.bcx.ins().fmul(x_lane, y_lane)
+                        }
+                        (ty::Float(_), sym::simd_div | sym::simd_div_algebraic) => {
+                            fx.bcx.ins().fdiv(x_lane, y_lane)
+                        }
+                        (ty::Float(FloatTy::F16), sym::simd_rem | sym::simd_rem_algebraic) => {
+                            let ret = fx.lib_call(
+                                "fmodf",
+                                vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
+                                vec![AbiParam::new(types::F32)],
+                                // FIXME(bytecodealliance/wasmtime#8312): Already converted
+                                // by the FIXME above.
+                                // fx.bcx.ins().fpromote(types::F32, lhs),
+                                // fx.bcx.ins().fpromote(types::F32, rhs),
+                                &[x_lane, y_lane],
+                            );
+                            ret[0]
+                        }
+                        (ty::Float(FloatTy::F32), sym::simd_rem | sym::simd_rem_algebraic) => {
+                            let ret = fx.lib_call(
+                                "fmodf",
+                                vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
+                                vec![AbiParam::new(types::F32)],
+                                &[x_lane, y_lane],
+                            );
+                            ret[0]
+                        }
+                        (ty::Float(FloatTy::F64), sym::simd_rem | sym::simd_rem_algebraic) => {
+                            let ret = fx.lib_call(
+                                "fmod",
+                                vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
+                                vec![AbiParam::new(types::F64)],
+                                &[x_lane, y_lane],
+                            );
+                            ret[0]
+                        }
 
                         (ty::Uint(_), sym::simd_shl) => fx.bcx.ins().ishl(x_lane, y_lane),
                         (ty::Uint(_), sym::simd_shr) => fx.bcx.ins().ushr(x_lane, y_lane),
@@ -666,6 +688,26 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
+        sym::simd_reduce_add_algebraic => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            if !v.layout().ty.simd_size_and_type(fx.tcx).1.is_floating_point() {
+                fx.tcx.dcx().span_err(span, "algebraic reduction requires a float vector");
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, _lane_ty, a, b| {
+                codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                    fx.bcx.ins().fadd(a, b)
+                })
+            });
+        }
+
         sym::simd_reduce_mul_ordered => {
             intrinsic_args!(fx, args => (v, acc); intrinsic);
             let acc = acc.load_scalar(fx);
@@ -704,6 +746,26 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 } else {
                     fx.bcx.ins().imul(a, b)
                 }
+            });
+        }
+
+        sym::simd_reduce_mul_algebraic => {
+            intrinsic_args!(fx, args => (v); intrinsic);
+
+            if !v.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
+                return;
+            }
+
+            if !v.layout().ty.simd_size_and_type(fx.tcx).1.is_floating_point() {
+                fx.tcx.dcx().span_err(span, "algebraic reduction requires a float vector");
+                return;
+            }
+
+            simd_reduce(fx, v, None, ret, &|fx, _lane_ty, a, b| {
+                codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
+                    fx.bcx.ins().fmul(a, b)
+                })
             });
         }
 
