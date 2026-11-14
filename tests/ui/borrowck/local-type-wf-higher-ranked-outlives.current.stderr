@@ -1,0 +1,19 @@
+error: implementation of `Trait` is not general enough
+  --> $DIR/local-type-wf-higher-ranked-outlives.rs:12:9
+   |
+LL |     let _value = None::<RequiresTrait<u8>>;
+   |         ^^^^^^
+   |
+note: `u8` must implement `Trait<'0, '1>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/local-type-wf-higher-ranked-outlives.rs:9:25
+   |
+LL | struct RequiresTrait<T: for<'a, 'b> Trait<'a, 'b>>(T);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `RequiresTrait`
+note: ...but it actually implements `Trait<'2, '_>`, for some specific lifetime `'2`
+  --> $DIR/local-type-wf-higher-ranked-outlives.rs:8:1
+   |
+LL | impl<'a, 'b> Trait<'a, 'b> for u8 where 'a: 'b {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

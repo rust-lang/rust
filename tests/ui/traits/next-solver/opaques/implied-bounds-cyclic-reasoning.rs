@@ -13,6 +13,8 @@ fn foo<T: Display>(x: T) -> &'static (impl Display + 'static) {
     Box::leak(Box::new(x))
     //~^ ERROR the parameter type `T` may not live long enough
     //[current]~| ERROR the parameter type `T` may not live long enough
+    //~| ERROR the parameter type `T` may not live long enough
+    //~| ERROR the parameter type `T` may not live long enough
 }
 
 fn main() {
