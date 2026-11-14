@@ -1,4 +1,5 @@
 mod raw_dylib;
+mod stable_link_objects;
 
 use std::collections::BTreeSet;
 use std::ffi::OsString;
@@ -50,6 +51,7 @@ use rustc_target::spec::{
 };
 use tracing::{debug, info, warn};
 
+use self::stable_link_objects::{StableLinkObjects, write_stable_link_object};
 use super::archive::{
     AddArchiveKind, ArchiveBuilder, ArchiveBuilderBuilder, ArchiveEntryKind, ArchiveSymbols,
 };
@@ -1254,6 +1256,15 @@ fn link_natively(
         should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
     let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
 
+    let needs_metadata = matches!(crate_type, CrateType::Dylib | CrateType::ProcMacro);
+    let needs_symbols = !crate_info.linked_symbols[&crate_type].is_empty()
+        || (sess.target.is_like_msvc
+            && !crate_info.exported_symbols[&crate_type].is_empty()
+            && (crate_type != CrateType::Executable
+                || sess.opts.unstable_opts.export_executable_symbols));
+
+    let stable_objects = StableLinkObjects::new(sess, out_filename, needs_metadata, needs_symbols);
+
     let (mut cmd, jobserver_tokens) = linker_with_args(
         &linker_path,
         flavor,
@@ -1262,6 +1273,7 @@ fn link_natively(
         rmeta_link_cache,
         crate_type,
         tmpdir,
+        &stable_objects,
         temp_filename,
         compiled_modules,
         crate_info,
@@ -2537,7 +2549,8 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor
 fn add_linked_symbol_object(
     cmd: &mut dyn Linker,
     sess: &Session,
-    tmpdir: &Path,
+    stable_symbols_path: &Path,
+    symbols_created: &std::cell::Cell<bool>,
     crate_type: CrateType,
     linked_symbols: &[(String, SymbolExportKind)],
     exported_symbols: &[SymbolExport],
@@ -2672,12 +2685,9 @@ fn add_linked_symbol_object(
         file.append_section_data(section, drectve.as_bytes(), 1);
     }
 
-    let path = tmpdir.join("symbols.o");
-    let result = std::fs::write(&path, file.write().unwrap());
-    if let Err(error) = result {
-        sess.dcx().emit_fatal(diagnostics::FailedToWrite { path, error });
-    }
-    cmd.add_object(&path);
+    let data = file.write().unwrap();
+    write_stable_link_object(sess, stable_symbols_path, &data, symbols_created);
+    cmd.add_object(stable_symbols_path);
 }
 
 /// Add object files containing code from the current crate.
@@ -2717,7 +2727,8 @@ fn add_local_crate_metadata_objects(
     sess: &Session,
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     crate_type: CrateType,
-    tmpdir: &Path,
+    stable_metadata_path: &Path,
+    metadata_created: &std::cell::Cell<bool>,
     crate_info: &CrateInfo,
     metadata: &EncodedMetadata,
 ) {
@@ -2730,9 +2741,8 @@ fn add_local_crate_metadata_objects(
             &metadata,
             &crate_info.metadata_symbol,
         );
-        let obj = emit_wrapper_file(sess, &data, tmpdir, "rmeta.o");
-
-        cmd.add_object(&obj);
+        write_stable_link_object(sess, stable_metadata_path, &data, metadata_created);
+        cmd.add_object(stable_metadata_path);
     }
 }
 
@@ -2915,6 +2925,7 @@ fn linker_with_args(
     rmeta_link_cache: &mut RmetaLinkCache,
     crate_type: CrateType,
     tmpdir: &Path,
+    stable_objects: &StableLinkObjects,
     out_filename: &Path,
     compiled_modules: &CompiledModules,
     crate_info: &CrateInfo,
@@ -2975,7 +2986,8 @@ fn linker_with_args(
     add_linked_symbol_object(
         cmd,
         sess,
-        tmpdir,
+        &stable_objects.symbols_path,
+        &stable_objects.symbols_created,
         crate_type,
         &crate_info.linked_symbols[&crate_type],
         &export_symbols,
@@ -3017,7 +3029,8 @@ fn linker_with_args(
         sess,
         archive_builder_builder,
         crate_type,
-        tmpdir,
+        &stable_objects.metadata_path,
+        &stable_objects.metadata_created,
         crate_info,
         metadata,
     );
