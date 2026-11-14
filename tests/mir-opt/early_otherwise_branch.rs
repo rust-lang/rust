@@ -1,5 +1,5 @@
 //@ test-mir-pass: EarlyOtherwiseBranch
-//@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching,+GVN
+//@ compile-flags: -Zmir-enable-passes=+UnreachableEnumBranching
 
 #![feature(custom_mir, core_intrinsics)]
 
@@ -85,9 +85,10 @@ fn opt4(x: Option2<u32>, y: Option2<u32>) -> u32 {
 // EMIT_MIR early_otherwise_branch.opt5.EarlyOtherwiseBranch.diff
 fn opt5(x: u32, y: u32) -> u32 {
     // CHECK-LABEL: fn opt5(
+    // CHECK: let mut [[CMP_LOCAL:_.*]]: bool;
     // CHECK: bb0: {
-    // CHECK: Ne(
-    // CHECK: switchInt(
+    // CHECK: [[CMP_LOCAL]] = Ne(
+    // CHECK: switchInt(move [[CMP_LOCAL]]) -> [
     // CHECK-NEXT: }
     match (x, y) {
         (1, 1) => 4,
