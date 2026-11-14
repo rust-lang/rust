@@ -16,7 +16,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv as _, LayoutOf};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Intrinsic, Ty};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, span_bug, sym};
 
 use crate::builder::Builder;
@@ -864,7 +864,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }};
         }
         let ty::Float(ref f) = *in_elem.kind() else {
-            return_error!(InvalidMonomorphization::BasicFloatType { span, name, ty: in_ty });
+            return_error!(InvalidMonomorphization::BasicFloatType {
+                span,
+                name: Intrinsic::Rustc(name),
+                ty: in_ty
+            });
         };
         let elem_ty = bx.cx.type_float_from_ty(*f);
         let (elem_ty_str, elem_ty, cast_type) = match f.bit_width() {
