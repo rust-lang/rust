@@ -39,8 +39,8 @@ There is one implementation of `Unsize` which can be thought of as structural:
   .., `Pj` (which don't need to be contiguous).
 
 The rules for struct unsizing are slightly complicated,
-since they may allow more than one parameter to be changed (not necessarily unsized) and
-are best stated in terms of the tail field of the struct.
+since they may allow more than one parameter to be changed (not necessarily unsized),
+and are best stated in terms of the tail field of the struct.
 
 (Tuple unsizing was previously implemented behind the feature gate `unsized_tuple_coercion`,
 but the implementation was removed by [#137728].)
