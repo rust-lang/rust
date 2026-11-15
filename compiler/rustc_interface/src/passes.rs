@@ -110,7 +110,10 @@ fn pre_expansion_lint<'a>(
 }
 
 // Cannot implement directly for `LintStore` due to trait coherence.
-struct LintStoreExpandImpl<'a>(&'a LintStore);
+struct LintStoreExpandImpl<'a> {
+    lint_store: &'a LintStore,
+    crate_attrs: &'a [ast::Attribute],
+}
 
 impl LintStoreExpand for LintStoreExpandImpl<'_> {
     fn pre_expansion_lint(
@@ -119,12 +122,22 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         features: &Features,
         registered_lint_tools: &RegisteredTools,
         node_id: ast::NodeId,
+        ancestor_attrs: &[ast::AttrVec],
         attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        let check_node = EarlyCheckNode::LoadedMod(node_id, attrs, items);
-        pre_expansion_lint(sess, features, self.0, registered_lint_tools, check_node, name);
+        let ancestor_attrs: Vec<_> =
+            iter::once(self.crate_attrs).chain(ancestor_attrs.iter().map(|a| &a[..])).collect();
+        let check_node = EarlyCheckNode::LoadedMod(node_id, &ancestor_attrs, attrs, items);
+        pre_expansion_lint(
+            sess,
+            features,
+            self.lint_store,
+            registered_lint_tools,
+            check_node,
+            name,
+        );
     }
 }
 
@@ -212,7 +225,7 @@ fn configure_and_expand(
             proc_macro_backtrace: sess.opts.unstable_opts.proc_macro_backtrace,
         };
 
-        let lint_store = LintStoreExpandImpl(lint_store);
+        let lint_store = LintStoreExpandImpl { lint_store, crate_attrs: pre_configured_attrs };
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
         ecx.num_standard_library_imports = num_standard_library_imports;
         // Expand macros now!

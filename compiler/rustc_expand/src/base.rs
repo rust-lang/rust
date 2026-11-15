@@ -1141,6 +1141,7 @@ pub trait LintStoreExpand {
         features: &Features,
         registered_lint_tools: &RegisteredTools,
         node_id: NodeId,
+        ancestor_attrs: &[AttrVec],
         attrs: &[Attribute],
         items: &[Box<Item>],
         name: Symbol,
@@ -1159,6 +1160,10 @@ pub struct ModuleData {
     /// Directory to search child module files in,
     /// often (but not necessarily) the parent of the top file path on the `file_path_stack`.
     pub dir_path: PathBuf,
+    /// Lint level attributes of this module and of the modules around it, outermost first,
+    /// without the crate root. An out-of-line module is linted on its own when its file is
+    /// loaded, and its lint levels have to start from these.
+    pub lint_attrs: Vec<AttrVec>,
 }
 
 impl ModuleData {
@@ -1167,6 +1172,7 @@ impl ModuleData {
             mod_path: self.mod_path.clone(),
             file_path_stack: self.file_path_stack.clone(),
             dir_path,
+            lint_attrs: self.lint_attrs.clone(),
         }
     }
 }

@@ -23,6 +23,7 @@ use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
+use rustc_lint_defs::Level;
 use rustc_lint_defs::builtin::UNUSED_DOC_COMMENTS;
 use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
@@ -459,6 +460,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             mod_path: vec![Ident::with_dummy_span(self.cx.ecfg.crate_name)],
             file_path_stack: vec![file_path],
             dir_path,
+            lint_attrs: Vec::new(),
         });
         let krate = self.fully_expand_fragment(AstFragment::Crate(krate)).make_crate();
         assert_eq!(krate.id, ast::CRATE_NODE_ID);
@@ -1410,6 +1412,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                         ecx.ecfg.features,
                         ecx.resolver.registered_lint_tools(),
                         ecx.current_expansion.lint_node_id,
+                        &ecx.current_expansion.module.lint_attrs,
                         &node.attrs,
                         &items,
                         ident.name,
@@ -1430,6 +1433,15 @@ impl InvocationCollectorNode for Box<ast::Item> {
         // Set the module info before we flat map.
         let mut module = ecx.current_expansion.module.with_dir_path(dir_path);
         module.mod_path.push(ident);
+        let lint_attrs: AttrVec = node
+            .attrs
+            .iter()
+            .filter(|attr| Level::from_opt_symbol(attr.name()).is_some())
+            .cloned()
+            .collect();
+        if !lint_attrs.is_empty() {
+            module.lint_attrs.push(lint_attrs);
+        }
         if let Some(file_path) = file_path {
             module.file_path_stack.push(file_path);
         }

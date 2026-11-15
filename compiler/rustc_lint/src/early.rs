@@ -277,20 +277,28 @@ crate::early_lint_methods!(impl_early_lint_pass, []);
 /// This trait generalizes over those nodes.
 pub enum EarlyCheckNode<'a> {
     CrateRoot(&'a ast::Crate, &'a [ast::Attribute]),
-    LoadedMod(ast::NodeId, &'a [ast::Attribute], &'a [Box<ast::Item>]),
+    /// The second field holds the attributes of the crate root and then of each enclosing
+    /// module. Only their lint levels are used, the attributes themselves are not checked.
+    LoadedMod(ast::NodeId, &'a [&'a [ast::Attribute]], &'a [ast::Attribute], &'a [Box<ast::Item>]),
 }
 
 impl<'a> EarlyCheckNode<'a> {
     fn id(&self) -> ast::NodeId {
         match self {
             EarlyCheckNode::CrateRoot(_crate, _attrs) => ast::CRATE_NODE_ID,
-            EarlyCheckNode::LoadedMod(id, _attrs, _items) => *id,
+            EarlyCheckNode::LoadedMod(id, ..) => *id,
         }
     }
     fn attrs(&self) -> &'a [ast::Attribute] {
         match self {
             EarlyCheckNode::CrateRoot(_crate, attrs) => attrs,
-            EarlyCheckNode::LoadedMod(_id, attrs, _items) => attrs,
+            EarlyCheckNode::LoadedMod(_id, _ancestor_attrs, attrs, _items) => attrs,
+        }
+    }
+    fn ancestor_attrs(&self) -> &'a [&'a [ast::Attribute]] {
+        match self {
+            EarlyCheckNode::CrateRoot(..) => &[],
+            EarlyCheckNode::LoadedMod(_id, ancestor_attrs, ..) => ancestor_attrs,
         }
     }
     fn check<'ecx, T: EarlyLintPass>(&self, cx: &mut EarlyContextAndPass<'ecx, T>) {
@@ -300,7 +308,7 @@ impl<'a> EarlyCheckNode<'a> {
                 ast_visit::walk_crate(cx, crate_);
                 lint_callback!(cx, check_crate_post, crate_);
             }
-            EarlyCheckNode::LoadedMod(_id, attrs, items) => {
+            EarlyCheckNode::LoadedMod(_id, _ancestor_attrs, attrs, items) => {
                 walk_list!(cx, visit_attribute, *attrs);
                 walk_list!(cx, visit_item, *items);
             }
@@ -376,6 +384,16 @@ fn run_pass<'a, 'ecx, T: EarlyLintPass>(
     pass: T,
 ) -> EarlyContext<'ecx> {
     let mut cx = EarlyContextAndPass { context, pass };
+    // A loaded module is checked on its own, so enter the lint levels of its ancestors first.
+    let pushes: Vec<_> = check_node
+        .ancestor_attrs()
+        .iter()
+        .enumerate()
+        .map(|(depth, attrs)| cx.context.builder.push(attrs, depth == 0))
+        .collect();
     cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
+    for push in pushes.into_iter().rev() {
+        cx.context.builder.pop(push);
+    }
     cx.context
 }
