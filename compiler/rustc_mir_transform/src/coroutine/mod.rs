@@ -893,17 +893,21 @@ fn create_coroutine_resume_function<'tcx>(
 
     // Panic when resumed on the returned or poisoned state
     if can_unwind {
-        cases.insert(
-            1,
-            (
-                CoroutineArgs::POISONED,
-                if tcx.sess.opts.unstable_opts.async_panic {
-                    insert_panic_block(tcx, body, ResumedAfterPanic(transform.coroutine_kind))
-                } else {
+        let block = if tcx.sess.opts.unstable_opts.async_panic {
+            insert_panic_block(tcx, body, ResumedAfterPanic(transform.coroutine_kind))
+        } else {
+            match transform.coroutine_kind {
+                CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+                | CoroutineKind::Coroutine(_) => {
                     insert_poll_pending_block(tcx, body, transform.old_ret_ty)
-                },
-            ),
-        );
+                }
+                CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
+                | CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
+                    transform.insert_none_ret_block(body)
+                }
+            }
+        };
+        cases.insert(1, (CoroutineArgs::POISONED, block));
     }
 
     if can_return {
