@@ -44,11 +44,11 @@ Drop>::drop` and then recursively calls the drop glue of any recursively owned v
 
 - If `T` has an explicit `Drop` impl, call `<T as Drop>::drop`.
 - Regardless of whether `T` implements `Drop`, recurse into all values *owned* by `T`:
-    - references, raw pointers, function pointers, function items, trait objects[^traitobj],
+    - References, raw pointers, function pointers, function items, trait objects[^traitobj],
       and scalars do not own anything.
-    - tuples, slices, and arrays consider their elements to be owned.
-      For arrays of length zero we do not own any value of the element type.
-    - all fields (of all variants) of ADTs are considered owned.
+    - Tuples, slices, and arrays consider their elements to be owned.
+      For arrays of length zero, we do not own any value of the element type.
+    - All fields (of all variants) of ADTs are considered owned.
       We consider all variants for enums.
       The exception here is `ManuallyDrop<U>` which is not considered to own `U`.
       `PhantomData<U>` also does not own anything.
@@ -61,8 +61,9 @@ Ty::needs_drop`](https://github.com/rust-lang/rust/blob/320b412f9c55bf480d26276f
 
 For types which do not implement `Drop` themselves,
 we can also partially move parts of the value before dropping the rest.
-In this case
-only the drop glue for the not-yet moved values is called, e.g.
+In this case,
+only the drop glue for the not-yet moved values is called.
+Example:
 
 ```rust
 fn main() {
@@ -118,24 +119,24 @@ The constraints computed by `dropck_outlives` for a type closely match
 the generated drop glue for that type.
 Unlike drop glue,
 `dropck_outlives` cares about the types of owned values, not the values itself.
-For a value of type `T`
+For a value of type `T`:
 
-- if `T` has an explicit `Drop`, require all generic arguments to be live,
-  unless they are marked with `#[may_dangle]` in which case they are fully ignored
-- regardless of whether `T` has an explicit `Drop`, recurse into all types *owned* by `T`
-    - references, raw pointers, function pointers, function items, trait objects[^traitobj],
+- If `T` has an explicit `Drop`, require all generic arguments to be live,
+  unless they are marked with `#[may_dangle]` in which case they are fully ignored.
+- Regardless of whether `T` has an explicit `Drop`, recurse into all types *owned* by `T`
+    - References, raw pointers, function pointers, function items, trait objects[^traitobj],
       and scalars do not own anything.
-    - tuples, slices and arrays consider their element type to be owned.
+    - Tuples, slices and arrays consider their element type to be owned.
       **For arrays we currently do not check whether their length is zero**.
-    - all fields (of all variants) of ADTs are considered owned.
+    - All fields (of all variants) of ADTs are considered owned.
       The exception here is `ManuallyDrop<U>` which is not considered to own `U`.
       **We consider `PhantomData<U>` to own `U`**.
-    - closures and generators own their captured upvars.
+    - Closures and generators own their captured upvars.
 
 The sections marked in bold are cases where `dropck_outlives` considers
 types to be owned which are ignored by `Ty::needs_drop`.
-We only rely on `dropck_outlives` if `Ty::needs_drop` for the containing local returned
-`true`.This means liveness requirements can change depending on whether
+We only rely on `dropck_outlives` if `Ty::needs_drop` for the containing local returned `true`.
+This means liveness requirements can change depending on whether
 a type is contained in a larger local.
 **This is inconsistent, and should be fixed: an example [for
 arrays](https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=8b5f5f005a03971b22edb1c20c5e6cbe)
