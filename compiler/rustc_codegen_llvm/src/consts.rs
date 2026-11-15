@@ -73,8 +73,8 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
                 cx.const_bytes(bytes)
             }
             InitChunk::Uninit(range) => {
-                let len = range.end.bytes() - range.start.bytes();
-                cx.const_undef(cx.type_array(cx.type_i8(), len))
+                let len = range.end - range.start;
+                cx.const_undef(cx.type_byte_array(len))
             }
         };
 
@@ -357,7 +357,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         } else {
             let ty = instance.ty(self.tcx, self.typing_env());
             trace!(?ty);
-            self.type_array(self.type_i8(), self.layout_of(ty).size.bytes())
+            self.type_byte_array(self.layout_of(ty).size)
         };
         self.get_static_inner(def_id, llty)
     }
