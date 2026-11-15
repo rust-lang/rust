@@ -93,11 +93,11 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
     // Computing the region graph should take at least some of it by reference/`Rc`.
     let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints.clone(),
-        &universal_region_relations,
+        universal_region_relations,
         infcx,
     );
     let (_, closure_region_requirements, _nll_errors) = RegionInferenceContext::solve(
-        &infcx,
+        infcx,
         lowered_constraints,
         universal_region_relations.clone(),
         location_map,

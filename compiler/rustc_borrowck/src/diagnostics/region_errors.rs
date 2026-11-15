@@ -844,15 +844,15 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names(),
-            &self.upvars,
+            self.local_names(),
+            self.upvars,
             errci.fr,
         );
         let outlived_fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names(),
-            &self.upvars,
+            self.local_names(),
+            self.upvars,
             errci.outlived_fr,
         );
 
@@ -1013,7 +1013,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             return;
         };
         let mut visitor = ReturnsVisitor::default();
-        visitor.visit_body(&self.infcx.tcx.hir_body(body_id));
+        visitor.visit_body(self.infcx.tcx.hir_body(body_id));
         if visitor.returns.is_empty() {
             return;
         }
@@ -1496,7 +1496,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         let clauses = tcx.clauses_of(method_def_id).instantiate(tcx, args);
 
-        let ocx = ObligationCtxt::new(&self.infcx);
+        let ocx = ObligationCtxt::new(self.infcx);
         ocx.register_obligations(clauses.iter().map(|(clause, span)| {
             trace!(?clause);
             Obligation::misc(

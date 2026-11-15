@@ -871,7 +871,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let body = tcx.hir_body_owned_by(self.mir_def_id());
         let mut visitor =
             ConditionVisitor { tcx, spans: all_init_spans.clone(), name, errors: vec![] };
-        visitor.visit_body(&body);
+        visitor.visit_body(body);
 
         let mut show_assign_sugg = false;
         let isnt_initialized = if let InitializationRequiringAction::PartialAssignment
@@ -994,7 +994,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
 
             let mut visitor = LetVisitor { decl_span, sugg: None };
-            visitor.visit_body(&body);
+            visitor.visit_body(body);
             if let Some((span, strip_ref)) = visitor.sugg {
                 self.suggest_assign_value(&mut err, moved_place, span, strip_ref);
             }
@@ -1482,7 +1482,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     types.insert(
                         self.infcx
                             .tcx
-                            .short_string(clause.self_ty().skip_binder(), &mut err.long_ty_path()),
+                            .short_string(clause.self_ty().skip_binder(), err.long_ty_path()),
                     );
                 }
                 let mut span: MultiSpan = type_spans.clone().into();
@@ -1722,7 +1722,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(location, borrow, None)
-            .add_explanation_to_diagnostic(&self, &mut err, "", Some(borrow_span), None);
+            .add_explanation_to_diagnostic(self, &mut err, "", Some(borrow_span), None);
         self.suggest_copy_for_type_in_cloned_ref(&mut err, place);
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         if let Some(expr) = self.find_expr(borrow_span) {
@@ -1789,7 +1789,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(location, borrow, None)
-            .add_explanation_to_diagnostic(&self, &mut err, "", None, None);
+            .add_explanation_to_diagnostic(self, &mut err, "", None, None);
         err
     }
 
@@ -2092,7 +2092,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         }
 
         explanation.add_explanation_to_diagnostic(
-            &self,
+            self,
             &mut err,
             first_borrow_desc,
             None,
@@ -3270,7 +3270,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
             if let BorrowExplanation::MustBeValidFor { .. } = explanation {
             } else {
-                explanation.add_explanation_to_diagnostic(&self, &mut err, "", None, None);
+                explanation.add_explanation_to_diagnostic(self, &mut err, "", None, None);
             }
         } else {
             err.span_label(borrow_span, "borrowed value does not live long enough");
@@ -3283,7 +3283,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 }
             });
 
-            explanation.add_explanation_to_diagnostic(&self, &mut err, "", Some(borrow_span), None);
+            explanation.add_explanation_to_diagnostic(self, &mut err, "", Some(borrow_span), None);
 
             // Detect buffer reuse pattern
             if let BorrowExplanation::UsedLater(_dropped_local, _, _, _) = explanation {
@@ -3369,7 +3369,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             _ => {}
         }
 
-        explanation.add_explanation_to_diagnostic(&self, &mut err, "", None, None);
+        explanation.add_explanation_to_diagnostic(self, &mut err, "", None, None);
 
         self.buffer_error(err);
     }
@@ -3551,7 +3551,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
             _ => {}
         }
-        explanation.add_explanation_to_diagnostic(&self, &mut err, "", None, None);
+        explanation.add_explanation_to_diagnostic(self, &mut err, "", None, None);
 
         borrow_spans.args_subdiag(&mut err, |args_span| {
             crate::session_diagnostics::CaptureArgLabel::Capture {
@@ -4063,7 +4063,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(location, loan, None)
-            .add_explanation_to_diagnostic(&self, &mut err, "", None, None);
+            .add_explanation_to_diagnostic(self, &mut err, "", None, None);
 
         self.explain_deref_coercion(loan, &mut err);
 
