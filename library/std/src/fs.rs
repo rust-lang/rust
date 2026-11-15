@@ -3235,6 +3235,10 @@ pub fn rename_noreplace<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::R
 /// On success, the total number of bytes copied is returned and it is equal to
 /// the length of the `to` file as reported by `metadata`.
 ///
+/// If `from` is a symbolic link, this will copy the contents of the file the link points to, rather
+/// than copying the link itself. To copy the link instead, consider using [`read_link`] to read its
+/// target and creating a new link to the target using the appropriate platform-specific function.
+///
 /// If you want to copy the contents of one file to another and you’re
 /// working with [`File`]s, see the [`io::copy`](io::copy()) function.
 ///
