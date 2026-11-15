@@ -31,7 +31,7 @@ you can follow the instructions at [Debugging LLVM](../backend/debugging.md) to 
 - If the issue is due to an unsupported feature in TPDE,
 please create an issue at [https://github.com/tpde2/tpde/issues](https://github.com/tpde2/tpde/issues).
   - The goal of TPDE is to support the most commonly used subset of LLVM IR features,
-  so it is possible that the feature will not be added in the interest of avoiding excessive complexity.
+    so it is possible that the feature will not be added in the interest of avoiding excessive complexity.
 - If the issue is due to Rust emitting invalid LLVM IR or using TPDE incorrectly,
 please create an issue at [https://github.com/rust-lang/rust/issues](https://github.com/rust-lang/rust/issues).
 - If unsure, please ask on Zulip before opening an issue.
