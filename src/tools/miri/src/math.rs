@@ -269,7 +269,7 @@ pub(crate) fn fixed_float_value<S: Semantics>(
 where
     IeeeFloat<S>: IeeeExt,
 {
-    let this = ecx.eval_context_mut();
+    let ecx = ecx.eval_context_mut();
     let one = IeeeFloat::<S>::one();
     let two = IeeeFloat::<S>::two();
     let three = IeeeFloat::<S>::three();
@@ -329,22 +329,22 @@ where
 
         // 1^y = 1 for any y, even a NaN
         ("pow", [base, exp]) if *base == one => {
-            let rng = this.machine.rng.get_mut();
+            let rng = ecx.machine.rng.get_mut();
             // SNaN exponents get special treatment: they might return 1, or a NaN.
             // This is non-deterministic because LLVM can treat SNaN as QNaN, and because
             // implementation behavior differs between glibc and musl.
-            let return_nan = exp.is_signaling() && this.machine.float_nondet && rng.random();
-            if return_nan { this.generate_nan(args) } else { one }
+            let return_nan = exp.is_signaling() && ecx.machine.float_nondet && rng.random();
+            if return_nan { ecx.generate_nan(args) } else { one }
         }
 
         // x^(±0) = 1 for any x, even a NaN
         ("pow", [base, exp]) if exp.is_zero() => {
-            let rng = this.machine.rng.get_mut();
+            let rng = ecx.machine.rng.get_mut();
             // SNaN bases get special treatment: they might return 1, or a NaN.
             // This is non-deterministic because LLVM can treat SNaN as QNaN, and because
             // implementation behavior differs between glibc and musl.
-            let return_nan = base.is_signaling() && this.machine.float_nondet && rng.random();
-            if return_nan { this.generate_nan(args) } else { one }
+            let return_nan = base.is_signaling() && ecx.machine.float_nondet && rng.random();
+            if return_nan { ecx.generate_nan(args) } else { one }
         }
 
         // There are a lot of cases for fixed outputs according to the C Standard, but these are
