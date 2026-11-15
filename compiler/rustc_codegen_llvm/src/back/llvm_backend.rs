@@ -16,7 +16,9 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
-use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
+use rustc_codegen_ssa::{
+    CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig, target_features,
+};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
@@ -184,8 +186,17 @@ impl CodegenBackend for LlvmCodegenBackend {
     fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
         llvm_util::init(sess); // Make sure llvm is inited
 
-        let global_backend_features =
-            llvm_util::global_llvm_features(sess, /* for_cfg */ false);
+        // Target features: first compute just the base set, as that's what `target_config` needs.
+        // Then add `-Ctarget-feature`.
+        let mut global_backend_features = llvm_util::base_llvm_features(sess);
+        let config = target_config(sess, &global_backend_features);
+        target_features::flag_to_backend_features(
+            sess,
+            llvm_util::extend_with_llvm_features_for_rust_feature(
+                sess,
+                &mut global_backend_features,
+            ),
+        );
 
         // autodiff is based on Enzyme, a library which we might not have available, when it was
         // neither build, nor downloaded via rustup. If autodiff is used, but not available we emit
@@ -293,7 +304,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             thin_lto_supported: true,
         };
 
-        (init, target_config(sess))
+        (init, config)
     }
 
     fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {

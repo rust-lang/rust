@@ -275,10 +275,10 @@ fn parse_rust_feature_list<'a>(
 /// used for diagnostic purposes only.
 ///
 /// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is
-/// enabled in the "base" target machine, i.e., without applying `-Ctarget-feature`. Note that LLVM
-/// may consider features to be implied that we do not and vice-versa. We want `cfg` to be entirely
-/// consistent with Rust feature implications, and thus only consult LLVM to expand the target CPU
-/// to target features.
+/// enabled in the "base" target machine, i.e., without applying
+/// `-Ctarget-feature`/`-Zllvm-target-feature`. Note that LLVM may consider features to be implied
+/// that we do not and vice-versa. We want `cfg` to be entirely consistent with Rust feature
+/// implications, and thus only consult LLVM to expand the target CPU to target features.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
 pub fn internal_target_features<'a, const N: usize>(
