@@ -50,7 +50,7 @@ fn main() -> Result<()> {
         if extension != "md" {
             continue;
         }
-        let old = fs::read_to_string(&path)?;
+        let mut old = fs::read_to_string(&path)?;
         let mut new = comply(&old);
         if cli.reflow_harder {
             new = reformat(&new, cli.line_length_limit)
@@ -58,7 +58,11 @@ fn main() -> Result<()> {
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
-            fs::write(&path, reformat(&new, cli.line_length_limit))?;
+            while new != old {
+                old = new.clone();
+                new = reformat(&new, cli.line_length_limit);
+            }
+            fs::write(&path, new)?;
             made_compliant.push(path.clone());
         } else {
             not_compliant.push(path.clone());
