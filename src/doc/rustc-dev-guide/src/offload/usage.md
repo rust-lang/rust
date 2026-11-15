@@ -70,7 +70,8 @@ The compilation runs three passes:
 
 <div class="warning">
 
-The commands below target an AMD GPU. For your GPU, change:
+The commands below target an AMD GPU.
+For your GPU, change:
 - `-Ctarget-cpu=gfx90a` to your GPU's target CPU (e.g. `sm_86` on NVIDIA)[^list]
 - on NVIDIA, `amdgcn-amd-amdhsa` to `nvptx64-nvidia-cuda` (in `--target` and in the `-Zoffload=Host` path), and `.elf` to `.ptx`
 
