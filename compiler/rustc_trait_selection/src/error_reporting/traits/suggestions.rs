@@ -6915,50 +6915,79 @@ impl<'v> Visitor<'v> for SelfVisitor<'v> {
 #[derive(Default)]
 pub struct ReturnsVisitor<'v> {
     pub returns: Vec<&'v hir::Expr<'v>>,
-    in_block_tail: bool,
+    /// The set of items in tail position that can be targeted with a break (loops and blocks).
+    /// A break to such an item is a return.
+    break_targets_in_tail_position: FxHashSet<HirId>,
 }
 
 impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-        // Visit every expression to detect `return` paths, either through the function's tail
-        // expression or `return` statements. We walk all nodes to find `return` statements, but
-        // we only care about tail expressions when `in_block_tail` is `true`, which means that
-        // they're in the return path of the function body.
         match ex.kind {
-            hir::ExprKind::Ret(Some(ex)) => {
-                self.returns.push(ex);
-            }
-            hir::ExprKind::Block(block, _) if self.in_block_tail => {
-                self.in_block_tail = false;
-                for stmt in block.stmts {
-                    hir::intravisit::walk_stmt(self, stmt);
-                }
-                self.in_block_tail = true;
-                if let Some(expr) = block.expr {
-                    self.visit_expr(expr);
+            hir::ExprKind::Ret(Some(val)) => self.returns.push(val),
+            hir::ExprKind::Break(dest, Some(val)) if let Ok(id) = dest.target_id => {
+                // If this is a break to a block/loop in tail position, this is a return.
+                if self.break_targets_in_tail_position.contains(&id) {
+                    self.returns.push(val)
                 }
             }
-            hir::ExprKind::If(_, then, else_opt) if self.in_block_tail => {
-                self.visit_expr(then);
-                if let Some(el) = else_opt {
-                    self.visit_expr(el);
-                }
+            hir::ExprKind::Become(_) => {
+                // A become is like a return, but for diagnostics it is not useful to treat it as
+                // one. Often suggestions will break the tail call.
             }
-            hir::ExprKind::Match(_, arms, _) if self.in_block_tail => {
-                for arm in arms {
-                    self.visit_expr(arm.body);
-                }
-            }
-            // We need to walk to find `return`s in the entire body.
-            _ if !self.in_block_tail => hir::intravisit::walk_expr(self, ex),
-            _ => self.returns.push(ex),
+            _ => {}
         }
+
+        // Continue the walk, there might be further nested return expressions.
+        hir::intravisit::walk_expr(self, ex);
     }
 
     fn visit_body(&mut self, body: &hir::Body<'v>) {
-        assert!(!self.in_block_tail);
-        self.in_block_tail = true;
-        hir::intravisit::walk_body(self, body);
+        self.visit_tail(body.value);
+    }
+}
+
+impl<'v> ReturnsVisitor<'v> {
+    fn visit_tail(&mut self, ex: &'v hir::Expr<'v>) {
+        match ex.kind {
+            hir::ExprKind::Block(block, _) => {
+                if block.targeted_by_break {
+                    self.break_targets_in_tail_position.insert(block.hir_id);
+                }
+                for stmt in block.stmts {
+                    hir::intravisit::walk_stmt(self, stmt);
+                }
+                if let Some(tail) = block.expr {
+                    self.visit_tail(tail);
+                }
+            }
+            hir::ExprKind::If(cond, then, els) => {
+                self.visit_expr(cond);
+                self.visit_tail(then);
+                if let Some(els) = els {
+                    self.visit_tail(els);
+                }
+            }
+            hir::ExprKind::Match(scrutinee, arms, _) => {
+                self.visit_expr(scrutinee);
+                for arm in arms {
+                    if let Some(guard) = arm.guard {
+                        self.visit_expr(guard);
+                    }
+                    self.visit_tail(arm.body);
+                }
+            }
+            hir::ExprKind::Loop(block, ..) => {
+                self.break_targets_in_tail_position.insert(ex.hir_id);
+                self.visit_block(block);
+            }
+            hir::ExprKind::Ret(_) | hir::ExprKind::Become(_) | hir::ExprKind::Break(..) => {
+                self.visit_expr(ex);
+            }
+            _ => {
+                self.returns.push(ex);
+                self.visit_expr(ex);
+            }
+        }
     }
 }
 
