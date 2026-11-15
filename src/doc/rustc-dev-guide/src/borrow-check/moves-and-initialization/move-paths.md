@@ -20,7 +20,8 @@ fn foo() {
 
 To handle this, we track initialization at the granularity of a **move path**.
 A [`MovePath`] represents some location that the user can
-initialize, move, etc. So e.g. there is a move-path representing the
+initialize, move, etc.
+So, as an example, there is a move-path representing the
 local variable `a`, and there is a move-path representing `a.0`.
 Move paths roughly correspond to the concept of a [`Place`] from MIR, but
 they are indexed in ways that enable us to do move analysis more efficiently.
@@ -123,13 +124,13 @@ There are two different methods:
 As we noted above, move-paths are stored in a big vector and referenced via their [`MovePathIndex`].
 However, within this vector,
 they are also structured into a tree.
-So for example if you have the [`MovePathIndex`] for `a.b.c`, you can go to its parent move-path
+So, for example, if you have the [`MovePathIndex`] for `a.b.c`, you can go to its parent move-path
 `a.b`.
 You can also iterate over all children paths: so, from `a.b`,
 you might iterate to find the path `a.b.c` (here you are iterating
 just over the paths that are **actually referenced** in the source,
 not all **possible** paths that could have been referenced).
-These references are used for example in the
+These references are used, for example, in the
 [`find_in_move_path_or_its_descendants`] function, which determines
 whether a move-path (e.g., `a.b`) or any child of that move-path
 (e.g.,`a.b.c`) matches a given predicate.
