@@ -403,7 +403,8 @@ pub fn create_ecx<'tcx>(
         ImmTy::from_int(i64::try_from(config.args.len()).unwrap(), ecx.machine.layouts.isize);
     let argv = {
         // Put each argument in memory, collect pointers.
-        let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
+        let mut argvs =
+            Vec::<Immediate<Provenance>>::with_capacity(config.args.len().strict_add(1));
         for arg in config.args.iter() {
             // Make space for `0` terminator.
             let size = u64::try_from(arg.len()).unwrap().strict_add(1);
@@ -414,6 +415,8 @@ pub fn create_ecx<'tcx>(
             ecx.mark_immutable(&arg_place);
             argvs.push(arg_place.to_ref(&ecx));
         }
+        // Add trailing null.
+        argvs.push(Immediate::Scalar(Scalar::null_ptr(&ecx)));
         // Make an array with all these pointers, in the Miri memory.
         let u8_ptr_type = Ty::new_imm_ptr(tcx, tcx.types.u8);
         let u8_ptr_ptr_type = Ty::new_imm_ptr(tcx, u8_ptr_type);

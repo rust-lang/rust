@@ -129,10 +129,30 @@ fn test_chdir() {
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
 }
 
+#[cfg(target_os = "macos")]
+fn test_nsgetargv_argc() {
+    let argv = unsafe { *libc::_NSGetArgv() };
+    let c_argv_0 = unsafe { CStr::from_ptr(*argv).to_bytes() };
+    let argc = unsafe { *libc::_NSGetArgc() };
+    let argv_argc = unsafe { *argv.add(argc as usize) };
+
+    // In Miri, `argv[0]` points to the path of the source file,
+    // whereas natively, it points to the path of the compiled program.
+    if cfg!(miri) {
+        assert_eq!(c_argv_0, file!().as_bytes());
+    }
+
+    assert_eq!(argc, 1);
+
+    assert!(argv_argc.is_null());
+}
+
 fn main() {
     test_getenv();
     test_setenv();
     test_unsetenv();
     test_getcwd();
     test_chdir();
+    #[cfg(target_os = "macos")]
+    test_nsgetargv_argc();
 }
