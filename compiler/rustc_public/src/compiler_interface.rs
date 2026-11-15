@@ -390,15 +390,15 @@ impl<'tcx> CompilerInterface<'tcx> {
     }
 
     /// Returns whether this ADT is a phantom data
-    pub(crate) fn adt_is_phantom_data(&self, def: AdtDef) -> ReprOptions {
+    pub(crate) fn adt_is_phantom_data(&self, def: AdtDef) -> bool {
         self.with_cx(|tables, cx| cx.adt_is_phantom_data(def.internal(tables, cx.tcx)))
     }
     /// Returns whether this ADT is manually drop
-    pub(crate) fn adt_is_manually_drop(&self, def: AdtDef) -> ReprOptions {
+    pub(crate) fn adt_is_manually_drop(&self, def: AdtDef) -> bool {
         self.with_cx(|tables, cx| cx.adt_is_manually_drop(def.internal(tables, cx.tcx)))
     }
     /// Returns whether this ADT is unsafe cell 
-    pub(crate) fn adt_is_unsafe_cell(&self, def: AdtDef) -> ReprOptions {
+    pub(crate) fn adt_is_unsafe_cell(&self, def: AdtDef) -> bool {
         self.with_cx(|tables, cx| cx.adt_is_unsafe_cell(def.internal(tables, cx.tcx)))
     }
 
