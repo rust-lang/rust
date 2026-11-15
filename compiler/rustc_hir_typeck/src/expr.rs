@@ -3397,6 +3397,76 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
     ) {
         let hir::ExprKind::Field(expr, ..) = expr.kind else { return };
+        self.find_shadowed_method(err, base_ty, expr, |ty| {
+            // Does the alternative method call's resulting type auto-deref to a type that has
+            // the field the user is trying to access?
+            self.get_field_candidates_considering_privacy_for_diag(expr.span, ty)
+                .into_iter()
+                .flat_map(|fields| fields.into_iter())
+                .find(|(f, _ty)| f.name == field.name)
+                .is_some()
+        });
+    }
+
+    pub(crate) fn all_methods(
+        &self,
+        method_ident: Ident,
+        ty: Ty<'tcx>,
+    ) -> impl Iterator<Item = (DefId, DefId, bool)> {
+        let mut impls: Vec<_> = self
+            .tcx
+            .all_traits_including_private()
+            .filter(|trait_def_id| {
+                // Consider only traits with the associated type
+                self.tcx
+                    .associated_items(*trait_def_id)
+                    .in_definition_order()
+                    .any(|i| i.is_method() && i.ident(self.tcx).name == method_ident.name)
+                    && self.tcx.all_impls(*trait_def_id).any(|impl_def_id| {
+                        let header = self.tcx.impl_trait_header(impl_def_id);
+                        let trait_ref = header
+                            .trait_ref
+                            .instantiate(
+                                self.tcx,
+                                self.infcx.fresh_args_for_item(method_ident.span, impl_def_id),
+                            )
+                            .skip_norm_wip();
+                        let value = fold_regions(self.tcx, ty, |_, _| self.tcx.lifetimes.re_erased);
+                        if value.has_escaping_bound_vars() {
+                            return false;
+                        }
+                        self.infcx.can_eq(ty::ParamEnv::empty(), trait_ref.self_ty(), value)
+                            && header.polarity != ty::ImplPolarity::Negative
+                    })
+            })
+            .map(|def_id| (def_id, false))
+            .collect();
+        if let ty::Adt(def, _args) = ty.kind() {
+            // Get all the `impl ReceiverType`s.
+            impls.extend(
+                self.tcx
+                    .inherent_impls(def.did())
+                    .into_iter()
+                    .cloned()
+                    .map(|def_id| (def_id, true)),
+            );
+        }
+        impls.into_iter().filter_map(move |(i, inherent)| {
+            self.tcx
+                .associated_items(i)
+                .in_definition_order()
+                .find(|assoc| assoc.is_method() && assoc.ident(self.tcx).name == method_ident.name)
+                .map(|assoc| (i, assoc.def_id, inherent))
+        })
+    }
+
+    pub(crate) fn find_shadowed_method(
+        &self,
+        err: &mut Diag<'_>,
+        base_ty: Ty<'tcx>,
+        expr: &hir::Expr<'tcx>,
+        finder: impl Fn(Ty<'tcx>) -> bool,
+    ) {
         let hir::ExprKind::MethodCall(segment, rcvr, args, span_with_args) = expr.kind else {
             return;
         };
@@ -3409,61 +3479,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (ty, _) in autoderef {
             // Get all traits that are implemented by the potential autoderefs for the
             // receiver for methods with the same name.
-            let mut impls: Vec<_> = self
-                .tcx
-                .all_traits_including_private()
-                .filter(|trait_def_id| {
-                    // Consider only traits with the associated type
-                    self.tcx
-                        .associated_items(*trait_def_id)
-                        .in_definition_order()
-                        .any(|i| i.is_method() && i.ident(self.tcx).name == segment.ident.name)
-                        && self.tcx.all_impls(*trait_def_id).any(|impl_def_id| {
-                            let header = self.tcx.impl_trait_header(impl_def_id);
-                            let trait_ref = header
-                                .trait_ref
-                                .instantiate(
-                                    self.tcx,
-                                    self.infcx.fresh_args_for_item(segment.ident.span, impl_def_id),
-                                )
-                                .skip_norm_wip();
-                            let value =
-                                fold_regions(self.tcx, ty, |_, _| self.tcx.lifetimes.re_erased);
-                            if value.has_escaping_bound_vars() {
-                                return false;
-                            }
-                            self.infcx.can_eq(ty::ParamEnv::empty(), trait_ref.self_ty(), value)
-                                && header.polarity != ty::ImplPolarity::Negative
-                        })
-                })
-                .map(|def_id| (def_id, false))
-                .collect();
-            if let ty::Adt(def, _args) = ty.kind() {
-                // Get all the `impl ReceiverType`s.
-                impls.extend(
-                    self.tcx
-                        .inherent_impls(def.did())
-                        .into_iter()
-                        .cloned()
-                        .map(|def_id| (def_id, true)),
-                );
-            }
+            let impls = self.all_methods(segment.ident, ty);
             // In all the `impl`s for the autoderefs of the receiver type, look for the method
             // *except* the one that was actually called. This would end up being an empty set
             // if there are no alternatives.
-            for (parent, def_id, inherent) in impls
-                .into_iter()
-                .filter_map(|(i, inherent)| {
-                    self.tcx
-                        .associated_items(i)
-                        .in_definition_order()
-                        .find(|assoc| {
-                            assoc.is_method() && assoc.ident(self.tcx).name == segment.ident.name
-                        })
-                        .map(|assoc| (i, assoc.def_id, inherent))
-                })
-                .filter(|(_, did, _)| def_id != *did)
-            {
+            for (parent, def_id, inherent) in impls.filter(|(_, did, _)| def_id != *did) {
                 let gen_args = if let ty::Adt(_, args) = ty.peel_refs().kind()
                     && inherent
                 {
@@ -3487,15 +3507,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ret_ty = self.tcx.instantiate_bound_regions_with_erased(
                     self.deeply_resolve_ignoring_regions_with_obligations(ret_ty),
                 );
+
                 // Does the alternative method call's resulting type auto-deref to a type that has
-                // the field the user is trying to access?
-                if self
-                    .get_field_candidates_considering_privacy_for_diag(span_with_args, ret_ty)
-                    .into_iter()
-                    .flat_map(|fields| fields.into_iter())
-                    .find(|(f, _ty)| f.name == field.name)
-                    .is_none()
-                {
+                // the thing the user is trying to access?
+                if !finder(ret_ty) {
                     continue;
                 }
                 // It does! We'll point at it and suggest the fully-qualified path to the

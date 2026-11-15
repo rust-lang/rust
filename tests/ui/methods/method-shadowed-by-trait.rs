@@ -56,26 +56,35 @@ struct S;
 struct Other {
     field: (),
 }
+impl Other {
+    fn method(&self) {}
+}
+
 impl S {
     fn foo(&self) -> Other { Other { field: () } }
     //~^ NOTE: you might have meant to call
+    //~| NOTE: you might have meant to call
 }
 mod a {
     use crate::{S, Other};
     pub trait T {
-        fn foo(&self) {} //~ NOTE: this returns `()`
+        fn foo(&self) {}
+        //~^ NOTE: this returns `()`
+        //~| NOTE: this returns `()`
     }
     impl T for S {}
     impl T for Box<S> {}
     pub trait K {
         fn foo(&self) -> Other { Other { field : () } }
         //~^ NOTE: you might have meant to call
+        //~| NOTE: you might have meant to call
     }
     impl K for S {}
     impl K for Box<S> {}
     pub trait V {
         fn foo(&self) -> Other;
         //~^ NOTE: you might have meant to call
+        //~| NOTE: you might have meant to call
     }
     impl V for Box<S> {
         fn foo(&self) -> Other { Other { field : () } }
@@ -92,6 +101,7 @@ fn main() {
     x.foo().field; //~ ERROR: no field `field` on type `()`
     //~^ NOTE: unknown field
     //~| NOTE: this method is `a::T::foo`
+    x.foo().method(); //~ ERROR: no method named `method` found for unit type `()` in the current scope
+    //~^ NOTE: method not found in `()`
+    //~| NOTE: this method is `a::T::foo`
 }
-
-// FIXME: make this work with methods too.
