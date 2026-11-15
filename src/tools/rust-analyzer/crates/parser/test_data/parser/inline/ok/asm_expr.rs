@@ -1,5 +1,5 @@
 fn foo() {
-    builtin#asm(
+    k#asm(
         "mov {tmp}, {x}",
         "shl {tmp}, 1",
         "shl {x}, 2",

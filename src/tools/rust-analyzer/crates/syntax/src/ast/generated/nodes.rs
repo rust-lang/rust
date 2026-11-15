@@ -108,8 +108,6 @@ impl AsmExpr {
     #[inline]
     pub fn template(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
@@ -117,8 +115,6 @@ impl AsmExpr {
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
     #[inline]
     pub fn asm_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![asm]) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn global_asm_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![global_asm])
@@ -449,15 +445,11 @@ impl CfgPredExpr {
     #[inline]
     pub fn cfg_predicate(&self) -> Option<CfgPredicate> { support::child(&self.syntax) }
     #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn cfg_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![cfg]) }
 }
@@ -468,15 +460,11 @@ impl CfgPredPat {
     #[inline]
     pub fn cfg_predicate(&self) -> Option<CfgPredicate> { support::child(&self.syntax) }
     #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn cfg_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![cfg]) }
 }
@@ -579,13 +567,9 @@ impl DerefPat {
     #[inline]
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn deref_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![deref]) }
 }
@@ -784,15 +768,11 @@ impl FormatArgsExpr {
     #[inline]
     pub fn template(&self) -> Option<Expr> { support::child(&self.syntax) }
     #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn format_args_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![format_args])
@@ -891,10 +871,6 @@ pub struct IncludeBytesExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl IncludeBytesExpr {
-    #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn include_bytes_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![include_bytes])
@@ -1256,15 +1232,11 @@ impl OffsetOfExpr {
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn offset_of_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![offset_of])
@@ -1426,13 +1398,9 @@ impl PatternType {
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
-    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![#]) }
-    #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    #[inline]
-    pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
     #[inline]
     pub fn is_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![is]) }
     #[inline]

@@ -212,26 +212,23 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
 }
 
 fn builtin_pat(p: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = p.start();
-    p.bump_remap(T![builtin]);
-    p.bump(T![#]);
-    if p.eat_contextual_kw(T![deref]) {
+    if let Some(m) = p.start_builtin_kw(T![deref]) {
         // test deref_pat
+        // fn foo() { let k#deref(_) = 1; }
         // fn foo() { let builtin # deref(_) = 1; }
         p.expect(T!['(']);
         pattern(p);
         p.expect(T![')']);
         Some(m.complete(p, DEREF_PAT))
-    } else if p.eat_contextual_kw(T![cfg]) {
+    } else if let Some(m) = p.start_builtin_kw(T![cfg]) {
         // test cfg_pred_pat
-        // fn foo() { let builtin # cfg(any(true, x = "y")) = true; }
+        // fn foo() { let k#cfg(any(true, x = "y")) = true; }
         p.expect(T!['(']);
         attributes::cfg_predicate(p);
         p.eat(T![,]);
         p.expect(T![')']);
         Some(m.complete(p, CFG_PRED_PAT))
     } else {
-        m.abandon(p);
         None
     }
 }
@@ -251,8 +248,8 @@ const PAT_RECOVERY_SET: TokenSet = TokenSet::new(&[
 ]);
 
 fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarker> {
-    if p.at_contextual_kw(T![builtin]) && p.nth_at(1, T![#]) {
-        return builtin_pat(p);
+    if let m @ Some(_) = builtin_pat(p) {
+        return m;
     }
 
     let m = match p.current() {
