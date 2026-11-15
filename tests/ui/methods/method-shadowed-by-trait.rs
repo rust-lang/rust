@@ -1,3 +1,6 @@
+// Show the diagnostic for cases where a method is expected by the user but a different one is
+// shaddowing it causing a field access to fail. Test for #93726.
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::borrow::BorrowMut;
@@ -38,6 +41,9 @@ impl TransactionLog {
             Some(old_tail) => old_tail.borrow_mut().next = Some(node.clone()),
             //~^ ERROR: no field `next` on type `&mut Rc<RefCell<Node>>`
             //~| NOTE: unknown field
+            //~| NOTE: this method is `std::borrow::BorrowMut::borrow_mut`
+            //~| NOTE: you might have meant to call `std::cell::RefCell::<T>::borrow_mut` instead
+            //~| NOTE: this returns `&mut Rc<RefCell<Node>>`
             None => self.head = Some(node.clone()),
         }
         self.length += 1;
@@ -52,27 +58,30 @@ struct Other {
 }
 impl S {
     fn foo(&self) -> Other { Other { field: () } }
+    //~^ NOTE: you might have meant to call
 }
 mod a {
     use crate::{S, Other};
     pub trait T {
-        fn foo(&self) {}
+        fn foo(&self) {} //~ NOTE: this returns `()`
     }
     impl T for S {}
     impl T for Box<S> {}
     pub trait K {
         fn foo(&self) -> Other { Other { field : () } }
+        //~^ NOTE: you might have meant to call
     }
     impl K for S {}
     impl K for Box<S> {}
     pub trait V {
         fn foo(&self) -> Other;
+        //~^ NOTE: you might have meant to call
     }
     impl V for Box<S> {
         fn foo(&self) -> Other { Other { field : () } }
     }
     pub trait U {
-        fn foo(&self) {}
+        fn foo(&self) {} // not suggested because its return type doesn't have the field
     }
     impl U for Box<S> {}
 }
@@ -82,4 +91,7 @@ fn main() {
     let x = Box::new(S);
     x.foo().field; //~ ERROR: no field `field` on type `()`
     //~^ NOTE: unknown field
+    //~| NOTE: this method is `a::T::foo`
 }
+
+// FIXME: make this work with methods too.

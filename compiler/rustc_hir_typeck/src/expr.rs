@@ -12,7 +12,7 @@ use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
@@ -31,7 +31,10 @@ use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{
+    self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized, fold_regions,
+};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
@@ -3280,6 +3283,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.downgrade_to_delayed_bug();
         }
 
+        self.detect_shadowed_method_on_incorrect_field_access(&mut err, field, base_ty, expr);
+
         if let Some(within_macro_span) = span.within_macro(expr.span, self.tcx.sess.source_map()) {
             err.span_label(within_macro_span, "due to this macro variable");
         }
@@ -3382,6 +3387,179 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         err
+    }
+
+    fn detect_shadowed_method_on_incorrect_field_access(
+        &self,
+        err: &mut Diag<'_>,
+        field: Ident,
+        base_ty: Ty<'tcx>,
+        expr: &hir::Expr<'tcx>,
+    ) {
+        let hir::ExprKind::Field(expr, ..) = expr.kind else { return };
+        let hir::ExprKind::MethodCall(segment, rcvr, args, span_with_args) = expr.kind else {
+            return;
+        };
+        let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id) else {
+            return;
+        };
+        let rcvr_ty = self.typeck_results.borrow().expr_ty_adjusted(rcvr);
+        let autoderef = self.autoderef(span_with_args, rcvr_ty).silence_errors();
+        let mut alternatives = FxIndexSet::default();
+        for (ty, _) in autoderef {
+            // Get all traits that are implemented by the potential autoderefs for the
+            // receiver for methods with the same name.
+            let mut impls: Vec<_> = self
+                .tcx
+                .all_traits_including_private()
+                .filter(|trait_def_id| {
+                    // Consider only traits with the associated type
+                    self.tcx
+                        .associated_items(*trait_def_id)
+                        .in_definition_order()
+                        .any(|i| i.is_method() && i.ident(self.tcx).name == segment.ident.name)
+                        && self.tcx.all_impls(*trait_def_id).any(|impl_def_id| {
+                            let header = self.tcx.impl_trait_header(impl_def_id);
+                            let trait_ref = header
+                                .trait_ref
+                                .instantiate(
+                                    self.tcx,
+                                    self.infcx.fresh_args_for_item(segment.ident.span, impl_def_id),
+                                )
+                                .skip_norm_wip();
+                            let value =
+                                fold_regions(self.tcx, ty, |_, _| self.tcx.lifetimes.re_erased);
+                            if value.has_escaping_bound_vars() {
+                                return false;
+                            }
+                            self.infcx.can_eq(ty::ParamEnv::empty(), trait_ref.self_ty(), value)
+                                && header.polarity != ty::ImplPolarity::Negative
+                        })
+                })
+                .map(|def_id| (def_id, false))
+                .collect();
+            if let ty::Adt(def, _args) = ty.kind() {
+                // Get all the `impl ReceiverType`s.
+                impls.extend(
+                    self.tcx
+                        .inherent_impls(def.did())
+                        .into_iter()
+                        .cloned()
+                        .map(|def_id| (def_id, true)),
+                );
+            }
+            // In all the `impl`s for the autoderefs of the receiver type, look for the method
+            // *except* the one that was actually called. This would end up being an empty set
+            // if there are no alternatives.
+            for (parent, def_id, inherent) in impls
+                .into_iter()
+                .filter_map(|(i, inherent)| {
+                    self.tcx
+                        .associated_items(i)
+                        .in_definition_order()
+                        .find(|assoc| {
+                            assoc.is_method() && assoc.ident(self.tcx).name == segment.ident.name
+                        })
+                        .map(|assoc| (i, assoc.def_id, inherent))
+                })
+                .filter(|(_, did, _)| def_id != *did)
+            {
+                let gen_args = if let ty::Adt(_, args) = ty.peel_refs().kind()
+                    && inherent
+                {
+                    // We want the arguments of the *type* to be passed to the `impl ReceiverType`.
+                    *args
+                } else {
+                    // We want to use the `ReceiverType` for `Self` on trait impls.
+                    GenericArgs::for_item(self.tcx, def_id, |param, _| {
+                        if let ty::GenericParamDefKind::Lifetime = param.kind {
+                            self.tcx.lifetimes.re_erased.into()
+                        } else if param.name == kw::SelfUpper {
+                            ty.into()
+                        } else {
+                            self.infcx.var_for_def(span_with_args, param)
+                        }
+                    })
+                };
+                let fn_sig =
+                    self.tcx.fn_sig(def_id).instantiate(self.tcx, gen_args).skip_norm_wip();
+                let ret_ty = fn_sig.output();
+                let ret_ty = self.tcx.instantiate_bound_regions_with_erased(
+                    self.deeply_resolve_ignoring_regions_with_obligations(ret_ty),
+                );
+                // Does the alternative method call's resulting type auto-deref to a type that has
+                // the field the user is trying to access?
+                if self
+                    .get_field_candidates_considering_privacy_for_diag(span_with_args, ret_ty)
+                    .into_iter()
+                    .flat_map(|fields| fields.into_iter())
+                    .find(|(f, _ty)| f.name == field.name)
+                    .is_none()
+                {
+                    continue;
+                }
+                // It does! We'll point at it and suggest the fully-qualified path to the
+                // alternative method call.
+                let mut span: MultiSpan = self.tcx.def_span(def_id).into();
+                span.push_span_context(self.tcx.def_span(parent));
+                let path = with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
+                let after_rcvr = match args {
+                    [] => (rcvr.span.shrink_to_hi().to(span_with_args), ")".to_string()),
+                    [first, ..] => (rcvr.span.shrink_to_hi().to(first.span), ", ".to_string()),
+                };
+                let self_ty = fn_sig.input(0).skip_binder();
+                let mutbl = match self_ty.kind() {
+                    ty::Ref(_, _, mutbl) => mutbl.ref_prefix_str(),
+                    _ => "",
+                };
+                // FIXME: in the suggestions we are now (almost) always suggesting the type or trait
+                // name as if it was already imported, regardless of whether it is. This means that
+                // a follow up suggestion will be needed if the item is not in scope (which likely
+                // won't be).
+                let call = if inherent {
+                    if let ty::Adt(def, _) = ty.peel_refs().kind() {
+                        // `Type::method(&rcvr)`
+                        format!("{}::{}({mutbl}", self.tcx.item_name(def.did()), segment.ident)
+                    } else {
+                        // Fallback, but shouldn't happen as there are no inherent impls on
+                        // primitives.
+                        format!("{path}({mutbl}")
+                    }
+                } else {
+                    // `<_ as Trait>::method(&rcvr)`
+                    // FIXME: account for type params on `Trait` (suggest `as Trait<'_, _>>::`).
+                    format!("<_ as {}>::{}({mutbl}", self.tcx.item_name(parent), segment.ident)
+                };
+                let sugg = vec![(rcvr.span.shrink_to_lo(), call), after_rcvr];
+                alternatives.insert((path, span, sugg));
+            }
+        }
+        if alternatives.is_empty() {
+            return;
+        }
+        let path = with_no_trimmed_paths!(self.tcx.def_path_str(def_id));
+
+        // On the main diagnostic, point at the method call before the field access to make it clear
+        // what it actually was.
+        err.span_label(segment.ident.span, format!("this method is `{path}`"));
+
+        // Point at the method definition, including its impl or trait, being explicit about what
+        // type it returns, which at this point we know doesn't have the desired field.
+        let base_ty = self.tcx.short_string(base_ty, err.long_ty_path());
+        let mut span: MultiSpan = self.tcx.def_span(def_id).into();
+        span.push_span_context(self.tcx.def_span(self.tcx.parent(def_id)));
+        err.span_note(span, format!("this returns `{base_ty}`"));
+
+        for (path, span, sugg) in alternatives {
+            // Show the alternatives' method definition...
+            err.span_note(span, format!("you might have meant to call `{path}` instead"));
+            // ...and suggest the fully-qualified path to call them instead.
+            err.multipart_suggestion(
+                format!("consider calling `{path}` using the fully-qualified path"),
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     fn private_field_err(&self, field: Ident, base_did: DefId) -> Diag<'_> {
