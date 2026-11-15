@@ -56,10 +56,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.as_rvalue(block, scope, value)
                 })
             }
-            ExprKind::Repeat { value, count } => {
-                if Some(0) == count.try_to_target_usize(this.tcx) {
-                    this.build_zero_repeat(block, value, scope, source_info)
-                } else {
+            ExprKind::Repeat { value, count } => match count.try_to_target_usize(this.tcx) {
+                Some(0) => this.build_zero_repeat(block, value, scope, source_info),
+                Some(1) => {
+                    let value_operand = unpack!(
+                        block = this.as_operand(
+                            block,
+                            scope,
+                            value,
+                            LocalInfo::Boring,
+                            NeedsTemporary::No
+                        )
+                    );
+                    let fields = IndexVec::from_elem_n(value_operand, 1);
+                    block.and(Rvalue::Aggregate(
+                        Box::new(AggregateKind::Array(this.thir[value].ty)),
+                        fields,
+                    ))
+                }
+                _ => {
                     let value_operand = unpack!(
                         block = this.as_operand(
                             block,
@@ -71,7 +86,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     block.and(Rvalue::Repeat(value_operand, count))
                 }
-            }
+            },
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(
                     block = this.as_operand(
