@@ -14,8 +14,9 @@ features! {
     /// The feature names are mostly taken from their FEAT_* definitions in the [ARM Architecture
     /// Reference Manual][docs].
     ///
-    /// The implementation of the runtime check differs depending on the platform.
-    /// On platforms where this macro has no implementation, it always expands to `false`.
+    /// The implementation of the runtime check differs depending on the platform and the
+    /// particular feature in question. When there is no support for checking a given
+    /// feature on the platform, `false` is returned as a fallback.
     ///
     /// ## Supported arguments
     ///
