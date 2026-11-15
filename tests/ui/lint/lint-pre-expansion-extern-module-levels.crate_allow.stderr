@@ -1,0 +1,21 @@
+warning: `try` is a keyword in the 2018 edition
+  --> $DIR/lint_pre_expansion_extern_module_levels_aux.rs:3:8
+   |
+LL | pub fn try() {}
+   |        ^^^ help: you can use a raw identifier to stay compatible: `r#try`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/new-keywords.html>
+   = note: requested on the command line with `-W keyword-idents-2018`
+
+warning: `async` is a keyword in the 2018 edition
+  --> $DIR/lint_pre_expansion_extern_module_levels_nested_aux.rs:3:8
+   |
+LL | pub fn async() {}
+   |        ^^^^^ help: you can use a raw identifier to stay compatible: `r#async`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2018/new-keywords.html>
+
+warning: 2 warnings emitted
+
