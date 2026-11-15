@@ -1,6 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 
+@rem There is no need to start a debugging session with this script anymore. It is only kept for backwards compatibility.
+@rem Let's notify users of this fact and point them to the new way of doing things.
+echo This script has been deprecated. Natvis data is now embedded in PDBs. WinDbgX can resolve that without this script. You may want to run the debugger directly.
+
 for /f "delims=" %%i in ('rustc --print=sysroot') do set rustc_sysroot=%%i
 
 set rust_etc=!rustc_sysroot!\lib\rustlib\etc
