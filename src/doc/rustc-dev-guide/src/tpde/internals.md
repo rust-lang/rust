@@ -13,7 +13,7 @@ use the `-Z llvm-tpde` rustc flag (which can be passed to cargo via `RUSTFLAGS`)
 The valid options are:
 
 - `<not set>`: use LLVM normally as the codegen backend.
-  TPDE is not used
+  TPDE is not used.
 - `-Zllvm-tpde`, `-Zllvm-tpde=try`: attempt to compile with TPDE-LLVM,
-but fall back to LLVM if unsupported IR is encountered
-- `-Zllvm-tpde=only`: attempt to compile with TPDE-LLVM, and bail if unsupported IR is encountered
+  but fall back to LLVM if unsupported IR is encountered.
+- `-Zllvm-tpde=only`: attempt to compile with TPDE-LLVM, and bail if unsupported IR is encountered.
