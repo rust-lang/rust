@@ -1707,6 +1707,7 @@ impl String {
             fn drop(&mut self) {
                 let new_len = self.idx - self.del_bytes;
                 debug_assert!(new_len <= self.s.len());
+                // SAFETY: Restore the string length to the number of bytes written so far.
                 unsafe { self.s.vec.set_len(new_len) };
             }
         }
