@@ -23,11 +23,9 @@ core::test_binder_constraints! {
 ```
 
 The top-level syntax is the keyword `impl`, followed by an option list of generic args,
-followed by an optional `where`
-clause.
+followed by an optional `where` clause.
 This is extremely similar to an `impl` block (hence the keyword choice), a free `fn`,
-or whatever else top-level
-kind of generic thing.
+or whatever else top-level kind of generic thing.
 This lowers to your typical typeck root DefId with `generics_of` being the written generics +
 constraints.
 These generics are your typical `TyKind::Param`, and are *NOT* `ty::Binder`s.
@@ -54,14 +52,12 @@ core::test_binder_constraints! {
 
 Note that PlaceholderTyOutlives and AliasTyOutlivesViaEnv are vaguely ambiguous what you "mean" when you just write a
 type outlives, so: a plain `SomeType: 'lifetime` always produces a PlaceholderTyOutlives,
-and `for<..> SomeType:
-'lifetime` always produces a AliasTyOutlivesViaEnv.
-If you want an AliasTyOutlivesViaEnv without bound variables, just
-write an empty `for<>`, like `for<> T::Assoc: 'b`.
+and `for<..> SomeType: 'lifetime` always produces a AliasTyOutlivesViaEnv.
+If you want an AliasTyOutlivesViaEnv without bound variables, just write an empty `for<>`,
+like `for<> T::Assoc: 'b`.
 PlaceholderTyOutlives must be a placeholder (i.e. bound variable
 instantiated with a placeholder when entering a binder, or top-level param) on the LHS,
-and AliasTyOutlivesViaEnv must
-be an alias.
+and AliasTyOutlivesViaEnv must be an alias.
 The test infrastructure will yell at you and error otherwise.
 
 Additionally, "direct insert" style constraints support `and { }` and `or { }` syntax,
@@ -161,8 +157,7 @@ core::test_binder_constraints! {
 There's several components to this:
 
 `forall<'a>` is a generic parameter list for the binder - only lifetimes are supported here,
-unless you enable
-`#![feature(non_lifetime_binders)]`.
+unless you enable `#![feature(non_lifetime_binders)]`.
 
 `where 'b: 'a` are the *assumptions* on the binder.
 The where clauses, the conditions that must be valid for the binder to be instantiated,
