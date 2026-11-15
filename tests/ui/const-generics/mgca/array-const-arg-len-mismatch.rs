@@ -34,13 +34,13 @@ fn baz<const A: [u8; <S as Trait>::LEN]>() {}
 
 fn main() {
     foo::<u8, 2, { [] }>();
-    //~^ ERROR: the constant `[]` is not of type `[u8; 2]`
+    //~^ ERROR: array length mismatch
     foo::<u8, 2, { [0, 0, 0] }>();
-    //~^ ERROR: the constant `[0, 0, 0]` is not of type `[u8; 2]`
+    //~^ ERROR: array length mismatch
     bar::<{ [] }>();
-    //~^ ERROR: the constant `[]` is not of type `[u8; 2]`
+    //~^ ERROR: array length mismatch
     bar::<{ [1, 2, 3] }>();
-    //~^ ERROR: the constant `[1, 2, 3]` is not of type `[u8; 2]`
+    //~^ ERROR: array length mismatch
     baz::<{ [42] }>();
-    //~^ ERROR: the constant `[42]` is not of type `[u8; 3]`
+    //~^ ERROR: array length mismatch
 }

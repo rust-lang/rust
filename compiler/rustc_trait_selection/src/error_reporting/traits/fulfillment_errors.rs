@@ -870,7 +870,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             SelectionError::ConstArgHasWrongType { ct, ct_ty, expected_ty } => {
                 let expected_ty_str = self.tcx.short_string(expected_ty, &mut long_ty_file);
-                let ct_str = self.tcx.short_string(ct, &mut long_ty_file);
                 let mut diag_span = span;
                 let mut is_array_len = false;
                 if let ObligationCauseCode::ArrayLen(_, span) = obligation.cause.code() {
@@ -893,10 +892,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         is_array_len = true;
                     }
                 }
-                let mut diag = self.dcx().struct_span_err(
-                    diag_span,
-                    format!("the constant `{ct_str}` is not of type `{expected_ty_str}`"),
-                );
+
+                let (msg, terr) = if let ty::Array(ct_elem_ty, ct_len) = ct_ty.peel_refs().kind()
+                    && let ty::Array(expected_elem_ty, expected_len) =
+                        expected_ty.peel_refs().kind()
+                    && ct_elem_ty == expected_elem_ty
+                {
+                    (
+                        format!("array length mismatch"),
+                        TypeError::ArraySize(ty::error::ExpectedFound::new(*expected_len, *ct_len)),
+                    )
+                } else {
+                    let ct_str = self.tcx.short_string(ct, &mut long_ty_file);
+                    (
+                        format!("the constant `{ct_str}` is not of type `{expected_ty_str}`"),
+                        TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
+                    )
+                };
+
+                let mut diag = self.dcx().struct_span_err(diag_span, msg);
                 diag.long_ty_path = long_ty_file;
                 if let ConstKind::Param(param_const) = ct.kind() {
                     for param in self
@@ -922,15 +936,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         format!("array length expected `{expected_ty_str}`, found `{ty}`"),
                     );
                 } else {
-                    self.note_type_err(
-                        &mut diag,
-                        &obligation.cause,
-                        None,
-                        None,
-                        TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
-                        false,
-                        None,
-                    );
+                    self.note_type_err(&mut diag, &obligation.cause, None, None, terr, false, None);
                 }
                 diag
             }
