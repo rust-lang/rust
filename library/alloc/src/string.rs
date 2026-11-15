@@ -1716,11 +1716,18 @@ impl String {
         let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
 
         while guard.idx < len {
-            let ch =
-                // SAFETY: `guard.idx` is positive-or-zero and less that len so the `get_unchecked`
-                // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
-                // a unicode code point so the `Chars` always return one character.
-                unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap_unchecked() };
+            // SAFETY: Use `vec`: `String`'s deref includes `write..read`,
+            // which may be invalid UTF-8. The vector's length is still `len`;
+            // `read < len`, so `read..len` is in bounds and non-empty.
+            // At least one character was removed, so `write < read`.
+            // Copies end before the next `read`, preserving unread bytes.
+            // `read` starts after a `char_indices` character and advances by whole
+            // characters, so it stays on a char boundary. The original string was valid UTF-8,
+            // so the unchanged, non-empty tail is valid UTF-8 and `chars().next()` returns `Some`.
+            let ch = unsafe {
+                let tail = str::from_utf8_unchecked(guard.s.vec.get_unchecked(guard.idx..len));
+                tail.chars().next().unwrap_unchecked()
+            };
             let ch_len = ch.len_utf8();
 
             if !f(ch) {
