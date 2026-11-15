@@ -426,11 +426,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
     fn describe_name(&self, place: PlaceRef<'tcx>) -> Option<Symbol> {
         for elem in place.projection.into_iter() {
-            match elem {
-                ProjectionElem::Downcast(Some(name), _) => {
-                    return Some(*name);
-                }
-                _ => {}
+            if let ProjectionElem::Downcast(Some(name), _) = elem {
+                return Some(*name);
             }
         }
         None
@@ -1034,24 +1031,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         // StatementKind::FakeRead only contains a def_id if they are introduced as a result
         // of pattern matching within a closure.
-        if let StatementKind::FakeRead((cause, place)) = stmt.kind {
-            match cause {
-                FakeReadCause::ForMatchedPlace(Some(closure_def_id))
-                | FakeReadCause::ForLet(Some(closure_def_id)) => {
-                    debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
-                    let places = &[Operand::Move(place)];
-                    if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
-                        self.closure_span(closure_def_id, moved_place, IndexSlice::from_raw(places))
-                    {
-                        return ClosureUse {
-                            closure_kind,
-                            args_span,
-                            capture_kind_span,
-                            path_span,
-                        };
-                    }
-                }
-                _ => {}
+        if let StatementKind::FakeRead((
+            FakeReadCause::ForMatchedPlace(Some(closure_def_id))
+            | FakeReadCause::ForLet(Some(closure_def_id)),
+            place,
+        )) = stmt.kind
+        {
+            debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
+            let places = &[Operand::Move(place)];
+            if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
+                self.closure_span(closure_def_id, moved_place, IndexSlice::from_raw(places))
+            {
+                return ClosureUse { closure_kind, args_span, capture_kind_span, path_span };
             }
         }
 

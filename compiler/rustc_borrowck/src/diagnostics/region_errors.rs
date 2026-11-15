@@ -904,29 +904,26 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         // Only show an extra note if we can find an 'error region' for both of the region
         // variables. This avoids showing a noisy note that just mentions 'synthetic' regions
         // that don't help the user understand the error.
-        match (
+        if let (Some(f), Some(o)) = (
             self.regioncx.to_error_region(errci.fr),
             self.regioncx.to_error_region(errci.outlived_fr),
         ) {
-            (Some(f), Some(o)) => {
-                self.maybe_suggest_constrain_dyn_trait_impl(&mut diag, f, o, category);
+            self.maybe_suggest_constrain_dyn_trait_impl(&mut diag, f, o, category);
 
-                let fr_region_name = self.give_region_a_name(errci.fr).unwrap();
-                fr_region_name.highlight_region_name(&mut diag);
-                let outlived_fr_region_name = self.give_region_a_name(errci.outlived_fr).unwrap();
-                outlived_fr_region_name.highlight_region_name(&mut diag);
+            let fr_region_name = self.give_region_a_name(errci.fr).unwrap();
+            fr_region_name.highlight_region_name(&mut diag);
+            let outlived_fr_region_name = self.give_region_a_name(errci.outlived_fr).unwrap();
+            outlived_fr_region_name.highlight_region_name(&mut diag);
 
-                diag.span_label(
-                    *span,
-                    format!(
-                        "{}requires that `{}` must outlive `{}`",
-                        category.description(),
-                        fr_region_name,
-                        outlived_fr_region_name,
-                    ),
-                );
-            }
-            _ => {}
+            diag.span_label(
+                *span,
+                format!(
+                    "{}requires that `{}` must outlive `{}`",
+                    category.description(),
+                    fr_region_name,
+                    outlived_fr_region_name,
+                ),
+            );
         }
 
         diag

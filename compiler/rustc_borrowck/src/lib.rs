@@ -1666,13 +1666,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
             for (place_ref, proj) in place.iter_projections().rev() {
                 // Handle (a)
-                if proj == ProjectionElem::Deref {
-                    match place_ref.ty(this.body(), this.infcx.tcx).ty.kind() {
-                        // We aren't modifying a variable directly
-                        ty::Ref(_, _, hir::Mutability::Mut) => return,
-
-                        _ => {}
-                    }
+                if proj == ProjectionElem::Deref
+                    // We aren't modifying a variable directly
+                    && let ty::Ref(_, _, hir::Mutability::Mut) =
+                        place_ref.ty(this.body(), this.infcx.tcx).ty.kind()
+                {
+                    return;
                 }
 
                 // Handle (c)

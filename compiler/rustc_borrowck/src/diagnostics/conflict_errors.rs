@@ -1105,20 +1105,16 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
             match e.kind {
                 hir::ExprKind::Let(_) => {
-                    match tcx.parent_hir_node(e.hir_id) {
-                        hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::If(cond, ..), ..
-                        }) => {
-                            if (Finder { hir_id: expr.hir_id }).visit_expr(cond).is_break() {
-                                // The expression where the move error happened is in a `while let`
-                                // condition Don't suggest clone as it will likely end in an
-                                // infinite loop.
-                                // while let Some(_) = foo(non_copy.clone()) { }
-                                // ---------                       ^^^^^^^^
-                                can_suggest_clone = false;
-                            }
-                        }
-                        _ => {}
+                    if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If(cond, ..), .. }) =
+                        tcx.parent_hir_node(e.hir_id)
+                        && (Finder { hir_id: expr.hir_id }).visit_expr(cond).is_break()
+                    {
+                        // The expression where the move error happened is in a `while let`
+                        // condition. Do not suggest clone, because it will likely cause
+                        // an infinite loop.
+                        // while let Some(_) = foo(non_copy.clone()) { }
+                        // ---------                       ^^^^^^^^
+                        can_suggest_clone = false;
                     }
                 }
                 hir::ExprKind::Loop(..) => {
@@ -4446,12 +4442,10 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     // Otherwise, look at other types of assignment.
                     let assigned_from = match rvalue {
                         Rvalue::Ref(_, _, assigned_from) => assigned_from,
-                        Rvalue::Use(operand, _) => match operand {
-                            Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
-                                assigned_from
-                            }
-                            _ => continue,
-                        },
+                        Rvalue::Use(
+                            Operand::Copy(assigned_from) | Operand::Move(assigned_from),
+                            _,
+                        ) => assigned_from,
                         _ => continue,
                     };
                     debug!(
