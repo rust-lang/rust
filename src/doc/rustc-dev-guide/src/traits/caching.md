@@ -31,7 +31,8 @@ impl Foo<isize> for usize { ... } // Impl #22
 ```
 
 We would then record in the cache `usize : Foo<$0> => ImplCandidate(22)`.
-Next we would [confirm] `ImplCandidate(22)`, which would (as a side-effect) unify `$t` with `isize`.
+Next, we would [confirm] `ImplCandidate(22)`,
+which would (as a side-effect) unify `$t` with `isize`.
 
 [confirm]: ./resolution.md#confirmation
 
