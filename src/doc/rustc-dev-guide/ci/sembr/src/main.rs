@@ -20,6 +20,9 @@ struct Cli {
     /// Applies to lines that are to be split
     #[arg(long, default_value_t = 100)]
     line_length_limit: usize,
+    /// Hide compliant files... they are less important to display
+    #[arg(long, default_value_t = false)]
+    hide_compliant_files: bool,
 }
 
 static REGEX_IGNORE_END: LazyLock<Regex> =
@@ -62,7 +65,11 @@ fn main() -> Result<()> {
         }
     }
     if !compliant.is_empty() {
-        display("compliant", &compliant);
+        if cli.hide_compliant_files {
+            println!("{} files are compliant", compliant.len())
+        } else {
+            display("compliant", &compliant);
+        }
     }
     if !made_compliant.is_empty() {
         display("made compliant", &made_compliant);
