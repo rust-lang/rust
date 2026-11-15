@@ -28544,7 +28544,7 @@ pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v2f32.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v2f32.p0"
         )]
         fn _vld4_dup_f32(ptr: *const f32) -> float32x2x4_t;
     }
@@ -28563,7 +28563,7 @@ pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v4f32.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v4f32.p0"
         )]
         fn _vld4q_dup_f32(ptr: *const f32) -> float32x4x4_t;
     }
@@ -28582,7 +28582,7 @@ pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v8i8.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v8i8.p0"
         )]
         fn _vld4_dup_s8(ptr: *const i8) -> int8x8x4_t;
     }
@@ -28601,7 +28601,7 @@ pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v16i8.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v16i8.p0"
         )]
         fn _vld4q_dup_s8(ptr: *const i8) -> int8x16x4_t;
     }
@@ -28620,7 +28620,7 @@ pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v4i16.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v4i16.p0"
         )]
         fn _vld4_dup_s16(ptr: *const i16) -> int16x4x4_t;
     }
@@ -28639,7 +28639,7 @@ pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v8i16.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v8i16.p0"
         )]
         fn _vld4q_dup_s16(ptr: *const i16) -> int16x8x4_t;
     }
@@ -28658,7 +28658,7 @@ pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v2i32.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v2i32.p0"
         )]
         fn _vld4_dup_s32(ptr: *const i32) -> int32x2x4_t;
     }
@@ -28677,7 +28677,7 @@ pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v4i32.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v4i32.p0"
         )]
         fn _vld4q_dup_s32(ptr: *const i32) -> int32x4x4_t;
     }
@@ -28696,7 +28696,7 @@ pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
     unsafe extern "llvm-intrinsic" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
-            link_name = "llvm.aarch64.neon.ld4r.v1i64.p0.p0"
+            link_name = "llvm.aarch64.neon.ld4r.v1i64.p0"
         )]
         fn _vld4_dup_s64(ptr: *const i64) -> int64x1x4_t;
     }
