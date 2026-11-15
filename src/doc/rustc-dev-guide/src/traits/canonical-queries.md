@@ -3,7 +3,7 @@
 The "start" of the trait system is the **canonical query** (these are
 both queries in the more general sense of the word – something you
 would like to know the answer to – and in the [rustc-specific sense](../query.md)).
-The idea is that the type checker or other parts of the system,
+The idea is that the type checker, or other parts of the system,
 may in the course of doing their thing want to know whether some trait is implemented for some type
 (e.g., is `u32: Debug` true?). Or they may want to
 normalize some associated type.
@@ -15,7 +15,7 @@ The subsections look a bit more closely at how these ideas are implemented in ru
 
 In a traditional Prolog system, when you start a query,
 the solver will run off and start supplying you with every possible answer it can find.
-So given something like this:
+So, given something like this:
 
 ```text
 ?- Vec<i32>: AsRef<?U>
@@ -61,7 +61,7 @@ and hence the solver will just give me back `no` right away:
 ```
 
 In some cases, there might be an infinite number of responses.
-So for example if I gave this query, and I kept hitting `y`,
+So, for example, if I gave this query, and I kept hitting `y`,
 then the solver would never stop giving me back answers:
 
 ```text
@@ -103,9 +103,9 @@ The trait queries in rustc work somewhat differently.
 Instead of trying to enumerate **all possible** answers for you,
 they are looking for an **unambiguous** answer.
 In particular, when they tell you the value for a type variable,
-that means that this is the **only possible instantiation** that you could use,
+that means that,
 given the current set of impls and where-clauses,
-that would be provable.
+this is the **only possible instantiation** that you could use that would be provable.
 
 The response to a trait query in rustc is typically a `Result<QueryResult<T>,
 NoSolution>` (where the `T` will vary a bit depending on the query itself).
@@ -240,4 +240,3 @@ and we also know that `?T` and `?V` are the same type (but we don't know what th
 (In fact, as the function ends here, the type checker would give an error at this point,
 since the element types of `t` and `u` are still not yet known,
 even though they are known to be the same.)
-
