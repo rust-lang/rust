@@ -47,27 +47,27 @@ There are a few parts:
 So let's work through our example.
 
 1. The first thing we would do is to replace the bound region in the obligation with a placeholder,
-yielding  `AnyInt : Foo<&'0 isize>` (here `'0` represents placeholder region #0).
-Note that we now have no quantifiers;
-in terms of the compiler type, this changes from a `ty::PolyTraitRef` to a `TraitRef`.
-We would then create the `TraitRef` from the impl,
-using fresh variables for its bound regions (and thus getting `Foo<&'$a isize>`,
-where `'$a` is the inference variable for `'a`).
+   yielding `AnyInt : Foo<&'0 isize>` (here `'0` represents placeholder region #0).
+   Note that we now have no quantifiers;
+   in terms of the compiler type, this changes from a `ty::PolyTraitRef` to a `TraitRef`.
+   We would then create the `TraitRef` from the impl,
+   using fresh variables for its bound regions (and thus getting `Foo<&'$a isize>`,
+   where `'$a` is the inference variable for `'a`).
 
-2. Next we relate the two trait refs, yielding a graph with the constraint that `'0 == '$a`.
+2. Next, we relate the two trait refs, yielding a graph with the constraint that `'0 == '$a`.
 
 3. Finally, we check for placeholder "leaks" – a
-leak is basically any attempt to relate a placeholder region to another placeholder region,
-or to any region that pre-existed the impl match.
-The leak check is done by searching from the placeholder region to find
-the set of regions that it is related to in any way.
-This is called the "taint" set.
-To pass the check, that set must consist *solely* of itself and region variables from the impl.
-If the taint set includes any other region, then the match is a failure.
-In this case, the taint set for `'0` is `{'0, '$a}`, and hence the check will succeed.
+   leak is basically any attempt to relate a placeholder region to another placeholder region,
+   or to any region that pre-existed the impl match.
+   The leak check is done by searching from the placeholder region to find
+   the set of regions that it is related to in any way.
+   This is called the "taint" set.
+   To pass the check, that set must consist *solely* of itself and region variables from the impl.
+   If the taint set includes any other region, then the match is a failure.
+   In this case, the taint set for `'0` is `{'0, '$a}`, and hence the check will succeed.
 
 Let's consider a failure case.
-Imagine we also have a struct
+Imagine we also have a struct:
 
 ```rust,ignore
 struct StaticInt;
