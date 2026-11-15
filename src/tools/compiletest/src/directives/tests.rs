@@ -661,28 +661,31 @@ fn test_empty_directive() {
     let line = "//@";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(result, Some(Err(Error { kind: ErrorKind::InvalidName { name: "" }, .. })));
+    assert_matches!(
+        result,
+        Some(Err(Error { kind: ErrorKind::InvalidDirectiveName { name: "" }, .. }))
+    );
 }
 
 #[test]
-fn test_non_alphanumeric_directive_name() {
+fn test_invalid_directive_name() {
     let line = "//@ #&$?+)^";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(
         result,
-        Some(Err(Error { kind: ErrorKind::InvalidName { name: "#&$?+)^" }, .. }))
+        Some(Err(Error { kind: ErrorKind::InvalidDirectiveName { name: "#&$?+)^" }, .. }))
     );
 }
 
 #[test]
-fn test_non_alphanumeric_directive_name_with_payload() {
+fn test_invalid_directive_name_with_payload() {
     let line = "//@ #&$?+)^ payload";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(
         result,
-        Some(Err(Error { kind: ErrorKind::InvalidName { name: "#&$?+)^" }, .. }))
+        Some(Err(Error { kind: ErrorKind::InvalidDirectiveName { name: "#&$?+)^" }, .. }))
     );
 }
 
@@ -691,7 +694,10 @@ fn test_missing_directive_name() {
     let line = "//@: value";
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
-    assert_matches!(result, Some(Err(Error { kind: ErrorKind::InvalidName { name: "" }, .. })));
+    assert_matches!(
+        result,
+        Some(Err(Error { kind: ErrorKind::InvalidDirectiveName { name: "" }, .. }))
+    );
 }
 
 #[test]
@@ -840,6 +846,39 @@ fn test_doc_comment_at_sign_not_a_directive() {
 
     let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
     assert_matches!(result, None);
+}
+
+#[test]
+fn test_directive_padded_revision_condition() {
+    let line = "//@ [ rev ] key";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Ok(DirectiveLine { revision: Some("rev"), name: "key", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_directive_empty_revision_name() {
+    let line = "//@ [] key";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Err(Error { kind: ErrorKind::InvalidRevisionName { revision: "" }, .. }))
+    );
+}
+
+#[test]
+fn test_directive_invalid_revision_name() {
+    let line = "//@ [ #&$?+)^ ] key";
+
+    let result = line_directive(Utf8Path::new("file.rs"), LineNumber::ZERO, line);
+    assert_matches!(
+        result,
+        Some(Err(Error { kind: ErrorKind::InvalidRevisionName { revision: "#&$?+)^" }, .. }))
+    );
 }
 
 #[test]

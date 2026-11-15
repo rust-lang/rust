@@ -17,6 +17,7 @@ pub(crate) fn line_directive<'a>(
     let comment = line.trim().strip_prefix("//")?;
     let trimmed_comment = comment.trim_start();
 
+    // FIXME: Account for the fact that we now require revision names to be valid identifiers.
     let (leading_revision, trimmed_comment) = trimmed_comment
         .strip_prefix('[')
         .and_then(|after_open_bracket| after_open_bracket.split_once(']'))
@@ -37,19 +38,21 @@ pub(crate) fn line_directive<'a>(
     let mut revision = None;
 
     if let Some(after_open_bracket) = directive.strip_prefix('[') {
-        let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
+        let Some((rev, after_close_bracket)) = after_open_bracket.split_once(']') else {
             return error(ErrorKind::UnclosedRevisionCondition);
         };
 
-        revision = Some(line_revision);
         directive = after_close_bracket.trim_start();
 
-        if line_revision.contains(",") {
-            return error(ErrorKind::CommaInRevisionCondition {
-                revision: line_revision,
-                directive,
-            });
+        let rev = rev.trim();
+        if rev.contains(",") {
+            return error(ErrorKind::CommaInRevisionCondition { revision: rev, directive });
         }
+        if rev.is_empty() || rev.contains(|char| !is_identifier_char(char)) {
+            return error(ErrorKind::InvalidRevisionName { revision: rev });
+        }
+
+        revision = Some(rev);
     }
 
     // We need to allow `!` for {Html,Json}DocCk directives like `!has`.
@@ -66,7 +69,7 @@ pub(crate) fn line_directive<'a>(
         } else {
             name
         };
-        return error(ErrorKind::InvalidName { name });
+        return error(ErrorKind::InvalidDirectiveName { name });
     }
 
     let payload = if let Some(payload) = payload {
@@ -181,7 +184,8 @@ pub(crate) enum ErrorKind<'a> {
     UnclosedRevisionCondition,
     CommaInRevisionCondition { revision: &'a str, directive: &'a str },
     EmptyValue,
-    InvalidName { name: &'a str },
+    InvalidDirectiveName { name: &'a str },
+    InvalidRevisionName { revision: &'a str },
 }
 
 impl Error<'_> {
@@ -222,15 +226,22 @@ impl Error<'_> {
             }
             ErrorKind::EmptyValue => {
                 title("no non-empty value found after the colon `:`");
-
                 help!("consider removing the colon");
             }
-            ErrorKind::InvalidName { name } => {
+            ErrorKind::InvalidDirectiveName { name } => {
                 title(&format!("`{name}` is not a valid directive name"));
 
                 help!(
                     "the name has to be a non-empty sequence of alphanumeric characters, \
                     `_`, `-` and `!`"
+                );
+            }
+            ErrorKind::InvalidRevisionName { revision } => {
+                title(&format!("`{revision}` is not a valid revision name"));
+
+                help!(
+                    "the name has to be a non-empty sequence of alphanumeric characters, \
+                    `_` and `-`"
                 );
             }
         }
