@@ -39,23 +39,24 @@ you should include fixes for those in the rustc PR as well.
 
 ### Josh subtrees
 
-The [josh] tool is an alternative to git subtrees, which manages git history in a different way and 
-scales better to larger repositories. We used to manage subtrees using `git subtree`, but it was
-very slow and difficult to use. Josh works much better.
+The [josh] tool is an alternative to git subtrees,
+which manages git history in a different way and  scales better to larger repositories.
+We used to manage subtrees using `git subtree`, but it was very slow and difficult to use.
+Josh works much better.
 
 Subtrees are used for bidirectional synchronization between the rustc repo (`rust-lang/rust`) and 
 the subtree repo (e.g. Clippy). There are two operations that are regularly performed on 
 subtrees:
 
-- A subtree pull takes all changes made to the subtree directory in the rustc repo, and re-applies 
-  them in the subtree repo.
-- A subtree push takes all changes made to the subtree repo, and re-applies them to the subtree 
-  directory in the rustc repo.
+- A subtree pull takes all changes made to the subtree directory in the rustc repo,
+  and re-applies  them in the subtree repo.
+- A subtree push takes all changes made to the subtree repo,
+  and re-applies them to the subtree  directory in the rustc repo.
 
 ### Synchronizing a Josh subtree
 
-Specific tooling is required to work with Josh. We use a dedicated tool called 
-[`rustc-josh-sync`][josh-sync] to make Josh subtree updates easier.
+Specific tooling is required to work with Josh.
+We use a dedicated tool called [`rustc-josh-sync`][josh-sync] to make Josh subtree updates easier.
 
 The commands below can be used for all our Josh subtrees, although note that `miri`
 requires you to perform some [additional steps](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo) during pulls.
@@ -65,7 +66,8 @@ You can install the tool using the following command:
 cargo install --locked --git https://github.com/rust-lang/josh-sync
 ```
 
-Both pulls and pushes are performed from the subtree repository. So first
+Both pulls and pushes are performed from the subtree repository.
+So first
 switch to the subtree repository checkout directory in your terminal before performing a pull or a 
 push.
 
@@ -95,9 +97,10 @@ push.
 
 ### Creating a new Josh subtree dependency
 
-If you want to migrate a repository dependency from a `git submodule` to josh, you 
-can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg). If you want to add a new Josh 
-subtree that was not a submodule before, follow the guide as if you migrated a 
+If you want to migrate a repository dependency from a `git submodule` to josh,
+you  can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
+If you want to add a new Josh subtree that was not a submodule before,
+follow the guide as if you migrated a 
 submodule to a Josh subtree.
 
 ## External dependencies (submodules)
