@@ -21,10 +21,10 @@ fn foo() {
 To handle this, we track initialization at the granularity of a **move path**.
 A [`MovePath`] represents some location that the user can
 initialize, move, etc.
-So, as an example, there is a move-path representing the
-local variable `a`, and there is a move-path representing `a.0`.
-Move paths roughly correspond to the concept of a [`Place`] from MIR, but
-they are indexed in ways that enable us to do move analysis more efficiently.
+So, as an example, there is a move-path representing the local variable `a`,
+and there is a move-path representing `a.0`.
+Move paths roughly correspond to the concept of a [`Place`] from MIR,
+but they are indexed in ways that enable us to do move analysis more efficiently.
 
 [`MovePath`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MovePath.html
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html
@@ -35,8 +35,8 @@ Although there is a [`MovePath`] data structure, they are never referenced direc
 Instead, all the code passes around *indices* of type [`MovePathIndex`].
 If you need to get information about a move path,
 you use this index with the [`move_paths` field of the `MoveData`][move_paths].
-For example, to convert a [`MovePathIndex`] `mpi` into a MIR [`Place`], you might
-access the [`MovePath::place`] field like so:
+For example, to convert a [`MovePathIndex`] `mpi` into a MIR [`Place`],
+you might access the [`MovePath::place`] field like so:
 
 ```rust,ignore
 move_data.move_paths[mpi].place
@@ -54,8 +54,7 @@ This function uses a MIR visitor
 called [`MoveDataBuilder`] to walk the MIR and look at how each [`Place`] within is accessed.
 For each such [`Place`], it constructs a corresponding [`MovePathIndex`].
 It also records when/where that particular move path is moved/initialized,
-but we'll get to that in a
-later section.
+but we'll get to that in a later section.
 
 [`MoveDataBuilder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/builder/struct.MoveDataBuilder.html
 [`MoveData::gather_moves`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html#method.gather_moves
@@ -73,8 +72,8 @@ Some examples:
   there would be no move-path for `*foo`.
 
 These rules are enforced by the [`move_path_for`] function,
-which converts a [`Place`] into a [`MovePathIndex`] -- in error cases like
-those just discussed, the function returns an `Err`.
+which converts a [`Place`] into a [`MovePathIndex`] -- in error cases like those just discussed,
+the function returns an `Err`.
 This in turn means we don't have to bother tracking whether those places are
 initialized (which lowers overhead).
 
@@ -124,16 +123,15 @@ There are two different methods:
 As we noted above, move-paths are stored in a big vector and referenced via their [`MovePathIndex`].
 However, within this vector,
 they are also structured into a tree.
-So, for example, if you have the [`MovePathIndex`] for `a.b.c`, you can go to its parent move-path
-`a.b`.
+So, for example, if you have the [`MovePathIndex`] for `a.b.c`,
+you can go to its parent move-path `a.b`.
 You can also iterate over all children paths: so, from `a.b`,
 you might iterate to find the path `a.b.c` (here you are iterating
 just over the paths that are **actually referenced** in the source,
 not all **possible** paths that could have been referenced).
-These references are used, for example, in the
-[`find_in_move_path_or_its_descendants`] function, which determines
-whether a move-path (e.g., `a.b`) or any child of that move-path
-(e.g.,`a.b.c`) matches a given predicate.
+These references are used, for example, in the [`find_in_move_path_or_its_descendants`] function,
+which determines whether a move-path (e.g., `a.b`)
+or any child of that move-path (e.g.,`a.b.c`) matches a given predicate.
 
 [`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html
 [`find_in_move_path_or_its_descendants`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/move_paths/struct.MoveData.html#method.find_in_move_path_or_its_descendants
