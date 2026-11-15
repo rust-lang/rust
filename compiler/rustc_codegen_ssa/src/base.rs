@@ -1063,7 +1063,7 @@ impl CrateInfo {
         let n_crates = crates.len();
         let mut info = CrateInfo {
             target_cpu,
-            target_features: tcx.sess.global_backend_features.clone(),
+            backend_target_features: tcx.sess.global_backend_features.clone(),
             crate_types,
             exported_symbols,
             linked_symbols,

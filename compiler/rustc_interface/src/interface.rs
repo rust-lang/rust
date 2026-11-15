@@ -434,7 +434,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     make_codegen_backend(&early_sess)
                 }
             };
-            let codegen_backend_init = codegen_backend.init(&early_sess);
+            let (codegen_backend_init, target_config) = codegen_backend.init(&early_sess);
 
             let mut sess = rustc_session::build_session(
                 early_sess,
@@ -452,8 +452,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             // STACK_SIZE is setup in run_in_thread_pool_with_globals, before arriving here.
             sess.opts.recommended_stack_size = *util::STACK_SIZE.get().unwrap();
-
-            let target_config = codegen_backend.target_config(&sess);
 
             // Store all of the target features in the session.
             // Needs to be done before `parse_cfg` because it checks this list.

@@ -3308,8 +3308,11 @@ fn add_order_independent_options(
             "--target-cpu",
             &crate_info.target_cpu,
         ]);
-        if crate_info.target_features.len() > 0 {
-            cmd.link_arg(&format!("--target-feature={}", &crate_info.target_features.join(",")));
+        if crate_info.backend_target_features.len() > 0 {
+            cmd.link_arg(&format!(
+                "--target-feature={}",
+                &crate_info.backend_target_features.join(",")
+            ));
         }
     } else if flavor == LinkerFlavor::Bpf {
         cmd.link_args(&["--cpu", &crate_info.target_cpu]);

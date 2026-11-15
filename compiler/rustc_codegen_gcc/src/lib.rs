@@ -183,7 +183,7 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+    fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
         fn file_paths(sysroot_path: &Path, sess: &EarlySession) -> Vec<PathBuf> {
             let rustlib_path = rustc_target::relative_target_rustlib_path(
                 sysroot_path,
@@ -286,12 +286,14 @@ impl CodegenBackend for GccCodegenBackend {
             });
         }
 
-        CodegenBackendInit {
+        let init = CodegenBackendInit {
             global_backend_features,
             replaced_rustc_intrinsics: vec![],
             fallback_rustc_intrinsics: vec![sym::type_id_eq],
             thin_lto_supported: false,
-        }
+        };
+
+        (init, target_config(sess, &self.config().target_info))
     }
 
     fn target_cpu(&self, sess: &Session) -> String {
@@ -316,10 +318,6 @@ impl CodegenBackend for GccCodegenBackend {
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
             .join(sess, incr_comp_session, crate_info)
-    }
-
-    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
-        target_config(sess, &self.config().target_info)
     }
 }
 
