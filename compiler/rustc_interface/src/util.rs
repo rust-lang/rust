@@ -26,7 +26,9 @@ use rustc_session::config::{
     Cfg, Jobs, OptionsTargetModifiers, OutFileName, OutputFilenames, OutputTypes, Sysroot,
     host_tuple,
 };
-use rustc_session::{EarlyDiagCtxt, EarlySession, IncrCompSession, Session, filesearch};
+use rustc_session::{
+    CodegenBackendInit, EarlyDiagCtxt, EarlySession, IncrCompSession, Session, filesearch,
+};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
@@ -436,7 +438,9 @@ impl CodegenBackend for DummyCodegenBackend {
         "dummy"
     }
 
-    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
+    fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
+        let init = CodegenBackendInit::default();
+
         let abi_required_features = sess.target.abi_required_features();
         let internal_target_features = internal_target_features::<0>(
             sess,
@@ -450,14 +454,16 @@ impl CodegenBackend for DummyCodegenBackend {
             },
         );
 
-        TargetConfig {
+        let config = TargetConfig {
             internal_target_features,
             has_reliable_f16: true,
             has_reliable_f16_math: true,
             has_reliable_f16b: true,
             has_reliable_f128: true,
             has_reliable_f128_math: true,
-        }
+        };
+
+        (init, config)
     }
 
     fn supported_crate_types(&self, _sess: &Session) -> Vec<CrateType> {

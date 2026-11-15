@@ -181,7 +181,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         "llvm"
     }
 
-    fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
+    fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
         llvm_util::init(sess); // Make sure llvm is inited
 
         let global_backend_features =
@@ -286,12 +286,14 @@ impl CodegenBackend for LlvmCodegenBackend {
         // cranelift/GCC even if they have dedicated implementations.
         let fallback_intrinsics = vec![sym::type_id_eq];
 
-        CodegenBackendInit {
+        let init = CodegenBackendInit {
             global_backend_features,
             replaced_intrinsics,
             fallback_intrinsics,
             thin_lto_supported: true,
-        }
+        };
+
+        (init, target_config(sess))
     }
 
     fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {
@@ -363,10 +365,6 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn has_mnemonic(&self, sess: &Session, mnemonic: &str) -> bool {
         llvm_util::target_has_mnemonic(sess, mnemonic)
-    }
-
-    fn target_config(&self, sess: &EarlySession) -> TargetConfig {
-        target_config(sess)
     }
 
     fn target_cpu(&self, sess: &Session) -> String {
