@@ -376,6 +376,20 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         def.repr()
     }
 
+    /// Returns if the ADT is a box.
+    pub fn adt_is_phantom_data(&self, def: AdtDef<'tcx>) -> bool {
+        def.is_phantom_data()
+    }
+
+    /// Returns if the ADT is a box.
+    pub fn adt_is_manually_drop(&self, def: AdtDef<'tcx>) -> bool {
+        def.is_manually_drop()
+    }
+
+    /// Returns if the ADT is a box.
+    pub fn adt_is_unsafe_cell(&self, def: AdtDef<'tcx>) -> bool {
+        def.is_unsafe_cell()
+    }
     /// Retrieve the function signature for the given generic arguments.
     pub fn fn_sig(&self, def_id: DefId, args_ref: GenericArgs<'tcx>) -> Binder<'tcx, FnSig<'tcx>> {
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args_ref).skip_norm_wip();
