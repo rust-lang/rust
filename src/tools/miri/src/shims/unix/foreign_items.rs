@@ -1205,7 +1205,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "sched_yield" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [] = &this
                     .check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
                 this.sched_yield()?;
@@ -1262,7 +1261,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "pthread_atfork" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [prepare, parent, child] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(fn(..) -> _, fn(..) -> _, fn(..) -> _) -> i32),
                     (link_name, abi, args),
