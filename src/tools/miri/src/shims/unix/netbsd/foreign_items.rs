@@ -18,22 +18,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         match link_name.as_str() {
             // Environment
             "__unsetenv13" => {
-                let [name] = &this
+                let [name] = &ecx
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
-                let result = this.unsetenv(name)?;
-                this.write_scalar(result, dest)?;
+                let result = ecx.unsetenv(name)?;
+                ecx.write_scalar(result, dest)?;
             }
 
             // Miscellaneous
             "__errno" => {
-                let [] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn() -> *_), (link_name, abi, args))?;
-                let errno_place = this.last_error_place()?;
-                this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
+                let [] =
+                    &ecx.check_shim_sig(shim_sig!(extern "C" fn() -> *_), (link_name, abi, args))?;
+                let errno_place = ecx.last_error_place()?;
+                ecx.write_scalar(errno_place.to_ref(ecx).to_scalar(), dest)?;
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
