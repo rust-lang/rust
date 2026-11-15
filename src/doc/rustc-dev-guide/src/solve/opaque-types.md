@@ -19,13 +19,13 @@ By treating the underlying type as unknown, the solver maintains abstraction.
 ```rust
 fn foo() -> impl Copy {
     let x: u32 = 56;
-    x 
+    x
 }
 
 fn bar() {
     let x = foo();
-    // Even though we know 'foo' returns a u32.The solver enforces 
-    // rigidity here and is a NON-DEFINING use.
+    // Even though we know 'foo' returns a u32.
+    // The solver enforces rigidity here, and it is a NON-DEFINING use.
 }
 ```
 
@@ -56,9 +56,9 @@ of interactions.
 As we need to treat them like other aliases in the implicit-negative mode,
 having significant differences between modes also adds complexity.
 
-*open question: is there an alternative approach here,
+*Open question: is there an alternative approach here,
 maybe by treating them more like rigid types with more limited places to instantiate them?
-they would still have to be ordinary aliases during coherence*
+They would still have to be ordinary aliases during coherence*.
 
 ### `normalizes-to` for opaques
 
@@ -67,13 +67,13 @@ they would still have to be ordinary aliases during coherence*
 `normalizes-to` is used to define the one-step normalization behavior for aliases in the new
 solver: `<<T as IdInner>::Assoc as IdOuter>::Assoc` first normalizes to `<T as IdInner>::Assoc`
 which then normalizes to `T`.
-It takes both the `AliasTy` which is getting normalized and the expected `Term`.
+It takes both the `AliasTy` (which is getting normalized) and the expected `Term`.
 To use `normalizes-to` for actual normalization,
 the expected term can simply be an unconstrained inference variable.
 
 For opaque types in the defining scope and in the implicit-negative coherence mode,
 this is always done in two steps.
-Outside of the defining scope `normalizes-to` for opaques always returns `Err(NoSolution)`.
+Outside of the defining scope, `normalizes-to` always returns `Err(NoSolution)` for opaques.
 
 We start by trying to assign the expected type as a hidden type.
 
@@ -86,7 +86,7 @@ multiple times during coherence: [example][coherence-example]
 Inside of the defining scope we start by checking whether the type and const arguments of the
 opaque are all placeholders: [source][placeholder-ck].
 If this check is ambiguous,
-return ambiguity, if it fails, return `Err(NoSolution)`.
+return ambiguity, and if it fails, return `Err(NoSolution)`.
 This check ignores regions which are only checked at the end of borrowck.
 If it succeeds, continue.
 
@@ -121,15 +121,15 @@ associated type can have stronger bounds then the resulting type when normalizin
 These candidates would change our exact normalization strategy to be user-facing.
 It is otherwise pretty much unobservable whether we eagerly normalize.
 Where we normalize is something we likely
-want to change that after removing support for the old solver, so that would be undesirable.
+want to change after removing support for the old solver, so that would be undesirable.
 
 ## opaque types can be defined anywhere
 
 Opaque types in their defining-scope can be defined anywhere,
 whether when simply relating types or in the trait solver.
 This removes order dependence and incompleteness.
-Without this the result
-of a goal can differ due to subtle reasons, e.g. whether we try to evaluate a goal using the
+Without this, the result of a goal can differ due to subtle reasons,
+e.g. whether we try to evaluate a goal using the
 opaque before the first defining use of the opaque.
 
 ## higher ranked opaque types in their defining scope
