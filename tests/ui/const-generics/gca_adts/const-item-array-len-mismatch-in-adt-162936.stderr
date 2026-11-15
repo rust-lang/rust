@@ -1,0 +1,21 @@
+error[E0741]: `Data` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-item-array-len-mismatch-in-adt-162936.rs:6:13
+   |
+LL | const DATA: Data = Data([1, 2, 3, 4]);
+   |             ^^^^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | pub struct Data([u8; 3]);
+   |
+
+error: the constant `*b"\x01\x02\x03\x04"` is not of type `[u8; 3]`
+  --> $DIR/const-item-array-len-mismatch-in-adt-162936.rs:6:1
+   |
+LL | const DATA: Data = Data([1, 2, 3, 4]);
+   | ^^^^^^^^^^^^^^^^ expected `[u8; 3]`, found `[u8; 4]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0741`.
