@@ -16,6 +16,7 @@ pub(crate) fn line_directive<'a>(
     let comment = line.trim().strip_prefix("//")?;
     let trimmed_comment = comment.trim_start();
 
+    // FIXME: Account for the fact that we now require revision names to be valid identifiers.
     let (leading_revision, trimmed_comment) = trimmed_comment
         .strip_prefix('[')
         .and_then(|after_open_bracket| after_open_bracket.split_once(']'))
@@ -36,19 +37,24 @@ pub(crate) fn line_directive<'a>(
     let mut revision = None;
 
     if let Some(after_open_bracket) = directive.strip_prefix('[') {
-        let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
+        let Some((rev, after_close_bracket)) = after_open_bracket.split_once(']') else {
             return error(ErrorKind::UnclosedRevisionCondition);
         };
 
-        revision = Some(line_revision);
         directive = after_close_bracket.trim_start();
 
-        if line_revision.contains(",") {
-            return error(ErrorKind::CommaInRevisionCondition {
-                revision: line_revision,
-                directive,
-            });
+        let rev = rev.trim();
+        if rev.contains(",") {
+            return error(ErrorKind::CommaInRevisionCondition { revision: rev, directive });
         }
+        if rev.is_empty()
+            || rev
+                .contains(|char: char| char != '-' && char != '_' && !char.is_ascii_alphanumeric())
+        {
+            return error(ErrorKind::InvalidRevisionName { revision: rev });
+        }
+
+        revision = Some(rev);
     }
 
     let (name, payload) = directive
@@ -57,7 +63,7 @@ pub(crate) fn line_directive<'a>(
         .unwrap_or((directive, None));
 
     if name.is_empty() {
-        return error(ErrorKind::MissingName);
+        return error(ErrorKind::MissingDirectiveName);
     }
 
     let payload = if let Some(payload) = payload {
@@ -167,7 +173,8 @@ pub(crate) enum ErrorKind<'a> {
     UnclosedRevisionCondition,
     CommaInRevisionCondition { revision: &'a str, directive: &'a str },
     MissingValue,
-    MissingName,
+    MissingDirectiveName,
+    InvalidRevisionName { revision: &'a str },
 }
 
 impl Error<'_> {
@@ -210,7 +217,15 @@ impl Error<'_> {
                 help!("consider removing the colon if you didn't mean to specify any value");
                 help!("consider providing a value after the `:` if you meant to provide one");
             }
-            ErrorKind::MissingName => title("a directive name is missing"),
+            ErrorKind::MissingDirectiveName => title("a directive name is missing"),
+            ErrorKind::InvalidRevisionName { revision } => {
+                title(&format!("`{revision}` is not a valid revision name"));
+
+                help!(
+                    "the name has to be a non-empty sequence of alphanumeric characters, \
+                    `_` and `-`"
+                );
+            }
         }
 
         panic!("fatal error")

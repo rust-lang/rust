@@ -662,7 +662,7 @@ fn test_empty_directive() {
     let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
         line_directive(location, line),
-        Some(Err(Error { kind: ErrorKind::MissingName, .. }))
+        Some(Err(Error { kind: ErrorKind::MissingDirectiveName, .. }))
     );
 }
 
@@ -673,7 +673,7 @@ fn test_missing_directive_name() {
     let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(
         line_directive(location, line),
-        Some(Err(Error { kind: ErrorKind::MissingName, .. }))
+        Some(Err(Error { kind: ErrorKind::MissingDirectiveName, .. }))
     );
 }
 
@@ -856,6 +856,39 @@ fn test_doc_comment_at_sign_not_a_directive() {
 
     let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
     assert_matches!(line_directive(location, line), None);
+}
+
+#[test]
+fn test_directive_padded_revision_condition() {
+    let line = "//@ [ rev ] key";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Ok(DirectiveLine { revision: Some("rev"), name: "key", payload: None, .. }))
+    );
+}
+
+#[test]
+fn test_directive_empty_revision_name() {
+    let line = "//@ [] key";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::InvalidRevisionName { revision: "" }, .. }))
+    );
+}
+
+#[test]
+fn test_directive_invalid_revision_name() {
+    let line = "//@ [ #&$?+)^ ] key";
+
+    let location = Location { file_path: Utf8Path::new("file.rs"), line_number: LineNumber::ZERO };
+    assert_matches!(
+        line_directive(location, line),
+        Some(Err(Error { kind: ErrorKind::InvalidRevisionName { revision: "#&$?+)^" }, .. }))
+    );
 }
 
 #[test]
