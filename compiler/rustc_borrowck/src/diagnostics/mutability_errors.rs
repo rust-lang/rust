@@ -1175,7 +1175,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         access_place: Place<'tcx>,
     ) {
         let place = access_place.as_ref();
-        for (index, elem) in place.projection.into_iter().enumerate() {
+        for (index, elem) in place.projection.iter().enumerate() {
             if let ProjectionElem::Deref = elem {
                 if index == 0 {
                     if self.body.local_decls[local].is_ref_for_guard() {

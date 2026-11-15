@@ -339,7 +339,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let mut buf = String::new();
         let mut ok = self.append_local_to_string(local, &mut buf);
 
-        for (index, elem) in place.projection.into_iter().enumerate() {
+        for (index, elem) in place.projection.iter().enumerate() {
             match elem {
                 ProjectionElem::Deref => {
                     if index == 0 {
@@ -425,12 +425,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     }
 
     fn describe_name(&self, place: PlaceRef<'tcx>) -> Option<Symbol> {
-        for elem in place.projection.into_iter() {
-            if let ProjectionElem::Downcast(Some(name), _) = elem {
-                return Some(*name);
-            }
-        }
-        None
+        place.projection.iter().find_map(|elem| match elem {
+            ProjectionElem::Downcast(Some(name), _) => Some(*name),
+            _ => None,
+        })
     }
 
     /// Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have

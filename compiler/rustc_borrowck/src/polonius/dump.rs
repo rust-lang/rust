@@ -487,7 +487,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
             location_name(loan.reserve_location),
         )?;
     }
-    writeln!(out, "")?;
+    writeln!(out)?;
 
     // The regions subgraphs containing the region/point nodes.
     let mut points_per_region: FxIndexMap<RegionVid, FxIndexSet<PointIndex>> =

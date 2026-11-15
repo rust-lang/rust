@@ -129,7 +129,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
 
             let is_partial_move = move_site_vec.iter().any(|move_site| {
-                let move_out = self.move_data.move_outs[(*move_site).moi];
+                let move_out = self.move_data.move_outs[move_site.moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
                 // `*(_1)` where `_1` is a `Box` is actually a move out.
                 let is_box_move = moved_place.as_ref().projection == [ProjectionElem::Deref]
@@ -154,7 +154,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     .generics_of(item_def.did())
                     .own_params
                     .iter()
-                    .filter_map(|param| Some((param.name, args[param.index as usize].to_string())))
+                    .map(|param| (param.name, args[param.index as usize].to_string()))
                     .collect();
                 generic_args.push((kw::SelfUpper, this.clone()));
 
@@ -215,7 +215,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             let mut seen_spans = FxIndexSet::default();
 
             for move_site in &move_site_vec {
-                let move_out = self.move_data.move_outs[(*move_site).moi];
+                let move_out = self.move_data.move_outs[move_site.moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
 
                 let move_spans = self.move_spans(moved_place.as_ref(), move_out.source);
@@ -2081,7 +2081,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             });
         }
 
-        if union_type_name != "" {
+        if !union_type_name.is_empty() {
             err.note(format!(
                 "{msg_place} is a field of the union `{union_type_name}`, so it overlaps the field {msg_borrow}",
             ));
@@ -2836,6 +2836,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             closure_local_id: Option<hir::HirId> = None,
             closure_call_changes: Vec<(Span, String)> = vec![],
         }
+
         impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
             fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
                 if e.span.contains(self.capture_span)
@@ -2849,7 +2850,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     && let hir::Node::Expr(body) = self.tcx.hir_node(body.hir_id)
                 {
                     self.suggest_arg = "this: &Self".to_string();
-                    if inputs.len() > 0 {
+                    if !inputs.is_empty() {
                         self.suggest_arg.push_str(", ");
                     }
                     self.in_closure = true;
@@ -2897,7 +2898,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     && let Res::Local(hir_id) = seg.res
                     && Some(hir_id) == self.closure_local_id
                 {
-                    let (span, arg_str) = if args.len() > 0 {
+                    let (span, arg_str) = if !args.is_empty() {
                         (args[0].span.shrink_to_lo(), "self, ".to_string())
                     } else {
                         let span = e.span.trim_start(seg.ident.span).unwrap_or(e.span);
@@ -2984,15 +2985,10 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
 
-        // Start with an empty tuple, so we can use the functions on `Option` to reduce some
-        // code duplication (particularly around returning an empty description in the failure
-        // case).
-        Some(())
-            .filter(|_| {
-                // If we have a conflicting borrow of the same place, then we don't want to add
-                // an extraneous "via x.y" to our diagnostics, so filter out this case.
-                first_borrowed_place != second_borrowed_place
-            })
+        // If we have a conflicting borrow of the same place, then we don't want to add
+        // an extraneous "via x.y" to our diagnostics, so filter out this case.
+        (first_borrowed_place != second_borrowed_place)
+            .then_some(())
             .and_then(|_| {
                 // We're going to want to traverse the first borrowed place to see if we can find
                 // field access to a union. If we find that, then we will keep the place of the

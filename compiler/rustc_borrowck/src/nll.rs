@@ -124,7 +124,7 @@ pub(crate) fn compute_regions<'tcx>(
     mut polonius_facts: Option<AllFacts<RustcFacts>>,
     mut polonius_context: Option<PoloniusContext<'tcx>>,
 ) -> NllOutput<'tcx> {
-    let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
+    let polonius_output = root_cx.consumer.as_ref().is_some_and(|c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
     let mut lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(

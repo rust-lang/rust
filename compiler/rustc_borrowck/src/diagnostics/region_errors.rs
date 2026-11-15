@@ -293,7 +293,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 });
             });
         });
-        if suggestions.len() > 0 {
+
+        if !suggestions.is_empty() {
             suggestions.dedup();
             diag.multipart_suggestion(
                 msg!("consider restricting the type parameter to the `'static` lifetime"),
@@ -471,7 +472,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         let parent = tcx.parent(def_id);
         if let Some(rcvr) =
-            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().get(0)
+            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().first()
         {
             // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
             // ```
@@ -489,7 +490,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 if let Some(def_id) = def_id.as_local()
                     && let owner = tcx.expect_hir_owner_node(def_id)
                     && let Some(decl) = owner.fn_decl()
-                    && let Some(ty) = decl.inputs.get(0)
+                    && let Some(ty) = decl.inputs.first()
                 {
                     // Point at the `&'static self` receiver.
                     bounds.push(ty.span);
@@ -735,14 +736,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             {
                 diag.span_note(
                     constraint.span,
-                    format!("raw pointer casts of trait objects cannot extend lifetimes"),
+                    "raw pointer casts of trait objects cannot extend lifetimes",
                 );
-                diag.note(format!(
-                    "this was previously accepted by the compiler but was changed recently"
-                ));
-                diag.help(format!(
-                    "see <https://github.com/rust-lang/rust/issues/141402> for more information"
-                ));
+                diag.note("this was previously accepted by the compiler but was changed recently");
+                diag.help(
+                    "see <https://github.com/rust-lang/rust/issues/141402> for more information",
+                );
             }
         }
 
