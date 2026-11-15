@@ -1,0 +1,15 @@
+error[E0609]: no field `next` on type `&mut Rc<RefCell<Node>>`
+  --> $DIR/method-shadowed-by-trait.rs:38:53
+   |
+LL |             Some(old_tail) => old_tail.borrow_mut().next = Some(node.clone()),
+   |                                                     ^^^^ unknown field
+
+error[E0609]: no field `field` on type `()`
+  --> $DIR/method-shadowed-by-trait.rs:83:13
+   |
+LL |     x.foo().field;
+   |             ^^^^^ unknown field
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.
