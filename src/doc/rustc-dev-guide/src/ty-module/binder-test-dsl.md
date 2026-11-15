@@ -57,7 +57,8 @@ type outlives, so: a plain `SomeType: 'lifetime` always produces a PlaceholderTy
 and `for<..> SomeType:
 'lifetime` always produces a AliasTyOutlivesViaEnv.
 If you want an AliasTyOutlivesViaEnv without bound variables, just
-write an empty `for<>`, like `for<> T::Assoc: 'b`. PlaceholderTyOutlives must be a placeholder (i.e. bound variable
+write an empty `for<>`, like `for<> T::Assoc: 'b`.
+PlaceholderTyOutlives must be a placeholder (i.e. bound variable
 instantiated with a placeholder when entering a binder, or top-level param) on the LHS,
 and AliasTyOutlivesViaEnv must
 be an alias.
@@ -82,8 +83,9 @@ core::test_binder_constraints! {
 }
 ```
 
-This example corresponds to, conceptually, something like `(('a: 'b) && ('a: 'c)) || ('b: 'c) || ('b: 'a)`. These things
-can be arbitrarily nested (they are converted to disjunctive normal form / "canonical form" automatically).
+This example corresponds to, conceptually, something like `(('a: 'b) && ('a: 'c)) || ('b: 'c) || ('b: 'a)`.
+These things can be arbitrarily nested;
+they are converted to disjunctive normal form / "canonical form" automatically).
 
 "Direct insert" constraints are parsed with a custom DSL parser,
 so fancy syntax like `'a: 'b + 'c` is not supported.
@@ -118,7 +120,7 @@ to `or` semantics, you effectively can only register `and` stuff)
 
 Writing `exists`, followed by a generic args list, introduces new infer vars.
 `where` clauses on this generics args list don't really make sense and are not a thing.
-The body of the `exists` supports everything the body of the top-level `impl` is,
+The body of the `exists` supports everything the body of the top-level `impl` is;
 it's just another body.
 
 Only lifetimes are supported here, not types, unless you enable `#![feature(non_lifetime_binders)]`.
@@ -137,11 +139,9 @@ core::test_binder_constraints! {
 # Universal quantification
 
 This is the main point of the testing DSL.
-([universal
-quantifiers](https://en.wikipedia.org/wiki/Universal_quantification) are also called "for all"s in type theory,
-hence
-the rust syntax `for<'a>`, and the test DSL syntax `forall<'a>`,
-and in rustc are called `ty::Binder`)
+([universal quantifiers] are also called "for all"s in type theory,
+hence the rust syntax `for<'a>`, and the test DSL syntax `forall<'a>`,
+and in rustc are called `ty::Binder`).
 
 ```rust
 core::test_binder_constraints! {
@@ -174,10 +174,12 @@ the test infrastructure will yell and throw an error with the missing clause at 
 Then, the body: `{ 'c: 'a }`.
 This supports everything the body of the top-level `impl` supports: direct-insert
 constraints (including `and`/`or`), `predicates` constraints,
-additional `exists` and `forall` clauses
+additional `exists`, and `forall` clauses
 
 Finally,
 there are a list of constraints that we test and assert are present upon exiting the `forall` binder.
 This *only* supports the "direct insert constraint" style of syntax,
 it does *not* support `predicates` syntax.
 It must exactly match each and every constraint present when exiting the binder.
+
+[universal quantifiers]: https://en.wikipedia.org/wiki/Universal_quantification
