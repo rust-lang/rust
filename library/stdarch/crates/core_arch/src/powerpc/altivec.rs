@@ -6874,4 +6874,22 @@ mod tests {
         [4, 8, 12, 68],
         [0x23456781, 0xBCDEF09A, 0xF0F0F0F0, 0x23456781]
     }
+
+    #[simd_test(enable = "power9-vector")]
+    fn test_vec_cntlz_lsbb() {
+        let a = i8x16::new(0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0);
+
+        let count = unsafe { vec_cntlz_lsbb(transmute::<_, vector_signed_char>(a)) };
+
+        assert_eq!(count, 4);
+    }
+
+    #[simd_test(enable = "power9-vector")]
+    fn test_vec_cnttz_lsbb() {
+        let a = i8x16::new(0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0);
+
+        let count = unsafe { vec_cnttz_lsbb(transmute::<_, vector_signed_char>(a)) };
+
+        assert_eq!(count, 2);
+    }
 }
