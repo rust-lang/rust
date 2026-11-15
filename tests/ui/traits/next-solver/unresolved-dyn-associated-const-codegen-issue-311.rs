@@ -16,7 +16,7 @@ impl<T: ?Sized> Ob for T {
 struct Of<T: ?Sized>(PhantomData<T>);
 
 impl<T: ?Sized + Ob> Of<T> {
-    const SIZE: usize = size_of::<T::A>(); //~ ERROR cannot evaluate associated constant with unresolved type dependencies
+    const SIZE: usize = size_of::<T::A>(); //~ ERROR unable to normalize
 }
 
 type Object = dyn Ob<A = u16>;

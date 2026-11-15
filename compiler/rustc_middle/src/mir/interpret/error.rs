@@ -16,6 +16,7 @@ use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
 use crate::diagnostics;
 use crate::mir::interpret::CtfeProvenance;
 use crate::mir::{ConstAlloc, ConstValue};
+use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
@@ -658,6 +659,8 @@ impl<'tcx> fmt::Display for UndefinedBehaviorInfo<'tcx> {
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
     TooGeneric,
+    /// Normalization failed during concrete evaluation.
+    NormalizationFailure(NormalizationError<'tcx>),
     /// Abort in case errors are already reported.
     AlreadyReported(ReportedErrorInfo),
     /// An error occurred during layout computation.
@@ -669,6 +672,13 @@ impl<'tcx> fmt::Display for InvalidProgramInfo<'tcx> {
         use InvalidProgramInfo::*;
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
+            NormalizationFailure(error) => {
+                write!(
+                    f,
+                    "unable to normalize `{}` during evaluation",
+                    error.get_type_for_failure()
+                )
+            }
             AlreadyReported(_) => {
                 write!(
                     f,

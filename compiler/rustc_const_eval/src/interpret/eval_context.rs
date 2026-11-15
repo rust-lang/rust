@@ -330,7 +330,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     >(
         &self,
         value: T,
-    ) -> Result<T, ErrorHandled> {
+    ) -> Result<T, InterpErrorKind<'tcx>> {
         self.instantiate_from_frame_and_normalize_erasing_regions(self.frame(), value)
     }
 
@@ -340,7 +340,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &self,
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         value: T,
-    ) -> Result<T, ErrorHandled> {
+    ) -> Result<T, InterpErrorKind<'tcx>> {
         let _trace = enter_trace_span!(
             M,
             "instantiate_from_frame_and_normalize_erasing_regions",
@@ -353,7 +353,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.typing_env,
                 ty::EarlyBinder::bind(self.tcx.tcx, value),
             )
-            .map_err(|_| ErrorHandled::TooGeneric(self.cur_span()))
+            .map_err(|err| {
+                if match self.typing_env.typing_mode() {
+                    ty::TypingMode::Codegen => true,
+                    ty::TypingMode::Coherence
+                    | ty::TypingMode::Typeck { .. }
+                    | ty::TypingMode::PostTypeckThroughBorrowck { .. }
+                    | ty::TypingMode::PostBorrowck { .. }
+                    | ty::TypingMode::Reflection
+                    | ty::TypingMode::PostAnalysis
+                    | ty::TypingMode::ErasedNotCoherence(_) => false,
+                } {
+                    err_inval!(NormalizationFailure(err))
+                } else {
+                    err_inval!(TooGeneric)
+                }
+            })
     }
 
     /// The `args` are assumed to already be in our interpreter "universe".

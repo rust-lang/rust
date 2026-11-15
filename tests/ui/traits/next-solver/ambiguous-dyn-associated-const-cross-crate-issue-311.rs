@@ -13,6 +13,6 @@ fn main() {
     println!("{}", aux::Adapter::<aux::Conflicting>::SIZE);
 }
 
-//[codegen]~? ERROR cannot evaluate associated constant with unresolved type dependencies
+//[codegen]~? ERROR unable to normalize
 
 //@ normalize-stderr: "\n\n$" -> "\n"
