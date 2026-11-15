@@ -1795,9 +1795,8 @@ impl String {
         let ch_len = ch.len_utf8();
         self.reserve(ch_len);
 
-        // SAFETY: Move the bytes starting from `idx` to their new location `ch_len`
-        // bytes ahead. This is safe because sufficient capacity was reserved, and `idx`
-        // is a char boundary.
+        // Move the bytes starting from `idx` to their new location `ch_len` bytes ahead.
+        // SAFETY: Sufficient capacity was reserved, and `idx` is a char boundary.
         unsafe {
             ptr::copy(
                 self.vec.as_ptr().add(idx),
@@ -1806,13 +1805,15 @@ impl String {
             );
         }
 
-        // SAFETY: Encode the character into the vacated region if `idx != len`,
+        // Encode the character into the vacated region if `idx != len`,
         // or into the uninitialized spare capacity otherwise.
+        // SAFETY: `idx + ch_len` is in bounds in either case, and `idx` is a char boundary.
         unsafe {
             core::char::encode_utf8_raw_unchecked(ch as u32, self.vec.as_mut_ptr().add(idx));
         }
 
-        // SAFETY: Update the length to include the newly added bytes.
+        // Update the length to include the newly added bytes.
+        // SAFETY: We just wrote to all locations in the range `idx..len + ch_len`.
         unsafe {
             self.vec.set_len(len + ch_len);
         }
@@ -1852,21 +1853,21 @@ impl String {
         let amt = string.len();
         self.reserve(amt);
 
-        // SAFETY: Move the bytes starting from `idx` to their new location `amt` bytes
-        // ahead. This is safe because sufficient capacity was just reserved, and `idx`
-        // is a char boundary.
+        // Move the bytes starting from `idx` to their new location `amt` bytes ahead.
+        // SAFETY: Sufficient capacity was just reserved, and `idx` is a char boundary.
         unsafe {
             ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
         }
 
-        // SAFETY: Copy the new string slice into the vacated region if `idx != len`,
-        // or into the uninitialized spare capacity otherwise. The borrow checker
-        // ensures that the source and destination do not overlap.
+        // Copy the new string slice into the vacated region if `idx != len`,
+        // or into the uninitialized spare capacity otherwise.
+        // SAFETY: The borrow checker ensures that the source and destination do not overlap.
         unsafe {
             ptr::copy_nonoverlapping(string.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
         }
 
-        // SAFETY: Update the length to include the newly added bytes.
+        // Update the length to include the newly added bytes.
+        // SAFETY: We just wrote to all locations in the range `idx..len + amt`.
         unsafe {
             self.vec.set_len(len + amt);
         }
