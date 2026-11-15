@@ -45,8 +45,8 @@ We used to manage subtrees using `git subtree`, but it was very slow and difficu
 Josh works much better.
 
 Subtrees are used for bidirectional synchronization between the rustc repo (`rust-lang/rust`) and
-the subtree repo (e.g. Clippy). There are two operations that are regularly performed on
-subtrees:
+the subtree repo (e.g. Clippy).
+There are two operations that are regularly performed on subtrees:
 
 - A subtree pull takes all changes made to the subtree directory in the rustc repo,
   and re-applies them in the subtree repo.
@@ -100,8 +100,7 @@ push.
 If you want to migrate a repository dependency from a `git submodule` to josh,
 you  can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
 If you want to add a new Josh subtree that was not a submodule before,
-follow the guide as if you migrated a
-submodule to a Josh subtree.
+follow the guide as if you migrated a submodule to a Josh subtree.
 
 ## External dependencies (submodules)
 
