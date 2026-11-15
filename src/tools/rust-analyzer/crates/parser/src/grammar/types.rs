@@ -43,6 +43,10 @@ pub(super) fn type_no_bounds(p: &mut Parser<'_>) {
 }
 
 fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
+    if pattern_type(p) {
+        return;
+    }
+
     match p.current() {
         T!['('] => paren_or_tuple_type(p),
         T![!] => never_type(p),
@@ -59,7 +63,6 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         T![ident] if !p.current_edition().at_least_2018() && is_dyn_weak(p) => {
             dyn_trait_type_weak(p)
         }
-        T![pattern_type] => pattern_type(p),
         _ if paths::is_path_start(p) => path_or_macro_type(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         T!['{'] => {
@@ -423,9 +426,9 @@ pub(super) fn opt_type_bounds_as_dyn_trait_type(
 
 // test pattern_type
 // type T = k#pattern_type (u8 is 0..10);
-fn pattern_type(p: &mut Parser<'_>) {
-    let m = p.start();
-    if p.eat(T![pattern_type]) {
+// type T = builtin#pattern_type (u8 is 0..10);
+fn pattern_type(p: &mut Parser<'_>) -> bool {
+    if let Some(m) = p.start_builtin_kw(T![pattern_type]) {
         p.expect(T!['(']);
         type_(p);
         if !p.eat_contextual_kw(T![is]) {
@@ -434,7 +437,8 @@ fn pattern_type(p: &mut Parser<'_>) {
         pat_top(p);
         p.expect(T![')']);
         m.complete(p, PATTERN_TYPE);
+        true
     } else {
-        m.abandon(p);
+        false
     }
 }

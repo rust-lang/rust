@@ -87,7 +87,7 @@ pub(super) fn atom_expr(
     if let Some(m) = literal(p) {
         return Some((m, BlockLike::NotBlock));
     }
-    if p.at_ts(BUILTINS) {
+    if p.at_builtin_ts(BUILTINS) {
         return Some((builtin_expr(p)?, BlockLike::NotBlock));
     }
     if paths::is_path_start(p) {
@@ -265,7 +265,7 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 // }
 fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = p.start();
-    if p.eat(T![offset_of]) {
+    if p.eat_builtin_kw(T![offset_of]) {
         p.expect(T!['(']);
         type_(p);
         p.expect(T![,]);
@@ -289,7 +289,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
             p.expect(T![')']);
         }
         Some(m.complete(p, OFFSET_OF_EXPR))
-    } else if p.eat(T![format_args]) {
+    } else if p.eat_builtin_kw(T![format_args]) {
         // test format_args_named_arg_keyword
         // fn main() {
         //     k#format_args("{type}", type=1);
@@ -316,7 +316,10 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
         p.expect(T![')']);
         Some(m.complete(p, FORMAT_ARGS_EXPR))
-    } else if p.eat(T![asm]) || p.eat(T![global_asm]) || p.eat(T![naked_asm]) {
+    } else if p.eat_builtin_kw(T![asm])
+        || p.eat_builtin_kw(T![global_asm])
+        || p.eat_builtin_kw(T![naked_asm])
+    {
         // test asm_kinds
         // fn foo() {
         //     k#asm("");
@@ -324,11 +327,11 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         //     k#naked_asm("");
         // }
         parse_asm_expr(p, m)
-    } else if p.eat(T![include_bytes]) {
+    } else if p.eat_builtin_kw(T![include_bytes]) {
         // test include_bytes
         // fn foo() { k#include_bytes }
         Some(m.complete(p, INCLUDE_BYTES_EXPR))
-    } else if p.eat(T![cfg]) {
+    } else if p.eat_builtin_kw(T![cfg]) {
         p.expect(T!['(']);
         attributes::cfg_predicate(p);
         p.eat(T![,]);
