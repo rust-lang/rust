@@ -2163,3 +2163,13 @@ pub(crate) struct UnevaluatedDefaultFieldValue {
     pub(crate) struct_start: Span,
     pub(crate) padding: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("{$subject} references generic parameter `{$param}` before it is declared")]
+pub(crate) struct ImplicitForwardReferenceToParam {
+    #[primary_span]
+    #[label("implicitly references parameter `{$param}`")]
+    pub(crate) span: Span,
+    pub(crate) subject: &'static str,
+    pub(crate) param: Symbol,
+}
