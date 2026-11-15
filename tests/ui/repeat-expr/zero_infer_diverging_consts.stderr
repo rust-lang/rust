@@ -1,19 +1,45 @@
-error[E0308]: mismatched types
-  --> $DIR/zero_infer_diverging_consts.rs:6:19
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/zero_infer_diverging_consts.rs:9:30
    |
 LL | fn ex_nihilo() -> u32 {
-   |    ---------      ^^^ expected `u32`, found `()`
-   |    |
-   |    implicitly returns `()` as its body has no tail or `return` expression
+LL |     let _: [_; 0] = [const { panic!() } as !; _];
+   |                              ^^^^^^^^ evaluation of `ex_nihilo::{constant#1}` failed here
 
-error[E0308]: mismatched types
-  --> $DIR/zero_infer_diverging_consts.rs:11:20
+note: erroneous constant encountered
+  --> $DIR/zero_infer_diverging_consts.rs:9:22
+   |
+LL |     let _: [_; 0] = [const { panic!() } as !; _];
+   |                      ^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/zero_infer_diverging_consts.rs:9:22
+   |
+LL |     let _: [_; 0] = [const { panic!() } as !; _];
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/zero_infer_diverging_consts.rs:14:22
    |
 LL | fn ex_nihilo2() -> u32 {
-   |    ----------      ^^^ expected `u32`, found `()`
-   |    |
-   |    implicitly returns `()` as its body has no tail or `return` expression
+LL |     let a = [const { panic!() } as !; _];
+   |                      ^^^^^^^^ evaluation of `ex_nihilo2::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/zero_infer_diverging_consts.rs:14:14
+   |
+LL |     let a = [const { panic!() } as !; _];
+   |              ^^^^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/zero_infer_diverging_consts.rs:14:14
+   |
+LL |     let a = [const { panic!() } as !; _];
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0080`.

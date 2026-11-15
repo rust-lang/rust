@@ -1,5 +1,7 @@
 //@ run-pass
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 // Repeating a *constant* of non-Copy type (not just a constant expression) is already stable.
 
 const EMPTY: Vec<i32> = Vec::new();
@@ -8,20 +10,24 @@ pub fn bar() -> [Vec<i32>; 2] {
     [EMPTY; 2]
 }
 
-struct Bomb;
+static NUM_DROPS: AtomicUsize = AtomicUsize::new(0);
 
-impl Drop for Bomb {
+struct NoisyDrop;
+
+impl Drop for NoisyDrop {
     fn drop(&mut self) {
-        panic!("BOOM!");
+        NUM_DROPS.fetch_add(1, Ordering::Relaxed);
     }
 }
 
-const BOOM: Bomb = Bomb;
+const NOISY: NoisyDrop = NoisyDrop;
 
 fn main() {
     let _x = bar();
 
-    // Make sure the destructor does not get called for empty arrays. `[CONST; N]` should
-    // instantiate (and then later drop) the const exactly `N` times.
-    let _x = [BOOM; 0];
+    // Make sure the destructor gets called even for empty arrays.
+    // `[CONST; N]` should instantiate the const.
+    let _x = [NOISY; 0];
+
+    assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 1);
 }

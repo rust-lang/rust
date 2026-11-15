@@ -1,0 +1,12 @@
+error[E0493]: destructor of `std::rc::Weak<dyn Send>` cannot be evaluated at compile-time
+  --> $DIR/no_local_for_coerced_const-issue-143671.rs:35:37
+   |
+LL |     const Y: [Weak<dyn Send>; 0] = [X; 0];
+   |                                    -^----
+   |                                    ||
+   |                                    |the destructor for this type cannot be evaluated in constants
+   |                                    value is dropped here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0493`.
