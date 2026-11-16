@@ -1,0 +1,9 @@
+error[E0425]: cannot find type `NOPE` in this scope
+  --> $DIR/const-item-array-of-erroneous-enum-162391.rs:5:12
+   |
+LL |     A { y: NOPE },
+   |            ^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

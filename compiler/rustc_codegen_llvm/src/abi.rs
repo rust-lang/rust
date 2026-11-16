@@ -2,8 +2,8 @@ use std::{assert_matches, cmp};
 
 use libc::c_uint;
 use rustc_abi::{
-    ArmCall, BackendRepr, CanonAbi, Float, HasDataLayout, Integer, InterruptKind, Primitive, Reg,
-    RegKind, Size, X86Call,
+    ArmCall, BackendRepr, CanonAbi, Float, HasDataLayout, InterruptKind, Primitive, Reg, RegKind,
+    Size, X86Call,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::RealPredicate;
@@ -63,7 +63,7 @@ const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
     (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
 ];
 
-fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
+fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[Attribute<'ll>; 8]> {
     let mut regular = this.regular;
 
     let mut attrs = SmallVec::new();
@@ -164,25 +164,13 @@ impl LlvmType for Reg {
                 // NOTE: it is valid to ignore the element type hint (and always pick i8).
                 // But providing a more accurate type means fewer casts in LLVM IR,
                 // which helps with optimization.
-                let ty = match hint_vector_elem {
-                    Primitive::Int(integer, _) => match integer {
-                        Integer::I8 => cx.type_ix(8),
-                        Integer::I16 => cx.type_ix(16),
-                        Integer::I32 => cx.type_ix(32),
-                        Integer::I64 => cx.type_ix(64),
-                        Integer::I128 => cx.type_ix(128),
-                    },
-                    Primitive::Float(float) => match float {
-                        Float::F16 => cx.type_f16(),
-                        Float::F16B => cx.type_f16b(),
-                        Float::F32 => cx.type_f32(),
-                        Float::F64 => cx.type_f64(),
-                        Float::F128 => cx.type_f128(),
-                        Float::PpcF128 => bug!("ppcf128 is not a valid vector element type"),
-                        Float::X87F80 => bug!("x87_f80 is not a valid vector element type"),
-                    },
-                    Primitive::Pointer(_) => cx.type_ptr(),
-                };
+
+                assert!(
+                    !matches!(hint_vector_elem, Primitive::Float(Float::PpcF128 | Float::X87F80)),
+                    "Unsupported vector element type"
+                );
+
+                let ty = cx.type_from_primitive(hint_vector_elem);
 
                 assert!(self.size.bytes().is_multiple_of(hint_vector_elem.size(cx).bytes()));
                 let len = self.size.bytes() / hint_vector_elem.size(cx).bytes();

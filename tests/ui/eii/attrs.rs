@@ -1,4 +1,5 @@
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 #![deny(deprecated)] //~ NOTE:
 
 // makes no sense on functions, nor on the macro generated (it's a macrov2).

@@ -103,7 +103,7 @@ impl<'tcx> BorrowSet<'tcx> {
 
     // Public method to support Creusot.
     pub fn activations_at_location(&self, location: &Location) -> &[BorrowIndex] {
-        self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
+        self.activation_map.get(location).map_or(&[], |activations| &activations[..])
     }
 
     // Public method to support Creusot.

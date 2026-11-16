@@ -273,18 +273,15 @@ pub(crate) fn emit_covfun_record<'tcx>(
     // See also `src/llvm-project/clang/lib/CodeGen/CoverageMappingGen.cpp` and
     // `COVMAP_V3` in `src/llvm-project/llvm/include/llvm/ProfileData/InstrProfData.inc`.
     let func_name_hash = llvm_cov::hash_bytes(mangled_function_name.as_bytes());
-    let covfun_record = cx.const_struct(
-        &[
-            cx.const_u64(func_name_hash),
-            cx.const_u32(coverage_mapping_buffer.len() as u32),
-            cx.const_u64(source_hash),
-            cx.const_u64(global_file_table.filenames_hash),
-            cx.const_bytes(&coverage_mapping_buffer),
-        ],
-        // This struct needs to be packed, so that the 32-bit length field
-        // doesn't have unexpected padding.
-        true,
-    );
+    // This struct needs to be packed, so that the 32-bit length field
+    // doesn't have unexpected padding.
+    let covfun_record = cx.const_packed_struct(&[
+        cx.const_u64(func_name_hash),
+        cx.const_u32(coverage_mapping_buffer.len() as u32),
+        cx.const_u64(source_hash),
+        cx.const_u64(global_file_table.filenames_hash),
+        cx.const_bytes(&coverage_mapping_buffer),
+    ]);
 
     // Choose a variable name to hold this function's covfun data.
     // Functions that are used have a suffix ("u") to distinguish them from

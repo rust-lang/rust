@@ -1,0 +1,10 @@
+error: use of `const` in the type system not marked as direct
+  --> $DIR/non-direct-std-const-148731.rs:6:19
+   |
+LL | impl Foo for [u8; std::path::MAIN_SEPARATOR] {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only consts with a `gca!` right-hand side may be used in types
+
+error: aborting due to 1 previous error
+

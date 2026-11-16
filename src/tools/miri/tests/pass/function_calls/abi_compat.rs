@@ -1,7 +1,15 @@
 #![feature(cfi_encoding)]
+#![feature(f16, complex_numbers, f16b)]
+#![cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), feature(x87_f80))]
 
 use std::rc::Rc;
 use std::{mem, num, ptr};
+
+#[rustfmt::skip]
+#[cfg(target_arch = "x86")]
+use std::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 
 #[derive(Copy, Clone, Default)]
 struct Zst;
@@ -61,7 +69,7 @@ fn test_abi_compat<T: Clone, U: Clone>(t: T, u: U) {
 }
 
 /// Ensure that `T` is compatible with various repr(transparent) wrappers around `T`.
-fn test_abi_newtype<T: Copy + Default>() {
+fn test_abi_newtype<T: Copy>(t: T) {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     struct Wrapper2<T>(T, ());
@@ -77,7 +85,6 @@ fn test_abi_newtype<T: Copy + Default>() {
         V(Zst, T, [(); 10]),
     }
 
-    let t = T::default();
     test_abi_compat(t, Wrapper(t));
     test_abi_compat(t, Wrapper2(t, ()));
     test_abi_compat(t, Wrapper2a((), t));
@@ -165,19 +172,23 @@ fn main() {
 
     // These must work for *any* type, since we guarantee that `repr(transparent)` is ABI-compatible
     // with the wrapped field.
-    test_abi_newtype::<()>();
-    test_abi_newtype::<Zst>();
-    test_abi_newtype::<ReprAlignZst>();
-    test_abi_newtype::<ReprCZst>();
-    test_abi_newtype::<u32>();
-    test_abi_newtype::<f32>();
-    test_abi_newtype::<(u8, u16, f32)>();
-    test_abi_newtype::<[u8; 0]>();
-    test_abi_newtype::<[u32; 0]>();
-    test_abi_newtype::<[u32; 2]>();
-    test_abi_newtype::<[u32; 32]>();
-    test_abi_newtype::<Option<i32>>();
-    test_abi_newtype::<Option<num::NonZero<u32>>>();
+    test_abi_newtype::<()>(Default::default());
+    test_abi_newtype::<Zst>(Default::default());
+    test_abi_newtype::<ReprAlignZst>(Default::default());
+    test_abi_newtype::<ReprCZst>(Default::default());
+    test_abi_newtype::<u32>(Default::default());
+    test_abi_newtype::<f32>(Default::default());
+    test_abi_newtype::<num::Complex<f16>>(Default::default());
+    test_abi_newtype::<num::f16b>(Default::default());
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    test_abi_newtype::<x87_f80>(x87_f80::from_ne_bytes([0u8; 10]));
+    test_abi_newtype::<(u8, u16, f32)>(Default::default());
+    test_abi_newtype::<[u8; 0]>(Default::default());
+    test_abi_newtype::<[u32; 0]>(Default::default());
+    test_abi_newtype::<[u32; 2]>(Default::default());
+    test_abi_newtype::<[u32; 32]>(Default::default());
+    test_abi_newtype::<Option<i32>>(Default::default());
+    test_abi_newtype::<Option<num::NonZero<u32>>>(Default::default());
 
     // Extra test for assumptions made by arbitrary-self-dyn-receivers.
     // This is interesting since these types are not `repr(transparent)`. So this is not part of our

@@ -4,6 +4,7 @@
 // Regression test for the ICE when note_and_explain_type_err tries to look up
 // declaration parameters in external_impl's empty generics.
 #![feature(extern_item_impls)]
+#![feature(extern_item_default_impls)]
 
 #[eii(foo)]
 fn bar<T>(x: T) where T: FnOnce() -> u64 { x() }
