@@ -234,27 +234,14 @@ impl OnDuplicate {
         used: Span,
         unused: Span,
     ) {
+        let name =
+            Symbol::intern(&P::PATH.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"));
         match self {
             OnDuplicate::Ignore => {}
-            _ => {
-                let name = Symbol::intern(
-                    &P::PATH.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"),
-                );
-                match self {
-                    OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused, name),
-                    OnDuplicate::WarnButFutureError => {
-                        cx.warn_unused_duplicate_future_error(used, unused, name)
-                    }
-                    OnDuplicate::Error => {
-                        cx.emit_err(DuplicateAttribute {
-                            this: unused,
-                            other: used,
-                            name,
-                            warning: false,
-                        });
-                    }
-                    OnDuplicate::Ignore => unreachable!(),
-                }
+            OnDuplicate::Warn => cx.warn_unused_duplicate(used, unused, name, false),
+            OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate(used, unused, name, true),
+            OnDuplicate::Error => {
+                cx.emit_err(DuplicateAttribute { this: unused, other: used, name, warning: false });
             }
         }
     }

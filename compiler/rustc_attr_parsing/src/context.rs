@@ -480,23 +480,11 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         used_span: Span,
         unused_span: Span,
         name: Symbol,
+        future_error: bool,
     ) {
         self.emit_lint(
             UNUSED_ATTRIBUTES,
-            DuplicateAttribute { this: unused_span, other: used_span, name, warning: false },
-            unused_span,
-        )
-    }
-
-    pub(crate) fn warn_unused_duplicate_future_error(
-        &mut self,
-        used_span: Span,
-        unused_span: Span,
-        name: Symbol,
-    ) {
-        self.emit_lint(
-            UNUSED_ATTRIBUTES,
-            DuplicateAttribute { this: unused_span, other: used_span, name, warning: true },
+            DuplicateAttribute { this: unused_span, other: used_span, name, warning: future_error },
             unused_span,
         )
     }

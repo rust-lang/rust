@@ -53,7 +53,7 @@ impl OpaqueParser {
         let attr_span = cx.attr_span;
         if let Some(earlier_span) = self.attr_span {
             let attr_path_interned = Symbol::intern(&cx.attr_path.to_string());
-            cx.warn_unused_duplicate(earlier_span, attr_span, attr_path_interned);
+            cx.warn_unused_duplicate(earlier_span, attr_span, attr_path_interned, false);
         }
         self.attr_span = Some(attr_span);
 
