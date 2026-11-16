@@ -6,7 +6,7 @@ $vcvars_ver="Preview"
 $vswhere="${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 
 $setup="${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
-$installPath = ./vswhere -latest -property InstallationPath
+$installPath = &$vswhere -latest -property InstallationPath
 Start-Process $setup -Wait -ArgumentList @(
     "modify",
     "--passive",
