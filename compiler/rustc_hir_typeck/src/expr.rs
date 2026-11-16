@@ -3464,9 +3464,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         base_ty: Ty<'tcx>,
-        expr: &hir::Expr<'tcx>,
+        mut expr: &hir::Expr<'tcx>,
         finder: impl Fn(Ty<'tcx>) -> bool,
     ) {
+        if let hir::ExprKind::Path(hir::QPath::Resolved(
+            None,
+            hir::Path { res: Res::Local(hir_id), .. },
+        )) = expr.kind
+            && let hir::Node::Pat(_) = self.tcx.hir_node(*hir_id)
+            && let hir::Node::LetStmt(local) = self.tcx.parent_hir_node(*hir_id)
+            && let Some(binding_expr) = local.init
+        {
+            // Get and point at the binding's prior method call, if it is one:
+            // ```
+            // let foo = bar.borrow();
+            // foo.qux(); 
+            // ```
+            // Where `qux` is present in the return type of `<Bar as RefCell>::borrow`, but not
+            // `<Bar as Borrow>::borrow`.
+            expr = binding_expr;
+        };
         let hir::ExprKind::MethodCall(segment, rcvr, args, span_with_args) = expr.kind else {
             return;
         };

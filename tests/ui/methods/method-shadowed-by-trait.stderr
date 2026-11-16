@@ -17,7 +17,7 @@ LL +             Some(old_tail) => RefCell::borrow_mut(&old_tail).next = Some(no
    |
 
 error[E0609]: no field `field` on type `()`
-  --> $DIR/method-shadowed-by-trait.rs:101:13
+  --> $DIR/method-shadowed-by-trait.rs:109:13
    |
 LL |     x.foo().field;
    |       ---   ^^^^^ unknown field
@@ -25,19 +25,19 @@ LL |     x.foo().field;
    |       this method is `a::T::foo`
    |
 note: this returns `()`
-  --> $DIR/method-shadowed-by-trait.rs:71:9
+  --> $DIR/method-shadowed-by-trait.rs:73:9
    |
 LL |     pub trait T {
 LL |         fn foo(&self) {}
    |         ^^^^^^^^^^^^^
 note: you might have meant to call `a::K::foo` instead
-  --> $DIR/method-shadowed-by-trait.rs:78:9
+  --> $DIR/method-shadowed-by-trait.rs:82:9
    |
 LL |     pub trait K {
 LL |         fn foo(&self) -> Other { Other { field : () } }
    |         ^^^^^^^^^^^^^^^^^^^^^^
 note: you might have meant to call `a::V::foo` instead
-  --> $DIR/method-shadowed-by-trait.rs:85:9
+  --> $DIR/method-shadowed-by-trait.rs:91:9
    |
 LL |     pub trait V {
 LL |         fn foo(&self) -> Other;
@@ -64,8 +64,57 @@ LL -     x.foo().field;
 LL +     S::foo(&x).field;
    |
 
+error[E0609]: no field `field` on type `()`
+  --> $DIR/method-shadowed-by-trait.rs:115:15
+   |
+LL |     let y = x.foo();
+   |               --- this method is `a::T::foo`
+...
+LL |     let _ = y.field;
+   |               ^^^^^ unknown field
+   |
+note: this returns `()`
+  --> $DIR/method-shadowed-by-trait.rs:73:9
+   |
+LL |     pub trait T {
+LL |         fn foo(&self) {}
+   |         ^^^^^^^^^^^^^
+note: you might have meant to call `a::K::foo` instead
+  --> $DIR/method-shadowed-by-trait.rs:82:9
+   |
+LL |     pub trait K {
+LL |         fn foo(&self) -> Other { Other { field : () } }
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+note: you might have meant to call `a::V::foo` instead
+  --> $DIR/method-shadowed-by-trait.rs:91:9
+   |
+LL |     pub trait V {
+LL |         fn foo(&self) -> Other;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+note: you might have meant to call `S::foo` instead
+  --> $DIR/method-shadowed-by-trait.rs:64:5
+   |
+LL | impl S {
+LL |     fn foo(&self) -> Other { Other { field: () } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: consider calling `a::K::foo` using the fully-qualified path
+   |
+LL -     let y = x.foo();
+LL +     let y = <_ as K>::foo(&x);
+   |
+help: consider calling `a::V::foo` using the fully-qualified path
+   |
+LL -     let y = x.foo();
+LL +     let y = <_ as V>::foo(&x);
+   |
+help: consider calling `S::foo` using the fully-qualified path
+   |
+LL -     let y = x.foo();
+LL +     let y = S::foo(&x);
+   |
+
 error[E0599]: no method named `method` found for unit type `()` in the current scope
-  --> $DIR/method-shadowed-by-trait.rs:104:13
+  --> $DIR/method-shadowed-by-trait.rs:117:13
    |
 LL |     x.foo().method();
    |       ---   ^^^^^^ method not found in `()`
@@ -73,19 +122,19 @@ LL |     x.foo().method();
    |       this method is `a::T::foo`
    |
 note: this returns `()`
-  --> $DIR/method-shadowed-by-trait.rs:71:9
+  --> $DIR/method-shadowed-by-trait.rs:73:9
    |
 LL |     pub trait T {
 LL |         fn foo(&self) {}
    |         ^^^^^^^^^^^^^
 note: you might have meant to call `a::K::foo` instead
-  --> $DIR/method-shadowed-by-trait.rs:78:9
+  --> $DIR/method-shadowed-by-trait.rs:82:9
    |
 LL |     pub trait K {
 LL |         fn foo(&self) -> Other { Other { field : () } }
    |         ^^^^^^^^^^^^^^^^^^^^^^
 note: you might have meant to call `a::V::foo` instead
-  --> $DIR/method-shadowed-by-trait.rs:85:9
+  --> $DIR/method-shadowed-by-trait.rs:91:9
    |
 LL |     pub trait V {
 LL |         fn foo(&self) -> Other;
@@ -112,7 +161,56 @@ LL -     x.foo().method();
 LL +     S::foo(&x).method();
    |
 
-error: aborting due to 3 previous errors
+error[E0599]: no method named `method` found for unit type `()` in the current scope
+  --> $DIR/method-shadowed-by-trait.rs:120:15
+   |
+LL |     let y = x.foo();
+   |               --- this method is `a::T::foo`
+...
+LL |     let _ = y.method();
+   |               ^^^^^^ method not found in `()`
+   |
+note: this returns `()`
+  --> $DIR/method-shadowed-by-trait.rs:73:9
+   |
+LL |     pub trait T {
+LL |         fn foo(&self) {}
+   |         ^^^^^^^^^^^^^
+note: you might have meant to call `a::K::foo` instead
+  --> $DIR/method-shadowed-by-trait.rs:82:9
+   |
+LL |     pub trait K {
+LL |         fn foo(&self) -> Other { Other { field : () } }
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+note: you might have meant to call `a::V::foo` instead
+  --> $DIR/method-shadowed-by-trait.rs:91:9
+   |
+LL |     pub trait V {
+LL |         fn foo(&self) -> Other;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+note: you might have meant to call `S::foo` instead
+  --> $DIR/method-shadowed-by-trait.rs:64:5
+   |
+LL | impl S {
+LL |     fn foo(&self) -> Other { Other { field: () } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+help: consider calling `a::K::foo` using the fully-qualified path
+   |
+LL -     let y = x.foo();
+LL +     let y = <_ as K>::foo(&x);
+   |
+help: consider calling `a::V::foo` using the fully-qualified path
+   |
+LL -     let y = x.foo();
+LL +     let y = <_ as V>::foo(&x);
+   |
+help: consider calling `S::foo` using the fully-qualified path
+   |
+LL -     let y = x.foo();
+LL +     let y = S::foo(&x);
+   |
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0599, E0609.
 For more information about an error, try `rustc --explain E0599`.
