@@ -77,11 +77,7 @@ fn uncached_llvm_type<'ll, 'tcx>(
             let fill = cx.type_padding_filler(layout.size, layout.align);
             match name {
                 None => cx.type_struct(&[fill]),
-                Some(ref name) => {
-                    let llty = cx.type_named_struct(name);
-                    cx.set_struct_body(llty, &[fill]);
-                    llty
-                }
+                Some(ref name) => cx.type_named_struct(name, &[fill]),
             }
         }
         FieldsShape::Array { count, .. } => {
@@ -100,7 +96,7 @@ fn uncached_llvm_type<'ll, 'tcx>(
                 if packed { cx.type_packed_struct(&llfields) } else { cx.type_struct(&llfields) }
             }
             Some(ref name) => {
-                let llty = cx.type_named_struct(name);
+                let llty = cx.type_named_struct_deferred(name);
                 *defer = Some((llty, layout));
                 llty
             }

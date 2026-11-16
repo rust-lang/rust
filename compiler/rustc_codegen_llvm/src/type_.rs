@@ -29,7 +29,13 @@ impl<'ll> fmt::Debug for Type<'ll> {
 
 impl<'ll> CodegenCx<'ll, '_> {}
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
-    pub(crate) fn type_named_struct(&self, name: &str) -> Type<'ll> {
+    pub(crate) fn type_named_struct(&self, name: &str, els: &[Type<'ll>]) -> Type<'ll> {
+        let res = self.type_named_struct_deferred(name);
+        self.set_struct_body(res, els);
+        res
+    }
+
+    pub(crate) fn type_named_struct_deferred(&self, name: &str) -> Type<'ll> {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMStructCreateNamed(self.llcx(), name.as_ptr()) }
     }
@@ -144,10 +150,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         (**self).borrow().llmod
     }
 
-    pub(crate) fn isize_ty(&self) -> Type<'ll> {
-        (**self).borrow().isize_ty
-    }
-
     pub(crate) fn type_variadic_func(&self, args: &[Type<'ll>], ret: Type<'ll>) -> Type<'ll> {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, TRUE) }
     }
@@ -209,7 +211,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 
     fn type_isize(&self) -> Type<'ll> {
-        self.isize_ty()
+        (**self).borrow().isize_ty
     }
 
     fn type_f16(&self) -> Type<'ll> {
