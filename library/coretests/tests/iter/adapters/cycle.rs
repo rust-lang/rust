@@ -29,3 +29,20 @@ fn test_cycle() {
     iter.nth(9);
     assert_eq!(iter.take(3).sum::<i32>(), 3);
 }
+
+// Ensure that Fuse<Cycle<I>> behaves properly when I is not `FusedIterator`.
+// Regression test for https://github.com/rust-lang/rust/issues/166041
+#[test]
+fn test_cycle_fused() {
+    let curr = std::cell::Cell::new(0);
+    let iter = std::iter::from_fn(|| {
+        let n = curr.get() + 1;
+        curr.set(n);
+        (n >= 3).then_some("some")
+    });
+    let mut fused = iter.cycle().fuse();
+    assert!(fused.next().is_none());
+    assert!(fused.next().is_none());
+    assert!(fused.next().is_none());
+    assert!(fused.next().is_none());
+}
