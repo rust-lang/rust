@@ -72,7 +72,7 @@ fn statics() {
 
     static RC: &E = &E::V2(4);
 
-    // CHECK: [[t:_.*]] = const {alloc7: &&E};
+    // CHECK: [[t:_.*]] = const {alloc{{[0-9]+}}: &&E};
     // CHECK: [[e2]] = copy (*[[t]]);
     let e2 = RC;
 
