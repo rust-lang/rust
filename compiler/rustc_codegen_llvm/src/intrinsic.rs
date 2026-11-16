@@ -617,7 +617,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
                 );
                 // Some targets have `memcmp` returning `i16`, but the intrinsic is always `i32`.
-                self.sext(cmp, self.type_ix(32))
+                self.sext(cmp, self.type_i32())
             }
 
             sym::black_box => {
@@ -856,8 +856,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         self.const_null(ty)
                     }
                     _ => {
-                        let ty = self.type_ix(32);
-                        let val = self.const_int(ty, 0);
+                        let val = self.const_i32(0);
 
                         let type_params: &[Type<'ll>] =
                             if llvm_version < (23, 0, 0) { &[] } else { &[self.type_ptr()] };
@@ -3326,7 +3325,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_bswap if int_size == 8 => Ok(args[0].immediate()),
             sym::simd_ctlz | sym::simd_cttz => {
                 // for the (int, i1 immediate) pair, the second arg adds `(0, true) => poison`
-                let dont_poison_on_zero = bx.const_int(bx.type_i1(), 0);
+                let dont_poison_on_zero = bx.const_bool(false);
                 Ok(bx.call_intrinsic(
                     llvm_intrinsic,
                     &[vec_ty],

@@ -882,8 +882,8 @@ impl<'ll> CodegenCx<'ll, '_> {
         let llty = self
             .type_named_struct("struct._objc_module", &[i32_llty, i32_llty, ptr_llty, ptr_llty]);
 
-        let version = self.const_uint(i32_llty, 7);
-        let size = self.const_uint(i32_llty, 16);
+        let version = self.const_u32(7);
+        let size = self.const_u32(16);
         let name = self.define_objc_classname("");
         let symtab = self.const_null(ptr_llty);
         let llval = crate::common::named_struct(llty, &[version, size, name, symtab]);
