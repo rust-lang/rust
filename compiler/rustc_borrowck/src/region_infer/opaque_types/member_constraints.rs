@@ -157,7 +157,7 @@ impl<'tcx> CollectMemberConstraintsVisitor<'_, '_, 'tcx> {
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectMemberConstraintsVisitor<'_, '_, 'tcx> {
     fn visit_region(&mut self, r: Region<'tcx>) {
         match r.kind() {
-            ty::ReBound(..) => return,
+            ty::ReBound(..) => {}
             ty::ReVar(vid) => {
                 let scc = self.rcx.constraint_sccs.scc(vid);
                 self.member_constraints.entry(scc).or_default().push(self.defining_use);

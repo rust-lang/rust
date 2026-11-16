@@ -252,7 +252,7 @@ fn collect_defining_uses<'tcx>(
     let mut defining_uses = vec![];
     for &(opaque_type_key, hidden_type) in opaque_types {
         let non_nll_opaque_type_key = opaque_type_key.fold_captured_lifetime_args(infcx.tcx, |r| {
-            nll_var_to_universal_region(&rcx, r.as_var()).unwrap_or(r)
+            nll_var_to_universal_region(rcx, r.as_var()).unwrap_or(r)
         });
         if let Err(err) = opaque_type_has_defining_use_args(
             infcx,
