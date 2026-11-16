@@ -30,12 +30,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        let local_scope = self.local_scope();
-        self.as_rvalue(
-            block,
-            TempLifetime { temp_lifetime: Some(local_scope), backwards_incompatible: None },
-            expr_id,
-        )
+        self.as_rvalue(block, self.local_temp_lifetime(), expr_id)
     }
 
     /// Compile `expr`, yielding an rvalue.
