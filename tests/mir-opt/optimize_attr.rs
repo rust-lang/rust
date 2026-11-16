@@ -43,13 +43,15 @@ pub fn align_of_val_noopt() -> usize {
     }
 }
 
-// With optimize(speed), we optimize this all the way to a constant
+// Even with optimize(speed), a mir-opt-level of 0 suppresses MIR opts.
 #[optimize(speed)]
 pub fn align_of_val_opt() -> usize {
     // CHECK-LABEL: fn align_of_val_opt(
     unsafe {
         let ptr: *const [u8] = std::mem::transmute((42usize, usize::MAX));
-        // CHECK: _0 = const 1_usize;
+        // ABSOLUTELY-NO-OPT: align_of_val
+        // NO-OPT: _0 = const 1_usize;
+        // SPEED-OPT: _0 = const 1_usize;
         std::intrinsics::align_of_val(ptr)
     }
 }
