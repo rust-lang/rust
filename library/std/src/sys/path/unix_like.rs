@@ -1,6 +1,32 @@
 use crate::ffi::OsStr;
+#[cfg(target_os = "motor")]
+use crate::os::motor::ffi::OsStrExt;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::{env, io};
+
+cfg_select! {
+    target_os = "motor" => {
+        #[inline]
+        pub fn with_native_path<T>(
+            path: &Path,
+            f: &dyn Fn(&str) -> io::Result<T>,
+        ) -> io::Result<T> {
+            f(path.as_os_str().as_str())
+        }
+    }
+    any(target_family = "unix", target_os = "vexos", target_os = "hermit", target_os = "wasi") => {
+        pub use crate::sys::helpers::run_path_with_cstr as with_native_path;
+    }
+    _ => {
+        #[inline]
+        pub fn with_native_path<T>(
+            path: &Path,
+            f: &dyn Fn(&Path) -> io::Result<T>,
+        ) -> io::Result<T> {
+            f(path)
+        }
+    }
+}
 
 path_separator_bytes!(b'/');
 
