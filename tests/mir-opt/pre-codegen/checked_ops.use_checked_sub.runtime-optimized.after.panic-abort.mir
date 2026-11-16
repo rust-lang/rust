@@ -34,12 +34,14 @@ fn use_checked_sub(_1: u32, _2: u32) -> () {
     }
 
     bb2: {
+        _0 = const ();
         StorageDead(_6);
         goto -> bb4;
     }
 
     bb3: {
         StorageDead(_3);
+        _0 = const ();
         goto -> bb4;
     }
 

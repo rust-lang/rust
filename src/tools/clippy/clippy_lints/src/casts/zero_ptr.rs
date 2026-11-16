@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanExt as _;
-use clippy_utils::{is_in_const_context, is_integer_literal, std_or_core};
+use clippy_utils::{is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability, Ty, TyKind};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 
 use super::ZERO_PTR;
 

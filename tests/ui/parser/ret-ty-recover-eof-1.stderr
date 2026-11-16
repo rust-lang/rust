@@ -1,0 +1,10 @@
+error: expected one of `(`, `::`, `<`, or `>`, found keyword `fn`
+  --> $DIR/ret-ty-recover-eof-1.rs:2:1
+   |
+LL | fn foo() -> impl Into<<() as Reexported
+   |                                        - expected one of `(`, `::`, `<`, or `>`
+LL | fn bar() -> return
+   | ^^ unexpected token
+
+error: aborting due to 1 previous error
+

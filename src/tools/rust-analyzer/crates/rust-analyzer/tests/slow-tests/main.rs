@@ -1681,3 +1681,57 @@ fn test() {
     assert_eq!(arr.len(), 1);
     expect![[r#"{"goal":"Goal { param_env: ParamEnv { clauses: [] }, predicate: Binder { value: TraitPredicate(usize: Trait, polarity:Positive), bound_vars: [] } }","result":"Err(NoSolution)","depth":0,"candidates":[]}"#]].assert_eq(&arr[0].to_string());
 }
+
+#[test]
+fn test_push_semantic_diagnostics() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let code = r#"
+fn main() {
+    let _: i32 = true;
+}
+"#;
+    let server = Project::with_fixture(&format!(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/main.rs
+{code}"#
+    ))
+    .with_config(serde_json::json!({
+        "cargo": {
+            "buildScripts": {
+                "enable": true,
+            },
+        },
+        "procMacro": {
+            "enable": true,
+        },
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.notification::<DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: server.doc_id("src/main.rs").uri,
+            language_id: LanguageKind::Rust,
+            version: 0,
+            text: code.to_owned(),
+        },
+    });
+
+    let diagnostics = server.wait_for_diagnostics();
+    assert!(
+        diagnostics.diagnostics.iter().any(|d| matches!(
+            &d.message,
+            lsp_types::Message::String(s) if s.contains("expected i32, found bool")
+        )),
+        "expected type mismatch diagnostic, got: {:?}",
+        diagnostics.diagnostics,
+    );
+}

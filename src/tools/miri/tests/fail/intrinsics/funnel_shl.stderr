@@ -1,4 +1,4 @@
-error: Undefined Behavior: `assume` called with `false`
+error: Undefined Behavior: overflowing shift by 32 in left funnel shift
   --> tests/fail/intrinsics/funnel_shl.rs:LL:CC
    |
 LL |         std::intrinsics::unchecked_funnel_shl(1_u32, 2, 32);

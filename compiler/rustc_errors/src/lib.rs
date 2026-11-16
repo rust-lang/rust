@@ -199,64 +199,6 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
-pub struct TrimmedSubstitutionPart {
-    pub original_span: Span,
-    pub span: Span,
-    pub snippet: String,
-}
-
-impl TrimmedSubstitutionPart {
-    pub fn is_addition(&self, sm: &SourceMap) -> bool {
-        !self.snippet.is_empty() && !self.replaces_meaningful_content(sm)
-    }
-
-    pub fn is_deletion(&self, sm: &SourceMap) -> bool {
-        self.snippet.trim().is_empty() && self.replaces_meaningful_content(sm)
-    }
-
-    pub fn is_replacement(&self, sm: &SourceMap) -> bool {
-        !self.snippet.is_empty() && self.replaces_meaningful_content(sm)
-    }
-
-    /// Whether this is a replacement that overwrites source with a snippet
-    /// in a way that isn't a superset of the original string. For example,
-    /// replacing "abc" with "abcde" is not destructive, but replacing it
-    /// it with "abx" is, since the "c" character is lost.
-    pub fn is_destructive_replacement(&self, sm: &SourceMap) -> bool {
-        self.is_replacement(sm)
-            && !sm
-                .span_to_snippet(self.span)
-                .is_ok_and(|snippet| as_substr(snippet.trim(), self.snippet.trim()).is_some())
-    }
-
-    fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
-        sm.span_to_snippet(self.span)
-            .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
-    }
-}
-
-/// Given an original string like `AACC`, and a suggestion like `AABBCC`, try to detect
-/// the case where a substring of the suggestion is "sandwiched" in the original, like
-/// `BB` is. Return the length of the prefix, the "trimmed" suggestion, and the length
-/// of the suffix.
-fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a str, usize)> {
-    let common_prefix = original
-        .chars()
-        .zip(suggestion.chars())
-        .take_while(|(c1, c2)| c1 == c2)
-        .map(|(c, _)| c.len_utf8())
-        .sum();
-    let original = &original[common_prefix..];
-    let suggestion = &suggestion[common_prefix..];
-    if suggestion.ends_with(original) {
-        let common_suffix = original.len();
-        Some((common_prefix, &suggestion[..suggestion.len() - original.len()], common_suffix))
-    } else {
-        None
-    }
-}
-
 /// Signifies that the compiler died due to a delayed bug rather than a failed
 /// assertion, etc.
 pub struct DelayedBugPanic;

@@ -513,6 +513,7 @@ pub mod __default_lib_allocator {
     }
 }
 
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl AllocatorNightly for System {}

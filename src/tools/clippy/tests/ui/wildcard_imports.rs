@@ -299,3 +299,19 @@ mod super_imports {
         }
     }
 }
+
+mod issue_17799 {
+    // see `https://github.com/rust-lang/rust-clippy/pull/17828#discussion_r4169531242`
+    macro_rules! glob_import {
+        ($p:path) => {
+            use $p::*;
+            fn __glob_used(_e: Error) {}
+        };
+    }
+
+    glob_import!(std::io);
+
+    fn lol() -> usize {
+        2 * 3
+    }
+}

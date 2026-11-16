@@ -1,5 +1,5 @@
 use proc_macro2::Ident;
-use quote::quote;
+use quote::{ToTokens, quote};
 
 struct Attributes {
     ignore: bool,
@@ -96,9 +96,44 @@ fn stable_hash_derive_with_mode(
 
 fn stable_hash_discriminant(s: &mut synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     match s.ast().data {
-        syn::Data::Enum(_) => quote! {
-            ::std::mem::discriminant(self).stable_hash(__hcx, __hasher);
-        },
+        syn::Data::Enum(_) => {
+            // For stable hashing, use a fake discriminant based on the syntactic
+            // ordering of enum variants, not the actual runtime discriminant.
+            // This helps to keep stable hashes consistent between stage1 and stage2.
+            let n_variants = s.variants().len();
+
+            // If this enum has no variants (and is therefore uninhabited),
+            // matching on `self` will cause the compiler to realise that all
+            // subsequent code is unreachable, triggering unhelpful warnings.
+            if n_variants == 0 {
+                return quote! {};
+            }
+
+            let mut match_arms = proc_macro2::TokenStream::new();
+
+            // Use a u8 discriminant, as it's measurably faster than usize.
+            // If support for larger enums is needed, take care to still use u8
+            // when possible, to avoid regressions.
+            assert!(
+                n_variants <= 256,
+                "deriving StableHash for an enum with more than 256 variants is unsupported \
+                (was: {n_variants})"
+            );
+            for (discriminant, variant) in (0u8..).zip(s.variants()) {
+                let pat = variant.pat();
+
+                quote! {
+                    #pat => #discriminant.stable_hash(__hcx, __hasher),
+                }
+                .to_tokens(&mut match_arms);
+            }
+
+            quote! {
+                match *self {
+                    #match_arms
+                }
+            }
+        }
         syn::Data::Struct(_) => quote! {},
         syn::Data::Union(_) => panic!("cannot derive on union"),
     }

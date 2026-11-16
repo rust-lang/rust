@@ -752,7 +752,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = path_res {
                         self.r.prelude = Some(module);
                     } else {
-                        self.r.dcx().span_err(use_tree.span(), "cannot resolve a prelude import");
+                        // We already emitted: "error[E0463]: can't find crate for `std`/`core`"
+                        self.r
+                            .dcx()
+                            .span_delayed_bug(use_tree.span(), "cannot resolve a prelude import");
                     }
                 }
             }

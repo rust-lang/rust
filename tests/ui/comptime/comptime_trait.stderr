@@ -3,6 +3,8 @@ error: the `rustc_comptime` attribute cannot be used on traits
    |
 LL | #[rustc_comptime]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | trait Trait {
    |
    = help: the `rustc_comptime` attribute can be applied to functions and inherent impl blocks
 
@@ -11,6 +13,8 @@ error: the `rustc_comptime` attribute cannot be used on trait impl blocks
    |
 LL | #[rustc_comptime]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | impl Trait for u32 {
    |
    = help: the `rustc_comptime` attribute can be applied to functions and inherent impl blocks
 
@@ -19,6 +23,8 @@ error: the `rustc_comptime` attribute cannot be used on trait aliases
    |
 LL | #[rustc_comptime]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | trait TraitAlias = const Trait;
    |
    = help: the `rustc_comptime` attribute can be applied to functions and inherent impl blocks
 

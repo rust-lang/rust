@@ -29,9 +29,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::region_constraint::{And, LeafRegionConstraint, Or};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
-    Upcast,
+    self, CallerBoundsIterator, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt,
+    TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode, Unnormalized, Upcast,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{DUMMY_SP, Span, bug, span_bug, sym};
@@ -577,7 +577,8 @@ fn augment_param_env<'tcx>(
         return param_env;
     }
 
-    let bounds = param_env.caller_bounds().chain(new_clauses.iter().copied());
+    let bounds =
+        param_env.caller_bounds().all_clauses(tcx).iter().chain(new_clauses.iter().copied());
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
     ty::ParamEnv::new(tcx, bounds)
@@ -1306,7 +1307,11 @@ pub(super) fn check_const_item<'tcx>(
     if tcx.is_direct_const(def_id.into()) {
         if !tcx.features().const_param_ty_unchecked() {
             wfcx.register_bound(
-                ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+                ObligationCause::new(
+                    tcx.ty_span(def_id),
+                    def_id,
+                    ObligationCauseCode::ConstItemTy(item_ty),
+                ),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::ConstParamTy, span),
@@ -1337,6 +1342,8 @@ pub(super) fn check_const_item<'tcx>(
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(norm_ct, item_ty)),
         ));
     }
+
+    check_where_clauses(wfcx, def_id);
 
     res
 }
@@ -1967,6 +1974,9 @@ fn receiver_is_valid<'tcx>(
 
         confirm_type_is_not_a_method_generic_param(potential_self_ty, method_generics)?;
 
+        // Treat view types in receiver position like their counterpart.
+        let potential_self_ty = ignore_view(wfcx, potential_self_ty);
+
         // Check if the self type unifies. If it does, then commit the result
         // since it may have region side-effects.
         if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
@@ -2009,6 +2019,42 @@ fn receiver_is_valid<'tcx>(
 
     debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
     Err(ReceiverValidityError::DoesNotDeref)
+}
+
+fn ignore_view<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.kind() {
+        ty::View(def, args, _) => Ty::new_adt(wfcx.tcx(), *def, *args),
+
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Adt(_, _)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(_, _)
+        | ty::Pat(_, _)
+        | ty::Slice(_)
+        | ty::RawPtr(_, _)
+        | ty::Ref(_, _, _)
+        | ty::FnDef(_, _)
+        | ty::FnPtr(_, _)
+        | ty::UnsafeBinder(_)
+        | ty::Dynamic(_, _)
+        | ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Bound(_, _)
+        | ty::Placeholder(_)
+        | ty::Infer(_)
+        | ty::Error(_) => ty,
+    }
 }
 
 fn legacy_receiver_is_implemented<'tcx>(
@@ -2380,40 +2426,51 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let TestBinderBody { span, foralls, exists, constraints, predicates } = body;
-        if !predicates.is_empty() {
-            for (predicate, span) in predicates {
-                let cause = traits::ObligationCause::misc(span, self.body_def_id);
-                let obligation = Obligation::new(self.tcx(), cause, self.param_env, predicate);
-                self.register_obligation(obligation);
-            }
-            match self.ocx.evaluate_obligations_error_on_ambiguity() {
-                TraitErrors::NoErrors => (),
-                TraitErrors::HasErrors(errors) => {
-                    self.infcx.err_ctxt().report_fulfillment_errors(errors);
-                    return;
+        let TestBinderBody { span, items } = body;
+        for item in items {
+            match item {
+                TestBinderItem::Forall(forall) => {
+                    self.check_test_binder_forall(forall);
+                }
+                TestBinderItem::Exists(exist) => {
+                    self.check_test_binder_exists(exist);
+                }
+                TestBinderItem::Constraint(constraint) => {
+                    let constraint = match validate(self.tcx(), &constraint) {
+                        Ok(()) => constraint,
+                        Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
+                    };
+                    if constraint.is_false() {
+                        self.tcx()
+                            .dcx()
+                            .span_err(span, "top level false constraints are not supported");
+                    } else {
+                        self.infcx.register_solver_region_constraint(constraint);
+                    }
+                }
+                TestBinderItem::Predicate { clause, span } => {
+                    let cause = traits::ObligationCause::misc(span, self.body_def_id);
+                    let obligation = Obligation::new(self.tcx(), cause, self.param_env, clause);
+                    self.register_obligation(obligation);
+
+                    match self.ocx.evaluate_obligations_error_on_ambiguity() {
+                        TraitErrors::NoErrors => (),
+                        TraitErrors::HasErrors(errors) => {
+                            self.infcx.err_ctxt().report_fulfillment_errors(errors);
+                            return;
+                        }
+                    }
+                }
+                TestBinderItem::RegionEquality((equality, span)) => {
+                    let cause = traits::ObligationCause::misc(span, self.body_def_id);
+                    self.infcx.register_region_eq_constraint(
+                        equality,
+                        ty::VisibleForLeakCheck::Yes,
+                        &cause,
+                    );
                 }
             }
         }
-
-        let constraints = match validate(self.tcx(), &constraints) {
-            Ok(()) => constraints,
-            Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
-        };
-        if constraints.is_false() {
-            self.tcx().dcx().span_err(span, "top level false constraints are not supported");
-            return;
-        }
-
-        self.infcx.register_solver_region_constraint(constraints);
-
-        for forall in foralls {
-            self.check_test_binder_forall(forall);
-        }
-        for exists in exists {
-            self.check_test_binder_exists(exists);
-        }
-
         fn validate<'tcx>(
             tcx: TyCtxt<'tcx>,
             constraint: &SolverRegionConstraint<'tcx>,
@@ -2663,6 +2720,12 @@ fn lint_redundant_lifetimes<'tcx>(
     owner_id: LocalDefId,
     outlives_env: &OutlivesEnvironment<'tcx>,
 ) {
+    // Items produced by external macros (e.g. derived impls) reuse the lifetime spans of the
+    // macro input, so the usual external macro check on the lint span does not catch them.
+    if tcx.def_span(owner_id).in_external_macro(tcx.sess.source_map()) {
+        return;
+    }
+
     let def_kind = tcx.def_kind(owner_id);
     match def_kind {
         DefKind::Struct
@@ -2798,12 +2861,21 @@ struct RedundantLifetimeArgsLint<'tcx> {
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderBody<'tcx> {
     pub span: Span,
-    pub foralls: Vec<TestBinderForall<'tcx>>,
-    pub exists: Vec<TestBinderExists<'tcx>>,
+    pub items: Vec<TestBinderItem<'tcx>>,
+}
+
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+pub(crate) enum TestBinderItem<'tcx> {
+    Forall(TestBinderForall<'tcx>),
+    Exists(TestBinderExists<'tcx>),
+    RegionEquality((ty::RegionEqPredicate<'tcx>, Span)),
     /// Constraints to be inserted directly into constraint storage to be proven
-    pub constraints: SolverRegionConstraint<'tcx>,
+    Constraint(SolverRegionConstraint<'tcx>),
     /// Constraints declared using `where` syntax, used via `register_obligation`
-    pub predicates: Vec<(ty::Binder<'tcx, ty::ClauseKind<'tcx>>, Span)>,
+    Predicate {
+        clause: ty::Clause<'tcx>,
+        span: Span,
+    },
 }
 
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]

@@ -667,7 +667,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 // to keep the printed code reasonably parse-able.
                 return false;
             }
-            AttrKind::Normal(_) | AttrKind::DocComment(..) => {}
+            AttrKind::Normal(_) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {}
         }
         if !is_inline {
             self.hardbreak_if_not_bol();
@@ -691,6 +691,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 ));
                 self.hardbreak()
             }
+            AttrKind::Generated(generated) => self.word(generated.descr()),
         }
         true
     }
@@ -1436,12 +1437,15 @@ impl<'a> State<'a> {
                 self.word("...");
             }
             ast::TyKind::Pat(ty, pat) => {
+                self.word("k#pattern_type");
+                self.popen();
                 self.print_type(ty);
                 self.word(" is ");
                 self.print_ty_pat(pat);
+                self.pclose();
             }
             ast::TyKind::FieldOf(ty, variant, field) => {
-                self.word("builtin # field_of");
+                self.word("k#field_of");
                 self.popen();
                 let ib = self.ibox(0);
                 self.print_type(ty);
@@ -1458,8 +1462,11 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             ast::TyKind::View(ty, fields) => {
+                self.word("k#view_type");
+                self.popen();
                 self.print_type(ty);
                 self.print_view(fields);
+                self.pclose();
             }
             ast::TyKind::GcaMacro(expr) => {
                 self.word_nbsp("core::gca!");
@@ -2011,6 +2018,11 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Deref(inner) => {
+                // FIXME(deref_patterns, internal_syntax, forced_keywords, clippy):
+                // This should render `k#deref(...)` but unfortunately Clippy uses `pat_to_string`
+                // for the suggestions of its lint `unnested_or_patterns`. Smh fix Clippy to not
+                // rely on AST pretty printing `deref!(…)` for `Deref` patterns and please don't
+                // think about adding a flag to AST pretty to control the output.
                 self.word("deref!");
                 self.popen();
                 self.print_pat(inner);

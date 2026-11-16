@@ -10,6 +10,7 @@ mod socket_address;
 mod sync;
 mod tcp_socket;
 mod thread;
+mod udp_socket;
 mod virtual_socket;
 
 mod android;

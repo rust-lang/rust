@@ -3,6 +3,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::{IntoSpan as _, SpanExt as _};
 use clippy_utils::ty::get_field_by_name;
+use clippy_utils::usage::is_potentially_mutated;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
 use clippy_utils::{ExprUseNode, get_expr_use_site, sym};
 use core::ops::ControlFlow;
@@ -162,6 +163,8 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             && (!requires_copy || cx.type_is_copy_modulo_regions(arg_ty))
             // This case could be handled, but a fair bit of care would need to be taken.
             && (!requires_deref || arg_ty.is_freeze(cx.tcx, cx.typing_env()))
+            // `inspect` only provides shared access to the closure argument.
+            && !is_potentially_mutated(arg_id, body.value, cx)
         {
             if requires_deref {
                 edits.push((param.span.shrink_to_lo(), "&".into()));

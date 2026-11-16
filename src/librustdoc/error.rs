@@ -1,6 +1,7 @@
 use std::error;
 use std::fmt::{self, Formatter};
 use std::path::{Path, PathBuf};
+use std::process::{ExitCode, Termination};
 
 use crate::docfs::PathError;
 
@@ -20,6 +21,13 @@ impl std::fmt::Display for Error {
         } else {
             write!(f, "\"{}\": {}", self.file.display(), self.error)
         }
+    }
+}
+
+impl Termination for Error {
+    fn report(self) -> ExitCode {
+        eprintln!("{self}");
+        ExitCode::FAILURE
     }
 }
 

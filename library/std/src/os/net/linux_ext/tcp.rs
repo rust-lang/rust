@@ -2,6 +2,7 @@
 //!
 //! [`std::net`]: crate::net
 
+use crate::macros::rustdoc_skip_body;
 use crate::sys::AsInner;
 #[cfg(target_os = "linux")]
 use crate::time::Duration;
@@ -131,10 +132,12 @@ pub impl(self) trait TcpStreamExt {
 
 #[stable(feature = "tcp_quickack", since = "1.89.0")]
 impl TcpStreamExt for net::TcpStream {
+    #[rustdoc_skip_body]
     fn set_quickack(&self, quickack: bool) -> io::Result<()> {
         self.as_inner().as_inner().set_quickack(quickack)
     }
 
+    #[rustdoc_skip_body]
     fn quickack(&self) -> io::Result<bool> {
         self.as_inner().as_inner().quickack()
     }

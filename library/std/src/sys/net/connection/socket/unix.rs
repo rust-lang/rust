@@ -172,7 +172,9 @@ impl Socket {
     }
 
     pub fn poll_connected(&self, timeout: Duration) -> io::Result<()> {
-        let mut pollfd = libc::pollfd { fd: self.as_raw_fd(), events: libc::POLLOUT, revents: 0 };
+        let mut pollfd: libc::pollfd = unsafe { mem::zeroed() };
+        pollfd.fd = self.as_raw_fd();
+        pollfd.events = libc::POLLOUT;
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
             return Err(io::Error::ZERO_TIMEOUT);
@@ -206,27 +208,28 @@ impl Socket {
                 }
                 0 => {}
                 _ => {
-                    if cfg!(target_os = "vxworks") {
-                        // VxWorks poll does not return  POLLHUP or POLLERR in revents. Check if the
-                        // connection actually succeeded and return ok only when the socket is
-                        // ready and no errors were found.
-                        if let Some(e) = self.take_error()? {
-                            return Err(e);
-                        }
-                    } else {
-                        // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
-                        // for POLLHUP or POLLERR rather than read readiness
-                        if pollfd.revents & (libc::POLLHUP | libc::POLLERR) != 0 {
-                            let e = self.take_error()?.unwrap_or_else(|| {
-                                io::const_error!(
-                                    io::ErrorKind::Uncategorized,
-                                    "no error set after POLLHUP",
-                                )
-                            });
-                            return Err(e);
-                        }
+                    // A completed connect makes the socket writable, but that doesn't guarantee it
+                    // succeeded: whether a failed connect also sets `POLLERR`/`POLLHUP` is
+                    // platform-specific. On Linux a clean `revents` means success. Elsewhere
+                    // (`illumos`, `VxWorks`) only `SO_ERROR` holds the actual status.
+                    let failure_shows_in_revents =
+                        cfg!(any(target_os = "linux", target_os = "android"));
+                    let hup_or_err = pollfd.revents & (libc::POLLHUP | libc::POLLERR) != 0;
+
+                    if failure_shows_in_revents && !hup_or_err {
+                        return Ok(());
                     }
 
+                    if let Some(e) = self.take_error()? {
+                        return Err(e);
+                    }
+
+                    if hup_or_err {
+                        return Err(io::const_error!(
+                            io::ErrorKind::Uncategorized,
+                            "no error set after POLLHUP"
+                        ));
+                    }
                     return Ok(());
                 }
             }

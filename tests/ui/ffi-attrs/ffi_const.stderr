@@ -3,6 +3,7 @@ error: the `ffi_const` attribute cannot be used on functions
    |
 LL | #[unsafe(ffi_const)]
    |          ^^^^^^^^^
+LL | pub fn foo() {}
    |
    = help: the `ffi_const` attribute can only be applied to foreign functions
 
@@ -11,6 +12,7 @@ error: the `ffi_const` attribute cannot be used on macro defs
    |
 LL | #[unsafe(ffi_const)]
    |          ^^^^^^^^^
+LL | macro_rules! bar {
    |
    = help: the `ffi_const` attribute can only be applied to foreign functions
 
@@ -19,6 +21,7 @@ error: the `ffi_const` attribute cannot be used on foreign statics
    |
 LL |     #[unsafe(ffi_const)]
    |              ^^^^^^^^^
+LL |     static INT: i32;
    |
    = help: the `ffi_const` attribute can only be applied to foreign functions
 

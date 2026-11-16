@@ -1,9 +1,3 @@
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/invalid.rs:131:11
-   |
-LL | fn barqux(#[rustc_force_inline] _x: u32) {}
-   |           ^^^^^^^^^^^^^^^^^^^^^
-
 error[E0805]: malformed `rustc_force_inline` attribute input
   --> $DIR/invalid.rs:15:3
    |
@@ -69,6 +63,8 @@ error: the `rustc_force_inline` attribute cannot be used on extern crates
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern crate std as other_std;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -77,6 +73,8 @@ error: the `rustc_force_inline` attribute cannot be used on use statements
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | use std::collections::HashMap;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -85,6 +83,8 @@ error: the `rustc_force_inline` attribute cannot be used on statics
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | static _FOO: &'static str = "FOO";
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -93,6 +93,8 @@ error: the `rustc_force_inline` attribute cannot be used on constants
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | const _BAR: u32 = 3;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -101,6 +103,8 @@ error: the `rustc_force_inline` attribute cannot be used on modules
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | mod foo { }
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -109,6 +113,8 @@ error: the `rustc_force_inline` attribute cannot be used on foreign modules
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | unsafe extern "C" {
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -117,6 +123,8 @@ error: the `rustc_force_inline` attribute cannot be used on foreign statics
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     static X: &'static u32;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -125,6 +133,8 @@ error: the `rustc_force_inline` attribute cannot be used on foreign types
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Y;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -133,6 +143,8 @@ error: the `rustc_force_inline` attribute cannot be used on foreign functions
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo();
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions with a body
 
@@ -141,6 +153,8 @@ error: the `rustc_force_inline` attribute cannot be used on type aliases
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Foo = u32;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -149,6 +163,8 @@ error: the `rustc_force_inline` attribute cannot be used on enums
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum Bar<#[rustc_force_inline] T> {
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -165,6 +181,8 @@ error: the `rustc_force_inline` attribute cannot be used on enum variants
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     Baz(std::marker::PhantomData<T>),
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -173,6 +191,8 @@ error: the `rustc_force_inline` attribute cannot be used on structs
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Qux {
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -181,6 +201,8 @@ error: the `rustc_force_inline` attribute cannot be used on struct fields
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     field: u32,
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -189,6 +211,8 @@ error: the `rustc_force_inline` attribute cannot be used on unions
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | union FooBar {
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -197,6 +221,8 @@ error: the `rustc_force_inline` attribute cannot be used on traits
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait FooBaz {
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -205,6 +231,8 @@ error: the `rustc_force_inline` attribute cannot be used on associated types
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     type Foo;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -213,6 +241,8 @@ error: the `rustc_force_inline` attribute cannot be used on associated consts
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     const Bar: i32;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -221,6 +251,8 @@ error: the `rustc_force_inline` attribute cannot be used on provided trait metho
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn foo() {}
    |
    = help: the `rustc_force_inline` attribute can be applied to functions and inherent methods
 
@@ -229,6 +261,8 @@ error: the `rustc_force_inline` attribute cannot be used on trait aliases
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait FooQux = FooBaz;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -237,6 +271,8 @@ error: the `rustc_force_inline` attribute cannot be used on inherent impl blocks
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl<T> Bar<T> {
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -245,6 +281,8 @@ error: the `rustc_force_inline` attribute cannot be used on trait impl blocks
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl<T> FooBaz for Bar<T> {
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -253,6 +291,8 @@ error: the `rustc_force_inline` attribute cannot be used on macro defs
    |
 LL | #[rustc_force_inline]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | macro_rules! barqux { ($foo:tt) => { $foo }; }
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
@@ -265,7 +305,7 @@ LL | fn barqux(#[rustc_force_inline] _x: u32) {}
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
 error: the `rustc_force_inline` attribute cannot be used on closures
-  --> $DIR/invalid.rs:148:16
+  --> $DIR/invalid.rs:147:16
    |
 LL |     let _x = #[rustc_force_inline] || { };
    |                ^^^^^^^^^^^^^^^^^^
@@ -273,7 +313,7 @@ LL |     let _x = #[rustc_force_inline] || { };
    = help: the `rustc_force_inline` attribute can be applied to functions and inherent methods
 
 error: the `rustc_force_inline` attribute cannot be used on expressions
-  --> $DIR/invalid.rs:150:16
+  --> $DIR/invalid.rs:149:16
    |
 LL |     let _y = #[rustc_force_inline] 3 + 4;
    |                ^^^^^^^^^^^^^^^^^^
@@ -281,23 +321,27 @@ LL |     let _y = #[rustc_force_inline] 3 + 4;
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
 error: the `rustc_force_inline` attribute cannot be used on statements
-  --> $DIR/invalid.rs:152:7
+  --> $DIR/invalid.rs:151:7
    |
 LL |     #[rustc_force_inline]
    |       ^^^^^^^^^^^^^^^^^^
+LL |
+LL |     let _z = 3;
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
 error: the `rustc_force_inline` attribute cannot be used on match arms
-  --> $DIR/invalid.rs:157:11
+  --> $DIR/invalid.rs:156:11
    |
 LL |         #[rustc_force_inline]
    |           ^^^^^^^^^^^^^^^^^^
+LL |
+LL |         1 => (),
    |
    = help: the `rustc_force_inline` attribute can only be applied to functions
 
 error: attribute cannot be applied to a `async`, `gen` or `async gen` function
-  --> $DIR/invalid.rs:135:1
+  --> $DIR/invalid.rs:134:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -306,7 +350,7 @@ LL | async fn async_foo() {}
    | -------------------- `async`, `gen` or `async gen` function
 
 error: attribute cannot be applied to a `async`, `gen` or `async gen` function
-  --> $DIR/invalid.rs:139:1
+  --> $DIR/invalid.rs:138:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -315,7 +359,7 @@ LL | gen fn gen_foo() {}
    | ---------------- `async`, `gen` or `async gen` function
 
 error: attribute cannot be applied to a `async`, `gen` or `async gen` function
-  --> $DIR/invalid.rs:143:1
+  --> $DIR/invalid.rs:142:1
    |
 LL | #[rustc_force_inline]
    | ^^^^^^^^^^^^^^^^^^^^^
@@ -323,7 +367,7 @@ LL |
 LL | async gen fn async_gen_foo() {}
    | ---------------------------- `async`, `gen` or `async gen` function
 
-error: aborting due to 36 previous errors
+error: aborting due to 35 previous errors
 
 Some errors have detailed explanations: E0539, E0805.
 For more information about an error, try `rustc --explain E0539`.

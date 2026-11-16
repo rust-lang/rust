@@ -6,9 +6,10 @@
     extern_types,
     decl_macro,
     rustc_attrs,
+    allow_internal_unstable,
+    forced_keywords,
     rustc_private,
     transparent_unions,
-    pattern_types,
     auto_traits,
     freeze_impls
 )]
@@ -591,12 +592,9 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
-#[rustc_builtin_macro(pattern_type)]
-#[macro_export]
-macro_rules! pattern_type {
-    ($($arg:tt)*) => {
-        /* compiler built-in */
-    };
+#[allow_internal_unstable(internal_syntax)]
+pub macro pattern_type($($arg:tt)*) {
+    k#pattern_type($($arg)*)
 }
 
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null) where

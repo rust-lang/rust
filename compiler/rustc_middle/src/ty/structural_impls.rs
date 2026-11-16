@@ -24,7 +24,7 @@ impl fmt::Debug for ty::TraitDef {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
                 let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
-                    p.print_def_path(self.def_id, &[])
+                    p.print_def_path(self.def_id, ty::GenericArgs::empty())
                 })?;
                 f.write_str(&s)
             })
@@ -37,7 +37,7 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
                 let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
-                    p.print_def_path(self.did(), &[])
+                    p.print_def_path(self.did(), ty::GenericArgs::empty())
                 })?;
                 f.write_str(&s)
             })
@@ -122,7 +122,6 @@ impl<'tcx> fmt::Debug for ty::consts::Expr<'tcx> {
             }
             ty::ExprKind::FunctionCall => {
                 let (func_ty, func, args) = self.call_args();
-                let args = args.collect::<Vec<_>>();
                 write!(f, "({:?}: {:?})(", func, func_ty)?;
                 for arg in args.iter().rev().skip(1).rev() {
                     write!(f, "{:?}, ", arg)?;
@@ -371,6 +370,9 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Never
             | ty::Foreign(..) => return Ok(self),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         Ok(if *self.kind() == kind { self } else { folder.cx().mk_ty_from_kind(kind) })
@@ -396,6 +398,9 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::CoroutineClosure(did, args) => ty::CoroutineClosure(did, args.fold_with(folder)),
             ty::Alias(is_rigid, data) => ty::Alias(is_rigid, data.fold_with(folder)),
             ty::Pat(ty, pat) => ty::Pat(ty.fold_with(folder), pat.fold_with(folder)),
+            ty::View(tid, args, fields) => {
+                ty::View(tid, args.fold_with(folder), fields.fold_with(folder))
+            }
 
             ty::Bool
             | ty::Char
@@ -463,6 +468,11 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Param(..)
             | ty::Never
             | ty::Foreign(..) => V::Result::output(),
+
+            ty::View(_, args, fields) => {
+                try_visit!(args.visit_with(visitor));
+                fields.visit_with(visitor)
+            }
         }
     }
 }

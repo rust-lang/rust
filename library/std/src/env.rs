@@ -132,6 +132,7 @@ impl !Sync for VarsOs {}
 /// [`env::vars_os()`]: vars_os
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "env_vars")]
 pub fn vars() -> Vars {
     Vars { inner: vars_os() }
 }
@@ -157,6 +158,7 @@ pub fn vars() -> Vars {
 /// ```
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "env_vars_os")]
 pub fn vars_os() -> VarsOs {
     VarsOs { inner: env_imp::env() }
 }

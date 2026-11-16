@@ -14,6 +14,7 @@
 
 use crate::convert::{FloatToFloat, FloatToInt};
 use crate::num::FpCategory;
+use crate::num::float_macros::float_impl;
 #[cfg(not(test))]
 use crate::num::imp::libm;
 use crate::panic::const_assert;
@@ -149,272 +150,30 @@ pub mod consts {
     allow(internal_features, unused_features)
 )))]
 impl f16 {
-    /// The radix or base of the internal representation of `f16`.
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const RADIX: u32 = 2;
-
-    /// The size of this float type in bits.
-    // #[unstable(feature = "f16", issue = "116909")]
-    #[unstable(feature = "float_bits_const", issue = "151073")]
-    pub const BITS: u32 = 16;
-
-    /// Number of significant digits in base 2.
-    ///
-    /// Note that the size of the mantissa in the bitwise representation is one
-    /// smaller than this since the leading 1 is not stored explicitly.
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MANTISSA_DIGITS: u32 = 11;
-
-    /// Approximate number of significant digits in base 10.
-    ///
-    /// This is the maximum <i>x</i> such that any decimal number with <i>x</i>
-    /// significant digits can be converted to `f16` and back without loss.
-    ///
-    /// Equal to floor(log<sub>10</sub>&nbsp;2<sup>[`MANTISSA_DIGITS`]&nbsp;&minus;&nbsp;1</sup>).
-    ///
-    /// [`MANTISSA_DIGITS`]: f16::MANTISSA_DIGITS
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const DIGITS: u32 = 3;
-
-    /// [Machine epsilon] value for `f16`.
-    ///
-    /// This is the difference between `1.0` and the next larger representable number.
-    ///
-    /// Equal to 2<sup>1&nbsp;&minus;&nbsp;[`MANTISSA_DIGITS`]</sup>.
-    ///
-    /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
-    /// [`MANTISSA_DIGITS`]: f16::MANTISSA_DIGITS
-    #[unstable(feature = "f16", issue = "116909")]
-    #[rustc_diagnostic_item = "f16_epsilon"]
-    pub const EPSILON: f16 = 9.7656e-4_f16;
-
-    /// Smallest finite `f16` value.
-    ///
-    /// Equal to &minus;[`MAX`].
-    ///
-    /// [`MAX`]: f16::MAX
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MIN: f16 = -6.5504e+4_f16;
-    /// Smallest positive normal `f16` value.
-    ///
-    /// Equal to 2<sup>[`MIN_EXP`]&nbsp;&minus;&nbsp;1</sup>.
-    ///
-    /// [`MIN_EXP`]: f16::MIN_EXP
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MIN_POSITIVE: f16 = 6.1035e-5_f16;
-    /// Largest finite `f16` value.
-    ///
-    /// Equal to
-    /// (1&nbsp;&minus;&nbsp;2<sup>&minus;[`MANTISSA_DIGITS`]</sup>)&nbsp;2<sup>[`MAX_EXP`]</sup>.
-    ///
-    /// [`MANTISSA_DIGITS`]: f16::MANTISSA_DIGITS
-    /// [`MAX_EXP`]: f16::MAX_EXP
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MAX: f16 = 6.5504e+4_f16;
-
-    /// One greater than the minimum possible *normal* power of 2 exponent
-    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
-    ///
-    /// This corresponds to the exact minimum possible *normal* power of 2 exponent
-    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
-    /// In other words, all normal numbers representable by this type are
-    /// greater than or equal to 0.5&nbsp;×&nbsp;2<sup><i>MIN_EXP</i></sup>.
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MIN_EXP: i32 = -13;
-    /// One greater than the maximum possible power of 2 exponent
-    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
-    ///
-    /// This corresponds to the exact maximum possible power of 2 exponent
-    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
-    /// In other words, all numbers representable by this type are
-    /// strictly less than 2<sup><i>MAX_EXP</i></sup>.
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MAX_EXP: i32 = 16;
-
-    /// Minimum <i>x</i> for which 10<sup><i>x</i></sup> is normal.
-    ///
-    /// Equal to ceil(log<sub>10</sub>&nbsp;[`MIN_POSITIVE`]).
-    ///
-    /// [`MIN_POSITIVE`]: f16::MIN_POSITIVE
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MIN_10_EXP: i32 = -4;
-    /// Maximum <i>x</i> for which 10<sup><i>x</i></sup> is normal.
-    ///
-    /// Equal to floor(log<sub>10</sub>&nbsp;[`MAX`]).
-    ///
-    /// [`MAX`]: f16::MAX
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const MAX_10_EXP: i32 = 4;
-
-    /// Not a Number (NaN).
-    ///
-    /// Note that IEEE 754 doesn't define just a single NaN value; a plethora of bit patterns are
-    /// considered to be NaN. Furthermore, the standard makes a difference between a "signaling" and
-    /// a "quiet" NaN, and allows inspecting its "payload" (the unspecified bits in the bit pattern)
-    /// and its sign. See the [specification of NaN bit patterns](f32#nan-bit-patterns) for more
-    /// info.
-    ///
-    /// This constant is guaranteed to be a quiet NaN (on targets that follow the Rust assumptions
-    /// that the quiet/signaling bit being set to 1 indicates a quiet NaN). Beyond that, nothing is
-    /// guaranteed about the specific bit pattern chosen here: both payload and sign are arbitrary.
-    /// The concrete bit pattern may change across Rust versions and target platforms.
-    #[allow(clippy::eq_op)]
-    #[rustc_diagnostic_item = "f16_nan"]
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const NAN: f16 = 0.0_f16 / 0.0_f16;
-
-    /// Infinity (∞).
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const INFINITY: f16 = 1.0_f16 / 0.0_f16;
-
-    /// Negative infinity (−∞).
-    #[unstable(feature = "f16", issue = "116909")]
-    pub const NEG_INFINITY: f16 = -1.0_f16 / 0.0_f16;
-
-    /// Maximum integer that can be represented exactly in an [`f16`] value,
-    /// with no other integer converting to the same floating point value.
-    ///
-    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
-    /// there is a "one-to-one" mapping between [`i16`] and [`f16`] values.
-    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f16`] and back to
-    /// [`i16`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f16`] value
-    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
-    /// "one-to-one" mapping.
-    ///
-    /// [`MAX_EXACT_INTEGER`]: f16::MAX_EXACT_INTEGER
-    /// [`MIN_EXACT_INTEGER`]: f16::MIN_EXACT_INTEGER
-    /// ```
-    /// #![feature(f16)]
-    /// #![feature(float_exact_integer_constants)]
-    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
-    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
-    /// # #[cfg(target_has_reliable_f16)] {
-    /// let max_exact_int = f16::MAX_EXACT_INTEGER;
-    /// assert_eq!(max_exact_int, max_exact_int as f16 as i16);
-    /// assert_eq!(max_exact_int + 1, (max_exact_int + 1) as f16 as i16);
-    /// assert_ne!(max_exact_int + 2, (max_exact_int + 2) as f16 as i16);
-    ///
-    /// // Beyond `f16::MAX_EXACT_INTEGER`, multiple integers can map to one float value
-    /// assert_eq!((max_exact_int + 1) as f16, (max_exact_int + 2) as f16);
-    /// # }}
-    /// ```
-    // #[unstable(feature = "f16", issue = "116909")]
-    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
-    pub const MAX_EXACT_INTEGER: i16 = (1 << Self::MANTISSA_DIGITS) - 1;
-
-    /// Minimum integer that can be represented exactly in an [`f16`] value,
-    /// with no other integer converting to the same floating point value.
-    ///
-    /// For an integer `x` which satisfies `MIN_EXACT_INTEGER <= x <= MAX_EXACT_INTEGER`,
-    /// there is a "one-to-one" mapping between [`i16`] and [`f16`] values.
-    /// `MAX_EXACT_INTEGER + 1` also converts losslessly to [`f16`] and back to
-    /// [`i16`], but `MAX_EXACT_INTEGER + 2` converts to the same [`f16`] value
-    /// (and back to `MAX_EXACT_INTEGER + 1` as an integer) so there is not a
-    /// "one-to-one" mapping.
-    ///
-    /// This constant is equivalent to `-MAX_EXACT_INTEGER`.
-    ///
-    /// [`MAX_EXACT_INTEGER`]: f16::MAX_EXACT_INTEGER
-    /// [`MIN_EXACT_INTEGER`]: f16::MIN_EXACT_INTEGER
-    /// ```
-    /// #![feature(f16)]
-    /// #![feature(float_exact_integer_constants)]
-    /// # // FIXME(#152635): Float rounding on `i586` does not adhere to IEEE 754
-    /// # #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))] {
-    /// # #[cfg(target_has_reliable_f16)] {
-    /// let min_exact_int = f16::MIN_EXACT_INTEGER;
-    /// assert_eq!(min_exact_int, min_exact_int as f16 as i16);
-    /// assert_eq!(min_exact_int - 1, (min_exact_int - 1) as f16 as i16);
-    /// assert_ne!(min_exact_int - 2, (min_exact_int - 2) as f16 as i16);
-    ///
-    /// // Below `f16::MIN_EXACT_INTEGER`, multiple integers can map to one float value
-    /// assert_eq!((min_exact_int - 1) as f16, (min_exact_int - 2) as f16);
-    /// # }}
-    /// ```
-    // #[unstable(feature = "f16", issue = "116909")]
-    #[unstable(feature = "float_exact_integer_constants", issue = "152466")]
-    pub const MIN_EXACT_INTEGER: i16 = -Self::MAX_EXACT_INTEGER;
-
-    /// The mask of the bit used to encode the sign of an [`f16`].
-    ///
-    /// This bit is set when the sign is negative and unset when the sign is
-    /// positive.
-    /// If you only need to check whether a value is positive or negative,
-    /// [`is_sign_positive`] or [`is_sign_negative`] can be used.
-    ///
-    /// [`is_sign_positive`]: f16::is_sign_positive
-    /// [`is_sign_negative`]: f16::is_sign_negative
-    /// ```rust
-    /// #![feature(float_masks)]
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    /// let sign_mask = f16::SIGN_MASK;
-    /// let a = 1.6552f16;
-    /// let a_bits = a.to_bits();
-    ///
-    /// assert_eq!(a_bits & sign_mask, 0x0);
-    /// assert_eq!(f16::from_bits(a_bits ^ sign_mask), -a);
-    /// assert_eq!(sign_mask, (-0.0f16).to_bits());
-    /// # }
-    /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
-    pub const SIGN_MASK: u16 = 0x8000;
-
-    /// The mask of the bits used to encode the exponent of an [`f16`].
-    ///
-    /// Note that the exponent is stored as a biased value, with a bias of 15 for `f16`.
-    ///
-    /// ```rust
-    /// #![feature(float_masks)]
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    /// let exponent_mask = f16::EXPONENT_MASK;
-    ///
-    /// fn get_exp(a: f16) -> i16 {
-    ///     let bias = 15;
-    ///     let biased = a.to_bits() & f16::EXPONENT_MASK;
-    ///     (biased >> (f16::MANTISSA_DIGITS - 1)).cast_signed() - bias
-    /// }
-    ///
-    /// assert_eq!(get_exp(0.5), -1);
-    /// assert_eq!(get_exp(1.0), 0);
-    /// assert_eq!(get_exp(2.0), 1);
-    /// assert_eq!(get_exp(4.0), 2);
-    /// # }
-    /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
-    pub const EXPONENT_MASK: u16 = 0x7c00;
-
-    /// The mask of the bits used to encode the mantissa of an [`f16`].
-    ///
-    /// ```rust
-    /// #![feature(float_masks)]
-    /// #![feature(f16)]
-    /// # #[cfg(target_has_reliable_f16)] {
-    /// let mantissa_mask = f16::MANTISSA_MASK;
-    ///
-    /// assert_eq!(0f16.to_bits() & mantissa_mask, 0x0);
-    /// assert_eq!(1f16.to_bits() & mantissa_mask, 0x0);
-    ///
-    /// // multiplying a finite value by a power of 2 doesn't change its mantissa
-    /// // unless the result or initial value is not normal.
-    /// let a = 1.6552f16;
-    /// let b = 4.0 * a;
-    /// assert_eq!(a.to_bits() & mantissa_mask, b.to_bits() & mantissa_mask);
-    ///
-    /// // The maximum and minimum values have a saturated significand
-    /// assert_eq!(f16::MAX.to_bits() & f16::MANTISSA_MASK, f16::MANTISSA_MASK);
-    /// assert_eq!(f16::MIN.to_bits() & f16::MANTISSA_MASK, f16::MANTISSA_MASK);
-    /// # }
-    /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
-    pub const MANTISSA_MASK: u16 = 0x03ff;
-
-    /// Minimum representable positive value (min subnormal)
-    const TINY_BITS: u16 = 0x1;
-
-    /// Minimum representable negative value (min negative subnormal)
-    const NEG_TINY_BITS: u16 = Self::TINY_BITS | Self::SIGN_MASK;
+    float_impl! {
+        Self = f16,
+        Bits = u16,
+        SignedBits = i16,
+        BITS = 16,
+        MANTISSA_DIGITS = 11,
+        DIGITS = 3,
+        EPSILON = 9.7656e-4_f16,
+        MIN = -6.5504e+4_f16,
+        MIN_POSITIVE = 6.1035e-5_f16,
+        MAX = 6.5504e+4_f16,
+        MIN_EXP = -13,
+        MAX_EXP = 16,
+        MIN_10_EXP = -4,
+        MAX_10_EXP = 4,
+        SIGN_MASK = 0x8000,
+        EXPONENT_MASK = 0x7c00,
+        MANTISSA_MASK = 0x03ff,
+        exponent_bias = 15,
+        assoc_int_consts = #[unstable(feature = "f16", issue = "116909")],
+        feature = f16,
+        has_reliable_cfg = target_has_reliable_f16,
+        has_reliable_math_cfg = target_has_reliable_f16_math,
+    }
 
     /// Returns `true` if this value is NaN.
     ///

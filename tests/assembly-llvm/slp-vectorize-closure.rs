@@ -2,7 +2,7 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/120189>.
 //! also see <https://godbolt.org/z/W1Yc4s3xo>
 //@ assembly-output: emit-asm
-//@ compile-flags: -Copt-level=3
+//@ compile-flags: -Copt-level=3 -Ctarget-cpu=x86-64-v2
 //@ only-x86_64
 // to test SSE instructions
 

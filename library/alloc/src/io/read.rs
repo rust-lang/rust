@@ -81,7 +81,7 @@ use crate::vec::Vec;
 /// [`&str`]: prim@str
 /// [`std::io`]: crate::io
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
+#[doc(notable_trait(color = "transparent"))]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
 #[rustc_must_implement_one_of(read_buf, read)] // Keep this order, it's important for rust-analyzer (the preferred-to-implement method should come first).
 pub trait Read {
@@ -1108,4 +1108,6 @@ macro_rules! impl_from_endian_bytes {
     )*};
 }
 
-impl_from_endian_bytes!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f32, f64);
+impl_from_endian_bytes!(
+    u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize, f16, f32, f64, f128
+);

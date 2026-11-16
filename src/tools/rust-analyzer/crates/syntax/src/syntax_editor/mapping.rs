@@ -7,6 +7,8 @@ use rustc_hash::FxHashMap;
 
 use crate::{SyntaxElement, SyntaxNode};
 
+use super::index_no_trivia;
+
 #[derive(Debug, Default)]
 pub struct SyntaxMapping {
     // important information to keep track of:
@@ -35,7 +37,8 @@ impl SyntaxMapping {
                 let upmap_parent =
                     self.upmap_child(&token.parent().unwrap(), input_ancestor, output_ancestor)?;
 
-                let element = upmap_parent.children_with_tokens().nth(token.index()).unwrap();
+                let element =
+                    upmap_parent.children_with_tokens().nth(index_no_trivia(child)).unwrap();
                 debug_assert!(
                     element.as_token().is_some_and(|it| it.kind() == token.kind()),
                     "token upmapping mapped to the wrong node ({token:?} -> {element:?})"

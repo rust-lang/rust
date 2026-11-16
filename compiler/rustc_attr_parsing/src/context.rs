@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, DiagLocation, Diagnostic, Level, MultiSpan};
@@ -167,6 +167,7 @@ attribute_parsers!(
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
+        InlineParser,
         LintParser,
         MacroUseParser,
         NakedParser,
@@ -213,7 +214,6 @@ attribute_parsers!(
         Single<DoNotRecommendParser>,
         Single<ExportNameParser>,
         Single<IgnoreParser>,
-        Single<InlineParser>,
         Single<InstructionSetParser>,
         Single<InstrumentFnParser>,
         Single<LangParser>,
@@ -243,7 +243,6 @@ attribute_parsers!(
         Single<RustcDummyParser>,
         Single<RustcDumpDefPathParser>,
         Single<RustcDumpSymbolNameParser>,
-        Single<RustcForceInlineParser>,
         Single<RustcIfThisChangedParser>,
         Single<RustcLegacyConstGenericsParser>,
         Single<RustcLintOptDenyFieldAccessParser>,
@@ -275,6 +274,9 @@ attribute_parsers!(
         Single<WithoutArgs<FfiConstParser>>,
         Single<WithoutArgs<FfiPureParser>>,
         Single<WithoutArgs<FundamentalParser>>,
+        Single<WithoutArgs<LintAsPtrParser>>,
+        Single<WithoutArgs<LintNeverReturnsNullPtrParser>>,
+        Single<WithoutArgs<LintShouldNotBeCalledOnConstItemsParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
         Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,
@@ -300,7 +302,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,
         Single<WithoutArgs<RustcAllowIncoherentImplParser>>,
         Single<WithoutArgs<RustcAllowLifetimeDependentSpecializationParser>>,
-        Single<WithoutArgs<RustcAsPtrParser>>,
         Single<WithoutArgs<RustcCanonicalSymbolParser>>,
         Single<WithoutArgs<RustcCaptureAnalysisParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
@@ -336,7 +337,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcLintQueryInstabilityParser>>,
         Single<WithoutArgs<RustcLintUntrackedQueryInformationParser>>,
         Single<WithoutArgs<RustcMainParser>>,
-        Single<WithoutArgs<RustcNeverReturnsNullPtrParser>>,
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
         Single<WithoutArgs<RustcNoImplicitBoundsParser>>,
         Single<WithoutArgs<RustcNoMirInlineParser>>,
@@ -354,7 +354,6 @@ attribute_parsers!(
         Single<WithoutArgs<RustcPubTransparentParser>>,
         Single<WithoutArgs<RustcReallocatorParser>>,
         Single<WithoutArgs<RustcRegionsParser>>,
-        Single<WithoutArgs<RustcShouldNotBeCalledOnConstItemsParser>>,
         Single<WithoutArgs<RustcSpecializationTraitParser>>,
         Single<WithoutArgs<RustcStdInternalSymbolParser>>,
         Single<WithoutArgs<RustcStrictCoherenceParser>>,
@@ -362,6 +361,7 @@ attribute_parsers!(
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
+        Single<WithoutArgs<UncheckedTypeAliasParser>>,
         // tidy-alphabetical-end
     ];
 );
@@ -804,6 +804,8 @@ pub struct SharedContext<'p, 'sess> {
     /// The span of the syntactical component this attribute was applied to
     pub(crate) target_span: Span,
     pub(crate) target: Target,
+    /// The AST item these attributes were applied to.
+    pub(crate) ast_target: AstTarget<'p>,
 
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 
@@ -863,10 +865,6 @@ pub(crate) struct FinalizeCheckContext<'p, 'sess> {
     ///
     /// Unlike [`all_attrs`](Self::all_attrs), this contains the fully parsed attributes.
     pub(crate) parsed_attrs: &'p [Attribute],
-
-    /// The AST item these attributes were applied to, when the target is an item.
-    /// Used by `finalize_check` to inspect item structure that is not encoded in [`Target`].
-    pub(crate) target_item: Option<&'p rustc_ast::ast::Item>,
 }
 
 impl<'p, 'sess: 'p> Deref for FinalizeCheckContext<'p, 'sess> {

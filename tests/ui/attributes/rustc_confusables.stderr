@@ -34,6 +34,8 @@ error: the `rustc_confusables` attribute cannot be used on functions
    |
 LL | #[rustc_confusables("blah")]
    |   ^^^^^^^^^^^^^^^^^
+...
+LL | fn not_inherent_impl_method() {}
    |
    = help: the `rustc_confusables` attribute can only be applied to inherent methods
 

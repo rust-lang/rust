@@ -7,7 +7,7 @@ fn main() {
         //~| NOTE: only supported directly in conditions of `if` and `while` expressions
     {}
 
-    if Some(_) = y &&
+    if Some(_) = y && //~ NOTE: expected an expression after this
     //~^ NOTE expected `let` expression, found assignment
     //~| ERROR let-chain with missing `let`
         let Some(_) = z

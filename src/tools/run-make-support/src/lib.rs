@@ -17,6 +17,7 @@ pub mod env;
 pub mod external_deps;
 pub mod linker;
 pub mod obj;
+pub mod parallel;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
@@ -55,6 +56,8 @@ pub use serde_json;
 pub use similar;
 pub use tempfile;
 pub use wasmparser;
+#[cfg(windows)]
+pub use windows;
 
 // Helpers for building names of output artifacts that are potentially target-specific.
 pub use crate::artifact_names::{
@@ -101,7 +104,7 @@ pub use crate::path_helpers::{
     shallow_find_files, source_root,
 };
 // Convenience helpers for running binaries and other commands.
-pub use crate::run::{cmd, run, run_fail, run_with_args};
+pub use crate::run::{cmd, run, run_fail, run_fail_with_args, run_with_args};
 // Helpers for scoped test execution where certain properties are attempted to be maintained.
 pub use crate::scoped_run::{run_in_tmpdir, test_while_readonly};
 pub use crate::string::{

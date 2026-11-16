@@ -2,6 +2,7 @@ use crate::env::{self, SplitPathsRef};
 use crate::ffi::{OsStr, OsString};
 use crate::fs::{self, HomeDirs, MediaDirs};
 use crate::io::{self, ErrorKind, const_error};
+use crate::macros::rustdoc_skip_body;
 use crate::path::{Path, PathBuf};
 
 #[derive(Debug, Default, Clone)]
@@ -247,14 +248,17 @@ impl HomeDirsExt for HomeDirs {
         Ok(dirs)
     }
 
+    #[rustdoc_skip_body]
     fn runtime_home(&self) -> Option<&Path> {
         self.extra.runtime.as_deref()
     }
 
+    #[rustdoc_skip_body]
     fn config_dirs(&self) -> Option<XdgDirs<'_>> {
         self.extra.config_path.as_deref().map(XdgDirs::new)
     }
 
+    #[rustdoc_skip_body]
     fn data_dirs(&self) -> Option<XdgDirs<'_>> {
         self.extra.data_path.as_deref().map(XdgDirs::new)
     }
@@ -302,6 +306,7 @@ impl MediaDirsExt for MediaDirs {
         Ok(xdg::parse_user_dirs(&spec, &user_home))
     }
 
+    #[rustdoc_skip_body]
     fn templates(&self) -> Option<&Path> {
         self.extra.templates.as_deref()
     }
@@ -338,6 +343,7 @@ mod xdg {
     use crate::env::{self, join_paths, var_os};
     use crate::ffi::OsString;
     use crate::io::{self, ErrorKind, const_error};
+    use crate::macros::rustdoc_skip_body;
     use crate::ops::Deref;
     use crate::os::unix::ffi::{OsStrExt, OsStringExt};
     use crate::path::{Path, PathBuf};
@@ -377,6 +383,7 @@ mod xdg {
         dirs(env).unwrap_or_else(|| fallback.into())
     }
 
+    #[rustdoc_skip_body]
     pub fn parse_user_dirs<'a>(spec: &'a [u8], user_home: &Path) -> MediaDirs {
         let mut dirs = MediaDirs::empty();
 

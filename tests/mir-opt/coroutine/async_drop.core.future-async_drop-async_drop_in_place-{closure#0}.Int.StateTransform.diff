@@ -22,6 +22,7 @@
 +     let mut _7: std::ptr::NonNull<std::task::Context<'_>>;
   
       bb0: {
+-         _0 = const ();
 +         _7 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
 +         _6 = std::future::ResumeTy(move _7);
 +         _5 = copy (_1.0: &mut {async fn body of std::future::async_drop_in_place<Int>()});
@@ -39,6 +40,7 @@
 +     }
 + 
 +     bb3: {
++         _3 = const ();
 +         _0 = Poll::<()>::Ready(move _3);
 +         discriminant((*_5)) = 1;
           return;

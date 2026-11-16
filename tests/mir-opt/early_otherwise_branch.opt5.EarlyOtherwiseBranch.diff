@@ -16,11 +16,11 @@
           _4 = copy _1;
           StorageLive(_5);
           _5 = copy _2;
-          _3 = (move _4, move _5);
+          _3 = (copy _1, copy _2);
           StorageDead(_5);
           StorageDead(_4);
--         switchInt(copy (_3.0: u32)) -> [1: bb2, 2: bb3, 3: bb4, otherwise: bb1];
-+         _6 = Ne(copy (_3.0: u32), copy (_3.1: u32));
+-         switchInt(copy _1) -> [1: bb2, 2: bb3, 3: bb4, otherwise: bb1];
++         _6 = Ne(copy _1, copy _2);
 +         switchInt(move _6) -> [0: bb6, otherwise: bb1];
       }
   
@@ -31,19 +31,19 @@
       }
   
       bb2: {
--         switchInt(copy (_3.1: u32)) -> [1: bb7, otherwise: bb1];
+-         switchInt(copy _2) -> [1: bb7, otherwise: bb1];
 +         _0 = const 6_u32;
 +         goto -> bb5;
       }
   
       bb3: {
--         switchInt(copy (_3.1: u32)) -> [2: bb6, otherwise: bb1];
+-         switchInt(copy _2) -> [2: bb6, otherwise: bb1];
 +         _0 = const 5_u32;
 +         goto -> bb5;
       }
   
       bb4: {
--         switchInt(copy (_3.1: u32)) -> [3: bb5, otherwise: bb1];
+-         switchInt(copy _2) -> [3: bb5, otherwise: bb1];
 +         _0 = const 4_u32;
 +         goto -> bb5;
       }
@@ -68,7 +68,7 @@
 -     bb8: {
 -         StorageDead(_3);
 -         return;
-+         switchInt(copy (_3.0: u32)) -> [1: bb4, 2: bb3, 3: bb2, otherwise: bb1];
++         switchInt(copy _1) -> [1: bb4, 2: bb3, 3: bb2, otherwise: bb1];
       }
   }
   

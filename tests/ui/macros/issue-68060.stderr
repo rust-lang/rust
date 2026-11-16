@@ -3,6 +3,8 @@ error: the `target_feature` attribute cannot be used on closures
    |
 LL |             #[target_feature(enable = "")]
    |               ^^^^^^^^^^^^^^
+...
+LL |             |_| (),
    |
    = help: the `target_feature` attribute can be applied to functions and methods
 

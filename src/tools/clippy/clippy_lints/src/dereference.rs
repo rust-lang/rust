@@ -380,7 +380,9 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                     && let arg_ty = cx.tcx.erase_and_anonymize_regions(adjusted_ty)
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                                    && let args = typeck.node_args_opt(hir_id).map_or_default(|args| &args[1..])
+                                    && let args = typeck
+                                        .node_args_opt(hir_id)
+                                        .map_or_default(|args| cx.tcx.mk_args(&args.as_slice()[1..]))
                                     && let impl_ty = if cx
                                         .tcx
                                         .fn_sig(fn_id)
@@ -404,7 +406,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                             cx,
                                             impl_ty,
                                             trait_id,
-                                            &args[..cx.tcx.generics_of(trait_id).own_params.len() - 1],
+                                            &args.as_slice()[..cx.tcx.generics_of(trait_id).own_params.len() - 1],
                                         ))
                                         // If there's an inherent method, or a method from another trait,
                                         // with the same name that's also implemented on this same type,
@@ -800,7 +802,7 @@ fn is_in_method_chain<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool
     }
 
     if let Some(parent) = get_parent_expr(cx, e)
-        && parent.span.eq_ctxt(e.span)
+        && parent.span.ctxt() == e.span.ctxt()
     {
         match parent.kind {
             ExprKind::Call(child, _) | ExprKind::MethodCall(_, child, _, _) | ExprKind::Index(child, _, _)
@@ -954,7 +956,7 @@ impl TyCoercionStability {
                 | ty::Placeholder(_)
                 | ty::Dynamic(..)
                 | ty::Param(_) => Self::Reborrow,
-                ty::Adt(_, args)
+                ty::Adt(_, args) | ty::View(_, args, _)
                     if ty.has_placeholders()
                         || ty.has_opaque_types()
                         || (!for_return && args.has_non_region_param()) =>
@@ -988,7 +990,8 @@ impl TyCoercionStability {
                         ..
                     },
                 )
-                | ty::UnsafeBinder(_) => Self::Deref,
+                | ty::UnsafeBinder(_)
+                | ty::View(..) => Self::Deref,
             };
         }
     }

@@ -321,6 +321,9 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
             }
 
             ty::Alias(..) | ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => unreachable!(),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
         ControlFlow::Continue(())
     }

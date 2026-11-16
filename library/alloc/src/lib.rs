@@ -92,6 +92,7 @@
 #![feature(allocator_ext)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(borrowed_buf_init)]
@@ -129,6 +130,7 @@
 #![feature(dispatch_from_dyn)]
 #![feature(ergonomic_clones)]
 #![feature(error_generic_member_access)]
+#![feature(error_type_id_internal)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extend_one_unchecked)]
@@ -156,9 +158,11 @@
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(ptr_alignment_type)]
+#![feature(ptr_cast_array)]
 #![feature(ptr_metadata)]
 #![feature(random)]
 #![feature(raw_os_error_ty)]
+#![feature(register_tool)]
 #![feature(rev_into_inner)]
 #![feature(seek_stream_len)]
 #![feature(set_ptr_value)]
@@ -199,6 +203,8 @@
 #![feature(coroutine_trait)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
+#![feature(f16)]
+#![feature(f128)]
 #![feature(fundamental)]
 #![feature(impl_restriction)]
 #![feature(intrinsics)]
@@ -216,7 +222,11 @@
 #![feature(with_negative_coherence)]
 #![rustc_preserve_ub_checks]
 // tidy-alphabetical-end
-//
+
+// tidy-alphabetical-start
+#![register_tool(lint)]
+// tidy-alphabetical-end
+
 // Rustdoc features:
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]

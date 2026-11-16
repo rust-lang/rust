@@ -14,17 +14,16 @@ use hir_def::{
     resolver::Resolver,
 };
 use la_arena::RawIdx;
-use rustc_hash::FxHashMap;
 use thin_vec::ThinVec;
 
-use crate::lower::LifetimeLoweringMode;
 use crate::{
-    InferenceDiagnostic, Span, TyLoweringDiagnostic,
+    InferenceDiagnostic, Span, ThinFxHashMap, TyLoweringDiagnostic,
     db::{AnonConstId, HirDatabase},
     generics::Generics,
     infer::unify::InferenceTable,
     lower::{
-        ForbidParamsAfterReason, LifetimeElisionKind, TyLoweringContext, TyLoweringInferVarsCtx,
+        ForbidParamsAfterReason, LifetimeElisionKind, LifetimeLoweringMode, TyLoweringContext,
+        TyLoweringInferVarsCtx,
         path::{PathDiagnosticCallback, PathLoweringContext},
     },
     next_solver::{Const, Region, StoredTy, Ty},
@@ -64,7 +63,7 @@ pub(crate) struct PathDiagnosticCallbackData<'a> {
 
 pub(super) struct InferenceTyLoweringVarsCtx<'a, 'db> {
     pub(super) table: &'a mut InferenceTable<'db>,
-    pub(super) type_of_type_placeholder: &'a mut FxHashMap<TypeRefId, StoredTy>,
+    pub(super) type_of_type_placeholder: &'a mut ThinFxHashMap<TypeRefId, StoredTy>,
 }
 
 impl<'db> TyLoweringInferVarsCtx<'db> for InferenceTyLoweringVarsCtx<'_, 'db> {

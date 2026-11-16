@@ -3,6 +3,7 @@ error: the `marker` attribute cannot be used on structs
    |
 LL | #[marker]
    |   ^^^^^^
+LL | struct Struct {}
    |
    = help: the `marker` attribute can only be applied to traits
 
@@ -11,6 +12,7 @@ error: the `marker` attribute cannot be used on inherent impl blocks
    |
 LL | #[marker]
    |   ^^^^^^
+LL | impl Struct {}
    |
    = help: the `marker` attribute can only be applied to traits
 
@@ -19,6 +21,7 @@ error: the `marker` attribute cannot be used on unions
    |
 LL | #[marker]
    |   ^^^^^^
+LL | union Union {
    |
    = help: the `marker` attribute can only be applied to traits
 
@@ -27,6 +30,7 @@ error: the `marker` attribute cannot be used on constants
    |
 LL | #[marker]
    |   ^^^^^^
+LL | const CONST: usize = 10;
    |
    = help: the `marker` attribute can only be applied to traits
 
@@ -35,6 +39,7 @@ error: the `marker` attribute cannot be used on functions
    |
 LL | #[marker]
    |   ^^^^^^
+LL | fn function() {}
    |
    = help: the `marker` attribute can only be applied to traits
 
@@ -43,6 +48,7 @@ error: the `marker` attribute cannot be used on type aliases
    |
 LL | #[marker]
    |   ^^^^^^
+LL | type Type = ();
    |
    = help: the `marker` attribute can only be applied to traits
 

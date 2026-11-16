@@ -139,6 +139,12 @@ pub(crate) fn registered_attr_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools 
         };
 
     // We implicitly add predefined tools, but it's not an error to register them explicitly.
+
+    // FIXME this should instead be using tool attribute imports or something similar
+    if tcx.features().type_info() {
+        registered_tools.insert(Ident::with_dummy_span(sym::reflection_placeholder));
+    }
+
     registered_tools.extend(PREDEFINED_TOOLS.iter().cloned().map(Ident::with_dummy_span));
     registered_tools
 }
@@ -691,6 +697,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             is_test: self.tcx.sess.is_test_crate(),
                         });
                     }
+                }
+                if kind == MacroKind::Attr
+                    && let [tool, _second, ..] = path.segments.as_slice()
+                    && self.registered_attr_tool_decls.contains_key(&IdentKey::new(tool.ident))
+                {
+                    self.dcx().emit_err(diagnostics::ToolAttrAmbiguity {
+                        path_span: path.span,
+                        attr_path: pprust::path_to_string(path),
+                        tool: tool.ident.name,
+                    });
                 }
             }
             Res::NonMacroAttr(..) | Res::Err => {}

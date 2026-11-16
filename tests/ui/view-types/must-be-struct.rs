@@ -1,5 +1,4 @@
-#![feature(view_types, view_type_macro)]
-#![allow(unused)]
+#![feature(view_types)]
 
 use std::view::view_type;
 

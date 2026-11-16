@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::hash::Hasher;
 
 use rustc_crate_store::Untracked;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -82,6 +82,10 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
     /// avoid doing it twice when the span starts and ends in the same file, which is almost always
     /// the case.
     ///
+    /// To avoid stable-hashing inconsistencies between stage1 and stage2 compilers, take care
+    /// not to rely on any `Hash` impls that were provided or derived by the standard library.
+    /// Instead, delegate to `StableHash` impls, or call `Hasher::write_*` methods directly.
+    ///
     /// IMPORTANT: changes to this method should be reflected in implementations of `SpanEncoder`.
     #[inline]
     fn stable_hash_span(&mut self, raw_span: RawSpan, hasher: &mut StableHasher) {
@@ -113,7 +117,7 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         span.parent.stable_hash(self, hasher);
 
         if span.is_dummy() {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
+            hasher.write_u8(TAG_INVALID_SPAN);
             return;
         }
 
@@ -126,9 +130,9 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
             // This span is enclosed in a definition: only hash the relative position. This catches
             // a subset of the cases from the `file.contains(parent.lo)`. But we can do this check
             // cheaply without the expensive `span_data_to_lines_and_cols` query.
-            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            (span.lo - parent.lo).to_u32().stable_hash(self, hasher);
-            (span.hi - parent.lo).to_u32().stable_hash(self, hasher);
+            hasher.write_u8(TAG_RELATIVE_SPAN);
+            hasher.write_u32((span.lo - parent.lo).to_u32());
+            hasher.write_u32((span.hi - parent.lo).to_u32());
             return;
         }
 
@@ -137,23 +141,24 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         let Some((file, line_lo, col_lo, line_hi, col_hi)) =
             self.source_map().span_data_to_lines_and_cols(&span)
         else {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
+            hasher.write_u8(TAG_INVALID_SPAN);
             return;
         };
+        let file_stable_id = file.stable_id;
 
         if let Some(parent) = parent
             && file.contains(parent.lo)
         {
             // This span is relative to another span in the same file,
             // only hash the relative position.
-            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            Hash::hash(&(span.lo.0.wrapping_sub(parent.lo.0)), hasher);
-            Hash::hash(&(span.hi.0.wrapping_sub(parent.lo.0)), hasher);
+            hasher.write_u8(TAG_RELATIVE_SPAN);
+            hasher.write_u32(span.lo.0.wrapping_sub(parent.lo.0));
+            hasher.write_u32(span.hi.0.wrapping_sub(parent.lo.0));
             return;
         }
 
-        Hash::hash(&TAG_VALID_SPAN, hasher);
-        Hash::hash(&file.stable_id, hasher);
+        hasher.write_u8(TAG_VALID_SPAN);
+        file_stable_id.stable_hash(self, hasher);
 
         // Hash both the length and the end location (line/column) of a span. If we hash only the
         // length, for example, then two otherwise equal spans with different end locations will
@@ -165,8 +170,8 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
 
         let col_line = pack_span_location(line_lo, col_lo, line_hi, col_hi);
         let len = (span.hi - span.lo).0;
-        Hash::hash(&col_line, hasher);
-        Hash::hash(&len, hasher);
+        hasher.write_u64(col_line);
+        hasher.write_u32(len);
     }
 
     #[inline]

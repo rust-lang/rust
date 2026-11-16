@@ -3,6 +3,8 @@
 // and this test checks that the cleaner error message is printed instead.
 // See https://github.com/rust-lang/rust/issues/13517
 
+//@ ignore-nvptx64-nvidia-cuda
+
 use run_make_support::rustc;
 
 // NOTE: This cannot be a UI test due to the --out-dir flag, which is

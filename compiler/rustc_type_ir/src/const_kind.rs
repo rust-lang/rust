@@ -204,6 +204,19 @@ impl StableHash for InferConst {
     }
 }
 
+pub type ConstEvalResult<I> = Result<<I as Interner>::ValTree, ConstEvalErr<I>>;
+
+/// Errors from CTFE we care about in next-solver.
+#[derive_where(Clone, Copy, Debug; I: Interner)]
+pub enum ConstEvalErr<I: Interner> {
+    /// Unsupported type encountered while constructing valtree after evaluation.
+    NonValtreeable(I::Ty),
+    /// Already reported error.
+    Reported(I::ErrorGuaranteed),
+    /// Too generic or otherwise failed CTFE.
+    TooGeneric,
+}
+
 /// This datastructure is used to represent the value of constants used in the type system.
 ///
 /// We explicitly choose a different datastructure from the way values are processed within

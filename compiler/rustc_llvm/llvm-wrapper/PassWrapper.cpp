@@ -1,6 +1,7 @@
 #include "LLVMWrapper.h"
 
 #include "llvm-c/Core.h"
+#include "llvm-c/Support.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
@@ -22,6 +23,9 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
+#if LLVM_VERSION_GE(24, 0)
+#include "llvm/Passes/RunCodeGen.h"
+#endif
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Support/CBindingWrapping.h"
@@ -368,10 +372,12 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     return nullptr;
   }
 
-  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
-
 #if LLVM_VERSION_LT(24, 0)
+  TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
   Options.FloatABIType = FloatABIType;
+#else
+  TargetOptions Options =
+      codegen::getTargetOptions(cl::getCAPILibraryOptions(), Trip);
 #endif
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
@@ -446,7 +452,17 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   if (Initialized)
     return;
   Initialized = true;
+#if LLVM_VERSION_GE(24, 0)
+  char *Err;
+  if (LLVMParseCommandLineOptionsWithError(Argc, Argv, "", &Err)) {
+    // FIXME: Report the error via Rust's diagnostics infrastructure.
+    errs() << Err;
+    LLVMDisposeMessage(Err);
+    exit(1);
+  }
+#else
   cl::ParseCommandLineOptions(Argc, Argv);
+#endif
 }
 
 enum class LLVMRustFileType {
@@ -465,35 +481,23 @@ static CodeGenFileType fromRust(LLVMRustFileType Type) {
   }
 }
 
-extern "C" LLVMRustResult
-LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
-                        const char *Path, const char *DwoPath,
-                        LLVMRustFileType RustFileType, bool VerifyIR,
-                        bool DisableSimplifyLibCalls) {
-  std::unique_ptr<llvm::legacy::PassManager> PM =
-      std::make_unique<llvm::legacy::PassManager>();
+extern "C" typedef llvm::PassPluginLibraryInfo (*LLVMGetPassPluginInfo)();
 
-  PM->add(createTargetTransformInfoWrapperPass(
-      unwrap(Target)->getTargetIRAnalysis()));
+enum class LLVMRustTpdeMode {
+  None,
+  Only,
+  Try,
+};
 
-  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
-  TargetOptions *Options = &unwrap(Target)->Options;
-  auto TLII = TargetLibraryInfoImpl(TargetTriple);
-  if (DisableSimplifyLibCalls)
-    TLII.disableAllFunctions();
-  PM->add(new TargetLibraryInfoWrapperPass(TLII));
-#if LLVM_VERSION_GE(24, 0)
-  // LLVM 24 removed TargetOptions::EABIVersion and ExceptionModel; the EABI
-  // version and exception model are now derived from the target triple and
-  // module flags respectively instead.
-  PM->add(new RuntimeLibraryInfoWrapper(Options->MCOptions.ABIName,
-                                        Options->VecLib));
-#else
-  PM->add(new RuntimeLibraryInfoWrapper(
-      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
-      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
-#endif
+struct LLVMRustTpdeOptions {
+  LLVMRustTpdeMode mode;
+  LLVMGetPassPluginInfo plugin;
+};
 
+extern "C" LLVMRustResult LLVMRustWriteOutputFile(
+    LLVMTargetMachineRef Target, LLVMModuleRef M, const char *Path,
+    const char *DwoPath, LLVMRustFileType RustFileType, bool VerifyIR,
+    bool DisableSimplifyLibCalls, LLVMRustTpdeOptions TpdeOptions) {
   auto FileType = fromRust(RustFileType);
 
   std::string ErrorInfo;
@@ -506,28 +510,70 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
     return LLVMRustResult::Failure;
   }
 
-  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
-  // in a couple of places inside of the object. Explicitly delete the PM after
-  // we call run() to avoid dangling references.
+  std::unique_ptr<llvm::raw_pwrite_stream> DwoOS = nullptr;
+  std::unique_ptr<llvm::raw_pwrite_stream> BDwoOS = nullptr;
   auto BOS = buffer_ostream(OS);
+
+  if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
+    assert(
+        TpdeOptions.plugin &&
+        "rustc_codegen_llvm must set TpdeOptions.plugin if using -Zllvm-tpde");
+    llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
+    if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
+      return LLVMRustResult::Success;
+    } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
+      std::string error = "Failed to compile module " +
+                          unwrap(M)->getModuleIdentifier() + " with TPDE";
+      LLVMRustSetLastError(error.c_str());
+      return LLVMRustResult::Failure;
+    }
+  }
+
   if (DwoPath) {
-    auto DOS = raw_fd_ostream(DwoPath, EC, sys::fs::OF_None);
-    EC.clear();
-    if (EC)
+    DwoOS = std::make_unique<raw_fd_ostream>(DwoPath, EC, sys::fs::OF_None);
+    if (EC) {
       ErrorInfo = EC.message();
+      DwoOS.reset();
+    }
     if (ErrorInfo != "") {
       LLVMRustSetLastError(ErrorInfo.c_str());
       return LLVMRustResult::Failure;
     }
-    auto DBOS = buffer_ostream(DOS);
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, !VerifyIR);
-    PM->run(*unwrap(M));
-    PM.reset();
-  } else {
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, !VerifyIR);
-    PM->run(*unwrap(M));
-    PM.reset();
+    if (DwoOS)
+      BDwoOS = std::make_unique<llvm::buffer_ostream>(*DwoOS);
   }
+
+#if LLVM_VERSION_GE(24, 0)
+  Error CodeGenError =
+      runCodeGenPipeline(*unwrap(Target), *unwrap(M), BOS, BDwoOS.get(),
+                         FileType, !VerifyIR, DisableSimplifyLibCalls);
+  if (CodeGenError)
+    return LLVMRustResult::Failure;
+#else
+  std::unique_ptr<llvm::legacy::PassManager> PM =
+      std::make_unique<llvm::legacy::PassManager>();
+
+  PM->add(createTargetTransformInfoWrapperPass(
+      unwrap(Target)->getTargetIRAnalysis()));
+
+  auto TargetTriple = Triple(unwrap(M)->getTargetTriple());
+  TargetOptions *Options = &unwrap(Target)->Options;
+  auto TLII = TargetLibraryInfoImpl(TargetTriple);
+  if (DisableSimplifyLibCalls)
+    TLII.disableAllFunctions();
+  PM->add(new TargetLibraryInfoWrapperPass(TLII));
+  PM->add(new RuntimeLibraryInfoWrapper(
+      TargetTriple, Options->ExceptionModel, Options->FloatABIType,
+      Options->EABIVersion, Options->MCOptions.ABIName, Options->VecLib));
+
+  // TargetMachine::addPassesToEmitFile stores pointers to the output streams
+  // in a couple of places inside of the object. Explicitly delete the PM after
+  // we call run() to avoid dangling references.
+  unwrap(Target)->addPassesToEmitFile(*PM, BOS, BDwoOS.get(), FileType,
+                                      !VerifyIR);
+  PM->run(*unwrap(M));
+  PM.reset();
+#endif
 
   return LLVMRustResult::Success;
 }

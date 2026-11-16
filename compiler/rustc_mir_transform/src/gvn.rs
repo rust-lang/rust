@@ -1107,7 +1107,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
-            Rvalue::BinaryOp(op, (ref mut lhs, ref mut rhs)) => {
+            Rvalue::BinaryOp(ref mut op, (ref mut lhs, ref mut rhs)) => {
                 return self.simplify_binary(op, lhs, rhs, location);
             }
             Rvalue::UnaryOp(op, ref mut arg_op) => {
@@ -1383,7 +1383,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_binary(
         &mut self,
-        op: BinOp,
+        op: &mut BinOp,
         lhs_operand: &mut Operand<'tcx>,
         rhs_operand: &mut Operand<'tcx>,
         location: Location,
@@ -1391,7 +1391,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let lhs = self.simplify_operand(lhs_operand, location);
         let rhs = self.simplify_operand(rhs_operand, location);
 
-        let (lhs, rhs) = if canonicalization::canonicalize_binary_operands(
+        let (lhs, rhs) = if canonicalization::canonicalize_binary_operations(
             self.tcx,
             self.local_decls,
             op,
@@ -1405,6 +1405,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
         // Only short-circuit options after we called `simplify_operand`
         // on both operands for side effect.
+        let op = *op;
         let mut lhs = lhs?;
         let mut rhs = rhs?;
 
@@ -1735,7 +1736,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         || adt_def.all_fields().any(|field| {
                             ty_may_have_ref_inner(
                                 tcx,
-                                field.ty(tcx, args).skip_normalization(),
+                                field.ty(tcx, *args).skip_normalization(),
                                 depth,
                             )
                         })
@@ -1754,6 +1755,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::Alias(..)
                 | ty::Param(_)
                 | ty::Placeholder(_) => true,
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
         ty_may_have_ref_inner(self.tcx, ty, 0)
@@ -1849,7 +1853,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, *args).skip_norm_wip()))
         } else {
             None
         }
@@ -1959,9 +1963,9 @@ fn op_to_prop_const<'tcx>(
         if let GlobalAlloc::Memory(alloc) = ecx.tcx.global_alloc(alloc_id)
             // Transmuting a constant is just an offset in the allocation. If the alignment of the
             // allocation is not enough, fallback to copying into a properly aligned value.
-            && alloc.inner().align >= op.layout.align.abi
+            && alloc.inner().align >= op.layout.align
             // If this is a packed field the offset must also be sufficiently aligned.
-            && offset.bytes().is_multiple_of(op.layout.align.abi.bytes())
+            && offset.bytes().is_multiple_of(op.layout.align.bytes())
         {
             return Some(ConstValue::Indirect { alloc_id, offset });
         }

@@ -11,9 +11,9 @@ use span::AstIdNode;
 use syntax::{AstPtr, ast};
 
 use hir_def::{
-    AdtId, AssocItemId, AstIdLoc, AttrDefId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId,
-    LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
-    VariantId,
+    AdtId, AssocItemId, AstIdLoc, AttrDefId, ConstParamId, DefWithBodyId, EnumId, FieldId,
+    GenericDefId, ImplId, LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
+    TypeOrConstParamId, TypeParamId, VariantId,
     attrs::{AttrFlags, Docs},
     dyn_map::{
         DynMap,
@@ -290,9 +290,11 @@ impl ChildBySource for GenericDefId {
                 let id = TypeOrConstParamId { parent: *self, local_id };
                 match ast_param {
                     ast::TypeOrConstParam::Type(a) => {
+                        let id = TypeParamId::from_unchecked(id);
                         res[keys::TYPE_PARAM].insert(AstPtr::new(&a), id)
                     }
                     ast::TypeOrConstParam::Const(a) => {
+                        let id = ConstParamId::from_unchecked(id);
                         res[keys::CONST_PARAM].insert(AstPtr::new(&a), id)
                     }
                 }

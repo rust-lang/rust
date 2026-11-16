@@ -68,7 +68,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, kinds: &[RustcDumpLa
         Ok(ty_layout) => {
             for kind in kinds {
                 let message = match kind {
-                    RustcDumpLayoutKind::Align => format!("align: {:?}", *ty_layout.align),
+                    RustcDumpLayoutKind::Align => format!("align: {:?}", ty_layout.align),
                     RustcDumpLayoutKind::BackendRepr => {
                         format!("backend_repr: {:?}", ty_layout.backend_repr)
                     }

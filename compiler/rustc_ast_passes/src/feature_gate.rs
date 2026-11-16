@@ -241,12 +241,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 // Function pointers cannot be `const`
                 self.check_late_bound_lifetime_defs(&fn_ptr_ty.generic_params);
             }
-            ast::TyKind::Pat(..) => {
-                gate!(self, pattern_types, ty.span, "pattern types are unstable");
-            }
-            ast::TyKind::View(..) => {
-                gate!(self, view_types, ty.span, "view types are unstable");
-            }
             _ => {}
         }
         visit::walk_ty(self, ty)
@@ -431,7 +425,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     // tidy-alphabetical-start
     gate_all!(async_for_loop, "`for await` loops are experimental");
-    gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
     gate_all!(const_block_items, "const block items are experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
@@ -452,6 +445,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
     gate_all!(impl_restriction, "`impl` restrictions are experimental");
+    gate_all!(internal_syntax, "this syntax is internal");
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     gate_all!(move_expr, "`move(expr)` syntax is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
@@ -469,7 +463,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(unnamed_enum_variants, "unnamed enum variants are experimental");
     gate_all!(unsafe_binders, "unsafe binder types are experimental");
     gate_all!(unsafe_fields, "`unsafe` fields are experimental");
-    gate_all!(view_types, "view types are experimental");
     gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
     // tidy-alphabetical-end
@@ -491,7 +484,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(
         named_fn_trait_parameters,
-        "named parameters in parenthesized generic argument lists are experimental"
+        "parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental"
     );
 
     // `associated_const_equality` will be stabilized as part of `gca_min_const_items`.

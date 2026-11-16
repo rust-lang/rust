@@ -5,6 +5,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ffi::OsStr;
+use crate::macros::rustdoc_skip_body;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 #[cfg(doc)]
@@ -252,21 +253,25 @@ pub impl(self) trait CommandExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
+    #[rustdoc_skip_body]
     fn uid(&mut self, id: UserId) -> &mut process::Command {
         self.as_inner_mut().uid(id);
         self
     }
 
+    #[rustdoc_skip_body]
     fn gid(&mut self, id: GroupId) -> &mut process::Command {
         self.as_inner_mut().gid(id);
         self
     }
 
+    #[rustdoc_skip_body]
     fn groups(&mut self, groups: &[GroupId]) -> &mut process::Command {
         self.as_inner_mut().groups(groups);
         self
     }
 
+    #[rustdoc_skip_body]
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,
@@ -275,12 +280,14 @@ impl CommandExt for process::Command {
         self
     }
 
+    #[rustdoc_skip_body]
     fn exec(&mut self) -> io::Error {
         // NOTE: This may *not* be safe to call after `libc::fork`, because it
         // may allocate. That may be worth fixing at some point in the future.
         self.as_inner_mut().exec(sys::process::Stdio::Inherit)
     }
 
+    #[rustdoc_skip_body]
     fn arg0<S>(&mut self, arg: S) -> &mut process::Command
     where
         S: AsRef<OsStr>,
@@ -289,16 +296,19 @@ impl CommandExt for process::Command {
         self
     }
 
+    #[rustdoc_skip_body]
     fn process_group(&mut self, pgroup: i32) -> &mut process::Command {
         self.as_inner_mut().pgroup(pgroup);
         self
     }
 
+    #[rustdoc_skip_body]
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command {
         self.as_inner_mut().chroot(dir.as_ref());
         self
     }
 
+    #[rustdoc_skip_body]
     fn setsid(&mut self, setsid: bool) -> &mut process::Command {
         self.as_inner_mut().setsid(setsid);
         self
@@ -443,26 +453,32 @@ pub impl(self) trait ExitStatusExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ExitStatusExt for process::ExitStatus {
+    #[rustdoc_skip_body]
     fn from_raw(raw: i32) -> Self {
         process::ExitStatus::from_inner(From::from(raw))
     }
 
+    #[rustdoc_skip_body]
     fn signal(&self) -> Option<i32> {
         self.as_inner().signal()
     }
 
+    #[rustdoc_skip_body]
     fn core_dumped(&self) -> bool {
         self.as_inner().core_dumped()
     }
 
+    #[rustdoc_skip_body]
     fn stopped_signal(&self) -> Option<i32> {
         self.as_inner().stopped_signal()
     }
 
+    #[rustdoc_skip_body]
     fn continued(&self) -> bool {
         self.as_inner().continued()
     }
 
+    #[rustdoc_skip_body]
     fn into_raw(self) -> i32 {
         self.as_inner().into_raw().into()
     }
@@ -594,15 +610,18 @@ pub impl(self) trait ChildExt {
 
 #[unstable(feature = "unix_send_signal", issue = "141975")]
 impl ChildExt for process::Child {
+    #[rustdoc_skip_body]
     fn send_signal(&self, signal: i32) -> io::Result<()> {
         self.handle.send_signal(signal)
     }
 
+    #[rustdoc_skip_body]
     fn send_process_group_signal(&self, signal: i32) -> io::Result<()> {
         self.handle.send_process_group_signal(signal)
     }
 
     #[cfg(not(target_os = "espidf"))]
+    #[rustdoc_skip_body]
     fn kill_process_group(&mut self) -> io::Result<()> {
         self.handle.send_process_group_signal(libc::SIGKILL)
     }
@@ -619,6 +638,7 @@ impl ChildExt for process::Child {
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawFd for process::Stdio {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(fd: RawFd) -> process::Stdio {
         let fd = sys::fd::FileDesc::from_raw_fd(fd);
         let io = sys::process::Stdio::Fd(fd);
@@ -631,6 +651,7 @@ impl From<OwnedFd> for process::Stdio {
     /// Takes ownership of a file descriptor and returns a [`Stdio`](process::Stdio)
     /// that can attach a stream to it.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(fd: OwnedFd) -> process::Stdio {
         let fd = sys::fd::FileDesc::from_inner(fd);
         let io = sys::process::Stdio::Fd(fd);
@@ -641,6 +662,7 @@ impl From<OwnedFd> for process::Stdio {
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStdin {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().as_raw_fd()
     }
@@ -649,6 +671,7 @@ impl AsRawFd for process::ChildStdin {
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStdout {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().as_raw_fd()
     }
@@ -657,6 +680,7 @@ impl AsRawFd for process::ChildStdout {
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStderr {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().as_raw_fd()
     }
@@ -665,6 +689,7 @@ impl AsRawFd for process::ChildStderr {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for process::ChildStdin {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_inner().into_raw_fd()
     }
@@ -673,6 +698,7 @@ impl IntoRawFd for process::ChildStdin {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for process::ChildStdout {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_inner().into_raw_fd()
     }
@@ -681,6 +707,7 @@ impl IntoRawFd for process::ChildStdout {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for process::ChildStderr {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_inner().into_raw_fd()
     }
@@ -689,6 +716,7 @@ impl IntoRawFd for process::ChildStderr {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStdin {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().as_fd()
     }
@@ -698,6 +726,7 @@ impl AsFd for crate::process::ChildStdin {
 impl From<crate::process::ChildStdin> for OwnedFd {
     /// Takes ownership of a [`ChildStdin`](crate::process::ChildStdin)'s file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedFd {
         child_stdin.into_inner().into_inner()
     }
@@ -710,6 +739,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
 #[stable(feature = "child_stream_from_fd", since = "1.74.0")]
 impl From<OwnedFd> for process::ChildStdin {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(fd: OwnedFd) -> process::ChildStdin {
         let pipe = ChildPipe::from_inner(fd);
         process::ChildStdin::from_inner(pipe)
@@ -719,6 +749,7 @@ impl From<OwnedFd> for process::ChildStdin {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStdout {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().as_fd()
     }
@@ -728,6 +759,7 @@ impl AsFd for crate::process::ChildStdout {
 impl From<crate::process::ChildStdout> for OwnedFd {
     /// Takes ownership of a [`ChildStdout`](crate::process::ChildStdout)'s file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedFd {
         child_stdout.into_inner().into_inner()
     }
@@ -740,6 +772,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
 #[stable(feature = "child_stream_from_fd", since = "1.74.0")]
 impl From<OwnedFd> for process::ChildStdout {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(fd: OwnedFd) -> process::ChildStdout {
         let pipe = ChildPipe::from_inner(fd);
         process::ChildStdout::from_inner(pipe)
@@ -749,6 +782,7 @@ impl From<OwnedFd> for process::ChildStdout {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStderr {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().as_fd()
     }
@@ -758,6 +792,7 @@ impl AsFd for crate::process::ChildStderr {
 impl From<crate::process::ChildStderr> for OwnedFd {
     /// Takes ownership of a [`ChildStderr`](crate::process::ChildStderr)'s file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedFd {
         child_stderr.into_inner().into_inner()
     }
@@ -770,6 +805,7 @@ impl From<crate::process::ChildStderr> for OwnedFd {
 #[stable(feature = "child_stream_from_fd", since = "1.74.0")]
 impl From<OwnedFd> for process::ChildStderr {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(fd: OwnedFd) -> process::ChildStderr {
         let pipe = ChildPipe::from_inner(fd);
         process::ChildStderr::from_inner(pipe)

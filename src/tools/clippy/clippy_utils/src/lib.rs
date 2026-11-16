@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(unwrap_infallible))]
 #![feature(deref_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(rustc_private)]
@@ -108,8 +107,8 @@ use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementK
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind, PointerCoercion};
 use rustc_middle::ty::layout::IntegerExt as _;
 use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
-    TypeFlags, TypeVisitableExt as _, TypeckResults, UintTy, UpvarCapture,
+    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, IntTy, Ty, TyCtxt, TypeFlags,
+    TypeVisitableExt as _, TypeckResults, UintTy, UpvarCapture,
 };
 use rustc_session::config::Input;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -391,6 +390,36 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
         QPath::Resolved(_, path) => matches!(path.res, Res::Def(DefKind::TyAlias | DefKind::AssocTy, ..)),
         QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => is_ty_alias(&qpath),
         QPath::TypeRelative(..) => false,
+    }
+}
+
+/// Checks if the given `Ty` is either an `impl Future` or async coroutine.
+pub fn ty_is_future<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    let Some(future_trait) = cx.tcx.lang_items().future_trait() else {
+        return false;
+    };
+
+    match *ty.kind() {
+        rustc_ty::Alias(_, alias) => {
+            if let rustc_ty::AliasTy {
+                kind: rustc_ty::Opaque { def_id },
+                args,
+                ..
+            } = alias
+                && let preds = cx.tcx.explicit_item_self_bounds(def_id)
+                && preds
+                    .iter_instantiated_copied(cx.tcx, args)
+                    .map(rustc_ty::Unnormalized::skip_normalization)
+                    .filter_map(|(p, _)| p.as_trait_clause())
+                    .any(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
+            {
+                true
+            } else {
+                false
+            }
+        },
+        rustc_ty::Coroutine(def_id, _) | rustc_ty::CoroutineWitness(def_id, _) => cx.tcx.coroutine_is_async(def_id),
+        _ => false,
     }
 }
 
@@ -2037,16 +2066,6 @@ pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     })
 }
 
-pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
-    if is_no_core_crate(cx) {
-        None
-    } else if is_no_std_crate(cx) {
-        Some("core")
-    } else {
-        Some("std")
-    }
-}
-
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     find_attr!(cx.tcx, crate, NoStd)
 }
@@ -2102,7 +2121,7 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
 pub fn fn_def_id_with_node_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
-) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+) -> Option<(DefId, rustc_ty::GenericArgs<'tcx>)> {
     let typeck = cx.typeck_results();
     match &expr.kind {
         ExprKind::MethodCall(..) => Some((
@@ -3240,7 +3259,7 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     from: LocalDefId,
     method: DefId,
-    args: GenericArgsRef<'tcx>,
+    args: rustc_ty::GenericArgs<'tcx>,
 ) -> String {
     let assoc_item = tcx.associated_item(method);
     let def_id = assoc_item.container_id(tcx);
@@ -3253,7 +3272,12 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     }
 }
 
-fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args: GenericArgsRef<'tcx>) -> String {
+fn get_path_to_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    from: LocalDefId,
+    ty: Ty<'tcx>,
+    args: rustc_ty::GenericArgs<'tcx>,
+) -> String {
     match ty.kind() {
         rustc_ty::Adt(adt, _) => get_path_to_callee(tcx, from, adt.did()),
         // TODO these types need to be recursively resolved as well
@@ -3494,7 +3518,7 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
                 v_def
                     .fields
                     .iter()
-                    .any(|field| field.ty(cx.tcx, generic_args).has_type_flags(TypeFlags::HAS_TY_PARAM))
+                    .any(|field| field.ty(cx.tcx, *generic_args).has_type_flags(TypeFlags::HAS_TY_PARAM))
             } else {
                 false
             }

@@ -157,7 +157,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                     if let Some(field) = field {
                         let ty0 = self.tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            field.ty(self.tcx, args),
+                            field.ty(self.tcx, *args),
                         );
                         // Generalize any repr(transparent) user-defined type that is either a
                         // pointer or reference, and either references itself or any other type that
@@ -226,6 +226,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
                 bug!("fold_ty: unexpected `{:?}`", t.kind());
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -415,7 +418,7 @@ fn transform_drop_glue<'tcx>(tcx: TyCtxt<'tcx>, mut instance: Instance<'tcx>) ->
     let predicate = ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::new_from_args(
         tcx,
         trait_id,
-        ty::List::empty(),
+        ty::GenericArgs::empty(),
     ));
     let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);
     let self_ty = Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased);
@@ -657,11 +660,11 @@ pub(crate) fn transform_instance<'tcx>(
         // (i.e., type ids are encoded for them as is).
         ty::InstanceKind::Shim(ty::ShimKind::Clone(..)) => instance,
 
-        // FnPtrAsPtrShims and FnPtrFromPtrShims (i.e., compiler-generated `<T as FnPtr>::as_ptr`
+        // FnAddrAsPtrShims and FnPtrFromPtrShims (i.e., compiler-generated `<T as FnPtr>::as_ptr`
         // and `<T as FnPtr>::from_ptr` implementations): the FnPtr trait is not dyn compatible, so
         // they can not be called through a vtable and are not transformed (i.e., type ids are
         // encoded for them as is).
-        ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..) | ty::ShimKind::FnPtrFromPtr(..)) => {
+        ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..) | ty::ShimKind::FnPtrFromPtr(..)) => {
             instance
         }
 

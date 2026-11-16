@@ -406,6 +406,123 @@ fn test_retain_maybeuninits() {
 }
 
 #[test]
+fn test_retain_unstable() {
+    let mut vec = vec![1, 2, 3, 4];
+    vec.retain_unstable(|&mut x| x % 2 == 0);
+    assert_eq!(vec, [4, 2]);
+}
+
+#[test]
+fn test_retain_unstable_all_false() {
+    let mut vec = vec![1, 3, 5, 7];
+    vec.retain_unstable(|&mut x| x % 2 == 0);
+    assert_eq!(vec, []);
+}
+
+#[test]
+fn test_retain_unstable_all_true() {
+    let mut vec = vec![2, 4, 6, 8];
+    vec.retain_unstable(|&mut x| x % 2 == 0);
+    assert_eq!(vec, [2, 4, 6, 8]);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_unstable_pred_panic_with_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain_unstable(|r| match **r {
+            0 => false,
+            1 => true,
+            2 => false,
+            3 => true,
+            _ => panic!(), // panic with element 0 when finding swap
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_unstable_pred_panic_no_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain_unstable(|r| match **r {
+            0 | 1 | 2 => true,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_unstable_drop_panic() {
+    struct Wrap(Rc<i32>);
+
+    impl Drop for Wrap {
+        fn drop(&mut self) {
+            if *self.0 == 3 {
+                panic!();
+            }
+        }
+    }
+
+    let v = (0..5).map(|x| Rc::new(x)).collect::<Vec<_>>();
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.iter().map(|r| Wrap(r.clone())).collect::<Vec<_>>();
+        v.retain_unstable(|w| {
+            match *w.0 {
+                0 => true,
+                1 => false,
+                2 => true,
+                3 => false, // Drop panic.
+                _ => true,
+            }
+        });
+    }))
+    .unwrap_err();
+    // Other elements are dropped when `drop` of one element panicked.
+    // The panicked wrapper also has its Rc dropped.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_unstable_maybeuninits() {
+    // This test aimed to be run under Miri.
+    use core::mem::MaybeUninit;
+    let mut vec: Vec<_> = [1i32, 2, 3, 4].map(|v| MaybeUninit::new(vec![v])).into();
+    vec.retain_unstable(|x| {
+        // SAFETY: Retain must visit every element of Vec exactly once.
+        // Our values is initialized at creation of Vec.
+        let v = unsafe { x.assume_init_ref()[0] };
+        if v & 1 == 0 {
+            return true;
+        }
+        // SAFETY: Value is initialized.
+        // Value wouldn't be dropped by `Vec::retain_mut`
+        // because `MaybeUninit` doesn't drop content.
+        drop(unsafe { x.assume_init_read() });
+        false
+    });
+    let vec: Vec<i32> = vec
+        .into_iter()
+        .map(|x| unsafe {
+            // SAFETY: All values dropped in retain predicate must be removed by `Vec::retain_unstable`.
+            // Remaining values are initialized.
+            x.assume_init()[0]
+        })
+        .collect();
+    assert_eq!(vec, [4, 2]);
+}
+
+#[test]
 fn test_dedup() {
     fn case(a: Vec<i32>, b: Vec<i32>) {
         let mut v = a;

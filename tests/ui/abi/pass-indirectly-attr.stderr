@@ -1,5 +1,5 @@
 error[E0692]: transparent struct cannot have other repr hints
-  --> $DIR/pass-indirectly-attr.rs:35:1
+  --> $DIR/pass-indirectly-attr.rs:34:1
    |
 LL | #[rustc_pass_indirectly_in_non_rustic_abis]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,9 +14,7 @@ error: fn_abi_of(extern_c) = FnAbi {
                        ty: Type,
                        layout: Layout {
                            size: Size(1 bytes),
-                           align: AbiAlign {
-                               abi: Align(1 bytes),
-                           },
+                           align: Align(1 bytes),
                            backend_repr: Memory {
                                sized: true,
                            },
@@ -58,9 +56,7 @@ error: fn_abi_of(extern_c) = FnAbi {
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
+                       align: Align(1 bytes),
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -86,7 +82,7 @@ error: fn_abi_of(extern_c) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/pass-indirectly-attr.rs:20:1
+  --> $DIR/pass-indirectly-attr.rs:19:1
    |
 LL | pub extern "C" fn extern_c(_: Type) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,9 +94,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                        ty: Type,
                        layout: Layout {
                            size: Size(1 bytes),
-                           align: AbiAlign {
-                               abi: Align(1 bytes),
-                           },
+                           align: Align(1 bytes),
                            backend_repr: Memory {
                                sized: true,
                            },
@@ -151,9 +145,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
                    ty: (),
                    layout: Layout {
                        size: Size(0 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
+                       align: Align(1 bytes),
                        backend_repr: Memory {
                            sized: true,
                        },
@@ -179,7 +171,7 @@ error: fn_abi_of(extern_rust) = FnAbi {
            conv: Rust,
            can_unwind: false,
        }
-  --> $DIR/pass-indirectly-attr.rs:27:1
+  --> $DIR/pass-indirectly-attr.rs:26:1
    |
 LL | pub extern "Rust" fn extern_rust(_: Type) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

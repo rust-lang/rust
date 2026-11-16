@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
@@ -182,8 +182,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,
                     i.span,
-                    Target::MacroDef,
-                    None,
+                    AstTarget::from_ast_item(&i.kind),
                     std::convert::identity,
                     |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly
@@ -570,6 +569,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}
             AttrKind::DocComment(..) => {}
+            AttrKind::Generated(..) => {}
         }
         visit::walk_attribute(self, attr);
         self.invocation_parent.in_attr = orig_in_attr;

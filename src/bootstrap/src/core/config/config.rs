@@ -124,6 +124,8 @@ pub(crate) struct Config {
     pub android_ndk: Option<PathBuf>,
     pub optimized_compiler_builtins: CompilerBuiltins,
     pub record_failed_tests_path: PathBuf,
+    /// Path to an external checkout of rustc-perf, for running custom benchmarks.
+    pub rustc_perf_path: Option<PathBuf>,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -555,6 +557,7 @@ impl Config {
             compiletest_allow_stage0: build_compiletest_allow_stage0,
             sde: build_sde,
             allocator: build_allocator,
+            rustc_perf_path: build_rustc_perf_path,
         } = toml_build.unwrap_or_default();
 
         let Install {
@@ -1592,6 +1595,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
             rustc_default_linker: rust_default_linker,
             rustc_error_format: flags_rustc_error_format,
+            rustc_perf_path: build_rustc_perf_path,
             rustdoc_pgo: pgo_rustdoc,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),

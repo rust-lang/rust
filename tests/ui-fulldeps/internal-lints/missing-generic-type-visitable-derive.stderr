@@ -1,5 +1,5 @@
 error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
-  --> $DIR/missing-generic-type-visitable-derive.rs:20:1
+  --> $DIR/missing-generic-type-visitable-derive.rs:18:1
    |
 LL | struct DerivesRegular;
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,13 +8,13 @@ LL | struct DerivesRegular;
    = help: mark the type with `#[derive(GenericTypeVisitable)]`
    = help: or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`
 note: the lint level is defined here
-  --> $DIR/missing-generic-type-visitable-derive.rs:7:9
+  --> $DIR/missing-generic-type-visitable-derive.rs:5:9
    |
 LL | #![deny(rustc::missing_generic_type_visitable_derive)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
-  --> $DIR/missing-generic-type-visitable-derive.rs:24:1
+  --> $DIR/missing-generic-type-visitable-derive.rs:22:1
    |
 LL | struct ImplsRegular;
    | ^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | struct ImplsRegular;
    = help: or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`
 
 error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
-  --> $DIR/missing-generic-type-visitable-derive.rs:36:1
+  --> $DIR/missing-generic-type-visitable-derive.rs:34:1
    |
 LL | enum EnumDerivesRegular {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | enum EnumDerivesRegular {}
    = help: or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`
 
 error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
-  --> $DIR/missing-generic-type-visitable-derive.rs:42:1
+  --> $DIR/missing-generic-type-visitable-derive.rs:40:1
    |
 LL | struct GenericOverIDerivesRegular<I: Interner>(I::Clause);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL | struct GenericOverIDerivesRegular<I: Interner>(I::Clause);
    = help: or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`
 
 error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
-  --> $DIR/missing-generic-type-visitable-derive.rs:55:1
+  --> $DIR/missing-generic-type-visitable-derive.rs:53:1
    |
 LL | struct GenericOverTDerivesRegular<T>([T; 67]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL | struct GenericOverTDerivesRegular<T>([T; 67]);
    = help: or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`
 
 error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
-  --> $DIR/missing-generic-type-visitable-derive.rs:127:1
+  --> $DIR/missing-generic-type-visitable-derive.rs:125:1
    |
 LL | / struct FieldDoesntImplGeneric {
 LL | |

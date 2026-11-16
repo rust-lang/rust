@@ -470,8 +470,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             outer_source_info.span.with_lo(outer_source_info.span.hi() - BytePos::from_usize(1)),
         );
         for arm_block in arm_end_blocks {
-            let block = &self.cfg.basic_blocks[arm_block];
-            let last_location = block.statements.last().map(|s| s.source_info);
+            let statements = self.cfg.statements(arm_block);
+            let last_location = statements.last().map(|s| s.source_info);
 
             self.cfg.goto(arm_block, last_location.unwrap_or(end_brace), end_block);
         }

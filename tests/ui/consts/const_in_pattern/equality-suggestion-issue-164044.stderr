@@ -1,0 +1,92 @@
+error: constant of non-structural type `Vec<()>` in a pattern
+  --> $DIR/equality-suggestion-issue-164044.rs:19:12
+   |
+LL | const V: Vec<()> = Vec::new();
+   | ---------------- constant defined here
+...
+LL |     if let V = Vec::new() {}
+   |            ^ constant of non-structural type
+   |
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Vec<()>` is not usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: check for equality instead of pattern matching
+   |
+LL -     if let V = Vec::new() {}
+LL +     if V == Vec::new() {}
+   |
+
+error: constant of non-structural type `Vec<()>` in a pattern
+  --> $DIR/equality-suggestion-issue-164044.rs:20:12
+   |
+LL | const V: Vec<()> = Vec::new();
+   | ---------------- constant defined here
+...
+LL |     if let V = vec![] {}
+   |            ^ constant of non-structural type
+   |
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Vec<()>` is not usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: check for equality instead of pattern matching
+   |
+LL -     if let V = vec![] {}
+LL +     if V == vec![] {}
+   |
+
+error: constant of non-structural type `Vec<()>` in a pattern
+  --> $DIR/equality-suggestion-issue-164044.rs:8:16
+   |
+LL | const V: Vec<()> = Vec::new();
+   | ---------------- constant defined here
+LL |
+LL | macro_rules! generated_plain {
+LL |     () => {
+LL |         if let V = Vec::new() {}
+   |                ^ constant of non-structural type
+...
+LL |     generated_plain!();
+   |     ------------------ in this macro invocation
+   |
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Vec<()>` is not usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: check for equality instead of pattern matching
+   |
+LL -         if let V = Vec::new() {}
+LL +         if V == Vec::new() {}
+   |
+
+error: constant of non-structural type `Vec<()>` in a pattern
+  --> $DIR/equality-suggestion-issue-164044.rs:14:16
+   |
+LL | const V: Vec<()> = Vec::new();
+   | ---------------- constant defined here
+...
+LL | macro_rules! generated_nested {
+LL |     () => {
+LL |         if let V = vec![] {}
+   |                ^ constant of non-structural type
+...
+LL |     generated_nested!();
+   |     ------------------- in this macro invocation
+   |
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: `Vec<()>` is not usable in patterns
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+help: check for equality instead of pattern matching
+   |
+LL -         if let V = vec![] {}
+LL +         if V == vec![] {}
+   |
+
+error: aborting due to 4 previous errors
+

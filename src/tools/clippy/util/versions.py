@@ -10,7 +10,7 @@ def key(v):
         return sys.maxsize 
     if v == "beta":
         return sys.maxsize - 1
-    if v == "master":
+    if v == "main":
         return sys.maxsize - 2
     if v == "pre-1.29.0":
         return -1

@@ -13,6 +13,7 @@
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
 //!    or contains "html-non-static-files".
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
@@ -28,7 +29,6 @@ use indexmap::IndexMap;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::def_id::DefId;
@@ -37,6 +37,7 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize, Serializer};
 
 use super::{Context, RenderMode, collect_paths_for_type, ensure_trailing_slash};
+use crate::clean::types::impl_may_apply_to_type_alias;
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
 use crate::docfs::PathError;
@@ -80,14 +81,20 @@ pub(crate) fn write_shared(
     )?;
 
     let crate_name = krate.name(cx.tcx());
-    let crate_name = crate_name.as_str(); // rand
+    let crate_name = crate_name.as_str(); // e.g. rand
     let crate_name_json = OrderedJson::serialize(crate_name).unwrap(); // "rand"
+    let all_crates_entry_json = OrderedJson::serialize(AllCratesEntry {
+        heading: Cow::Borrowed(&opt.crate_list_heading),
+        crate_name: Cow::Borrowed(crate_name),
+    })
+    .unwrap(); // e.g. {"c":"rand","h":"Some User-Specified Heading"}
+
     let external_crates = hack_get_external_crate_names(&cx.dst, &cx.shared.resource_suffix)?;
     let info = CrateInfo {
         version: CrateInfoVersion::V2,
         src_files_js: SourcesPart::get(cx, &crate_name_json)?,
         search_index,
-        all_crates: AllCratesPart::get(crate_name_json.clone(), &cx.shared.resource_suffix)?,
+        all_crates: AllCratesPart::get(all_crates_entry_json, &cx.shared.resource_suffix)?,
         crates_index: CratesIndexPart::get(crate_name, &external_crates)?,
         trait_impl: TraitAliasPart::get(cx, &crate_name_json)?,
         type_impl: TypeAliasPart::get(cx, krate, &crate_name_json)?,
@@ -489,6 +496,19 @@ impl AllCratesPart {
     }
 }
 
+/// Type of a serialized entry in the [`AllCratesPart`] JSON.
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+struct AllCratesEntry<'a> {
+    #[serde(rename = "c")]
+    crate_name: Cow<'a, str>,
+
+    /// If non-absent and non-empty, is the name of a section heading in the crate sidebar.
+    #[serde(rename = "h")]
+    #[serde(default)]
+    #[serde(skip_serializing_if = "str::is_empty")]
+    heading: Cow<'a, str>,
+}
+
 /// Reads `crates.js`, which seems like the best
 /// place to obtain the list of externally documented crates if the index
 /// page was disabled when documenting the deps.
@@ -509,9 +529,11 @@ fn hack_get_external_crate_names(
     if let Some(start) = content.find('[')
         && let Some(end) = content[start..].find(']')
     {
-        let content: Vec<String> =
+        let content: Vec<AllCratesEntry<'static>> =
             try_err!(serde_json::from_str(&content[start..=start + end]), &path);
-        Ok(content)
+        let crate_names: Vec<String> =
+            content.into_iter().map(|entry| entry.crate_name.into_owned()).collect();
+        Ok(crate_names)
     } else {
         Err(Error::new("could not find crates list in crates.js", path))
     }
@@ -895,14 +917,8 @@ impl TraitAliasPart {
             // for any value of `B`, because `!` is less than any identifier-starting char.
             implementors.sort_unstable_by(|a, b| compare_names(&a.cmp_text, &b.cmp_text));
 
-            let part = OrderedJson::array_unsorted(
-                implementors
-                    .iter()
-                    .map(OrderedJson::serialize)
-                    .collect::<Result<Vec<_>, _>>()
-                    .unwrap(),
-            );
-            path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
+            path_parts
+                .push(path, OrderedJson::serialize((crate_name_json, &implementors)).unwrap());
         }
         Ok(path_parts)
     }
@@ -986,7 +1002,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
     fn visit_item(&mut self, it: &'item Item) {
         self.visit_item_recur(it);
         let cache = &self.cx.shared.cache;
-        let ItemKind::TypeAliasItem(ref t) = it.kind else { return };
+        let ItemKind::TypeAlias(ref t) = it.kind else { return };
         let Some(self_did) = it.item_id.as_def_id() else { return };
         if !self.visited_aliases.insert(self_did) {
             return;
@@ -1015,7 +1031,6 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local) else {
             return;
         };
-        let aliased_ty = self.cx.tcx().type_of(self_did).skip_binder();
         // Exclude impls that are directly on this type. They're already in the HTML.
         // Some inlining scenarios can cause there to be two versions of the same
         // impl: one on the type alias and one on the underlying target type.
@@ -1024,15 +1039,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         for (impl_item_id, aliased_type_impl) in &mut aliased_type.impl_ {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
-            //
-            // FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
-            // to use type unification.
-            // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
-            // regress.
             let Some(impl_did) = impl_item_id.as_def_id() else { continue };
-            let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
-            let reject_cx = DeepRejectCtxt::relate_infer_infer(self.cx.tcx());
-            if !reject_cx.types_may_unify(aliased_ty, for_ty) {
+            if !impl_may_apply_to_type_alias(self.cx.tcx(), self_did, impl_did) {
                 continue;
             }
             // Avoid duplicates

@@ -1,5 +1,9 @@
 #![warn(clippy::from_str_radix_10)]
 
+use std::num::{NonZero, NonZeroI32, NonZeroU16, NonZeroU32};
+
+type MyNonZero = NonZeroU32;
+
 mod some_mod {
     // fake function that shouldn't trigger the lint
     pub fn from_str_radix(_: &str, _: u32) -> Result<(), std::num::ParseIntError> {
@@ -83,4 +87,57 @@ fn fix_str_ref_check() {
     let s_ref = &s;
     let _ = u32::from_str_radix(&s_ref, 10).unwrap();
     //~^ from_str_radix_10
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/17712
+fn issue_17712() -> Result<(), Box<dyn std::error::Error>> {
+    macro_rules! parse_radix_10 {
+        ($t:ty, $s:expr) => {
+            <$t>::from_str_radix($s, 10)
+        };
+    }
+
+    NonZeroU16::from_str_radix("8", 10)?;
+    //~^ from_str_radix_10
+
+    std::num::NonZeroI32::from_str_radix("42", 10)?;
+    //~^ from_str_radix_10
+
+    MyNonZero::from_str_radix("11", 10)?;
+    //~^ from_str_radix_10
+
+    NonZero::<usize>::from_str_radix("16", 10)?;
+    //~^ from_str_radix_10
+
+    let _ = parse_radix_10!(std::num::NonZeroU32, "9");
+
+    Ok(())
+}
+
+trait FakeFromStr: Sized {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError>;
+}
+
+impl FakeFromStr for char {
+    fn from_str_radix(_: &str, _: u32) -> Result<Self, std::num::ParseIntError> {
+        Ok('a')
+    }
+}
+
+impl FakeFromStr for NonZero<char> {
+    fn from_str_radix(_: &str, _: u32) -> Result<Self, std::num::ParseIntError> {
+        Ok(NonZero::new('a').unwrap())
+    }
+}
+
+fn with_non_integer_nonzero() -> Result<(), Box<dyn std::error::Error>> {
+    char::from_str_radix("1", 10)?;
+    NonZero::<char>::from_str_radix("1", 10)?;
+    Ok(())
+}
+
+#[allow(clippy::incompatible_msrv)]
+#[clippy::msrv = "1.97"]
+fn issue_17712_msrv() {
+    let _ = NonZeroU16::from_str_radix("8", 10);
 }

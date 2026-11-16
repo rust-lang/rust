@@ -1,0 +1,44 @@
+error[E0040]: explicit use of destructor method
+  --> $DIR/explicit-drop-macro-suggestions.rs:11:16
+   |
+LL |     vec![1_u8].drop();
+   |                ^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+   |
+LL -     vec![1_u8].drop();
+LL +     drop(vec![1_u8]);
+   |
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/explicit-drop-macro-suggestions.rs:14:5
+   |
+LL |     Drop::drop(&mut vec![2_u8]);
+   |     ^^^^^^^^^^ explicit destructor calls not allowed
+   |
+help: consider using `drop` function
+   |
+LL -     Drop::drop(&mut vec![2_u8]);
+LL +     drop(vec![2_u8]);
+   |
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/explicit-drop-macro-suggestions.rs:5:9
+   |
+LL | macro_rules! generated {
+LL |     () => {
+LL |         Drop::drop(&mut vec![3_u8]);
+   |         ^^^^^^^^^^ explicit destructor calls not allowed
+...
+LL |     generated!();
+   |     ------------ in this macro invocation
+   |
+help: consider using `drop` function
+   |
+LL -         Drop::drop(&mut vec![3_u8]);
+LL +         drop(vec![3_u8]);
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0040`.

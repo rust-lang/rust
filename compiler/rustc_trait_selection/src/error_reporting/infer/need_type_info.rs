@@ -14,9 +14,9 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
-    self, GenericArg, GenericArgKind, GenericArgsRef, GenericParamDefKind, InferConst,
-    IsSuggestable, Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, TypeckResults,
+    self, GenericArg, GenericArgKind, GenericArgs, GenericParamDefKind, InferConst, IsSuggestable,
+    Term, TermKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    TypeckResults,
 };
 use rustc_next_trait_solver::solve::TyOrConstInferVar;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, bug, sym};
@@ -647,7 +647,7 @@ enum InferSourceKind<'tcx> {
         argument_index: usize,
         generics_def_id: DefId,
         def_id: DefId,
-        generic_args: &'tcx [GenericArg<'tcx>],
+        generic_args: GenericArgs<'tcx>,
         have_turbofish: bool,
         hir_id: HirId,
     },
@@ -656,7 +656,7 @@ enum InferSourceKind<'tcx> {
         /// If the method has other arguments, this is ", " and the start of the first argument,
         /// while for methods without arguments this is ")" and the end of the method call.
         successor: (&'static str, BytePos),
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         def_id: DefId,
     },
     ClosureReturn {
@@ -804,7 +804,7 @@ impl<'tcx> InferSourceKind<'tcx> {
                     }
                 } else {
                     let mut p = fmt_printer(infcx, Namespace::TypeNS);
-                    p.comma_sep(generic_args.iter().copied().map(|arg| {
+                    p.comma_sep(generic_args.iter().map(|arg| {
                         if arg.is_suggestable(tcx, true) {
                             used_fallback = true;
                             return arg;
@@ -903,7 +903,7 @@ impl<'tcx> InferSourceKind<'tcx> {
 #[derive(Debug)]
 struct InsertableGenericArgs<'tcx> {
     insert_span: Span,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
     generics_def_id: DefId,
     def_id: DefId,
     have_turbofish: bool,
@@ -975,7 +975,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                         5 + self
                             .tcx
                             .generics_of(def.did())
-                            .own_args_no_defaults(self.tcx, args)
+                            .own_args_no_defaults(self.tcx, args.as_slice())
                             .iter()
                             .map(|&arg| self.arg_cost(arg))
                             .sum::<usize>()
@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     DefKind::Variant | DefKind::Ctor(CtorOf::Variant, _) => 15,
                     _ => 10,
                 };
-                variant_cost + generic_args.iter().map(|&arg| ctx.arg_cost(arg)).sum::<usize>()
+                variant_cost + generic_args.iter().map(|arg| ctx.arg_cost(arg)).sum::<usize>()
             }
             InferSourceKind::FullyQualifiedMethodCall { args, .. } => {
                 20 + args.iter().map(|arg| ctx.arg_cost(arg)).sum::<usize>()
@@ -1038,7 +1038,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         }
     }
 
-    fn node_args_opt(&self, hir_id: HirId) -> Option<GenericArgsRef<'tcx>> {
+    fn node_args_opt(&self, hir_id: HirId) -> Option<GenericArgs<'tcx>> {
         let args = self.typeck_results.node_args_opt(hir_id);
         self.tecx.deeply_resolve_ignoring_regions(args)
     }
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 if let Some(ty) = self.opt_node_type(expr.hir_id)
                     && let ty::Adt(_, args) = ty.kind()
                 {
-                    return Box::new(self.resolved_path_inferred_arg_iter(path, args));
+                    return Box::new(self.resolved_path_inferred_arg_iter(path, *args));
                 }
             }
             hir::ExprKind::MethodCall(segment, ..) => {
@@ -1191,7 +1191,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     fn resolved_path_inferred_arg_iter(
         &self,
         path: &'tcx hir::Path<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'tcx {
         let tcx = self.tecx.tcx;
         let have_turbofish = path.segments.iter().any(|segment| {
@@ -1246,7 +1246,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     fn path_inferred_arg_iter(
         &self,
         hir_id: HirId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         qpath: &'tcx hir::QPath<'tcx>,
     ) -> Box<dyn Iterator<Item = InsertableGenericArgs<'tcx>> + 'a> {
         let tcx = self.tecx.tcx;
@@ -1304,7 +1304,8 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                                 }
                             } else {
                                 return Box::new(
-                                    self.resolved_path_inferred_arg_iter(path, args).chain(segment),
+                                    self.resolved_path_inferred_arg_iter(path, *args)
+                                        .chain(segment),
                                 );
                             }
                         }
@@ -1434,13 +1435,15 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             } = args;
             let generics = tcx.generics_of(generics_def_id);
             if let Some(argument_index) = generics
-                .own_args(args)
+                .own_args(args.as_slice())
                 .iter()
                 .position(|&arg| self.generic_arg_contains_target(arg))
             {
                 let args = self.tecx.deeply_resolve_ignoring_regions(args);
-                let generic_args =
-                    &generics.own_args_no_defaults(tcx, args)[generics.own_counts().lifetimes..];
+                let generic_args = tcx.mk_args(
+                    &generics.own_args_no_defaults(tcx, args.as_slice())
+                        [generics.own_counts().lifetimes..],
+                );
                 let span = match expr.kind {
                     ExprKind::MethodCall(segment, ..)
                         if have_turbofish

@@ -34,6 +34,7 @@ impl From<&AttrKind> for SimpleAttrKind {
                 SyntheticAttr::CfgAttrTrace(_) => Self::CfgAttrTrace,
             },
             AttrKind::DocComment(..) => Self::Doc,
+            AttrKind::Generated(generated) => Self::Normal(generated.path().to_vec()),
         }
     }
 }

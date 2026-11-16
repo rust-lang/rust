@@ -1,6 +1,6 @@
 //@ignore-target: freebsd # we don't have the shims this needs here
 //@compile-flags: -Zmiri-disable-isolation
-//@run-native
+//@run-native: ignore-output
 use std::env;
 
 fn main() {

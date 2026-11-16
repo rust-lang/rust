@@ -239,3 +239,8 @@ pub fn duplicated_attr(_attr: TokenStream, input: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+#[proc_macro_derive(DerivedAttrs, attributes(attr))]
+pub fn derived_attrs(_input: TokenStream) -> TokenStream {
+    TokenStream::new()
+}

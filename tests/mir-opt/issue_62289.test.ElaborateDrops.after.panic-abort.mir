@@ -15,13 +15,9 @@ fn test() -> Option<Vec<u32>> {
     let _11: u32;
     scope 1 {
         debug residual => _8;
-        scope 2 {
-        }
     }
-    scope 3 {
+    scope 2 {
         debug val => _11;
-        scope 4 {
-        }
     }
 
     bb0: {

@@ -28,12 +28,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.type_u16(), i as u64)
     }
 
-    fn global_string(&self, string: &str) -> LValue<'gcc> {
-        // FIXME(antoyo): handle non-null-terminated strings.
-        let string = self.context.new_string_literal(string);
+    fn global_const_string(&self, string: &str) -> LValue<'gcc> {
+        // The bytes of a Rust string are not NUL-terminated and can contain NULs.
+        let string = bytes_in_context(self, string.as_bytes());
         let sym = self.generate_local_symbol_name("str");
         let global = self.declare_private_global(&sym, self.val_ty(string));
         global.global_set_initializer_rvalue(string);
+        #[cfg(feature = "master")]
+        global.global_set_readonly();
         global
         // FIXME(antoyo): set linkage.
     }
@@ -126,18 +128,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-/// The element type and element count of the array used to represent a run of `len` constant bytes.
-///
-/// Larger integers are used where possible: this reduces the number of rvalues, which is a
-/// significant memory saving on constant-heavy crates.
-fn byte_run_shape<'gcc>(cx: &CodegenCx<'gcc, '_>, len: usize) -> (Type<'gcc>, u64) {
-    match len % 8 {
-        0 => (cx.context.new_type::<u64>(), len as u64 / 8),
-        4 => (cx.context.new_type::<u32>(), len as u64 / 4),
-        _ => (cx.context.new_type::<u8>(), len as u64),
-    }
-}
-
 /// The type [`bytes_in_context`] gives a run of `len` constant bytes.
 ///
 /// Exposed separately so that the type of a constant allocation can be computed before any of its
@@ -147,65 +137,30 @@ fn byte_run_shape<'gcc>(cx: &CodegenCx<'gcc, '_>, len: usize) -> (Type<'gcc>, u6
 /// Two equal-but-distinct array types would key [`CodegenCx::type_struct`] differently and so
 /// produce two distinct anonymous structs, and libgccjit compares struct types by identity.
 pub fn bytes_type_in_context<'gcc>(cx: &CodegenCx<'gcc, '_>, len: usize) -> Type<'gcc> {
-    let (element_type, count) = byte_run_shape(cx, len);
-    if let Some(&typ) = cx.byte_array_types.borrow().get(&(element_type, count)) {
+    if let Some(&typ) = cx.byte_array_types.borrow().get(&len) {
         return typ;
     }
-    let typ = new_array_type(cx.context, None, element_type, count);
-    cx.byte_array_types.borrow_mut().insert((element_type, count), typ);
+    let typ = new_array_type(cx.context, None, cx.type_u8(), len as u64);
+    cx.byte_array_types.borrow_mut().insert(len, typ);
     typ
 }
 
-// FIXME(FractalFir): Consider using `global_set_initializer` instead. Before this is done, we need to confirm that
-// `global_set_initializer` is more memory efficient than the current solution.
-// `global_set_initializer` calls `global_set_initializer_rvalue` under the hood - does it generate an array of rvalues,
-// or is it using a more efficient representation?
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
     let typ = bytes_type_in_context(cx, bytes.len());
-    let (element_type, _) = byte_run_shape(cx, bytes.len());
-    let context = &cx.context;
-    // Since we are representing arbitrary byte runs as integers, we need to follow the target
-    // endianness.
-    let endian = cx.sess().target.options.endian;
-    let elements: Vec<_> = match bytes.len() % 8 {
-        0 => {
-            let (arrays, remainder) = bytes.as_chunks::<8>();
-            debug_assert!(remainder.is_empty());
-            arrays
-                .iter()
-                .map(|&arr| {
-                    context.new_rvalue_from_long(
-                        element_type,
-                        match endian {
-                            rustc_abi::Endian::Little => u64::from_le_bytes(arr) as i64,
-                            rustc_abi::Endian::Big => u64::from_be_bytes(arr) as i64,
-                        },
-                    )
-                })
-                .collect()
-        }
-        4 => {
-            let (arrays, remainder) = bytes.as_chunks::<4>();
-            debug_assert!(remainder.is_empty());
-            arrays
-                .iter()
-                .map(|&arr| {
-                    context.new_rvalue_from_int(
-                        element_type,
-                        match endian {
-                            rustc_abi::Endian::Little => u32::from_le_bytes(arr) as i32,
-                            rustc_abi::Endian::Big => u32::from_be_bytes(arr) as i32,
-                        },
-                    )
-                })
-                .collect()
-        }
-        _ => bytes
+    // Raw bytes take far less RAM in libgccjit than one rvalue per array element.
+    #[cfg(feature = "master")]
+    {
+        cx.context.new_array_from_bytes(None, typ, bytes)
+    }
+    #[cfg(not(feature = "master"))]
+    {
+        let byte_type = cx.type_u8();
+        let elements: Vec<_> = bytes
             .iter()
-            .map(|&byte| context.new_rvalue_from_int(element_type, byte as i32))
-            .collect(),
-    };
-    context.new_array_constructor(None, typ, &elements)
+            .map(|&byte| cx.context.new_rvalue_from_int(byte_type, byte as i32))
+            .collect();
+        cx.context.new_array_constructor(None, typ, &elements)
+    }
 }
 
 pub fn type_is_pointer(typ: Type<'_>) -> bool {
@@ -292,7 +247,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
         let mut const_str_cache = self.const_str_cache.borrow_mut();
         let str_global = const_str_cache.get(s).copied().unwrap_or_else(|| {
-            let g = self.global_string(s);
+            let g = self.global_const_string(s);
             const_str_cache.insert(s.to_owned(), g);
             g
         });

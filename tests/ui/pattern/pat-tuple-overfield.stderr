@@ -24,7 +24,7 @@ note: similarly named tuple struct `Z1` defined here
    |
 LL | struct Z1();
    | ^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Z0() => {}
 LL +         Z0 => {}
@@ -49,7 +49,7 @@ note: similarly named tuple struct `Z1` defined here
    |
 LL | struct Z1();
    | ^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Z0(_) => {}
 LL +         Z0 => {}
@@ -74,7 +74,7 @@ note: similarly named tuple struct `Z1` defined here
    |
 LL | struct Z1();
    | ^^^^^^^^^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         Z0(_, _) => {}
 LL +         Z0 => {}
@@ -88,6 +88,7 @@ LL +         Z1(_, _) => {}
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
   --> $DIR/pat-tuple-overfield.rs:64:9
    |
+LL | enum E1 {
 LL |     Z0,
    |     -- `E1::Z0` defined here
 ...
@@ -99,7 +100,7 @@ note: similarly named tuple variant `Z1` defined here
    |
 LL |     Z1(),
    |     ^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E1::Z0() => {}
 LL +         E1::Z0 => {}
@@ -113,6 +114,7 @@ LL +         E1::Z1() => {}
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
   --> $DIR/pat-tuple-overfield.rs:65:9
    |
+LL | enum E1 {
 LL |     Z0,
    |     -- `E1::Z0` defined here
 ...
@@ -124,7 +126,7 @@ note: similarly named tuple variant `Z1` defined here
    |
 LL |     Z1(),
    |     ^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E1::Z0(_) => {}
 LL +         E1::Z0 => {}
@@ -138,6 +140,7 @@ LL +         E1::Z1(_) => {}
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
   --> $DIR/pat-tuple-overfield.rs:66:9
    |
+LL | enum E1 {
 LL |     Z0,
    |     -- `E1::Z0` defined here
 ...
@@ -149,7 +152,7 @@ note: similarly named tuple variant `Z1` defined here
    |
 LL |     Z1(),
    |     ^^^^
-help: use this syntax instead
+help: use the unit struct syntax instead
    |
 LL -         E1::Z0(_, _) => {}
 LL +         E1::Z0 => {}
@@ -163,6 +166,8 @@ LL +         E1::Z1(_, _) => {}
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E1::Z1`
   --> $DIR/pat-tuple-overfield.rs:69:9
    |
+LL | enum E1 {
+LL |     Z0,
 LL |     Z1(),
    |     ---- `E1::Z1` defined here
 ...

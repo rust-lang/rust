@@ -702,6 +702,13 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     pub const fn new_in(alloc: A) -> BTreeMap<K, V, A> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "btreemap_alloc", issue = "163177")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        &self.alloc
+    }
 }
 
 impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
@@ -2830,7 +2837,7 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.length
@@ -2850,7 +2857,7 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_btree_len", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }

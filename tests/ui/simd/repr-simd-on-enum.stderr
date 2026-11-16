@@ -3,6 +3,7 @@ error: the `repr(simd)` attribute cannot be used on enums
    |
 LL | #[repr(simd)]
    |   ^^^^^^^^^^
+LL | enum Aligned {
    |
    = help: the `repr(simd)` attribute can only be applied to structs
 

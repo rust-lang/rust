@@ -1,6 +1,6 @@
 # `default-visibility`
 
-The tracking issue for this feature is: https://github.com/rust-lang/rust/issues/131090
+The tracking issue for this feature is: [#131090](https://github.com/rust-lang/rust/issues/131090).
 
 ------------------------
 

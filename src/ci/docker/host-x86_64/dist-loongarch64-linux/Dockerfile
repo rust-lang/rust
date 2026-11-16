@@ -12,9 +12,9 @@ RUN apt-get update && \
   llvm-23 \
   lld-23
 
-COPY scripts/crosstool-ng-git.sh /scripts/
+COPY scripts/crosstool-ng.sh /scripts/
 COPY scripts/crosstool-ng-sha256-20260705.diff /scripts/
-RUN sh /scripts/crosstool-ng-git.sh
+RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh

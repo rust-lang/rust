@@ -1,6 +1,7 @@
 //@ignore-target: windows # No socket address support on Windows
 //@compile-flags: -Zmiri-disable-isolation
 //@normalize-stderr-test: "address resolution failed: .*" -> "address resolution failed: $$MSG"
+//@run-native: ignore-output
 
 use std::net::{
     IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, TcpListener, ToSocketAddrs,

@@ -93,9 +93,8 @@ use parse::{parse_inf_nan, parse_number};
 use slow::parse_long_mantissa;
 
 use crate::f64;
-use crate::num::ParseFloatError;
-use crate::num::float_parse::FloatErrorKind;
 use crate::num::imp::FloatExt;
+use crate::num::{FloatErrorKind, ParseFloatError};
 
 mod common;
 pub mod decimal;
@@ -192,8 +191,7 @@ pub(super) fn pfe_empty() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Empty }
 }
 
-// Used in unit tests, keep public.
-// This is much better than making FloatErrorKind and ParseFloatError::kind public.
+// Only used in unit tests, keep public.
 #[inline]
 pub fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }

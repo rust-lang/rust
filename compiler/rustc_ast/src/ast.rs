@@ -17,6 +17,7 @@
 //! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
+// ignore-tidy-file-filelength
 
 use std::borrow::{Borrow, Cow};
 use std::{cmp, fmt};
@@ -38,7 +39,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 use crate::util::parser::{ExprPrecedence, Fixity};
 use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
@@ -476,6 +477,10 @@ impl GenericParam {
             GenericParamKind::Const { span, .. } => *span,
         }
     }
+
+    pub fn span_with_attributes(&self) -> Span {
+        if let Some(first) = self.attrs.first() { first.span.to(self.span()) } else { self.span() }
+    }
 }
 
 /// Represents lifetime, type and const parameters attached to a declaration of
@@ -547,15 +552,6 @@ pub struct WhereRegionPredicate {
     pub lifetime: Lifetime,
     #[visitable(extra = BoundKind::Bound)]
     pub bounds: GenericBounds,
-}
-
-/// An equality predicate (unsupported).
-///
-/// E.g., `T = int`.
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct WhereEqPredicate {
-    pub lhs_ty: Box<Ty>,
-    pub rhs_ty: Box<Ty>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -1219,7 +1215,7 @@ impl Stmt {
     /// a trailing semicolon.
     ///
     /// This only modifies the parsed AST struct, not the attached
-    /// `LazyAttrTokenStream`. The parser is responsible for calling
+    /// `LazyTokenStream`. The parser is responsible for calling
     /// `ToAttrTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
     pub fn add_trailing_semicolon(mut self) -> Self {
@@ -1279,7 +1275,7 @@ pub struct MacCallStmt {
     pub mac: Box<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, Walkable)]
@@ -1306,7 +1302,7 @@ pub struct Local {
     pub span: Span,
     pub colon_sp: Option<Span>,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -1407,7 +1403,7 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Expr {
@@ -1777,7 +1773,7 @@ pub enum ExprKind {
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(Box<Expr>, Box<Ty>),
-    /// A type ascription (e.g., `builtin # type_ascribe(42, usize)`).
+    /// A type ascription (e.g., `k#type_ascribe(42, usize)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `type_ascribe!(...)`.
@@ -1869,7 +1865,7 @@ pub enum ExprKind {
     /// Output of the `asm!()` macro.
     InlineAsm(Box<InlineAsm>),
 
-    /// An `offset_of` expression (e.g., `builtin # offset_of(Struct, field)`).
+    /// An `offset_of` expression (e.g., `k#offset_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
@@ -2568,7 +2564,7 @@ pub enum TyKind {
     /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZero<u32>`,
     /// just as part of the type system.
     Pat(Box<Ty>, Box<TyPat>),
-    /// A `field_of` expression (e.g., `builtin # field_of(Struct, field)`).
+    /// A `field_of` expression (e.g., `k#field_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.
@@ -3464,13 +3460,143 @@ pub enum AttrKind {
     /// A normal attribute.
     Normal(Box<NormalAttr>),
 
-    /// A synthetic attribute inserted by the compiler.
-    Synthetic(Box<SyntheticAttr>),
-
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    ///
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
     DocComment(CommentKind, Symbol),
+
+    /// A synthetic attribute inserted by the compiler.
+    ///
+    /// See [`SyntheticAttr`] for the semantics of "synthetic" attributes.
+    Synthetic(Box<SyntheticAttr>),
+
+    /// A macro generated attribute inserted by a builtin macro.
+    ///
+    /// See [`GeneratedAttr`] for the semantics of "generated" attributes.
+    Generated(GeneratedAttr),
+}
+
+/// An attribute created by a macro expansion.
+///
+/// This attribute has no tokens, which means it cannot be allowed to re-enter the parser. This
+/// means it can only be added to items that cannot later be observed by other macros.
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum GeneratedAttr {
+    AutomaticallyDerived,
+    RustcConstUnstableDerived,
+    Inline,
+    DocHidden,
+    CoverageOff,
+    RustcTestMarker(Symbol),
+    RustcTrivialFieldReads,
+}
+
+impl GeneratedAttr {
+    pub fn descr(&self) -> String {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => "#[automatically_derived]".into(),
+            GeneratedAttr::RustcConstUnstableDerived => {
+                "#[rustc_const_unstable(feature = \"derive_const\", issue = \"143874\")]".into()
+            }
+            GeneratedAttr::Inline => "#[inline]".into(),
+            GeneratedAttr::DocHidden => "#[doc(hidden)]".into(),
+            GeneratedAttr::CoverageOff => "#[coverage(off)]".into(),
+            GeneratedAttr::RustcTestMarker(test_path) => {
+                format!("#[rustc_test_marker = \"{test_path}\"]")
+            }
+            GeneratedAttr::RustcTrivialFieldReads => "#[rustc_trivial_field_reads]".into(),
+        }
+    }
+    pub fn value_span(&self) -> Option<Span> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn is_doc_comment(&self) -> bool {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => false,
+            GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::Inline => false,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::RustcTestMarker(_) => false,
+            GeneratedAttr::RustcTrivialFieldReads => false,
+        }
+    }
+
+    pub fn path(&self) -> &[Symbol] {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => &[sym::automatically_derived],
+            GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
+            GeneratedAttr::Inline => &[sym::inline],
+            GeneratedAttr::DocHidden => &[sym::doc],
+            GeneratedAttr::CoverageOff => &[sym::coverage],
+            GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
+            GeneratedAttr::RustcTrivialFieldReads => &[sym::rustc_trivial_field_reads],
+        }
+    }
+
+    pub fn path_span(&self) -> Option<Span> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn is_word(&self) -> bool {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => true,
+            GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::Inline => true,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::RustcTestMarker(_) => false,
+            GeneratedAttr::RustcTrivialFieldReads => false,
+        }
+    }
+    pub fn value_str(&self) -> Option<Symbol> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(test_path) => Some(*test_path),
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn doc_str_and_fragment_kind(&self) -> Option<!> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn append_token_trees_to(&self, _res: &mut Vec<TokenTree>) {
+        unimplemented!(
+            "generated attribute `{}` cannot re-enter the parser at this time",
+            self.descr()
+        )
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3478,7 +3604,7 @@ pub struct NormalAttr {
     pub item: AttrItem,
     // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
     // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl NormalAttr {
@@ -3749,7 +3875,7 @@ pub struct Item<K = ItemKind> {
     ///
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Item {
@@ -4097,11 +4223,25 @@ pub struct TestBinderConstraints {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderBody {
     pub span: Span,
-    pub foralls: ThinVec<TestBinderForall>,
-    pub exists: ThinVec<TestBinderExists>,
-    pub constraints: Vec<TestBinderConstraint>,
+    pub items: Vec<TestBinderItem>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum TestBinderItem {
+    Forall(TestBinderForall),
+    Exists(TestBinderExists),
+    RegionEquality(TestBinderRegionEquality),
+    Constraint(TestBinderConstraint),
     /// These are not where clauses, but rather predicates within the body to be proven
-    pub predicates: Vec<WherePredicate>,
+    Predicate(WherePredicate),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct TestBinderRegionEquality {
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub lhs: Lifetime,
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub rhs: Lifetime,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

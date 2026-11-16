@@ -14,6 +14,8 @@ error: the `repr(packed)` attribute cannot be used on enums
    |
 LL | #[repr(C, packed(2))]
    |   ^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum OxFF {
    |
    = help: the `repr(packed)` attribute can be applied to structs and unions
 

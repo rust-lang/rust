@@ -63,8 +63,8 @@ pub trait SpanRange: Sized {
 }
 impl SpanRange for Span {
     fn into_range(self) -> Range<BytePos> {
-        let data = self.data();
-        data.lo..data.hi
+        let (lo, hi) = self.lo_hi();
+        lo..hi
     }
 }
 impl SpanRange for SpanData {
@@ -556,7 +556,7 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
 /// snippet(cx, span2, "..") // -> "Vec::new()"
 /// ```
 pub fn snippet<'a, 'sm>(sm: impl HasSourceMap<'sm>, span: Span, default: &'a str) -> Cow<'a, str> {
-    snippet_opt(sm, span).map_or_else(|| Cow::Borrowed(default), From::from)
+    snippet_opt(sm, span).map_or(Cow::Borrowed(default), From::from)
 }
 
 /// Same as [`snippet`], but it adapts the applicability level by following rules:

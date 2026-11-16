@@ -17,6 +17,7 @@ extern crate ra_ap_rustc_parse_format as rustc_parse_format;
 
 pub extern crate ra_ap_rustc_abi as layout;
 pub extern crate ra_ap_rustc_abi as rustc_abi;
+pub extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 
 pub mod attrs;
 pub mod builtin_type;
@@ -99,6 +100,8 @@ pub use crate::{
 pub use hir_expand::{Intern, Lookup, tt};
 
 type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+type ThinFxHashMap<K, V> = stdx::thin_map::ThinHashMap<K, V, rustc_hash::FxBuildHasher>;
+type ThinFxHashSet<T> = stdx::thin_map::ThinHashSet<T, rustc_hash::FxBuildHasher>;
 
 /// Whether to expand procedural macros during name resolution.
 ///

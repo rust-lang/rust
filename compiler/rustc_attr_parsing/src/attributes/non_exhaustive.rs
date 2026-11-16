@@ -1,4 +1,5 @@
-use rustc_ast::{ItemKind, VariantData};
+use rustc_ast::VariantData;
+use rustc_attr_ir::target::AstTarget;
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
@@ -22,15 +23,9 @@ impl NoArgsAttributeParser for NonExhaustiveParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
 
     fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
-        if cx.target != Target::Struct {
-            return;
-        }
-
-        let item = cx.target_item.expect("missing AST target item for Target::Struct");
-        let ItemKind::Struct(_, _, data) = &item.kind else {
-            panic!("expected struct AST target item for Target::Struct");
-        };
-        if let VariantData::Struct { fields, .. } = data
+        if let AstTarget::Struct(_, _, data) | AstTarget::Variant(rustc_ast::Variant { data, .. }) =
+            cx.ast_target
+            && let VariantData::Struct { fields, .. } = data
             && fields.iter().any(|f| f.default_value().is_some())
         {
             cx.emit_err(NonExhaustiveWithDefaultFieldValues {

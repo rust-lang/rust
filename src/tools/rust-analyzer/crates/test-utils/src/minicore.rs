@@ -1797,6 +1797,13 @@ pub mod async_iter {
 
         fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
     }
+
+    impl<T> Poll<Option<T>> {
+        #[lang = "AsyncGenReady"]
+        pub fn async_gen_ready(t: T) -> Self {
+            Poll::Ready(Some(t))
+        }
+    }
 }
 // endregion:async_iterator
 

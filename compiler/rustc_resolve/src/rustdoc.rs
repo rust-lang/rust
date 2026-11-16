@@ -11,7 +11,8 @@ use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::util::comments::beautify_doc_string;
-use rustc_ast::{AttrStyle, join_path_syms};
+use rustc_ast::{AttrKind, AttrStyle, join_path_syms};
+use rustc_attr_ir::{Attribute, AttributeKind, DocAttribute};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_middle::ty::TyCtxt;
@@ -372,9 +373,41 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
 }
 
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
-pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
+pub fn has_primitive_or_keyword_or_attribute_docs_ast(attrs: &[ast::Attribute]) -> bool {
     for attr in attrs {
-        if attr.is_rustc_doc_primitive() || attr.is_doc_keyword_or_attribute() {
+        if attr.has_name(sym::rustc_doc_primitive) {
+            return true;
+        }
+        match &attr.kind {
+            AttrKind::Normal(_) => {
+                if attr.has_name(sym::doc)
+                    && let Some(items) = attr.meta_item_list()
+                {
+                    if items
+                        .iter()
+                        .any(|item| item.has_name(sym::keyword) || item.has_name(sym::attribute))
+                    {
+                        return true;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
+pub fn has_primitive_or_keyword_or_attribute_docs_hir(attrs: &[Attribute]) -> bool {
+    for attr in attrs {
+        if matches!(
+            attr,
+            Attribute::Parsed(
+                AttributeKind::RustcDocPrimitive(..)
+                    | AttributeKind::Doc(DocAttribute { attribute: Some(_), .. })
+                    | AttributeKind::Doc(DocAttribute { keyword: Some(_), .. })
+            )
+        ) {
             return true;
         }
     }
@@ -602,7 +635,19 @@ pub fn source_span_for_markdown_range_inner(
         if pat.is_empty() {
             return None;
         }
+        let mut buffer = String::new();
+        let mut offset = 0;
         for (i, fragment) in fragments.iter().enumerate() {
+            // Ignore fragments outside of the specified range
+            buffer.clear();
+            add_doc_fragment(&mut buffer, fragment);
+            let frag_start = offset;
+            offset += buffer.len();
+            let frag_end = offset;
+            if !(frag_start <= md_range.start && md_range.end <= frag_end) {
+                continue;
+            }
+
             if let Ok(snippet) = map.span_to_snippet(fragment.span)
                 && let Some(match_start) = snippet.find(pat)
             {
@@ -621,6 +666,7 @@ pub fn source_span_for_markdown_range_inner(
                     return None;
                 }
             }
+            break; // only one fragment can contain the range
         }
         if let Some((i, match_start)) = match_data {
             let fragment = &fragments[i];

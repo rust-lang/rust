@@ -107,7 +107,7 @@ pub fn exit(code: i32) -> ! {
         }
         target_os = "teeos" => {
             let _ = code;
-            panic!("TA should not call `exit`")
+            rtabort!("TA should not call `exit`")
         }
         target_os = "uefi" => {
             use r_efi::base::Status;

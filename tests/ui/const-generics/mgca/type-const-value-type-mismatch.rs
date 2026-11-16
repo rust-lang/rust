@@ -14,6 +14,7 @@ pub struct A;
 pub trait Array {
     #[rustc_always_gca]
     const LEN: usize;
+
     fn arr() -> [u8; Self::LEN];
 }
 
@@ -22,10 +23,7 @@ impl Array for A {
     //~^ ERROR the constant `0` is not of type `usize`
 
     fn arr() -> [u8; const { Self::LEN }] {}
-    //~^ ERROR mismatched types [E0308]
-    //[current]~| ERROR method `arr` has an incompatible type for trait [E0053]
-    //[next]~| ERROR type annotations needed
-    //[next]~| ERROR type mismatch resolving `<A as Array>::LEN == _` [E0271]
+    //[current]~^ ERROR the constant `0` is not of type `usize`
 }
 
 fn main() {}

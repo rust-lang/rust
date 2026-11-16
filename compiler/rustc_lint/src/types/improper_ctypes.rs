@@ -4,6 +4,7 @@ use std::ops::ControlFlow;
 
 use bitflags::bitflags;
 use rustc_abi::VariantIdx;
+use rustc_attr_ir::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{DiagMessage, msg};
 use rustc_hashes::Hash128;
@@ -12,7 +13,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint_defs::{declare_lint, impl_lint_pass};
 use rustc_middle::ty::{
-    self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, Adt, AdtDef, AdtKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, Unnormalized,
 };
 use rustc_span::def_id::LocalDefId;
@@ -573,7 +574,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     // (mid-retcon-commit-chain comment:)
                     // this is the original fallback behavior, which is wrong
                     if let ty::Adt(def, args) = ty.kind() {
-                        self.visit_struct_or_union(state, ty, *def, args)
+                        self.visit_struct_or_union(state, ty, *def, *args)
                     } else if cfg!(debug_assertions) {
                         bug!("ImproperCTypes: this retcon commit was badly written")
                     } else {
@@ -617,7 +618,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         ty: Ty<'tcx>,
         def: AdtDef<'tcx>,
         variant: &ty::VariantDef,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
@@ -672,7 +673,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: VisitorState,
         ty: Ty<'tcx>,
         def: AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> FfiResult<'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
         use FfiResult::*;
@@ -734,7 +735,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: VisitorState,
         ty: Ty<'tcx>,
         def: AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> FfiResult<'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Enum));
         use FfiResult::*;
@@ -802,6 +803,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
+                        if tcx.is_lang_item(def.did(), LangItem::PpcF128)
+                            || tcx.is_lang_item(def.did(), LangItem::X87F80)
+                        {
+                            return FfiResult::FfiSafe;
+                        }
                         if let Some(sym::cstring_type | sym::cstr_type) =
                             tcx.get_diagnostic_name(def.did())
                             && !self.base_ty.is_mutable_ptr()
@@ -983,6 +989,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Error(_)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 

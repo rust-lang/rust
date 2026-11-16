@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ normalize-stderr: "(abi|pref|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
+//@ normalize-stderr: "(align|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
 /*!
 C doesn't have zero-sized types... except it does.
 

@@ -17,8 +17,9 @@ error: lifetime may not live long enough
   --> $DIR/regionck-2.rs:12:1
    |
 LL | fn test(_: Lexer::Cursor) {}
-   | ^^^^^^^^-^^^^^^^^^^^^^^^^
-   | |       |
+   | ^^^^^^^^-^^-----^^^^^^^^^
+   | |       |  |
+   | |       |  lifetime `'1` introduced here
    | |       has type `Lexer<'1>::Cursor`
    | requires that `'1` must outlive `'static`
 

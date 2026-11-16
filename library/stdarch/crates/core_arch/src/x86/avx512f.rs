@@ -1,8 +1,8 @@
 use crate::{
     arch::asm,
     core_arch::{simd::*, x86::*},
-    intrinsics::simd::*,
     intrinsics::fma,
+    intrinsics::simd::*,
     mem, ptr,
 };
 

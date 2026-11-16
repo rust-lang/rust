@@ -22,6 +22,9 @@
 
 // === CDB TESTS ===================================================================================
 
+// NB: `c` and `_box` format differences between 10.0.26100.0 and 10.0.28000.2957.
+//@ min-cdb-version: 10.0.28000.2957
+
 //@ cdb-command: g
 //@ cdb-command:dx a
 //@ cdb-check:a                [Type: ref$<unsized::Foo<slice2$<u8> > >]
@@ -34,14 +37,10 @@
 //@ cdb-check:    [...] length           : 0x4 [Type: unsigned [...]int[...]
 
 //@ cdb-command:dx c
-//@ cdb-check:c                [Type: ref$<unsized::Foo<dyn$<core::fmt::Debug> > >]
-//@ cdb-check:    [+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
-//@ cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
+//@ cdb-check:c                : 7 [Type: i32 (derived from ref$<unsized::Foo<dyn$<core::fmt::Debug> > >)]
 
 //@ cdb-command:dx _box
-//@ cdb-check:_box             [Type: alloc::boxed::Box<unsized::Foo<dyn$<core::fmt::Debug> >,alloc::alloc::Global>]
-//@ cdb-check:[+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
-//@ cdb-check:[...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
+//@ cdb-check:_box             : 8 [Type: i32 (derived from alloc::boxed::Box<unsized::Foo<dyn$<core::fmt::Debug> >,alloc::alloc::Global>)]
 
 struct Foo<T: ?Sized> {
     value: T,

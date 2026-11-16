@@ -10,7 +10,6 @@ use minicore::*;
 // See also: repr-c-int-dead-variants.rs
 
 //@ add-minicore
-//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 
 // This test depends on the value of the `c_enum_min_bits` target option.

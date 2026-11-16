@@ -138,10 +138,24 @@ fn miri_config(
     };
 
     // Register custom comments.
-    config.custom_comments.insert("run-native", |parser, _args, span| {
-        // Just remember that this is present.
-        parser.set_custom_once("run-native", (), span);
-    });
+    if matches!(mode, Mode::Pass { .. }) {
+        config.custom_comments.insert("run-native", |parser, args, span| {
+            let mut ignore_output = false;
+            for arg in args.split_whitespace() {
+                match arg {
+                    "ignore-output" => ignore_output = true,
+                    _ => parser.error(span.clone(), format!("invalid flag on `run-native`: {arg}")),
+                }
+            }
+            // Remember this data. We use the presence/absence of keys in the map to communicate
+            // with later passes, since there is apparently no way to get custom data out of
+            // that map again.
+            parser.set_custom_once("run-native", (), span.clone());
+            if ignore_output {
+                parser.set_custom_once("run-native-ignore-output", (), span);
+            }
+        });
+    }
 
     // Adjust comment defaults.
     config.comment_defaults.base().exit_status = match mode {
@@ -225,9 +239,8 @@ fn miri_config(
                 comments: &ui_test::Comments,
                 revision: &str,
             ) -> bool {
-                let should_run = comments
-                    .for_revision(revision)
-                    .any(|r| r.custom.iter().any(|(k, _v)| *k == "run-native"));
+                let should_run =
+                    comments.for_revision(revision).any(|r| r.custom.contains_key("run-native"));
                 // We return `true` when the test should be ignored.
                 let ignore = !should_run;
                 ignore
@@ -242,7 +255,27 @@ fn miri_config(
                 // Delegate to the native run support.
                 use ui_test::custom_flags::run::Run;
                 Run::post_test_action(
-                    &Run { exit_code: 0, output_conflict_handling: None },
+                    &Run {
+                        exit_code: 0,
+                        output_conflict_handling: Some(|path, output, errors, config| {
+                            let ignore_output = config
+                                .comments()
+                                .any(|r| r.custom.contains_key("run-native-ignore-output"));
+                            if ignore_output {
+                                return;
+                            }
+
+                            // We have to patch the filename. Something is adding a `.run`.
+                            let extension = path.extension().unwrap();
+                            // Remove that extension from the path.
+                            let path = path.with_extension("");
+                            // Now the extension is `.run`. Replace it with the final extension.
+                            assert_eq!(path.extension().unwrap().to_str(), Some("run"));
+                            let path = path.with_extension(extension);
+
+                            ui_test::error_on_output_conflict(&path, output, errors, config)
+                        }),
+                    },
                     config,
                     output,
                     build_manager,
@@ -466,7 +499,7 @@ fn main() -> Result<()> {
     // target is also 64bit little-endian, so `host == target` is too strict.
     if cfg!(all(
         feature = "genmc",
-        target_os = "linux",
+        any(target_os = "linux", target_os = "macos"),
         target_pointer_width = "64",
         target_endian = "little"
     )) && host == target
@@ -485,8 +518,11 @@ fn run_with_deps(target: String, mode: String) -> Result<()> {
         miri_config(&target, "", Mode::RunDep { native }, Some(WithDependencies { bless: false }));
     config.comment_defaults.base().custom.remove("edition"); // `./miri` adds an `--edition` in `args`, so don't set it twice
     config.fill_host_and_target()?;
-    // Reset `args` (otherwise we'll get JSON output).
-    config.program.args = vec![];
+    // Remove the error-format flag that is added by default.
+    config
+        .program
+        .args
+        .retain(|arg| !arg.to_str().is_some_and(|arg| arg.starts_with("--error-format=")));
 
     // Compute the actual Miri invocation command.
     let test_config = TestConfig::one_off_runner(config.clone(), PathBuf::new());

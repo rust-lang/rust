@@ -23,8 +23,8 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::{
-    self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, Unnormalized, UserArgs,
+    self, AssocContainer, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, Unnormalized, UserArgs,
 };
 use rustc_span::{DUMMY_SP, Span, bug, span_bug};
 use rustc_trait_selection::traits;
@@ -301,7 +301,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
+    ) -> GenericArgs<'tcx> {
         match pick.kind {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container_id(self.tcx);
@@ -419,8 +419,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         pick: &probe::Pick<'tcx>,
         seg: &hir::PathSegment<'tcx>,
-        parent_args: GenericArgsRef<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
+        parent_args: GenericArgs<'tcx>,
+    ) -> GenericArgs<'tcx> {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
@@ -519,7 +519,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let args = lower_generic_args(
             self.fcx,
             pick.item.def_id,
-            parent_args,
+            parent_args.as_slice(),
             false,
             None,
             &arg_count_correct,
@@ -614,7 +614,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn instantiate_method_sig(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        all_args: GenericArgsRef<'tcx>,
+        all_args: GenericArgs<'tcx>,
     ) -> (ty::FnSig<'tcx>, ty::InstantiatedClauses<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_args={:?})", pick, all_args);
 
@@ -638,7 +638,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn add_obligations(
         &mut self,
         sig: ty::FnSig<'tcx>,
-        all_args: GenericArgsRef<'tcx>,
+        all_args: GenericArgs<'tcx>,
         method_clauses: ty::InstantiatedClauses<'tcx>,
         def_id: DefId,
     ) {

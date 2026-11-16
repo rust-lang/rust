@@ -1,5 +1,6 @@
 fn foo<T>() where T: Default -> {
-//~^ ERROR expected one of `(`, `+`, `,`, `::`, `<`, or `{`, found `->`
+//~^ ERROR expected type, found `{`
+//~^^ ERROR return type should be specified after the function parameters
     0
 }
 

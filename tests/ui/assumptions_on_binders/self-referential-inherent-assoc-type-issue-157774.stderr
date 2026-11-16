@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `Foo<'a>::Assoc == _`
+  --> $DIR/self-referential-inherent-assoc-type-issue-157774.rs:16:5
+   |
+LL |     type Assoc = &'a Foo<'a>::Assoc;
+   |     ^^^^^^^^^^
+
+error[E0275]: overflow evaluating whether `&'a Foo<'a>::Assoc` is well-formed
+  --> $DIR/self-referential-inherent-assoc-type-issue-157774.rs:16:5
+   |
+LL |     type Assoc = &'a Foo<'a>::Assoc;
+   |     ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

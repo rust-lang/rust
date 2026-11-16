@@ -7,7 +7,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_eq(
+pub(crate) fn expand_derive_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -32,12 +32,12 @@ pub(crate) fn expand_deriving_eq(
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.
                 // We prevent this by adding `#[inline]`, which improves compile-time.
-                cx.attr_word(sym::inline, span),
-                cx.attr_nested_word(sym::doc, sym::hidden, span),
-                cx.attr_nested_word(sym::coverage, sym::off, span),
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::DocHidden),
+                cx.generated_attr(span, ast::GeneratedAttr::CoverageOff),
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(cs_total_eq_assert),
+            body: Box::new(assert_fields_eq_body),
         }],
         is_const,
         ..
@@ -45,7 +45,11 @@ pub(crate) fn expand_deriving_eq(
     trait_def.expand_ext(cx, item, push, true)
 }
 
-fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+fn assert_fields_eq_body(
+    cx: &ExtCtxt<'_>,
+    trait_span: Span,
+    substr: Substructure<'_>,
+) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {

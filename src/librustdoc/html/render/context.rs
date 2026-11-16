@@ -22,7 +22,7 @@ use super::sidebar::{ModuleLike, Sidebar, print_sidebar, sidebar_module_like};
 use super::{AllTypes, StylePath};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
-use crate::clean::{self, ExternalCrate};
+use crate::clean::{self, ExternalCrate, ItemKind};
 use crate::config::{EmitType, ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -418,25 +418,23 @@ impl<'tcx> Context<'tcx> {
                 ExternalLocation::Unknown => return None,
             };
 
-            let href = RefCell::new(PathBuf::new());
+            let components = RefCell::new(Vec::new());
             sources::clean_path(
                 &src_root,
                 file,
                 |component| {
-                    href.borrow_mut().push(component);
+                    components.borrow_mut().push(component.to_string_lossy().into_owned());
                 },
                 || {
-                    href.borrow_mut().pop();
+                    components.borrow_mut().pop();
                 },
             );
 
-            path = href.into_inner().to_string_lossy().into_owned();
-
-            if let Some(c) = path.as_bytes().last()
-                && *c != b'/'
-            {
-                path.push('/');
-            }
+            path = components.into_inner().iter().fold(String::new(), |mut acc, component| {
+                acc.push_str(component);
+                acc.push('/');
+                acc
+            });
 
             let mut fname = file.file_name().expect("source has no filename").to_os_string();
             fname.push(".html");
@@ -745,11 +743,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Render sidebar-items.js used throughout this module.
         if !self.info.render_redirect_pages {
-            let (clean::StrippedItem(clean::ModuleItem(ref module))
-            | clean::ModuleItem(ref module)) = item.kind
-            else {
-                unreachable!()
-            };
+            let ItemKind::Module(module) = item.kind.unstripped() else { unreachable!() };
             let items = self.build_sidebar_items(module);
             let js_dst = self.dst.join(format!("sidebar-items{}.js", self.shared.resource_suffix));
             let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());

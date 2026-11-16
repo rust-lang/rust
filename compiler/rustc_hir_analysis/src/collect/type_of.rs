@@ -1,5 +1,6 @@
 use core::ops::ControlFlow;
 
+use rustc_attr_ir::find_attr;
 use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -570,9 +571,18 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
 
 pub(crate) fn type_alias_is_checked<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     use hir::intravisit::Visitor;
+
+    // FIXME(checked_type_aliases, type_alias_impl_trait):
+    //     Should `#[rustc_unchecked_type_alias] type Tait = impl Trait;`
+    //     actually be legal or is it beyond borked?
+    if find_attr!(tcx, def_id, UncheckedTypeAlias) {
+        return false;
+    }
+
     if tcx.features().checked_type_aliases() {
         return true;
     }
+
     struct HasTait;
     impl<'tcx> Visitor<'tcx> for HasTait {
         type Result = ControlFlow<()>;
@@ -584,5 +594,7 @@ pub(crate) fn type_alias_is_checked<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId)
             }
         }
     }
-    HasTait.visit_ty_unambig(tcx.hir_expect_item(def_id).expect_ty_alias().2).is_break()
+
+    let (_ident, _generics, ty) = tcx.hir_expect_item(def_id).expect_ty_alias();
+    HasTait.visit_ty_unambig(ty).is_break()
 }

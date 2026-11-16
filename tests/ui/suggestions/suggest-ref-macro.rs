@@ -1,6 +1,5 @@
 // run-check
 //@ proc-macro: proc-macro-type-error.rs
-//@ ignore-backends: gcc
 
 extern crate proc_macro_type_error;
 

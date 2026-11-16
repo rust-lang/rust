@@ -735,7 +735,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
                             variant_index: FIRST_VARIANT,
-                            args,
+                            args: *args,
                             user_ty,
                             fields: self.field_refs(fields),
                             base: match base {
@@ -778,7 +778,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                 ExprKind::Adt(Box::new(AdtExpr {
                                     adt_def: *adt,
                                     variant_index: index,
-                                    args,
+                                    args: *args,
                                     user_ty,
                                     fields: self.field_refs(fields),
                                     base: match base {
@@ -904,9 +904,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             let parent_args = tcx.erase_and_anonymize_regions(
                                 GenericArgs::identity_for_item(tcx, typeck_root_def_id),
                             );
-                            let args =
-                                InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
-                                    .args;
+                            let args = InlineConstArgs::new(
+                                tcx,
+                                InlineConstArgsParts { parent_args: parent_args.as_slice(), ty },
+                            )
+                            .args;
 
                             let uneval = mir::UnevaluatedConst::new(did.to_def_id(), args);
                             let value = mir::Const::Unevaluated(uneval, ty);
@@ -986,7 +988,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     tcx,
                     typeck_root_def_id,
                 ));
-                let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
+                let args = InlineConstArgs::new(
+                    tcx,
+                    InlineConstArgsParts { parent_args: parent_args.as_slice(), ty },
+                )
+                .args;
 
                 ExprKind::ConstBlock { did: did.to_def_id(), args }
             }
@@ -1514,7 +1520,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
                         adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
-                        args,
+                        args: *args,
                         user_ty,
                         fields: Box::new([]),
                         base: AdtExprBase::None,

@@ -22,7 +22,8 @@ pub fn main() {
     });
 
     // multiple lines of code will lint with parentheses
-    let _ = (0..).find(|n| ( //~ ERROR unnecessary parentheses around closure body
+    //~v ERROR unnecessary parentheses around closure body
+    let _ = (0..).find(|n| (
         n % 2 == 0
     ));
 

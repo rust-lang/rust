@@ -20,9 +20,7 @@ fn main() {
     require_fn(f as unsafe fn() -> i32);
     //~^ ERROR: expected `Fn()` signature, found `unsafe fn() -> i32`
     require_fn(g);
-    //~^ ERROR: expected `Fn()` signature, found `extern "C" fn() -> i32 {g}`
     require_fn(g as extern "C" fn() -> i32);
-    //~^ ERROR: expected `Fn()` signature, found `extern "C" fn() -> i32`
     require_fn(h);
     //~^ ERROR: expected `Fn()` signature, found `unsafe fn() -> i32 {h}`
 }

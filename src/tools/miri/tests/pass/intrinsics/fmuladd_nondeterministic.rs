@@ -1,6 +1,6 @@
 #![feature(core_intrinsics, portable_simd)]
-use std::intrinsics::simd::simd_relaxed_fma;
 use std::intrinsics::fmuladd;
+use std::intrinsics::simd::simd_relaxed_fma;
 use std::simd::prelude::*;
 
 #[path = "../../utils/mod.rs"]

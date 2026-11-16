@@ -543,7 +543,7 @@ impl<'tcx, 'ptcx> PatCtxt<'tcx, 'ptcx> {
                 if adt_def.is_enum() {
                     let args = match ty.kind() {
                         ty::FnDef(_, args) => args.no_bound_vars().unwrap(),
-                        ty::Adt(_, args) => args,
+                        ty::Adt(_, args) => *args,
                         ty::Error(e) => {
                             // Avoid ICE (#50585)
                             return Box::new(Pat {

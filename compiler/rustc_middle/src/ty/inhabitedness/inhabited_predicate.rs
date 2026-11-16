@@ -233,7 +233,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     }
 
     /// Replaces generic types with its corresponding predicate
-    pub fn instantiate(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Self {
+    pub fn instantiate(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgs<'tcx>) -> Self {
         self.instantiate_opt(tcx, args).unwrap_or(self)
     }
 
@@ -242,7 +242,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     /// allocating a recursive copy of everything when the result is unchanged.
     ///
     /// Only used to implement `instantiate` itself.
-    fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Option<Self> {
+    fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgs<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
                 let c = ty::EarlyBinder::bind(tcx, c).instantiate(tcx, args).skip_norm_wip();

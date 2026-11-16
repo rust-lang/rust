@@ -2,7 +2,7 @@
 //@ only-64bit
 
 #![crate_type = "lib"]
-#![feature(pattern_types, pattern_type_macro)]
+#![feature(pattern_types)]
 
 use std::cmp::Ordering;
 use std::num::NonZero;
