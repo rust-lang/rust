@@ -54,6 +54,17 @@ unsafe fn test_sse41() {
         let b = _mm_setr_pd(1.0, 4.0);
         let e = _mm_setr_pd(14.0, 0.0);
         assert_eq_m128d(_mm_dp_pd::<0b00110001>(a, b), e);
+
+        let a = _mm_set1_pd(-0.0);
+        let b = _mm_set1_pd(1.0);
+        // Bits 7:6 and 3:2 are ignored; no extra zeros may enter the sum.
+        let r: [u64; 2] = transmute(_mm_dp_pd::<0xff>(a, b));
+        assert_eq!(r, [(-0.0f64).to_bits(); 2]);
+        let r: [u64; 2] = transmute(_mm_dp_pd::<0x31>(a, b));
+        assert_eq!(r, [(-0.0f64).to_bits(), 0]);
+        // A masked-out product contributes +0.0.
+        let r: [u64; 2] = transmute(_mm_dp_pd::<0x13>(a, b));
+        assert_eq!(r, [0; 2]);
     }
     test_mm_dp_pd();
 
@@ -63,6 +74,29 @@ unsafe fn test_sse41() {
         let b = _mm_setr_ps(1.0, 4.0, 0.5, 10.0);
         let e = _mm_setr_ps(14.5, 0.0, 14.5, 0.0);
         assert_eq_m128(_mm_dp_ps::<0b01110101>(a, b), e);
+
+        // Adjacent pairs are added first, with rounding at each step.
+        let b = _mm_set1_ps(1.0);
+        for a in [_mm_setr_ps(1e20, 1.0, -1e20, 1.0), _mm_setr_ps(1.0, 1e20, 1.0, -1e20)] {
+            let r: [u32; 4] = transmute(_mm_dp_ps::<0xff>(a, b));
+            assert_eq!(r, [0; 4]);
+        }
+
+        let a = _mm_set1_ps(-0.0);
+        let r: [u32; 4] = transmute(_mm_dp_ps::<0xff>(a, b));
+        assert_eq!(r, [(-0.0f32).to_bits(); 4]);
+        let r: [u32; 4] = transmute(_mm_dp_ps::<0xf5>(a, b));
+        assert_eq!(r, [(-0.0f32).to_bits(), 0, (-0.0f32).to_bits(), 0]);
+        let r: [u32; 4] = transmute(_mm_dp_ps::<0x7f>(a, b));
+        assert_eq!(r, [0; 4]);
+
+        // Masked-out products and destination lanes are +0.0, even for NaNs.
+        let a = _mm_setr_ps(f32::NAN, 2.0, f32::INFINITY, 3.0);
+        assert_eq_m128(_mm_dp_ps::<0xaf>(a, b), _mm_set1_ps(5.0));
+        let r: [u32; 4] = transmute(_mm_dp_ps::<0x0f>(a, b));
+        assert_eq!(r, [0; 4]);
+        let r: [u32; 4] = transmute(_mm_dp_ps::<0xf0>(a, b));
+        assert_eq!(r, [0; 4]);
     }
     test_mm_dp_ps();
 
