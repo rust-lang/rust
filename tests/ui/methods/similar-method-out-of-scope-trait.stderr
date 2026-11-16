@@ -69,6 +69,72 @@ help: there is a method `flush` with a similar name
 LL |     writer.flush();
    |                +
 
-error: aborting due to 5 previous errors
+error[E0599]: no method named `method` found for struct `ByValue` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:82:21
+   |
+LL |     pub struct ByValue;
+   |     ------------------ method `method` not found for this struct
+...
+LL |         fn method(&self) {}
+   |            ------ the method is available for `ByValue` here
+...
+LL |     hidden::ByValue.method();
+   |                     ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Hidden` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::hidden::Hidden;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL |     hidden::ByValue.method2();
+   |                           +
+
+error[E0599]: no method named `method` found for struct `Ambiguous` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:84:23
+   |
+LL |     pub struct Ambiguous;
+   |     -------------------- method `method` not found for this struct
+...
+LL |         fn method(&self) {}
+   |            ------ the method is available for `Ambiguous` here
+...
+LL |     hidden::Ambiguous.method();
+   |                       ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `HiddenRef` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::hidden::HiddenRef;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL |     hidden::Ambiguous.method2();
+   |                             +
+
+error[E0599]: no method named `method` found for struct `Inherent` in the current scope
+  --> $DIR/similar-method-out-of-scope-trait.rs:86:22
+   |
+LL |     pub struct Inherent;
+   |     ------------------- method `method` not found for this struct
+...
+LL |         fn method(&self) {}
+   |            ------ the method is available for `Inherent` here
+...
+LL |     hidden::Inherent.method();
+   |                      ^^^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Hidden` which provides `method` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use crate::hidden::Hidden;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL |     hidden::Inherent.method2();
+   |                            +
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0599`.

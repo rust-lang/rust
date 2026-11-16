@@ -40,3 +40,49 @@ fn main() {
     writer.flus();
     //~^ ERROR no method named `flus` found
 }
+
+// A method from the missing trait must not hide a similarly named method that can be called.
+mod hidden {
+    pub struct ByValue;
+    pub struct Ambiguous;
+    pub struct Inherent;
+
+    pub trait Hidden {
+        fn method(&self) {}
+        fn method2(self)
+        where
+            Self: Sized,
+        {
+        }
+    }
+
+    impl Hidden for ByValue {}
+    impl Hidden for Inherent {}
+
+    pub trait HiddenRef {
+        fn method(&self) {}
+        fn method2(&self) {}
+    }
+
+    impl HiddenRef for Ambiguous {}
+
+    impl Inherent {
+        pub fn method2(&self) {}
+    }
+}
+
+trait Visible {
+    fn method2(&self) {}
+}
+
+impl Visible for hidden::ByValue {}
+impl Visible for hidden::Ambiguous {}
+
+fn in_scope_candidates() {
+    hidden::ByValue.method();
+    //~^ ERROR no method named `method` found
+    hidden::Ambiguous.method();
+    //~^ ERROR no method named `method` found
+    hidden::Inherent.method();
+    //~^ ERROR no method named `method` found
+}

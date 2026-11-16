@@ -2528,10 +2528,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
                     pcx.assemble_extension_candidates_for_all_traits();
-                    pcx.pick_core(&mut Vec::new())
-                        .and_then(|pick| pick.ok())
-                        .map(|pick| pick.item)
-                        .filter(|item| !out_of_scope_traits.contains(&item.container_id(self.tcx)))
+                    // Methods of out-of-scope traits can't be called here. Drop them before
+                    // picking, or they could win over (or be ambiguous with) one that can.
+                    pcx.extension_candidates.retain(|candidate| {
+                        !out_of_scope_traits.contains(&candidate.item.container_id(self.tcx))
+                    });
+                    pcx.pick_core(&mut Vec::new()).and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();
 
