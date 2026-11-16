@@ -1150,9 +1150,9 @@ impl File {
         self.inner.file_attr().map(Metadata)
     }
 
-    /// Creates a new `File` instance that shares the same underlying file handle
-    /// as the existing `File` instance. Reads, writes, and seeks will affect
-    /// both `File` instances simultaneously.
+    /// Creates a new `File` instance with a different OS handle referring to
+    /// the same underlying system resource as the existing `File` instance.
+    /// Reads, writes, and seeks will affect both `File` instances simultaneously.
     ///
     /// # Examples
     ///
