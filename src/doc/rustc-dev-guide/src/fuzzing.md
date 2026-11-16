@@ -84,7 +84,8 @@ To build a corpus, you may want to use:
 ## Handling rustc-external issues
 
 Historically, Rust has received many bugs for external software like LLVM which we took on as
-our responsibility. For instance, we would patch our fork or send the bug to their tracker,
+our responsibility.
+For instance, we would patch our fork or send the bug to their tracker,
 and keep a Rust-side bug open to track backports or mitigations in rustc.
 This was when bug reports for miscompilations were rare, mostly "organic" instead of fuzzed,
 and it was not always clear we were using LLVM correctly instead of generating malformed LLVMIR.
