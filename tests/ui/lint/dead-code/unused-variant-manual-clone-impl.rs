@@ -1,9 +1,7 @@
 #![deny(dead_code)]
 
-// Previously, the variants which are matched with `Self::...` below
-// were not marked as dead.
 enum Enum {
-    Variant1, //~ ERROR: variants `Variant1`, `Variant3`, and `Variant5` are never constructed
+    Variant1, //~ ERROR: variants `Variant1`, `Variant2`, `Variant3`, `Variant4`, `Variant5`, and `Variant6` are never constructed
     Variant2,
     Variant3(i32),
     Variant4(i32),

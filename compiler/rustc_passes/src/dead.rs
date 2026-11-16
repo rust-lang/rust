@@ -13,7 +13,7 @@ use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap, LocalModId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalDefIdMap, LocalModId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath};
 use rustc_lint_defs::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
@@ -860,7 +860,15 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         // necessary for the pattern to match. Those construction sites
         // can't be reached unless the variant is constructed elsewhere.
         let len = self.ignore_variant_stack.len();
-        self.ignore_variant_stack.extend(arm.pat.necessary_variants());
+        let mut seen_variants = DefIdSet::default();
+        arm.pat.each_necessary_variant(|qpath, hir_id| {
+            if let Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), id) =
+                self.typeck_results().qpath_res(qpath, hir_id)
+                && seen_variants.insert(id)
+            {
+                self.ignore_variant_stack.push(id);
+            }
+        });
         let result = intravisit::walk_arm(self, arm);
         self.ignore_variant_stack.truncate(len);
 
