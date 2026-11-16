@@ -977,7 +977,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     //
                     // Unbound parts of arguments were never required to be Sized
                     // - maybe we should make that a warning.
-                    return;
                 }
                 LocalKind::Temp => {
                     let span = local_decl.source_info.span;
@@ -1847,7 +1846,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.terms().map(|t| ty::ClauseKind::WellFormed(t)),
+                    args.terms().map(ty::ClauseKind::WellFormed),
                     locations,
                     ConstraintCategory::Boring,
                 );

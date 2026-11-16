@@ -1179,14 +1179,10 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 self.has_adjustments = parent_has_adjustments;
             }
         }
-        let Some(binding_info) = self.pattern_binding_info(binds_to) else {
-            return None;
-        };
+        let binding_info = self.pattern_binding_info(binds_to)?;
 
         let tcx = self.infcx.tcx;
-        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else {
-            return None;
-        };
+        let body = tcx.hir_maybe_body_owned_by(self.mir_def_id())?;
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         let mut finder = BindingFinder {
             typeck_results,
