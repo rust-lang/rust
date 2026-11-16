@@ -168,10 +168,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         }
     }
 
-    pub(crate) fn type_bf16(&self) -> Type<'ll> {
-        unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
-    }
-
     pub(crate) fn type_array(&self, ty: Type<'ll>, len: u64) -> Type<'ll> {
         unsafe { llvm::LLVMArrayType2(ty, len) }
     }
