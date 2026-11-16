@@ -254,9 +254,17 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             }
         };
 
+        if obligation_args == impl_args {
+            return true;
+        }
+
         // Specialize the common `(1, 1)` case to avoid iterator machinery.
         if let ([obl], [imp]) = (obligation_args.as_slice(), impl_args.as_slice()) {
             return may_unify((*obl, *imp));
+        }
+
+        if let ([obl1, obl2], [imp1, imp2]) = (obligation_args.as_slice(), impl_args.as_slice()) {
+            return may_unify((*obl1, *imp1)) && may_unify((*obl2, *imp2));
         }
 
         iter::zip(obligation_args.iter(), impl_args.iter()).all(may_unify)
