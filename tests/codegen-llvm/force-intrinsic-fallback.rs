@@ -10,15 +10,15 @@
 // With the flag, the fallback body is called instead.
 
 #[no_mangle]
-pub fn call_minimumf32(x: f32, y: f32) -> f32 {
-    // CHECK-LABEL: @call_minimumf32
+pub fn call_minimum_f32(x: f32, y: f32) -> f32 {
+    // CHECK-LABEL: @call_minimum_f32
 
     // NORMAL: call float @llvm.minimum.f32
-    // NORMAL-NOT: minimumf32
+    // NORMAL-NOT: intrinsics{{.*}}minimum
 
     // FALLBACK-NOT: @llvm.minimum
-    // FALLBACK: call {{.*}}minimumf32
-    core::intrinsics::minimumf32(x, y)
+    // FALLBACK: call {{.*}}intrinsics{{.*}}minimum
+    core::intrinsics::minimum(x, y)
 }
 
 // Codegen backends can return a list of `replaced_intrinsics`, for which codegen of the fallback is
