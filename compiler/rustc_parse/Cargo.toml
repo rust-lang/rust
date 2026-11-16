@@ -18,11 +18,9 @@ rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_unicode = { path = "../rustc_unicode" }
 thin-vec = "0.2.21"
 tracing = "0.1"
-unicode-normalization = "0.1.25"
-unicode-properties = { version = "0.1.4", default-features = false, features = ["emoji"] }
-unicode-width = "0.2.2"
 # tidy-alphabetical-end
 
 [dev-dependencies]

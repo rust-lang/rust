@@ -12,11 +12,10 @@ Rust lexer used by rustc. No stability guarantees are provided.
 # This will be used when publishing this crate as `rustc-ap-rustc_lexer`.
 [lib]
 
-# Note that this crate purposefully does not depend on other rustc crates
+# Note that this crate purposefully does not depend on other rustc crates other than `rustc-unicode`
 [dependencies]
 memchr = "2.7.6"
-unicode-properties = { version = "0.1.4", default-features = false, features = ["emoji"] }
-unicode-ident = "1.0.22"
+rustc_unicode = { path = "../rustc_unicode" }
 
 [dev-dependencies]
 expect-test = "1.4.0"
