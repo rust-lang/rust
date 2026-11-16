@@ -2,8 +2,8 @@
 
 While some of the items below are already mentioned separately,
 this page tracks the main changes from the old trait system implementation.
-This also mentions some ways
-in which the solver significantly diverges from an idealized implementation.
+This also mentions some ways in which the solver significantly diverges
+from an idealized implementation.
 This document simplifies and ignores edge cases.
 It is recommended to add an implicit "mostly" to each statement.
 
@@ -22,9 +22,9 @@ reevaluating the candidate after it has been selected: [source][evaluate_stack].
 Without canonicalization it is also not possible to cache the inference constraints
 from evaluating a goal.
 This causes the old implementation to have two systems: *evaluate* and *fulfill*.
-*Evaluation* is cached, does not apply inference constraints and is used when selecting candidates.
-*Fulfillment* applies inference and region
-constraints is not cached and applies inference constraints.
+*Evaluation* is cached, does not apply inference constraints, and is used when selecting candidates.
+*Fulfillment* applies inference and region constraints, is not cached,
+and applies inference constraints.
 
 By using canonicalization, the new implementation is able to merge *evaluation* and *fulfillment*,
 avoiding complexity and subtle differences in behavior.
@@ -48,8 +48,8 @@ This enables the new solver to stall equality until it is able to normalize the 
 The behavior of the old solver is incomplete and relies on eager normalization
 which replaces ambiguous aliases with inference variables.
 As this is not possible for aliases containing bound variables, the old implementation does
-not handle aliases inside of binders correctly, e.g. [#102048]. See the chapter on
-[normalization] for more details.
+not handle aliases inside of binders correctly, e.g. [#102048].
+See the chapter on [normalization] for more details.
 
 [#102048]: https://github.com/rust-lang/rust/issues/102048
 
@@ -57,7 +57,7 @@ not handle aliases inside of binders correctly, e.g. [#102048]. See the chapter 
 
 The new implementation eagerly handles nested goals instead of returning them to the caller.
 The old implementation does both.
-In evaluation nested goals [are eagerly handled][eval-nested],
+In evaluation, nested goals [are eagerly handled][eval-nested],
 while fulfillment simply [returns them for later processing][fulfill-nested].
 
 As the new implementation has to be able to eagerly handle nested goals for candidate selection,
@@ -93,7 +93,7 @@ performance and to avoid accidentally relying on diagnostics data for behavior.
 If there is at least one `ParamEnv` or `AliasBound` candidate to prove some `Trait` goal,
 we discard all impl candidates for both `Trait` and `Projection` goals: [source][discard-from-env].
 This prevents users from using an impl which is entirely covered by a `where`-bound,
- matching the behavior of the old implementation and avoiding some weird errors,
+matching the behavior of the old implementation and avoiding some weird errors,
 e.g. [trait-system-refactor-initiative#76].
 
 [discard-from-env]: https://github.com/rust-lang/rust/blob/03994e498df79aa1f97f7bbcfd52d57c8e865049/compiler/rustc_trait_selection/src/solve/assembly/mod.rs#L785-L789
