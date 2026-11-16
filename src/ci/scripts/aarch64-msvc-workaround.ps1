@@ -1,15 +1,19 @@
 # Workaround for #165953.
 # This should be removed once that issue is fixed.
-$vcvars_ver=14.44
+$vcvars_ver="Preview"
 
 # vswhere.exe is used to find Visual Studio directories.
 $vswhere="${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 
-# LLVM needs the ATL libraries, so make sure we have them.
-$atl_include = &$vswhere -find **\atlbase.h | Split-Path -parent
-$atl_lib = "$(Split-Path -parent $atl_include)\lib\arm64"
-$env:INCLUDE += ";$atl_include"
-$env:LIB += ";$atl_lib"
+$setup="${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+$installPath = ./vswhere -latest -property InstallationPath
+Start-Process $setup -Wait -ArgumentList @(
+    "modify",
+    "--passive",
+    "--installPath", "`"$installPath`"",
+    "--add", "Microsoft.VisualStudio.Component.VC.Preview.ARM64",
+    "--add", "Microsoft.VisualStudio.Component.VC.Preview.ATL.ARM64"
+)
 
 # vcvarsall.bat sets up the environment so everything should use the given versions
 $vcvarsall=&$vswhere -find **\vcvarsall.bat
