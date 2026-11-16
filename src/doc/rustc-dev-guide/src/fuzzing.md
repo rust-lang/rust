@@ -30,7 +30,8 @@ please read this guide before reporting fuzzer-generated bugs!
 - Don't report lots of bugs that use internal features, including but not
   limited to `custom_mir`, `lang_items`, `no_core`, and `rustc_attrs`.
 - Don't seed your fuzzer with inputs that are known to crash rustc (details below).
-- You do not need to report minor bugs you already traced to LLVM. It can go upstream.
+- You do not need to report minor bugs you already traced to LLVM.
+  It can go upstream.
 
 ### Discussion
 
@@ -82,8 +83,8 @@ To build a corpus, you may want to use:
 
 ## Handling rustc-external issues
 
-Historically, Rust has received many bugs for external software like LLVM which we took on as
-our responsibility.
+Historically,
+Rust has received many bugs for external software like LLVM which we took on as our responsibility.
 For instance, we would patch our fork or send the bug to their tracker,
 and keep a Rust-side bug open to track backports or mitigations in rustc.
 This was when bug reports for miscompilations were rare, mostly "organic" instead of fuzzed,
