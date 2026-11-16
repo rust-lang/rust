@@ -1,7 +1,7 @@
 //@ add-minicore
 //@ edition: 2021
 //@ revisions: x64 x64_win i686 riscv32 riscv64 avr msp430 amdgpu nvptx
-//
+//@ ignore-parallel-frontend we allow all fatal errors to be emitted during AST -> HIR lowering
 //@ [x64] needs-llvm-components: x86
 //@ [x64] compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
 //@ [x64_win] needs-llvm-components: x86
