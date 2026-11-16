@@ -958,7 +958,7 @@ pub enum AttributeKind {
     InstrumentFn(InstrumentFnAttr),
 
     /// Represents `#[lang]`
-    Lang(LangItem),
+    Lang(LangItem, Span),
 
     /// Represents `#[link]`.
     Link(ThinVec<LinkEntry>, Span),
