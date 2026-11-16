@@ -1,9 +1,10 @@
 use std::mem;
 use std::ops::ControlFlow;
 
-use rustc_abi::{Layout, LayoutData};
+use rustc_abi::{ExternAbi, Layout, LayoutData};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
 use rustc_middle::mir::visit::Visitor;
@@ -34,7 +35,6 @@ fn polymorphize_instance<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> I
     if !tcx.is_fn_polymorphizable(def_id) {
         return instance;
     }
-    // FIXME: exclude all functions with non-Rust reprs anywhere in signature (including theirs)
 
     let generics = tcx.generics_of(def_id);
     let clauses: Vec<_> = tcx
@@ -136,6 +136,50 @@ impl<'tcx> Visitor<'tcx> for PolyTaintBodyVisitor<'tcx> {
     }
 }
 
+struct PolyTaintSigVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> PolyTaintSigVisitor<'tcx> {
+    fn visit_abi(&self, abi: ExternAbi) -> ControlFlow<()> {
+        if !abi.is_rustic_abi() {
+            return ControlFlow::Break(());
+        }
+        ControlFlow::Continue(())
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PolyTaintSigVisitor<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        match t.kind() {
+            &ty::FnDef(def_id, _) => {
+                self.visit_abi(self.tcx.fn_sig(def_id).skip_binder().abi())?;
+            }
+            ty::FnPtr(_, sig_kind) => {
+                self.visit_abi(sig_kind.abi())?;
+            }
+            _ => {}
+        }
+        t.super_visit_with(self)
+    }
+}
+
+#[instrument(level = "debug", skip(tcx))]
+fn check_fn_sig_tainting<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ControlFlow<()> {
+    let fn_sig = match tcx.def_kind(def_id) {
+        DefKind::Fn | DefKind::AssocFn => tcx.fn_sig(def_id),
+        // FIXME: this will be no longer valid if closures ever have non-rustic ABIs
+        // or (more likely) we check for other things in the PolyTaintSigVisitor
+        DefKind::Closure => return ControlFlow::Continue(()),
+        kind => panic!("unexpected defkind {kind:?} for {def_id:?}"),
+    };
+    let mut visitor = PolyTaintSigVisitor { tcx };
+    visitor.visit_abi(fn_sig.skip_binder().abi())?;
+    fn_sig.skip_binder().visit_with(&mut visitor)
+}
+
 // FIXME: is this efficient enough? also should we use existing code like Sccs?
 // FIXME: what about weird cases like tainted functions passed as fnptrs/closures into
 // generic functions - are bad cases possible?
@@ -150,7 +194,7 @@ fn compute_polymorphizable_fns<'tcx>(tcx: TyCtxt<'tcx>, _: LocalCrate) -> FxInde
         let mut visitor =
             PolyTaintBodyVisitor { tcx, has_tainting_op: false, mentions: FxIndexSet::default() };
         visitor.visit_body(body);
-        if visitor.has_tainting_op {
+        if visitor.has_tainting_op || check_fn_sig_tainting(tcx, def_id).is_break() {
             tainted.insert(def_id);
         }
         for m in visitor.mentions {
