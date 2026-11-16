@@ -826,7 +826,7 @@ after `//` for UI error annotations, like so:
 
 ```rust,ignore
 // A flag to pass in only for cfg `foo`:
-//@[foo]compile-flags: -Z verbose-internals
+//@[foo] compile-flags: -Z verbose-internals
 
 #[cfg(foo)]
 fn test_foo() {
