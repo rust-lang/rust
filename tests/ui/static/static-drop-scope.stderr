@@ -47,10 +47,9 @@ error[E0493]: destructor of `(T, ())` cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:17:5
    |
 LL |     (x, ()).1
-   |     ^^^^^^^ the destructor for this type cannot be evaluated in constant functions
-LL |
-LL | }
-   | - value is dropped here
+   |     ^^^^^^^ - value is dropped here
+   |     |
+   |     the destructor for this type cannot be evaluated in constant functions
 
 error: aborting due to 6 previous errors
 

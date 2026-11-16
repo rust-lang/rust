@@ -111,10 +111,10 @@
   
       bb8: {
 -         _17 = copy _2[_18];
+-         StorageDead(_18);
 +         _17 = copy _2[_16];
           _1 = Add(copy _1, move _17);
           StorageDead(_17);
--         StorageDead(_18);
 -         _10 = const ();
           StorageDead(_16);
           StorageDead(_13);

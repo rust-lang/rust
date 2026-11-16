@@ -66,7 +66,7 @@ fn main() {
                 }
             },
         );
-        assert_eq!(get(), vec![3, 2, 8, 7, 1]);
+        assert_eq!(get(), vec![3, 2, 1, 8, 7]);
     }
     assert_eq!(get(), vec![0, 4, 6, 9, 5]);
 
@@ -105,5 +105,5 @@ fn main() {
             panic::panic_any(InjectedFailure),
         );
     });
-    assert_eq!(get(), vec![14, 13, 19, 18, 20, 17, 15, 11, 16, 12]);
+    assert_eq!(get(), vec![14, 13, 12, 19, 18, 20, 17, 15, 11, 16]);
 }

@@ -3,10 +3,10 @@
 fn main() -> () {
     let mut _0: ();
     let _1: u8;
-    let mut _2: *const !;
+    let _2: *const !;
     let mut _3: *const u8;
     let _4: u8;
-    let mut _5: *const !;
+    let _5: *const !;
     let mut _6: *const u8;
     scope 1 {
         debug x => _1;

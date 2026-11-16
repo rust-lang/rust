@@ -292,7 +292,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // This occurs when capturing by copy/move, while
                             // by reference captures use as_operand
                             Some(Category::Place) => {
-                                let place = unpack!(block = this.as_place(block, upvar));
+                                let place = unpack!(
+                                    block = this.as_non_extended_read_only_place(block, upvar)
+                                );
                                 this.consume_by_copy_or_move(place)
                             }
                             _ => {

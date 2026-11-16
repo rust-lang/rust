@@ -3,7 +3,7 @@
 fn main() -> () {
     let mut _0: ();
     let _1: &Packed;
-    let mut _2: &&Packed;
+    let _2: &&Packed;
 
     bb0: {
         StorageLive(_1);

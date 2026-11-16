@@ -38,14 +38,14 @@
   
       bb1: {
 -         _6 = copy _3[_7];
--         _5 = opaque::<T>(move _6) -> [return: bb2, unwind unreachable];
 +         _6 = copy _1;
+          StorageDead(_7);
+-         _5 = opaque::<T>(move _6) -> [return: bb2, unwind unreachable];
 +         _5 = opaque::<T>(copy _1) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
           StorageDead(_6);
-          StorageDead(_7);
           StorageDead(_5);
           StorageLive(_9);
           StorageLive(_10);
@@ -59,14 +59,14 @@
   
       bb3: {
 -         _10 = copy _3[_11];
--         _9 = opaque::<T>(move _10) -> [return: bb4, unwind unreachable];
 +         _10 = copy _1;
+          StorageDead(_11);
+-         _9 = opaque::<T>(move _10) -> [return: bb4, unwind unreachable];
 +         _9 = opaque::<T>(copy _1) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
           StorageDead(_10);
-          StorageDead(_11);
           StorageDead(_9);
           _0 = const ();
           StorageDead(_3);

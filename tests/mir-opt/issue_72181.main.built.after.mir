@@ -49,8 +49,8 @@ fn main() -> () {
 
     bb3: {
         _5 = copy (_2[_6].0: u64);
-        PlaceMention(_5);
         StorageDead(_6);
+        PlaceMention(_5);
         StorageDead(_5);
         _0 = const ();
         StorageDead(_2);

@@ -35,7 +35,7 @@
           }
       }
       scope 5 (inlined Box::<()>::new) {
-          let mut _12: *mut ();
+          let _12: *mut ();
           let mut _13: *mut u8;
           scope 6 {
           }

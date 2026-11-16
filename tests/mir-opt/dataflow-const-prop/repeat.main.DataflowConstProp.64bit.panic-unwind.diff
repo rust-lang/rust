@@ -5,7 +5,7 @@
       let mut _0: ();
       let _1: u32;
       let mut _2: u32;
-      let mut _3: [u32; 8];
+      let _3: [u32; 8];
       let _4: usize;
       let mut _5: bool;
       scope 1 {
@@ -28,10 +28,10 @@
       bb1: {
 -         _2 = copy _3[_4];
 +         _2 = copy _3[2 of 3];
-          _1 = Add(move _2, const 0_u32);
-          StorageDead(_2);
           StorageDead(_4);
           StorageDead(_3);
+          _1 = Add(move _2, const 0_u32);
+          StorageDead(_2);
           _0 = const ();
           StorageDead(_1);
           return;

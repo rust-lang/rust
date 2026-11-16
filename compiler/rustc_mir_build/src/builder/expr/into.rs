@@ -848,7 +848,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ValueUnwrapUnsafeBinder { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
-                let place = unpack!(block = this.as_place(block, expr_id));
+                let place = unpack!(block = this.as_non_extended_read_only_place(block, expr_id));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place), WithRetag::Yes);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
@@ -863,7 +863,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.local_decls.push(LocalDecl::new(expr.ty, expr.span));
                 }
 
-                let place = unpack!(block = this.as_place(block, expr_id));
+                let place = unpack!(block = this.as_non_extended_read_only_place(block, expr_id));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place), WithRetag::Yes);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()

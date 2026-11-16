@@ -4,7 +4,7 @@
   fn t1() -> () {
       let mut _0: ();
 -     let _1: u32;
--     let mut _2: *mut u32;
+-     let _2: *mut u32;
   
       bb0: {
 -         StorageLive(_1);

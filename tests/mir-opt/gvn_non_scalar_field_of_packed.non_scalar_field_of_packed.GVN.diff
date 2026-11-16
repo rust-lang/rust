@@ -3,7 +3,7 @@
   
   fn non_scalar_field_of_packed() -> (u32, u32) {
       let mut _0: (u32, u32);
-      let mut _1: Outer;
+      let _1: Outer;
   
       bb0: {
           StorageLive(_1);

@@ -59,7 +59,7 @@
       let mut _54: u64;
       let _55: ();
       let mut _56: u64;
-      let mut _57: S<u64>;
+      let _57: S<u64>;
       let mut _58: u64;
       let _59: ();
       let mut _60: u64;
@@ -114,7 +114,7 @@
       let mut _109: u64;
       let _110: ();
       let mut _111: u64;
-      let mut _112: S<u64>;
+      let _112: S<u64>;
       let mut _113: u64;
       let _114: ();
       let mut _115: u64;
@@ -452,14 +452,14 @@
 +         _57 = copy _53;
           StorageDead(_58);
 -         _56 = copy (_57.0: u64);
--         _55 = opaque::<u64>(move _56) -> [return: bb16, unwind unreachable];
 +         _56 = copy _1;
+          StorageDead(_57);
+-         _55 = opaque::<u64>(move _56) -> [return: bb16, unwind unreachable];
 +         _55 = opaque::<u64>(copy _1) -> [return: bb16, unwind unreachable];
       }
   
       bb16: {
           StorageDead(_56);
-          StorageDead(_57);
           StorageDead(_55);
           StorageLive(_59);
           StorageLive(_60);
@@ -696,14 +696,14 @@
 +         _112 = copy _53;
           StorageDead(_113);
 -         _111 = copy (_112.0: u64);
--         _110 = opaque::<u64>(move _111) -> [return: bb32, unwind unreachable];
 +         _111 = copy _1;
+          StorageDead(_112);
+-         _110 = opaque::<u64>(move _111) -> [return: bb32, unwind unreachable];
 +         _110 = opaque::<u64>(copy _1) -> [return: bb32, unwind unreachable];
       }
   
       bb32: {
           StorageDead(_111);
-          StorageDead(_112);
           StorageDead(_110);
           StorageLive(_114);
 -         StorageLive(_115);

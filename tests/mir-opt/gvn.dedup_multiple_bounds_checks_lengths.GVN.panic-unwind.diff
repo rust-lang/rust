@@ -31,6 +31,7 @@
       bb1: {
 -         _2 = copy (*_1)[_3];
 +         _2 = copy (*_1)[42 of 43];
+          StorageDead(_3);
           StorageLive(_6);
           StorageLive(_7);
           _7 = const 13_usize;
@@ -45,6 +46,7 @@
       bb2: {
 -         _6 = copy (*_1)[_7];
 +         _6 = copy (*_1)[13 of 14];
+          StorageDead(_7);
           StorageLive(_10);
           StorageLive(_11);
           _11 = const 7_usize;
@@ -59,13 +61,11 @@
       bb3: {
 -         _10 = copy (*_1)[_11];
 +         _10 = copy (*_1)[7 of 8];
+          StorageDead(_11);
           _0 = [move _2, move _6, move _10];
           StorageDead(_10);
           StorageDead(_6);
           StorageDead(_2);
-          StorageDead(_11);
-          StorageDead(_7);
-          StorageDead(_3);
           return;
       }
   }

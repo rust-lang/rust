@@ -7,11 +7,11 @@
       let _3: ();
       let mut _4: *const i32;
       let mut _5: *const ();
-      let mut _6: *const ();
+      let _6: *const ();
       let _7: &();
       let mut _8: *mut i32;
       let mut _9: *mut ();
-      let mut _10: *mut ();
+      let _10: *mut ();
       let mut _11: &mut ();
       scope 1 {
           debug src => _1;

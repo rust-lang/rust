@@ -36,6 +36,7 @@ impl DropOrderCollector {
         LoudDrop(self, n)
     }
 
+    #[track_caller]
     fn assert_sorted(&self, expected: usize) {
         let result = self.0.borrow();
         assert_eq!(result.len(), expected);
@@ -55,9 +56,9 @@ fn edition_2021_around_2021() {
     let c = DropOrderCollector::default();
     let _ = edition_2021_block! {
         let a = c.loud_drop(1);
-        edition_2021_block! {
+        *edition_2021_block! {
             let b = c.loud_drop(0);
-            c.loud_drop(2).1
+            &c.loud_drop(2).1
         }
     };
     c.assert_sorted(3);
@@ -79,9 +80,9 @@ fn edition_2024_around_2021() {
     let c = DropOrderCollector::default();
     let _ = edition_2024_block! {
         let a = c.loud_drop(2);
-        edition_2021_block! {
+        *edition_2021_block! {
             let b = c.loud_drop(0);
-            c.loud_drop(1).1
+            &c.loud_drop(1).1
         }
     };
     c.assert_sorted(3);

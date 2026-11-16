@@ -3,7 +3,7 @@
 fn main() -> () {
     let mut _0: ();
     let _1: &[(std::option::Option<i32>, &[&str])];
-    let mut _2: &&[(std::option::Option<i32>, &[&str])];
+    let _2: &&[(std::option::Option<i32>, &[&str])];
 
     bb0: {
         StorageLive(_1);

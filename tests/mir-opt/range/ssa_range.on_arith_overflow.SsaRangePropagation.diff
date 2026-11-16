@@ -8,7 +8,7 @@
       let mut _3: u32;
       let mut _4: u32;
       let mut _5: u32;
-      let mut _6: (u32, bool);
+      let _6: (u32, bool);
       let mut _7: u32;
       let mut _8: u32;
       scope 1 {

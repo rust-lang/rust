@@ -21,7 +21,7 @@
       let _16: ();
       let mut _17: *mut impl Sized;
       let _18: &mut impl Sized;
-      let mut _20: S<&mut impl Sized>;
+      let _20: S<&mut impl Sized>;
       let mut _21: &mut impl Sized;
       let _22: ();
       let mut _23: &impl Sized;

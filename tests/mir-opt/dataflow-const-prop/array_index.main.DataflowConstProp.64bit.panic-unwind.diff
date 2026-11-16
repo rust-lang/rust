@@ -4,7 +4,7 @@
   fn main() -> () {
       let mut _0: ();
       let _1: u32;
-      let mut _2: [u32; 4];
+      let _2: [u32; 4];
       let _3: usize;
       let mut _4: bool;
       scope 1 {

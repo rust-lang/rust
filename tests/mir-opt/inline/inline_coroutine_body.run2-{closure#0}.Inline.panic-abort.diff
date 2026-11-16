@@ -59,7 +59,7 @@
 +                             let mut _39: &mut std::pin::Pin<&mut std::future::Ready<()>>;
 +                             scope 13 (inlined <Pin<&mut std::future::Ready<()>> as DerefMut>::deref_mut) {
 +                                 let mut _40: *mut std::pin::helper::PinHelper<&mut std::future::Ready<()>>;
-+                                 let mut _41: *mut std::pin::Pin<&mut std::future::Ready<()>>;
++                                 let _41: *mut std::pin::Pin<&mut std::future::Ready<()>>;
 +                                 scope 14 (inlined <pin::helper::PinHelper<&mut std::future::Ready<()>> as pin::helper::PinDerefMutHelper>::deref_mut) {
 +                                     let mut _42: &mut &mut std::future::Ready<()>;
 +                                     scope 15 (inlined <&mut std::future::Ready<()> as DerefMut>::deref_mut) {

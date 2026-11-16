@@ -96,10 +96,10 @@
                           let mut _43: *const u8;
                           scope 25 {
                               scope 26 (inlined core::slice::<impl [u8]>::as_ptr) {
-                                  let mut _44: *const [u8];
+                                  let _44: *const [u8];
                               }
                               scope 27 (inlined core::slice::<impl [u8]>::as_ptr) {
-                                  let mut _45: *const [u8];
+                                  let _45: *const [u8];
                               }
                               scope 28 (inlined <u8 as core::slice::cmp::SlicePartialEq<u8>>::equal_same_length) {
                                   let mut _46: i32;
@@ -168,10 +168,10 @@
                           let mut _63: *const u8;
                           scope 51 {
                               scope 52 (inlined core::slice::<impl [u8]>::as_ptr) {
-                                  let mut _64: *const [u8];
+                                  let _64: *const [u8];
                               }
                               scope 53 (inlined core::slice::<impl [u8]>::as_ptr) {
-                                  let mut _65: *const [u8];
+                                  let _65: *const [u8];
                               }
                               scope 54 (inlined <u8 as core::slice::cmp::SlicePartialEq<u8>>::equal_same_length) {
                                   let mut _66: i32;

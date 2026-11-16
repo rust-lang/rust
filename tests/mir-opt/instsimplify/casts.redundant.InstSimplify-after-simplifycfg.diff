@@ -4,11 +4,11 @@
   fn redundant(_1: *const &u8) -> *const &u8 {
       debug x => _1;
       let mut _0: *const &u8;
-      let mut _2: *const &u8;
+      let _2: *const &u8;
       let mut _3: *const &u8;
       let mut _4: *const &u8;
       scope 1 (inlined generic_cast::<&u8, &u8>) {
-          let mut _5: *const &u8;
+          let _5: *const &u8;
           let mut _6: *const &u8;
       }
   

@@ -4,7 +4,7 @@
   fn mut_raw_then_mut_shr() -> (i32, i32) {
       let mut _0: (i32, i32);
       let mut _1: i32;
-      let mut _4: *mut i32;
+      let _4: *mut i32;
       let mut _5: &mut i32;
       let _8: ();
       let mut _9: i32;

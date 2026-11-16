@@ -5,10 +5,10 @@
       let mut _0: ();
       let _1: i32;
       let mut _2: (i32, bool);
-      let mut _4: [i32; 6];
+      let _4: [i32; 6];
       let _5: usize;
       let mut _6: bool;
-      let mut _8: u32;
+      let _8: u32;
       scope 1 {
           debug x => _1;
           let _3: i32;

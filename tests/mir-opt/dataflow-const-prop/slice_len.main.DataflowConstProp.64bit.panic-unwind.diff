@@ -4,14 +4,14 @@
   fn main() -> () {
       let mut _0: ();
       let _1: u32;
-      let mut _2: &[u32];
+      let _2: &[u32];
       let mut _3: &[u32; 3];
       let _4: &[u32; 3];
       let _5: [u32; 3];
       let _6: usize;
       let mut _7: usize;
       let mut _8: bool;
-      let mut _10: &[u32];
+      let _10: &[u32];
       let _11: usize;
       let mut _12: usize;
       let mut _13: bool;

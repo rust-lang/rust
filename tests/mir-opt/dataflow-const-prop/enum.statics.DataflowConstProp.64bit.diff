@@ -4,9 +4,9 @@
   fn statics() -> () {
       let mut _0: ();
       let _1: E;
-      let mut _2: &E;
+      let _2: &E;
       let mut _4: isize;
-      let mut _8: &&E;
+      let _8: &&E;
       let mut _10: isize;
       scope 1 {
           debug e1 => _1;

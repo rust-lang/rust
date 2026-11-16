@@ -5,7 +5,7 @@
       let mut _0: ();
       let _1: std::alloc::Layout;
       let mut _2: std::option::Option<std::alloc::Layout>;
-      let mut _3: *mut u8;
+      let _3: *mut u8;
       let mut _4: *mut [u8];
       let mut _5: std::ptr::NonNull<[u8]>;
       let mut _6: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>;

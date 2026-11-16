@@ -4,11 +4,11 @@
   fn main() -> () {
       let mut _0: ();
       let _1: char;
-      let mut _2: main::InvalidChar;
+      let _2: main::InvalidChar;
       let mut _4: E;
-      let mut _5: main::InvalidTag;
+      let _5: main::InvalidTag;
       let mut _7: Empty;
-      let mut _8: main::NoVariants;
+      let _8: main::NoVariants;
       scope 1 {
           debug _invalid_char => _1;
           let _3: [E; 1];
@@ -38,9 +38,9 @@
           StorageLive(_5);
           _5 = InvalidTag { int: const 4_u32 };
           _4 = copy (_5.1: E);
+          StorageDead(_5);
           _3 = [move _4];
           StorageDead(_4);
-          StorageDead(_5);
 -         StorageLive(_6);
 -         StorageLive(_7);
 +         nop;
@@ -48,13 +48,13 @@
           StorageLive(_8);
           _8 = NoVariants { int: const 0_u32 };
 -         _7 = copy (_8.1: Empty);
++         _7 = const ZeroSized: Empty;
+          StorageDead(_8);
 -         _6 = [move _7];
 -         StorageDead(_7);
-+         _7 = const ZeroSized: Empty;
+-         StorageLive(_9);
 +         _6 = [const ZeroSized: Empty];
 +         nop;
-          StorageDead(_8);
--         StorageLive(_9);
 +         nop;
           _0 = const ();
 -         StorageDead(_9);

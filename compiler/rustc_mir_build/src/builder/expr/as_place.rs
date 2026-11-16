@@ -5,6 +5,7 @@ use std::{assert_matches, iter};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::{Projection as HirProjection, ProjectionKind as HirProjectionKind};
+use rustc_middle::middle::region::TempLifetime;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -353,8 +354,15 @@ impl<'tcx> From<Place<'tcx>> for PlaceBuilder<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum ExtendTempLifetime {
+    No(TempLifetime),
+    Yes,
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.
+    /// Does temporary lifetime extension.
     ///
     /// WARNING: Any user code might:
     /// * Invalidate any slice bounds checks performed.
@@ -377,15 +385,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
+    /// Does temporary lifetime extension.
     pub(crate) fn as_place_builder(
         &mut self,
         block: BasicBlock,
         expr_id: ExprId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        self.expr_as_place(block, expr_id, Mutability::Mut, None)
+        self.expr_as_place(block, expr_id, ExtendTempLifetime::Yes, Mutability::Mut, None)
     }
 
     /// Compile `expr`, yielding a place that we can move from etc.
+    /// Does temporary lifetime extension.
+    ///
     /// Mutability note: The caller of this method promises only to read from the resulting
     /// place. The place itself may or may not be mutable:
     /// * If this expr is a place expr like a.b, then we will return that place.
@@ -399,6 +410,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(place_builder.to_place(self))
     }
 
+    /// Compile `expr`, yielding a place that we can move from etc.
+    /// Does temporary lifetime extension.
+    ///
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
     /// Mutability note: The caller of this method promises only to read from the resulting
@@ -410,18 +424,47 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         expr_id: ExprId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        self.expr_as_place(block, expr_id, Mutability::Not, None)
+        self.expr_as_place(block, expr_id, ExtendTempLifetime::Yes, Mutability::Not, None)
+    }
+
+    /// Compile `expr`, yielding a place that we can move from etc.
+    ///
+    /// Unlike [`Self::as_read_only_place`], this does not do temporary lifetime extension.
+    ///
+    /// Mutability note: The caller of this method promises only to read from the resulting
+    /// place. The place itself may or may not be mutable:
+    /// * If this expr is a place expr like a.b, then we will return that place.
+    /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
+    pub(crate) fn as_non_extended_read_only_place(
+        &mut self,
+        mut block: BasicBlock,
+        expr_id: ExprId,
+    ) -> BlockAnd<Place<'tcx>> {
+        let place_builder = unpack!(
+            block = self.expr_as_place(
+                block,
+                expr_id,
+                ExtendTempLifetime::No(self.local_temp_lifetime()),
+                Mutability::Not,
+                None
+            )
+        );
+        block.and(place_builder.to_place(self))
     }
 
     fn expr_as_place(
         &mut self,
         mut block: BasicBlock,
         expr_id: ExprId,
+        temp_lifetime: ExtendTempLifetime,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let expr = &self.thir[expr_id];
-        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
+        debug!(
+            "expr_as_place(block={:?}, expr={:?}, temp_lifetime={:?}, mutability={:?})",
+            block, expr, temp_lifetime, mutability
+        );
 
         let this = self; // See "LET_THIS_SELF".
         let expr_span = expr.span;
@@ -430,13 +473,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Scope { region_scope, hir_id, value } => {
                 this.in_scope((region_scope, source_info), LintLevel::Explicit(hir_id), |this| {
                     this.push_coverage_point_for_expr(block, source_info, hir_id);
-                    this.expr_as_place(block, value, mutability, fake_borrow_temps)
+                    this.expr_as_place(block, value, temp_lifetime, mutability, fake_borrow_temps)
                 })
             }
             ExprKind::Field { lhs, variant_index, name } => {
                 let lhs_expr = &this.thir[lhs];
                 let mut place_builder =
-                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                    unpack!(block = this.expr_as_place(block, lhs, temp_lifetime, mutability, fake_borrow_temps));
                 if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
                     if adt_def.is_enum() {
                         place_builder = place_builder.downcast(*adt_def, variant_index);
@@ -446,13 +489,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Deref { arg } => {
                 let place_builder =
-                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
+                    unpack!(block = this.expr_as_place(block, arg, temp_lifetime, mutability, fake_borrow_temps));
                 block.and(place_builder.deref())
             }
             ExprKind::Index { lhs, index } => this.lower_index_expression(
                 block,
                 lhs,
                 index,
+                                temp_lifetime,
                 mutability,
                 fake_borrow_temps,
                 expr_span,
@@ -475,7 +519,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceTypeAscription { source, ref user_ty, user_ty_span } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                    block = this.expr_as_place(block, source, temp_lifetime, mutability, fake_borrow_temps,)
                 );
                 if let Some(user_ty) = user_ty {
                     let ty_source_info = this.source_info(user_ty_span);
@@ -534,7 +578,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceUnwrapUnsafeBinder { source } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                    block = this.expr_as_place(block, source, temp_lifetime, mutability, fake_borrow_temps,)
                 );
                 block.and(place_builder.project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
             }
@@ -591,7 +635,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::WrapUnsafeBinder { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
-                let temp_lifetime = this.region_scope_tree.temporary_scope(expr.temp_scope_id);
+                let temp_lifetime = match temp_lifetime {
+                    ExtendTempLifetime::No(temp_lifetime) => temp_lifetime,
+                    ExtendTempLifetime::Yes => this.region_scope_tree.temporary_scope(expr.temp_scope_id),
+                };
+
                 let temp = unpack!(block = this.as_temp(block, temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
             }
@@ -623,6 +671,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         base: ExprId,
         index: ExprId,
+        temp_lifetime: ExtendTempLifetime,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
         expr_span: Span,
@@ -632,8 +681,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let is_outermost_index = fake_borrow_temps.is_none();
         let fake_borrow_temps = fake_borrow_temps.unwrap_or(base_fake_borrow_temps);
 
-        let base_place =
-            unpack!(block = self.expr_as_place(block, base, mutability, Some(fake_borrow_temps),));
+        let base_place = unpack!(
+            block = self.expr_as_place(
+                block,
+                base,
+                temp_lifetime,
+                mutability,
+                Some(fake_borrow_temps),
+            )
+        );
 
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
@@ -641,7 +697,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Using the enclosing temporary scope for the index ensures it will live past where this
         // place is used. This lifetime may be larger than strictly necessary but it means we don't
         // need to pass a scope for operands to `as_place`.
-        let index_lifetime = self.region_scope_tree.temporary_scope(self.thir[index].temp_scope_id);
+        let index_lifetime = match temp_lifetime {
+            ExtendTempLifetime::No(temp_lifetime) => temp_lifetime,
+            ExtendTempLifetime::Yes => {
+                self.region_scope_tree.temporary_scope(self.thir[index].temp_scope_id)
+            }
+        };
+
         let idx = unpack!(block = self.as_temp(block, index_lifetime, index, Mutability::Not));
 
         block = self.bounds_check(block, &base_place, idx, expr_span, source_info);

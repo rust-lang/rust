@@ -5,9 +5,9 @@
       let mut _0: ();
       let _1: u8;
       let mut _2: u8;
-      let mut _3: &u8;
+      let _3: &u8;
       let mut _4: u8;
-      let mut _5: &u8;
+      let _5: &u8;
       scope 1 {
           debug x => _1;
       }
@@ -19,17 +19,17 @@
           _3 = const {ALLOC0: &u8};
 -         _2 = copy (*_3);
 +         _2 = const 2_u8;
+          StorageDead(_3);
           StorageLive(_4);
           StorageLive(_5);
           _5 = const {ALLOC0: &u8};
 -         _4 = copy (*_5);
--         _1 = Add(move _2, move _4);
 +         _4 = const 2_u8;
+          StorageDead(_5);
+-         _1 = Add(move _2, move _4);
 +         _1 = const 4_u8;
           StorageDead(_4);
           StorageDead(_2);
-          StorageDead(_5);
-          StorageDead(_3);
           _0 = const ();
           StorageDead(_1);
           return;

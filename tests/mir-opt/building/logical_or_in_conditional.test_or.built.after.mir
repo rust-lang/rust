@@ -4,10 +4,10 @@ fn test_or() -> () {
     let mut _0: ();
     let mut _1: bool;
     let mut _2: u8;
-    let mut _3: Droppy;
+    let _3: Droppy;
     let mut _4: bool;
     let mut _5: u8;
-    let mut _6: Droppy;
+    let _6: Droppy;
 
     bb0: {
         StorageLive(_1);
@@ -15,77 +15,67 @@ fn test_or() -> () {
         StorageLive(_3);
         _3 = Droppy(const 0_u8);
         _2 = copy (_3.0: u8);
-        _1 = Gt(move _2, const 0_u8);
-        switchInt(move _1) -> [0: bb2, otherwise: bb1];
+        drop(_3) -> [return: bb1, unwind: bb11];
     }
 
     bb1: {
-        drop(_3) -> [return: bb3, unwind: bb13];
+        StorageDead(_3);
+        _1 = Gt(move _2, const 0_u8);
+        switchInt(move _1) -> [0: bb3, otherwise: bb2];
     }
 
     bb2: {
-        goto -> bb4;
+        StorageDead(_2);
+        goto -> bb8;
     }
 
     bb3: {
-        StorageDead(_3);
-        StorageDead(_2);
-        goto -> bb9;
+        goto -> bb4;
     }
 
     bb4: {
-        drop(_3) -> [return: bb5, unwind: bb13];
-    }
-
-    bb5: {
-        StorageDead(_3);
         StorageDead(_2);
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
         _6 = Droppy(const 1_u8);
         _5 = copy (_6.0: u8);
+        drop(_6) -> [return: bb5, unwind: bb11];
+    }
+
+    bb5: {
+        StorageDead(_6);
         _4 = Gt(move _5, const 1_u8);
         switchInt(move _4) -> [0: bb7, otherwise: bb6];
     }
 
     bb6: {
-        drop(_6) -> [return: bb8, unwind: bb13];
+        StorageDead(_5);
+        goto -> bb8;
     }
 
     bb7: {
-        goto -> bb10;
-    }
-
-    bb8: {
-        StorageDead(_6);
-        StorageDead(_5);
         goto -> bb9;
     }
 
-    bb9: {
+    bb8: {
         _0 = const ();
-        goto -> bb12;
+        goto -> bb10;
+    }
+
+    bb9: {
+        StorageDead(_5);
+        _0 = const ();
+        goto -> bb10;
     }
 
     bb10: {
-        drop(_6) -> [return: bb11, unwind: bb13];
-    }
-
-    bb11: {
-        StorageDead(_6);
-        StorageDead(_5);
-        _0 = const ();
-        goto -> bb12;
-    }
-
-    bb12: {
         StorageDead(_4);
         StorageDead(_1);
         return;
     }
 
-    bb13 (cleanup): {
+    bb11 (cleanup): {
         resume;
     }
 }

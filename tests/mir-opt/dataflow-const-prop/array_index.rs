@@ -6,7 +6,7 @@
 
 // CHECK-LABEL: fn main() -> () {
 fn main() {
-    // CHECK: let mut [[array_lit:_.*]]: [u32; 4];
+    // CHECK: let [[array_lit:_.*]]: [u32; 4];
     // CHECK:     debug x => [[x:_.*]];
 
     // CHECK:       [[array_lit]] = [const 0_u32, const 1_u32, const 2_u32, const 3_u32];

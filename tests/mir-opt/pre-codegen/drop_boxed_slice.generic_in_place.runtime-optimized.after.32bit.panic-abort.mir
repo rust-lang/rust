@@ -17,7 +17,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                         scope 19 (inlined boxed::BoxRaw::<[T]>::cast::<u8>) {
                             let mut _8: std::ptr::NonNull<u8>;
                             scope 20 (inlined NonNull::<[T]>::cast::<u8>) {
-                                let mut _7: *mut u8;
+                                let _7: *mut u8;
                                 scope 21 (inlined NonNull::<[T]>::as_ptr) {
                                 }
                             }

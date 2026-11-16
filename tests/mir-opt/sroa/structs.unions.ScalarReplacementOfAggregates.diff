@@ -4,7 +4,7 @@
   fn unions(_1: f32) -> u32 {
       debug a => _1;
       let mut _0: u32;
-      let mut _2: unions::Repr;
+      let _2: unions::Repr;
       let mut _3: f32;
   
       bb0: {

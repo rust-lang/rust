@@ -4,10 +4,10 @@
   fn structs(_1: f32) -> f32 {
       debug a => _1;
       let mut _0: f32;
-      let mut _2: structs::U;
+      let _2: structs::U;
       let mut _3: f32;
-+     let mut _4: usize;
-+     let mut _5: f32;
++     let _4: usize;
++     let _5: f32;
   
       bb0: {
 -         StorageLive(_2);
