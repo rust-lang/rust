@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ build-fail
+//@ compare-output-by-lines
 //@ forbid-output: internal compiler error
 
 // Separate associated constants should produce separate errors.

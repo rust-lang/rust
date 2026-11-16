@@ -353,22 +353,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.typing_env,
                 ty::EarlyBinder::bind(self.tcx.tcx, value),
             )
-            .map_err(|err| {
-                if match self.typing_env.typing_mode() {
-                    ty::TypingMode::Codegen => true,
-                    ty::TypingMode::Coherence
-                    | ty::TypingMode::Typeck { .. }
-                    | ty::TypingMode::PostTypeckThroughBorrowck { .. }
-                    | ty::TypingMode::PostBorrowck { .. }
-                    | ty::TypingMode::Reflection
-                    | ty::TypingMode::PostAnalysis
-                    | ty::TypingMode::ErasedNotCoherence(_) => false,
-                } {
-                    err_inval!(NormalizationFailure(err))
-                } else {
-                    err_inval!(TooGeneric)
-                }
-            })
+            .map_err(|err| err_inval!(NormalizationFailure(err)))
     }
 
     /// The `args` are assumed to already be in our interpreter "universe".
