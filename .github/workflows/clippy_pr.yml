@@ -123,7 +123,7 @@ jobs:
     env:
       # PRs must be based on this commit (or a later one). This is the commit of the last `git-subtree` sync before we
       # switched to JOSH (rust-clippy#17739).
-      MIN_MERGE_BASE: 2dd71153b54873bce06a89b65653f346fb528d13
+      MIN_MERGE_BASE: ee451fa913050be90f353aecc9f86a5e05499d8f
 
     steps:
     - name: Check merge base
