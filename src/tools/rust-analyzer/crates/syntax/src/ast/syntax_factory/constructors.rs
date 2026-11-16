@@ -560,6 +560,7 @@ impl SyntaxFactory {
         ast
     }
 
+    // FIXME: exists make.expr_bin
     pub fn expr_bin_op(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
         let ast::Expr::BinExpr(ast) = make::expr_bin_op(lhs.clone(), op, rhs.clone()) else {
             unreachable!()

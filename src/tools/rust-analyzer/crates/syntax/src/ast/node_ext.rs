@@ -364,14 +364,7 @@ impl ast::PathSegment {
                 _ => PathSegmentKind::Name(name_ref),
             }
         } else {
-            let anchor = self.type_anchor()?;
-            // FIXME: Move this over to `ast::TypeAnchor`
-            // <T> or <T as Trait>
-            // T is any TypeRef, Trait has to be a PathType
-            let mut type_refs =
-                anchor.syntax().children().filter(|node| ast::Type::can_cast(node.kind()));
-            let type_ref = type_refs.next().and_then(ast::Type::cast);
-            let trait_ref = type_refs.next().and_then(ast::PathType::cast);
+            let (type_ref, trait_ref) = self.type_anchor()?.target();
             PathSegmentKind::Type { type_ref, trait_ref }
         };
         Some(res)
@@ -555,12 +548,28 @@ impl ast::Impl {
     }
 }
 
-// [#15778](https://github.com/rust-lang/rust-analyzer/issues/15778)
-impl ast::PathSegment {
-    pub fn qualifying_trait(&self) -> Option<ast::PathType> {
-        let mut path_types = support::children(self.type_anchor()?.syntax());
-        let first = path_types.next()?;
-        path_types.next().or(Some(first))
+impl ast::TypeAnchor {
+    pub fn self_ty(&self) -> Option<ast::Type> {
+        self.target().0
+    }
+
+    pub fn trait_(&self) -> Option<ast::PathType> {
+        self.target().1
+    }
+
+    fn target(&self) -> (Option<ast::Type>, Option<ast::PathType>) {
+        let mut types = support::children(self.syntax()).peekable();
+        let as_kw = self.as_token();
+        let self_ty = types.next_if(|self_ty: &ast::Type| {
+            as_kw.is_none_or(|as_kw| {
+                self_ty.syntax().text_range().start() < as_kw.text_range().start()
+            })
+        });
+        let trait_ = types.next().and_then(|it| match it {
+            ast::Type::PathType(it) => Some(it),
+            _ => None,
+        });
+        (self_ty, trait_)
     }
 }
 

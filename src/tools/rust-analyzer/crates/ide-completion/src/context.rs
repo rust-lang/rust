@@ -213,6 +213,8 @@ pub(crate) enum TypeLocation {
     TypeBound,
     ImplTarget,
     ImplTrait,
+    /// TypeAnchor trait location e.g. `<Type as $0>`
+    AnchorTrait,
     Other,
 }
 
@@ -244,7 +246,7 @@ impl TypeLocation {
             }
             TypeLocation::AssocConstEq => false,
             TypeLocation::AssocTypeEq => true,
-            TypeLocation::ImplTrait => false,
+            TypeLocation::ImplTrait | TypeLocation::AnchorTrait => false,
 
             TypeLocation::TupleField
             | TypeLocation::TypeAscription(_)
@@ -268,6 +270,7 @@ impl TypeLocation {
             | TypeLocation::TypeBound
             | TypeLocation::ImplTarget
             | TypeLocation::ImplTrait
+            | TypeLocation::AnchorTrait
             | TypeLocation::Other => true,
         }
     }
@@ -285,6 +288,13 @@ impl TypeLocation {
                     | TypeLocation::TypeBound
                     | TypeLocation::TypeAscription(_)
             )
+    }
+
+    pub(crate) fn complete_traits_only(&self) -> bool {
+        matches!(
+            self,
+            TypeLocation::ImplTrait | TypeLocation::AnchorTrait | TypeLocation::TypeBound
+        )
     }
 }
 
