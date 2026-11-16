@@ -18,7 +18,7 @@ fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
 This example is intended not to compile, because we are returning `x`,
 which has type `&'a u32`, but our signature promises that we will return a `&'b u32` value.
 But how are lifetimes like `'a` and `'b` integrated into region inference,
-and how this error wind up being detected?
+and how does this error wind up being detected?
 
 ## Universal regions and their relationships to one another
 
@@ -26,8 +26,9 @@ Early on in region inference,
 one of the first things we do is to construct a [`UniversalRegions`] struct.
 This struct tracks the various universal regions in scope on a particular function.
 We also create a [`UniversalRegionRelations`] struct, which tracks their
-relationships to one another. So if you have e.g. `where 'a: 'b`, then
-the [`UniversalRegionRelations`] struct would track that `'a: 'b` is
+relationships to one another.
+So, if you have e.g. `where 'a: 'b`,
+then the [`UniversalRegionRelations`] struct would track that `'a: 'b` is
 known to hold (which could be tested with the [`outlives`] function).
 
 [`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/universal_regions/struct.UniversalRegions.html
@@ -100,7 +101,7 @@ fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
 
 Here, returning `x` requires that `&'a u32 <: &'b u32`,
 which gives rise to an outlives constraint `'a: 'b`.
-Combined with our default liveness constraints we get:
+Combined with our default liveness constraints, we get:
 
 ```txt
 'a live at {B, end('a)} // B represents the "function body"
@@ -109,8 +110,7 @@ Combined with our default liveness constraints we get:
 ```
 
 When we process the `'a: 'b` constraint, therefore, we will add `end('b)` into the value for `'a`,
-resulting in a final value of `{B,
-end('a), end('b)}`.
+resulting in a final value of `{B, end('a), end('b)}`.
 
 ## Detecting errors
 
