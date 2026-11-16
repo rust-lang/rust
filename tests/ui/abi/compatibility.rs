@@ -85,10 +85,10 @@
 //@ revisions: nvptx64
 //@[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
 //@[nvptx64] needs-llvm-components: nvptx
-#![feature(no_core, rustc_attrs, lang_items)]
-#![feature(unsized_fn_params, transparent_unions)]
+#![feature(no_core, rustc_attrs, lang_items, f16, f128)]
+#![feature(unsized_fn_params, transparent_unions, cfg_target_has_reliable_f16b)]
 #![no_core]
-#![expect(unused, improper_ctypes_definitions, internal_features)]
+#![expect(unused, improper_ctypes_definitions, internal_features, unexpected_cfgs)]
 
 // FIXME: some targets are broken in various ways.
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.
@@ -96,6 +96,15 @@
 
 extern crate minicore;
 use minicore::*;
+
+#[cfg(target_arch = "x86")]
+use arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use arch::x86_64::*;
+#[cfg(target_arch = "powerpc")]
+use arch::powerpc::*;
+#[cfg(target_arch = "powerpc64")]
+use arch::powerpc64::*;
 
 /// To work cross-target this test must be no_core. This little prelude supplies what we need.
 ///
@@ -272,6 +281,16 @@ macro_rules! test_transparent {
 
 test_transparent!(simple, i32);
 test_transparent!(float, f32);
+test_transparent!(complex, num::Complex<f32>);
+test_transparent!(f16, f16);
+test_transparent!(f128, f128);
+#[cfg(target_has_reliable_f16b)]
+test_transparent!(f16b, num::f16b);
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+test_transparent!(float_x87, x87_f80);
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+test_transparent!(float_ppc, ppcf128);
+
 test_transparent!(reference, &'static i32);
 test_transparent!(zst, Zst);
 test_transparent!(unit, ());
