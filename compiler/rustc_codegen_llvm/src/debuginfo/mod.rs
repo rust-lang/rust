@@ -167,7 +167,6 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         // Omit the linkage_name if it is the same as subprogram name.
         let linkage_name = if &name == linkage_name { "" } else { linkage_name };
 
-        // FIXME(eddyb) does this need to be separate from `loc.line` for some reason?
         let scope_line = loc.line;
 
         let mut flags = DIFlags::FlagPrototyped;
@@ -666,9 +665,6 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 }
 
 /// A source code location used to generate debug information.
-// FIXME(eddyb) rename this to better indicate it's a duplicate of
-// `rustc_span::Loc` rather than `DILocation`, perhaps by making
-// `lookup_char_pos` return the right information instead.
 struct DebugLoc {
     /// Information about the original source file.
     file: Arc<SourceFile>,
@@ -680,9 +676,6 @@ struct DebugLoc {
 
 impl<'ll> CodegenCx<'ll, '_> {
     /// Looks up debug source information about a `BytePos`.
-    // FIXME(eddyb) rename this to better indicate it's a duplicate of
-    // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
-    // `lookup_char_pos` return the right information instead.
     fn lookup_debug_loc(&self, pos: BytePos) -> DebugLoc {
         let (file, line, col) = match self.sess().source_map().lookup_line(pos) {
             Ok(SourceFileAndLine { sf: file, line }) => {
