@@ -2204,6 +2204,10 @@ pub(crate) enum GenericArgs {
 }
 
 impl GenericArgs {
+    pub(crate) fn empty_angle_bracketed() -> Self {
+        Self::AngleBracketed { args: Default::default(), constraints: ThinVec::new() }
+    }
+
     pub(crate) fn is_empty(&self) -> bool {
         match self {
             GenericArgs::AngleBracketed { args, constraints } => {
