@@ -81,12 +81,12 @@ The [`BorrowData`] then holds both the reservation and activation points for the
 
 Two-phase borrows are treated as if they were mutable borrows with the following exceptions:
 
-1. At every location in the MIR we [check] if any two-phase borrows are
-   activated at this location.
+1. At every location in the MIR,
+   we [check] if any two-phase borrows are activated at this location.
    If a live two phase borrow is activated at a location,
-   then we check that there are no borrows that conflict with the two-phase borrow.
-2. At the reservation point we error if there are conflicting live *mutable* borrows.
-   And lint if there are any conflicting shared borrows.
+   we check that there are no borrows that conflict with the two-phase borrow.
+2. At the reservation point, we error if there are conflicting live *mutable* borrows
+   (and we lint if there are any conflicting shared borrows).
 3. Between the reservation and the activation point,
    the two-phase borrow acts as a shared borrow.
    We determine (in [`is_active`]) if we're at such a point
