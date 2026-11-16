@@ -56,7 +56,7 @@ Liveness constraints are computed by the MIR type checker.
 [point]: ../../appendix/glossary.md#point
 
 A liveness constraint `R live at E` is satisfied if `E` is a member of `Values(R)`.
-So to "apply" such a constraint to `Values`,
+So, to "apply" such a constraint to `Values`,
 we just have to compute `Values(R) = Values(R) union {E}`.
 
 The liveness values are computed in the type-check and passed to the
@@ -146,7 +146,7 @@ region is a part of, and then find the value of that SCC.
 
 When we compute SCCs, we not only figure out which regions are a member of each SCC,
 we also figure out the edges between them.
-So for example consider this set of outlives constraints:
+For example, consider this set of outlives constraints:
 
 ```txt
 'a: 'b
