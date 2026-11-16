@@ -6,6 +6,7 @@ LL |         libc::getsockname(client_sockfd, storage, len)
    |
    = note: Windows hosts do not provide `local_addr` information while the socket is still connecting, which might break the assumptions of code compiled for Unix targets
    = note: an unspecified socket address (e.g. `0.0.0.0:0`) will be returned instead
+   = note: this warning is only shown once per program execution
    = note: this is on thread `main`
    = note: stack backtrace:
            0: test_getsockname_ipv4_connect_nonblock::{closure#0}

@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
     let map_snippet = snippet(cx, map_arg.span, "..");
     let unwrap_snippet = snippet(cx, unwrap_arg.span, "..");
     // lint, with note if both map() and unwrap_or_else() have the same span
-    if map_arg.span.eq_ctxt(unwrap_arg.span) {
+    if map_arg.span.ctxt() == unwrap_arg.span.ctxt() {
         let var_snippet = snippet(cx, recv.span, "..");
         span_lint_and_sugg(
             cx,

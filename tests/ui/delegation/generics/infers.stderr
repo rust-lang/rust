@@ -666,6 +666,7 @@ LL |         reuse Trait::foo::<'_, '_, '_, _, _, _,> as foo5;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
@@ -680,6 +681,7 @@ LL |         reuse Trait::foo::<_, _, _, '_, '_, '_, _, _, _,> as foo6;
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
 
@@ -694,6 +696,7 @@ LL |         reuse Trait::foo::<_, _, _, '_, '_, '_, _, _, _,> as foo6;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
@@ -706,6 +709,7 @@ LL |         reuse Trait::foo::<_> as foo9;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 help: add missing generic arguments
@@ -722,6 +726,7 @@ LL |         reuse Trait::foo::<Vec<'_>, _, _, ()> as foo10;
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
 help: add missing lifetime argument
@@ -740,6 +745,7 @@ LL |         reuse Trait::foo::<Vec<'_>, _, _, ()> as foo10;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
@@ -777,6 +783,7 @@ LL |         reuse Trait::foo::<Vec<_>, _, _, ()> as foo11;
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
 help: add missing lifetime argument
@@ -795,6 +802,7 @@ LL |         reuse Trait::foo::<Vec<_>, _, _, ()> as foo11;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
@@ -839,6 +847,7 @@ LL |         reuse Trait::foo::<_, _, _> as foo15;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 help: add missing generic argument
@@ -1027,6 +1036,7 @@ LL |         reuse Trait::<_, _>::foo::<'_, '_, '_, _, _, _,> as foo5;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
@@ -1047,6 +1057,7 @@ LL |         reuse Trait::<'_, '_>::foo::<_, _, _, '_, '_, '_, _, _, _,> as foo6
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
 
@@ -1061,6 +1072,7 @@ LL |         reuse Trait::<'_, '_>::foo::<_, _, _, '_, '_, '_, _, _, _,> as foo6
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
@@ -1085,6 +1097,7 @@ LL |         reuse Trait::<'static, 'static, _, _, _>::foo::<_> as foo9;
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 help: add missing generic arguments
@@ -1113,6 +1126,7 @@ LL |         reuse Trait::<'static, 'static, _, _, _, _, _, _, _>::foo::<Vec<'_>
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
 help: add missing lifetime argument
@@ -1131,6 +1145,7 @@ LL |         reuse Trait::<'static, 'static, _, _, _, _, _, _, _>::foo::<Vec<'_>
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 
@@ -1182,6 +1197,7 @@ LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<Vec<_
 note: method defined here, with 1 lifetime parameter: `'bb`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^      ---
 help: add missing lifetime argument
@@ -1200,6 +1216,7 @@ LL |         reuse Trait::<'static, 'static, '_,'_, '_, '_, '_, '_>::foo::<Vec<_
 note: method defined here, with 3 generic parameters: `XX`, `M`, `YY`
   --> $DIR/infers.rs:142:12
    |
+LL |     pub trait Trait<'a, 'b, X, const C: usize, Y> {
 LL |         fn foo<'aa, 'bb: 'bb, 'cc, XX, const M: usize, YY>(&self, _: &'aa &'b &'cc ()) {}
    |            ^^^                     --  --------------  --
 

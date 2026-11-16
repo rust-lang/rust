@@ -686,4 +686,5 @@ define_symbols! {
     RangeMin,
     RangeMax,
     RangeSub,
+    AsyncGenReady,
 }

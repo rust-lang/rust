@@ -12,11 +12,14 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_TERM_VERBOSE: true
+  # rustflags doesn't cover host build scripts but this does. See
+  # <https://github.com/rust-lang/cargo/issues/4423>.
+  CARGO_BUILD_WARNINGS: deny
   LIBM_BUILD_VERBOSE: true
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings -Dlinker_messages
   RUST_BACKTRACE: full
-  BENCHMARK_RUSTC: nightly-2026-09-26 # Pin the toolchain for reproducable results
+  BENCHMARK_RUSTC: nightly-2026-10-26 # Pin the toolchain for reproducable results
 
 defaults:
   run:

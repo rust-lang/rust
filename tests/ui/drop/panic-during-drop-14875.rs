@@ -2,7 +2,6 @@
 
 //@ run-pass
 //@ needs-unwind
-//@ ignore-backends: gcc
 
 // Check that values are not leaked when a dtor panics (#14875)
 

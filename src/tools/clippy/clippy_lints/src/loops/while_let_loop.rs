@@ -1,9 +1,10 @@
 use super::WHILE_LET_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{snippet, snippet_indent, snippet_opt};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
-use clippy_utils::{higher, peel_blocks};
+use clippy_utils::{higher, is_refutable, peel_blocks, sym};
 use rustc_ast::{BindingMode, Label};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, HirId, LetStmt, MatchSource, Pat, PatKind, Path, QPath, StmtKind, Ty};
@@ -53,6 +54,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_blo
         && arm1.guard.is_none()
         && arm2.guard.is_none()
         && is_simple_break_expr(arm2.body, loop_label, expr.hir_id)
+        && is_safe_to_convert(cx, arm2)
     {
         could_be_while_let(
             cx,
@@ -65,6 +67,22 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_blo
             loop_label,
         );
     }
+}
+
+fn is_safe_to_convert<'tcx>(cx: &LateContext<'tcx>, break_arm: &'tcx rustc_hir::Arm<'_>) -> bool {
+    // If the break arm pattern is refutable or does not belong to well-known types like `Option` or `Poll`,
+    // it may not be safe to convert to a while let loop.
+    if !is_refutable(cx, break_arm.pat) {
+        return true;
+    }
+    let pat_ty = cx.typeck_results().pat_ty(break_arm.pat);
+    matches!(pat_ty.opt_diag_name(&cx.tcx), Some(sym::Option | sym::Poll))
+        && match break_arm.pat.kind {
+            // If the break arm has any nested patterns, we need to ensure they are all irrefutale
+            PatKind::Expr(_) => true,
+            PatKind::TupleStruct(_, subpats, _) => subpats.iter().all(|subpat| !is_refutable(cx, subpat)),
+            _ => false,
+        }
 }
 
 /// Checks if `block` contains a single (labeled or unlabeled) `break`

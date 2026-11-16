@@ -206,8 +206,15 @@ unsafe fn test_str() {
     unsafe fn test_mm_cmpistra() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello!!!!!!!!!!!");
+
         let i = _mm_cmpistra::<_SIDD_UNIT_MASK>(a, b);
         assert_eq!(1, i);
+        let i = _mm_cmpistra::<_SIDD_UNIT_MASK>(b, a);
+        assert_eq!(0, i);
+        let i = _mm_cmpistra::<_SIDD_UNIT_MASK>(a, a);
+        assert_eq!(0, i);
+        let i = _mm_cmpistra::<_SIDD_UNIT_MASK>(b, b);
+        assert_eq!(0, i);
     }
     test_mm_cmpistra();
 
@@ -288,6 +295,10 @@ unsafe fn test_str() {
         let b = str_to_m128i(b"Null after 14");
         let i = _mm_cmpestra::<{ _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK }>(a, 14, b, 16);
         assert_eq!(1, i);
+        let i = _mm_cmpestra::<{ _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK | _SIDD_NEGATIVE_POLARITY }>(
+            a, 14, a, 14,
+        );
+        assert_eq!(0, i);
     }
     test_mm_cmpestra();
 
@@ -337,6 +348,17 @@ unsafe fn test_str() {
         let res = _mm_setr_epi8(
             !0, 0x00, 0x00, 0x00, 0x00, 0x00, !0, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        );
+        assert_eq_m128i(i, res);
+
+        let a = str_to_m128i(b"Hello");
+        let b = str_to_m128i(b"Hello Hello Hell");
+
+        let i = _mm_cmpistrm::<{ _SIDD_CMP_EQUAL_ORDERED | _SIDD_UNIT_MASK }>(a, b);
+        #[rustfmt::skip]
+        let res = _mm_setr_epi8(
+            !0, 0x00, 0x00, 0x00, 0x00, 0x00, !0, 0x00,
+            0x00, 0x00, 0x00, 0x00, !0, 0x00, 0x00, 0x00,
         );
         assert_eq_m128i(i, res);
     }
@@ -407,6 +429,15 @@ unsafe fn test_str() {
             !0, !0, !0, !0, !0, !0, !0, !0,
         );
         assert_eq_m128i(i, res);
+
+        // Test strings of unequal length.
+        let i = _mm_cmpestrm::<{ _SIDD_MASKED_NEGATIVE_POLARITY | _SIDD_UNIT_MASK }>(a, 4, b, 7);
+        #[rustfmt::skip]
+        let res = _mm_setr_epi8(
+            !0, 0x00, 0x00, 0x00, !0, !0, !0, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        );
+        assert_eq_m128i(i, res);
     }
     test_polarity();
 
@@ -428,6 +459,50 @@ unsafe fn test_str() {
         assert_eq_m128i(i, res);
     }
     test_bitmask();
+
+    #[target_feature(enable = "sse4.2")]
+    unsafe fn test_negative_length() {
+        let va = str_to_m128i(b"!!!!!!!!");
+        let vb = str_to_m128i(b"        ");
+
+        let i = _mm_cmpestrc::<_SIDD_UNIT_MASK>(va, 7, vb, -7);
+        assert_eq!(0, i);
+        let i = _mm_cmpestrc::<_SIDD_UNIT_MASK>(va, -7, vb, 7);
+        assert_eq!(0, i);
+
+        let i = _mm_cmpestrc::<_SIDD_UNIT_MASK>(va, 7, va, -7);
+        assert_eq!(1, i);
+        let i = _mm_cmpestrc::<_SIDD_UNIT_MASK>(vb, -7, vb, 7);
+        assert_eq!(1, i);
+    }
+    test_negative_length();
+
+    // Test case for #5541.
+    #[target_feature(enable = "sse4.2")]
+    unsafe fn issue_5541() {
+        let a = _mm_set1_epi8(b'a' as i8);
+        let b = _mm_set1_epi8(b'b' as i8);
+
+        assert_eq!(_mm_cmpestrz::<_SIDD_CMP_EQUAL_ANY>(a, 16, a, -16), 0);
+        assert_eq!(_mm_cmpestrs::<_SIDD_CMP_EQUAL_ANY>(a, -16, a, 16), 0);
+
+        let mask = _mm_cmpestrm::<{ _SIDD_MASKED_POSITIVE_POLARITY | _SIDD_NEGATIVE_POLARITY }>(
+            a, 1, b, 3,
+        );
+        #[rustfmt::skip]
+        let res = _mm_setr_epi8(
+            0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        );
+        assert_eq_m128i(mask, res);
+
+        const B: i8 = b'b' as i8;
+        let h = _mm_setr_epi8(B, B, B, B, B, B, B, B, B, B, B, B, B, B, B, b'a' as i8);
+
+        assert_eq!(_mm_cmpestri::<_SIDD_CMP_EQUAL_ORDERED>(a, 2, h, 16), 15);
+        assert_eq!(_mm_cmpistra::<_SIDD_CMP_EQUAL_ANY>(a, b), 1);
+    }
+    issue_5541();
 }
 
 #[track_caller]

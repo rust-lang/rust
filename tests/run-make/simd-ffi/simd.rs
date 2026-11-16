@@ -10,7 +10,7 @@
 #[repr(simd)]
 pub struct f32x4([f32; 4]);
 
-extern "C" {
+extern "llvm-intrinsic" {
     #[link_name = "llvm.sqrt.v4f32"]
     fn vsqrt(x: f32x4) -> f32x4;
 }
@@ -23,7 +23,7 @@ pub fn foo(x: f32x4) -> f32x4 {
 #[repr(simd)]
 pub struct i32x4([i32; 4]);
 
-extern "C" {
+extern "llvm-intrinsic" {
     // _mm_sll_epi32
     #[cfg(all(any(target_arch = "x86", target_arch = "x86-64"), target_feature = "sse2"))]
     #[link_name = "llvm.x86.sse2.psll.d"]

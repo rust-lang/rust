@@ -162,7 +162,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                 &AllowedTargets::AllowList(&[
                     Allow(Target::Struct),
                     Allow(Target::Enum),
-                    Allow(Target::Union), // Feature gated in `rustc_attr_ir_analysis`
+                    Allow(Target::Union), // Feature gated in `rustc_hir_analysis`
                     Warn(Target::MacroCall),
                 ]),
             );

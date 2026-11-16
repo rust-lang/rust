@@ -27,6 +27,7 @@ LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/gat-trait-path-missing-lifetime.rs:2:8
    |
+LL | trait X {
 LL |   type Y<'a>;
    |        ^ --
 help: add missing lifetime argument
@@ -43,6 +44,7 @@ LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/gat-trait-path-missing-lifetime.rs:2:8
    |
+LL | trait X {
 LL |   type Y<'a>;
    |        ^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`

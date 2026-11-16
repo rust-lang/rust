@@ -24,13 +24,11 @@ use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryRespons
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_infer::traits::{TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::{SELF_CONSTRUCTOR_FROM_OUTER_ITEM, UNREACHABLE_CODE};
-use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
-};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
-    SizedTraitKind, SplattedDef, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt,
-    Unnormalized, UserArgs, UserSelfTy,
+    self, AdtKind, CanonicalUserType, GenericArgs, GenericParamDefKind, IsIdentity, SizedTraitKind,
+    SplattedDef, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, Unnormalized, UserArgs,
+    UserSelfTy,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -237,7 +235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         hir_id: HirId,
         fn_id: SplatLoweringInfo<'tcx>,
-        callee_generic_args: Option<GenericArgsRef<'tcx>>,
+        callee_generic_args: Option<GenericArgs<'tcx>>,
         first_tupled_arg_index: u16,
         tupled_args_count: u16,
     ) {
@@ -285,7 +283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn write_args(&self, node_id: HirId, args: GenericArgsRef<'tcx>) {
+    fn write_args(&self, node_id: HirId, args: GenericArgs<'tcx>) {
         if !args.is_empty() {
             debug!("write_args({:?}, {:?}) in fcx {}", node_id, args, self.tag());
 
@@ -305,7 +303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         hir_id: HirId,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         user_self_ty: Option<UserSelfTy<'tcx>>,
     ) {
         debug!("fcx {}", self.tag());
@@ -393,11 +391,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let autoborrow_mut = adj.iter().any(|adj| {
             matches!(
-                adj,
-                &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
-                    ..
-                }
+                adj.kind,
+                Adjust::Borrow(autoborrow) if autoborrow.mutability().is_mut()
             )
         });
 
@@ -467,8 +462,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        self.normalize_with_cause(span, value, ObligationCauseCode::Misc)
+    }
+
+    pub(crate) fn normalize_with_cause<T>(
+        &self,
+        span: Span,
+        value: Unnormalized<'tcx, T>,
+        code: ObligationCauseCode<'tcx>,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         self.register_infer_ok_obligations(
-            self.at(&self.misc(span), self.param_env).normalize(value),
+            self.at(&self.cause(span, code), self.param_env).normalize(value),
         )
     }
 
@@ -596,8 +603,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(super) fn user_args_for_adt(ty: LoweredTy<'tcx>) -> UserArgs<'tcx> {
         match (ty.raw.kind(), ty.normalized.kind()) {
-            (ty::Adt(_, args), _) => UserArgs { args, user_self_ty: None },
-            (_, ty::Adt(adt, args)) => UserArgs {
+            (&ty::Adt(_, args), _) => UserArgs { args, user_self_ty: None },
+            (_, &ty::Adt(ref adt, args)) => UserArgs {
                 args,
                 user_self_ty: Some(UserSelfTy { impl_def_id: adt.did(), self_ty: ty.raw }),
             },
@@ -684,7 +691,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Registers obligations that all `args` are well-formed.
-    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span, hir_id: HirId) {
+    pub(crate) fn add_wf_bounds(&self, args: GenericArgs<'tcx>, span: Span, hir_id: HirId) {
         for term in args.iter().filter_map(ty::GenericArg::as_term) {
             self.register_wf_obligation(
                 term,
@@ -701,7 +708,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         field: &'tcx ty::FieldDef,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Ty<'tcx> {
         self.normalize(span, field.ty(self.tcx, args))
     }
@@ -1523,7 +1530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         hir_id: HirId,
     ) {
         self.add_required_obligations_with_code(span, def_id, args, |idx, span| {
@@ -1536,7 +1543,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         code: impl Fn(usize, Span) -> ObligationCauseCode<'tcx>,
     ) {
         let param_env = self.param_env;

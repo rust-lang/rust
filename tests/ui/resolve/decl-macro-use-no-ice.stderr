@@ -9,13 +9,11 @@ LL |     foo::m!();
    |     --------- in this macro invocation
    |
 note: consider marking `f` as `pub` in the imported module
-  --> $DIR/decl-macro-use-no-ice.rs:13:13
+  --> $DIR/decl-macro-use-no-ice.rs:10:5
    |
-LL |         use f;
-   |             ^
-...
-LL |     foo::m!();
-   |     --------- in this macro invocation
+LL | mod foo {
+LL |     macro f() {}
+   |     ^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

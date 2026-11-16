@@ -47,7 +47,7 @@ impl EarlyLintPass for DoubleParens {
             //  ^^^^  inner
             ExprKind::Paren(inner)
                 if matches!(inner.kind, ExprKind::Paren(_) | ExprKind::Tup(_))
-                    && expr.span.eq_ctxt(inner.span)
+                    && expr.span.ctxt() == inner.span.ctxt()
                     && !expr.span.in_external_macro(cx.sess().source_map())
                     && check_source(cx, inner) =>
             {
@@ -76,7 +76,7 @@ impl EarlyLintPass for DoubleParens {
             ExprKind::Call(_, args) | ExprKind::MethodCall(MethodCall { args, .. })
                 if let [arg] = &**args
                     && let ExprKind::Paren(inner) = &arg.kind
-                    && expr.span.eq_ctxt(arg.span)
+                    && expr.span.ctxt() == arg.span.ctxt()
                     && !arg.span.in_external_macro(cx.sess().source_map())
                     && check_source(cx, arg) =>
             {

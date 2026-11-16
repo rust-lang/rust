@@ -376,7 +376,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 let active_field_index = is_union.then(|| fields[0].name);
 
                 Ok(Rvalue::Aggregate(
-                    Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, args, None, active_field_index)),
+                    Box::new(AggregateKind::Adt(adt_def.did(), *variant_index, *args, None, active_field_index)),
                     fields.iter().map(|f| self.parse_operand(f.expr)).collect::<Result<_, _>>()?
                 ))
             },

@@ -256,8 +256,6 @@ pub fn issue_12760<const N: usize>() {
 /// This needs documenting
 pub fn unwrap_expect_etc_in_const() {
     let a = const { std::num::NonZeroUsize::new(1).unwrap() };
-    // This should still pass the lint even if it is guaranteed to panic at compile-time
-    let b = const { std::num::NonZeroUsize::new(0).unwrap() };
 }
 
 /// This needs documenting

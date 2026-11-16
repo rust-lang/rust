@@ -2,7 +2,7 @@
 
 /// Creates a view type.
 /// ```
-/// #![feature(view_types, view_type_macro)]
+/// #![feature(view_types)]
 //
 /// struct Foo {
 ///     bar: usize,
@@ -11,11 +11,9 @@
 ///
 /// type FooBar = std::view::view_type!(Foo.{ bar });
 /// ```
-#[macro_export]
-#[rustc_builtin_macro(view_type)]
-#[unstable(feature = "view_type_macro", issue = "155938")]
-macro_rules! view_type {
-    ($($arg:tt)*) => {
-        /* compiler built-in */
-    };
+#[allow_internal_unstable(internal_syntax)]
+#[unstable(feature = "view_types", issue = "155938")]
+#[diagnostic::opaque]
+pub macro view_type($($arg:tt)*) {
+    k#view_type($($arg)*)
 }

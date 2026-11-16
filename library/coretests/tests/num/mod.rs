@@ -38,6 +38,7 @@ mod int_sqrt;
 mod midpoint;
 mod nan;
 mod niche_types;
+mod nonzero;
 mod ops;
 mod wrapping;
 

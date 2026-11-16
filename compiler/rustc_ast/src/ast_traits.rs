@@ -5,7 +5,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::tokenstream::{LazyAttrTokenStream, WithTokens};
+use crate::tokenstream::{LazyTokenStream, WithTokens};
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
     FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
@@ -63,18 +63,18 @@ impl<T: HasNodeId> HasNodeId for Box<T> {
 
 /// A trait for AST nodes having (or not having) collected tokens.
 pub trait HasTokens: HasAttrs {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream>;
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>>;
+    fn tokens(&self) -> Option<&LazyTokenStream>;
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>>;
 }
 
 macro_rules! impl_has_tokens {
     ($($T:ty),+ $(,)?) => {
         $(
             impl HasTokens for $T {
-                fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+                fn tokens(&self) -> Option<&LazyTokenStream> {
                     self.tokens.as_ref()
                 }
-                fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+                fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
                     Some(&mut self.tokens)
                 }
             }
@@ -86,10 +86,10 @@ macro_rules! impl_has_tokens_none {
     ($($T:ty),+ $(,)?) => {
         $(
             impl HasTokens for $T {
-                fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+                fn tokens(&self) -> Option<&LazyTokenStream> {
                     None
                 }
-                fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+                fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
                     None
                 }
             }
@@ -110,34 +110,34 @@ impl_has_tokens_none!(
 );
 
 impl<T: HasAttrs> HasTokens for WithTokens<T> {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&LazyTokenStream> {
         self.tokens.as_ref()
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         Some(&mut self.tokens)
     }
 }
 
 impl<T: HasTokens> HasTokens for Option<T> {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&LazyTokenStream> {
         self.as_ref().and_then(|inner| inner.tokens())
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         self.as_mut().and_then(|inner| inner.tokens_mut())
     }
 }
 
 impl<T: HasTokens> HasTokens for Box<T> {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&LazyTokenStream> {
         (**self).tokens()
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         (**self).tokens_mut()
     }
 }
 
 impl HasTokens for StmtKind {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&LazyTokenStream> {
         match self {
             StmtKind::Let(local) => local.tokens.as_ref(),
             StmtKind::Item(item) => item.tokens(),
@@ -146,7 +146,7 @@ impl HasTokens for StmtKind {
             StmtKind::MacCall(mac) => mac.tokens.as_ref(),
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         match self {
             StmtKind::Let(local) => Some(&mut local.tokens),
             StmtKind::Item(item) => item.tokens_mut(),
@@ -158,16 +158,16 @@ impl HasTokens for StmtKind {
 }
 
 impl HasTokens for Stmt {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&LazyTokenStream> {
         self.kind.tokens()
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         self.kind.tokens_mut()
     }
 }
 
 impl HasTokens for Attribute {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&LazyTokenStream> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.tokens.as_ref(),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {
@@ -175,7 +175,7 @@ impl HasTokens for Attribute {
             }
         }
     }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         Some(match &mut self.kind {
             AttrKind::Normal(normal) => &mut normal.tokens,
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {

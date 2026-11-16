@@ -119,8 +119,7 @@ impl<'a> Parser<'a> {
                 Box::new(Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) })
             };
 
-            // Feature-gate guard patterns
-            self.psess.gated_spans.gate(sym::guard_patterns, guard.span());
+            self.psess.gated_spans.gate(sym::guard_patterns, guard.span_with_leading_if);
             let span = pat.span.to(guard.span());
             Ok(self.mk_pat(span, PatKind::Guard(Box::new(pat), guard)))
         } else {
@@ -801,8 +800,17 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Expr(const_expr)
             }
-        } else if self.is_builtin() {
-            self.parse_pat_builtin()?
+        } else if self.eat_forced_keyword_noexpect(kw::Deref) {
+            self.expect(exp!(OpenParen))?;
+            let pat = ast::PatKind::Deref(Box::new(self.parse_pat_allow_top_guard(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::LikelyTuple,
+            )?));
+            self.expect(exp!(CloseParen))?;
+            self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+            pat
         }
         // Don't eagerly error on semantically invalid tokens when matching
         // declarative macros, as the input to those doesn't have to be
@@ -1606,23 +1614,6 @@ impl<'a> Parser<'a> {
             token::CloseParen,
         ]
         .contains(&self.token.kind)
-    }
-
-    fn parse_pat_builtin(&mut self) -> PResult<'a, PatKind> {
-        self.parse_builtin(|self_, _lo, ident| {
-            Ok(match ident.name {
-                // builtin#deref(PAT)
-                sym::deref => {
-                    Some(ast::PatKind::Deref(Box::new(self_.parse_pat_allow_top_guard(
-                        None,
-                        RecoverComma::Yes,
-                        RecoverColon::Yes,
-                        CommaRecoveryMode::LikelyTuple,
-                    )?)))
-                }
-                _ => None,
-            })
-        })
     }
 
     // FIXME: remove this entirely eventually

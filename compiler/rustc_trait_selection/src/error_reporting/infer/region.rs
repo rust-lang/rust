@@ -7,7 +7,7 @@ use rustc_errors::{
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, ParamName};
+use rustc_hir::{self as hir, GenericParamKind, ParamName};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::traits::ObligationCauseCode;
@@ -772,9 +772,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        let msg = "consider adding an explicit lifetime bound";
         'suggestion: {
-            let msg = "consider adding an explicit lifetime bound";
-
             if (bound_kind, sub).has_infer_regions()
                 || (bound_kind, sub).has_placeholders()
                 || !bound_kind.is_suggestable(self.tcx, false)
@@ -894,15 +893,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if sub.kind() == ty::ReStatic
             && let Some(node) = self.tcx.hir_get_if_local(generic_param_scope.into())
             && let hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn { sig, body, has_body: true, .. },
+                kind: hir::ItemKind::Fn { sig, body, generics, has_body: true, .. },
                 ..
             })
             | hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body)),
+                generics,
                 ..
             })
             | hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(sig, body), ..
+                kind: hir::ImplItemKind::Fn(sig, body),
+                generics,
+                ..
             }) = node
             && let hir::Node::Expr(expr) = self.tcx.hir_node(body.hir_id)
             && let hir::ExprKind::Block(block, _) = expr.kind
@@ -925,6 +927,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty.span,
                 format!("this `dyn Trait` has an implicit `'static` lifetime bound"),
             );
+            let lt_name = "'a";
+            if generics
+                .params
+                .iter()
+                .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                .count()
+                == 0
+            {
+                let (span, suggestion) = if let Some(span) = generics.span_for_lifetime_suggestion()
+                {
+                    (span, format!("{lt_name}, "))
+                } else {
+                    (generics.span, format!("<{lt_name}>"))
+                };
+
+                err.multipart_suggestion(
+                    msg,
+                    vec![(span, suggestion), (ty.span.shrink_to_hi(), format!(" + {lt_name}"))],
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         err
@@ -1022,15 +1045,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin<'tcx>) -> Diag<'_> {
-        let br_string = |br: ty::BoundRegionKind<'tcx>| {
-            let mut s = match br {
-                ty::BoundRegionKind::Named(def_id) => self.tcx.item_name(def_id).to_string(),
-                _ => String::new(),
-            };
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s
+        let br_string = |br: ty::BoundRegionKind<'tcx>| match br {
+            ty::BoundRegionKind::Named(def_id) => format!("`{}` ", self.tcx.item_name(def_id)),
+            _ => String::new(),
         };
         let var_description = match var_origin {
             RegionVariableOrigin::Misc(_) => String::new(),
@@ -1505,26 +1522,70 @@ fn suggest_precise_capturing<'tcx>(
             return;
         }
 
-        // `'_` in a capture list only resolves when the signature has a single anonymous
-        // lifetime, so when there are several the suggestion has to name them first.
-        if synthetics.is_empty()
-            && let Some(suggs) = name_anon_lifetimes_suggestion(
-                tcx,
-                generic_param_scope,
-                opaque_def_id,
-                fn_def_id,
-                hidden_ty,
-                &captured_lifetimes,
-                &captured_non_lifetimes,
-            )
-        {
-            diag.subdiagnostic(diagnostics::AddPreciseCapturingAndNameLifetimes { suggs });
-            return;
+        let mut next_fresh_param = || {
+            ['T', 'U', 'V', 'W', 'X', 'Y', 'A', 'B', 'C']
+                .into_iter()
+                .map(sym::character)
+                .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
+                .find(|s| captured_non_lifetimes.insert(*s))
+                .unwrap()
+        };
+
+        let mut new_params = String::new();
+        let mut suggs = vec![];
+        let mut apit_spans = vec![];
+
+        for (i, (span, name)) in synthetics.into_iter().enumerate() {
+            apit_spans.push(span);
+
+            let fresh_param = next_fresh_param();
+
+            // Suggest renaming.
+            suggs.push((span, fresh_param.to_string()));
+
+            // Super jank. Turn `impl Trait` into `T: Trait`.
+            //
+            // This currently involves stripping the `impl` from the name of
+            // the parameter, since APITs are always named after how they are
+            // rendered in the AST. This sucks! But to recreate the bound list
+            // from the APIT itself would be miserable, so we're stuck with
+            // this for now!
+            if i > 0 {
+                new_params += ", ";
+            }
+            let name_as_bounds = name.as_str().trim_start_matches("impl").trim_start();
+            new_params += fresh_param.as_str();
+            new_params += ": ";
+            new_params += name_as_bounds;
         }
 
-        captured_lifetimes.insert(new_lifetime);
+        // `'_` in a capture list only resolves when the signature has a single anonymous
+        // lifetime, so when there are several the suggestion has to name them first.
+        let named_suggs = name_anon_lifetimes_suggestion(
+            tcx,
+            generic_param_scope,
+            opaque_def_id,
+            fn_def_id,
+            hidden_ty,
+            &captured_lifetimes,
+            &captured_non_lifetimes,
+        )
+        // a lifetime inside an APIT bound gets its own replacement part from
+        // `LifetimeReplaceVisitor`, whose span falls inside the APIT span. overlapping parts in one
+        // multipart suggestion panic the emitter, so the filter drops the whole named suggestion
+        // and falls back to `'_`.
+        .filter(|named| {
+            !named.iter().any(|(span, _)| apit_spans.iter().any(|apit| apit.overlaps(*span)))
+        });
 
-        if synthetics.is_empty() {
+        if apit_spans.is_empty() {
+            if let Some(suggs) = named_suggs {
+                diag.subdiagnostic(diagnostics::AddPreciseCapturingAndNameLifetimes { suggs });
+                return;
+            }
+
+            captured_lifetimes.insert(new_lifetime);
+
             let concatenated_bounds = captured_lifetimes
                 .into_iter()
                 .chain(captured_non_lifetimes)
@@ -1538,72 +1599,56 @@ fn suggest_precise_capturing<'tcx>(
                 concatenated_bounds,
             });
         } else {
-            let mut next_fresh_param = || {
-                ['T', 'U', 'V', 'W', 'X', 'Y', 'A', 'B', 'C']
-                    .into_iter()
-                    .map(sym::character)
-                    .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
-                    .find(|s| captured_non_lifetimes.insert(*s))
-                    .unwrap()
-            };
-
-            let mut new_params = String::new();
-            let mut suggs = vec![];
-            let mut apit_spans = vec![];
-
-            for (i, (span, name)) in synthetics.into_iter().enumerate() {
-                apit_spans.push(span);
-
-                let fresh_param = next_fresh_param();
-
-                // Suggest renaming.
-                suggs.push((span, fresh_param.to_string()));
-
-                // Super jank. Turn `impl Trait` into `T: Trait`.
-                //
-                // This currently involves stripping the `impl` from the name of
-                // the parameter, since APITs are always named after how they are
-                // rendered in the AST. This sucks! But to recreate the bound list
-                // from the APIT itself would be miserable, so we're stuck with
-                // this for now!
-                if i > 0 {
-                    new_params += ", ";
-                }
-                let name_as_bounds = name.as_str().trim_start_matches("impl").trim_start();
-                new_params += fresh_param.as_str();
-                new_params += ": ";
-                new_params += name_as_bounds;
-            }
-
             let Some(generics) = tcx.hir_get_generics(fn_def_id) else {
                 // This shouldn't happen, but don't ICE.
                 return;
             };
 
-            // Add generics or concatenate to the end of the list.
-            suggs.push(if let Some(params_span) = generics.span_for_param_suggestion() {
-                (params_span, format!(", {new_params}"))
+            let names_lifetimes = named_suggs.is_some();
+            if let Some(named) = named_suggs {
+                suggs.extend(named);
             } else {
-                (generics.span, format!("<{new_params}>"))
-            });
+                captured_lifetimes.insert(new_lifetime);
 
-            let concatenated_bounds = captured_lifetimes
-                .into_iter()
-                .chain(captured_non_lifetimes)
-                .map(|sym| sym.to_string())
-                .collect::<Vec<_>>()
-                .join(", ");
+                let concatenated_bounds = captured_lifetimes
+                    .into_iter()
+                    .chain(captured_non_lifetimes)
+                    .map(|sym| sym.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
 
-            suggs.push((
-                tcx.def_span(opaque_def_id).shrink_to_hi(),
-                format!(" + use<{concatenated_bounds}>"),
-            ));
+                suggs.push((
+                    tcx.def_span(opaque_def_id).shrink_to_hi(),
+                    format!(" + use<{concatenated_bounds}>"),
+                ));
+            }
 
-            diag.subdiagnostic(diagnostics::AddPreciseCapturingAndParams {
-                suggs,
-                new_lifetime,
-                apit_spans,
-            });
+            // Add generics or concatenate to the end of the list.
+            if let Some(params_span) = generics.span_for_param_suggestion() {
+                suggs.push((params_span, format!(", {new_params}")));
+            } else if let Some((_, new_lifetimes)) =
+                suggs.iter_mut().find(|(span, _)| *span == generics.span)
+            {
+                // `suggest_name_regions` already pushed `<'a, 'b>` at `generics.span`, so a second
+                // part at the same empty span cannot apply. the type params are spliced into the
+                // existing string, with lifetimes first because the grammar requires it.
+                *new_lifetimes = format!("{}, {new_params}>", new_lifetimes.trim_end_matches('>'));
+            } else {
+                suggs.push((generics.span, format!("<{new_params}>")));
+            }
+
+            if names_lifetimes {
+                diag.subdiagnostic(diagnostics::AddPreciseCapturingNameLifetimesAndParams {
+                    suggs,
+                    apit_spans,
+                });
+            } else {
+                diag.subdiagnostic(diagnostics::AddPreciseCapturingAndParams {
+                    suggs,
+                    new_lifetime,
+                    apit_spans,
+                });
+            }
         }
     }
 }

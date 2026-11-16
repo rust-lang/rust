@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 
 // In rust (and C23 and above) `...` can be the only argument.
 unsafe extern "C" fn only_dot_dot_dot(mut ap: ...) -> i32 {

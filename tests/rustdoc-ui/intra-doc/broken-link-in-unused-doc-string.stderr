@@ -5,6 +5,7 @@ LL | /// [3]
    |      ^ no item named `3` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[3]: https://...`
    = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 
 warning: unresolved link to `1`
@@ -14,6 +15,7 @@ LL | /// [1]
    |      ^ no item named `1` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[1]: https://...`
 
 warning: unresolved link to `1`
   --> $DIR/broken-link-in-unused-doc-string.rs:6:6
@@ -22,6 +24,7 @@ LL | /// [1]
    |      ^ no item named `1` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[1]: https://...`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: 3 warnings emitted

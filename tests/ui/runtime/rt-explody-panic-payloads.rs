@@ -1,7 +1,6 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-subprocess
-//@ ignore-backends: gcc
 
 use std::env;
 use std::process::Command;

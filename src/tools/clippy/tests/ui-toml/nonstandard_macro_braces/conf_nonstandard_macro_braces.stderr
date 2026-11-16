@@ -79,6 +79,24 @@ error: use of irregular braces for `println!` macro
 LL |     println! {""};
    |     ^^^^^^^^^^^^^ help: consider writing: `println!("")`
 
+error: use of irregular braces for `format!` macro
+  --> tests/ui-toml/nonstandard_macro_braces/conf_nonstandard_macro_braces.rs:98:5
+   |
+LL |     format! {"{string} is a string"}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `format!("{string} is a string")`
+
+error: use of irregular braces for `format!` macro
+  --> tests/ui-toml/nonstandard_macro_braces/conf_nonstandard_macro_braces.rs:107:9
+   |
+LL |         format! {"{string} is a string"}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `format!("{string} is a string")`
+
+error: use of irregular braces for `println!` macro
+  --> tests/ui-toml/nonstandard_macro_braces/conf_nonstandard_macro_braces.rs:115:5
+   |
+LL |     println! {"not the end"}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `println!("not the end");`
+
 error: use of irregular braces for `vec!` macro
   --> tests/ui-toml/nonstandard_macro_braces/conf_nonstandard_macro_braces.rs:20:9
    |
@@ -87,5 +105,5 @@ LL |         vec!{0, 0, 0}
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 14 previous errors
+error: aborting due to 17 previous errors
 

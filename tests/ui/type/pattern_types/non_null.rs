@@ -3,7 +3,7 @@
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ only-64bit
 
-#![feature(pattern_type_macro, pattern_types, rustc_attrs)]
+#![feature(pattern_types, rustc_attrs)]
 
 use std::pat::pattern_type;
 

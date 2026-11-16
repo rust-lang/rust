@@ -6,7 +6,6 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
-//@ ignore-backends: gcc
 
 struct Foo;
 

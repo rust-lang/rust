@@ -1,12 +1,15 @@
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 
-/// Canonicalize operands of binary operations.
-/// This only canonicalize their ordering for now.
-pub(super) fn canonicalize_binary_operands<'tcx, 'body>(
+/// Canonicalize binary operations:
+/// 1. `op(const, place)` -> `op(place, const)`
+/// 2. `op(place _2, place _1)` -> `op(place _1, place _2)`
+///
+/// For ops `<`/`<=`/`>`/`>=`, we would also modify the op itself.
+pub(super) fn canonicalize_binary_operations<'tcx, 'body>(
     tcx: TyCtxt<'tcx>,
     local_decls: &'body LocalDecls<'tcx>,
-    op: BinOp,
+    op: &mut BinOp,
     lhs: &mut Operand<'tcx>,
     rhs: &mut Operand<'tcx>,
 ) -> bool {
@@ -85,8 +88,8 @@ pub(super) fn canonicalize_binary_operands<'tcx, 'body>(
         false
     }
 
-    let needs_integral = match op {
-        BinOp::Eq | BinOp::Ne => false,
+    let (needs_integral, new_op) = match *op {
+        BinOp::Eq | BinOp::Ne => (false, *op),
 
         BinOp::Add
         | BinOp::AddUnchecked
@@ -96,7 +99,12 @@ pub(super) fn canonicalize_binary_operands<'tcx, 'body>(
         | BinOp::MulWithOverflow
         | BinOp::BitXor
         | BinOp::BitAnd
-        | BinOp::BitOr => true,
+        | BinOp::BitOr => (true, *op),
+
+        BinOp::Lt => (true, BinOp::Gt),
+        BinOp::Le => (true, BinOp::Ge),
+        BinOp::Ge => (true, BinOp::Le),
+        BinOp::Gt => (true, BinOp::Lt),
 
         BinOp::Sub
         | BinOp::SubUnchecked
@@ -107,10 +115,6 @@ pub(super) fn canonicalize_binary_operands<'tcx, 'body>(
         | BinOp::ShlUnchecked
         | BinOp::Shr
         | BinOp::ShrUnchecked
-        | BinOp::Lt
-        | BinOp::Le
-        | BinOp::Ge
-        | BinOp::Gt
         | BinOp::Cmp
         | BinOp::Offset => return false,
     };
@@ -120,6 +124,7 @@ pub(super) fn canonicalize_binary_operands<'tcx, 'body>(
     }
 
     if needs_swap_operands(lhs, rhs) {
+        *op = new_op;
         std::mem::swap(lhs, rhs);
         true
     } else {

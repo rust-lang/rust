@@ -346,7 +346,7 @@ impl<const N: usize> fmt::Display for EscapeIterInner<N, AlwaysEscaped> {
 impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(c) = self.to_char() {
-            return f.write_char(c);
+            return if self.alive.is_empty() { Ok(()) } else { f.write_char(c) };
         }
 
         // SAFETY: At this point, `self.data` must contain printable ASCII

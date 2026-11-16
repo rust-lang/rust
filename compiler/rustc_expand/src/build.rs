@@ -183,6 +183,20 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    /// Create a `where 'left: 'right` predicate.
+    pub fn where_outlives(&self, left: ast::Lifetime, right: ast::Lifetime) -> ast::WherePredicate {
+        ast::WherePredicate {
+            attrs: Default::default(),
+            kind: ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
+                lifetime: left,
+                bounds: thin_vec![ast::GenericBound::Outlives(right)],
+            }),
+            id: ast::DUMMY_NODE_ID,
+            span: DUMMY_SP,
+            is_placeholder: false,
+        }
+    }
+
     pub fn const_param(
         &self,
         ident: Ident,
@@ -350,7 +364,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Unary(UnOp::Deref, e))
     }
 
-    pub fn expr_addr_of(&self, sp: Span, e: Box<ast::Expr>) -> Box<ast::Expr> {
+    pub fn expr_ref(&self, sp: Span, e: Box<ast::Expr>) -> Box<ast::Expr> {
         self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, e))
     }
 
@@ -475,7 +489,7 @@ impl<'a> ExtCtxt<'a> {
 
     /// `&[expr1, expr2, ...]`
     pub fn expr_array_ref(&self, sp: Span, exprs: ThinVec<Box<ast::Expr>>) -> Box<ast::Expr> {
-        self.expr_addr_of(sp, self.expr_array(sp, exprs))
+        self.expr_ref(sp, self.expr_array(sp, exprs))
     }
 
     pub fn expr_some(&self, sp: Span, expr: Box<ast::Expr>) -> Box<ast::Expr> {
@@ -790,6 +804,16 @@ impl<'a> ExtCtxt<'a> {
         let id = self.sess.psess.attr_id_generator.mk_attr_id();
         ast::Attribute {
             kind: ast::AttrKind::Generated(generated),
+            id,
+            span,
+            style: ast::AttrStyle::Outer,
+        }
+    }
+
+    pub fn synthetic_attr(&self, span: Span, synthetic: ast::SyntheticAttr) -> ast::Attribute {
+        let id = self.sess.psess.attr_id_generator.mk_attr_id();
+        ast::Attribute {
+            kind: ast::AttrKind::Synthetic(Box::new(synthetic)),
             id,
             span,
             style: ast::AttrStyle::Outer,

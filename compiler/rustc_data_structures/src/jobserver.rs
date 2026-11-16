@@ -93,7 +93,7 @@ pub struct Proxy {
     /// The wrapped jobserver client.
     client: Client,
     /// Helper thread associated with the wrapped client.
-    helper: OnceLock<HelperThread>,
+    helper: Mutex<Option<HelperThread>>,
     /// The proxy's own data.
     data: Mutex<ProxyData>,
     /// Threads which are currently waiting for a token will wait on this condvar.
@@ -107,8 +107,13 @@ impl Proxy {
             // Assume that the main thread is actively doing work when it creates the proxy.
             data: Mutex::new(ProxyData { used: 1, pending: 0 }),
             wake_pending: Condvar::new(),
-            helper: OnceLock::new(),
+            helper: Default::default(),
         });
+
+        // The helper thread is dropped explicitly (see `drop_helper_thread` below).
+        // If we make this a weak reference then we still can encounter a situation
+        // when token is not returned, as the last strong reference may be held by this
+        // thread meaning it may not be dropped before rustc exits (see #165854).
         let proxy_ = Arc::clone(&proxy);
         let helper = proxy
             .client
@@ -132,7 +137,7 @@ impl Proxy {
                 }
             })
             .expect("failed to spawn helper thread");
-        proxy.helper.set(helper).unwrap();
+        *proxy.helper.lock() = Some(helper);
         proxy
     }
 
@@ -149,7 +154,7 @@ impl Proxy {
         } else {
             // Request a token from the helper thread, this is a non-blocking operation.
             // Then wait until this or some other request succeeds.
-            self.helper.get().unwrap().request_token();
+            self.helper.lock().as_ref().unwrap().request_token();
             data.pending += 1;
             self.wake_pending.wait(&mut data);
         }
@@ -173,5 +178,12 @@ impl Proxy {
                 self.client.release_raw().ok();
             }
         }
+    }
+
+    /// Explicitly drops helper thread making sure that it is dropped before
+    /// `rustc` exits and thus all tokens are returned to the job server (see #165854).
+    pub fn drop_helper_thread(&self) {
+        let helper_thread = self.helper.lock().take();
+        drop(helper_thread);
     }
 }

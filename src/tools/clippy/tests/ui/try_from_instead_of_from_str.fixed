@@ -13,7 +13,7 @@ struct MyType;
 impl core::str::FromStr for MyType {
     type Err = ();
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
+    fn from_str(_value: &str) -> Result<Self, Self::Err> {
         Ok(MyType)
     }
 }
@@ -23,7 +23,7 @@ struct Bar;
 impl core::str::FromStr for Bar {
     type Err = &'static str;
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
+    fn from_str(_value: &str) -> Result<Self, Self::Err> {
         Ok(Bar)
     }
 }
@@ -35,7 +35,7 @@ struct Tarte<'a>(&'a ());
 impl<'a> core::str::FromStr for Tarte<'a> {
     type Err = &'static str;
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
+    fn from_str(_value: &str) -> Result<Self, Self::Err> {
         Ok(Tarte(&()))
     }
 }
@@ -93,7 +93,7 @@ struct Lifetime3;
 impl core::str::FromStr for Lifetime3 {
     type Err = LifetimeErr2<for<'b> fn(&'b u32)>;
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
+    fn from_str(_value: &str) -> Result<Self, Self::Err> {
         Ok(Lifetime3)
     }
 }
@@ -104,7 +104,7 @@ struct Lifetime4<T>(T);
 impl<'a> core::str::FromStr for Lifetime4<&'a ()> {
     type Err = LifetimeErr2<&'a ()>;
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
+    fn from_str(_value: &str) -> Result<Self, Self::Err> {
         Ok(Lifetime4(&()))
     }
 }
@@ -152,6 +152,30 @@ with_span! {
             Ok(WithSpan)
         }
     }
+}
+
+mod issue17877 {
+    use std::convert::TryFrom;
+
+    struct NotValue;
+    impl core::str::FromStr for NotValue {
+    type Err = std::io::Error;
+
+    fn from_str(some_other_name: &str) -> Result<Self, Self::Err> {
+            let _ = some_other_name;
+            Ok(Self)
+        }
+}
+
+    struct NotValue2;
+    impl core::str::FromStr for NotValue2 {
+    type Err = ();
+
+    fn from_str(mut __value_value_value__: &str) -> Result<Self, Self::Err> {
+            __value_value_value__ = "something changed";
+            Ok(Self)
+        }
+}
 }
 
 fn main() {}

@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, Const, ExistentialPredicate, FloatTy, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
+    self, Const, ExistentialPredicate, FloatTy, FnSig, GenericArg, GenericArgKind, GenericArgs,
     IntTy, List, Region, RegionKind, TermKind, Ty, TyCtxt, TypeFoldable, UintTy,
 };
 use rustc_span::bug;
@@ -67,7 +67,7 @@ fn compress<'tcx>(
 /// types that are not used at the FFI boundary.
 fn encode_args<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
     for_def: DefId,
     has_erased_self: bool,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
@@ -263,6 +263,9 @@ fn encode_const_value<'tcx>(
         | ty::Placeholder(..) => {
             bug!("encode_const_value: unexpected type `{:?}`", cv.ty);
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 
     s
@@ -593,7 +596,7 @@ pub(crate) fn encode_ty<'tcx>(
                 // <subst>, as vendor extended type.
                 let name = encode_ty_name(tcx, def_id);
                 let _ = write!(s, "u{}{}", name.len(), name);
-                s.push_str(&encode_args(tcx, args, def_id, false, dict, options));
+                s.push_str(&encode_args(tcx, *args, def_id, false, dict, options));
                 compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             }
             typeid.push_str(&s);
@@ -621,7 +624,7 @@ pub(crate) fn encode_ty<'tcx>(
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), name);
-            s.push_str(&encode_args(tcx, args, *def_id, false, dict, options));
+            s.push_str(&encode_args(tcx, *args, *def_id, false, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -750,6 +753,9 @@ pub(crate) fn encode_ty<'tcx>(
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     };
 
     typeid

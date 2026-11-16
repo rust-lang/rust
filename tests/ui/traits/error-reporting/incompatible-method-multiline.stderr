@@ -1,6 +1,8 @@
 error[E0053]: method `next` has an incompatible type for trait
   --> $DIR/incompatible-method-multiline.rs:8:27
    |
+LL | impl Iterator for S {
+LL |     type Item = i32;
 LL |     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
    |                           ^^^^^^^^^^^^^^^^ expected `Option<i32>`, found `Result<i32, i32>`
    |

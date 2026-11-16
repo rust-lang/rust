@@ -21,15 +21,15 @@ impl<'tcx> MirLint<'tcx> for CheckCallRecursion {
 
         if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
             // If this is trait/impl method, extract the trait's args.
-            let trait_args = match tcx.trait_of_assoc(def_id.to_def_id()) {
+            match tcx.trait_of_assoc(def_id.to_def_id()) {
                 Some(trait_def_id) => {
                     let trait_args_count = tcx.generics_of(trait_def_id).count();
-                    &GenericArgs::identity_for_item(tcx, def_id)[..trait_args_count]
+                    let args = GenericArgs::identity_for_item(tcx, def_id);
+                    let trait_args = &args.as_slice()[..trait_args_count];
+                    check_recursion(tcx, body, CallRecursion { trait_args })
                 }
-                _ => &[],
+                _ => check_recursion(tcx, body, CallRecursion { trait_args: &[] }),
             };
-
-            check_recursion(tcx, body, CallRecursion { trait_args })
         }
     }
 }
@@ -111,8 +111,8 @@ struct Search<'mir, 'tcx, C: TerminatorClassifier<'tcx>> {
     reachable_recursive_calls: Vec<Span>,
 }
 
-struct CallRecursion<'tcx> {
-    trait_args: &'tcx [GenericArg<'tcx>],
+struct CallRecursion<'tcx, 'a> {
+    trait_args: &'a [GenericArg<'tcx>],
 }
 
 struct RecursiveDrop<'tcx> {
@@ -120,7 +120,7 @@ struct RecursiveDrop<'tcx> {
     drop_for: Ty<'tcx>,
 }
 
-impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
+impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx, '_> {
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_terminator(
         &self,
@@ -163,7 +163,8 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
             // calling into an entirely different method (for example, a call from the default
             // method in the trait to `<A as Trait<B>>::method`, where `A` and/or `B` are
             // specific types).
-            return callee == caller && &call_args[..self.trait_args.len()] == self.trait_args;
+            return callee == caller
+                && &call_args.as_slice()[..self.trait_args.len()] == self.trait_args;
         }
 
         false

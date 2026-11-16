@@ -48,7 +48,7 @@ pub(super) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                 debug!("considering extern trait impl {trait_ref:?}");
                 if crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
                     || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
-                    || tcx.is_doc_notable_trait(trait_ref.def_id())
+                    || tcx.doc_notable_trait(trait_ref.def_id()).is_some()
                 {
                     debug!("-> inlining due to trait");
                     cx.with_param_env(impl_def_id, |cx| {
@@ -144,7 +144,7 @@ pub(super) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         }
     });
 
-    if let ModuleItem(Module { items, .. }) = &mut krate.module.inner.kind {
+    if let ItemKind::Module(Module { items, .. }) = &mut krate.module.inner.kind {
         items.extend(synth_impls);
         items.extend(new_items_external);
         items.extend(new_items_local);
@@ -201,6 +201,7 @@ impl SelfTyHead {
             // but clean_middle_ty doesn't handle this correctly yet either
             ty::UnsafeBinder(_) => Self::Other,
             ty::Adt(def, _) => Self::Item(def.did()),
+            ty::View(def, _, _) => Self::Item(def.did()),
             ty::Foreign(did) => Self::Item(did),
             ty::Dynamic(obj, _) => {
                 // HACK: pick the first `did` as the `did` of the trait object. Someone
@@ -302,7 +303,7 @@ impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
     fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.item_id);
 
-        if let TypeAliasItem(alias) = &i.inner.kind
+        if let ItemKind::TypeAlias(alias) = &i.inner.kind
             && let Some(did) = alias.type_.def_id(self.cache)
         {
             self.items.insert(ItemId::DefId(did));

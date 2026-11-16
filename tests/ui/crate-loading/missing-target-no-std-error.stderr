@@ -4,6 +4,12 @@ error[E0463]: can't find crate for `core`
    = help: consider downloading the target with `rustup target add thumbv7em-none-eabihf`
    = help: consider building the standard library from source with `cargo build -Zbuild-std`
 
-error: aborting due to 1 previous error
+error[E0463]: can't find crate for `cortex_m`
+  --> $DIR/missing-target-no-std-error.rs:12:1
+   |
+LL | extern crate cortex_m;
+   | ^^^^^^^^^^^^^^^^^^^^^^ can't find crate
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0463`.

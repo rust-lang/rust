@@ -16,7 +16,7 @@ use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode, Well
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, FnSig, GenericArgs, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, bug, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
@@ -60,13 +60,15 @@ pub(crate) fn check_legal_trait_for_method_call(
         // Allow calling `Drop::pin_drop` in `Drop::drop`
         && !tcx.is_lang_item(tcx.parent(body_def_id), LangItem::Drop)
     {
-        let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
-            diagnostics::ExplicitDestructorCallSugg::Snippet {
-                lo: expr_span.shrink_to_lo().to(receiver.shrink_to_lo()),
-                hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
-            }
-        } else {
-            diagnostics::ExplicitDestructorCallSugg::Empty(span)
+        let sugg = match receiver.filter(|s| !s.is_empty()) {
+            Some(receiver) => receiver
+                .find_ancestor_inside_same_ctxt(expr_span)
+                .filter(|receiver| !receiver.is_empty())
+                .map(|receiver| diagnostics::ExplicitDestructorCallSugg::Snippet {
+                    lo: expr_span.shrink_to_lo().to(receiver.shrink_to_lo()),
+                    hi: receiver.shrink_to_hi().to(expr_span.shrink_to_hi()),
+                }),
+            None => Some(diagnostics::ExplicitDestructorCallSugg::Empty(span)),
         };
         return Err(tcx.dcx().emit_err(diagnostics::ExplicitDestructorCall { span, sugg }));
     }
@@ -665,7 +667,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         tuple_arguments_flag: TupleArgumentsFlag,
         fn_id: SplatLoweringInfo<'tcx>,
-        callee_generic_args: Option<GenericArgsRef<'tcx>>,
+        callee_generic_args: Option<GenericArgs<'tcx>>,
     ) {
         let mut formal_inputs = Cow::Borrowed(fn_sig.inputs());
         if let (SplatLoweringInfo::FnDef(def_id), Some(args)) = (fn_id, callee_generic_args) {
@@ -784,9 +786,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (prev_type, method_adjustments) =
                 prev_types.remove(&arg.hir_id).expect("must be in a map");
 
-            // Remove any added adjustments for arg expression during `do_check` and replace them with ours.
+            // Insert adjustments that were obtained when we were probing before adjustments
+            // that were potentially obtained during arguments check. As when checking arguments we
+            // change the real arg type with an adjusted one, so new adjustments are created for already
+            // adjusted type. See #165171, in short if we have `self.0` which is `u8` and the expected input
+            // is `&dyn Trait`, we would have:
+            // `adjustments` == [Deref(Builtin) -> u8, Borrow(Ref(Not)) -> &u8, Pointer(Unsize) -> &dyn original_ice::Trait],
+            // `method_adjustments` == [Borrow(Ref(Not)) -> &u8]
+            // This makes sense only if `method_adjustments` are inserted before `adjustments`.
+            // FIXME(fn_delegation): maybe useless adjustments can be optimized away here
             let adjustments = adjustments.entry(arg.hir_id).or_default();
-            *adjustments = method_adjustments;
+            adjustments.splice(0..0, method_adjustments);
 
             // Restore original first provided arg type.
             results.node_types_mut().insert(arg.hir_id, prev_type);
@@ -1022,7 +1032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sess
                 .source_map()
                 .is_multiline(call_expr.span.with_lo(callee_expr.span.hi()))
-                && call_expr.span.eq_ctxt(callee_expr.span);
+                && call_expr.span.ctxt() == callee_expr.span.ctxt();
             if call_is_multiline {
                 err.span_suggestion(
                     callee_expr.span.shrink_to_hi(),
@@ -1127,7 +1137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_hir_id: Option<HirId>,
         span: Span,
         callee_did: DefId,
-        callee_args: GenericArgsRef<'tcx>,
+        callee_args: GenericArgs<'tcx>,
     ) {
         let const_context = self.tcx.hir_body_const_context(self.body_def_id);
 

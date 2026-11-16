@@ -4,7 +4,6 @@
 #![allow(non_upper_case_globals)]
 
 //@ needs-threads
-//@ ignore-backends: gcc
 
 use std::thread;
 

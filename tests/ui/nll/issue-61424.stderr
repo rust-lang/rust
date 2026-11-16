@@ -1,5 +1,5 @@
 error: variable does not need to be mutable
-  --> $DIR/issue-61424.rs:6:9
+  --> $DIR/issue-61424.rs:6:13
    |
 LL |     let mut x;
    |         ----^

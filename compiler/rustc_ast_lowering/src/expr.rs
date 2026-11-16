@@ -6,7 +6,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::*;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::{AstTarget, Target};
+use rustc_attr_ir::target::AstTarget;
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -137,7 +137,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .and_then(|state| state.as_ref())
             .map_or(0, |state| state.occurrences.len());
         let ident = Ident::from_str_and_span(&format!("__move_expr_{index}"), move_kw_span);
-        let (pat, binding) = self.pat_ident(inner.span, ident);
+        let (pat, binding) = self.pat_ident_binding_mode(inner.span, ident, hir::BindingMode::MUT);
         let Some(state) = self.move_expr_bindings.last_mut().and_then(|state| state.as_mut())
         else {
             span_bug!(move_kw_span, "`move(...)` lowered without a closure-like body state");
@@ -188,7 +188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // Evaluate the expression inside `move(...)` before creating the
             // closure/coroutine and store it in a synthetic local:
             // `|| move(foo).bar` becomes roughly
-            // `let __move_expr_0 = foo; || __move_expr_0.bar`.
+            // `let mut __move_expr_0 = foo; || __move_expr_0.bar`.
             let expr = initializers[&occurrence.id];
             // This state has already been popped, so a nested `move(...)` in
             // the initializer is recorded by the immediately enclosing
@@ -231,13 +231,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let old_attrs =
                         self.curr_owner.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
                     let new_attrs = self
-                        .lower_attrs_vec(
-                            &e.attrs,
-                            e.span,
-                            ex.hir_id,
-                            Target::from_expr(e),
-                            AstTarget::Expression(e),
-                        )
+                        .lower_attrs_vec(&e.attrs, e.span, ex.hir_id, AstTarget::Expression(e))
                         .into_iter()
                         .chain(old_attrs.iter().cloned());
                     let new_attrs = &*self.arena.alloc_from_iter(new_attrs);
@@ -261,13 +255,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         let expr_hir_id = self.lower_node_id(e.id);
-        self.lower_attrs(
-            expr_hir_id,
-            &e.attrs,
-            e.span,
-            Target::from_expr(e),
-            AstTarget::Expression(e),
-        );
+        self.lower_attrs(expr_hir_id, &e.attrs, e.span, AstTarget::Expression(e));
 
         let kind = match &e.kind {
             ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -807,7 +795,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let guard = arm.guard.as_ref().map(|guard| self.lower_expr(&guard.cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
-        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm, AstTarget::Arm(arm));
+        self.lower_attrs(hir_id, &arm.attrs, arm.span, AstTarget::Arm(arm));
         let is_never_pattern = pat.is_never_pattern();
         // We need to lower the body even if it's unneeded for never pattern in match,
         // ensure that we can get HirId for DefId if need (issue #137708).
@@ -817,6 +805,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         {
             body
         } else {
+            let remove_span = if arm.span.ctxt() == arm.pat.span.ctxt() {
+                arm.span.with_lo(arm.pat.span.hi())
+            } else {
+                // This will remove the never pattern too, but that is syntactically correct.
+                arm.span
+            };
             // Either `body.is_none()` or `is_never_pattern` here.
             if !is_never_pattern {
                 if self.tcx.features().never_patterns() {
@@ -825,9 +819,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.dcx().emit_err(MatchArmWithNoBody { span, suggestion });
                 }
             } else if let Some(body) = &arm.body {
-                self.dcx().emit_err(NeverPatternWithBody { span: body.span });
+                self.dcx().emit_err(NeverPatternWithBody { span: body.span, remove_span });
             } else if let Some(g) = &arm.guard {
-                self.dcx().emit_err(NeverPatternWithGuard { span: g.span() });
+                self.dcx().emit_err(NeverPatternWithGuard { span: g.span(), remove_span });
             }
 
             // We add a fake `loop {}` arm body so that it typecks to `!`. The mir lowering of never
@@ -1671,7 +1665,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField, AstTarget::ExprField(f));
+        self.lower_attrs(hir_id, &f.attrs, f.span, AstTarget::ExprField(f));
         hir::ExprField {
             hir_id,
             ident: self.lower_ident(f.ident),
@@ -1938,13 +1932,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //
         // Also, add the attributes to the outer returned expr node.
         let expr = self.expr_drop_temps_mut(for_span, match_expr);
-        self.lower_attrs(
-            expr.hir_id,
-            &e.attrs,
-            e.span,
-            Target::from_expr(e),
-            AstTarget::Expression(e),
-        );
+        self.lower_attrs(expr.hir_id, &e.attrs, e.span, AstTarget::Expression(e));
         expr
     }
 

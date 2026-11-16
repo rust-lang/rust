@@ -866,6 +866,7 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         c_sig: None,
         fn_list: &[
             "ceilf16",
+            "exp2m1f16",
             "fabsf16",
             "floorf16",
             "rintf16",

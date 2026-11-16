@@ -1730,9 +1730,18 @@ impl String {
         // Slow path: at least one character is going to be removed.
         let mut g = PanicGuard { s: self, write };
         while read < len {
-            // SAFETY: `read` is within bound because `read` < `len`, so taking
-            // a slice with `len` is safe.
-            let ch = unsafe { g.s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
+            // SAFETY: Use `vec`: `String`'s deref includes `write..read`,
+            // which may be invalid UTF-8. The vector's length is still `len`;
+            // `read < len`, so `read..len` is in bounds and non-empty.
+            // At least one character was removed, so `write < read`.
+            // Copies end before the next `read`, preserving unread bytes.
+            // `read` starts after a `char_indices` character and advances by whole
+            // characters, so it stays on a char boundary. The original string was valid UTF-8,
+            // so the unchanged, non-empty tail is valid UTF-8 and `chars().next()` returns `Some`.
+            let ch = unsafe {
+                let tail = str::from_utf8_unchecked(g.s.vec.get_unchecked(read..len));
+                tail.chars().next().unwrap_unchecked()
+            };
             let ch_len = ch.len_utf8();
             if f(ch) {
                 // SAFETY: `read` is on a char boundary, as guaranteed above; `g.write` is
@@ -2098,7 +2107,7 @@ impl String {
     /// [`char`]: prim@char
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     pub fn into_chars(self) -> IntoChars {
         IntoChars { bytes: self.into_bytes().into_iter() }
     }
@@ -2740,7 +2749,7 @@ impl<'a> Extend<&'a core::ascii::Char> for String {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'b> Pattern for &'b String {
+unsafe impl<'b> Pattern for &'b String {
     type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
 
     fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {
@@ -3610,12 +3619,12 @@ impl fmt::Write for String {
 /// [`into_chars`]: String::into_chars
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 pub struct IntoChars {
     bytes: vec::IntoIter<u8>,
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl fmt::Debug for IntoChars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoChars").field(&self.as_str()).finish()
@@ -3637,7 +3646,7 @@ impl IntoChars {
     /// chars.next();
     /// assert_eq!(chars.as_str(), "");
     /// ```
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -3658,7 +3667,7 @@ impl IntoChars {
     /// assert_eq!(chars.into_string(), "ef");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[inline]
     pub fn into_string(self) -> String {
         // SAFETY: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
@@ -3671,7 +3680,7 @@ impl IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl Iterator for IntoChars {
     type Item = char;
 
@@ -3705,7 +3714,7 @@ impl Iterator for IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl DoubleEndedIterator for IntoChars {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -3722,7 +3731,7 @@ impl DoubleEndedIterator for IntoChars {
     }
 }
 
-#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl FusedIterator for IntoChars {}
 
 /// A draining iterator for `String`.

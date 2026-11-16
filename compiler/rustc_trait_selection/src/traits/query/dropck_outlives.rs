@@ -88,6 +88,9 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Bound(..)
         | ty::Coroutine(..)
         | ty::UnsafeBinder(_) => false,
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -417,5 +420,8 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // be fully resolved.
             tcx.dcx().span_delayed_bug(span, format!("Unresolved type in dropck: {:?}.", ty));
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }

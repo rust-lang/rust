@@ -1,8 +1,10 @@
-error[E0519]: the current crate is indistinguishable from one of its dependencies: it has the same crate-name `crateresolve1` and was compiled with the same `-C metadata` arguments, so this will result in symbol conflicts between the two
+error[E0519]: the current crate is indistinguishable from one of its dependencies
   --> $DIR/E0519.rs:8:1
    |
 LL | extern crate crateresolve1;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: it has the same name `crateresolve1` and was compiled with the same `-C metadata` arguments, so this will result in symbol conflicts between the two
 
 error: aborting due to 1 previous error
 

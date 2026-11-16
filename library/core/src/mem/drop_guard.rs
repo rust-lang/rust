@@ -11,7 +11,6 @@ use crate::ops::{Deref, DerefMut};
 ///
 /// ```rust
 /// # #![allow(unused)]
-///
 /// use std::mem::DropGuard;
 ///
 /// {
@@ -30,6 +29,7 @@ use crate::ops::{Deref, DerefMut};
 #[stable(feature = "drop_guard", since = "1.100.0")]
 #[doc(alias = "ScopeGuard")]
 #[doc(alias = "defer")]
+#[rustc_diagnostic_item = "DropGuard"]
 pub struct DropGuard<#[rustc_assert_variance(covariant)] T, #[rustc_assert_variance(covariant)] F>
 where
     F: FnOnce(T),
@@ -48,7 +48,6 @@ where
     ///
     /// ```rust
     /// # #![allow(unused)]
-    ///
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Chashu likes tuna");
@@ -72,7 +71,6 @@ where
     ///
     /// ```rust
     /// # #![allow(unused)]
-    ///
     /// use std::mem::DropGuard;
     ///
     /// let value = String::from("Nori likes chicken");

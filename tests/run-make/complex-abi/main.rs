@@ -1,5 +1,6 @@
 // ignore-tidy-file-linelength
 #![feature(complex_numbers, f128)]
+#![cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), feature(x87_f80))]
 #![allow(improper_ctypes)]
 #![allow(unused_features)]
 #![deny(dead_code)]
@@ -29,6 +30,23 @@ type c_longdouble = cfg_select! {
         cfg_select! {
             any(windows, target_vendor = "apple", target_os = "android") => f64,
             _ => f128,
+        }
+    }
+    any(target_arch = "x86", target_arch = "x86_64") => {
+        cfg_select! {
+            any(target_os = "android", target_env = "ohos") => {
+                cfg_select! {
+                    target_arch = "x86" => f64,
+                    target_arch = "x86_64" => f128,
+                }
+            }
+            any(target_env = "msvc", target_os = "uefi") => f64,
+            _ => {
+                cfg_select! {
+                    target_arch = "x86" => std::arch::x86::x87_f80,
+                    target_arch = "x86_64" => std::arch::x86_64::x87_f80,
+                }
+            }
         }
     }
     _ => (),
@@ -138,7 +156,7 @@ fn pass_simple() {
     unsafe extern "C" {
         safe fn pass_simple_complex_float(x: Complex<c_float>) -> Complex<c_float>;
         safe fn pass_simple_complex_double(x: Complex<c_double>) -> Complex<c_double>;
-        #[cfg(target_arch = "aarch64")]
+        #[cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))]
         safe fn pass_simple_complex_long_double(x: Complex<c_longdouble>) -> Complex<c_longdouble>;
 
         safe fn pass_simple_complex_char(x: Complex<c_char>) -> Complex<c_char>;
@@ -150,6 +168,42 @@ fn pass_simple() {
 
     assert_eq!(Complex::new(3.5, 4.5), pass_simple_complex_float(Complex::new(3.5, 4.5)));
     assert_eq!(Complex::new(3.5, 4.5), pass_simple_complex_double(Complex::new(3.5, 4.5)));
+
+    cfg_select! {
+        any(
+            target_arch = "aarch64",
+            all(
+                any(target_arch = "x86_64", target_arch = "x86"),
+                any(
+                    target_os = "android",
+                    target_env = "ohos",
+                    target_env = "msvc",
+                    target_os = "uefi"
+                )
+            ),
+        ) => {
+            assert_eq!(
+                Complex::new(3.5, 4.5),
+                pass_simple_complex_long_double(Complex::new(3.5, 4.5))
+            );
+        }
+        any(target_arch = "x86", target_arch = "x86_64") => {
+            let a = c_longdouble::from_ne_bytes([
+                0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xAA,
+            ]);
+            let b = c_longdouble::from_ne_bytes([
+                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A,
+            ]);
+
+            let Complex { re, im } = pass_simple_complex_long_double(Complex::new(a, b));
+
+            assert_eq!(re.to_ne_bytes(), a.to_ne_bytes());
+            assert_eq!(im.to_ne_bytes(), b.to_ne_bytes());
+        }
+        _ => {
+            // FIXME: test c_longdouble.
+        }
+    }
 
     assert_eq!(
         Complex::new(c_float::INFINITY, c_float::NEG_INFINITY),

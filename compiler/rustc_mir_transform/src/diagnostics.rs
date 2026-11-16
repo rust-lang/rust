@@ -327,7 +327,7 @@ pub(crate) struct PatternTypo {
     pub kind: &'static str,
 }
 
-pub(crate) struct MustNotSupend<'a, 'tcx> {
+pub(crate) struct MustNotSuspend<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub yield_sp: Span,
     pub reason: Option<MustNotSuspendReason>,
@@ -338,7 +338,7 @@ pub(crate) struct MustNotSupend<'a, 'tcx> {
 }
 
 // Needed for def_path_str
-impl<'a> Diagnostic<'a> for MustNotSupend<'_, '_> {
+impl<'a> Diagnostic<'a> for MustNotSuspend<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = Diag::new(
             dcx,

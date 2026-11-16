@@ -16,7 +16,8 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{
-    self as ty, Const, DebruijnIndex, Interner, PredicateProxy, Region, UniverseIndex, Unnormalized,
+    self as ty, CallerBoundsIterator, Const, DebruijnIndex, Interner, PredicateProxy, Region,
+    UniverseIndex, Unnormalized,
 };
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
@@ -508,7 +509,7 @@ where
 {
 }
 
-impl<'s, I: Interner, Iter: IntoIterator> EarlyBinder<I, Iter>
+impl<I: Interner, Iter: IntoIterator> EarlyBinder<I, Iter>
 where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy + TypeFoldable<I>,
@@ -516,8 +517,8 @@ where
     pub fn iter_instantiated_copied(
         self,
         cx: I,
-        args: &'s [I::GenericArg],
-    ) -> IterInstantiatedCopied<'s, I, Iter> {
+        args: I::GenericArgs,
+    ) -> IterInstantiatedCopied<I, Iter> {
         IterInstantiatedCopied { it: self.value.into_iter(), cx, args }
     }
 
@@ -528,21 +529,19 @@ where
     }
 }
 
-pub struct IterInstantiatedCopied<'a, I: Interner, Iter: IntoIterator> {
+pub struct IterInstantiatedCopied<I: Interner, Iter: IntoIterator> {
     it: Iter::IntoIter,
     cx: I,
-    args: &'a [I::GenericArg],
+    args: I::GenericArgs,
 }
 
-impl<'a, I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone
-    for IterInstantiatedCopied<'a, I, Iter>
-{
-    fn clone(&self) -> IterInstantiatedCopied<'a, I, Iter> {
+impl<I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone for IterInstantiatedCopied<I, Iter> {
+    fn clone(&self) -> IterInstantiatedCopied<I, Iter> {
         IterInstantiatedCopied { it: self.it.clone(), cx: self.cx, args: self.args }
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy + TypeFoldable<I>,
@@ -560,7 +559,7 @@ where
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> DoubleEndedIterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> DoubleEndedIterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::IntoIter: DoubleEndedIterator,
     Iter::Item: Deref,
@@ -573,7 +572,7 @@ where
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> ExactSizeIterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> ExactSizeIterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::IntoIter: ExactSizeIterator,
     Iter::Item: Deref,
@@ -1274,7 +1273,7 @@ impl<I: Interner> PlaceholderConst<I> {
     }
 
     pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
-        let mut candidates = env.caller_bounds().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().non_trait_clauses().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {

@@ -314,15 +314,14 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
             // FIXME: indicate that this is an expanding recursive type in stub metadata?
             return DINodeCreationResult::new(stub_info.metadata, false);
         } else {
-            debug_context(cx).adt_stack.borrow_mut().push((def_id, args));
+            debug_context(cx).adt_stack.borrow_mut().push((def_id, *args));
             _adt_stack_pop_guard = Some(AdtStackPopGuard { cx });
         }
     }
 
     debug_context(cx).type_map.insert(stub_info.unique_type_id, stub_info.metadata);
 
-    let members: SmallVec<_> =
-        members(cx, stub_info.metadata).into_iter().map(|node| Some(node)).collect();
+    let members: SmallVec<_> = members(cx, stub_info.metadata).into_iter().map(Some).collect();
     let generics = generics(cx);
 
     if !(members.is_empty() && generics.is_empty()) {

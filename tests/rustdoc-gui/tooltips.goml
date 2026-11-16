@@ -6,7 +6,7 @@ define-function: (
     block {
         go-to: "file://" + |DOC_PATH| + "/test_docs/" + |path|
         assert-css: (
-            "a.tooltip", {"font-family": '"Source Serif 4", NanumBarunGothic, serif'}, ALL,
+            ".tooltip", {"font-family": '"Source Serif 4", NanumBarunGothic, serif'}, ALL,
         )
     }
 )

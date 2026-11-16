@@ -208,8 +208,18 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
         }
     }
 
-    // Replace the return variable
+    // Replace the return variable and initialize it once for all return paths.
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.types.unit, source_info);
+    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((
+            Place::return_place(),
+            Rvalue::Use(
+                Operand::zero_sized_constant(tcx.types.unit, source_info.span),
+                WithRetag::Yes,
+            ),
+        ))),
+    ));
 
     make_coroutine_state_argument_indirect(tcx, &mut body);
 
@@ -367,7 +377,7 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
 
     // call coroutine_drop()
-    let call_bb = body.basic_blocks_mut().push(BasicBlockData::new(None, false));
+    let call_bb = body.basic_blocks_mut().push(BasicBlockData::maybe_unterminated(None, false));
 
     // return Poll::Ready()
     let ret_bb = insert_poll_ready_block(tcx, &mut body);

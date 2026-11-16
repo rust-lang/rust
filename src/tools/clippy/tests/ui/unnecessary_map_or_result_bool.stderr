@@ -1,5 +1,5 @@
 error: this `map_or` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:13:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:14:20
    |
 LL |     let _ = result.map_or(false, |_| true);
    |                    ^^^^^^-----------------
@@ -10,7 +10,7 @@ LL |     let _ = result.map_or(false, |_| true);
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
 
 error: this `map_or` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:15:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:16:20
    |
 LL |     let _ = result.map_or(true, |_| false);
    |                    ^^^^^^-----------------
@@ -18,7 +18,7 @@ LL |     let _ = result.map_or(true, |_| false);
    |                    help: use `is_err` instead: `is_err()`
 
 error: this `map_or` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:17:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:18:20
    |
 LL |     let _ = result.map_or(false, |_: i32| true);
    |                    ^^^^^^----------------------
@@ -26,7 +26,7 @@ LL |     let _ = result.map_or(false, |_: i32| true);
    |                    help: use `is_ok` instead: `is_ok()`
 
 error: this `map_or` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:19:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:20:20
    |
 LL |     let _ = result.map_or(!true, |_| TRUE);
    |                    ^^^^^^-----------------
@@ -34,7 +34,7 @@ LL |     let _ = result.map_or(!true, |_| TRUE);
    |                    help: use `is_ok` instead: `is_ok()`
 
 error: this `map_or_else` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:22:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:23:20
    |
 LL |     let _ = result.map_or_else(|_| false, |_| true);
    |                    ^^^^^^^^^^^---------------------
@@ -42,7 +42,7 @@ LL |     let _ = result.map_or_else(|_| false, |_| true);
    |                    help: use `is_ok` instead: `is_ok()`
 
 error: this `map_or_else` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:24:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:25:20
    |
 LL |     let _ = result.map_or_else(|_| true, |_| false);
    |                    ^^^^^^^^^^^---------------------
@@ -50,7 +50,7 @@ LL |     let _ = result.map_or_else(|_| true, |_| false);
    |                    help: use `is_err` instead: `is_err()`
 
 error: this `map_or_else` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:26:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:27:20
    |
 LL |     let _ = result.map_or_else(|_: i32| false, |_: i32| true);
    |                    ^^^^^^^^^^^-------------------------------
@@ -58,7 +58,7 @@ LL |     let _ = result.map_or_else(|_: i32| false, |_: i32| true);
    |                    help: use `is_ok` instead: `is_ok()`
 
 error: this `map_or_else` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool.rs:28:20
+  --> tests/ui/unnecessary_map_or_result_bool.rs:29:20
    |
 LL |     let _ = result.map_or_else(|_| FALSE, |_| !false);
    |                    ^^^^^^^^^^^-----------------------

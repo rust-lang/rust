@@ -1,4 +1,3 @@
-//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
 //! Various enum layout tests.
 
 #![feature(rustc_attrs)]

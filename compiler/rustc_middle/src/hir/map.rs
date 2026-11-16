@@ -375,7 +375,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn par_hir_body_owners(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
-        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&&def_id| f(def_id));
+        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
     pub fn hir_ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
@@ -505,7 +505,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn par_hir_for_each_module(self, f: impl Fn(LocalModId) + DynSend + DynSync) {
         let crate_items = self.hir_crate_items(());
-        par_for_each_in(&crate_items.submodules[..], |&&module| f(module));
+        par_for_each_in(&crate_items.submodules[..], |&module| f(module));
     }
 
     #[inline]
@@ -514,7 +514,7 @@ impl<'tcx> TyCtxt<'tcx> {
         f: impl Fn(LocalModId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         let crate_items = self.hir_crate_items(());
-        try_par_for_each_in(&crate_items.submodules[..], |&&module| f(module))
+        try_par_for_each_in(&crate_items.submodules[..], |&module| f(module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
@@ -913,6 +913,23 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Retrieves the attributes associated with this hir ID.
     pub fn hir_attrs(self, id: HirId) -> &'tcx [Attribute] {
         self.hir_attr_map(id.owner).get(id.local_id)
+    }
+
+    /// Gets all tool attributes named `name` associated with this hir ID.
+    pub fn hir_tool_attrs(
+        self,
+        id: HirId,
+        name: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::AttrItem> {
+        self.hir_attrs(id).iter().filter_map(|attr| {
+            if let rustc_attr_ir::Attribute::Tool(t) = attr
+                && *t.path.segments == *name
+            {
+                Some(&**t)
+            } else {
+                None
+            }
+        })
     }
 
     /// Gets the span of the definition of the specified HIR node.

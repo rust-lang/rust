@@ -7,8 +7,21 @@ use crate::{
     db::HirDatabase,
     next_solver::{DbInterner, RegionKind, TyKind},
     test_db::TestDB,
-    tests::{check_infer, check_no_mismatches, check_types},
+    tests::{check_infer, check_no_mismatches, check_types, infer},
 };
+
+#[test]
+fn coercion_lub_failed_obligations_does_not_panic() {
+    let _ = infer(
+        r#"
+//- minicore: add
+trait Tr { type A; }
+fn f<T: Tr>(a: T::A, c: bool) -> T::A {
+    a + match c { true => a, false => loop {} }
+}
+"#,
+    );
+}
 
 #[test]
 fn nested_argument_position_impl_trait_captures_lifetime() {

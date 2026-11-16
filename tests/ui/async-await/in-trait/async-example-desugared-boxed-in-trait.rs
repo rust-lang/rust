@@ -4,7 +4,8 @@ use std::future::Future;
 use std::pin::Pin;
 
 trait MyTrait {
-    fn foo(&self) -> Pin<Box<dyn Future<Output = i32> + '_>>;
+    fn foo(&self)
+    -> Pin<Box<dyn Future<Output = i32> + '_>>;
 }
 
 impl MyTrait for i32 {

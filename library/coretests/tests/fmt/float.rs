@@ -232,6 +232,9 @@ fn test_format_f64_max_precision_exponential() {
     }
 
     assert_exact_exp(format_args!("{:.65535e}", 0.0f64), "0.", "e0");
+    if cfg!(miri) {
+        return; // skip the rest in Miri as this is very slow
+    }
     assert_exact_exp(format_args!("{:.65535e}", 1.0f64), "1.", "e0");
     assert_exact_exp(format_args!("{:.65535E}", 0.0f64), "0.", "E0");
     assert_exact_exp(format_args!("{:.65535E}", 1.0f64), "1.", "E0");

@@ -18,10 +18,21 @@ def_reg_class! {
 }
 
 impl AArch64InlineAsmRegClass {
-    pub fn valid_modifiers(self, _arch: super::InlineAsmArch) -> &'static [char] {
+    pub fn valid_modifiers(
+        self,
+        _arch: super::InlineAsmArch,
+        allow_experimental_reg: bool,
+    ) -> &'static [char] {
         match self {
             Self::reg => &['w', 'x'],
-            Self::vreg | Self::vreg_low16 => &['b', 'h', 's', 'd', 'q', 'v', 'z'],
+            Self::vreg | Self::vreg_low16 => {
+                if allow_experimental_reg {
+                    &['b', 'h', 's', 'd', 'q', 'v', 'z']
+                } else {
+                    &['b', 'h', 's', 'd', 'q', 'v']
+                }
+            }
+
             Self::preg | Self::ffr => &[],
         }
     }

@@ -302,7 +302,7 @@ fn expr_in_nested_block(cx: &LateContext<'_>, match_expr: &Expr<'_>) -> bool {
     if let Node::Block(block) = cx.tcx.parent_hir_node(match_expr.hir_id) {
         return block
             .expr
-            .map_or_else(|| matches!(block.stmts, [_]), |_| block.stmts.is_empty());
+            .map_or(matches!(block.stmts, [_]), |_| block.stmts.is_empty());
     }
     false
 }

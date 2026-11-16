@@ -1,1 +1,3 @@
-const _: () = builtin # offset_of(x, x);
+//@ rustfmt-edition: 2021
+
+const _: () = k#offset_of(x, x);

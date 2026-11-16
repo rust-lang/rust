@@ -103,6 +103,7 @@ LL |         reuse <X as Trait1>::bar;
 note: associated function defined here, with 1 lifetime parameter: `'x`
   --> $DIR/trait-impl-wrong-args-count.rs:53:12
    |
+LL |     trait Trait1<A, B> {
 LL |         fn bar<'x: 'x, AA, BB, const NN: usize>() {}
    |            ^^^ --
 
@@ -118,6 +119,7 @@ LL |         reuse <X as Trait1::<bool, bool>>::bar as bar1;
 note: associated function defined here, with 1 lifetime parameter: `'x`
   --> $DIR/trait-impl-wrong-args-count.rs:53:12
    |
+LL |     trait Trait1<A, B> {
 LL |         fn bar<'x: 'x, AA, BB, const NN: usize>() {}
    |            ^^^ --
 
@@ -165,6 +167,7 @@ LL |         reuse <X as Trait1::<(), ()>>::bar;
 note: associated function defined here, with 0 lifetime parameters
   --> $DIR/trait-impl-wrong-args-count.rs:89:12
    |
+LL |     trait Trait1<A, B> {
 LL |         fn bar() {}
    |            ^^^
 
@@ -180,6 +183,7 @@ LL |         reuse <X as Trait1::<(), ()>>::bar;
 note: associated function defined here, with 0 generic parameters
   --> $DIR/trait-impl-wrong-args-count.rs:89:12
    |
+LL |     trait Trait1<A, B> {
 LL |         fn bar() {}
    |            ^^^
 
@@ -195,6 +199,7 @@ LL |         reuse <X as Trait1::<(), ()>>::bar as bar1;
 note: associated function defined here, with 0 lifetime parameters
   --> $DIR/trait-impl-wrong-args-count.rs:89:12
    |
+LL |     trait Trait1<A, B> {
 LL |         fn bar() {}
    |            ^^^
 
@@ -210,6 +215,7 @@ LL |         reuse <X as Trait1::<(), ()>>::bar as bar1;
 note: associated function defined here, with 0 generic parameters
   --> $DIR/trait-impl-wrong-args-count.rs:89:12
    |
+LL |     trait Trait1<A, B> {
 LL |         fn bar() {}
    |            ^^^
 
@@ -231,6 +237,8 @@ LL |         reuse <X as Trait1::<(), ()>>::foo as bar3;
 note: associated function defined here, with at most 2 generic parameters: `X`, `Y`
   --> $DIR/trait-impl-wrong-args-count.rs:90:12
    |
+LL |     trait Trait1<A, B> {
+LL |         fn bar() {}
 LL |         fn foo<X, Y>() {}
    |            ^^^ -  -
 

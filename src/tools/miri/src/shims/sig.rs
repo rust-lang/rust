@@ -29,12 +29,12 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 #[macro_export]
 macro_rules! shim_sig {
     (extern $abi:literal fn($($args:tt)*) -> $($ret:tt)*) => {
-        |this| {
-            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
+        |ecx| {
+            let (args, c_variadic) = shim_sig_args_sep!(ecx, [$($args)*]);
             $crate::shims::sig::ShimSig {
                 abi: std::str::FromStr::from_str($abi).expect("incorrect abi specified"),
                 args,
-                ret: shim_sig_arg!(this, $($ret)*),
+                ret: shim_sig_arg!(ecx, $($ret)*),
                 c_variadic,
             }
         }
@@ -45,8 +45,8 @@ macro_rules! shim_sig {
 #[macro_export]
 macro_rules! shim_varargs {
     ($($args:tt)*) => {
-        |this| {
-            let (args, c_variadic) = shim_sig_args_sep!(this, [$($args)*]);
+        |ecx| {
+            let (args, c_variadic) = shim_sig_args_sep!(ecx, [$($args)*]);
             assert!(!c_variadic); // don't accept `...` here
             args
         }
@@ -61,14 +61,14 @@ macro_rules! shim_varargs {
 /// # Examples
 ///
 /// ```ignore
-/// shim_sig_args_sep!(this, [*_, i32, libc::off64_t]);
+/// shim_sig_args_sep!(ecx, [*_, i32, libc::off64_t]);
 /// // expands to:
 /// [shim_sig_arg!(*_), shim_sig_arg!(i32), shim_sig_arg!(libc::off64_t)];
 /// ```
 #[macro_export]
 macro_rules! shim_sig_args_sep {
-    ($this:ident, [$($tt:tt)*]) => {
-        shim_sig_args_sep!(@ $this [] [] $($tt)*)
+    ($ecx:ident, [$($tt:tt)*]) => {
+        shim_sig_args_sep!(@ $ecx [] [] $($tt)*)
     };
 
     // All below matchers form a fairly simple iterator over the input.
@@ -78,23 +78,23 @@ macro_rules! shim_sig_args_sep {
 
     // Handles `,` token - take collected type and call shim_sig_arg on it.
     // Append the result to the final output.
-    (@ $this:ident [$($final:tt)*] [$($collected:tt)*] , $($tt:tt)*) => {
-        shim_sig_args_sep!(@ $this [$($final)* shim_sig_arg!($this, $($collected)*), ] [] $($tt)*)
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)*] , $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $ecx [$($final)* shim_sig_arg!($ecx, $($collected)*), ] [] $($tt)*)
     };
     // Handle non-comma token - append to collected type.
-    (@ $this:ident [$($final:tt)*] [$($collected:tt)*] $first:tt $($tt:tt)*) => {
-        shim_sig_args_sep!(@ $this [$($final)*] [$($collected)* $first] $($tt)*)
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)*] $first:tt $($tt:tt)*) => {
+        shim_sig_args_sep!(@ $ecx [$($final)*] [$($collected)* $first] $($tt)*)
     };
-    // No more tokens, trailing `...` - emit final output, indicate this is variadic.
-    (@ $this:ident [$($final:tt)*] [...] ) => {
+    // No more tokens, trailing `...` - emit final output, indicate ecx is variadic.
+    (@ $ecx:ident [$($final:tt)*] [...] ) => {
         ([$($final)*], true)
     };
     // No more tokens - emit final output, including final non-comma type.
-    (@ $this:ident [$($final:tt)*] [$($collected:tt)+] ) => {
-        ([$($final)* shim_sig_arg!($this, $($collected)*)], false)
+    (@ $ecx:ident [$($final:tt)*] [$($collected:tt)+] ) => {
+        ([$($final)* shim_sig_arg!($ecx, $($collected)*)], false)
     };
     // No more tokens, empty collector - emit final output.
-    (@ $this:ident [$($final:tt)*] [] ) => {
+    (@ $ecx:ident [$($final:tt)*] [] ) => {
         ([$($final)*], false)
     };
 }
@@ -104,89 +104,89 @@ macro_rules! shim_sig_args_sep {
 /// Converts a type
 #[macro_export]
 macro_rules! shim_sig_arg {
-    ($this:ident, i8) => {
-        $this.tcx.types.i8
+    ($ecx:ident, i8) => {
+        $ecx.tcx.types.i8
     };
-    ($this:ident, i16) => {
-        $this.tcx.types.i16
+    ($ecx:ident, i16) => {
+        $ecx.tcx.types.i16
     };
-    ($this:ident, i32) => {
-        $this.tcx.types.i32
+    ($ecx:ident, i32) => {
+        $ecx.tcx.types.i32
     };
-    ($this:ident, i64) => {
-        $this.tcx.types.i64
+    ($ecx:ident, i64) => {
+        $ecx.tcx.types.i64
     };
-    ($this:ident, i128) => {
-        $this.tcx.types.i128
+    ($ecx:ident, i128) => {
+        $ecx.tcx.types.i128
     };
-    ($this:ident, isize) => {
-        $this.tcx.types.isize
+    ($ecx:ident, isize) => {
+        $ecx.tcx.types.isize
     };
-    ($this:ident, u8) => {
-        $this.tcx.types.u8
+    ($ecx:ident, u8) => {
+        $ecx.tcx.types.u8
     };
-    ($this:ident, u16) => {
-        $this.tcx.types.u16
+    ($ecx:ident, u16) => {
+        $ecx.tcx.types.u16
     };
-    ($this:ident, u32) => {
-        $this.tcx.types.u32
+    ($ecx:ident, u32) => {
+        $ecx.tcx.types.u32
     };
-    ($this:ident, u64) => {
-        $this.tcx.types.u64
+    ($ecx:ident, u64) => {
+        $ecx.tcx.types.u64
     };
-    ($this:ident, u128) => {
-        $this.tcx.types.u128
+    ($ecx:ident, u128) => {
+        $ecx.tcx.types.u128
     };
-    ($this:ident, usize) => {
-        $this.tcx.types.usize
+    ($ecx:ident, usize) => {
+        $ecx.tcx.types.usize
     };
-    ($this:ident, f32) => {
-        $this.tcx.types.f32
+    ($ecx:ident, f32) => {
+        $ecx.tcx.types.f32
     };
-    ($this:ident, f64) => {
-        $this.tcx.types.f64
+    ($ecx:ident, f64) => {
+        $ecx.tcx.types.f64
     };
-    ($this:ident, ()) => {
-        $this.tcx.types.unit
+    ($ecx:ident, ()) => {
+        $ecx.tcx.types.unit
     };
-    ($this:ident, !) => {
-        $this.tcx.types.never
+    ($ecx:ident, !) => {
+        $ecx.tcx.types.never
     };
-    ($this:ident, bool) => {
-        $this.tcx.types.bool
+    ($ecx:ident, bool) => {
+        $ecx.tcx.types.bool
     };
-    ($this:ident, *_) => {
+    ($ecx:ident, *_) => {
         // Mutability does not matter for ABI.
-        $this.machine.layouts.void_ptr_mut.ty
+        $ecx.machine.layouts.void_ptr_mut.ty
     };
-    ($this:ident, *$($ty:tt)*) => {
+    ($ecx:ident, *$($ty:tt)*) => {
         // Pointee types matter for varargs so we support explicitly giving them.
         // Mutability does not matter for ABI.
         rustc_middle::ty::Ty::new_ptr(
-            *$this.tcx,
-            shim_sig_arg!($this, $($ty)*),
+            *$ecx.tcx,
+            shim_sig_arg!($ecx, $($ty)*),
             rustc_middle::mir::Mutability::Mut,
         )
     };
-    ($this:ident, fn(..) -> _) => {
+    ($ecx:ident, fn(..) -> _) => {
         // All function pointer types are the same on the ABI level so we don't care about arg/ret.
-        $this.machine.layouts.fn_ptr.ty
+        $ecx.machine.layouts.fn_ptr.ty
     };
-    ($this:ident, &[$($ty:tt)*]) => {
+    ($ecx:ident, &[$($ty:tt)*]) => {
         rustc_middle::ty::Ty::new_ref(
-            *$this.tcx,
-            $this.tcx.lifetimes.re_erased,
-            rustc_middle::ty::Ty::new_slice(*$this.tcx, shim_sig_arg!($this, $($ty)*)),
+            *$ecx.tcx,
+            $ecx.tcx.lifetimes.re_erased,
+            rustc_middle::ty::Ty::new_slice(*$ecx.tcx, shim_sig_arg!($ecx, $($ty)*)),
             rustc_middle::mir::Mutability::Not,
         )
     };
-    ($this:ident, winapi::$ty:ident) => {
-        $this.windows_ty_layout(stringify!($ty)).ty
+    ($ecx:ident, winapi::$ty:ident) => {
+        $ecx.windows_ty_layout(stringify!($ty)).ty
     };
-    ($this:ident, $krate:ident :: $($path:ident)::+) => {
-        helpers::path_ty_layout($this, &[stringify!($krate), $(stringify!($path)),*]).ty
+    ($ecx:ident, $krate:ident :: $($path:ident)::+) => {
+        helpers::path_ty_layout($ecx, &[stringify!($krate), $(stringify!($path)),*]).ty
     };
-    ($this:ident, $($other:tt)*) => {
+    ($ecx:ident, $($other:tt)*) => {
         compile_error!(concat!("unsupported signature type: ", stringify!($($other)*)))
     }
 }
@@ -206,7 +206,7 @@ impl<'tcx, const ARGS: usize> ShimSig<'tcx, ARGS> {
 
 /// Helper function to compare two ABIs.
 fn check_shim_abi<'tcx>(
-    this: &MiriInterpCx<'tcx>,
+    ecx: &MiriInterpCx<'tcx>,
     link_name: Symbol,
     callee_abi: &FnAbi<'tcx, Ty<'tcx>>,
     caller_abi: &FnAbi<'tcx, Ty<'tcx>>,
@@ -243,7 +243,7 @@ fn check_shim_abi<'tcx>(
         );
     }
 
-    if !this.check_argument_compat(&caller_abi.ret, &callee_abi.ret)? {
+    if !ecx.check_argument_compat(&caller_abi.ret, &callee_abi.ret)? {
         throw_ub!(AbiMismatchReturn {
             caller_ty: caller_abi.ret.layout.ty,
             callee_ty: callee_abi.ret.layout.ty
@@ -253,7 +253,7 @@ fn check_shim_abi<'tcx>(
     for (idx, (caller_arg, callee_arg)) in
         caller_abi.args.iter().zip(callee_abi.args.iter()).enumerate()
     {
-        if !this.check_argument_compat(caller_arg, callee_arg)? {
+        if !ecx.check_argument_compat(caller_arg, callee_arg)? {
             throw_ub!(AbiMismatchArgument {
                 arg_idx: idx,
                 caller_ty: caller_abi.args[idx].layout.ty,
@@ -277,20 +277,20 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Ensure the given symbol is not exported by the program.
     fn check_shim_symbol_clash(&self, link_name: Symbol) -> InterpResult<'tcx, ()> {
-        let this = self.eval_context_ref();
-        if let Some(instance) = this.lookup_exported_symbol(link_name)? {
+        let ecx = self.eval_context_ref();
+        if let Some(instance) = ecx.lookup_exported_symbol(link_name)? {
             // If compiler-builtins is providing the symbol, then don't treat it as a clash.
             // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
             // performance. Note that this means we won't catch any undefined behavior in
             // compiler-builtins when running other crates, but Miri can still be run on
             // compiler-builtins itself (or any crate that uses it as a normal dependency)
-            if this.tcx.is_compiler_builtins(instance.def_id().krate) {
+            if ecx.tcx.is_compiler_builtins(instance.def_id().krate) {
                 return interp_ok(());
             }
 
             throw_machine_stop!(TerminationInfo::SymbolShimClashing {
                 link_name,
-                span: this.tcx.def_span(instance.def_id()),
+                span: ecx.tcx.def_span(instance.def_id()),
             })
         }
         interp_ok(())
@@ -304,20 +304,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We take these as a tuple so that this takes less space on the caller side.
         (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &[OpTy<'tcx>]),
     ) -> InterpResult<'tcx, [OpTy<'tcx>; N]> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         // Compute callee ABI.
-        let shim_sig = shim_sig(this);
+        let shim_sig = shim_sig(ecx);
         assert!(!shim_sig.c_variadic);
-        let callee_fn_abi = shim_sig.as_abi(this);
+        let callee_fn_abi = shim_sig.as_abi(ecx);
 
         // Check everything.
-        check_shim_abi(this, link_name, callee_fn_abi, caller_fn_abi)?;
-        this.check_shim_symbol_clash(link_name)?;
+        check_shim_abi(ecx, link_name, callee_fn_abi, caller_fn_abi)?;
+        ecx.check_shim_symbol_clash(link_name)?;
 
         // Return arguments.
         let transmuted = std::array::try_from_fn(|i| {
-            caller_args[i].transmute(callee_fn_abi.args[i].layout, this)
+            caller_args[i].transmute(callee_fn_abi.args[i].layout, ecx)
         })?;
         interp_ok(transmuted)
     }
@@ -331,22 +331,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We take these as a tuple so that this takes less space on the caller side.
         (link_name, caller_fn_abi, caller_args): (Symbol, &FnAbi<'tcx, Ty<'tcx>>, &'a [OpTy<'tcx>]),
     ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         // Compute callee ABI.
-        let shim_sig = shim_sig(this);
+        let shim_sig = shim_sig(ecx);
         assert!(shim_sig.c_variadic);
-        let callee_fn_abi = shim_sig.as_abi(this);
+        let callee_fn_abi = shim_sig.as_abi(ecx);
 
         // Check everything.
-        check_shim_abi(this, link_name, callee_fn_abi, caller_fn_abi)?;
-        this.check_shim_symbol_clash(link_name)?;
+        check_shim_abi(ecx, link_name, callee_fn_abi, caller_fn_abi)?;
+        ecx.check_shim_symbol_clash(link_name)?;
 
         // Return transmuted arguments.
         if let Some((fixed, var)) = caller_args.split_first_chunk::<N>() {
-            let transmuted = std::array::try_from_fn(|i| {
-                fixed[i].transmute(callee_fn_abi.args[i].layout, this)
-            })?;
+            let transmuted =
+                std::array::try_from_fn(|i| fixed[i].transmute(callee_fn_abi.args[i].layout, ecx))?;
             return interp_ok((transmuted, Varargs { args: var, already_gone: N }));
         }
         unreachable!()
@@ -361,8 +360,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         varargs: Varargs<'tcx, 'a>,
         fn_name: &str,
     ) -> InterpResult<'tcx, ([OpTy<'tcx>; N], Varargs<'tcx, 'a>)> {
-        let this = self.eval_context_ref();
-        let tys = tys(this);
+        let ecx = self.eval_context_ref();
+        let tys = tys(ecx);
 
         let Some((now, tail)) = varargs.args.split_first_chunk::<N>() else {
             throw_ub_format!(
@@ -375,7 +374,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         for (n, (caller_gave, callee_expected)) in now.iter().zip(tys).enumerate() {
             // Check ABI compatibility.
             let compatible =
-                this.validate_c_variadic_compatible_ty(caller_gave.layout.ty, callee_expected)?;
+                ecx.validate_c_variadic_compatible_ty(caller_gave.layout.ty, callee_expected)?;
             match compatible {
                 VarArgCompatible::Compatible => {}
                 VarArgCompatible::Incompatible => {
@@ -389,7 +388,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 VarArgCompatible::CastIntTo { source_is_signed } => {
                     // Check that the value can be represented in the target type.
                     let size = caller_gave.layout.size;
-                    let scalar = this.read_scalar(caller_gave)?;
+                    let scalar = ecx.read_scalar(caller_gave)?;
                     if scalar.to_int(size)? < 0 {
                         throw_ub_format!(
                             "incorrect c-variadic argument type for `{fn_name}`: \
@@ -408,8 +407,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let transmuted = std::array::try_from_fn(|i| {
-            let layout = this.layout_of(tys[i])?;
-            now[i].transmute(layout, this)
+            let layout = ecx.layout_of(tys[i])?;
+            now[i].transmute(layout, ecx)
         })?;
 
         interp_ok((

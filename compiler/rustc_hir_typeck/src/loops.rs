@@ -376,7 +376,8 @@ impl<'hir> CheckLoopVisitor<'hir> {
                 });
             }
             UnlabeledBlock { label_span, wrap_end }
-                if br_cx_kind == BreakContextKind::Break && label_span.eq_ctxt(break_span) =>
+                if br_cx_kind == BreakContextKind::Break
+                    && label_span.ctxt() == break_span.ctxt() =>
             {
                 let block =
                     self.block_breaks.entry(OrdSpan(label_span)).or_insert_with(|| BlockInfo {

@@ -12,9 +12,7 @@ pub(super) struct PostAnalysisNormalize;
 
 impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // FIXME(#132279): This is used during the phase transition from analysis
-        // to runtime, so we have to manually specify the correct typing mode.
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         PostAnalysisNormalizeVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
 
@@ -89,7 +87,7 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
     }
 
     #[inline]
-    fn visit_args(&mut self, args: &mut ty::GenericArgsRef<'tcx>, _: Location) {
+    fn visit_args(&mut self, args: &mut ty::GenericArgs<'tcx>, _: Location) {
         if let Ok(a) = self.tcx.try_normalize_erasing_regions(
             self.typing_env,
             ty::set_aliases_to_non_rigid(self.tcx, *args),

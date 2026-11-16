@@ -231,7 +231,7 @@ where
             let mut variant = calc.layout_of_univariant(
                 &variant_only_tys.collect::<IndexVec<_, _>>(),
                 &ReprOptions::default(),
-                StructKind::Prefixed(prefix_size, prefix_align.abi),
+                StructKind::Prefixed(prefix_size, prefix_align),
             )?;
 
             let FieldsShape::Arbitrary { offsets, in_memory_order } = variant.fields else {
@@ -287,7 +287,7 @@ where
         })
         .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
-    size = size.align_to(align.abi);
+    size = size.align_to(align);
 
     let uninhabited = prefix.uninhabited || variants.iter().all(|v| v.is_uninhabited());
     let abi = BackendRepr::Memory { sized: true };
@@ -312,7 +312,7 @@ where
         size,
         align,
         max_repr_align: None,
-        unadjusted_abi_align: align.abi,
+        unadjusted_abi_align: align,
         repr_c: false,
         randomization_seed: Default::default(),
     })

@@ -1447,7 +1447,7 @@ impl char {
     ///
     /// ## Greek sigma
     ///
-    /// In Greek, the letter simga (uppercase 'Σ') has two lowercase forms:
+    /// In Greek, the letter sigma (uppercase 'Σ') has two lowercase forms:
     /// 'σ' which is used in most situations, and 'ς' which appears only
     /// at the end of a word. [`char::to_lowercase()`] always uses the first form:
     ///

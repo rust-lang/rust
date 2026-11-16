@@ -1,5 +1,5 @@
 error[E0277]: `std::ops::Range<T>` is not an iterator
-  --> $DIR/missing-unstable-trait-bound.rs:13:14
+  --> $DIR/missing-unstable-trait-bound.rs:12:14
    |
 LL |     for _ in t {}
    |              ^ `Range<T>` is not an iterator

@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `hidden_ident` in this scope
-  --> $DIR/weird-hygiene.rs:24:43
+  --> $DIR/weird-hygiene.rs:23:43
    |
 LL |             Value = (stringify!($tokens + hidden_ident), 1).1
    |                                           ^^^^^^^^^^^^ not found in this scope
@@ -8,14 +8,14 @@ LL |     other!(50);
    |     ---------- in this macro invocation
    |
 help: an identifier with the same name exists, but is not accessible due to macro hygiene
-  --> $DIR/weird-hygiene.rs:44:9
+  --> $DIR/weird-hygiene.rs:43:9
    |
 LL |     let hidden_ident = "Hello1";
    |         ^^^^^^^^^^^^
    = note: this error originates in the macro `inner` which comes from the expansion of the macro `other` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `hidden_ident` in this scope
-  --> $DIR/weird-hygiene.rs:35:13
+  --> $DIR/weird-hygiene.rs:34:13
    |
 LL | macro_rules! invoke_it {
 ...
@@ -26,7 +26,7 @@ LL |     invoke_it!(25);
    |     -------------- in this macro invocation
    |
 help: an identifier with the same name exists, but is not accessible due to macro hygiene
-  --> $DIR/weird-hygiene.rs:44:9
+  --> $DIR/weird-hygiene.rs:43:9
    |
 LL |     let hidden_ident = "Hello1";
    |         ^^^^^^^^^^^^

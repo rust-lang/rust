@@ -10,8 +10,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
-        this.expect_target_feature_for_intrinsic(link_name, "sse3")?;
+        let ecx = self.eval_context_mut();
+        ecx.expect_target_feature_for_intrinsic(link_name, "sse3")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse3.").unwrap();
 
@@ -22,11 +22,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the data crosses a cache line, but for Miri this is just a regular
             // unaligned read.
             "ldu.dq" => {
-                let [src_ptr] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                let src_ptr = this.read_pointer(src_ptr)?;
-                let dest = dest.force_mplace(this)?;
+                let [src_ptr] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let src_ptr = ecx.read_pointer(src_ptr)?;
+                let dest = dest.force_mplace(ecx)?;
 
-                this.mem_copy(src_ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
+                ecx.mem_copy(src_ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

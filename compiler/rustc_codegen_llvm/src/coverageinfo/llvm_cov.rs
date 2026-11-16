@@ -12,14 +12,14 @@ pub(crate) fn covmap_var_name() -> CString {
     .expect("covmap variable name should not contain NUL")
 }
 
-pub(crate) fn covmap_section_name(llmod: &llvm::Module) -> CString {
+pub(crate) fn covmap_section_name<'ll>(llmod: llvm::Module<'ll>) -> CString {
     CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovmapSectionNameToString(llmod, s);
     }))
     .expect("covmap section name should not contain NUL")
 }
 
-pub(crate) fn covfun_section_name(llmod: &llvm::Module) -> CString {
+pub(crate) fn covfun_section_name<'ll>(llmod: llvm::Module<'ll>) -> CString {
     CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovfunSectionNameToString(llmod, s);
     }))
@@ -27,9 +27,9 @@ pub(crate) fn covfun_section_name(llmod: &llvm::Module) -> CString {
 }
 
 pub(crate) fn create_pgo_func_name_var<'ll>(
-    llfn: &'ll llvm::Value,
+    llfn: llvm::Value<'ll>,
     mangled_fn_name: &str,
-) -> &'ll llvm::Value {
+) -> llvm::Value<'ll> {
     unsafe {
         llvm::LLVMRustCoverageCreatePGOFuncNameVar(
             llfn,
@@ -41,7 +41,7 @@ pub(crate) fn create_pgo_func_name_var<'ll>(
 
 pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8> {
     let (pointers, lengths) = filenames
-        .into_iter()
+        .iter()
         .map(AsRef::as_ref)
         .map(|s: &str| (s.as_ptr(), s.len()))
         .unzip::<_, _, Vec<_>, Vec<_>>();

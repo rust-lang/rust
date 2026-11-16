@@ -10,7 +10,7 @@ error: generic parameters may not be used in const operations
 LL |     with_point::<{ Point(const { N + 1 }, N) }>();
    |                                  ^
    |
-   = help: add `#![feature(gca_const_items)]` and extract the expression into a `type const` item
+   = help: add `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro
 
 error: aborting due to 2 previous errors
 

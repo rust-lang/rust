@@ -11,7 +11,7 @@ use crate::diagnostics;
 
 /// Generate an implementation of the `From` trait, provided that `item`
 /// is a struct or a tuple struct with exactly one field.
-pub(crate) fn expand_deriving_from(
+pub(crate) fn expand_derive_from(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -78,12 +78,12 @@ pub(crate) fn expand_deriving_from(
             name: sym::from,
             generics: cx.empty_generics(span),
             explicit_self: false,
-            nonself_args: smallvec![(from_type, sym::value)],
+            nonself_args: smallvec![(sym::value, from_type)],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(|cx, span, substructure| {
+            body: Box::new(|cx, span, substructure| {
                 let field = match field {
                     Ok(ref field) => field,
                     Err(guar) => {

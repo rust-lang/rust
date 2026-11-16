@@ -556,7 +556,7 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
 /// snippet(cx, span2, "..") // -> "Vec::new()"
 /// ```
 pub fn snippet<'a, 'sm>(sm: impl HasSourceMap<'sm>, span: Span, default: &'a str) -> Cow<'a, str> {
-    snippet_opt(sm, span).map_or_else(|| Cow::Borrowed(default), From::from)
+    snippet_opt(sm, span).map_or(Cow::Borrowed(default), From::from)
 }
 
 /// Same as [`snippet`], but it adapts the applicability level by following rules:

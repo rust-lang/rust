@@ -67,6 +67,7 @@ ENV STAGING_DIR=/tmp
 COPY scripts/musl.sh /build
 COPY scripts/musl-cve-2026-6042.diff /build/
 COPY scripts/musl-cve-2026-40200.diff /build/
+COPY scripts/musl-cve-2026-107891.diff /build/
 RUN env \
     CC=arm-linux-gnueabi-gcc CFLAGS="-march=armv5te -marm -mfloat-abi=soft" \
     CXX=arm-linux-gnueabi-g++ CXXFLAGS="-march=armv5te -marm -mfloat-abi=soft" \

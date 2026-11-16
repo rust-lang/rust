@@ -253,7 +253,7 @@ mod tuple_structs {
     struct TeeIsDebugOutlivesAyBee<'a, 'b, T: Debug>(&'a &'b T);
     //~^ ERROR outlives requirements can be inferred
 
-    struct TeeWhereOutlivesAy<'a, T>(&'a T) ;
+    struct TeeWhereOutlivesAy<'a, T>(&'a T);
     //~^ ERROR outlives requirements can be inferred
 
     struct TeeWhereOutlivesAyIsDebug<'a, T>(&'a T) where T: Debug;
@@ -262,7 +262,7 @@ mod tuple_structs {
     struct TeeWhereIsDebugOutlivesAy<'a, T>(&'a T) where T: Debug;
     //~^ ERROR outlives requirements can be inferred
 
-    struct TeeWhereOutlivesAyBee<'a, 'b, T>(&'a &'b T) ;
+    struct TeeWhereOutlivesAyBee<'a, 'b, T>(&'a &'b T);
     //~^ ERROR outlives requirements can be inferred
 
     struct TeeWhereOutlivesAyBeeIsDebug<'a, 'b, T>(&'a &'b T) where T: Debug;
@@ -295,7 +295,7 @@ mod tuple_structs {
     struct TeeOutlivesAyBeeYooIsDebug<'a, 'b, T, U: Debug>(&'a &'b T, U);
     //~^ ERROR outlives requirements can be inferred
 
-    struct TeeYooWhereOutlivesAy<'a, T, U>(T, &'a U) ;
+    struct TeeYooWhereOutlivesAy<'a, T, U>(T, &'a U);
     //~^ ERROR outlives requirements can be inferred
 
     struct TeeYooWhereOutlivesAyIsDebug<'a, T, U>(T, &'a U) where U: Debug;
@@ -307,7 +307,7 @@ mod tuple_structs {
     struct TeeOutlivesAyYooWhereIsDebug<'a, T, U>(&'a T, U) where U: Debug;
     //~^ ERROR outlives requirements can be inferred
 
-    struct TeeYooWhereOutlivesAyBee<'a, 'b, T, U>(T, &'a &'b U) ;
+    struct TeeYooWhereOutlivesAyBee<'a, 'b, T, U>(T, &'a &'b U);
     //~^ ERROR outlives requirements can be inferred
 
     struct TeeYooWhereOutlivesAyBeeIsDebug<'a, 'b, T, U>(T, &'a &'b U) where U: Debug;
@@ -328,19 +328,19 @@ mod tuple_structs {
     struct BeeOutlivesAy<'a, 'b>(&'a &'b ());
     //~^ ERROR outlives requirements can be inferred
 
-    struct BeeWhereOutlivesAy<'a, 'b>(&'a &'b ()) ;
+    struct BeeWhereOutlivesAy<'a, 'b>(&'a &'b ());
     //~^ ERROR outlives requirements can be inferred
 
     struct BeeOutlivesAyTee<'a, 'b, T>(&'a &'b T);
     //~^ ERROR outlives requirements can be inferred
 
-    struct BeeWhereOutlivesAyTee<'a, 'b, T>(&'a &'b T) ;
+    struct BeeWhereOutlivesAyTee<'a, 'b, T>(&'a &'b T);
     //~^ ERROR outlives requirements can be inferred
 
-    struct BeeWhereOutlivesAyTeeWhereBee<'a, 'b, T>(&'a &'b T) ;
+    struct BeeWhereOutlivesAyTeeWhereBee<'a, 'b, T>(&'a &'b T);
     //~^ ERROR outlives requirements can be inferred
 
-    struct BeeWhereOutlivesAyTeeWhereAyBee<'a, 'b, T>(&'a &'b T) ;
+    struct BeeWhereOutlivesAyTeeWhereAyBee<'a, 'b, T>(&'a &'b T);
     //~^ ERROR outlives requirements can be inferred
 
     struct BeeOutlivesAyTeeDebug<'a, 'b, T: Debug>(&'a &'b T);

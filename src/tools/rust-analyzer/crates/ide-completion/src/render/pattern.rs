@@ -48,8 +48,7 @@ pub(crate) fn render_variant_pat(
     pattern_ctx: &PatternContext,
     path_ctx: Option<&PathCompletionCtx<'_>>,
     variant: hir::EnumVariant,
-    local_name: Option<Name>,
-    path: Option<&hir::ModPath>,
+    path: &hir::ModPath,
 ) -> Option<CompletionItem> {
     let _p = tracing::info_span!("render_variant_pat").entered();
 
@@ -57,20 +56,10 @@ pub(crate) fn render_variant_pat(
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
     let enum_ty = variant.parent_enum(ctx.db()).ty(ctx.db());
 
-    let (name, escaped_name) = match path {
-        Some(path) => (
-            path.display_verbatim(ctx.db()).to_smolstr(),
-            path.display(ctx.db(), ctx.completion.edition).to_smolstr(),
-        ),
-        None => {
-            let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
-
-            (
-                name.as_str().to_smolstr(),
-                name.display(ctx.db(), ctx.completion.edition).to_smolstr(),
-            )
-        }
-    };
+    let (name, escaped_name) = (
+        path.display_verbatim(ctx.db()).to_smolstr(),
+        path.display(ctx.db(), ctx.completion.edition).to_smolstr(),
+    );
 
     let (label, lookup, pat) = match path_ctx {
         Some(PathCompletionCtx { has_call_parens: true, .. }) => {

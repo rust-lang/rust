@@ -31,13 +31,12 @@ pub impl(self) trait SimdInt: Copy {
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::prelude::*;
-    /// use core::i32::{MIN, MAX};
-    /// let x = Simd::from_array([MIN, 0, 1, MAX]);
-    /// let max = Simd::splat(MAX);
+    /// let x = Simd::from_array([i32::MIN, 0, 1, i32::MAX]);
+    /// let max = Simd::splat(i32::MAX);
     /// let unsat = x + max;
     /// let sat = x.saturating_add(max);
-    /// assert_eq!(unsat, Simd::from_array([-1, MAX, MIN, -2]));
-    /// assert_eq!(sat, Simd::from_array([-1, MAX, MAX, MAX]));
+    /// assert_eq!(unsat, Simd::from_array([-1, i32::MAX, i32::MIN, -2]));
+    /// assert_eq!(sat, Simd::from_array([-1, i32::MAX, i32::MAX, i32::MAX]));
     /// ```
     fn saturating_add(self, second: Self) -> Self;
 
@@ -49,13 +48,12 @@ pub impl(self) trait SimdInt: Copy {
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::prelude::*;
-    /// use core::i32::{MIN, MAX};
-    /// let x = Simd::from_array([MIN, -2, -1, MAX]);
-    /// let max = Simd::splat(MAX);
+    /// let x = Simd::from_array([i32::MIN, -2, -1, i32::MAX]);
+    /// let max = Simd::splat(i32::MAX);
     /// let unsat = x - max;
     /// let sat = x.saturating_sub(max);
-    /// assert_eq!(unsat, Simd::from_array([1, MAX, MIN, 0]));
-    /// assert_eq!(sat, Simd::from_array([MIN, MIN, MIN, 0]));
+    /// assert_eq!(unsat, Simd::from_array([1, i32::MAX, i32::MIN, 0]));
+    /// assert_eq!(sat, Simd::from_array([i32::MIN, i32::MIN, i32::MIN, 0]));
     /// ```
     fn saturating_sub(self, second: Self) -> Self;
 
@@ -68,9 +66,8 @@ pub impl(self) trait SimdInt: Copy {
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::prelude::*;
-    /// use core::i32::{MIN, MAX};
-    /// let xs = Simd::from_array([MIN, MIN + 1, -5, 0]);
-    /// assert_eq!(xs.abs(), Simd::from_array([MIN, MAX, 5, 0]));
+    /// let xs = Simd::from_array([i32::MIN, i32::MIN + 1, -5, 0]);
+    /// assert_eq!(xs.abs(), Simd::from_array([i32::MIN, i32::MAX, 5, 0]));
     /// ```
     fn abs(self) -> Self;
 
@@ -83,9 +80,8 @@ pub impl(self) trait SimdInt: Copy {
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::prelude::*;
-    /// use core::i32::{MIN, MAX};
-    /// let a = Simd::from_array([MIN, MAX, 100, -100]);
-    /// let b = Simd::from_array([MAX, MIN, -80, -120]);
+    /// let a = Simd::from_array([i32::MIN, i32::MAX, 100, -100]);
+    /// let b = Simd::from_array([i32::MAX, i32::MIN, -80, -120]);
     /// assert_eq!(a.abs_diff(b), Simd::from_array([u32::MAX, u32::MAX, 180, 20]));
     /// ```
     fn abs_diff(self, second: Self) -> Self::Unsigned;
@@ -99,12 +95,11 @@ pub impl(self) trait SimdInt: Copy {
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::prelude::*;
-    /// use core::i32::{MIN, MAX};
-    /// let xs = Simd::from_array([MIN, -2, 0, 3]);
+    /// let xs = Simd::from_array([i32::MIN, -2, 0, 3]);
     /// let unsat = xs.abs();
     /// let sat = xs.saturating_abs();
-    /// assert_eq!(unsat, Simd::from_array([MIN, 2, 0, 3]));
-    /// assert_eq!(sat, Simd::from_array([MAX, 2, 0, 3]));
+    /// assert_eq!(unsat, Simd::from_array([i32::MIN, 2, 0, 3]));
+    /// assert_eq!(sat, Simd::from_array([i32::MAX, 2, 0, 3]));
     /// ```
     fn saturating_abs(self) -> Self;
 
@@ -117,12 +112,11 @@ pub impl(self) trait SimdInt: Copy {
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::prelude::*;
-    /// use core::i32::{MIN, MAX};
-    /// let x = Simd::from_array([MIN, -2, 3, MAX]);
+    /// let x = Simd::from_array([i32::MIN, -2, 3, i32::MAX]);
     /// let unsat = -x;
     /// let sat = x.saturating_neg();
-    /// assert_eq!(unsat, Simd::from_array([MIN, 2, -3, MIN + 1]));
-    /// assert_eq!(sat, Simd::from_array([MAX, 2, -3, MIN + 1]));
+    /// assert_eq!(unsat, Simd::from_array([i32::MIN, 2, -3, i32::MIN + 1]));
+    /// assert_eq!(sat, Simd::from_array([i32::MAX, 2, -3, i32::MIN + 1]));
     /// ```
     fn saturating_neg(self) -> Self;
 

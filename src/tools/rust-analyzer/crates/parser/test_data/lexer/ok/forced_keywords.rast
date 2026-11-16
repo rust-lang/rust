@@ -1,0 +1,7 @@
+UNION_KW "k#union"
+WHITESPACE " "
+UNDERSCORE "k#_"
+WHITESPACE " "
+STRUCT_KW "k#struct"
+WHITESPACE " "
+DYN_KW "k#dyn"

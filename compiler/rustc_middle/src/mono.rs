@@ -278,7 +278,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        !tcx.instantiate_and_check_impossible_clauses((def_id, &args))
+        !tcx.instantiate_and_check_impossible_clauses((def_id, args))
     }
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
@@ -548,7 +548,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                     | InstanceKind::Shim(ShimKind::DropGlue(..))
                     | InstanceKind::Shim(ShimKind::Clone(..))
                     | InstanceKind::Shim(ShimKind::ThreadLocal(..))
-                    | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+                    | InstanceKind::Shim(ShimKind::FnAddrAsPtr(..))
                     | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..))
                     | InstanceKind::Shim(ShimKind::AsyncDropGlue(..))
                     | InstanceKind::Shim(ShimKind::FutureDropPoll(..))

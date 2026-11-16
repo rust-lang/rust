@@ -90,3 +90,29 @@ fn issue15594() {
     println! {""};
     //~^ nonstandard_macro_braces
 }
+
+// Semicolon must not be added.
+#[rustfmt::skip]
+fn tests_dir() -> String {
+    let string = String::new();
+    format! {"{string} is a string"}
+    //~^ nonstandard_macro_braces
+}
+
+// Same as above but in an inner block.
+#[rustfmt::skip]
+fn value_of_inner_block() {
+    let string = String::new();
+    let _path = {
+        format! {"{string} is a string"}
+        //~^ nonstandard_macro_braces
+    };
+}
+
+// A statement follows the macro, so semicolon must be added.
+#[rustfmt::skip]
+fn semicolon_when_another_statement_below() {
+    println! {"not the end"}
+    //~^ nonstandard_macro_braces
+    let _ = 0;
+}

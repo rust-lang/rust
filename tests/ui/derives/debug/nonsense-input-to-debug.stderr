@@ -12,7 +12,6 @@ LL |     should_be_vec_t: vec![T],
    |                      |
    |                      expected type
    |                      in this macro invocation
-   |                      this macro call doesn't expand to a type
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/nonsense-input-to-debug.rs:5:17

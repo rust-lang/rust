@@ -2,9 +2,9 @@
 //! We don't want to provide suggestions on stable that only make sense in nightly.
 
 //@ needs-target-std
-//@ ignore-backends: gcc
 
 //@ normalize-stderr: "dev release channel" -> "nightly release channel"
+//@ normalize-stderr: "beta release channel" -> "nightly release channel"
 //@ normalize-stderr: "stable release channel" -> "nightly release channel"
 //@ compile-flags: --check-cfg=cfg(feature_enabled)
 

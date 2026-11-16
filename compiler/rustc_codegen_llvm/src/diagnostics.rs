@@ -73,7 +73,7 @@ pub(crate) struct RustOffloadComponentMissing {
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.bc>"
+    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.ptx or <crate>.elf>"
 )]
 pub(crate) struct OffloadWithoutEnable;
 
@@ -82,18 +82,20 @@ pub(crate) struct OffloadWithoutEnable;
 pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
-#[diag("using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag requires an absolute path")]
+#[diag(
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag requires an absolute path"
+)]
 pub(crate) struct OffloadWithoutAbsPath;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag must point to a .bc file produced by the device compilation (--emit=llvm-bc)"
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag must point to a .ptx or .elf file produced by the device compilation"
 )]
 pub(crate) struct OffloadWrongFileName;
 
 #[derive(Diagnostic)]
 #[diag(
-    "the given path/file to `<crate>.bc` does not exist. Did you forget to run the device compilation first?"
+    "the given path/file to `<crate>.ptx` or `<crate>.elf` does not exist. Did you forget to run the device compilation first?"
 )]
 pub(crate) struct OffloadNonexistingPath;
 
@@ -106,6 +108,33 @@ pub(crate) struct OffloadWrapImagesFailed;
 pub(crate) struct LtoBitcodeFromRlib {
     pub err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("failed to load the TPDE backend: {$err}")]
+pub(crate) struct TpdeComponentUnavailable {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("TPDE backend not found in the sysroot: {$err}")]
+pub(crate) struct TpdeComponentMissing {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("using -Zllvm-tpde with optimization levels higher than 1 is not recommended")]
+#[note(
+    "compilation with TPDE at higher opt levels is more likely to fail, and to have worse runtime performance than LLVM even if it succeeds"
+)]
+pub(crate) struct TpdeHighOptLevel;
+
+#[derive(Diagnostic)]
+#[diag("using -Zllvm-tpde with LTO enabled is not supported")]
+pub(crate) struct TpdeLtoUsed;
+
+#[derive(Diagnostic)]
+#[diag("using -Zllvm-tpde with split debuginfo is not supported")]
+pub(crate) struct TpdeSplitDebugInfoUsed;
 
 #[derive(Diagnostic)]
 pub(crate) enum LlvmError<'a> {

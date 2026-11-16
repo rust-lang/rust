@@ -273,7 +273,7 @@ impl Completions {
     ) {
         e.variants(ctx.db)
             .into_iter()
-            .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant, None));
+            .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant));
     }
 
     pub(crate) fn add_module(
@@ -435,8 +435,7 @@ impl Completions {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
-        if let Some(builder) =
-            render_variant_lit(RenderContext::new(ctx), path_ctx, None, variant, Some(path))
+        if let Some(builder) = render_variant_lit(RenderContext::new(ctx), path_ctx, variant, path)
         {
             self.add(builder.build(ctx.db));
         }
@@ -447,19 +446,19 @@ impl Completions {
         ctx: &CompletionContext<'_, '_>,
         path_ctx: &PathCompletionCtx<'_>,
         variant: hir::EnumVariant,
-        local_name: Option<hir::Name>,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
+        let local_name = variant.name(ctx.db);
         if let PathCompletionCtx { kind: PathKind::Pat { pat_ctx }, .. } = path_ctx {
             cov_mark::hit!(enum_variant_pattern_path);
             self.add_variant_pat(ctx, pat_ctx, Some(path_ctx), variant, local_name);
             return;
         }
 
-        if let Some(builder) =
-            render_variant_lit(RenderContext::new(ctx), path_ctx, local_name, variant, None)
+        let path = local_name.into();
+        if let Some(builder) = render_variant_lit(RenderContext::new(ctx), path_ctx, variant, path)
         {
             self.add(builder.build(ctx.db));
         }
@@ -494,8 +493,7 @@ impl Completions {
         ctx: &CompletionContext<'_, '_>,
         path_ctx: &PathCompletionCtx<'_>,
         strukt: hir::Struct,
-        path: Option<hir::ModPath>,
-        local_name: Option<hir::Name>,
+        path: hir::ModPath,
     ) {
         let is_private_editable = match ctx.is_visible(&strukt) {
             Visible::Yes => false,
@@ -507,7 +505,6 @@ impl Completions {
             path_ctx,
             strukt,
             path,
-            local_name,
         ) {
             self.add(builder.build(ctx.db));
         }
@@ -573,18 +570,18 @@ impl Completions {
         pattern_ctx: &PatternContext,
         path_ctx: Option<&PathCompletionCtx<'_>>,
         variant: hir::EnumVariant,
-        local_name: Option<hir::Name>,
+        local_name: hir::Name,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
+        let path = local_name.into();
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
             pattern_ctx,
             path_ctx,
             variant,
-            local_name,
-            None,
+            &path,
         ));
     }
 
@@ -598,14 +595,12 @@ impl Completions {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
-        let path = Some(&path);
         self.add_opt(render_variant_pat(
             RenderContext::new(ctx),
             pattern_ctx,
             None,
             variant,
-            None,
-            path,
+            &path,
         ));
     }
 

@@ -32,7 +32,6 @@ macro_rules! int_module {
         }
 
         test_runtime_and_compiletime! {
-
             fn test_rem_euclid() {
                 assert_eq_const_safe!($T: (-1 as $T).rem_euclid(MIN), MAX);
             }
@@ -73,6 +72,58 @@ macro_rules! int_module {
         const _1: $T = !0;
 
         test_runtime_and_compiletime! {
+            fn test_bit() {
+                assert!(!A.bit(0));
+                assert!(!A.bit(1));
+                assert!(A.bit(2));
+                assert!(A.bit(3));
+                assert!(!A.bit(4));
+                assert!(A.bit(5));
+                assert!(!A.bit(6));
+
+                assert!(B.bit(0));
+                assert!(!B.bit(1));
+                assert!(!B.bit(2));
+                assert!(!B.bit(3));
+                assert!(!B.bit(4));
+                assert!(B.bit(5));
+                assert!(!B.bit(6));
+
+                assert!(C.bit(0));
+                assert!(!C.bit(1));
+                assert!(!C.bit(2));
+                assert!(C.bit(3));
+                assert!(C.bit(4));
+                assert!(C.bit(5));
+                assert!(C.bit(6));
+            }
+
+            fn test_set_bit() {
+                assert_eq_const_safe!($T: A.set_bit(0, true), 0b0101101);
+                assert_eq_const_safe!($T: A.set_bit(1, true), 0b0101110);
+                assert_eq_const_safe!($T: A.set_bit(2, false), 0b0101000);
+                assert_eq_const_safe!($T: A.set_bit(3, false), 0b0100100);
+                assert_eq_const_safe!($T: A.set_bit(4, true), 0b0111100);
+                assert_eq_const_safe!($T: A.set_bit(5, false), 0b0001100);
+                assert_eq_const_safe!($T: A.set_bit(6, true), 0b1101100);
+
+                assert_eq_const_safe!($T: B.set_bit(0, false), 0b0100000);
+                assert_eq_const_safe!($T: B.set_bit(1, true), 0b0100011);
+                assert_eq_const_safe!($T: B.set_bit(2, true), 0b0100101);
+                assert_eq_const_safe!($T: B.set_bit(3, true), 0b0101001);
+                assert_eq_const_safe!($T: B.set_bit(4, true), 0b0110001);
+                assert_eq_const_safe!($T: B.set_bit(5, false), 0b0000001);
+                assert_eq_const_safe!($T: B.set_bit(6, true), 0b1100001);
+
+                assert_eq_const_safe!($T: C.set_bit(0, false), 0b1111000);
+                assert_eq_const_safe!($T: C.set_bit(1, true), 0b1111011);
+                assert_eq_const_safe!($T: C.set_bit(2, true), 0b1111101);
+                assert_eq_const_safe!($T: C.set_bit(3, false), 0b1110001);
+                assert_eq_const_safe!($T: C.set_bit(4, false), 0b1101001);
+                assert_eq_const_safe!($T: C.set_bit(5, false), 0b1011001);
+                assert_eq_const_safe!($T: C.set_bit(6, false), 0b0111001);
+            }
+
             fn test_count_ones() {
                 assert_eq_const_safe!(u32: A.count_ones(), 3);
                 assert_eq_const_safe!(u32: B.count_ones(), 2);

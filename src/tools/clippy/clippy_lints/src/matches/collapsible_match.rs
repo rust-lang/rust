@@ -6,8 +6,8 @@ use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet};
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
 use clippy_utils::{
-    SpanlessEq, get_ref_operators, is_none_pattern, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators,
-    span_contains_non_whitespace,
+    SpanlessEq, get_ref_operators, is_none_pattern, is_refutable, is_unit_expr, peel_blocks_with_stmt,
+    peel_ref_operators, span_contains_non_whitespace,
 };
 use core::ops::ControlFlow;
 use rustc_ast::BorrowKind;
@@ -25,8 +25,9 @@ use crate::collapsible_if::{parens_around, peel_parens};
 pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], msrv: Msrv) {
     if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
         let last_non_wildcard = arms.iter().rposition(|arm| !arm_is_wild_like(cx, arm));
+        let els_is_refutable = is_refutable(cx, els_arm.pat);
         for (idx, arm) in arms.iter().enumerate() {
-            let only_wildcards_after = last_non_wildcard.is_none_or(|lnw| idx >= lnw);
+            let only_wildcards_after = last_non_wildcard.is_none_or(|lnw| idx >= lnw) && !els_is_refutable;
             check_arm(
                 cx,
                 arm.span.ctxt(),
@@ -101,7 +102,7 @@ fn check_arm<'tcx>(
                 }
             },
         }
-        && outer_pat.span.eq_ctxt(inner_scrutinee.span)
+        && outer_pat.span.ctxt() == inner_scrutinee.span.ctxt()
         // match expression must be a local binding
         // match <local> { .. }
         && let Some(binding_id) = peel_ref_operators(cx, inner_scrutinee).res_local_id()
@@ -161,7 +162,7 @@ fn check_arm<'tcx>(
     } else if outer_is_match // Leave if-let to the `collapsible_if` lint
         && only_wildcards_after // adding a guard allows fall-through; unsafe if other arms follow
         && let Some(inner) = If::hir(inner_expr)
-        && outer_pat.span.eq_ctxt(inner.cond.span)
+        && outer_pat.span.ctxt() == inner.cond.span.ctxt()
         && match (outer_else_body, inner.r#else) {
             (None, None) => true,
             (None, Some(e)) | (Some(e), None) => is_unit_expr(e),

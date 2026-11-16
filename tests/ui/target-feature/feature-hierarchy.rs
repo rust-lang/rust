@@ -12,7 +12,6 @@
 //@ [hexagon-hvxv66] needs-llvm-components: hexagon
 //@ build-pass
 //@ add-minicore
-//@ ignore-backends: gcc
 #![no_core]
 #![crate_type = "rlib"]
 #![feature(intrinsics, rustc_attrs, no_core, staged_api)]
