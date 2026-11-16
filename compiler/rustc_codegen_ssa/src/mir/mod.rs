@@ -1,5 +1,7 @@
 use std::iter;
+use std::sync::LazyLock;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -7,7 +9,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::{Body, Local, UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_span::{ErrorGuaranteed, bug, span_bug};
+use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
 use rustc_target::callconv::{FnAbi, IndirectMode, PassMode};
 use tracing::{debug, instrument};
 
@@ -664,6 +666,98 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     args
 }
 
+static COLD_CATCH_UNWIND: LazyLock<bool> =
+    LazyLock::new(|| std::env::var("RUSTC_EXP_COLD_CATCH_UNWIND").is_ok_and(|v| v == "1"));
+
+static COLD_OUTLINE: LazyLock<bool> =
+    LazyLock::new(|| std::env::var("RUSTC_EXP_COLD_OUTLINE").is_ok_and(|v| v == "1"));
+
+pub(super) fn should_outline_cold_calls(tcx: TyCtxt<'_>) -> bool {
+    *COLD_OUTLINE
+        || tcx
+            .sess
+            .opts
+            .unstable_opts
+            .mir_enable_passes
+            .iter()
+            .rev()
+            .find(|(name, _)| name == "ColdBlockOutliner")
+            .is_some_and(|(_, enabled)| *enabled)
+}
+
+pub(super) fn should_mark_cold_callsites(tcx: TyCtxt<'_>) -> bool {
+    *COLD_CATCH_UNWIND
+        || should_outline_cold_calls(tcx)
+        || tcx
+            .sess
+            .opts
+            .unstable_opts
+            .mir_enable_passes
+            .iter()
+            .rev()
+            .find(|(name, _)| name == "KnownVariantDrops")
+            .is_some_and(|(_, enabled)| *enabled)
+}
+
+pub(super) fn is_try_from_residual(tcx: TyCtxt<'_>, def_id: rustc_hir::def_id::DefId) -> bool {
+    tcx.is_lang_item(def_id, LangItem::TryTraitFromResidual)
+        || tcx
+            .trait_item_of(def_id)
+            .is_some_and(|ti| tcx.is_lang_item(ti, LangItem::TryTraitFromResidual))
+}
+
+/// Marks the successors of `switchInt(catch_unwind(..))` that are taken for a nonzero result
+/// (a caught panic) as cold.
+fn mark_caught_panic_blocks_cold<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir: &mir::Body<'tcx>,
+    cold_blocks: &mut IndexVec<mir::BasicBlock, bool>,
+) {
+    for bb_data in mir.basic_blocks.iter() {
+        let mir::TerminatorKind::Call { ref func, destination, target: Some(target), .. } =
+            bb_data.terminator().kind
+        else {
+            continue;
+        };
+        let ty::FnDef(def_id, _) = *func.ty(&mir.local_decls, tcx).kind() else { continue };
+        if !tcx.is_intrinsic(def_id, sym::catch_unwind) {
+            continue;
+        }
+        let Some(result) = destination.as_local() else { continue };
+        let target_data = &mir.basic_blocks[target];
+        let mir::TerminatorKind::SwitchInt { ref discr, ref targets } =
+            target_data.terminator().kind
+        else {
+            continue;
+        };
+        if discr.place().and_then(|place| place.as_local()) != Some(result) {
+            continue;
+        }
+        let result_rewritten =
+            target_data.statements.iter().any(|statement| match &statement.kind {
+                mir::StatementKind::Assign(assign) => assign.0.local == result,
+                mir::StatementKind::SetDiscriminant { place, .. } => place.local == result,
+                mir::StatementKind::StorageLive(local) | mir::StatementKind::StorageDead(local) => {
+                    *local == result
+                }
+                _ => false,
+            });
+        if result_rewritten {
+            continue;
+        }
+        let no_panic = targets.target_for_value(0);
+        for (value, bb) in targets.iter() {
+            if value != 0 && bb != no_panic {
+                cold_blocks[bb] = true;
+            }
+        }
+        let otherwise = targets.otherwise();
+        if targets.iter().any(|(value, _)| value == 0) && otherwise != no_panic {
+            cold_blocks[otherwise] = true;
+        }
+    }
+}
+
 fn find_cold_blocks<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir: &mir::Body<'tcx>,
@@ -672,6 +766,12 @@ fn find_cold_blocks<'tcx>(
 
     let mut cold_blocks: DenseBitSet<mir::BasicBlock> =
         DenseBitSet::new_empty(mir.basic_blocks.len());
+
+    if should_mark_cold_callsites(tcx) {
+        mark_caught_panic_blocks_cold(tcx, mir, &mut cold_blocks);
+    }
+
+    let mark_residual_cold = should_outline_cold_calls(tcx);
 
     // Traverse all basic blocks from end of the function to the start.
     for (bb, bb_data) in traversal::postorder(mir) {
@@ -683,7 +783,8 @@ fn find_cold_blocks<'tcx>(
             | mir::TerminatorKind::TailCall { ref func, .. }
                 if let ty::FnDef(def_id, ..) = *func.ty(local_decls, tcx).kind()
                     && let attrs = tcx.codegen_fn_attrs(def_id)
-                    && attrs.flags.contains(CodegenFnAttrFlags::COLD) =>
+                    && (attrs.flags.contains(CodegenFnAttrFlags::COLD)
+                        || (mark_residual_cold && is_try_from_residual(tcx, def_id))) =>
             {
                 cold_blocks.insert(bb);
                 continue;
@@ -698,8 +799,10 @@ fn find_cold_blocks<'tcx>(
             _ => {}
         }
 
-        // If all successors of a BB are cold and there's at least one of them, mark this BB as cold
-        let mut succ = terminator.successors();
+        // If all non-cleanup successors of a BB are cold and there's at least one of them, mark this BB as cold
+        let mut succ = terminator
+            .successors()
+            .filter(|&s| !mark_residual_cold || !mir.basic_blocks[s].is_cleanup);
         if let Some(first) = succ.next()
             && cold_blocks.contains(first)
             && succ.all(|s| cold_blocks.contains(s))
