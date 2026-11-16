@@ -1422,7 +1422,7 @@ fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
 }
 "#,
         expect![[r#"
-            134..165 '{     ...(C)) }': (impl FnOnce(&'? str, T), impl Trait<u8>)
+            134..165 '{     ...(C)) }': (impl FnOnce(&'? str, T), Bar<u8>)
             140..163 '(|inpu...ar(C))': (impl FnOnce(&'? str, T), Bar<u8>)
             141..154 '|input, t| {}': impl FnOnce(&'? str, T)
             142..147 'input': &'? str
