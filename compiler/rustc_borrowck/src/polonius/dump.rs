@@ -275,21 +275,16 @@ fn emit_polonius_mir<'tcx>(
     let location_map = regioncx.liveness_constraints().location_map();
 
     // Add localized outlives constraints
-    match pass_where {
-        PassWhere::BeforeCFG => {
-            if localized_outlives_constraints.len() > 0 {
-                writeln!(out, "| Localized constraints")?;
+    if pass_where == PassWhere::BeforeCFG && !localized_outlives_constraints.is_empty() {
+        writeln!(out, "| Localized constraints")?;
 
-                for constraint in localized_outlives_constraints {
-                    let LocalizedOutlivesConstraint { source, from, target, to } = constraint;
-                    let from = location_map.to_location(*from);
-                    let to = location_map.to_location(*to);
-                    writeln!(out, "| {source:?} at {from:?} -> {target:?} at {to:?}")?;
-                }
-                writeln!(out, "|")?;
-            }
+        for constraint in localized_outlives_constraints {
+            let LocalizedOutlivesConstraint { source, from, target, to } = constraint;
+            let from = location_map.to_location(*from);
+            let to = location_map.to_location(*to);
+            writeln!(out, "| {source:?} at {from:?} -> {target:?} at {to:?}")?;
         }
-        _ => {}
+        writeln!(out, "|")?;
     }
 
     Ok(())
@@ -492,7 +487,7 @@ fn emit_mermaid_constraint_graph<'tcx>(
             location_name(loan.reserve_location),
         )?;
     }
-    writeln!(out, "")?;
+    writeln!(out)?;
 
     // The regions subgraphs containing the region/point nodes.
     let mut points_per_region: FxIndexMap<RegionVid, FxIndexSet<PointIndex>> =
