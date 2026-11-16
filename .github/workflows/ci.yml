@@ -198,6 +198,17 @@ jobs:
         with:
           python-version: ${{ matrix.required_python_version }}
 
+      # msys2 link.exe conflicts with msvc's link.exe.
+      # Rather than trying to fight over PATH with msys2 we simply delete it
+      # thus avoiding the conflict.
+      - name: Remove link.exe
+        run: rm $(which link.exe) || true
+
+      - name: Workaroud for \#165953
+        if: ${{ contains(matrix.name, 'aarch64-msvc') }}
+        shell: pwsh -Command $ErrorActionPreference='stop'; $PSNativeCommandUseErrorActionPreference=$true; & '{0}'
+        run: src\ci\scripts\aarch64-msvc-workaround.ps1
+
       - name: enable ipv6 on Docker
         # Don't run on codebuild because systemctl is not available
         if: ${{ !matrix.codebuild }}
