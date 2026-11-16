@@ -525,10 +525,17 @@ impl Diagnostic<'_> for CannotFindCrate {
             // Recommend -Zbuild-std even on stable builds for Tier 3 targets because
             // it's the recommended way to use the target, the user should switch to nightly.
             if self.is_nightly_build || !has_precompiled_std {
-                diag.help(msg!(
-                    "consider building the standard library from source with \
-                     `cargo build -Zbuild-std`"
-                ));
+                if self.crate_name == sym::core && self.missing_core {
+                    diag.help(msg!(
+                        "consider building the `core` library from source with \
+                        `cargo build -Zbuild-std=core`"
+                    ));
+                } else {
+                    diag.help(msg!(
+                        "consider building the standard library from source with \
+                        `cargo build -Zbuild-std`"
+                    ));
+                }
             }
         } else if self.crate_name == self.profiler_runtime {
             diag.note(msg!("the compiler may have been built without the profiler runtime"));
