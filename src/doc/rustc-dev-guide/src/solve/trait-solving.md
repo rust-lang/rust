@@ -30,9 +30,10 @@ have to prove and the `param_env` in which this predicate has to hold.
 
 We prove goals by checking whether each possible [`Candidate`] applies for the given goal by
 recursively proving its nested goals.
-For a list of possible candidates with examples, look at
-[`CandidateSource`]. The most important candidates are `Impl` candidates, i.e. trait implementations
-written by the user, and `ParamEnv` candidates, i.e. assumptions in our current environment.
+For a list of possible candidates with examples, look at [`CandidateSource`].
+The most important candidates are `Impl` candidates,
+i.e. trait implementations written by the user,
+and `ParamEnv` candidates, i.e. assumptions in our current environment.
 
 Looking at the above example,
 to prove `Vec<T>: Clone` we first use `impl<T: Clone> Clone for Vec<T>`.
