@@ -1579,29 +1579,26 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let filename_ptr = cx.static_addr_of_impl(filename_val, Align::ONE, None);
 
         // SourceLocation UBSan struct: { const char *filename, uint32_t line, uint32_t column }
-        let source_location = cx.const_struct(
-            &[
-                filename_ptr,
-                cx.const_u32(loc.line as u32),
-                // UBSan columns are 1-based
-                cx.const_u32(loc.col.0 as u32 + 1),
-            ],
-            false, // packed = false
-        );
+        let source_location = cx.const_struct(&[
+            filename_ptr,
+            cx.const_u32(loc.line as u32),
+            // UBSan columns are 1-based
+            cx.const_u32(loc.col.0 as u32 + 1),
+        ]);
 
         let ty_name = format!("{}\0", expected_ty);
         let ty_name_val = cx.const_bytes(ty_name.as_bytes());
 
         // TypeDescriptor UBSan struct: { uint16_t TypeKind, uint16_t TypeInfo, const char *TypeName }
         let type_descriptor =
-            cx.const_struct(&[cx.const_i16(0xffffu16 as i16), cx.const_i16(0), ty_name_val], false);
+            cx.const_struct(&[cx.const_i16(0xffffu16 as i16), cx.const_i16(0), ty_name_val]);
 
         let type_descriptor_ptr =
             cx.static_addr_of_impl(type_descriptor, Align::from_bytes(2).unwrap(), None);
 
         // CFICheckFailData UBSan struct: { uint8_t CheckKind, SourceLocation Loc, TypeDescriptor *Type }
-        let cfi_check_fail_data = cx
-            .const_struct(&[cx.const_u8(check_kind), source_location, type_descriptor_ptr], false);
+        let cfi_check_fail_data =
+            cx.const_struct(&[cx.const_u8(check_kind), source_location, type_descriptor_ptr]);
         let align = tcx.data_layout.aggregate_align;
 
         // Returns the final opaque pointer to the struct to be passed to __ubsan_handle_cfi_check_fail
