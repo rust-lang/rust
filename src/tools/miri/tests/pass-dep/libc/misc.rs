@@ -87,6 +87,34 @@ fn test_pthread_atfork() {
     assert_eq!(unsafe { libc::pthread_atfork(Some(prepare), Some(parent), Some(child)) }, 0);
 }
 
+/// Ensure the stack address and size of the current thread can be queried.
+#[cfg(target_os = "macos")]
+fn test_pthread_get_stack_np() {
+    let thread = unsafe { libc::pthread_self() };
+    let stack_addr = unsafe { libc::pthread_get_stackaddr_np(thread) };
+    let stack_size = unsafe { libc::pthread_get_stacksize_np(thread) };
+
+    assert!(!stack_addr.is_null());
+    assert!(stack_size > 0);
+    // The stack grows downwards from `stack_addr`, so the bottom of the stack
+    // (`stack_addr - stack_size`) must not go below zero.
+    assert!(stack_addr.addr() >= stack_size);
+}
+
+/// Ensure the stack bounds of the current thread can be queried.
+#[cfg(any(target_os = "illumos", target_os = "solaris"))]
+fn test_stack_getbounds() {
+    let mut stack = std::mem::MaybeUninit::<libc::stack_t>::uninit();
+    // Querying the stack bounds should succeed.
+    assert_eq!(unsafe { libc::stack_getbounds(stack.as_mut_ptr()) }, 0);
+
+    let stack = unsafe { stack.assume_init() };
+    assert!(!stack.ss_sp.is_null());
+    assert!(stack.ss_size > 0);
+    // We are not running on an alternate signal stack.
+    assert_eq!(stack.ss_flags, 0);
+}
+
 fn main() {
     test_errno();
     test_environ();
@@ -94,6 +122,12 @@ fn main() {
     test_getuid();
     test_geteuid();
     test_pthread_atfork();
+
+    #[cfg(target_os = "macos")]
+    test_pthread_get_stack_np();
+
+    #[cfg(any(target_os = "illumos", target_os = "solaris"))]
+    test_stack_getbounds();
 
     #[cfg(target_os = "linux")]
     test_sigrt();

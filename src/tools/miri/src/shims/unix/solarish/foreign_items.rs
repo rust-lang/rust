@@ -166,7 +166,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "stack_getbounds" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [stack] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::stack_t) -> i32),
                     (link_name, abi, args),

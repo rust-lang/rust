@@ -207,7 +207,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Querying system information
             "pthread_get_stackaddr_np" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [thread] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_t) -> *_),
                     (link_name, abi, args),
@@ -217,7 +216,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ecx.write_scalar(stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [thread] = &ecx.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_t) -> usize),
                     (link_name, abi, args),
