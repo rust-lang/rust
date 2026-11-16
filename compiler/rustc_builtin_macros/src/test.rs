@@ -109,7 +109,7 @@ pub(crate) fn expand_test_or_bench(
     item: Annotatable,
     is_bench: bool,
 ) -> Vec<Annotatable> {
-    let (item, is_stmt) = match item {
+    let (mut item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
         Annotatable::Stmt(ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
         other => {
@@ -130,6 +130,11 @@ pub(crate) fn expand_test_or_bench(
     // If we're not in test configuration, remove the annotated item
     if !cx.ecfg.should_test {
         return vec![];
+    }
+
+    if !is_bench {
+        // Mark the test function so tools can find it (#158854)
+        item.attrs.push(cx.synthetic_attr(attr_sp, ast::SyntheticAttr::TestEntrypoint));
     }
 
     if let Some(attr) = attr::find_by_name(&item.attrs, sym::naked) {

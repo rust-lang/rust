@@ -40,7 +40,7 @@ fn render_steps_for_cli_args(args_str: &str) -> String {
 
         let CommandLineStepDescription { name, kind, .. } = step_desc;
         // Strip boilerplate to make step names easier to read.
-        let name = name.strip_prefix("bootstrap::core::build_steps::").unwrap_or(name);
+        let name = name.trim_prefix("bootstrap::core::build_steps::");
 
         writeln!(buf, "[{kind:?}] {name}").unwrap();
         writeln!(buf, "    targets: {targets:?}").unwrap();
