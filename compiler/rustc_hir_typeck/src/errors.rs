@@ -21,7 +21,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, HirId, is_range_literal};
 use rustc_hir_analysis::diagnostics::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::{self, GenericArgs, Ty, TypeVisitableExt, fold_regions};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{Ident, Span, Symbol, bug, kw, sym};
@@ -1108,18 +1108,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // a follow up suggestion will be needed if the item is not in scope (which likely
                 // won't be).
                 let call = if inherent {
-                    if let ty::Adt(def, _) = ty.peel_refs().kind() {
-                        // `Type::method(&rcvr)`
-                        format!("{}::{}({mutbl}", self.tcx.item_name(def.did()), segment.ident)
+                    let args = if let ty::Adt(def, args) = ty.peel_refs().kind() {
+                        self.fresh_args_for_item(expr.span, parent).rebase_onto(
+                            self.tcx,
+                            def.did(),
+                            *args,
+                        )
                     } else {
-                        // Fallback, but shouldn't happen as there are no inherent impls on
-                        // primitives.
-                        format!("{path}({mutbl}")
-                    }
+                        self.fresh_args_for_item(expr.span, def_id)
+                    };
+                    // `Type::method(&rcvr)`
+                    with_forced_trimmed_paths!(format!(
+                        "{}({mutbl}",
+                        self.tcx.value_path_str_with_args(def_id, args),
+                    ))
                 } else {
                     // `<_ as Trait>::method(&rcvr)`
-                    // FIXME: account for type params on `Trait` (suggest `as Trait<'_, _>>::`).
-                    format!("<_ as {}>::{}({mutbl}", self.tcx.item_name(parent), segment.ident)
+                    format!(
+                        "<_ as {}>::{}({mutbl}",
+                        with_forced_trimmed_paths!(self.tcx.def_path_str_with_args(
+                            parent,
+                            self.fresh_args_for_item(expr.span, parent)
+                        )),
+                        segment.ident
+                    )
                 };
                 let sugg = vec![(rcvr.span.shrink_to_lo(), call), after_rcvr];
                 alternatives.insert((path, span, sugg));

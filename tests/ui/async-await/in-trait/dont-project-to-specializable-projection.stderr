@@ -41,7 +41,7 @@ note: you might have meant to call `std::convert::AsMut::as_mut` instead
 help: consider calling `std::convert::AsMut::as_mut` using the fully-qualified path
    |
 LL -         match fut.as_mut().poll(ctx) {
-LL +         match <_ as AsMut>::as_mut(&mut fut).poll(ctx) {
+LL +         match <_ as AsMut<_>>::as_mut(&mut fut).poll(ctx) {
    |
 help: trait `Future` which provides `poll` is implemented but not in scope; perhaps you want to import it
    |

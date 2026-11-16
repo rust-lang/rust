@@ -13,7 +13,7 @@ note: you might have meant to call `std::cell::RefCell::<T>::borrow_mut` instead
 help: consider calling `std::cell::RefCell::<T>::borrow_mut` using the fully-qualified path
    |
 LL -             Some(old_tail) => old_tail.borrow_mut().next = Some(node.clone()),
-LL +             Some(old_tail) => RefCell::borrow_mut(&old_tail).next = Some(node.clone()),
+LL +             Some(old_tail) => RefCell::<Node>::borrow_mut(&old_tail).next = Some(node.clone()),
    |
 
 error[E0609]: no field `field` on type `()`
@@ -33,7 +33,7 @@ LL |         fn foo(&self) {}
 note: you might have meant to call `a::K::foo` instead
   --> $DIR/method-shadowed-by-trait.rs:82:9
    |
-LL |     pub trait K {
+LL |     pub trait K<P> {
 LL |         fn foo(&self) -> Other { Other { field : () } }
    |         ^^^^^^^^^^^^^^^^^^^^^^
 note: you might have meant to call `a::V::foo` instead
@@ -51,7 +51,7 @@ LL |     fn foo(&self) -> Other { Other { field: () } }
 help: consider calling `a::K::foo` using the fully-qualified path
    |
 LL -     x.foo().field;
-LL +     <_ as K>::foo(&x).field;
+LL +     <_ as K<_>>::foo(&x).field;
    |
 help: consider calling `a::V::foo` using the fully-qualified path
    |
@@ -82,7 +82,7 @@ LL |         fn foo(&self) {}
 note: you might have meant to call `a::K::foo` instead
   --> $DIR/method-shadowed-by-trait.rs:82:9
    |
-LL |     pub trait K {
+LL |     pub trait K<P> {
 LL |         fn foo(&self) -> Other { Other { field : () } }
    |         ^^^^^^^^^^^^^^^^^^^^^^
 note: you might have meant to call `a::V::foo` instead
@@ -100,7 +100,7 @@ LL |     fn foo(&self) -> Other { Other { field: () } }
 help: consider calling `a::K::foo` using the fully-qualified path
    |
 LL -     let y = x.foo();
-LL +     let y = <_ as K>::foo(&x);
+LL +     let y = <_ as K<_>>::foo(&x);
    |
 help: consider calling `a::V::foo` using the fully-qualified path
    |
@@ -130,7 +130,7 @@ LL |         fn foo(&self) {}
 note: you might have meant to call `a::K::foo` instead
   --> $DIR/method-shadowed-by-trait.rs:82:9
    |
-LL |     pub trait K {
+LL |     pub trait K<P> {
 LL |         fn foo(&self) -> Other { Other { field : () } }
    |         ^^^^^^^^^^^^^^^^^^^^^^
 note: you might have meant to call `a::V::foo` instead
@@ -148,7 +148,7 @@ LL |     fn foo(&self) -> Other { Other { field: () } }
 help: consider calling `a::K::foo` using the fully-qualified path
    |
 LL -     x.foo().method();
-LL +     <_ as K>::foo(&x).method();
+LL +     <_ as K<_>>::foo(&x).method();
    |
 help: consider calling `a::V::foo` using the fully-qualified path
    |
@@ -179,7 +179,7 @@ LL |         fn foo(&self) {}
 note: you might have meant to call `a::K::foo` instead
   --> $DIR/method-shadowed-by-trait.rs:82:9
    |
-LL |     pub trait K {
+LL |     pub trait K<P> {
 LL |         fn foo(&self) -> Other { Other { field : () } }
    |         ^^^^^^^^^^^^^^^^^^^^^^
 note: you might have meant to call `a::V::foo` instead
@@ -197,7 +197,7 @@ LL |     fn foo(&self) -> Other { Other { field: () } }
 help: consider calling `a::K::foo` using the fully-qualified path
    |
 LL -     let y = x.foo();
-LL +     let y = <_ as K>::foo(&x);
+LL +     let y = <_ as K<_>>::foo(&x);
    |
 help: consider calling `a::V::foo` using the fully-qualified path
    |

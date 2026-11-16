@@ -78,15 +78,15 @@ mod a {
     }
     impl T for S {}
     impl T for Box<S> {}
-    pub trait K {
+    pub trait K<P> {
         fn foo(&self) -> Other { Other { field : () } }
         //~^ NOTE: you might have meant to call
         //~| NOTE: you might have meant to call
         //~| NOTE: you might have meant to call
         //~| NOTE: you might have meant to call
     }
-    impl K for S {}
-    impl K for Box<S> {}
+    impl K<()> for S {}
+    impl K<i32> for Box<S> {}
     pub trait V {
         fn foo(&self) -> Other;
         //~^ NOTE: you might have meant to call

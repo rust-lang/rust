@@ -14,7 +14,7 @@ note: you might have meant to call `std::cell::RefCell::<T>::borrow` instead
 help: consider calling `std::cell::RefCell::<T>::borrow` using the fully-qualified path
    |
 LL -         let opt_target = cell.borrow();
-LL +         let opt_target = RefCell::borrow(&cell);
+LL +         let opt_target = RefCell::<i32>::borrow(&cell);
    |
 
 error[E0369]: binary operation `>` cannot be applied to type `std::sync::MutexGuard<'_, RefCell<i32>>`
@@ -40,7 +40,7 @@ note: you might have meant to call `std::cell::RefCell::<T>::borrow` instead
 help: consider calling `std::cell::RefCell::<T>::borrow` using the fully-qualified path
    |
 LL -         let opt_target = cell.borrow();
-LL +         let opt_target = RefCell::borrow(&cell);
+LL +         let opt_target = RefCell::<i32>::borrow(&cell);
    |
 
 error[E0277]: can't compare `{integer}` with `std::sync::MutexGuard<'_, RefCell<i32>>`
