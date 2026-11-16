@@ -107,4 +107,4 @@ where
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
+impl<I> FusedIterator for Cycle<I> where I: Clone + FusedIterator {}
