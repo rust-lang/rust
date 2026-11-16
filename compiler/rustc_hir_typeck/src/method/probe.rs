@@ -1285,7 +1285,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some((kind, def_id)) = private_candidate {
             return Err(MethodError::PrivateMatch(kind, def_id, out_of_scope_traits));
         }
-        let similar_candidate = self.probe_for_similar_candidate()?;
+        let similar_candidate = self.probe_for_similar_candidate(&out_of_scope_traits)?;
 
         Err(MethodError::NoMatch(NoMatchData {
             static_candidates,
@@ -2499,6 +2499,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn probe_for_similar_candidate(
         &mut self,
+        out_of_scope_traits: &[DefId],
     ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
@@ -2527,7 +2528,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
                     pcx.assemble_extension_candidates_for_all_traits();
-                    pcx.pick_core(&mut Vec::new()).and_then(|pick| pick.ok()).map(|pick| pick.item)
+                    pcx.pick_core(&mut Vec::new())
+                        .and_then(|pick| pick.ok())
+                        .map(|pick| pick.item)
+                        .filter(|item| !out_of_scope_traits.contains(&item.container_id(self.tcx)))
                 })
                 .collect();
 
