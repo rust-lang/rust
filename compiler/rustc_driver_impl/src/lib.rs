@@ -1467,7 +1467,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(DiagCtxtHan
     // (e.g. `RUST_BACKTRACE=1`)
     if env::var_os("RUST_BACKTRACE").is_none() {
         // HACK: this check is extremely dumb, but we don't really need it to be smarter since this should only happen in the test suite anyway.
-        let ui_testing = std::env::args().any(|arg| arg == "-Zui-testing");
+        let ui_testing = env::args_os().any(|arg| arg == "-Zui-testing");
         if env!("CFG_RELEASE_CHANNEL") == "dev" && !ui_testing {
             panic::set_backtrace_style(panic::BacktraceStyle::Short);
         } else {
