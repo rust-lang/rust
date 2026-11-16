@@ -150,10 +150,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         (**self).borrow().llmod
     }
 
-    pub(crate) fn isize_ty(&self) -> Type<'ll> {
-        (**self).borrow().isize_ty
-    }
-
     pub(crate) fn type_variadic_func(&self, args: &[Type<'ll>], ret: Type<'ll>) -> Type<'ll> {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, TRUE) }
     }
@@ -215,7 +211,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 
     fn type_isize(&self) -> Type<'ll> {
-        self.isize_ty()
+        (**self).borrow().isize_ty
     }
 
     fn type_f16(&self) -> Type<'ll> {
