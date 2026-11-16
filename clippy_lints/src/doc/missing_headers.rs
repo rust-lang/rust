@@ -2,12 +2,12 @@ use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_D
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::res::MaybeDef as _;
-use clippy_utils::ty::implements_trait_with_env;
+use clippy_utils::ty::{implements_trait_with_env, is_never_like};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{fulfill_or_allowed, is_doc_hidden, is_inside_always_const_context, method_chain_args, return_ty};
 use rustc_hir::{BodyId, FnSig, HeaderSafety, OwnerId, Safety};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 use std::ops::ControlFlow;
 
@@ -63,7 +63,7 @@ pub fn check(
         );
     }
     if !headers.errors {
-        if return_ty(cx, owner_id).is_diag_item(cx, sym::Result) {
+        if is_fallible_result_ty(cx, return_ty(cx, owner_id)) {
             span_lint(
                 cx,
                 MISSING_ERRORS_DOC,
@@ -84,7 +84,7 @@ pub fn check(
                 &[],
             )
             && let ty::Coroutine(_, subs) = ret_ty.kind()
-            && subs.as_coroutine().return_ty().is_diag_item(cx, sym::Result)
+            && is_fallible_result_ty(cx, subs.as_coroutine().return_ty())
         {
             span_lint(
                 cx,
@@ -94,6 +94,10 @@ pub fn check(
             );
         }
     }
+}
+
+fn is_fallible_result_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    matches!(ty.kind(), ty::Adt(_, args) if ty.is_diag_item(cx, sym::Result) && !is_never_like(args.type_at(1)))
 }
 
 fn find_panic(cx: &LateContext<'_>, body_id: BodyId) -> Option<Span> {
