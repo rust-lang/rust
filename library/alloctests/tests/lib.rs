@@ -58,6 +58,7 @@
 #![feature(unique_rc_arc)]
 #![feature(vec_deque_retain_range)]
 #![feature(vec_peek_mut)]
+#![feature(word_to_titlecase)]
 #![feature(write_all_vectored)]
 // tidy-alphabetical-end
 
