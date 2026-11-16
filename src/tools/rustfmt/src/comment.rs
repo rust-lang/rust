@@ -94,7 +94,7 @@ impl<'a> CommentStyle<'a> {
         }
     }
 
-    pub(crate) fn line_start(&self) -> &'a str {
+    pub(crate) fn comment_prefix(&self) -> &'a str {
         match *self {
             CommentStyle::DoubleSlash => "// ",
             CommentStyle::TripleSlash => "/// ",
@@ -107,7 +107,7 @@ impl<'a> CommentStyle<'a> {
     }
 
     pub(crate) fn to_str_tuplet(&self) -> (&'a str, &'a str, &'a str) {
-        (self.opener(), self.closer(), self.line_start())
+        (self.opener(), self.closer(), self.comment_prefix())
     }
 }
 
@@ -174,8 +174,9 @@ pub(crate) fn combine_strs_with_missing_comments(
         } else {
             " "
         };
-    let mut one_line_width =
-        last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
+    let mut one_line_width = last_line_width(prev_str, context.config.tab_spaces())
+        + first_line_width(next_str)
+        + first_sep.len();
 
     let config = context.config;
     let indent = shape.indent;
@@ -207,7 +208,9 @@ pub(crate) fn combine_strs_with_missing_comments(
     let first_sep = if prev_str.is_empty() || missing_comment.is_empty() {
         Cow::from("")
     } else {
-        let one_line_width = last_line_width(prev_str) + first_line_width(&missing_comment) + 1;
+        let one_line_width = last_line_width(prev_str, context.config.tab_spaces())
+            + first_line_width(&missing_comment)
+            + 1;
         if prefer_same_line && one_line_width <= shape.width {
             Cow::from(" ")
         } else {
@@ -303,7 +306,7 @@ fn identify_comment(
 
     let (has_bare_lines, first_group_ending) = match style {
         CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
-            let line_start = style.line_start().trim_start();
+            let line_start = style.comment_prefix().trim_start();
             consume_same_line_comments(style, orig, line_start)
         }
         CommentStyle::Custom(opener) => {
@@ -580,7 +583,7 @@ struct CommentRewrite<'a> {
 
     opener: String,
     closer: String,
-    line_start: String,
+    comment_prefix: String,
     style: CommentStyle<'a>,
 }
 
@@ -630,7 +633,7 @@ impl<'a> CommentRewrite<'a> {
 
             opener: opener.to_owned(),
             closer: closer.to_owned(),
-            line_start: line_start.to_owned(),
+            comment_prefix: line_start.to_owned(),
             style,
         };
         cr.result.push_str(opener);
@@ -879,7 +882,9 @@ impl<'a> CommentRewrite<'a> {
 
             self.fmt.shape = if self.is_prev_line_multi_line {
                 // 1 = " "
-                let offset = 1 + last_line_width(&self.result) - self.line_start.len();
+                let offset = 1 + last_line_width(&self.result, self.fmt.config.tab_spaces())
+                    - self.comment_prefix.len()
+                    - self.fmt_indent.width();
                 Shape {
                     width: self.max_width.saturating_sub(offset),
                     indent: self.fmt_indent,
@@ -1074,16 +1079,26 @@ fn light_rewrite_comment(
             // `*` in `/*`.
             let first_non_whitespace = l.find(|c| !char::is_whitespace(c));
             let left_trimmed = if let Some(fnw) = first_non_whitespace {
-                if l.as_bytes()[fnw] == b'*' && fnw > 0 {
-                    &l[fnw - 1..]
+                if l.as_bytes()[fnw] == b'*' {
+                    Cow::Owned(format!(" {}", &l[fnw..]))
                 } else {
-                    &l[fnw..]
+                    Cow::Borrowed(&l[fnw..])
                 }
             } else {
-                ""
+                Cow::Borrowed("")
             };
+
             // Preserve markdown's double-space line break syntax in doc comment.
-            trim_end_unless_two_whitespaces(left_trimmed, is_doc_comment)
+            match left_trimmed {
+                Cow::Borrowed(left_trimmed) => Cow::Borrowed(trim_end_unless_two_whitespaces(
+                    left_trimmed,
+                    is_doc_comment,
+                )),
+                Cow::Owned(left_trimmed) => {
+                    let trimmed = trim_end_unless_two_whitespaces(&left_trimmed, is_doc_comment);
+                    Cow::Owned(trimmed.to_string())
+                }
+            }
         })
         .join(&format!("\n{}", offset.to_string(config)))
 }
@@ -1337,6 +1352,24 @@ where
     }
 }
 
+/// Returns `true` if the `r` just consumed opens a raw string literal, i.e. the run of
+/// `#`s that follows it ends in a `"`. Peeking a single `#` is not enough to tell a raw
+/// string apart from a raw identifier such as `r#struct`.
+fn is_raw_string_prefix<T>(iter: &mut MultiPeek<T>) -> bool
+where
+    T: Iterator,
+    T::Item: RichChar,
+{
+    while let Some(c) = iter.peek() {
+        match c.get_char() {
+            '#' => continue,
+            '"' => return true,
+            _ => return false,
+        }
+    }
+    false
+}
+
 fn is_raw_string_suffix<T>(iter: &mut MultiPeek<T>, count: u32) -> bool
 where
     T: Iterator,
@@ -1420,7 +1453,13 @@ where
             CharClassesStatus::LitCharEscape => CharClassesStatus::LitChar,
             CharClassesStatus::Normal => match chr {
                 'r' => match self.base.peek().map(RichChar::get_char) {
-                    Some('#') | Some('"') => {
+                    Some('"') => {
+                        char_kind = FullCodeCharKind::InString;
+                        CharClassesStatus::RawStringPrefix(0)
+                    }
+                    // `r#` opens a raw string only if the `#`s end in a `"`; otherwise
+                    // this is a raw identifier like `r#struct` and stays normal code.
+                    Some('#') if is_raw_string_prefix(&mut self.base) => {
                         char_kind = FullCodeCharKind::InString;
                         CharClassesStatus::RawStringPrefix(0)
                     }

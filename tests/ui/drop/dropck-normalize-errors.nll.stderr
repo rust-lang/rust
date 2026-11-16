@@ -50,6 +50,7 @@ LL | pub struct BDecoder {
 note: required by a bound in `Decode::Decoder`
   --> $DIR/dropck-normalize-errors.rs:9:5
    |
+LL | trait Decode<'a> {
 LL |     type Decoder;
    |     ^^^^^^^^^^^^^ required by this bound in `Decode::Decoder`
 help: consider relaxing the implicit `Sized` restriction

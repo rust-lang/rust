@@ -7,11 +7,8 @@ use crate::core::session::Session;
 use crate::utils::tests::TestCtx;
 
 #[test]
-fn test_ndk_compiler_c() {
+fn test_ndk_compiler() {
     let ndk_path = PathBuf::from("/ndk");
-    let target_triple = "arm-unknown-linux-android";
-    let expected_triple_translated = "armv7a-unknown-linux-android";
-    let expected_compiler = format!("{}21-{}", expected_triple_translated, Language::C.clang());
     let host_tag = if cfg!(target_os = "macos") {
         "darwin-x86_64"
     } else if cfg!(target_os = "windows") {
@@ -19,50 +16,23 @@ fn test_ndk_compiler_c() {
     } else {
         "linux-x86_64"
     };
-    let expected_path = ndk_path
-        .join("toolchains")
-        .join("llvm")
-        .join("prebuilt")
-        .join(host_tag)
-        .join("bin")
-        .join(&expected_compiler);
-    let result = ndk_compiler(Language::C, target_triple, &ndk_path);
-    assert_eq!(result, expected_path);
+
+    for (language, compiler) in [
+        (Language::C, "armv7a-unknown-linux-android21-clang"),
+        (Language::CPlusPlus, "armv7a-unknown-linux-android21-clang++"),
+    ] {
+        let expected =
+            ndk_path.join("toolchains/llvm/prebuilt").join(host_tag).join("bin").join(compiler);
+
+        assert_eq!(ndk_compiler(language, "arm-unknown-linux-android", &ndk_path), expected);
+    }
 }
 
 #[test]
-fn test_ndk_compiler_cpp() {
-    let ndk_path = PathBuf::from("/ndk");
-    let target_triple = "arm-unknown-linux-android";
-    let expected_triple_translated = "armv7a-unknown-linux-android";
-    let expected_compiler =
-        format!("{}21-{}", expected_triple_translated, Language::CPlusPlus.clang());
-    let host_tag = if cfg!(target_os = "macos") {
-        "darwin-x86_64"
-    } else if cfg!(target_os = "windows") {
-        "windows-x86_64"
-    } else {
-        "linux-x86_64"
-    };
-    let expected_path = ndk_path
-        .join("toolchains")
-        .join("llvm")
-        .join("prebuilt")
-        .join(host_tag)
-        .join("bin")
-        .join(&expected_compiler);
-    let result = ndk_compiler(Language::CPlusPlus, target_triple, &ndk_path);
-    assert_eq!(result, expected_path);
-}
-
-#[test]
-fn test_language_gcc() {
+fn test_language_compiler_names() {
     assert_eq!(Language::C.gcc(), "gcc");
     assert_eq!(Language::CPlusPlus.gcc(), "g++");
-}
 
-#[test]
-fn test_language_clang() {
     assert_eq!(Language::C.clang(), "clang");
     assert_eq!(Language::CPlusPlus.clang(), "clang++");
 }

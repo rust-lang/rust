@@ -32,11 +32,12 @@ pub fn query_system<'tcx>(
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
+    track_present: bool,
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         arenas: Default::default(),
         dep_kind_vtables: dep_kind_vtables::make_dep_kind_vtables(arena),
-        query_vtables: query_vtables::make_query_vtables(incremental),
+        query_vtables: query_vtables::make_query_vtables(incremental, track_present),
         side_effects: Default::default(),
         used_features: Default::default(),
         on_disk_cache,

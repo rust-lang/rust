@@ -73,7 +73,8 @@ the whole group with `#![warn(clippy::pedantic)]` in the `lib.rs`/`main.rs` of
 your crate. This lint group is for Clippy power users that want an in depth
 check of their code.
 
-> _Note:_ Instead of enabling the whole group (like Clippy itself does), you may
+> [!NOTE]
+> Instead of enabling the whole group (like Clippy itself does), you may
 > want to cherry-pick lints out of the pedantic group.
 
 If you enable this group, expect to also use `#[allow]` attributes generously
@@ -87,7 +88,8 @@ using certain parts of the Rust language. It is **not** recommended to enable
 the whole group, but rather cherry-pick lints that are useful for your code base
 and your use case.
 
-> _Note:_ Clippy will produce a warning if it finds a
+> [!NOTE]
+> Clippy will produce a warning if it finds a
 > `#![warn(clippy::restriction)]` attribute in your code!
 
 Lints from this group will restrict you in some way. If you enable a restriction
@@ -116,4 +118,4 @@ functionality and marking them as deprecated, which may cause further warnings b
 cause a compiler error.
 
 [Clippy lint documentation]: https://rust-lang.github.io/rust-clippy/
-[Clippy 1.0 RFC]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
+[Clippy 1.0 RFC]: https://github.com/rust-lang/rfcs/blob/main/text/2476-clippy-uno.md#lint-audit-and-categories

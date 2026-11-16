@@ -9,7 +9,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `Vec<isize>` to implement `Index<u8>`
@@ -25,7 +25,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `Vec<isize>` to implement `Index<i8>`
@@ -41,7 +41,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `Vec<isize>` to implement `Index<u32>`
@@ -57,7 +57,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `Vec<isize>` to implement `Index<i32>`
@@ -73,7 +73,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `[u8]` to implement `Index<u8>`
@@ -89,7 +89,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `[u8]` to implement `Index<i8>`
@@ -105,7 +105,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `[u8]` to implement `Index<u32>`
@@ -121,7 +121,7 @@ help: `usize` implements trait `SliceIndex<T>`
   --> $SRC_DIR/core/src/slice/index.rs:LL:COL
    |
    = note: `SliceIndex<[T]>`
-  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+  --> $SRC_DIR/core/src/byte_str/traits.rs:LL:COL
    |
    = note: `SliceIndex<ByteStr>`
    = note: required for `[u8]` to implement `Index<i32>`

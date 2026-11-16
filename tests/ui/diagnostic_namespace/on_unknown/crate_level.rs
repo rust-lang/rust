@@ -7,7 +7,7 @@
 #![crate_type = "lib"]
 
 // Only applies to the root, not everything in the entire crate
-#![diagnostic::on_unknown(message = "crate_level `{This}`")]
+#![diagnostic::on_unknown(message = "crate_level `{this}`")]
 
 mod module{}
 

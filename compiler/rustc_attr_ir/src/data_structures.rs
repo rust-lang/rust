@@ -24,6 +24,7 @@ use thin_vec::ThinVec;
 pub use crate::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
 use crate::diagnostic::*;
 use crate::lang_items::LangItem;
+use crate::lint::LintCheck;
 use crate::pretty_printing::PrintAttribute;
 use crate::stability::{DefaultBodyStability, PartialConstStability, Stability};
 
@@ -162,11 +163,6 @@ pub enum ReprAttr {
     ReprAlign(Align),
 }
 
-pub enum TransparencyError {
-    UnknownTransparency(Symbol, Span),
-    MultipleTransparencyAttrs(Span, Span),
-}
-
 #[derive(Eq, PartialEq, Debug, Copy, Clone, PartialOrd, Ord)]
 #[derive(Encodable, Decodable, StableHash, PrintAttribute)]
 pub enum IntType {
@@ -283,7 +279,6 @@ impl<ScopeId> StrippedCfgItem<ScopeId> {
 #[derive(StableHash, PrintAttribute)]
 pub enum Linkage {
     AvailableExternally,
-    Common,
     ExternalWeak,
     External,
     Internal,
@@ -490,9 +485,7 @@ pub struct DocAttribute {
 
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
-    // Because we need to emit the error if there is more than one `inline` attribute on an item
-    // at the same time as the other doc attributes, we store a list instead of using `Option`.
-    pub inline: ThinVec<(DocInline, Span)>,
+    pub inline: Option<(DocInline, Span)>,
 
     // unstable
     pub cfg: ThinVec<CfgEntry>,
@@ -505,7 +498,7 @@ pub struct DocAttribute {
     pub keyword: Option<(Symbol, Span)>,
     pub attribute: Option<(Symbol, Span)>,
     pub masked: Option<Span>,
-    pub notable_trait: Option<Span>,
+    pub notable_trait: Option<(Option<(NotableTraitColor, Span)>, Span)>,
     pub search_unbox: Option<Span>,
 
     // valid on crate
@@ -520,6 +513,41 @@ pub struct DocAttribute {
     // #[doc(test(...))]
     pub test_attrs: ThinVec<Span>,
     pub no_crate_inject: Option<Span>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum NotableTraitColor {
+    Grey,
+    Red,
+    Green,
+    Yellow,
+    Blue,
+    Magenta,
+    Cyan,
+    Transparent,
+}
+
+impl From<NotableTraitColor> for &'static str {
+    fn from(color: NotableTraitColor) -> &'static str {
+        use NotableTraitColor::*;
+        match color {
+            Grey => "grey",
+            Red => "red",
+            Green => "green",
+            Yellow => "yellow",
+            Blue => "blue",
+            Magenta => "magenta",
+            Cyan => "cyan",
+            Transparent => "transparent",
+        }
+    }
+}
+
+impl std::fmt::Display for NotableTraitColor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str((*self).into())
+    }
 }
 
 impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute {
@@ -555,8 +583,7 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
         // FIXME: The `doc(inline)` attribute is never encoded, but is it actually the right thing
         // to do? I suspect the condition was broken, should maybe instead not encode anything if we
         // have `doc(no_inline)`.
-        let inline: ThinVec<_> =
-            inline.iter().filter(|(i, _)| *i != DocInline::Inline).cloned().collect();
+        let inline = inline.filter(|(i, _)| *i != DocInline::Inline);
         rustc_serialize::Encodable::<E>::encode(&inline, encoder);
 
         rustc_serialize::Encodable::<E>::encode(cfg, encoder);
@@ -581,6 +608,13 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
 }
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum RustcShowSpansKind {
+    Expr,
+    Ty,
+    Path,
+}
+
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum RustcDumpLayoutKind {
     Align,
     BackendRepr,
@@ -592,6 +626,9 @@ pub enum RustcDumpLayoutKind {
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
 pub enum RustcMirKind {
+    PrettyLiveLocals,
+    PrettyPreciseLiveness,
+    PrettyTransitiveLiveLocals,
     PeekMaybeInit,
     PeekMaybeUninit,
     PeekLiveness,
@@ -719,6 +756,15 @@ impl fmt::Display for AutoDiffItem {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum RustcAssertVarianceKind {
+    Covariant,
+    Invariant,
+    Contravariant,
+    Bivariant,
+}
+
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct UnstableRemovedFeature {
     pub feature: Symbol,
@@ -815,6 +861,8 @@ pub enum AttributeKind {
     ConstContinue(Span),
 
     /// Represents `#[coroutine]`.
+    ///
+    /// This attribute can be applied to closures to make them coroutines instead.
     Coroutine,
 
     /// Represents `#[coverage(..)]`.
@@ -843,6 +891,8 @@ pub enum AttributeKind {
     Deprecated {
         deprecation: Deprecation,
         span: Span,
+        /// `true` if this an inner attribute (ie `#![]`).
+        is_inner: bool,
     },
 
     /// Represents `#[diagnostic::do_not_recommend]`.
@@ -933,6 +983,19 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
+    /// Represents `#[lint::as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
+    LintAsPtr,
+
+    /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
+    LintCheck(ThinVec<LintCheck>),
+
+    /// Represents `#[lint::never_returns_null_ptr]` (used by the `useless_ptr_null_checks` lint).
+    LintNeverReturnsNullPtr,
+
+    /// Represents `#[lint::should_not_be_called_on_const_items]` (used by the
+    /// `const_item_interior_mutations` lint).
+    LintShouldNotBeCalledOnConstItems,
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
@@ -963,7 +1026,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[must_not_suspend]`
-    MustNotSupend {
+    MustNotSuspend {
         reason: Option<Symbol>,
     },
 
@@ -1069,7 +1132,10 @@ pub enum AttributeKind {
         limit: Limit,
     },
 
-    /// Represents `#[pin_v2]`
+    /// Represents `#[pin_v2]`.
+    ///
+    /// The `#[pin_v2]` attribute is part of the `pin_ergonomics` experiment that allows
+    /// structurally pinning, tracked in <https://github.com/rust-lang/rust/issues/130494>.
     PinV2(Span),
 
     /// Represents `#[prelude_import]`
@@ -1116,8 +1182,9 @@ pub enum AttributeKind {
         kind: RustcAbiAttrKind,
     },
 
-    /// Represents `#[align(N)]`.
-    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+    /// Represents `#[rustc_align(N)]`.
+    ///
+    /// FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     RustcAlign {
         align: Align,
         span: Span,
@@ -1143,8 +1210,11 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_lifetime_dependent_specialization]`.
     RustcAllowLifetimeDependentSpecialization,
 
-    /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
-    RustcAsPtr,
+    /// Represents `#[rustc_assert_variance]`.
+    RustcAssertVariance {
+        span: Span,
+        kind: RustcAssertVarianceKind,
+    },
 
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),
@@ -1179,7 +1249,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_coinductive]`.
     RustcCoinductive,
 
-    /// Represents `#[rustc_comptime]`
+    /// Represents the [`rustc_comptime`](./attribute.rustc_comptime.html) attribute.
     RustcComptime(Span),
 
     /// Represents `#[rustc_confusables]`.
@@ -1197,7 +1267,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     RustcConstStableIndirect,
 
-    /// Represents `#[rustc_conversion_suggestion]`
+    /// Represents `#[rustc_conversion_suggestion]`.
+    ///
+    /// Enumerates "identity-like" conversion methods to suggest on type mismatch.
     RustcConversionSuggestion,
 
     /// Represents `#[rustc_deallocator]`
@@ -1216,7 +1288,10 @@ pub enum AttributeKind {
     /// Represents `#[rustc_diagnostic_item]`
     RustcDiagnosticItem(Symbol),
 
-    /// Represents `#[rustc_do_not_const_check]`
+    /// Represents `#[rustc_do_not_const_check]`.
+    ///
+    /// Functions with this attribute will not have their body const-checked. It will always get
+    /// replaced during CTFE via `hook_special_const_fn`.
     RustcDoNotConstCheck,
 
     /// Represents `#[rustc_doc_primitive = ...]`
@@ -1267,7 +1342,7 @@ pub enum AttributeKind {
     /// Represents the [`rustc_dump_vtable`](./attribute.rustc_dump_vtable.html) attribute.
     RustcDumpVtable(Span),
 
-    /// Represents `#[rustc_dyn_incompatible_trait]`.
+    /// Represents the [`rustc_dyn_incompatible_trait`](./attribute.rustc_dyn_incompatible_trait.html) attribute.
     RustcDynIncompatibleTrait(Span),
 
     /// Represents `#[rustc_effective_visibility]`.
@@ -1302,18 +1377,30 @@ pub enum AttributeKind {
         attr_span: Span,
     },
 
-    /// Represents `#[rustc_lint_opt_deny_field_access]`
+    /// Represents `#[rustc_lint_opt_deny_field_access]`.
+    ///
+    /// Used by the `rustc::bad_opt_access` lint on fields
+    /// types (as well as any others in future).
     RustcLintOptDenyFieldAccess {
         lint_message: Symbol,
     },
 
-    /// Represents `#[rustc_lint_opt_ty]`
+    /// Represents `#[rustc_lint_opt_ty]`.
+    ///
+    /// Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
+    /// types (as well as any others in future)
     RustcLintOptTy,
 
-    /// Represents `#[rustc_lint_query_instability]`
+    /// Represents `#[rustc_lint_query_instability]`.
+    ///
+    /// Used by the `rustc::potential_query_instability` lint to warn methods which
+    /// might not be stable during incremental compilation.
     RustcLintQueryInstability,
 
-    /// Represents `#[rustc_lint_untracked_query_information]`
+    /// Represents `#[rustc_lint_untracked_query_information]`.
+    ///
+    /// Used by the `rustc::untracked_query_information` lint to warn methods which
+    /// might not be stable during incremental compilation.
     RustcLintUntrackedQueryInformation,
 
     /// Represents `#[rustc_macro_transparency]`.
@@ -1333,9 +1420,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_must_match_exhaustively]`
     RustcMustMatchExhaustively(Span),
-
-    /// Represents `#[rustc_never_returns_null_ptr]`
-    RustcNeverReturnsNullPtr,
 
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
@@ -1380,7 +1464,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_by_value]` (used by the `rustc_pass_by_value` lint).
     RustcPassByValue,
 
-    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
+    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`,
+    ///
+    /// See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
     RustcPassIndirectlyInNonRusticAbis(Span),
 
     /// Represents `#[rustc_preserve_ub_checks]`
@@ -1389,7 +1475,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_proc_macro_decls]`
     RustcProcMacroDecls,
 
-    /// Represents `#[rustc_pub_transparent]` (used by the `repr_transparent_external_private_fields` lint).
+    /// Represents `#[rustc_pub_transparent]` (used to mark a type as "publicly" transparent, for
+    /// semver and documentation purposes).
     RustcPubTransparent(Span),
 
     /// Represents `#[rustc_reallocator]`
@@ -1405,8 +1492,8 @@ pub enum AttributeKind {
         element_count: Option<u16>,
     },
 
-    /// Represents `#[rustc_should_not_be_called_on_const_items]`
-    RustcShouldNotBeCalledOnConstItems,
+    /// Represents `#[rustc_show_spans]`
+    RustcShowSpans(ThinVec<RustcShowSpansKind>),
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
@@ -1426,6 +1513,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
 
+    /// Represents the trace attribute of the `test` macro.
+    RustcTestEntrypointMarker,
+
     /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),
 
@@ -1433,7 +1523,7 @@ pub enum AttributeKind {
     RustcThenThisWouldNeed(ThinVec<Ident>),
 
     /// Represents `#[rustc_trivial_field_reads]`
-    RustcTrivialFieldReads,
+    RustcTrivialFieldReads(Span),
 
     /// Represents `#[sanitize]`
     ///
@@ -1452,7 +1542,11 @@ pub enum AttributeKind {
         reason: Option<Symbol>,
     },
 
-    /// Represents `#[rustc_splat]`
+    /// Represents `#[rustc_splat]`.
+    ///
+    /// The `#[rustc_splat]` attribute is part of the `splat` experiment that improves the
+    /// ergonomics of function overloading, tracked in
+    /// <https://github.com/rust-lang/rust/issues/153629>.
     Splat(Span),
 
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
@@ -1484,8 +1578,15 @@ pub enum AttributeKind {
         limit: Limit,
     },
 
-    /// Represents `#[rustc_unroll]`
-    // FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity
+    /// Represents `#[rustc_unchecked_type_alias]`
+    // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
+    UncheckedTypeAlias,
+
+    /// Represents `#[rustc_unroll]`.
+    ///
+    /// Tracked in <https://github.com/rust-lang/rust/issues/156874>.
+    ///
+    /// FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity.
     Unroll(UnrollAttr),
 
     /// Represents `#[unstable_feature_bound]`.

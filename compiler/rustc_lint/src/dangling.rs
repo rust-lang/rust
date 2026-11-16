@@ -1,9 +1,10 @@
 use rustc_ast::visit::{visit_opt, walk_list};
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, TyKind, find_attr};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, TyKind};
 use rustc_lint_defs::{declare_lint, impl_lint_pass};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{Span, sym};
@@ -100,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
         DanglingPointerSearcher { cx, inside_call_args: false }.visit_body(body);
 
         if let FnRetTy::Return(ret_ty) = &fn_decl.output
-            && let TyKind::Ptr(_) = ret_ty.kind
+            && let TyKind::Ptr(..) = ret_ty.kind
         {
             // get the return type of the function or closure
             let ty = match cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
@@ -268,7 +269,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ty = cx.typeck_results().expr_ty(receiver)
         && owns_allocation(cx.tcx, ty)
         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && find_attr!(cx.tcx, fn_id, RustcAsPtr)
+        && find_attr!(cx.tcx, fn_id, LintAsPtr)
     {
         cx.tcx.emit_node_span_lint(
             DANGLING_POINTERS_FROM_TEMPORARIES,

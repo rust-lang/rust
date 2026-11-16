@@ -23,5 +23,6 @@ fn main() {
         assert_eq!(sum, 2);
     }]
     //~^^^^^^ ERROR: unused doc comment
+    //~| ERROR attribute value must be a literal
     foo!();
 }

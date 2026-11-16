@@ -9,10 +9,9 @@ use rustc_type_ir::inherent::{GenericArgs as _, IntoKind, SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
-    display::DisplayTarget,
     drop::{DropGlue, has_drop_glue},
     mir::eval::{
-        Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, HirDisplay, Interval,
+        Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, Interval,
         IntervalAndTy, IntervalOrOwned, IsSigned, ItemContainerId, Layout, Locals, Lookup,
         MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, from_bytes, not_supported, pad16,
     },
@@ -786,19 +785,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         "type_name generic arg is not provided".into(),
                     ));
                 };
-                let ty_name = match ty.display_source_code(
-                    self.db,
-                    locals.body.owner.module(self.db),
-                    true,
-                ) {
-                    Ok(ty_name) => ty_name,
-                    // Fallback to human readable display in case of `Err`. Ideally we want to use `display_source_code` to
-                    // render full paths.
-                    Err(_) => {
-                        let krate = locals.body.owner.krate(self.db);
-                        ty.display(self.db, DisplayTarget::from_crate(self.db, krate)).to_string()
-                    }
-                };
+                let ty_name = self.db.type_name(ty, locals.body.owner.module(self.db));
                 let len = ty_name.len();
                 let addr = self.heap_allocate(len, 1)?;
                 self.write_memory(addr, ty_name.as_bytes())?;

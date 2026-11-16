@@ -1,4 +1,4 @@
-// rustfmt-struct_field_align_threshold: 5
+//@ rustfmt-struct_field_align_threshold: 5
 
 #[derive(Fail, Debug, Clone)]
 pub enum BuildError {

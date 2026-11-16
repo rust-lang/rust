@@ -85,13 +85,13 @@ LL |     unsafe {}
 error: usage of an `unsafe` block
   --> $DIR/lint-unsafe-code.rs:34:9
    |
+LL | macro_rules! unsafe_in_macro {
+...
 LL |         unsafe {}
    |         ^^^^^^^^^
 ...
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
-   |
-   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `no_mangle` attribute
   --> $DIR/lint-unsafe-code.rs:38:3
@@ -144,6 +144,8 @@ LL | #[link_section = "__TEXT,__text"] static UWU: u32 = 5;
 error: usage of the unsafe `no_mangle` attribute
   --> $DIR/lint-unsafe-code.rs:28:11
    |
+LL | macro_rules! unsafe_in_macro {
+LL |     () => {{
 LL |         #[no_mangle] fn foo() {}
    |           ^^^^^^^^^
 ...
@@ -151,11 +153,12 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `no_mangle` attribute
   --> $DIR/lint-unsafe-code.rs:29:11
    |
+LL | macro_rules! unsafe_in_macro {
+...
 LL |         #[no_mangle] static FOO: u32 = 5;
    |           ^^^^^^^^^
 ...
@@ -163,11 +166,12 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `export_name` attribute
   --> $DIR/lint-unsafe-code.rs:30:11
    |
+LL | macro_rules! unsafe_in_macro {
+...
 LL |         #[export_name = "bar"] fn bar() {}
    |           ^^^^^^^^^^^^^^^^^^^
 ...
@@ -175,11 +179,12 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `export_name` attribute
   --> $DIR/lint-unsafe-code.rs:32:11
    |
+LL | macro_rules! unsafe_in_macro {
+...
 LL |         #[export_name = "BAR"] static BAR: u32 = 5;
    |           ^^^^^^^^^^^^^^^^^^^
 ...
@@ -187,7 +192,6 @@ LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
    |
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
-   = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `naked` attribute
   --> $DIR/lint-unsafe-code.rs:139:3

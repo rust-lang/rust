@@ -2,8 +2,9 @@ error: lifetime may not live long enough
   --> $DIR/ex3-both-anon-regions-one-is-struct-4.rs:10:5
    |
 LL | fn bar(foo: &mut Foo) {
-   |        ---  - let's call the lifetime of this reference `'1`
-   |        |
+   |        ---  -    --- lifetime `'2` introduced here
+   |        |    |
+   |        |    let's call the lifetime of this reference `'1`
    |        has type `&mut Foo<'2>`
 LL |     foo.modify();
    |     ^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`

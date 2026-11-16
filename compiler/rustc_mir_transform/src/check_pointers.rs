@@ -1,5 +1,4 @@
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -117,7 +116,6 @@ pub(crate) fn check_pointers<'tcx, F>(
                         // worse UB when we start unwinding.
                         unwind: UnwindAction::Unreachable,
                     },
-                    attributes: ThinVec::new(),
                 });
             }
         }
@@ -237,7 +235,7 @@ fn split_block(
     let block_data = &mut basic_blocks[location.block];
 
     // Drain every statement after this one and move the current terminator to a new basic block.
-    let new_block = BasicBlockData::new_stmts(
+    let new_block = BasicBlockData::maybe_unterminated_stmts(
         block_data.statements.split_off(location.statement_index),
         block_data.terminator.take(),
         block_data.is_cleanup,

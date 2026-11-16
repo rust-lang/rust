@@ -111,6 +111,9 @@ pub trait Float:
     /// A mask for the top bit of the significand, useful for NaN ops.
     const SIG_TOP_BIT: Self::Int;
 
+    /// The minimum subnormal number.
+    const TINY_BITS: Self::Int = Self::Int::ONE;
+
     /// Returns `self` transmuted to `Self::Int`
     fn to_bits(self) -> Self::Int;
 
@@ -220,6 +223,12 @@ pub trait Float:
     /// Fused multiply add, rounding once.
     fn fma(self, y: Self, z: Self) -> Self;
 
+    /// Round down to the nearest integer.
+    fn floor(self) -> Self;
+
+    /// Round to the nearest integer, breaking ties toward even.
+    fn roundeven(self) -> Self;
+
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
@@ -241,6 +250,50 @@ pub trait Float:
         // <https://github.com/llvm/llvm-project/issues/32650>).
         self * Self::ONE
     }
+
+    /// Increment by one ULP, saturating at infinity.
+    fn next_up(self) -> Self {
+        // FIXME: Replace with `next_up` from `core` once `libm` MSRV reaches 1.86.
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = self.abs().to_bits();
+        let next_bits = if abs == Self::Int::ZERO {
+            // Next up from 0 is the smallest subnormal
+            Self::TINY_BITS
+        } else if bits == abs {
+            // Positive: counting up is more positive
+            bits + Self::Int::ONE
+        } else {
+            // Negative: counting down is more positive
+            bits - Self::Int::ONE
+        };
+        Self::from_bits(next_bits)
+    }
+
+    /// Decrement by one ULP, saturating at negative infinity.
+    fn next_down(self) -> Self {
+        // FIXME: Replace with `next_down` from `core` once `libm` MSRV reaches 1.86.
+        let bits = self.to_bits();
+        if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
+            return self;
+        }
+
+        let abs = self.abs().to_bits();
+        let next_bits = if abs == Self::Int::ZERO {
+            // Next up from 0 is the smallest negative subnormal
+            Self::TINY_BITS | Self::SIGN_MASK
+        } else if bits == abs {
+            // Positive: counting down is more negative
+            bits - Self::Int::ONE
+        } else {
+            // Negative: counting up is more negative
+            bits + Self::Int::ONE
+        };
+        Self::from_bits(next_bits)
+    }
 }
 
 /// Access the associated `Int` type from a float (helper to avoid ambiguous associated types).
@@ -256,7 +309,8 @@ macro_rules! float_impl {
         $from_bits:path,
         $to_bits:path,
         $fma_fn:ident,
-        $fma_intrinsic:ident
+        $floor_fn:ident,
+        $roundeven_fn:ident
     ) => {
         impl Float for $ty {
             type Int = $ity;
@@ -379,10 +433,31 @@ macro_rules! float_impl {
                 cfg_select_nofmt! {
                     // fma is not yet available in `core`
                     intrinsics_enabled => {
-                        core::intrinsics::$fma_intrinsic(self, y, z)
+                        core::intrinsics::fma(self, y, z)
                     }
                     _ => {
                         super::super::$fma_fn(self, y, z)
+                    }
+                }
+            }
+            #[inline]
+            fn floor(self) -> Self {
+                cfg_select_nofmt! {
+                    intrinsics_enabled => {
+                        core::intrinsics::floor(self)
+                    }
+                    _ => {
+                        super::super::$floor_fn(self)
+                    }
+                }
+            }
+            fn roundeven(self) -> Self {
+                cfg_select_nofmt! {
+                    intrinsics_enabled => {
+                        core::intrinsics::round_ties_even(self)
+                    }
+                    _ => {
+                        super::super::$roundeven_fn(self)
                     }
                 }
             }
@@ -404,7 +479,8 @@ float_impl!(
     f16::from_bits,
     f16::to_bits,
     fmaf16,
-    fmaf16
+    floorf16,
+    roundevenf16
 );
 float_impl!(
     f32,
@@ -415,7 +491,8 @@ float_impl!(
     f32_from_bits,
     f32_to_bits,
     fmaf,
-    fmaf32
+    floorf,
+    roundevenf
 );
 float_impl!(
     f64,
@@ -426,7 +503,8 @@ float_impl!(
     f64_from_bits,
     f64_to_bits,
     fma,
-    fmaf64
+    floor,
+    roundeven
 );
 #[cfg(f128_enabled)]
 float_impl!(
@@ -438,7 +516,8 @@ float_impl!(
     f128::from_bits,
     f128::to_bits,
     fmaf128,
-    fmaf128
+    floorf128,
+    roundevenf128
 );
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */

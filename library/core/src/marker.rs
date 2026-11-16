@@ -480,7 +480,7 @@ marker_impls! {
 
 }
 
-#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "never_type", since = "1.100.0")]
 impl Copy for ! {}
 
 /// Shared references can be copied, but mutable references *cannot*!
@@ -884,7 +884,7 @@ pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
     #[lang = "discriminant_type"]
-    type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
+    type Discriminant: Copy + Debug + Eq + Hash + Ord + Send + Sync + Unpin;
 }
 
 /// Used to determine whether a type contains
@@ -1074,15 +1074,22 @@ pub const trait Destruct: PointeeSized {}
 #[rustc_dyn_incompatible_trait]
 pub trait Tuple {}
 
+// HACK(khyperia): if this is missing, the gca macro's `implied_by = "gca_adts"` emits an error
+#[unstable(feature = "gca_adts", issue = "163420")]
+#[expect(dead_code)]
+struct HackGcaAdtsFeature;
+
 /// Creates a new style directly represented const argument.
 /// ```ignore (cannot test this from within core yet)
-/// const BAR<const N: usize>: usize = direct_const_arg!(N);
-/// const FOO<const N: usize>: usize = direct_const_arg!(BAR::<N>);
+/// const BAR<const N: usize>: usize = gca!(N);
+/// const FOO<const N: usize>: usize = gca!(BAR::<N>);
 /// ```
-#[rustc_builtin_macro(direct_const_arg)]
-#[unstable(feature = "min_generic_const_args", issue = "132980")]
+#[rustc_builtin_macro(gca)]
+// HACK: abuse implied_by, this should be enabled if gca_min_const_items or gca_adts is enabled,
+// neither one is more particularly special than the other
+#[unstable(feature = "gca_min_const_items", issue = "132980", implied_by = "gca_adts")]
 #[macro_export]
-macro_rules! direct_const_arg {
+macro_rules! gca {
     ($($arg:tt)*) => {
         /* compiler built-in */
     };
@@ -1128,7 +1135,7 @@ marker_impls! {
 }
 
 marker_impls! {
-    #[unstable(feature = "unsized_const_params", issue = "95174")]
+    #[unstable(feature = "unsized_const_params", issue = "128028")]
     #[unstable_feature_bound(unsized_const_params)]
     ConstParamTy_ for
         str,
@@ -1378,4 +1385,78 @@ pub trait CoerceShared<Target: Copy>: Reborrow {
 #[unstable(feature = "reborrow", issue = "145612")]
 pub macro CoerceShared($item:item) {
     /* compiler built-in */
+}
+
+/// Marks a type as "forgettable", giving it the ability to be passed to
+/// [`mem::forget`](core::mem::forget), and other apis that may forget values.
+/// A notable example of forgetting values, though slightly less obvious than
+/// `mem::forget`, is using a value inside an `Rc`. Values inside `Rc`s or `Arc`s
+/// can end up being forgotten as the result of a reference cycle.
+///
+/// By default, all types are assumed to be `Forget`. Similar to [`Sized`], the
+/// syntax `T: ?Forget` can be used to relax this bound for some type `T`. However,
+/// `Forget` bounds are implicitly added in *all* cases unless explicitly opted out
+/// of - notably, in trait definitions and associated types. If the `forget_trait`
+/// feature is enabled, these can similarly be opted out of:
+/// ```ignore (illustrative, unsupported)
+/// #![feature(forget_trait)]
+/// use std::marker::Forget;
+///
+/// trait Foo: ?Forget {
+///     type Bar: ?Forget;
+/// }
+/// ```
+/// The explicit goal of [`mem::forget`](core::mem::forget) is not to run the destructor
+/// of a value (i.e. its implementation of [`Drop`](core::ops::Drop)).
+/// As a dual to this, since `?Forget` types cannot be forgotten, the destructors
+/// of `?Forget` types are **guaranteed to be run**.
+#[rustc_specialization_trait]
+#[rustc_coinductive]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may not be forgotten",
+    label = "value may be forgotten"
+)]
+#[lang = "forget"]
+#[unstable(feature = "forget_trait", issue = "165370")]
+pub unsafe auto trait Forget {
+    // Empty.
+}
+/// Marks a type as freely movable to another address in memory.
+///
+/// By default, all types are assumed to be `Move`. Similar to [`Sized`], the
+/// syntax `T: ?Move` can be used to relax this bound for some type `T`. However,
+/// `Move` bounds are implicitly added in *all* cases unless explicitly opted out
+/// of - notably, in trait definitions and associated types. If the `move_trait`
+/// feature is enabled, these can similarly be opted out of:
+/// ```
+/// #![allow(incomplete_features)]
+/// #![feature(move_trait)]
+/// use std::marker::Move;
+///
+/// trait Foo: ?Move {
+///     type Bar: ?Move;
+/// }
+/// ```
+#[lang = "move_trait"]
+#[rustc_specialization_trait]
+#[rustc_coinductive]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may not be movable",
+    label = "may not be movable"
+)]
+#[unstable(feature = "move_trait", issue = "149607")]
+pub unsafe auto trait Move {
+    // Empty.
+}
+
+marker_impls! {
+    #[unstable(feature = "move_trait", issue = "149607")]
+    unsafe Move for
+        {T: PointeeSized + ?Move} *const T,
+        {T: PointeeSized + ?Move} *mut T,
+        {T: PointeeSized + ?Move} &T,
+        {T: PointeeSized + ?Move} &mut T,
+        {T: PointeeSized + ?Move} PhantomData<T>,
+        {T: PointeeSized + ?Move} pattern_type!(*const T is !null),
+        {T: PointeeSized + ?Move} pattern_type!(*mut T is !null),
 }

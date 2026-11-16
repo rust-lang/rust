@@ -1,6 +1,6 @@
 use base_db::{
     CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
-    DependencyBuilder, Env, SourceDatabase, all_crates,
+    DependencyBuilder, Env, SourceDatabase, TargetKind, all_crates,
 };
 use expect_test::{Expect, expect};
 use intern::Symbol;
@@ -77,7 +77,7 @@ pub const BAZ: u32 = 0;
                 Env::default(),
                 CrateOrigin::Local { repo: None, name: Some(Symbol::intern(crate_name)) },
                 Vec::new(),
-                false,
+                TargetKind::Lib { is_proc_macro: false },
                 Arc::new(
                     // FIXME: This is less than ideal
                     TryFrom::try_from(

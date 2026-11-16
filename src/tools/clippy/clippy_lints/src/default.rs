@@ -37,7 +37,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for immediate reassignment of fields initialized
-    /// with Default::default().
+    /// with `Default::default()`.
     ///
     /// ### Why is this bad?
     ///It's more idiomatic to use the [functional update syntax](https://doc.rust-lang.org/reference/expressions/struct-expr.html#functional-update-syntax).

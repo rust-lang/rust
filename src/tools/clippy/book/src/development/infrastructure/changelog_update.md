@@ -93,7 +93,8 @@ Look for the [`beta-accepted`] label and make sure to also include the PRs with
 that label in the changelog. If you can, remove the `beta-accepted` labels
 **after** the changelog PR was merged.
 
-> _Note:_ Some of those PRs might even get backported to the previous `beta`.
+> [!NOTE]
+> Some of those PRs might even get backported to the previous `beta`.
 > Those have to be included in the changelog of the _previous_ release.
 
 ### 5. Update `clippy::version` attributes
@@ -110,10 +111,10 @@ grep -rB1 "pub $LINT_NAME" .
 The version shown should match the version of the release the changelog is 
 written for. If not, update the version to the changelog version.
 
-[changelog]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md
+[changelog]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CHANGELOG.md
 [forge]: https://forge.rust-lang.org/
 [rust_main_tools]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/clippy
 [rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools/clippy
 [rust_stable_tools]: https://github.com/rust-lang/rust/releases
 [`beta-accepted`]: https://github.com/rust-lang/rust-clippy/issues?q=label%3Abeta-accepted+
-[beta_section]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md#unreleased--beta--in-rust-nightly
+[beta_section]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CHANGELOG.md#unreleased--beta--in-rust-nightly

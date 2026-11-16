@@ -18,7 +18,7 @@ use crate::alloc::{Allocator, Global};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     inner: VecDeque<T, A>,
 }
@@ -30,6 +30,13 @@ impl<T, A: Allocator> IntoIter<T, A> {
 
     pub(super) fn into_vecdeque(self) -> VecDeque<T, A> {
         self.inner
+    }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.inner.allocator()
     }
 }
 

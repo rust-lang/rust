@@ -27,7 +27,13 @@ fn render(ctx: RenderContext<'_, '_>, const_: hir::Const) -> Option<CompletionIt
         .set_deprecated(ctx.is_deprecated(const_, const_.as_assoc_item(db)))
         .detail(detail)
         .const_value(Some(const_), db, ctx.completion.display_target)
-        .set_relevance(ctx.completion_relevance());
+        .set_relevance(crate::CompletionRelevance {
+            type_match: super::compute_type_match(
+                ctx.completion,
+                &ctx.completion.rebase_ty(&const_.ty(db)),
+            ),
+            ..ctx.completion_relevance()
+        });
 
     if let Some(actm) = const_.as_assoc_item(db)
         && let Some(trt) = actm.container_or_implemented_trait(db)

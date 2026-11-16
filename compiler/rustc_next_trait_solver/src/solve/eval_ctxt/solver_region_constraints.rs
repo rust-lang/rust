@@ -7,12 +7,11 @@ use rustc_type_ir::outlives::{Component, push_outlives_components};
 #[cfg(not(feature = "nightly"))]
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
-    And, Assumptions, LeafRegionConstraint, Or, eagerly_handle_placeholders_in_universe,
-    propagate_ambiguity,
+    And, Assumptions, LeafRegionConstraint, NoSpan, Or, eagerly_handle_placeholders_in_universe,
 };
 use rustc_type_ir::{
-    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, Region, TypeVisitable, TypeVisitableExt,
-    TypeVisitor, UniverseIndex,
+    AliasTy, Binder, ClauseKind, Const, InferCtxtLike, Interner, Region, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, UniverseIndex,
 };
 use tracing::{debug, instrument};
 
@@ -63,7 +62,7 @@ where
                 );
             }
 
-            fn visit_const(&mut self, c: I::Const) {
+            fn visit_const(&mut self, c: Const<I>) {
                 self.out.extend(
                     self.ecx
                         .well_formed_goals(self.param_env, c.into())
@@ -115,17 +114,27 @@ where
     pub(super) fn eagerly_handle_placeholders(&mut self) -> Result<Certainty, NoSolution> {
         let constraint = self.delegate.get_solver_region_constraint();
 
-        let smallest_universe = self.max_input_universe.index();
-        let largest_universe = self.delegate.universe().index();
-        debug!(?smallest_universe, largest_universe);
+        let smallest_universe = self.max_input_universe;
+        let largest_universe = self.delegate.universe();
+        debug!("smallest_universe={smallest_universe:#?}, largest_universe={largest_universe:#?}");
 
-        let constraint = ((smallest_universe + 1)..=largest_universe)
-            .map(|u| UniverseIndex::from_usize(u))
+        // We rely on placeholder assumptions to evaluate region constraints with placeholders.
+        // But we can fail to compute assumptions due to unresolved type variables. In that case,
+        // we conservatively bail with ambiguity.
+        if !self
+            .delegate
+            .has_placeholder_assumptions(((smallest_universe + 1)..=largest_universe).into())
+        {
+            return Ok(Certainty::AMBIGUOUS);
+        }
+
+        // Walk around that `Step` trait is nightly only.
+        let constraint = ((smallest_universe.index() + 1)..=largest_universe.index())
+            .map(UniverseIndex::from_usize)
             .rev()
             .fold(constraint, |constraint, u| {
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
-        let constraint = propagate_ambiguity(constraint);
 
         debug!("final constraint={:?}", constraint);
         self.delegate.overwrite_solver_region_constraint(constraint.clone(), self.origin_span);
@@ -159,12 +168,14 @@ where
         use Component::*;
         use LeafRegionConstraint::*;
         match c {
-            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r, ())),
+            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r, NoSpan)),
             Placeholder(p) => {
-                Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, ()))
+                Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, NoSpan))
             }
             Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => Or::new_ambig(()),
+            UnresolvedInferenceVariable(_) => {
+                panic!("Shouldn't destructure type outlives when ty vars exist")
+            }
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),
         }
@@ -183,11 +194,11 @@ where
 
         let item_bounds =
             rustc_type_ir::outlives::declared_bounds_from_definition(self.cx(), alias)
-                .map(|bound| And::new([RegionOutlives(bound, r, ())]));
+                .map(|bound| And::new([RegionOutlives(bound, r, NoSpan)]));
         let item_bound_outlives = Or::new(item_bounds);
 
         let where_clause_outlives =
-            Or::new_leaf(AliasTyOutlivesViaEnv(Binder::dummy((alias, r)), ()));
+            Or::new_leaf(AliasTyOutlivesViaEnv(Binder::dummy((alias, r)), NoSpan));
 
         let mut components = Default::default();
         rustc_type_ir::outlives::compute_alias_components_recursive(

@@ -1,4 +1,4 @@
-// rustfmt-reorder_modules: true
+//@ rustfmt-reorder_modules: true
 
 // Do not reorder inline modules.
 

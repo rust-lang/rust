@@ -7,6 +7,7 @@
 //@ compile-flags: --crate-type=lib -Ccodegen-units=1
 #![no_std]
 #![panic_runtime]
+#![feature(lang_items)]
 #![feature(panic_runtime)]
 #![feature(rustc_attrs)]
 
@@ -20,7 +21,7 @@ pub fn test(_: DropMe) {
     unreachable!();
 }
 
-#[rustc_std_internal_symbol]
+#[lang = "eh_personality"]
 pub unsafe extern "C" fn rust_eh_personality(
     _version: i32,
     _actions: i32,

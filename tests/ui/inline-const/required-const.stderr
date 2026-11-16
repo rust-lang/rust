@@ -1,6 +1,8 @@
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/required-const.rs:6:17
    |
+LL | fn foo<T>() {
+LL |     if false {
 LL |         const { panic!() }
    |                 ^^^^^^^^ evaluation of `foo::<i32>::{constant#0}` failed here
 

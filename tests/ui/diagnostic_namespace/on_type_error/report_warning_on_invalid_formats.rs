@@ -1,12 +1,12 @@
 #![feature(diagnostic_on_type_error)]
 
-#[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {Expected:123}")]
+#[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {expected:123}")]
 //~^ WARN format specifiers are not permitted in diagnostic attributes
 //~| NOTE `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 //~| NOTE remove this format specifier
 struct InvalidFormat1<T>(T);
 
-#[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {Expected:!}")]
+#[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {expected:!}")]
 //~^ WARN format specifiers are not permitted in diagnostic attributes
 //~| NOTE remove this format specifier
 struct InvalidFormat2<T>(T);

@@ -1,4 +1,4 @@
-// rustfmt-struct_field_align_threshold: 50
+//@ rustfmt-struct_field_align_threshold: 50
 
 fn func() {
     Ok(ServerInformation { name:         unwrap_message_string(items.get(0)),

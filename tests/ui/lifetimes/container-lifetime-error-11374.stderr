@@ -11,6 +11,8 @@ LL |     c.read_to(v);
 note: method defined here
   --> $DIR/container-lifetime-error-11374.rs:15:12
    |
+LL | impl<'a> Container<'a> {
+...
 LL |     pub fn read_to(&mut self, vec: &mut [u8]) {
    |            ^^^^^^^            --------------
 help: consider mutably borrowing here

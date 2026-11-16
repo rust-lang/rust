@@ -14,7 +14,6 @@ note: required by a bound in `is_transmutable`
   --> $DIR/dont-assume-err-is-yes-issue-126377.rs:8:9
    |
 LL | pub fn is_transmutable<const ASSUME_ALIGNMENT: bool>()
-   |        --------------- required by a bound in this function
 LL | where
 LL |     (): TransmuteFrom<(), { Assume::SAFETY }>,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`

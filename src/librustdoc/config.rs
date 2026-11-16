@@ -32,11 +32,11 @@ use crate::{html, opts, theme};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum OutputFormat {
-    /// `--output-format=json` without `--show-coverage`.
+    /// `--output-format=json` without `--coverage`.
     ///
     /// JSON description of crate API.
     IrJson,
-    /// `--output-format=json` with `--show-coverage`.
+    /// `--output-format=json` with `--coverage`.
     CoverageJson,
     Html,
     Doctest,
@@ -129,8 +129,10 @@ pub(crate) struct Options {
     pub(crate) no_run: bool,
     /// What sources are being mapped.
     pub(crate) remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    pub(crate) remap_path_prefix_strs: Vec<String>,
     /// Which scope(s) to use with `--remap-path-prefix`
     pub(crate) remap_path_scope: RemapPathScopeComponents,
+    pub(crate) remap_path_scope_str: Option<String>,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -149,7 +151,7 @@ pub(crate) struct Options {
     pub(crate) crate_version: Option<String>,
     /// The format that we output when rendering.
     ///
-    /// Currently used only for the `--show-coverage` option.
+    /// Currently used only for the `--coverage` option.
     pub(crate) output_format: OutputFormat,
     /// If this option is set to `true`, rustdoc will only run checks and not generate
     /// documentation.
@@ -239,6 +241,10 @@ pub(crate) struct RenderOptions {
     /// What sorting mode to use for module pages.
     /// `ModuleSorting::Alphabetical` by default.
     pub(crate) module_sorting: ModuleSorting,
+    /// In the sidebar list of all crates, put the current crate(s) under this heading.
+    /// To put a crate under the unnamed primary heading, which is always listed first,
+    /// make this the empty string.
+    pub(crate) crate_list_heading: String,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
     pub(crate) themes: Vec<StylePath>,
@@ -431,7 +437,7 @@ impl Options {
         check_deprecated_options(matches, dcx);
 
         let should_test = matches.opt_present("test");
-        let show_coverage = matches.opt_present("show-coverage");
+        let show_coverage = matches.opt_present("coverage");
         let output_format_s = matches.opt_str("output-format");
         let output_format = match output_format_s.as_deref() {
             None | Some("html") => OutputFormat::Html,
@@ -446,16 +452,16 @@ impl Options {
             Some(other) => dcx.fatal(format!("unknown output format `{other}`")),
         };
 
-        // check for `--output-format` stability, and compatibility with `--show-coverage`
+        // check for `--output-format` stability, and compatibility with `--coverage`
         match (
             output_format_s.as_ref().map(|_| output_format),
             show_coverage,
-            nightly_options::is_unstable_enabled(matches),
+            nightly_options::unstable_options_enabled(matches),
         ) {
             (None | Some(OutputFormat::CoverageJson), true, _) => {}
             (_, true, _) => {
                 dcx.fatal(format!(
-                    "`--output-format={}` is not supported for the `--show-coverage` option",
+                    "`--output-format={}` is not supported for the `--coverage` option",
                     output_format_s.expect("checked for none above"),
                 ));
             }
@@ -709,7 +715,7 @@ impl Options {
             }
             (None, None) => {
                 if show_coverage {
-                    // If no `-o` option is given and we're in the `--show-coverage` mode, by
+                    // If no `-o` option is given and we're in the `--coverage` mode, by
                     // default we print on the stdout.
                     output_to_stdout = true;
                 }
@@ -752,12 +758,12 @@ impl Options {
                 if !theme_file.is_file() {
                     dcx.struct_fatal(format!("invalid argument: \"{theme_s}\""))
                         .with_help("arguments to --theme must be files")
-                        .emit();
+                        .emit_fatal();
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
                     dcx.struct_fatal(format!("invalid argument: \"{theme_s}\""))
                         .with_help("arguments to --theme must have a .css extension")
-                        .emit();
+                        .emit_fatal();
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, dcx);
                 if !success {
@@ -777,7 +783,7 @@ impl Options {
             }
         }
 
-        let edition = config::parse_crate_edition(early_dcx, matches);
+        let edition = config::parse_crate_edition(early_dcx, matches, true);
 
         let mut id_map = html::markdown::IdMap::new();
         let Some(external_html) = ExternalHtml::load(
@@ -843,6 +849,7 @@ impl Options {
         } else {
             ModuleSorting::Alphabetical
         };
+        let crate_list_heading = matches.opt_str("crate-list-heading").unwrap_or_default();
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let markdown_no_toc = matches.opt_present("markdown-no-toc");
         let markdown_css = matches.opt_strs("markdown-css");
@@ -857,6 +864,8 @@ impl Options {
         let unstable_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
+        let remap_path_prefix_strs = matches.opt_strs("remap-path-prefix");
+        let remap_path_scope_str = matches.opt_str("remap-path-scope");
         let test_runtool = matches.opt_str("test-runtool");
         let test_runtool_args = matches.opt_strs("test-runtool-arg");
         let document_private = matches.opt_present("document-private-items");
@@ -932,13 +941,15 @@ impl Options {
             no_run,
             test_builder_wrappers,
             remap_path_prefix,
+            remap_path_prefix_strs,
             remap_path_scope,
+            remap_path_scope_str,
             no_capture,
             crate_name,
             output_format,
             json_unused_externs,
             scrape_examples_options,
-            unstable_features,
+            unstable_features: unstable_features.clone(),
             doctest_build_args,
             target_modifiers: collected_options.target_modifiers,
         };
@@ -948,6 +959,7 @@ impl Options {
             id_map,
             playground_url,
             module_sorting,
+            crate_list_heading,
             themes,
             extension_css,
             extern_html_root_urls,

@@ -16,10 +16,9 @@ use tracing::debug;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
-use crate::search_graph::PathKind;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, ConstVid, FloatVid, GenericArgKind,
-    InferConst, IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
+    self as ty, Canonical, CantBeErased, Const, ConstVid, FloatVid, GenericArgKind, InferConst,
+    IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
 pub type CanonicalInputData<I> =
@@ -234,7 +233,7 @@ impl<I: Interner> RerunCondition<I> {
             | (
                 Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
                 Self::AnyOpaqueHasInferAsHidden,
-            ) => Self::OpaqueInStorage(a),
+            ) => Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
 
             (
                 Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
@@ -411,22 +410,15 @@ impl<I: Interner, P> Goal<I, P> {
 
 /// Why a specific goal has to be proven.
 ///
-/// This is necessary as we treat nested goals different depending on
-/// their source. This is used to decide whether a cycle is coinductive.
-/// See the documentation of `EvalCtxt::step_kind_for_source` for more details
-/// about this.
+/// This is used by proof tree visitors, especially for diagnostics purposes.
 ///
-/// It is also used by proof tree visitors, e.g. for diagnostics purposes.
+/// FIXME(-Znext-solver=coinductive): This will also matter in the future when
+/// deciding whether a step in a cycle is coinductive. We're currently still
+/// matching the old solver behavior here for now, so the `GoalSource` is ignored.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum GoalSource {
     Misc,
-    /// A nested goal required to prove that types are equal/subtypes.
-    /// This is always an unproductive step.
-    ///
-    /// This is also used for all `NormalizesTo` goals as we they are used
-    /// to relate types in `AliasRelate`.
-    TypeRelating,
     /// We're proving a where-bound of an impl.
     ImplWhereBound,
     /// Const conditions that need to hold for `[const]` alias bounds to hold.
@@ -438,12 +430,8 @@ pub enum GoalSource {
     /// 2. for rigid projections's trait goal,
     /// 3. for GAT where clauses.
     AliasWellFormed,
-    /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
-    /// aliases in the context of the parent may incorrectly change the cycle kind.
-    /// Normalizing aliases in goals therefore tracks the original path kind for this
-    /// nested goal. See the comment of the `ReplaceAliasWithInfer` visitor for more
-    /// details.
-    NormalizeGoal(PathKind),
+    /// Normalizing happens in the current context and is unproductive by itself.
+    Normalization,
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, Goal<I, P>)]
@@ -473,9 +461,8 @@ pub enum CandidatePreferenceMode {
 impl CandidatePreferenceMode {
     /// Given `trait_def_id`, which candidate preference mode should be used?
     pub fn compute<I: Interner>(cx: I, trait_id: I::TraitId) -> CandidatePreferenceMode {
-        let is_sizedness_or_auto_or_default_goal = cx.is_sizedness_trait(trait_id)
-            || cx.trait_is_auto(trait_id)
-            || cx.is_default_trait(trait_id);
+        let is_sizedness_or_auto_or_default_goal = cx.trait_is_auto(trait_id)
+            || cx.is_implicit_trait(trait_id, ty::IncludeSizedImplicitBounds::Yes);
         if is_sizedness_or_auto_or_default_goal {
             CandidatePreferenceMode::Marker
         } else {
@@ -594,14 +581,69 @@ pub enum FetchEligibleAssocItemResponse<I: Interner> {
     NotFoundBecauseErased,
 }
 
+/// The variant order here matters for the `PartialOrd`/`Ord` impls.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub enum IsIdentity {
+    No,
+    ModuloRegions,
+    Yes,
+}
+
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct Response<I: Interner> {
     pub certainty: Certainty,
-    pub var_values: CanonicalVarValues<I>,
+    pub var_values: I::GenericArgs,
+    /// Is `var_values` an identity?
+    pub var_values_is_identity: IsIdentity,
     /// Additional constraints returned by this query.
     pub external_constraints: I::ExternalConstraints,
+}
+
+impl<I: Interner> Response<I> {
+    pub fn update_var_values_is_identity(&mut self) {
+        // We start optimistic and downgrade if necessary along the way.
+        self.var_values_is_identity = IsIdentity::Yes;
+
+        let mut bv = ty::BoundVar::ZERO;
+        for arg in self.var_values.iter() {
+            match arg.kind() {
+                ty::GenericArgKind::Lifetime(r) => {
+                    if let ty::ReBound(ty::BoundVarIndexKind::Canonical, br) = r.kind()
+                        && bv == br.var()
+                    {
+                        bv = bv + 1;
+                    } else {
+                        // If this region var isn't an identity variable we can't be
+                        // `IsIdentity::Yes`, but we can still be `IsIdentity::ModuloRegions`.
+                        self.var_values_is_identity = IsIdentity::ModuloRegions;
+                    }
+                }
+                ty::GenericArgKind::Type(ty) => {
+                    if let ty::Bound(ty::BoundVarIndexKind::Canonical, bt) = ty.kind()
+                        && bv == bt.var()
+                    {
+                        bv = bv + 1;
+                    } else {
+                        self.var_values_is_identity = IsIdentity::No;
+                        break;
+                    }
+                }
+                ty::GenericArgKind::Const(ct) => {
+                    if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) = ct.kind()
+                        && bv == bc.var()
+                    {
+                        bv = bv + 1;
+                    } else {
+                        self.var_values_is_identity = IsIdentity::No;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<I: Interner> Eq for Response<I> {}
@@ -1090,7 +1132,7 @@ impl TyOrConstInferVar {
 
     /// Tries to extract an inference variable from a constant, returns `None`
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    fn maybe_from_const<I: Interner>(ct: I::Const) -> Option<Self> {
+    fn maybe_from_const<I: Interner>(ct: Const<I>) -> Option<Self> {
         match ct.kind() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,

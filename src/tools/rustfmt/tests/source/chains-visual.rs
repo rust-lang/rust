@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Visual
+//@ rustfmt-indent_style: Visual
 // Test chain formatting.
 
 fn main() {

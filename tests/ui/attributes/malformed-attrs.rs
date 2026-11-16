@@ -5,11 +5,10 @@
 #![feature(allow_internal_unstable)]
 // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
 #![feature(fn_align)]
-#![feature(optimize_attribute)]
 #![feature(dropck_eyepatch)]
 #![feature(export_stable)]
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![feature(ffi_const, ffi_pure)]
 #![feature(coverage_attribute)]
 #![feature(sanitize)]
@@ -47,8 +46,9 @@
 //~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
-#[rustc_as_ptr = 5]
+#[lint::as_ptr = 5]
 //~^ ERROR malformed
+//~| ERROR cannot find module or crate `lint` in this scope
 #[inline = 5]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
@@ -208,10 +208,11 @@ static mut TLS: u8 = 42;
 
 #[no_link()]
 //~^ ERROR malformed
+//~| ERROR use of deprecated `no_link` attribute
+//~| WARN this was previously accepted by the compiler
 #[macro_use = 1]
 //~^ ERROR malformed
-extern crate wloop;
-//~^ ERROR can't find crate for `wloop` [E0463]
+extern crate core;
 
 #[macro_export = 18]
 //~^ ERROR malformed

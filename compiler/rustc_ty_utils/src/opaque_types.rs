@@ -33,8 +33,7 @@ enum CollectionMode {
     ImplTraitInAssocTypes,
     /// When collecting for an explicit `#[define_opaque]` attribute, find all TAITs
     Taits,
-    /// The default case, only collect RPITs and AsyncFn return types, as these are
-    /// always defined by the current item.
+    /// By default collect RPITs and async function return types defined by this item
     RpitAndAsyncFnOnly,
 }
 
@@ -131,10 +130,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         // Only check that the parent generics of the TAIT/RPIT are unique.
         // the args owned by the opaque are going to always be duplicate
         // lifetime params for RPITs, and empty for TAITs.
-        match self
-            .tcx
-            .uses_unique_generic_params(&alias_ty.args[..parent_count], CheckRegions::FromFunction)
-        {
+        match self.tcx.uses_unique_generic_params(
+            &alias_ty.args.as_slice()[..parent_count],
+            CheckRegions::FromFunction,
+        ) {
             Ok(()) => {
                 // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
                 // supported at all, so this is sound to do, but once we want to support them, you'll
@@ -323,6 +322,12 @@ fn opaque_types_defined_by<'tcx>(
     if tcx.is_typeck_child(item.to_def_id()) {
         return tcx.opaque_types_defined_by(tcx.local_parent(item));
     }
+
+    // delegation inherits its signature without defining its opaque types
+    if tcx.hir_opt_delegation_sig_id(item).is_some() {
+        return tcx.mk_local_def_ids(&[]);
+    }
+
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);

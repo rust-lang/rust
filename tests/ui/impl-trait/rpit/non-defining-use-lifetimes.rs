@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 // issue: #111935
 
 #![allow(unconditional_recursion)]
@@ -11,7 +15,7 @@ mod statik {
     // invalid defining use: Opaque<'static> := ()
     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
         let _: () = foo(Lt::<'static>::None);
-        //~^ ERROR expected generic lifetime parameter, found `'static`
+        //[current]~^ ERROR expected generic lifetime parameter, found `'static`
     }
 }
 
@@ -20,7 +24,7 @@ mod infer {
     // invalid defining use: Opaque<'_> := ()
     fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
         let _: () = foo(Lt::<'_>::None);
-        //~^ ERROR expected generic lifetime parameter, found `'_`
+        //[current]~^ ERROR expected generic lifetime parameter, found `'_`
     }
 }
 
@@ -30,7 +34,7 @@ mod equal {
     // because of the use of equal lifetimes in args
     fn foo<'a, 'b>(_: Lt<'a>, _: Lt<'b>) -> impl Sized + 'a + 'b {
         let _: () = foo(Lt::<'a>::None, Lt::<'a>::None);
-        //~^ ERROR non-defining opaque type use in defining scope
+        //[current]~^ ERROR non-defining opaque type use in defining scope
     }
 }
 

@@ -17,8 +17,6 @@
 
 //[mips32]~? WARN unknown and unstable feature specified for `-Ctarget-feature`: `mips32r5`
 //[mips64]~? WARN unknown and unstable feature specified for `-Ctarget-feature`: `mips64r5`
-//~? WARN unstable feature specified for `-Ctarget-feature`: `fp64`
-//~? WARN unstable feature specified for `-Ctarget-feature`: `msa`
 
 extern crate minicore;
 use minicore::*;

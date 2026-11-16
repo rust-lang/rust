@@ -1,32 +1,27 @@
-error: symbol-name(_RNvCsCRATE_HASH_22rustc_dump_symbol_name7mangled)
+error: symbol-name(_RNvCsCRATE_HASH_10crate_name7mangled)
  --> $DIR/rustc_dump_symbol_name.rs:7:1
   |
-7 | #[rustc_dump_symbol_name]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: demangling(rustc_dump_symbol_name[6981ee133444a33d]::mangled)
- --> $DIR/rustc_dump_symbol_name.rs:7:1
+7 | / #[rustc_dump_symbol_name]
+8 | | fn mangled() {}
+  | |____________^
   |
-7 | #[rustc_dump_symbol_name]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: demangling-alt(rustc_dump_symbol_name::mangled)
- --> $DIR/rustc_dump_symbol_name.rs:7:1
-  |
-7 | #[rustc_dump_symbol_name]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: demangling(crate_name[8cfd4c3bf0e8f389]::mangled)
+  = note: demangling-alt(crate_name::mangled)
 
 error: symbol-name(no_mangle)
   --> $DIR/rustc_dump_symbol_name.rs:10:1
    |
-10 | #[rustc_dump_symbol_name]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+10 | / #[rustc_dump_symbol_name]
+11 | | #[unsafe(no_mangle)]
+12 | | fn no_mangle() {}
+   | |______________^
 
 error: symbol-name(abort)
   --> $DIR/rustc_dump_symbol_name.rs:15:5
    |
-15 |     #[rustc_dump_symbol_name]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+15 | /     #[rustc_dump_symbol_name]
+16 | |     fn abort();
+   | |_______________^
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

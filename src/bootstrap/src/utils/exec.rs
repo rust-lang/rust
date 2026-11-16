@@ -353,6 +353,11 @@ impl<'a> BootstrapCommand {
         exec_ctx.as_ref().run(self, OutputMode::Capture, OutputMode::Print)
     }
 
+    #[track_caller]
+    pub fn start(&mut self, exec_ctx: impl AsRef<ExecutionContext>) -> DeferredCommand<'_> {
+        exec_ctx.as_ref().start(self, OutputMode::Print, OutputMode::Print)
+    }
+
     /// Spawn the command in background, while capturing and returning all its output.
     #[track_caller]
     #[expect(dead_code, reason = "general-purpose, currently unused")]

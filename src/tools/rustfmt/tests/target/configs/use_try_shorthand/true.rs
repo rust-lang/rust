@@ -1,4 +1,4 @@
-// rustfmt-use_try_shorthand: true
+//@ rustfmt-use_try_shorthand: true
 // Use try! shorthand
 
 fn main() {

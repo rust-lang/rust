@@ -1,4 +1,4 @@
-// rustfmt-match_arm_leading_pipes: Preserve
+//@ rustfmt-match_arm_leading_pipes: Preserve
 
 fn foo() {
     match foo {

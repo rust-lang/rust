@@ -11,10 +11,10 @@ use ::serde::de::{self, Deserializer, Error as _};
 use ::serde::ser::{SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::def_id::{CrateNum, DefIndex, LOCAL_CRATE};
-use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
@@ -22,7 +22,7 @@ use rustc_span::symbol::{Symbol, kw};
 use stringdex::internals as stringdex_internals;
 use tracing::instrument;
 
-use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
+use crate::clean::types::{ItemId, ItemKind, Type, WherePredicate};
 use crate::clean::{self, ExternalLocation, utils};
 use crate::config::ShouldMerge;
 use crate::error::Error;
@@ -1279,7 +1279,7 @@ pub(crate) fn build_index(
     for &OrphanImplItem { impl_id, parent, trait_parent, ref item, ref impl_generics } in
         &cache.orphan_impl_items
     {
-        if let Some((fqp, _)) = cache.paths.get(&parent) {
+        if let Some(path_info) = cache.paths.get(&parent) {
             let info = IndexItemInfo::new(
                 tcx,
                 cache,
@@ -1291,7 +1291,7 @@ pub(crate) fn build_index(
             search_index.push(IndexItem {
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
-                module_path: fqp[..fqp.len() - 1].to_vec(),
+                module_path: path_info.parts[..path_info.parts.len() - 1].to_vec(),
                 parent: Some(parent),
                 parent_idx: None,
                 trait_parent,
@@ -1418,8 +1418,15 @@ pub(crate) fn build_index(
                 cache
                     .paths
                     .get(&defid)
-                    .or_else(|| check_external.then(|| cache.external_paths.get(&defid)).flatten())
-                    .map(|&(ref fqp, ty)| {
+                    .map(|info| (&info.parts, info.ty))
+                    .or_else(|| {
+                        check_external
+                            .then(|| {
+                                cache.external_paths.get(&defid).map(|(parts, ty)| (parts, *ty))
+                            })
+                            .flatten()
+                    })
+                    .map(|(fqp, ty)| {
                         let pathid = serialized_index.names.len();
                         match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
                             Entry::Occupied(entry) => *entry.get(),
@@ -1661,8 +1668,10 @@ pub(crate) fn build_index(
                     used_in_function_signature,
                 )),
                 RenderTypeId::DefId(defid) => {
-                    if let Some(&(ref fqp, item_type)) =
-                        paths.get(&defid).or_else(|| external_paths.get(&defid))
+                    if let Some((fqp, item_type)) = paths
+                        .get(&defid)
+                        .map(|info| (&info.parts, info.ty))
+                        .or_else(|| external_paths.get(&defid).map(|(parts, ty)| (parts, *ty)))
                     {
                         if tcx.lang_items().fn_mut_trait() == Some(defid)
                             || tcx.lang_items().fn_once_trait() == Some(defid)
@@ -1974,8 +1983,11 @@ pub(crate) fn get_function_type_for_search(
     let impl_or_trait_generics = impl_generics.or_else(|| {
         if let Some(def_id) = parent
             && let Some(trait_) = cache.traits.get(&def_id)
-            && let Some((path, _)) =
-                cache.paths.get(&def_id).or_else(|| cache.external_paths.get(&def_id))
+            && let Some((path, _)) = cache
+                .paths
+                .get(&def_id)
+                .map(|info| (&info.parts, info.ty))
+                .or_else(|| cache.external_paths.get(&def_id).map(|(parts, ty)| (parts, *ty)))
         {
             let path = clean::Path {
                 res: rustc_hir::def::Res::Def(rustc_hir::def::DefKind::Trait, def_id),
@@ -1997,15 +2009,15 @@ pub(crate) fn get_function_type_for_search(
         }
     });
     let (mut inputs, mut output, param_names, where_clause) = match item.kind {
-        clean::ForeignFunctionItem(ref f, _)
-        | clean::FunctionItem(ref f)
-        | clean::MethodItem(ref f, _)
-        | clean::RequiredMethodItem(ref f, _) => {
-            get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
+        ItemKind::Function(ref f) | ItemKind::ForeignFunction(ref f, _) => {
+            get_fn_inputs_and_outputs(&f.generics, &f.decl, tcx, impl_or_trait_generics, cache)
         }
-        clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),
-        clean::StaticItem(ref s) => make_nullary_fn(&s.type_),
-        clean::StructFieldItem(ref t) if let Some(parent) = parent => {
+        ItemKind::AssocFunction(ref f) => {
+            get_fn_inputs_and_outputs(&f.generics, &f.decl, tcx, impl_or_trait_generics, cache)
+        }
+        ItemKind::Constant(ref c) => make_nullary_fn(&c.type_),
+        ItemKind::Static(ref s) => make_nullary_fn(&s.type_),
+        ItemKind::StructField(ref t) if let Some(parent) = parent => {
             let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
                 Default::default();
             let output = get_index_type(t, vec![], &mut rgen);
@@ -2071,6 +2083,7 @@ fn get_index_type_id(
                 None
             }
         }
+        clean::View(ref path, _) => Some(RenderTypeId::DefId(path.def_id())),
         // Not supported yet
         clean::Type::Pat(..)
         | clean::Type::FieldOf(..)
@@ -2105,7 +2118,7 @@ enum SimplifiedParam {
 #[instrument(level = "trace", skip(tcx, rgen, cache))]
 fn simplify_fn_type<'a, 'tcx>(
     self_: Option<&'a Type>,
-    generics: &Generics,
+    generics: &clean::Generics,
     arg: &'a Type,
     tcx: TyCtxt<'tcx>,
     recurse: usize,
@@ -2323,11 +2336,12 @@ fn simplify_fn_type<'a, 'tcx>(
                 && let Type::Path { path } = arg
                 && let def_id = path.def_id()
                 && let Some(trait_) = cache.traits.get(&def_id)
-                && trait_.items.iter().any(|at| at.is_required_associated_type())
+                && trait_.items.iter().any(|at| at.is_assoc_ty_without_body())
             {
                 for assoc_ty in &trait_.items {
-                    if let clean::ItemKind::RequiredAssocTypeItem(_generics, bounds) =
-                        &assoc_ty.kind
+                    if let clean::ItemKind::AssocType(clean::AssocType {
+                        bounds, type_: None, ..
+                    }) = &assoc_ty.kind
                         && let Some(name) = assoc_ty.name
                     {
                         let idx = -isize::try_from(rgen.len() + 1).unwrap();
@@ -2391,7 +2405,7 @@ fn simplify_fn_type<'a, 'tcx>(
 
 fn simplify_fn_constraint<'a>(
     self_: Option<&'a Type>,
-    generics: &Generics,
+    generics: &clean::Generics,
     constraint: &'a clean::AssocItemConstraint,
     tcx: TyCtxt<'_>,
     recurse: usize,
@@ -2486,25 +2500,22 @@ fn make_nullary_fn(
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
 fn get_fn_inputs_and_outputs(
-    func: &Function,
+    generics: &clean::Generics,
+    decl: &clean::FnDecl,
     tcx: TyCtxt<'_>,
     impl_or_trait_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
 ) -> (Vec<RenderType>, Vec<RenderType>, Vec<Option<Symbol>>, Vec<Vec<RenderType>>) {
-    let decl = &func.decl;
-
     let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
 
     let combined_generics;
     let (self_, generics) = if let Some((impl_self, impl_generics)) = impl_or_trait_generics {
-        match (impl_generics.is_empty(), func.generics.is_empty()) {
-            (true, _) => (Some(impl_self), &func.generics),
+        match (impl_generics.is_empty(), generics.is_empty()) {
+            (true, _) => (Some(impl_self), generics),
             (_, true) => (Some(impl_self), impl_generics),
             (false, false) => {
-                let params =
-                    func.generics.params.iter().chain(&impl_generics.params).cloned().collect();
-                let where_predicates = func
-                    .generics
+                let params = generics.params.iter().chain(&impl_generics.params).cloned().collect();
+                let where_predicates = generics
                     .where_predicates
                     .iter()
                     .chain(&impl_generics.where_predicates)
@@ -2515,7 +2526,7 @@ fn get_fn_inputs_and_outputs(
             }
         }
     } else {
-        (None, &func.generics)
+        (None, generics)
     };
 
     let param_types = decl

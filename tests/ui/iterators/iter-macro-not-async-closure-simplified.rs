@@ -7,9 +7,12 @@
 // explanation is moved to the `help` instead of the span label.
 //
 //@ edition: 2024
-//@ revisions: narrow wide
+//@ revisions: narrow wide next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[narrow] compile-flags: --diagnostic-width=20
 //@[wide] compile-flags: --diagnostic-width=300
+//@[next] compile-flags: -Znext-solver
+//@check-fail
 
 #![feature(yield_expr, iter_macro)]
 

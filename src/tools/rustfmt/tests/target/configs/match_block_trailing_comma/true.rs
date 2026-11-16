@@ -1,4 +1,4 @@
-// rustfmt-match_block_trailing_comma: true
+//@ rustfmt-match_block_trailing_comma: true
 // Match block trailing comma
 
 fn main() {

@@ -115,7 +115,7 @@ macro_rules! uint_impl {
                     // [0; n], [X; a], [0; n], [0; b] // q
                     // [0; n], [0; a   +   n], [Y; b] // x ^= q
                     // [0; n   +   n], [X; a], [0; b] // q >> n
-                    // [0; n], [0; n], [X; a], [Y; b] // x ^= q << n
+                    // [0; n], [0; n], [X; a], [Y; b] // x ^= q >> n
                     // ```
                     // Only zeros are shifted out, satisfying the assumption
                     // for the next group.
@@ -123,9 +123,18 @@ macro_rules! uint_impl {
                     // In effect, the upper run of data is swapped with the
                     // group of `n` zeros below it.
                     let q = x & masks[stage];
-                    x ^= q;
-                    x ^= q >> n;
 
+                    if cfg!(all(target_arch = "aarch64", target_feature = "neon")) && $U::BITS <= 64
+                    {
+                        // `q >> n` has no set bits in common with `x ^ q`, so addition
+                        // is equivalent to XOR here. For widths up to 64 bits this
+                        // allows AArch64 to use `usra`. For `u128`, this add may introduce
+                        // a slower cross-limb carry chain.
+                        x = (x & !masks[stage]).wrapping_add(q >> n);
+                    } else {
+                        x ^= q;
+                        x ^= q >> n;
+                    }
                     stage += 1;
                 }
                 x

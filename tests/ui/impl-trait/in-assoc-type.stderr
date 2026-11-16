@@ -11,6 +11,10 @@ LL |     fn foo(&self) -> <Self as Foo<()>>::Bar {}
    |
    = note: expected opaque type `<() as Foo<()>>::Bar`
                 found unit type `()`
+help: consider returning the local binding `self`
+   |
+LL |     fn foo(&self) -> <Self as Foo<()>>::Bar { self }
+   |                                               ++++
 
 error: aborting due to 1 previous error
 

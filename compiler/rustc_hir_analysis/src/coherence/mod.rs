@@ -5,9 +5,9 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, elaborate};
@@ -87,7 +87,7 @@ fn enforce_trait_manually_implementable(
             err.code(E0328);
         }
 
-        return Err(err.emit());
+        return Err(err.emit_err());
     }
 
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable = trait_def.specialization_kind
@@ -135,7 +135,7 @@ fn enforce_empty_impls_for_marker_traits(
         E0715,
         "impls for marker traits cannot contain items"
     )
-    .emit())
+    .emit_err())
 }
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`].
@@ -239,7 +239,7 @@ fn check_object_overlap<'tcx>(
                             tcx.def_path_str(trait_def_id)
                         ),
                     )
-                    .emit());
+                    .emit_err());
                 }
             }
         }

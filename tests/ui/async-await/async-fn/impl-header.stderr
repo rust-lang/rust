@@ -30,11 +30,11 @@ LL | impl async Fn<()> for F {}
    |
    = help: implement the missing item: `fn call(&self, _: ()) -> <Self as FnOnce<()>>::Output { todo!() }` (unstable, requires feature `fn_traits`)
 
-error[E0277]: expected an `FnMut()` closure, found `F`
+error[E0277]: expected `FnMut()` signature, found `F`
   --> $DIR/impl-header.rs:5:23
    |
 LL | impl async Fn<()> for F {}
-   |                       ^ expected an `FnMut()` closure, found `F`
+   |                       ^ expected `FnMut()` signature, found `F`
    |
 help: the trait `FnMut()` is not implemented for `F`
   --> $DIR/impl-header.rs:3:1

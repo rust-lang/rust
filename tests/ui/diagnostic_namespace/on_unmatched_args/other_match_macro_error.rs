@@ -2,7 +2,7 @@
 
 #[diagnostic::on_unmatched_args(
     message = "invalid route method",
-    note = "this macro expects a action, like `{This}!(get \"/hello\")`"
+    note = "this macro expects a action, like `{this}!(get \"/hello\")`"
 )]
 macro_rules! route {
     (get $path:literal) => {};

@@ -1,6 +1,8 @@
 error[E0080]: reading memory at ALLOC$ID[0x1..0x2], but memory is uninitialized at [0x1..0x2], and this operation requires initialized memory
   --> $DIR/ub-enum-overwrite.rs:11:14
    |
+LL | const _: u8 = {
+...
 LL |     unsafe { *p }
    |              ^^ evaluation of `_` failed here
    |

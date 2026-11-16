@@ -1,4 +1,4 @@
-// rustfmt-hard_tabs: true
+//@ rustfmt-hard_tabs: true
 
 impl<
 		Target: FromEvent<A> + FromEvent<B>,

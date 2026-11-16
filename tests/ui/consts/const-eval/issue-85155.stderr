@@ -1,6 +1,8 @@
 error[E0080]: attempt to divide `1_usize` by zero
   --> $DIR/auxiliary/post_monomorphization_error.rs:7:17
    |
+LL | impl<const IMM: i32, const MIN: i32, const MAX: i32> ValidateConstImm<IMM, MIN, MAX> {
+LL |     pub(crate) const VALID: () = {
 LL |         let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `post_monomorphization_error::ValidateConstImm::<2, 0, 1>::VALID` failed here
 

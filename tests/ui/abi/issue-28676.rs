@@ -1,10 +1,9 @@
 //@ run-pass
-//@ ignore-backends: gcc
 
 #![allow(dead_code)]
-#![allow(improper_ctypes)]
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct Quad {
     a: u64,
     b: u64,

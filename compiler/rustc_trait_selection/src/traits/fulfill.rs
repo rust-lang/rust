@@ -13,7 +13,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, Binder, Const, DelayedSet, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::TyOrConstInferVar;
@@ -33,7 +33,7 @@ use crate::infer::InferCtxt;
 use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{EvaluateConstErr, sizedness_fast_path};
+use crate::traits::{EvaluateConstErr, implicit_fast_path};
 
 pub(crate) type PendingPredicateObligations<'tcx> = ThinVec<PendingPredicateObligation<'tcx>>;
 
@@ -175,12 +175,14 @@ where
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
-            TypingMode::Coherence
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Default::default(),
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         };
 
         if stalled_coroutines.is_empty() {
@@ -396,7 +398,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
         let infcx = self.selcx.infcx;
 
         if !infcx.disable_trait_solver_fast_paths()
-            && sizedness_fast_path(infcx.tcx, obligation.predicate, obligation.param_env)
+            && implicit_fast_path(infcx.tcx, obligation.predicate, obligation.param_env)
         {
             return ProcessResult::Changed(thin_vec![]);
         }
@@ -871,8 +873,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         trait_obligation: PolyTraitObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        debug_assert!(!self.selcx.typing_mode().is_coherence(), "old solver coherence");
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() && !self.selcx.typing_mode().is_coherence() {
+        if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -924,9 +927,11 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         project_obligation: PolyProjectionObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        debug_assert!(!self.selcx.typing_mode().is_coherence(), "old solver coherence");
+
         let tcx = self.selcx.tcx();
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() && !self.selcx.typing_mode().is_coherence() {
+        if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -1028,7 +1033,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 /// Returns the set of inference variables contained in `args`.
 fn args_infer_vars<'tcx>(
     selcx: &SelectionContext<'_, 'tcx>,
-    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    args: ty::Binder<'tcx, GenericArgs<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar> {
     selcx
         .infcx

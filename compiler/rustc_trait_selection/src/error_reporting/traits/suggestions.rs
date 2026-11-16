@@ -5,13 +5,12 @@ use std::path::PathBuf;
 use std::{debug_assert_matches, iter};
 
 use itertools::{EitherOrBoth, Itertools};
-use rustc_abi::ExternAbi;
+use rustc_attr_ir::lang_items::{self, LangItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, MultiSpan, Style, SuggestionStyle, pluralize, struct_span_code_err,
 };
-use rustc_hir::attrs::lang_items::{self, LangItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -31,9 +30,10 @@ use rustc_middle::ty::print::{
     with_types_for_suggestion,
 };
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults,
-    Unnormalized, Upcast, suggest_arbitrary_trait_bound, suggest_constraining_type_param,
+    self, AdtKind, CallerBoundsIterator, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor,
+    TypeckResults, Unnormalized, Upcast, suggest_arbitrary_trait_bound,
+    suggest_constraining_type_param,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{
@@ -119,12 +119,12 @@ fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -
 /// Type parameter needs more bounds. The trivial case is `T` `where T: Bound`, but
 /// it can also be an `impl Trait` param that needs to be decomposed to a type
 /// param for cleaner code.
-pub fn suggest_restriction<'tcx, G>(
+pub fn suggest_restriction<'tcx>(
     tcx: TyCtxt<'tcx>,
     item_id: LocalDefId,
     hir_generics: &hir::Generics<'tcx>,
     msg: &str,
-    err: &mut Diag<'_, G>,
+    err: &mut Diag<'_>,
     fn_sig: Option<&hir::FnSig<'_>>,
     projection: Option<ty::ProjectionAliasTy<'_>>,
     trait_pred: ty::PolyTraitClause<'tcx>,
@@ -346,7 +346,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let (adjusted_ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                 field_ident,
                 base_def.did(),
-                typeck_results.hir_owner.def_id,
+                self.tcx.parent_module_from_def_id(typeck_results.hir_owner.def_id),
             );
 
             let Some((_, field_def)) =
@@ -362,7 +362,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .unwrap_or_else(|| self.tcx.def_span(field_def.did));
 
             if field_def.vis.is_accessible_from(def_scope, self.tcx) {
-                let accessible_field_ty = field_def.ty(self.tcx, args).skip_norm_wip();
+                let accessible_field_ty = field_def.ty(self.tcx, *args).skip_norm_wip();
                 if let Some((private_base_ty, private_field_ty, private_field_span)) =
                     private_candidate
                     && !self.can_eq(param_env, private_field_ty, accessible_field_ty)
@@ -454,7 +454,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             private_candidate.get_or_insert((
                 deref_base_ty,
-                field_def.ty(self.tcx, args).skip_norm_wip(),
+                field_def.ty(self.tcx, *args).skip_norm_wip(),
                 field_span,
             ));
         }
@@ -609,7 +609,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // this that we do in `suggest_restriction` and pull the
                     // `impl Trait` into a new generic if it shows up somewhere
                     // else in the predicate.
-                    if !trait_pred.skip_binder().trait_ref.args[1..]
+                    if !trait_pred.skip_binder().trait_ref.args.as_slice()[1..]
                         .iter()
                         .all(|g| g.is_suggestable(self.tcx, false))
                     {
@@ -868,8 +868,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     self.tcx,
                                     inner.trait_ref.def_id,
                                     self.tcx.mk_args(
-                                        &[&[l_ty.into(), r_ty.into()], &inner.trait_ref.args[2..]]
-                                            .concat(),
+                                        &[
+                                            &[l_ty.into(), r_ty.into()],
+                                            &inner.trait_ref.args.as_slice()[2..],
+                                        ]
+                                        .concat(),
                                     ),
                                 ),
                                 ..inner
@@ -1244,7 +1247,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         main_trait_predicate: ty::PolyTraitClause<'tcx>,
         span: Span,
     ) -> bool {
-        let &[candidate] = &self.find_similar_impl_candidates(leaf_trait_predicate)[..] else {
+        let &[candidate] = &self.find_similar_impl_candidates(
+            leaf_trait_predicate.def_id(),
+            leaf_trait_predicate.self_ty().skip_binder(),
+        )[..] else {
             return false;
         };
         let candidate = candidate.trait_ref;
@@ -1570,7 +1576,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     } else {
                         DefIdOrName::Name("type parameter")
                     };
-                    param_env.caller_bounds().find_map(|clause| {
+
+                    param_env.caller_bounds().non_trait_clauses().iter().find_map(|clause| {
                         if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder()
                             && self
                                 .tcx
@@ -2271,9 +2278,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Skipping binder here, remapping below
         let mut suggested_ty = trait_pred.self_ty().skip_binder();
         if let Some(mut hir_ty) = expr_finder.ty_result {
-            while let hir::TyKind::Ref(_, mut_ty) = &hir_ty.kind {
+            while let hir::TyKind::Ref(_, ref_ty, _) = &hir_ty.kind {
                 count += 1;
-                let span = hir_ty.span.until(mut_ty.ty.span);
+                let span = hir_ty.span.until(ref_ty.span);
                 suggestions.push((span, String::new()));
 
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
@@ -2281,7 +2288,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
                 suggested_ty = *inner_ty;
 
-                hir_ty = mut_ty.ty;
+                hir_ty = ref_ty;
 
                 if maybe_suggest(suggested_ty, count, suggestions.clone()) {
                     return true;
@@ -2310,9 +2317,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn suggest_remove_ref_from_param(&self, param: &hir::Param<'_>, err: &mut Diag<'_>) -> bool {
         if let Some(decl) = self.tcx.parent_hir_node(param.hir_id).fn_decl()
             && let Some(input_ty) = decl.inputs.iter().find(|t| param.ty_span.contains(t.span))
-            && let hir::TyKind::Ref(_, mut_ty) = input_ty.kind
+            && let hir::TyKind::Ref(_, ty, _) = input_ty.kind
         {
-            let ref_span = input_ty.span.until(mut_ty.ty.span);
+            let ref_span = input_ty.span.until(ty.span);
             match self.tcx.sess.source_map().span_to_snippet(ref_span) {
                 Ok(snippet) if snippet.starts_with("&") => {
                     err.span_suggestion_verbose(
@@ -2758,10 +2765,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         false
     }
 
-    pub(super) fn suggest_borrow_for_unsized_closure_return<G>(
+    pub(super) fn suggest_borrow_for_unsized_closure_return(
         &self,
         body_def_id: LocalDefId,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         predicate: ty::Predicate<'tcx>,
     ) {
         let Some(pred) = predicate.as_trait_clause() else {
@@ -3303,9 +3310,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///
     /// Returns `true` if an async-await specific note was added to the diagnostic.
     #[instrument(level = "debug", skip_all, fields(?obligation.predicate, ?obligation.cause.span))]
-    pub fn maybe_note_obligation_cause_for_async_await<G>(
+    pub fn maybe_note_obligation_cause_for_async_await(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
         // Attempt to detect an async-await error by looking at the obligation causes, looking
@@ -3535,9 +3542,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// Unconditionally adds the diagnostic note described in
     /// `maybe_note_obligation_cause_for_async_await`'s documentation comment.
     #[instrument(level = "debug", skip_all)]
-    fn note_obligation_cause_for_async_await<G>(
+    fn note_obligation_cause_for_async_await(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         interior_or_upvar_span: CoroutineInteriorOrUpvar,
         is_async: bool,
         outer_coroutine: Option<DefId>,
@@ -3769,9 +3776,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
     }
 
-    fn note_closure_capture<G>(
+    fn note_closure_capture(
         &self,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         closure_def_id: DefId,
         upvar_args: ty::UpvarArgs<'tcx>,
         capture_ty: Option<Ty<'tcx>>,
@@ -3794,9 +3801,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if typeck_results.hir_owner.to_def_id() != typeck_root {
             return false;
         }
+
+        // Error reporting can run before closure capture analysis has inferred the
+        // tuple of upvar types. avoid accessing upvar types until they are available.
+        let upvar_tys = match upvar_args.tupled_upvars_ty().kind() {
+            ty::Tuple(args) => args,
+            ty::Error(_) => ty::List::empty(),
+            ty::Infer(_) => return false,
+            ty => unreachable!("unexpected upvar types tuple: {ty:?}"),
+        };
+
         let captures: Vec<_> =
             typeck_results.closure_min_captures_flattened(closure_def_id).collect();
-        let upvar_tys = upvar_args.upvar_tys();
         if captures.len() != upvar_tys.len() {
             return false;
         }
@@ -3822,10 +3838,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         true
     }
 
-    pub(super) fn note_obligation_cause_code<G, T>(
+    pub(crate) fn note_obligation_cause_code<T>(
         &self,
         body_def_id: LocalDefId,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         predicate: T,
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
@@ -3851,10 +3867,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
     }
 
-    fn note_obligation_cause_code_inner<G, T>(
+    fn note_obligation_cause_code_inner<T>(
         &self,
         body_def_id: LocalDefId,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         predicate: T,
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
@@ -3866,7 +3882,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     {
         let tcx = self.tcx;
         let predicate = predicate.upcast(tcx);
-        let suggest_remove_deref = |err: &mut Diag<'_, G>, expr: &hir::Expr<'_>| {
+        let suggest_remove_deref = |err: &mut Diag<'_>, expr: &hir::Expr<'_>| {
             if let Some(pred) = predicate.as_trait_clause()
                 && tcx.is_lang_item(pred.def_id(), LangItem::Sized)
                 && let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
@@ -3880,6 +3896,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
             }
         };
+
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -3893,7 +3910,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::ReturnNoExpression
             | ObligationCauseCode::Misc
             | ObligationCauseCode::WellFormed(..)
-            | ObligationCauseCode::MatchImpl(..)
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(..)
             | ObligationCauseCode::AwaitableExpr(_)
@@ -3905,6 +3921,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
             | ObligationCauseCode::AlwaysApplicableImpl
             | ObligationCauseCode::ConstParam(_)
+            | ObligationCauseCode::ConstItemTy(_)
+            | ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
             ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, .. } => {
@@ -3927,7 +3945,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
-            ObligationCauseCode::ArrayLen(array_ty) => {
+            ObligationCauseCode::ArrayLen(array_ty, _) => {
                 err.note(format!("the length of array `{array_ty}` must be type `usize`"));
             }
             ObligationCauseCode::TupleElem => {
@@ -3962,21 +3980,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
                 let sm = tcx.sess.source_map();
+                if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy =
+                    tcx.def_kind(item_def_id)
+                {
+                    let span = tcx.def_span(tcx.parent(item_def_id)).shrink_to_lo();
+                    multispan.push_span_context(span);
+                }
                 if let Some(ident) = tcx.opt_item_ident(item_def_id) {
-                    let same_line =
-                        match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
-                            (Ok(l), Ok(r)) => l.line == r.line,
-                            _ => true,
-                        };
-                    if ident.span.is_visible(sm) && !ident.span.overlaps(span) && !same_line {
-                        multispan.push_span_label(
-                            ident.span,
-                            format!(
-                                "required by a bound in this {}",
-                                tcx.def_kind(item_def_id).descr(item_def_id)
-                            ),
-                        );
-                    }
+                    multispan.push_span_context(ident.span);
                 }
                 let mut a = "a";
                 let mut this = "this bound";
@@ -4026,6 +4037,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     && !bounds.iter()
                                         .filter_map(|bound| bound.trait_ref())
                                         .any(|tr| tr.trait_def_id().is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized)))
+                                    // Only suggest relaxing the implicit `Sized` restriction if the
+                                    // failing obligation is that restriction. Relaxing it cannot
+                                    // satisfy an explicit where clause of the item, e.g.
+                                    // `type Assoc where Self: Sized;`.
+                                    && !generics.predicates.iter().any(|pred| {
+                                        pred.kind.in_where_clause() && pred.span.contains(span)
+                                    })
                                 {
                                     let (span, separator) = if let [.., last] = bounds {
                                         (last.span().shrink_to_hi(), " +")
@@ -4320,7 +4338,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.help("unsized fn params are gated as an unstable feature");
                 }
             }
-            ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType => {
+            ObligationCauseCode::SizedReturnType | ObligationCauseCode::SizedCallReturnType(_) => {
                 err.note("the return type of a function must have a statically known size");
             }
             ObligationCauseCode::SizedYieldType => {
@@ -4415,6 +4433,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::SharedStatic => {
                 err.note("shared static variables must have a type that implements `Sync`");
             }
+            ObligationCauseCode::MatchImpl(ref cause, _) => {
+                self.note_obligation_cause_code_inner(
+                    body_def_id,
+                    err,
+                    predicate,
+                    param_env,
+                    &cause.code(),
+                    obligated_types,
+                    seen_requirements,
+                    closure_capture_ty,
+                );
+            }
             ObligationCauseCode::BuiltinDerived(ref data) => {
                 let parent_trait_ref = self.deeply_resolve_ignoring_regions(data.parent_trait_pred);
                 let ty = parent_trait_ref.skip_binder().self_ty();
@@ -4449,11 +4479,32 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         format!("required because it appears within the type `{ty_str}`")
                     };
                     match *ty.kind() {
-                        ty::Adt(def, _) => {
+                        ty::Adt(def, args) => {
                             let msg = msg();
                             match tcx.opt_item_ident(def.did()) {
                                 Some(ident) => {
-                                    err.span_note(ident.span, msg);
+                                    let mut spans = MultiSpan::new();
+                                    if def.did().is_local()
+                                        && let Some(pred) = predicate.as_trait_clause()
+                                    {
+                                        let field_ty = self.deeply_resolve_ignoring_regions(
+                                            pred.skip_binder().self_ty(),
+                                        );
+                                        for field in def.all_fields() {
+                                            if field.ty(tcx, args).skip_norm_wip() == field_ty {
+                                                let sp = tcx.def_span(field.did);
+                                                spans.push_primary_span(sp);
+                                                spans.push_span_label(sp, "required by this field");
+                                            }
+                                        }
+                                    }
+                                    if spans.has_primary_spans() {
+                                        spans.push_span_context(ident.span);
+                                    } else {
+                                        spans.push_primary_span(ident.span);
+                                        spans.push_span_label(ident.span, "");
+                                    }
+                                    err.span_note(spans, msg);
                                 }
                                 None => {
                                     err.note(msg);
@@ -4693,7 +4744,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                     }
                     _ => {
-                        err.note(msg);
+                        // If the `parent_trait_pred` is about `CoerceUnsized`, it's generated
+                        // internally by the next solver and should not be reported as a note
+                        // because the user won't know what we're talking about.
+                        if !tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
+                            err.note(msg);
+                        }
                     }
                 };
 
@@ -4936,8 +4992,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .as_ref()
                         .and_then(|typeck| typeck.node_type_opt(expr.hir_id))
                     && let Some(pred) = predicate.as_clause()
-                    && let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
-                    && self.can_eq(param_env, pred.self_ty(), expr_ty)
+                    && let Some(pred) = pred.as_trait_clause()
+                    && self
+                        .infcx
+                        .enter_forall(pred, |pred| self.can_eq(param_env, pred.self_ty(), expr_ty))
                 {
                     (expr_ty, expr)
                 } else {
@@ -5104,7 +5162,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         is_derivable_trait &&
             // Ensure all fields impl the trait.
             adt.all_fields().all(|field| {
-                let field_ty = ty::GenericArg::from(field.ty(self.tcx, args).skip_norm_wip());
+                let field_ty = ty::GenericArg::from(field.ty(self.tcx, *args).skip_norm_wip());
                 let trait_args = match diagnostic_name {
                     sym::PartialEq | sym::PartialOrd => {
                         Some(field_ty)
@@ -5211,10 +5269,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn note_function_argument_obligation<G>(
+    fn note_function_argument_obligation(
         &self,
         body_def_id: LocalDefId,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         arg_hir_id: HirId,
         parent_code: &ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -5450,11 +5508,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_option_method_if_applicable<G>(
+    fn suggest_option_method_if_applicable(
         &self,
         failed_pred: ty::Predicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
         expr: &hir::Expr<'_>,
     ) {
         let tcx = self.tcx;
@@ -5480,9 +5538,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
             // FIXME(splat): this might need to change if the Fn* traits start using/supporting splat
-            && fn_sig.abi() == ExternAbi::Rust
-            && !fn_sig.c_variadic()
-            && fn_sig.safety() == hir::Safety::Safe
+            && fn_sig.is_fn_trait_compatible()
 
             // Extract first param of fn sig with peeled refs, e.g. `fn(&T)` -> `T`
             && let Some(&ty::Ref(_, target_ty, needs_mut)) = fn_sig.inputs().first().map(|t| t.kind())
@@ -5525,7 +5581,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn look_for_iterator_item_mistakes<G>(
+    fn look_for_iterator_item_mistakes(
         &self,
         assocs_in_this_method: &[Option<(Span, (DefId, Ty<'tcx>))>],
         typeck_results: &TypeckResults<'tcx>,
@@ -5534,7 +5590,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         path_segment: &hir::PathSegment<'_>,
         args: &[hir::Expr<'_>],
         prev_ty: Ty<'_>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
     ) {
         let tcx = self.tcx;
         // Special case for iterator chains, we look at potential failures of `Iterator::Item`
@@ -5674,13 +5730,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn point_at_chain<G>(
+    fn point_at_chain(
         &self,
         expr: &hir::Expr<'_>,
         typeck_results: &TypeckResults<'tcx>,
         type_diffs: Vec<TypeError<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
     ) {
         let mut primary_spans = vec![];
         let mut span_labels = vec![];
@@ -5923,13 +5979,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///    |     | `Iterator::Item` is `&mut Vec<u8>` here
     ///    |     this expression has type `Vec<Vec<u8>>`
     /// ```
-    fn point_at_chain_in_return_position<G>(
+    pub fn point_at_chain_in_return_position(
         &self,
         body_def_id: LocalDefId,
         expr: &hir::Expr<'_>,
         typeck_results: &TypeckResults<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        err: &mut Diag<'_, G>,
+        err: &mut Diag<'_>,
     ) {
         let tcx = self.tcx;
         if !matches!(tcx.def_kind(body_def_id), DefKind::Fn | DefKind::AssocFn) {
@@ -6299,8 +6355,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(fn_def_id) = fn_def_id.as_local() else {
             // If it's not local, we can at least mention that the method is async, if it is.
             if self.tcx.asyncness(fn_def_id).is_async() {
+                let mut span: MultiSpan = self.tcx.def_span(fn_def_id).into();
+                span.push_span_context(self.tcx.def_span(self.tcx.parent(fn_def_id)));
                 err.span_note(
-                    self.tcx.def_span(fn_def_id),
+                    span,
                     format!(
                         "`{}::{}` is an `async fn` in trait, which does not \
                     automatically imply that its future is `{auto_trait}`",
@@ -6740,7 +6798,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     tcx,
                     ObligationCause::dummy(),
                     param_env,
-                    ty::TraitRef::new(tcx, trait_def_id, trait_args),
+                    parent_trait_pred.rebind(ty::TraitRef::new(tcx, trait_def_id, trait_args)),
                 );
                 self.predicate_may_hold(&obligation)
             })
@@ -6806,11 +6864,11 @@ fn hint_missing_borrow<'tcx>(
                 let mut span = arg.span.shrink_to_lo();
                 let mut left = found_refs.len() - expected_refs.len();
                 let mut ty = arg;
-                while let hir::TyKind::Ref(_, mut_ty) = &ty.kind
+                while let hir::TyKind::Ref(_, inner_ty, _) = &ty.kind
                     && left > 0
                 {
-                    span = span.with_hi(mut_ty.ty.span.lo());
-                    ty = mut_ty.ty;
+                    span = span.with_hi(inner_ty.span.lo());
+                    ty = inner_ty;
                     left -= 1;
                 }
                 if left == 0 {
@@ -7111,9 +7169,9 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
 
 /// On `impl` evaluation cycles, look for `Self::AssocTy` restrictions in `where` clauses, explain
 /// they are not allowed and if possible suggest alternatives.
-fn point_at_assoc_type_restriction<G>(
+fn point_at_assoc_type_restriction(
     tcx: TyCtxt<'_>,
-    err: &mut Diag<'_, G>,
+    err: &mut Diag<'_>,
     self_ty_str: &str,
     trait_name: &str,
     predicate: ty::Predicate<'_>,
@@ -7280,7 +7338,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
         // and suggest `T: ?Sized` regardless of their obligations. This is fine because the errors
         // in that case should make what happened clear enough.
         match ty.kind {
-            hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
+            hir::TyKind::Ptr(..) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
             hir::TyKind::Path(hir::QPath::Resolved(None, path))
                 if let [segment] = path.segments
                     && segment.ident.name == self.param =>

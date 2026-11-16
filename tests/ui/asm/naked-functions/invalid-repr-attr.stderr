@@ -3,6 +3,8 @@ error: the `repr(C)` attribute cannot be used on functions
    |
 LL | #[repr(C)]
    |   ^^^^^^^
+...
+LL | extern "C" fn example1() {
    |
    = help: the `repr(C)` attribute can only be applied to data types
 
@@ -11,6 +13,8 @@ error: the `repr(transparent)` attribute cannot be used on functions
    |
 LL | #[repr(transparent)]
    |   ^^^^^^^^^^^^^^^^^
+...
+LL | extern "C" fn example2() {
    |
    = help: the `repr(transparent)` attribute can only be applied to data types
 
@@ -19,6 +23,8 @@ error: the `repr(C)` attribute cannot be used on functions
    |
 LL | #[repr(C)]
    |   ^^^^^^^
+...
+LL | extern "C" fn example3() {
    |
    = help: the `repr(C)` attribute can only be applied to data types
 
@@ -27,6 +33,8 @@ error: the `repr(C)` attribute cannot be used on functions
    |
 LL | #[repr(C, packed)]
    |   ^^^^^^^^^^^^^^^
+...
+LL | extern "C" fn example4() {
    |
    = help: the `repr(C)` attribute can only be applied to data types
 
@@ -35,6 +43,8 @@ error: the `repr(packed)` attribute cannot be used on functions
    |
 LL | #[repr(C, packed)]
    |   ^^^^^^^^^^^^^^^
+...
+LL | extern "C" fn example4() {
    |
    = help: the `repr(packed)` attribute can only be applied to data types
 
@@ -43,6 +53,8 @@ error: the `repr(u8)` attribute cannot be used on functions
    |
 LL | #[repr(u8)]
    |   ^^^^^^^^
+...
+LL | extern "C" fn example5() {
    |
    = help: the `repr(u8)` attribute can only be applied to enums
 

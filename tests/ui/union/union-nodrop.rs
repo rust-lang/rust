@@ -64,3 +64,5 @@ fn main() {
     assert!(needs_drop::<ActuallyDrop<u8>>());
     assert!(needs_drop::<ActuallyDrop<Box<u8>>>());
 }
+
+//@ reference: items.union.drop

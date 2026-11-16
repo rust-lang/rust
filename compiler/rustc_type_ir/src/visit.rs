@@ -52,13 +52,14 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, PredicateProxy, Region, TypeFlags};
+use crate::{self as ty, Const, Interner, PredicateProxy, Region, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
 ///
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "TypeVisitable")]
 pub trait TypeVisitable<I: Interner>: fmt::Debug {
     /// The entry point for visiting. To visit a value `t` with a visitor `v`
     /// call: `t.visit_with(v)`.
@@ -112,7 +113,7 @@ pub trait TypeVisitor<I: Interner>: Sized {
         }
     }
 
-    fn visit_const(&mut self, c: I::Const) -> Self::Result {
+    fn visit_const(&mut self, c: Const<I>) -> Self::Result {
         c.super_visit_with(self)
     }
 
@@ -475,7 +476,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    fn visit_const(&mut self, c: I::Const) -> Self::Result {
+    fn visit_const(&mut self, c: Const<I>) -> Self::Result {
         // Note: no `super_visit_with` call.
         if c.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
@@ -583,7 +584,7 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
         }
     }
 
-    fn visit_const(&mut self, ct: I::Const) -> Self::Result {
+    fn visit_const(&mut self, ct: Const<I>) -> Self::Result {
         // If the outer-exclusive-binder is *strictly greater* than
         // `outer_index`, that means that `ct` contains some content
         // bound at `outer_index` or above (because

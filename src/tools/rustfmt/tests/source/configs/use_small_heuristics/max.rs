@@ -1,4 +1,4 @@
-// rustfmt-use_small_heuristics: Max
+//@ rustfmt-use_small_heuristics: Max
 
 enum Lorem {
     Ipsum,

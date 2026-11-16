@@ -14,16 +14,16 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
-    TypingMode, Unnormalized, Upcast, elaborate,
+    self as ty, AliasTy, CallerBoundsIterator, Const, Interner, MayBeErased, Region, TypeFlags,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized, Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
 use super::trait_goals::TraitGoalProvenVia;
 use super::{has_only_region_constraints, inspect};
 use crate::delegate::SolverDelegate;
-use crate::solve::assembly::structural_traits::AmbiguousOrRerunNonErased;
+use crate::solve::assembly::structural_traits::NoUniqueSolutionOrRerunNonErased;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
@@ -92,7 +92,8 @@ where
         // and `assumption`'s trait refs directly inside this function in
         // order to prevent unsoundness (see below).
 
-        Self::fast_reject_assumption(ecx, goal, assumption)?;
+        let goal_lang_item = ecx.cx().as_trait_lang_item(goal.predicate.trait_def_id(ecx.cx()));
+        Self::fast_reject_assumption(ecx, goal, goal_lang_item, assumption)?;
 
         ecx.probe_trait_candidate(source).enter(|ecx| {
             let cx = ecx.cx();
@@ -156,10 +157,13 @@ where
                     ecx.add_goals(GoalSource::ImplWhereBound, requirements)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 }
-                Err(AmbiguousOrRerunNonErased::Ambiguous) => {
+                Err(NoUniqueSolutionOrRerunNonErased::Ambiguous) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
-                Err(AmbiguousOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun.into()),
+                Err(NoUniqueSolutionOrRerunNonErased::NoSolution(no_solution)) => {
+                    Err(no_solution.into())
+                }
+                Err(NoUniqueSolutionOrRerunNonErased::RerunNonErased(rerun)) => Err(rerun.into()),
             }
         })
     }
@@ -178,11 +182,6 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<Result<Candidate<I>, CandidateHeadUsages>, RerunNonErased> {
-        match Self::fast_reject_assumption(ecx, goal, assumption) {
-            Ok(()) => {}
-            Err(NoSolution) => return Ok(Err(CandidateHeadUsages::default())),
-        }
-
         // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
         // check whether the candidate is global while considering normalization.
         //
@@ -208,7 +207,6 @@ where
                         ecx.evaluate_added_goals_and_make_canonical_response(certainty)
                     },
                 )
-                .map_err(Into::into)
             });
 
         Ok(match result.map_err_to_rerun()? {
@@ -228,7 +226,8 @@ where
         assumption: I::Clause,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
-        Self::fast_reject_assumption(ecx, goal, assumption)?;
+        let goal_lang_item = ecx.cx().as_trait_lang_item(goal.predicate.trait_def_id(ecx.cx()));
+        Self::fast_reject_assumption(ecx, goal, goal_lang_item, assumption)?;
 
         ecx.probe_trait_candidate(source)
             .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
@@ -239,6 +238,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution>;
 
@@ -310,6 +310,12 @@ where
 
     /// A type is a `FnPtr` if it is of `FnPtr` type.
     fn consider_builtin_fn_ptr_trait_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+
+    /// A type is a `FnStatic` if it is of `FnDef` type.
+    fn consider_builtin_fn_static_trait_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
@@ -532,7 +538,7 @@ where
                 let assemble_impls = match self.typing_mode() {
                     TypingMode::Coherence => true,
                     TypingMode::Typeck { .. }
-                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostTypeckThroughBorrowck { .. }
                     | TypingMode::Reflection
                     | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
@@ -680,6 +686,13 @@ where
                 Some(SolverTraitLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                 }
+                Some(SolverTraitLangItem::FnAddrTrait) => {
+                    if matches!(goal.predicate.self_ty().kind(), ty::FnDef(..)) {
+                        G::consider_builtin_fn_static_trait_candidate(self, goal)
+                    } else {
+                        G::consider_builtin_fn_ptr_trait_candidate(self, goal)
+                    }
+                }
                 Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
                 }
@@ -740,12 +753,19 @@ where
         candidates: &mut Vec<Candidate<I>>,
         failed_candidate_info: &mut FailedCandidateInfo,
     ) -> Result<(), RerunNonErased> {
-        for assumption in goal.param_env.caller_bounds() {
-            match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
-                Ok(candidate) => candidates.push(candidate),
-                Err(head_usages) => {
-                    failed_candidate_info.param_env_head_usages.merge_usages(head_usages)
+        let goal_lang_item = self.cx().as_trait_lang_item(goal.predicate.trait_def_id(self.cx()));
+
+        for assumption in goal.param_env.caller_bounds().all_clauses(self.cx()).iter() {
+            match G::fast_reject_assumption(self, goal, goal_lang_item, assumption) {
+                Ok(()) => {
+                    match G::probe_and_consider_param_env_candidate(self, goal, assumption)? {
+                        Ok(candidate) => candidates.push(candidate),
+                        Err(head_usages) => {
+                            failed_candidate_info.param_env_head_usages.merge_usages(head_usages)
+                        }
+                    }
                 }
+                Err(NoSolution) => {}
             }
         }
 
@@ -860,6 +880,9 @@ where
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return Ok(());
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         match consider_self_bounds {
@@ -969,6 +992,9 @@ where
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => panic!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         // Do not consider built-in object impls for dyn-incompatible types.
@@ -1091,8 +1117,12 @@ where
                 // we still use modulo regions here. This is fine as specialization currently
                 // assumes that specializing impls have to be always applicable, meaning that
                 // the only allowed region constraints may be constraints also present on the default impl.
+                //
+                // If both impls have the same response, dropping victim doesn't change the
+                // result. We need to do so here as we don't merge distinct impl candidates.
                 if matches!(allow_inference_constraints, AllowInferenceConstraints::Yes)
                     || has_only_region_constraints(c.result)
+                    || c.result == candidates[i].result
                 {
                     if self.cx().impl_specializes(other_def_id, victim_def_id) {
                         candidates.remove(i);
@@ -1128,7 +1158,7 @@ where
         let opaque_types = match self.typing_mode() {
             TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Reflection
@@ -1331,7 +1361,7 @@ where
                     candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
                 }
 
-                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+                if let Some(response) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates).map_err(Into::into)
@@ -1353,7 +1383,7 @@ where
                 // means we can just ignore inference constraints and don't have to special-case
                 // constraining the normalized-to `term`.
                 self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
-                if let Some((response, _)) = self.try_merge_candidates(&candidates) {
+                if let Some(response) = self.try_merge_candidates(&candidates) {
                     Ok(response)
                 } else {
                     self.flounder(&candidates).map_err(Into::into)
@@ -1466,7 +1496,7 @@ where
         }
     }
 
-    fn visit_const(&mut self, ct: I::Const) -> Self::Result {
+    fn visit_const(&mut self, ct: Const<I>) -> Self::Result {
         let ct = self.ecx.replace_bound_vars(ct, &mut self.universes);
         let Ok(ct) = self.ecx.structurally_normalize_const(self.param_env, ct) else {
             return ControlFlow::Break(Err(NoSolution));

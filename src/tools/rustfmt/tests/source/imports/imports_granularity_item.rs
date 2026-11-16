@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: Item
+//@ rustfmt-imports_granularity: Item
 
 use a::{b, c, d};
 use a::{f::g, h::{i, j}};

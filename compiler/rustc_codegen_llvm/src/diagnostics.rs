@@ -20,10 +20,10 @@ pub(crate) struct SanitizerMemtagRequiresMte;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
-impl<G> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for ParseTargetMachineConfig<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         // Reuse the formatted primary message from `LlvmError` without emitting it.
-        let diag: Diag<'_, ()> = self.0.into_diag(dcx, level);
+        let diag = self.0.into_diag(dcx, level);
         let (message, _) = diag.messages.first().expect("`LlvmError` with no message");
         let message = format_diag_message(message, &diag.args).into_owned();
         diag.cancel();
@@ -73,7 +73,7 @@ pub(crate) struct RustOffloadComponentMissing {
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>"
+    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.ptx or <crate>.elf>"
 )]
 pub(crate) struct OffloadWithoutEnable;
 
@@ -82,28 +82,22 @@ pub(crate) struct OffloadWithoutEnable;
 pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
-#[diag("using the `-Z offload=Host=/absolute/path/to/device.bin` flag requires an absolute path")]
+#[diag(
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag requires an absolute path"
+)]
 pub(crate) struct OffloadWithoutAbsPath;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/device.bin` flag must point to a `device.bin` file"
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag must point to a .ptx or .elf file produced by the device compilation"
 )]
 pub(crate) struct OffloadWrongFileName;
 
 #[derive(Diagnostic)]
 #[diag(
-    "the given path/file to `device.bin` does not exist. Did you forget to run the device compilation first?"
+    "the given path/file to `<crate>.ptx` or `<crate>.elf` does not exist. Did you forget to run the device compilation first?"
 )]
 pub(crate) struct OffloadNonexistingPath;
-
-#[derive(Diagnostic)]
-#[diag("call to BundleImages failed, `device.bin` was not created")]
-pub(crate) struct OffloadBundleImagesFailed;
-
-#[derive(Diagnostic)]
-#[diag("call to EmbedBufferInModule failed, `host.o` was not created")]
-pub(crate) struct OffloadEmbedFailed;
 
 #[derive(Diagnostic)]
 #[diag("call to WrapImages failed, device image was not wrapped into the host module")]
@@ -114,6 +108,33 @@ pub(crate) struct OffloadWrapImagesFailed;
 pub(crate) struct LtoBitcodeFromRlib {
     pub err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("failed to load the TPDE backend: {$err}")]
+pub(crate) struct TpdeComponentUnavailable {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("TPDE backend not found in the sysroot: {$err}")]
+pub(crate) struct TpdeComponentMissing {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("using -Zllvm-tpde with optimization levels higher than 1 is not recommended")]
+#[note(
+    "compilation with TPDE at higher opt levels is more likely to fail, and to have worse runtime performance than LLVM even if it succeeds"
+)]
+pub(crate) struct TpdeHighOptLevel;
+
+#[derive(Diagnostic)]
+#[diag("using -Zllvm-tpde with LTO enabled is not supported")]
+pub(crate) struct TpdeLtoUsed;
+
+#[derive(Diagnostic)]
+#[diag("using -Zllvm-tpde with split debuginfo is not supported")]
+pub(crate) struct TpdeSplitDebugInfoUsed;
 
 #[derive(Diagnostic)]
 pub(crate) enum LlvmError<'a> {
@@ -141,8 +162,8 @@ pub(crate) enum LlvmError<'a> {
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
 
-impl<G> Diagnostic<'_, G> for WithLlvmError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for WithLlvmError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
             WriteOutput { .. } => msg!("could not write output to {$path}: {$llvm_err}"),

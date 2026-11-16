@@ -1,12 +1,4 @@
-#![feature(
-    no_core,
-    lang_items,
-    extern_types,
-    thread_local,
-    repr_simd,
-    pattern_types,
-    rustc_private
-)]
+#![feature(no_core, lang_items, extern_types, thread_local, repr_simd, rustc_private)]
 #![cfg_attr(not(any(jit, target_vendor = "apple", windows)), feature(linkage))]
 #![no_core]
 #![allow(dead_code, non_camel_case_types, internal_features)]
@@ -602,11 +594,11 @@ pub enum E2<X> {
 #[allow(unreachable_patterns)]
 fn check_niche_behavior() {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     if let E2::V1 { .. } = E2::V3::<Infallible> {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 

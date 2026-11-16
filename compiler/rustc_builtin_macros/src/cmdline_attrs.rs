@@ -8,7 +8,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::FileName;
 
 pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
-    for raw_attr in attrs {
+    let injected = attrs.iter().filter_map(|raw_attr| {
         let source = format!("#![{raw_attr}]");
         let parse = || -> Result<ast::Attribute, Vec<Diag<'_>>> {
             let tokens = source_str_to_stream(
@@ -22,16 +22,15 @@ pub fn inject(krate: &mut ast::Crate, psess: &ParseSess, attrs: &[String]) {
             })
             .map_err(|e| vec![e])
         };
-        let meta = match parse() {
-            Ok(meta) => meta,
+        match parse() {
+            Ok(meta) => Some(meta),
             Err(errs) => {
                 for err in errs {
                     err.emit();
                 }
-                continue;
+                None
             }
-        };
-
-        krate.attrs.push(meta);
-    }
+        }
+    });
+    krate.attrs.splice(0..0, injected);
 }

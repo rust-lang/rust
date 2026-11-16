@@ -17,7 +17,7 @@ use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_reg
 
 use crate::MirBorrowckCtxt;
 use crate::borrow_set::BorrowData;
-use crate::consumers::RegionInferenceContext;
+use crate::region_infer::RegionInferenceContext;
 use crate::region_infer::opaque_types::DeferredOpaqueTypeError;
 use crate::type_check::Locations;
 
@@ -61,7 +61,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     {
                         last_unexpected_hidden_region =
                             Some((hidden_type.span, named_ty, named_key));
-                        diag.emit()
+                        diag.emit_err()
                     } else {
                         diag.delay_as_bug()
                     }

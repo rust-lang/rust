@@ -9,6 +9,7 @@ use crate::diagnostics::{
     UndroppedManuallyDropsInPlaceSuggestion, UndroppedManuallyDropsSuggestion,
     UseLetUnderscoreIgnoreSuggestion,
 };
+use crate::utils::std_or_core;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -252,15 +253,18 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                 }
                 sym::mem_drop
                     if let ty::Adt(adt, _) = arg_ty.kind()
-                        && adt.is_manually_drop() =>
+                        && adt.is_manually_drop()
+                        && let Some(krate) = std_or_core(cx) =>
                 {
                     cx.emit_span_lint(
                         UNDROPPED_MANUALLY_DROPS,
                         expr.span,
                         UndroppedManuallyDropsDiag {
+                            krate,
                             arg_ty,
                             label: arg.span,
                             suggestion: UndroppedManuallyDropsSuggestion {
+                                krate,
                                 start_span: arg.span.shrink_to_lo(),
                                 end_span: arg.span.shrink_to_hi(),
                             },
@@ -270,15 +274,18 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                 sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
                     if let &ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
                         && let ty::Adt(adt, _) = inner_ty.kind()
-                        && adt.is_manually_drop() =>
+                        && adt.is_manually_drop()
+                        && let Some(krate) = std_or_core(cx) =>
                 {
                     cx.emit_span_lint(
                         UNDROPPED_MANUALLY_DROPS,
                         expr.span,
                         UndroppedManuallyDropsInPlaceDiag {
+                            krate,
                             arg_ty,
                             label: arg.span,
                             suggestion: UndroppedManuallyDropsInPlaceSuggestion {
+                                krate,
                                 start_span: expr.span.shrink_to_lo().until(arg.span.shrink_to_lo()),
                                 end_span: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
                             },

@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // Unix domain sockets are not supported in Miri
+
 use super::*;
 use crate::io::prelude::*;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut};
@@ -50,6 +52,25 @@ fn sock_addr_without_trailing_nul() {
     // length including the NUL, as reported by linux
     let address = or_panic!(SocketAddr::from_parts(addr, (offset + PATH.len() + 1) as _));
     assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+}
+
+#[test]
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn sock_addr_pathname_fills_sun_path() {
+    use crate::ffi::OsStr;
+    use crate::os::unix::ffi::OsStrExt;
+
+    let mut addr: libc::sockaddr_un = unsafe { crate::mem::zeroed() };
+    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    let mut path = vec![b'a'; addr.sun_path.len()];
+    path[0] = b'/';
+    for (dst, &src) in addr.sun_path.iter_mut().zip(&path) {
+        *dst = src as _;
+    }
+    let offset = crate::mem::offset_of!(libc::sockaddr_un, sun_path);
+
+    let address = or_panic!(SocketAddr::from_parts(addr, (offset + path.len() + 1) as _));
+    assert_eq!(address.as_pathname(), Some(Path::new(OsStr::from_bytes(&path))));
 }
 
 #[test]

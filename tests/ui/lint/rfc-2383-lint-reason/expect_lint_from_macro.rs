@@ -23,7 +23,8 @@ pub fn check_expect_on_item() {
 
 pub fn check_expect_on_macro() {
     // This should be fulfilled by the macro
-    #[expect(unused_variables)] //~ WARN unused attribute
+    #[expect(unused_variables)]
+    //~^ WARN the `expect` attribute cannot be used on macro call
     trigger_unused_variables_macro!();
 
     // FIXME: Lint attributes currently don't work directly on macros, and

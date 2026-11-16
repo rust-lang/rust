@@ -61,7 +61,7 @@ impl<K, V> Root<K, V> {
         // A panic from a later `search_node` comparison would unwind out of
         // that state and double-free the shared values (#158165), so abort
         // instead of exposing it.
-        let guard = mem::DropGuard::new((), |()| intrinsics::abort());
+        let guard = mem::DropGuard::new((), |()| intrinsics::abort_immediate());
 
         loop {
             split_edge.move_suffix(&mut right_node);

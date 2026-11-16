@@ -184,15 +184,15 @@ toolchain.
 
 2. Download and install [Git for Windows](https://git-scm.com/download/win).
    Make sure that it's in your Windows PATH. To enable access to it from within
-   MSYS2, edit the relevant `mingw[32|64].ini` file in your MSYS2 installation
+   MSYS2, edit the relevant `[mingw32|ucrt64].ini` file in your MSYS2 installation
    directory and uncomment the line `MSYS2_PATH_TYPE=inherit`.
 
    You could install and use MSYS2's version of git instead with `pacman`,
    however this is not recommended as it's excruciatingly slow, and not frequently
    tested for compatibility.
 
-3. Start a MINGW64 or MINGW32 shell (depending on whether you want 32-bit
-   or 64-bit Rust) either from your start menu, or by running `mingw64.exe`
+3. Start a UCRT64 or MINGW32 shell (depending on whether you want 32-bit
+   or 64-bit Rust) either from your start menu, or by running `ucrt64.exe`
    or `mingw32.exe` from your MSYS2 installation directory (e.g. `C:\msys64`).
 
 4. From this terminal, install the required tools:
@@ -202,17 +202,17 @@ toolchain.
    pacman -Sy pacman-mirrors
 
    # Install build tools needed for Rust. If you're building a 32-bit compiler,
-   # then replace "x86_64" below with "i686". 
-   # Note that it is important that you do **not** use the 'python2', 'cmake',
+   # then replace "ucrt-x86_64" below with "i686". 
+   # Note that it is important that you do **not** use the 'python', 'cmake',
    # and 'ninja' packages from the 'msys2' subsystem.
    # The build has historically been known to fail with these packages.
-   pacman -S make \
+   pacman -S --needed make \
                diffutils \
                tar \
-               mingw-w64-x86_64-python \
-               mingw-w64-x86_64-cmake \
-               mingw-w64-x86_64-gcc \
-               mingw-w64-x86_64-ninja
+               mingw-w64-ucrt-x86_64-python \
+               mingw-w64-ucrt-x86_64-cmake \
+               mingw-w64-ucrt-x86_64-gcc \
+               mingw-w64-ucrt-x86_64-ninja
    ```
 
 5. Navigate to Rust's source code (or clone it), then build it:

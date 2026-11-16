@@ -1,4 +1,4 @@
-// rustfmt-error_on_line_overflow: false
+//@ rustfmt-error_on_line_overflow: false
 // Error on line overflow
 
 fn main() {

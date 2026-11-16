@@ -4,16 +4,16 @@ cfg_select! {
     not(any(
         all(target_os = "linux", not(target_env = "musl")),
         target_os = "l4re",
-        target_os = "android",
         target_os = "hurd",
     )) => {
-        use libc::{open as open64, openat as openat64};
+        use libc::{fstatat as fstatat64, openat as openat64};
     }
     _ => {
-        use libc::{open64, openat64};
+        use libc::{fstatat64, openat64};
     }
 }
 
+use super::{open64, stat64};
 use crate::ffi::CStr;
 use crate::os::fd::{AsFd, BorrowedFd, IntoRawFd, OwnedFd, RawFd};
 #[cfg(target_family = "unix")]
@@ -26,17 +26,16 @@ use crate::sys::fs::OpenOptions;
 use crate::sys::fs::unix::{File, FileAttr, debug_path_fd};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt, cvt_r};
-use crate::{fmt, fs, io};
+use crate::{fmt, fs, io, mem};
 
-const TRAVERSE_DIRECTORY: i32 =
-    cfg_select! {
-        any(target_os = "freebsd", target_os = "aix") => libc::O_EXEC,
-        any(target_os = "linux", target_os = "android", target_os = "l4re") => libc::O_PATH,
-        target_os = "illumos" => libc::O_SEARCH,
-        _ => libc::O_RDONLY,
-    };
+const TRAVERSE_DIRECTORY: i32 = cfg_select! {
+    any(target_os = "freebsd", target_os = "aix") => libc::O_EXEC,
+    any(target_os = "linux", target_os = "android", target_os = "l4re") => libc::O_PATH,
+    target_os = "illumos" => libc::O_SEARCH,
+    _ => libc::O_RDONLY,
+};
 
-pub struct Dir(OwnedFd);
+pub struct Dir(pub(super) OwnedFd);
 
 impl Dir {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<Self> {
@@ -47,16 +46,20 @@ impl Dir {
         run_path_with_cstr(path, &|path| Self::open_traversal_c(path))
     }
 
+    pub fn duplicate(&self) -> io::Result<Self> {
+        Ok(Self(self.0.try_clone()?))
+    }
+
     pub fn open_file(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path.as_ref(), &|path| self.open_file_c(path, opts, 0))
             .map(FileDesc::from_inner)
             .map(File)
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub fn self_metadata(&self) -> io::Result<FileAttr> {
         // Reuse the implementation for files, which should work for all FDs.
         let fd = self.0.as_raw_fd();
-        let f = core::mem::ManuallyDrop::new(File(
+        let f = mem::ManuallyDrop::new(File(
             // SAFETY: we borrowed `self` so the FD will not be closed while this function runs.
             unsafe { FileDesc::from_raw_fd(fd) },
         ));
@@ -64,7 +67,7 @@ impl Dir {
     }
 
     pub fn remove_file(&self, path: &Path) -> io::Result<()> {
-        run_path_with_cstr(path, &|path| self.remove_c(path, false))
+        run_path_with_cstr(path, &|path| self.remove_c(path, /* remove_dir */ false))
     }
 
     pub fn rename(&self, from: &Path, to_dir: &Self, to: &Path) -> io::Result<()> {
@@ -82,7 +85,17 @@ impl Dir {
     }
 
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
-        run_path_with_cstr(path, &|path| self.remove_c(path, true))
+        run_path_with_cstr(path, &|path| self.remove_c(path, /* remove_dir */ true))
+    }
+
+    pub fn metadata(&self, path: &Path) -> io::Result<FileAttr> {
+        run_path_with_cstr(path, &|path| {
+            self.metadata_c(path, /* symlink_nofollow */ false)
+        })
+    }
+
+    pub fn symlink_metadata(&self, path: &Path) -> io::Result<FileAttr> {
+        run_path_with_cstr(path, &|path| self.metadata_c(path, /* symlink_nofollow */ true))
     }
 
     fn open_with_c(path: &CStr, opts: &OpenOptions) -> io::Result<Self> {
@@ -138,6 +151,26 @@ impl Dir {
 
     fn create_dir_c(&self, path: &CStr) -> io::Result<()> {
         cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
+    }
+
+    pub(super) fn metadata_c(&self, path: &CStr, symlink_nofollow: bool) -> io::Result<FileAttr> {
+        let fd = self.0.as_raw_fd();
+        let flag = if symlink_nofollow { libc::AT_SYMLINK_NOFOLLOW } else { 0 };
+
+        cfg_has_statx! {
+            if let Some(ret) = unsafe { super::try_statx(
+                fd,
+                path.as_ptr(),
+                flag | libc::AT_STATX_SYNC_AS_STAT,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
+            ) } {
+                return ret;
+            }
+        }
+
+        let mut stat: stat64 = unsafe { mem::zeroed() };
+        cvt(unsafe { fstatat64(fd, path.as_ptr(), &mut stat, flag) })?;
+        Ok(FileAttr::from_stat64(stat))
     }
 }
 

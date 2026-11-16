@@ -169,3 +169,12 @@ pub mod issue15636 {
     #[allow(deprecated_in_future)]
     pub use f::deprec;
 }
+
+pub mod issue17783 {
+    pub mod path {
+        pub mod unused {}
+    }
+    #[expect(clippy::allow_attributes, reason = "lint depends on macro application")]
+    #[allow(unused_imports)]
+    use path::unused;
+}

@@ -243,3 +243,28 @@ pub fn derive_double_parens(_: TokenStream) -> TokenStream {
         }
     }
 }
+
+#[proc_macro_derive(TryFromStr)]
+pub fn derive_try_from_str(_: TokenStream) -> TokenStream {
+    quote! {
+        struct DerivedTryFromStr;
+
+        impl TryFrom<&str> for DerivedTryFromStr {
+            type Error = ();
+            fn try_from(_value: &str) -> Result<Self, Self::Error> {
+                Ok(DerivedTryFromStr)
+            }
+        }
+    }
+}
+
+#[proc_macro_derive(DeriveMayPanic)]
+pub fn derive_may_panic(_: TokenStream) -> TokenStream {
+    // Used for testing the `undocumented_may_panic_call` lint's handling of proc macros
+    quote! {
+        fn _derived_may_panic_fn() {
+            let mut v = Vec::new();
+            v.push(1);
+        }
+    }
+}

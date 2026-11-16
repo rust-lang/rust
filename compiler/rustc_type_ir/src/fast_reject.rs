@@ -9,7 +9,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Const, Interner};
 
 /// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -37,6 +37,7 @@ pub enum SimplifiedType<DefId> {
     Coroutine(DefId),
     CoroutineWitness(DefId),
     Function(usize),
+    View(DefId),
     UnsafeBinder,
     Placeholder,
     Error,
@@ -142,6 +143,7 @@ pub fn simplify_type<I: Interner>(
             TreatParams::AsRigid | TreatParams::InstantiateWithInfer => None,
         },
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id.into())),
+        ty::View(def, _, _) => Some(SimplifiedType::View(def.def_id().into())),
         ty::Error(_) => Some(SimplifiedType::Error),
         ty::Bound(..) | ty::Infer(_) => None,
     }
@@ -302,6 +304,9 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::Foreign(_)
             | ty::Placeholder(_)
             | ty::UnsafeBinder(_) => {}
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         // The type system needs to support exponentially large types
@@ -481,12 +486,15 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             },
 
             ty::Error(..) => true,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
     // Unlike `types_may_unify_inner`, this does not take a depth as
     // we never recurse from this function.
-    fn consts_may_unify_inner(self, lhs: I::Const, rhs: I::Const) -> bool {
+    fn consts_may_unify_inner(self, lhs: Const<I>, rhs: Const<I>) -> bool {
         match rhs.kind() {
             ty::ConstKind::Param(_) => {
                 if INSTANTIATE_RHS_WITH_INFER {

@@ -119,7 +119,7 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
         if let Some(prev) = &mut self.found {
             if hidden_ty.ty != prev.ty {
                 let (Ok(guar) | Err(guar)) =
-                    prev.build_mismatch_error(&hidden_ty, self.tcx).map(|d| d.emit());
+                    prev.build_mismatch_error(&hidden_ty, self.tcx).map(|d| d.emit_err());
                 *prev = ty::DefinitionSiteHiddenType::new_error(self.tcx, guar);
             }
         } else {

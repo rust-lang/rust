@@ -6,9 +6,10 @@
     extern_types,
     decl_macro,
     rustc_attrs,
+    allow_internal_unstable,
+    forced_keywords,
     rustc_private,
     transparent_unions,
-    pattern_types,
     auto_traits,
     freeze_impls
 )]
@@ -497,7 +498,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 pub fn panic(_msg: &'static str) -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const i8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -539,7 +540,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
             len,
             index,
         );
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -548,7 +549,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 fn panic_cannot_unwind() -> ! {
     unsafe {
         libc::puts("panic in a function that cannot unwind\n\0" as *const str as *const i8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -591,12 +592,9 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
-#[rustc_builtin_macro(pattern_type)]
-#[macro_export]
-macro_rules! pattern_type {
-    ($($arg:tt)*) => {
-        /* compiler built-in */
-    };
+#[allow_internal_unstable(internal_syntax)]
+pub macro pattern_type($($arg:tt)*) {
+    k#pattern_type($($arg)*)
 }
 
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null) where
@@ -688,7 +686,7 @@ pub union MaybeUninit<T> {
 
 pub mod intrinsics {
     #[rustc_intrinsic]
-    pub fn abort() -> !;
+    pub fn abort_immediate() -> !;
     #[rustc_intrinsic]
     pub const fn size_of<T>() -> usize;
     #[rustc_intrinsic]

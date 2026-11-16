@@ -4,9 +4,8 @@ use std::ops::{Range, RangeFrom};
 use std::{debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{InlineAttr, OptimizeAttr};
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -764,7 +763,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
         | InstanceKind::Shim(ShimKind::ThreadLocal(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnAddrAsPtr(..))
         | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Ok(()),
     }
 
@@ -859,21 +858,20 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     mut callee_body: Body<'tcx>,
 ) {
     let tcx = inliner.tcx();
-    let terminator = caller_body[callsite.block].terminator.take().unwrap();
-    let TerminatorKind::Call { func, args, destination, unwind, target, .. } = terminator.kind
+    let terminator = caller_body.basic_blocks.as_mut()[callsite.block].terminator.as_mut().unwrap();
+    let TerminatorKind::Call { ref func, ref mut args, destination, unwind, target, .. } =
+        terminator.kind
     else {
         bug!("unexpected terminator kind {:?}", terminator.kind);
     };
+    let args = std::mem::take(args);
+    let func_ty = func.ty(&caller_body.local_decls, tcx);
 
     let return_block = if let Some(block) = target {
         // Prepare a new block for code that should execute when call returns. We don't use
         // target block directly since it might have other predecessors.
         let data = BasicBlockData::new(
-            Some(Terminator {
-                source_info: terminator.source_info,
-                kind: TerminatorKind::Goto { target: block },
-                attributes: ThinVec::new(),
-            }),
+            Terminator { source_info: terminator.source_info, kind: TerminatorKind::goto(block) },
             caller_body[block].is_cleanup,
         );
         Some(caller_body.basic_blocks_mut().push(data))
@@ -886,24 +884,13 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // Place could result in two different locations if `f`
     // writes to `i`. To prevent this we need to create a temporary
     // borrow of the place and pass the destination as `*temp` instead.
-    fn dest_needs_borrow(place: Place<'_>) -> bool {
-        for elem in place.projection.iter() {
-            match elem {
-                ProjectionElem::Deref | ProjectionElem::Index(_) => return true,
-                _ => {}
-            }
-        }
-
-        false
-    }
-
-    let dest = if dest_needs_borrow(destination) {
+    //
+    // This must be a raw pointer: a mutable reference could be invalidated by
+    // reading the arguments later, and would be invalid if the destination type
+    // is uninhabited.
+    let dest = if !destination.is_stable_offset() {
         trace!("creating temp for return destination");
-        let dest = Rvalue::Ref(
-            tcx.lifetimes.re_erased,
-            BorrowKind::Mut { kind: MutBorrowKind::Default },
-            destination,
-        );
+        let dest = Rvalue::RawPtr(RawPtrKind::Mut, destination);
         let dest_ty = dest.ty(caller_body, tcx);
         let temp = Place::from(new_call_temp(caller_body, callsite, dest_ty, return_block));
         caller_body[callsite.block].statements.push(Statement::new(
@@ -1010,8 +997,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
 
     caller_body[callsite.block].terminator = Some(Terminator {
         source_info: callsite.source_info,
-        kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
-        attributes: ThinVec::new(),
+        kind: TerminatorKind::goto(integrator.map_block(START_BLOCK)),
     });
 
     // Copy required constants from the callee_body into the caller_body. Although we are only
@@ -1027,7 +1013,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     // the actually used items. By doing this we can entirely avoid visiting the callee!
     // We need to reconstruct the `required_item` for the callee so that we can find and
     // remove it.
-    let callee_item = MentionedItem::Fn(func.ty(caller_body, tcx));
+    let callee_item = MentionedItem::Fn(func_ty);
     let caller_mentioned_items = caller_body.mentioned_items.as_mut().unwrap();
     if let Some(idx) = caller_mentioned_items.iter().position(|item| item.node == callee_item) {
         // We found the callee, so remove it and add its items instead.
@@ -1172,7 +1158,7 @@ fn new_call_temp<'tcx>(
  * Integrates blocks from the callee function into the calling function.
  * Updates block indices, references to locals and other control flow
  * stuff.
-*/
+ */
 struct Integrator<'a, 'tcx> {
     args: &'a [Local],
     new_locals: RangeFrom<Local>,
@@ -1296,7 +1282,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
 
         match terminator.kind {
             TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => bug!(),
-            TerminatorKind::Goto { ref mut target } => {
+            TerminatorKind::Goto { ref mut target, .. } => {
                 *target = self.map_block(*target);
             }
             TerminatorKind::SwitchInt { ref mut targets, .. } => {
@@ -1324,14 +1310,14 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             }
             TerminatorKind::Return => {
                 terminator.kind = if let Some(tgt) = self.return_block {
-                    TerminatorKind::Goto { target: tgt }
+                    TerminatorKind::goto(tgt)
                 } else {
                     TerminatorKind::Unreachable
                 }
             }
             TerminatorKind::UnwindResume => {
                 terminator.kind = match self.cleanup_block {
-                    UnwindAction::Cleanup(tgt) => TerminatorKind::Goto { target: tgt },
+                    UnwindAction::Cleanup(tgt) => TerminatorKind::goto(tgt),
                     UnwindAction::Continue => TerminatorKind::UnwindResume,
                     UnwindAction::Unreachable => TerminatorKind::Unreachable,
                     UnwindAction::Terminate(reason) => TerminatorKind::UnwindTerminate(reason),
@@ -1369,7 +1355,7 @@ fn try_instance_mir<'tcx>(
     {
         let fields = def.all_fields();
         for field in fields {
-            let field_ty = field.ty(tcx, args);
+            let field_ty = field.ty(tcx, *args);
             if field_ty.has_param() && field_ty.has_aliases() {
                 return Err("cannot build drop shim for polymorphic type");
             }

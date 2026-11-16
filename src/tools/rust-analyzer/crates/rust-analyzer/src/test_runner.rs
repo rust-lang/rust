@@ -2,8 +2,8 @@
 //! thread and report the result of each test in a channel.
 
 use crossbeam_channel::Sender;
+use ide_db::base_db::TargetKind;
 use paths::{AbsPath, Utf8Path};
-use project_model::TargetKind;
 use serde::Deserialize as _;
 use serde_derive::Deserialize;
 use toolchain::Tool;

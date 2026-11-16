@@ -16,7 +16,9 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty, Unnormalized};
+use rustc_middle::ty::{
+    self, AssocTag, CallerBoundsIterator as _, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty, Unnormalized,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
@@ -208,6 +210,8 @@ fn check_collect_into_intoiterator<'tcx>(
                 .tcx
                 .param_env(id)
                 .caller_bounds()
+                .all_clauses(cx.tcx)
+                .iter()
                 .filter_map(|c| {
                     if let ClauseKind::Trait(t) = c.kind().skip_binder()
                         && cx.tcx.is_diagnostic_item(sym::IntoIterator, t.trait_ref.def_id)
@@ -262,8 +266,9 @@ fn ty_is_fully_concrete(ty: &rustc_hir::Ty<'_>) -> bool {
             seg.args
                 .is_none_or(|a| a.args.iter().all(generic_arg_is_fully_concrete))
         }),
-        rustc_hir::TyKind::Ref(_, mut_ty) => ty_is_fully_concrete(mut_ty.ty),
-        rustc_hir::TyKind::Slice(ty) | rustc_hir::TyKind::Array(ty, _) => ty_is_fully_concrete(ty),
+        rustc_hir::TyKind::Ref(_, ty, _) | rustc_hir::TyKind::Slice(ty) | rustc_hir::TyKind::Array(ty, _) => {
+            ty_is_fully_concrete(ty)
+        },
         rustc_hir::TyKind::Tup(tys) => tys.iter().all(ty_is_fully_concrete),
         _ => true,
     }

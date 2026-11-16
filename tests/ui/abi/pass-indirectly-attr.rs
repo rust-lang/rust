@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ check-fail
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
-//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 #![crate_type = "lib"]
@@ -20,7 +19,7 @@ pub struct Type(u8);
 pub extern "C" fn extern_c(_: Type) {}
 //~^ ERROR fn_abi_of(extern_c) = FnAbi {
 //~| ERROR mode: Indirect
-//~| ERROR on_stack: false,
+//~| ERROR mode: Pointer,
 //~| ERROR conv: C,
 
 #[rustc_abi(debug)]

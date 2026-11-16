@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-max_width: 80
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 80
 // Soft wrapping for comments.
 
 // #535, soft wrapping for comments

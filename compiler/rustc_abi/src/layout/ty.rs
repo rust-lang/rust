@@ -7,8 +7,8 @@ use rustc_macros::StableHash;
 
 use crate::layout::{FieldIdx, VariantIdx};
 use crate::{
-    AbiAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric,
-    PointeeInfo, Primitive, Size, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche, Numeric, PointeeInfo,
+    Primitive, Size, Variants,
 };
 
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
@@ -48,7 +48,7 @@ impl<'a> Layout<'a> {
         self.0.0.largest_niche
     }
 
-    pub fn align(self) -> AbiAlign {
+    pub fn align(self) -> Align {
         self.0.0.align
     }
 
@@ -122,6 +122,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
     fn is_complex_number_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
+    fn is_x87_f80_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
     fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
@@ -232,9 +233,20 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty::is_scalable_vector(self)
     }
 
+    /// Returns `true` if this type is the `x87_f80` lang item.
+    ///
+    /// Note that this function returns `false` for the `x87_f80_raw` lang item.
+    pub fn is_x87_f80<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        // A 1-ZST is never x87_f80.
+        Ty::is_x87_f80_lang_item(self.peel_transparent_wrappers_from_non_1zst(cx), cx)
+    }
+
     /// If this method returns `true`, then this type should always have a `PassMode` of
-    /// `Indirect { on_stack: false, .. }` when being used as the argument type of a function with a
-    /// non-Rustic ABI (this is true for structs annotated with the
+    /// `Indirect { mode: IndirectMode::Pointer, .. }` when being used as the argument type of a
+    /// function with a non-Rustic ABI (this is true for structs annotated with the
     /// `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute).
     ///
     /// This is used to replicate some of the behaviour of C array-to-pointer decay; however unlike
@@ -247,15 +259,25 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        let base = self.peel_transparent_wrappers(cx);
+        // FIXME: Peeling the wrappers above would not work correctly if we are a 1-ZST. So we make
+        // `#[rustc_pass_indirectly_in_non_rustic_abis]` a NOP on 1-ZST. In the future,
+        // `non_1zst_field` should become `non_trivial_abi_field` and
+        // `#[rustc_pass_indirectly_in_non_rustic_abis]` should make a type have non-trivial ABI.
+        if self.is_1zst() {
+            return false;
+        }
+
+        let base = self.peel_transparent_wrappers_from_non_1zst(cx);
         Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(base)
     }
 
     /// Recursively peel away transparent wrappers, returning the inner value.
+    /// Will not peel anything if `self` is a 1-ZST! Callers need to either check
+    /// that the result is not a 1-ZST, or have separate logic for that.
     ///
     /// The return value is not `repr(transparent)` and/or does
     /// not have a non-1zst field.
-    pub fn peel_transparent_wrappers<C>(mut self, cx: &C) -> Self
+    pub fn peel_transparent_wrappers_from_non_1zst<C>(mut self, cx: &C) -> Self
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
@@ -321,12 +343,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
-        let complex = self.peel_transparent_wrappers(cx);
+        // We're checking for scalar repr below which excludes 1-ZST.
+        let complex = self.peel_transparent_wrappers_from_non_1zst(cx);
         if !Ty::is_complex_number_lang_item(complex, cx) {
             return None;
         }
 
-        let component = complex.field(cx, 0).peel_transparent_wrappers(cx);
+        let component = complex.field(cx, 0).peel_transparent_wrappers_from_non_1zst(cx);
+
+        if component.is_x87_f80(cx) {
+            return Some(Numeric::Float(Float::X87F80));
+        }
 
         let BackendRepr::Scalar(scalar) = component.backend_repr else {
             return None;
@@ -339,10 +366,11 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         let primitive = scalar.primitive();
         match primitive {
             Primitive::Int(integer, is_signed) => Some(Numeric::Int(integer, is_signed)),
-            Primitive::Float(float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128)) => {
-                Some(Numeric::Float(float))
-            }
-            Primitive::Pointer(..) => None,
+            Primitive::Float(
+                float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128 | Float::PpcF128),
+            ) => Some(Numeric::Float(float)),
+            Primitive::Float(Float::X87F80) => None, // x87_f80_raw has incorrect alignment.
+            Primitive::Pointer(..) | Primitive::Float(Float::F16B) => None,
         }
     }
 

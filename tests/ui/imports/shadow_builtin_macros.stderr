@@ -18,6 +18,8 @@ note: `panic` could also refer to a macro from prelude
 error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:33:5
    |
+LL |     macro_rules! m { () => {
+...
 LL |     panic!();
    |     ^^^^^ ambiguous name
    |
@@ -32,7 +34,6 @@ LL |     m!();
    |     ---- in this macro invocation
 note: `panic` could also refer to a macro from prelude
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `n` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:49:5

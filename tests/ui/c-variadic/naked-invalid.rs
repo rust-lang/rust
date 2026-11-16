@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ compile-flags: --target x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
-//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![feature(abi_x86_interrupt, naked_functions_rustic_abi)]
@@ -9,11 +8,8 @@
 #![no_core]
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[repr(C)]
-#[lang = "va_list"]
-pub struct VaList;
 
 #[unsafe(naked)]
 unsafe extern "sysv64" fn c_variadic_sysv64(_: ...) {

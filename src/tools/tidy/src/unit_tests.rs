@@ -15,7 +15,7 @@ use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 pub fn check(root_path: &Path, stdlib: bool, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("unit_tests").path(root_path));
+    let check = tidy_ctx.start_check(CheckId::new("unit_tests").path(root_path));
 
     let skip = move |path: &Path, is_dir| {
         let file_name = path.file_name().unwrap_or_default();

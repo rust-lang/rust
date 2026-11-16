@@ -2,10 +2,11 @@ use std::borrow::Cow;
 use std::mem;
 
 use rustc_ast::AsmMacro;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::DiagArgValue;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
 use rustc_lint_defs::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::thir::visit::Visitor;
@@ -1090,7 +1091,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         body_target_features,
         assignment_info: None,
         in_union_destructure: false,
-        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def),
+        typing_env: ty::TypingEnv::post_typeck_through_borrowck_for_mir_build(tcx, def),
         inside_adt: false,
         warnings: &mut warnings,
         suggest_unsafe_block: true,
@@ -1104,7 +1105,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Visit the body.
     visitor.visit_expr(&thir[expr]);
 
-    warnings.sort_by_key(|w| w.block_span);
+    warnings.sort_by_key(|w| w.block_span.lo_hi());
     for UnusedUnsafeWarning { hir_id, block_span, enclosing_unsafe } in warnings {
         let block_span = tcx.sess.source_map().guess_head_span(block_span);
         tcx.emit_node_span_lint(

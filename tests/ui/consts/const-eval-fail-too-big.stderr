@@ -1,6 +1,8 @@
 error[E0080]: values of the type `[u8; usize::MAX]` are too big for the target architecture
   --> $DIR/const-eval-fail-too-big.rs:4:28
    |
+LL | struct B<
+LL |     A: Sized = [(); {
 LL |                    let x = [0u8; !0usize];
    |                            ^^^^^^^^^^^^^^ evaluation of `B::{constant#0}` failed here
 

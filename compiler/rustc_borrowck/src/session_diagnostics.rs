@@ -528,7 +528,7 @@ pub(crate) enum CaptureReasonNote {
         func: String,
         place_name: String,
         #[primary_span]
-        span: Span,
+        span: MultiSpan,
     },
     #[note(
         "the {$desugar_name} is desugared into a call to `{$func}`, which takes ownership of the \
@@ -539,7 +539,7 @@ pub(crate) enum CaptureReasonNote {
         func: String,
         place_name: String,
         #[primary_span]
-        span: Span,
+        span: MultiSpan,
     },
 }
 
@@ -659,13 +659,13 @@ pub(crate) struct SimdIntrinsicArgConst {
     pub intrinsic: String,
 }
 
-pub(crate) struct TailExprDropOrder<F: FnOnce(&mut Diag<'_, ()>)> {
+pub(crate) struct TailExprDropOrder<F: FnOnce(&mut Diag<'_>)> {
     pub borrowed: Span,
     pub callback: F,
 }
 
-impl<'a, F: FnOnce(&mut Diag<'_, ()>)> Diagnostic<'a, ()> for TailExprDropOrder<F> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, F: FnOnce(&mut Diag<'_>)> Diagnostic<'a> for TailExprDropOrder<F> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { borrowed, callback } = self;
         let mut diag = Diag::new(dcx, level, "relative drop order changing in Rust 2024")
             .with_span_label(

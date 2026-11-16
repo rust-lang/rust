@@ -1,4 +1,4 @@
-// rustfmt-format_macro_bodies: true
+//@ rustfmt-format_macro_bodies: true
 
 // with comments
 macro_rules! macros {

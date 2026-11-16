@@ -26,7 +26,8 @@ struct Target<'a> {
     field: FieldRef<'a, &'static ()>,
 }
 
-impl<'a> CoerceShared<Target<'a>> for Source<'a> {}
+impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
 //~^ ERROR mismatched types
+//~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements [E0803]
 
 fn main() {}

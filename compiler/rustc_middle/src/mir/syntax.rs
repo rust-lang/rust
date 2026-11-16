@@ -5,6 +5,7 @@
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
+use rustc_attr_ir::UnrollAttr;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::CoroutineKind;
 use rustc_hir::def_id::DefId;
@@ -14,11 +15,12 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Spanned, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
+use thin_vec::ThinVec;
 
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
+use crate::ty::{self, GenericArgs, List, Region, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -125,7 +127,6 @@ pub enum RuntimePhase {
     /// disallowed:
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::CoroutineDrop`]
-    /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     /// * [`Rvalue::CopyForDeref`]
     /// * [`PlaceElem::OpaqueCast`]
     /// * [`LocalInfo::DerefTemp`](super::LocalInfo::DerefTemp)
@@ -683,7 +684,7 @@ pub enum InlineAsmMacro {
 #[derive(Clone, TyEncodable, TyDecodable, StableHash, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.
-    Goto { target: BasicBlock },
+    Goto { target: BasicBlock, loop_hint_attrs: ThinVec<UnrollAttr> },
 
     /// Switches based on the computed value.
     ///
@@ -946,6 +947,9 @@ pub enum TerminatorKind<'tcx> {
         template: &'tcx [InlineAsmTemplatePiece],
 
         /// The operands for the inline assembly, as `Operand`s or `Place`s.
+        ///
+        /// For the purposes of MIR analyzes, `out` and `inout` operands are only considered
+        /// written-to when execution continues with `targets`.
         operands: Box<[InlineAsmOperand<'tcx>]>,
 
         /// Miscellaneous options for the inline assembly.
@@ -1447,9 +1451,6 @@ pub enum Rvalue<'tcx> {
     /// This is needed because dataflow analysis needs to distinguish
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
-    ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
-    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
 
     /// A CopyForDeref is equivalent to a read from a place at the
@@ -1561,11 +1562,11 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
-    Adt(DefId, VariantIdx, GenericArgsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
+    Adt(DefId, VariantIdx, GenericArgs<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
 
-    Closure(DefId, GenericArgsRef<'tcx>),
-    Coroutine(DefId, GenericArgsRef<'tcx>),
-    CoroutineClosure(DefId, GenericArgsRef<'tcx>),
+    Closure(DefId, GenericArgs<'tcx>),
+    Coroutine(DefId, GenericArgs<'tcx>),
+    CoroutineClosure(DefId, GenericArgs<'tcx>),
 
     /// Construct a raw pointer from the data pointer and metadata.
     ///
@@ -1712,7 +1713,7 @@ pub enum BinOp {
     /// - `Ordering::Equal` (`0_i8`, as a Scalar) if `A == B`
     /// - `Ordering::Greater` (`+1_i8`, as a Scalar) if `A > B`
     ///
-    /// [`LangItem::OrderingEnum`]: rustc_hir::attrs::lang_items::LangItem
+    /// [`LangItem::OrderingEnum`]: rustc_attr_ir::lang_items::LangItem
     Cmp,
     /// The `ptr.offset` operator
     Offset,

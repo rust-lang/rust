@@ -15,3 +15,5 @@ fn main() { unsafe {
     let m::U { b } = u; // OK
     let m::U { c } = u; //~ ERROR field `c` of union `U` is private
 }}
+
+//@ reference: items.union.ref.use

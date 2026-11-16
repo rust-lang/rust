@@ -436,7 +436,7 @@ pub trait Hasher {
     /// writing its contents to this `Hasher`.  That way
     /// `(collection![1, 2, 3], collection![4, 5])` and
     /// `(collection![1, 2], collection![3, 4, 5])` will provide different
-    /// sequences of values to the `Hasher`
+    /// sequences of values to the `Hasher`.
     ///
     /// The `impl<T> Hash for [T]` includes a call to this method, so if you're
     /// hashing a slice (or array or vector) via its `Hash::hash` method,

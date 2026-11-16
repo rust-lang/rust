@@ -1,0 +1,56 @@
+[package]
+name = "hir-ide"
+version = "0.0.0"
+repository.workspace = true
+description = "The final bits of analysis; Display, extra diagnostics, and tests."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0"
+itertools.workspace = true
+smallvec.workspace = true
+either.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
+rustc-hash.workspace = true
+la-arena.workspace = true
+triomphe.workspace = true
+typed-arena = "2.0.2"
+rustc_apfloat = "0.2.3"
+salsa.workspace = true
+
+ra-ap-rustc_abi.workspace = true
+ra-ap-rustc_pattern_analysis.workspace = true
+ra-ap-rustc_ast_ir.workspace = true
+ra-ap-rustc_type_ir.workspace = true
+
+# local deps
+stdx.workspace = true
+macros.workspace = true
+intern.workspace = true
+hir-def.workspace = true
+hir-expand.workspace = true
+base-db.workspace = true
+syntax.workspace = true
+span.workspace = true
+hir-ty.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+project-model.workspace = true
+
+# local deps
+test-utils.workspace = true
+test-fixture.workspace = true
+
+[features]
+in-rust-tree = ["hir-expand/in-rust-tree"]
+
+[lints]
+workspace = true

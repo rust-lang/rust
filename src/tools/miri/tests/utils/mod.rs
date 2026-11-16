@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+use std::ffi::{CString, OsString};
+
 #[macro_use]
 mod macros;
 
@@ -11,6 +13,11 @@ mod miri_extern;
 pub use self::fs::*;
 pub use self::io::*;
 pub use self::miri_extern::*;
+
+/// Return a `CString` version of the given string.
+pub fn into_c_string(str: impl Into<OsString>) -> CString {
+    CString::new(str.into().into_string().unwrap()).unwrap()
+}
 
 pub fn run_provenance_gc() {
     // SAFETY: No preconditions. The GC is fine to run at any time.
@@ -54,7 +61,7 @@ pub fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Debug>(
 
 /// Check that the operation is non-deterministic
 #[track_caller]
-pub fn check_nondet<T: PartialEq + std::fmt::Debug>(f: impl Fn() -> T) {
+pub fn check_nondet<T: PartialEq + std::fmt::Debug>(mut f: impl FnMut() -> T) {
     // We test some rather unlikely events with this, such as two global allocations getting the
     // same "salt" (1/32 chance). So give this *many* shots before we consider the test to have
     // failed.

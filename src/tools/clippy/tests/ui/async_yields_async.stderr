@@ -112,6 +112,8 @@ LL |     let y = async { call_bar!() };
 error: an async construct yields a type which is itself awaitable
   --> tests/ui/async_yields_async.rs:90:21
    |
+LL |     macro_rules! call_bar {
+LL |         () => {
 LL |             async { bar(5) }
    |                   --^^^^^^--
    |                   | |
@@ -121,8 +123,6 @@ LL |             async { bar(5) }
 ...
 LL |     let y = async { call_bar!() };
    |                     ----------- in this macro invocation
-   |
-   = note: this error originates in the macro `call_bar` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: an async construct yields a type which is itself awaitable
   --> tests/ui/async_yields_async.rs:119:21

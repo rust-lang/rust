@@ -282,7 +282,7 @@ const _: () = ();
 ///     todo!() as std::iter::Empty<_>
 /// }
 /// ```
-#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "never_type", since = "1.100.0")]
 const _: () = ();
 
 // Required to make auto trait impls render.
@@ -1810,9 +1810,14 @@ const _: () = ();
 /// `fn name(...) -> ...` implicitly uses the `"Rust"` ABI string and `extern fn name(...) -> ...`
 /// implicitly uses the `"C"` ABI string.
 ///
-/// The ABI strings are guaranteed to be compatible if they are the same, or if the caller ABI
-/// string is `$X-unwind` and the callee ABI string is `$X`, where `$X` is one of the following:
-/// "C", "aapcs", "fastcall", "stdcall", "system", "sysv64", "thiscall", "vectorcall", "win64".
+/// The ABI strings are guaranteed to be compatible if they are the same, or if one of them is
+/// `$X-unwind` and the other one is `$X`, where `$X` is one of the following: "C", "aapcs",
+/// "fastcall", "stdcall", "system", "sysv64", "thiscall", "vectorcall", "win64". (Note that [it is
+/// undefined behavior][unwind-ub] for a function to unwind unless *both* caller and callee use a
+/// signature that permits unwinding, such as "C-unwind". Rust ensures that a function defined with
+/// a non-unwinding ABI such as "C" never unwinds due to a panic, so undefined behavior can only
+/// arise if the callee ABI is `$X-unwind` and the caller ABI is `$X`, or if a non-Rust unwind
+/// occurs.)
 ///
 /// The following types are guaranteed to be ABI-compatible:
 ///
@@ -1829,9 +1834,23 @@ const _: () = ();
 ///   call will be valid ABI-wise. The callee receives the result of transmuting the function pointer
 ///   from `fn()` to `fn(i32)`; that transmutation is itself a well-defined operation, it's just
 ///   almost certainly UB to later call that function pointer.)
-/// - Any two types with size 0 and alignment 1 are ABI-compatible.
-/// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
-///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
+/// - Any two types with "trivial ABI" are ABI-compatible.
+///   A type has trivial ABI if is satisfies all of the following:
+///   - It has size 0.
+///   - It has alignment 1.
+///   - One of the following apply:
+///     - It is a `repr(Rust)` `struct`, `enum`, or `union` (regardless of its fields,
+///       regardless of whether `repr(Rust)` is specified explicitly or used via the implicit default,
+///       and possibly with additional `repr` modifiers such as `packed`).
+///     - It is a [prim@tuple] (regardless of its fields, and including [`()`][prim@unit]).
+///     - It is a `repr(transparent)` `struct`, `enum`, or `union`, and all fields have trivial ABI.
+///     - It is an array, and its element type has trivial ABI. (This requirement applies even to arrays of length 0.)
+///     - It is [the never type `!`][never].
+//     - It is a pattern type or an unsafe binder type, and the inner type has trivial ABI.
+//       (These are still unstable so intentionally not included in the user-visible doc comment, as their rules may change.)
+///     - It is a function item type or closure type.
+/// - A `repr(transparent)` type is ABI-compatible with its unique field that does not have trivial ABI
+///   (as defined above), if such a field exists. (Note that if no such field exists, then the `repr(transparent)` type itself has trivial ABI, so the case above applies.)
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
 ///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
@@ -1878,7 +1897,8 @@ const _: () = ();
 /// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
 ///
-/// [cfi-docs]: https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
+/// [unwind-ub]: ../reference/behavior-considered-undefined.html#r-undefined.call
+/// [cfi-docs]: ../unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
 ///
 /// ### Trait implementations
 ///

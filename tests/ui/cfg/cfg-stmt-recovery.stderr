@@ -1,4 +1,4 @@
-error: removing an expression is not supported in this position
+error: `cfg` is not supported in this position
   --> $DIR/cfg-stmt-recovery.rs:9:13
    |
 LL |     let _ = #[cfg(false)] 0;
@@ -10,11 +10,13 @@ error: expected expression, found `;`
 LL |     let _ = #[cfg(false)] 0;
    |                            ^ expected expression
 
-error: removing an expression is not supported in this position
+error: `cfg` is not supported in this position
   --> $DIR/cfg-stmt-recovery.rs:9:13
    |
 LL |     let _ = #[cfg(false)] 0;
    |             ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors
 

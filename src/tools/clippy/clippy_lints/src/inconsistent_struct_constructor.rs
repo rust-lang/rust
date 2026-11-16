@@ -2,6 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::fulfill_or_allowed;
 use clippy_utils::source::snippet;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind};
@@ -183,8 +184,10 @@ fn suggestion<'tcx>(
 }
 
 fn field_with_attrs_span(tcx: TyCtxt<'_>, field: &hir::ExprField<'_>) -> Span {
-    if let Some(attr) = tcx.hir_attrs(field.hir_id).first() {
-        field.span.with_lo(attr.span().lo())
+    if let Some(lints) = find_attr!(tcx, field.hir_id, LintCheck(lints) => lints) {
+        field.span.with_lo(lints.first().unwrap().attr_span.lo())
+    } else if let Some(cfg_span) = find_attr!(tcx, field.hir_id, CfgTrace(cfgs) => cfgs[0].1) {
+        field.span.with_lo(cfg_span.lo())
     } else {
         field.span
     }

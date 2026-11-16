@@ -1,5 +1,7 @@
 use std::iter;
 
+use rustc_ast::Const;
+use rustc_attr_ir::target::AstTarget;
 use rustc_feature::AttributeStability;
 
 use super::macro_attrs::check_macro_only;
@@ -12,12 +14,8 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> =
         |items, span| AttributeKind::AllowInternalUnstable(items, span);
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::MacroDef),
-        Allow(Target::Fn),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::MacroDef), Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
     const STABILITY: AttributeStability = unstable!(allow_internal_unstable);
 
@@ -30,7 +28,7 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
             .zip(iter::repeat(cx.attr_span))
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         check_macro_only(cx, attr_span);
     }
 }
@@ -81,6 +79,22 @@ impl CombineAttributeParser for RustcAllowConstFnUnstableParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         parse_unstable(cx, args, <Self as CombineAttributeParser>::PATH[0])
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        match cx.ast_target {
+            AstTarget::Fn(_) | AstTarget::Method(..) => {
+                let fn_sig =
+                    cx.ast_target.get_fn_sig().expect("missing fn signature for AST target");
+                if matches!(fn_sig.header.constness, Const::No) {
+                    cx.emit_err(diagnostics::RustcAllowConstFnUnstable {
+                        attr_span,
+                        span: cx.target_span,
+                    });
+                }
+            }
+            _ => {}
+        }
     }
 }
 

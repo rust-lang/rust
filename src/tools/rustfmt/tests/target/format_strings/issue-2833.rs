@@ -1,5 +1,5 @@
-// rustfmt-format_strings: true
-// rustfmt-max_width: 80
+//@ rustfmt-format_strings: true
+//@ rustfmt-max_width: 80
 
 fn test1() {
     let expected = "\

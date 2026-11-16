@@ -47,7 +47,7 @@ pub(super) fn inferred_outlives_of(
 }
 
 pub(super) fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CrateClausesMap<'_> {
-    // Compute a map from each ADT (struct/enum/union) and lazy type alias to
+    // Compute a map from each ADT (struct/enum/union) and checked type alias to
     // the **explicit** outlives clauses (`T: 'a`, `'a: 'b`) that the user wrote.
     // Typically there won't be many of these, except in older code where
     // they were mandatory. Nonetheless, we have to ensure that every such

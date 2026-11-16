@@ -27,24 +27,18 @@ for a list of Miri maintainers.
 
 ### PR review process
 
-When you get a review, please take care of the requested changes in new commits. Do not amend
-existing commits. Generally avoid force-pushing. The only time you should force push is when there
-is a conflict with the master branch (in that case you should rebase across master, not merge), and
-all the way at the end of the review process when the reviewer tells you that the PR is done and you
-should squash the commits. (All this is to work around the fact that Github is quite bad at
-dealing with force pushes and does not support `git range-diff`.)
-
-The recommended way to squash commits is to use `./miri squash`, which will make everything into a
-single commit. You will be asked for the commit message; please ensure it describes the entire PR.
-You can also use `git rebase` manually if you need more control (e.g. if there should be more than
-one commit at the end), but then please use `--keep-base` to ensure the PR remains based on the same
-upstream commit.
-
 Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
 keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
 `S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
 they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
 next round of review.
+
+When you are making significant changes to a PR, it is often easier to review them as a separate
+commit, rather than as force-pushed changes to existing commits. Wait until the end of the review
+process before squashing the git history. To squash everything into a single commit, you can use
+`./miri squash`. You will be asked for the commit message; please ensure it describes the entire PR.
+You can also use `git rebase` manually if you need more control (e.g. if there should be more than
+one commit at the end).
 
 ### Larger-scale contributions
 
@@ -111,12 +105,35 @@ install that exact version of rustc as a toolchain:
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
-You can also create a `.auto-everything` file (contents don't matter, can be empty), which
-will cause any `./miri` command to automatically call `./miri toolchain`, `clippy` and `rustfmt`
-for you. If you don't want all of these to happen, you can add individual `.auto-toolchain`,
-`.auto-clippy` and `.auto-fmt` files respectively.
-
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
+
+### Configuring `./miri`
+
+The `./miri` script supports optional configuration via a `miri.toml` file.
+The following configuration keys are currently supported, with the given default values:
+
+```toml
+[toolchain]
+# Overwrite the default toolchain name used by `./miri toolchain`.
+# Note that all other commands will just use the currently active rustup toolchain!
+# (Though note that if you have `auto.toolchain` enabled, most commands will run `./miri toolchain`
+# first, which will activate the toolchain given here.)
+name = "miri"
+# Additional components to install with the toolchain. Note that if you remove `clippy` or `rustfmt`
+# from this list then obviously `./miri clippy`/`./miri fmt` will not work.
+# Only takes effect when a new toolchain is installed. Run `rustup toolchain remove <name>` followed
+# by `./miri toolchain` to force this to have effect.
+components = ["clippy", "rustfmt"]
+
+[auto]
+# Automatically run `./miri toolchain` before most commands.
+# Uses the toolchain name configured above, if any.
+toolchain = false
+# Automatically run `./miri clippy` before most commands.
+clippy = false
+# Automatically run `./miri fmt` before most commands.
+fmt = false
+```
 
 ## Building and testing Miri
 
@@ -150,7 +167,7 @@ For example, you can (cross-)run the driver on a particular file by doing
 Tests in ``pass-dep`` need to be run using ``./miri run --dep <filename>``.  
 For example:
 ```sh
-./miri run --dep tests/pass-dep/shims/libc-fs.rs
+./miri run --dep tests/pass-dep/libc/fs.rs
 ```
 
 You can (cross-)run the entire test suite using:
@@ -163,6 +180,10 @@ You can (cross-)run the entire test suite using:
 `./miri test FILTER` only runs those tests that contain `FILTER` in their filename (including the
 base directory, e.g. `./miri test fail` will run all compile-fail tests). Multiple filters are
 supported: `./miri test FILTER1 FILTER2` runs all tests that contain either string.
+
+Priroda has a separate test suite. Run it with `./miri test-priroda`, or use
+`./miri test-priroda --bless` to update its expected output files after an
+intentional output change.
 
 #### Fine grained logging
 

@@ -1,5 +1,9 @@
-//@ check-pass
-//@ compile-flags: -Znext-solver
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
+// Impossible where-clauses can cause multiple overlapping impls to apply
+// with the same constraints.
 
 trait Local {}
 
@@ -12,6 +16,7 @@ where
     Option<T>: Clone + Local,
 {
     <Option<T> as Overlap>::f();
+    //~^ ERROR type annotations needed
 }
 
 fn main() {}

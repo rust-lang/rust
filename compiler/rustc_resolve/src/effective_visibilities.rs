@@ -109,7 +109,12 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
         for (decl, eff_vis) in visitor.import_effective_visibilities.iter() {
             let DeclKind::Import { import, .. } = decl.kind else { unreachable!() };
             if let Some(def_id) = import.def_id() {
-                r.effective_visibilities.update_eff_vis(def_id, eff_vis, r.tcx)
+                r.effective_visibilities.update_eff_vis(def_id, eff_vis, r.tcx);
+                let root = r.owners[&import.root_id].def_id;
+                // The `unreachable_pub` lint also needs to know whether any of the nested entries are
+                // exported by this use statement.
+                // FIXME: We could compute this lazily in `unreachable_pub` directly, but this is less invasive.
+                r.effective_visibilities.update_eff_vis(root, eff_vis, r.tcx);
             }
             if decl.ambiguity.get().is_some() && eff_vis.is_public_at_level(Level::Reexported) {
                 exported_ambiguities.insert(*decl);

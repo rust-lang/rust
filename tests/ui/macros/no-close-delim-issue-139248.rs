@@ -8,6 +8,5 @@ macro_rules! m {
 
 m! { static a : () = (if b) }
 //~^ ERROR expected `{`, found `)`
-//~| ERROR expected `{`, found `)`
 
 fn main() {}

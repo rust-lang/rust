@@ -10,7 +10,6 @@
 //! * `mips`: [`is_mips_feature_detected`]
 //! * `mips64`: [`is_mips64_feature_detected`]
 //! * `powerpc`: [`is_powerpc_feature_detected`]
-//! * `powerpc64`: [`is_powerpc64_feature_detected`]
 //! * `loongarch`: [`is_loongarch_feature_detected`]
 //! * `s390x`: [`is_s390x_feature_detected`]
 

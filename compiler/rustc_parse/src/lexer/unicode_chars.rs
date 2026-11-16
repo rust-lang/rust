@@ -307,7 +307,7 @@ pub(super) static UNICODE_ARRAY: &[(char, &str, &str)] = &[
 // fancier error recovery to it, as there will be less overall work to do this way.
 const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     (" ", "Space", None),
-    ("_", "Underscore", Some(token::Ident(kw::Underscore, token::IdentIsRaw::No))),
+    ("_", "Underscore", Some(token::Ident(kw::Underscore, token::IdentKind::Normal))),
     ("-", "Minus/Hyphen", Some(token::Minus)),
     (",", "Comma", Some(token::Comma)),
     (";", "Semicolon", Some(token::Semi)),

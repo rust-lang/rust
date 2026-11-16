@@ -284,6 +284,7 @@ mod test {
     use super::DiffLine::*;
     use super::{Mismatch, make_diff};
     use super::{ModifiedChunk, ModifiedLines};
+    use indoc::indoc;
 
     #[test]
     fn diff_simple() {
@@ -370,7 +371,13 @@ mod test {
     fn modified_lines_from_str() {
         use std::str::FromStr;
 
-        let src = "1 6 2\nfn some() {}\nfn main() {}\n25 3 1\n  struct Test {}";
+        let src = indoc! {"
+            1 6 2
+            fn some() {}
+            fn main() {}
+            25 3 1
+              struct Test {}
+        "};
         let lines = ModifiedLines::from_str(src).unwrap();
         assert_eq!(
             lines,

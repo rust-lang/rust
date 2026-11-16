@@ -1,4 +1,4 @@
-// rustfmt-chain_width: 1
+//@ rustfmt-chain_width: 1
 // setting an unachievable chain_width to always get chains
 // on separate lines
 

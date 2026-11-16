@@ -3,16 +3,22 @@ use clippy_utils::source::snippet;
 use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    self as hir, GenericArg, GenericBounds, GenericParamKind, HirId, Lifetime, MutTy, Mutability, Node, QPath, TyKind,
+    self as hir, GenericArg, GenericBounds, GenericParamKind, HirId, Lifetime, Mutability, Node, QPath, TyKind,
 };
 use rustc_lint::LateContext;
 
 use super::BORROWED_BOX;
 
-pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, mut_ty: &MutTy<'_>) -> bool {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    hir_ty: &hir::Ty<'_>,
+    lt: &Lifetime,
+    inner_ty: &hir::Ty<'_>,
+    mutbl: Mutability,
+) -> bool {
     // Ignore `&mut Box<T>` types; see issue #2907 for details.
-    if mut_ty.mutbl == Mutability::Not
-        && let TyKind::Path(ref qpath) = mut_ty.ty.kind
+    if mutbl == Mutability::Not
+        && let TyKind::Path(ref qpath) = inner_ty.kind
         && let QPath::Resolved(None, path) = *qpath
         && let Some(def_id) = path.res.opt_def_id()
         && Some(def_id) == cx.tcx.lang_items().owned_box()
@@ -63,6 +69,12 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     // For example, type coercion doesn't work nicely.
                     Applicability::Unspecified,
                 );
+                // For unsized trait objects, `&Box<dyn Trait>` does not deref-coerce
+                // to `&dyn Trait`, so `.as_ref()` has to be inserted manually.
+                // Sized types coerce automatically, hence the trait-object-only check.
+                if matches!(inner.kind, TyKind::TraitObject(..)) {
+                    diag.help("call `.as_ref()` to convert the `&Box<dyn Trait>` to a `&dyn Trait`");
+                }
             },
         );
         true

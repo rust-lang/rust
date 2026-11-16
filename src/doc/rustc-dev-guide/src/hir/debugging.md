@@ -9,7 +9,8 @@ For a full `Debug` dump of the data in the HIR, use the `-Z unpretty=hir-tree` f
 This may be useful when you need to see the full structure of the HIR from the perspective of the
 compiler.
 
-If you are trying to correlate `NodeId`s or `DefId`s with source code, the
-`-Z unpretty=expanded,identified` flag may be useful.
+If you are trying to correlate `NodeId`s or `DefId`s with source code,
+the `-Z unpretty=expanded,identified` flag may be useful.
 
-TODO: anything else? [#1159](https://github.com/rust-lang/rustc-dev-guide/issues/1159)
+TODO: anything else?
+[#1159](https://github.com/rust-lang/rustc-dev-guide/issues/1159)

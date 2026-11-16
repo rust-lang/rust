@@ -19,8 +19,11 @@ use super::{SocketAddr, sockaddr_un};
 use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 use crate::io::{IoSlice, IoSliceMut};
+use crate::macros::rustdoc_skip_body;
 use crate::net::Shutdown;
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::io::{
+    AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
+};
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
@@ -112,13 +115,12 @@ impl UnixDatagram {
     ///
     #[cfg_attr(target_family = "unix", doc = "```no_run")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
-    /// use std::os::unix::net::{UnixDatagram};
+    /// use std::os::unix::net::{SocketAddr, UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let sock1 = UnixDatagram::bind("path/to/socket")?;
-    ///     let addr = sock1.local_addr()?;
+    ///     let addr = SocketAddr::from_pathname("path/to/socket")?;
     ///
-    ///     let sock2 = match UnixDatagram::bind_addr(&addr) {
+    ///     let sock = match UnixDatagram::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
     ///             println!("Couldn't bind: {err:?}");
@@ -273,7 +275,7 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::bind("/path/to/the/socket")?;
-    ///     let sock_copy = sock.try_clone().expect("try_clone failed");
+    ///     let sock_copy = sock.try_clone().expect("`UnixDatagram::try_clone` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -292,11 +294,12 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::bind("/path/to/the/socket")?;
-    ///     let addr = sock.local_addr().expect("Couldn't get local address");
+    ///     let addr = sock.local_addr().expect("`UnixDatagram::local_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
@@ -317,11 +320,12 @@ impl UnixDatagram {
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.connect("/path/to/the/socket")?;
     ///
-    ///     let addr = sock.peer_addr().expect("Couldn't get peer address");
+    ///     let addr = sock.peer_addr().expect("`UnixDatagram::peer_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(self.as_raw_fd(), addr, len) })
     }
@@ -390,7 +394,7 @@ impl UnixDatagram {
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::bind("/path/to/the/socket")?;
     ///     let mut buf = vec![0; 10];
-    ///     sock.recv(buf.as_mut_slice()).expect("recv function failed");
+    ///     sock.recv(buf.as_mut_slice()).expect("`UnixDatagram::recv` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -523,7 +527,7 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.send_to(b"omelette au fromage", "/some/sock").expect("send_to function failed");
+    ///     sock.send_to(b"omelette au fromage", "/some/sock").expect("`UnixDatagram::send_to` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -561,7 +565,7 @@ impl UnixDatagram {
     ///     let addr = bound.local_addr()?;
     ///
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.send_to_addr(b"bacon egg and cheese", &addr).expect("send_to_addr function failed");
+    ///     sock.send_to_addr(b"bacon egg and cheese", &addr).expect("`UnixDatagram::send_to_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -595,12 +599,13 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.connect("/some/sock").expect("Couldn't connect");
-    ///     sock.send(b"omelette au fromage").expect("send_to function failed");
+    ///     sock.connect("/some/sock").expect("`UnixDatagram::connect` should not fail");
+    ///     sock.send(b"omelette au fromage").expect("`UnixDatagram` is not connected");
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
@@ -638,7 +643,7 @@ impl UnixDatagram {
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     ancillary.add_fds(&fds[..]);
     ///     sock.send_vectored_with_ancillary_to(bufs, &mut ancillary, "/some/sock")
-    ///         .expect("send_vectored_with_ancillary_to function failed");
+    ///         .expect("`UnixDatagram::send_vectored_with_ancillary_to` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -686,7 +691,7 @@ impl UnixDatagram {
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     ancillary.add_fds(&fds[..]);
     ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary)
-    ///         .expect("send_vectored_with_ancillary function failed");
+    ///         .expect("`UnixDatagram::send_vectored_with_ancillary` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -719,7 +724,7 @@ impl UnixDatagram {
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("set_read_timeout function failed");
+    ///         .expect("`UnixDatagram::set_read_timeout` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -742,6 +747,7 @@ impl UnixDatagram {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
     }
@@ -765,7 +771,7 @@ impl UnixDatagram {
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("set_write_timeout function failed");
+    ///         .expect("`UnixDatagram::set_write_timeout` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -788,6 +794,7 @@ impl UnixDatagram {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
     }
@@ -804,12 +811,13 @@ impl UnixDatagram {
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("set_read_timeout function failed");
+    ///         .expect("`UnixDatagram::set_read_timeout` should not fail");
     ///     assert_eq!(sock.read_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_RCVTIMEO)
     }
@@ -826,12 +834,13 @@ impl UnixDatagram {
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("set_write_timeout function failed");
+    ///         .expect("`UnixDatagram::set_write_timeout` should not fail");
     ///     assert_eq!(sock.write_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_SNDTIMEO)
     }
@@ -846,7 +855,7 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.set_nonblocking(true).expect("set_nonblocking function failed");
+    ///     sock.set_nonblocking(true).expect("`UnixDatagram::set_nonblocking` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -876,6 +885,7 @@ impl UnixDatagram {
     /// ```
     #[cfg(any(doc, target_os = "linux", target_os = "freebsd", target_os = "openbsd",))]
     #[unstable(feature = "unix_set_mark", issue = "96467")]
+    #[rustdoc_skip_body]
     pub fn set_mark(&self, mark: u32) -> io::Result<()> {
         self.0.set_mark(mark)
     }
@@ -914,7 +924,7 @@ impl UnixDatagram {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     sock.shutdown(Shutdown::Both).expect("shutdown function failed");
+    ///     sock.shutdown(Shutdown::Both).expect("`UnixDatagram::shutdown` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -941,7 +951,7 @@ impl UnixDatagram {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixDatagram::bind("/tmp/sock")?;
     ///     let mut buf = [0; 10];
-    ///     let len = socket.peek(&mut buf).expect("peek failed");
+    ///     let len = socket.peek(&mut buf).expect("`UnixDatagram::peek` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -979,6 +989,7 @@ impl UnixDatagram {
     /// }
     /// ```
     #[unstable(feature = "unix_socket_peek", issue = "76923")]
+    #[rustdoc_skip_body]
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_flags(buf, libc::MSG_PEEK)
     }
@@ -987,6 +998,7 @@ impl UnixDatagram {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixDatagram {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_inner().as_raw_fd()
     }
@@ -995,6 +1007,7 @@ impl AsRawFd for UnixDatagram {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixDatagram {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixDatagram {
         UnixDatagram(Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd))))
     }
@@ -1003,6 +1016,7 @@ impl FromRawFd for UnixDatagram {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixDatagram {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner().into_inner().into_raw_fd()
     }
@@ -1011,10 +1025,16 @@ impl IntoRawFd for UnixDatagram {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixDatagram {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_inner().as_fd()
     }
 }
+
+// SAFETY: It's a tower of 1-field wrappers around OwnedFd.
+// No methods to close the socket, no methods with safety preconditions,
+// other than the fd being valid.
+unsafe_impl_fd_asrefs!(UnixDatagram);
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixDatagram> for OwnedFd {

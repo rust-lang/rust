@@ -45,6 +45,8 @@ static DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "TeX", "LaTeX", "BibTeX", "BibLaTeX",
     "MinGW",
     "CamelCase",
+    "x86_64",
+    "CommonMark", "IntelliJ",
 ];
 static DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
 static DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS: &[&str] = &["i", "j", "x", "y", "z", "w", "n"];
@@ -78,7 +80,7 @@ macro_rules! define_Conf {
             $(#[default_text = $default_text:literal])?
             $(#[rename = $new_name:ident])?
             $(#[lints($($for_lints:ident),* $(,)?)])?
-            // The type must exist for regular fields and shouldn't exist for deprecated ones.
+            // The type must exist for regular fields and must not exist for deprecated ones.
             $name:ident($name_str:literal) $(: $ty:ty $(= $default:expr)?)?,
         )*
     ) => {
@@ -204,6 +206,18 @@ macro_rules! define_Conf {
             }
         }
 
+        // The next macro invocation intentionally produces a compile error if `$name` is renamed
+        // and has a type. It is a compile-time check, not a conventional test. If it fails to
+        // compile, find `$name` in the `define_Conf!` invocation and remove either its `rename`
+        // attribute (`rename = ...`) or its type annotation (`...: $ty ...`).
+        macro_rules! test (
+            ($name_:ident) => {};
+            ($name_:ident $new_name_:ident) => {};
+            ($name_:ident $ty_:ty) => {};
+            ($name_:ident $new_name_:ident $ty_:ty) => { compile_error!(concat!("renamed field `", stringify!($name_), "` has a type")); };
+        );
+        $(test!($name $($new_name)? $($ty)?);)*
+
         #[test]
         fn check_conf_order() {
             for [x, y] in ConfField::NAMES[..ConfField::NAMES.len() - 1].array_windows::<2>() {
@@ -251,7 +265,7 @@ define_Conf! {
     #[lints(indexing_slicing)]
     allow_indexing_slicing_in_tests("allow-indexing-slicing-in-tests"): bool = false,
     /// Whether functions inside `#[cfg(test)]` modules or test functions should be checked.
-    #[lints(large_stack_frames)]
+    #[lints(large_unopt_stack_frames)]
     allow_large_stack_frames_in_tests("allow-large-stack-frames-in-tests"): bool = true,
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     #[lints(uninlined_format_args)]
@@ -472,12 +486,18 @@ define_Conf! {
     #[lints(inconsistent_struct_constructor)]
     check_inconsistent_struct_field_initializers("check-inconsistent-struct-field-initializers"): bool = false,
     /// Whether to also run the listed lints on private items.
-    #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
+    #[lints(
+        missing_errors_doc,
+        missing_panics_doc,
+        missing_safety_doc,
+        too_long_first_doc_paragraph,
+        unnecessary_safety_doc,
+    )]
     check_private_items("check-private-items"): bool = false,
     /// The maximum cognitive complexity a function can have
     #[lints(cognitive_complexity)]
     cognitive_complexity_threshold("cognitive-complexity-threshold"): u64 = 25,
-    /// The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+    /// The minimum digits a const float literal must have to suppress the `excessive_precision` lint
     #[lints(excessive_precision)]
     const_literal_digits_threshold("const-literal-digits-threshold"): u32 = 30,
     #[rename = cognitive_complexity_threshold]
@@ -589,7 +609,7 @@ define_Conf! {
     #[lints(collapsible_else_if, collapsible_if)]
     lint_commented_code("lint-commented-code"): bool = false,
     #[rename = check_inconsistent_struct_field_initializers]
-    lint_inconsistent_struct_field_initializers("lint-inconsistent-struct-field-initializers"): bool = false,
+    lint_inconsistent_struct_field_initializers("lint-inconsistent-struct-field-initializers"),
     /// The lower bound for linting decimal literals
     #[lints(decimal_literal_representation)]
     literal_representation_threshold("literal-representation-threshold"): u64 = 16384,
@@ -615,6 +635,10 @@ define_Conf! {
     /// The maximum number of bounds a trait can have to be linted
     #[lints(type_repetition_in_bounds)]
     max_trait_bounds("max-trait-bounds"): u64 = 3,
+    /// List of function/method paths that may panic and should be documented with a `// Panic:` comment
+    /// at call sites.
+    #[lints(undocumented_may_panic_call)]
+    may_panic_functions("may-panic-functions"): Vec<String>,
     /// Whether to lint idents that have too few chars even when following trait declaration.
     #[lints(min_ident_chars)]
     min_ident_chars_lint_trait_impl("min-ident-chars-lint-trait-impl"): bool = false,
@@ -712,12 +736,14 @@ define_Conf! {
         repeat_vec_with_capacity,
         same_item_push,
         seek_from_current,
+        swap_ptr_to_ref,
         to_digit_is_some,
         transmute_ptr_to_ref,
         tuple_array_conversions,
         type_repetition_in_bounds,
         unchecked_time_subtraction,
         uninlined_format_args,
+        unnecessary_box_pin,
         unnecessary_lazy_evaluations,
         unnecessary_unwrap,
         unnested_or_patterns,
@@ -749,7 +775,7 @@ define_Conf! {
     #[lints(arbitrary_source_item_ordering)]
     source_item_ordering("source-item-ordering"): SourceItemOrdering,
     /// The maximum allowed stack size for functions in bytes
-    #[lints(large_stack_frames)]
+    #[lints(large_unopt_stack_frames)]
     stack_size_threshold("stack-size-threshold"): u64 = 512_000,
     /// Enforce the named macros always use the braces specified.
     ///

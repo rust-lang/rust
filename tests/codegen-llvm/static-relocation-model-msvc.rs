@@ -14,7 +14,7 @@ extern crate extern_decl;
 // The `access_extern()` symbol is from this compilation unit, thus we expect
 // it to be marked `dso_local` as well, given the static relocation model.
 //
-// CHECK: @extern_static = external dso_local local_unnamed_addr global i8
+// CHECK: @extern_static = external dso_local local_unnamed_addr global [1 x i8]
 // CHECK: define dso_local noundef i8 @access_extern() {{.*}}
 // CHECK: declare dso_local noundef i8 @extern_fn() {{.*}}
 

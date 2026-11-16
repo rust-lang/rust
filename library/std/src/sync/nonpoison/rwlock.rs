@@ -40,7 +40,7 @@ use crate::sys::sync as sys;
 /// ```
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonRwLock")]
-pub struct RwLock<T: ?Sized> {
+pub struct RwLock<#[rustc_assert_variance(invariant)] T: ?Sized> {
     /// The inner [`sys::RwLock`] that synchronizes thread access to the protected data.
     inner: sys::RwLock,
     /// The lock-protected data.
@@ -72,7 +72,10 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 #[clippy::has_significant_drop]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonRwLockReadGuard")]
-pub struct RwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
+pub struct RwLockReadGuard<
+    #[rustc_assert_variance(covariant)] 'rwlock,
+    #[rustc_assert_variance(covariant)] T: ?Sized + 'rwlock,
+> {
     /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
     /// `&'rwlock T` to avoid `noalias` violations, because a `RwLockReadGuard` instance only holds
     /// immutability until it drops, not for its whole scope.
@@ -104,7 +107,10 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 #[clippy::has_significant_drop]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonRwLockWriteGuard")]
-pub struct RwLockWriteGuard<'rwlock, T: ?Sized + 'rwlock> {
+pub struct RwLockWriteGuard<
+    #[rustc_assert_variance(covariant)] 'rwlock,
+    #[rustc_assert_variance(invariant)] T: ?Sized + 'rwlock,
+> {
     /// A reference to the [`RwLock`] that we have write-locked.
     lock: &'rwlock RwLock<T>,
 }
@@ -130,7 +136,10 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockWriteGuard<'_, T> {}
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 #[clippy::has_significant_drop]
-pub struct MappedRwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
+pub struct MappedRwLockReadGuard<
+    #[rustc_assert_variance(covariant)] 'rwlock,
+    #[rustc_assert_variance(covariant)] T: ?Sized + 'rwlock,
+> {
     /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
     /// `&'rwlock T` to avoid `noalias` violations, because a `MappedRwLockReadGuard` instance only
     /// holds immutability until it drops, not for its whole scope.
@@ -164,7 +173,10 @@ unsafe impl<T: ?Sized + Sync> Sync for MappedRwLockReadGuard<'_, T> {}
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 // #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
 #[clippy::has_significant_drop]
-pub struct MappedRwLockWriteGuard<'rwlock, T: ?Sized + 'rwlock> {
+pub struct MappedRwLockWriteGuard<
+    #[rustc_assert_variance(covariant)] 'rwlock,
+    #[rustc_assert_variance(invariant)] T: ?Sized + 'rwlock,
+> {
     /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
     /// `&'rwlock T` to avoid `noalias` violations, because a `MappedRwLockWriteGuard` instance only
     /// holds uniquneness until it drops, not for its whole scope.

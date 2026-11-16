@@ -5,8 +5,10 @@
 
 //@ check-pass
 
-#![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
+#![feature(adt_const_params, gca_min_const_items, unsized_const_params)]
 #![allow(incomplete_features)]
+
+use std::gca;
 
 trait Trait: SuperTrait {
     type N;
@@ -23,6 +25,6 @@ trait SuperTrait {
 
 fn take0(_: impl Trait<N = 0, N = ()>) {}
 
-fn take1(_: impl Trait<Q = { core::direct_const_arg!("...") }, Q = [()]>) {}
+fn take1(_: impl Trait<Q = { gca!("...") }, Q = [()]>) {}
 
 fn main() {}

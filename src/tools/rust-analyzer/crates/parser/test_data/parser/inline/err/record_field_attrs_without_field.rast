@@ -1,0 +1,43 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      ATTR
+        POUND "#"
+        L_BRACK "["
+        PATH_META
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "attr"
+        R_BRACK "]"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      ATTR
+        POUND "#"
+        L_BRACK "["
+        PATH_META
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "attr"
+        R_BRACK "]"
+      ERROR
+        COMMA ","
+      R_CURLY "}"
+  WHITESPACE "\n"
+error 17: expected field declaration
+error 36: expected field declaration

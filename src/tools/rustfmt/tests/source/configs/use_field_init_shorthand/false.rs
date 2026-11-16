@@ -1,4 +1,4 @@
-// rustfmt-use_field_init_shorthand: false
+//@ rustfmt-use_field_init_shorthand: false
 // Use field initialization shorthand if possible.
 
 fn main() {

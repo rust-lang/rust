@@ -1,15 +1,16 @@
-use rustc_ast::{self as ast, AttrArgs, GenericArg, GenericParamKind, Generics, ItemKind, token};
+use rustc_ast::{
+    self as ast, AngleBracketedArg, AttrArgs, DUMMY_NODE_ID, GenericArg, Generics, ItemKind, token,
+};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::E0802;
 use rustc_expand::base::ExtCtxt;
 use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
-macro_rules! path {
-    ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
-}
+use crate::deriving::generic::*;
 
-pub(crate) fn expand_deriving_reborrow(
+pub(crate) fn expand_derive_reborrow(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -20,10 +21,13 @@ pub(crate) fn expand_deriving_reborrow(
         return;
     };
 
-    push_marker_impl(cx, span, ident, generics, sym::Reborrow, Vec::new(), push);
+    let self_args: Vec<_> =
+        generics.params.iter().map(|p| generic_param_to_arg(cx, p, p.span())).collect();
+
+    push_marker_impl(cx, span, ident, generics, sym::Reborrow, vec![], self_args, push);
 }
 
-pub(crate) fn expand_deriving_coerce_shared(
+pub(crate) fn expand_derive_coerce_shared(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -33,7 +37,9 @@ pub(crate) fn expand_deriving_coerce_shared(
     let Some((ident, generics)) = struct_def(cx, span, item, sym::CoerceShared) else {
         return;
     };
-    let Some(target) = coerce_shared_target(cx, span, item) else {
+    let self_args: Vec<_> =
+        generics.params.iter().map(|p| generic_param_to_arg(cx, p, p.span())).collect();
+    let Some((target, generics)) = coerce_shared_target(cx, span, item, generics) else {
         return;
     };
 
@@ -41,9 +47,10 @@ pub(crate) fn expand_deriving_coerce_shared(
         cx,
         span,
         ident,
-        generics,
+        &generics,
         sym::CoerceShared,
         vec![GenericArg::Type(target)],
+        self_args,
         push,
     );
 }
@@ -71,8 +78,14 @@ fn struct_def<'a>(
     }
 }
 
-fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &ast::Item) -> Option<Box<ast::Ty>> {
-    let mut attrs = item.attrs.iter().filter(|attr| attr.has_name(sym::coerce_shared));
+fn coerce_shared_target(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    coerce_shared_item: &ast::Item,
+    source_generics: &Generics,
+) -> Option<(Box<ast::Ty>, Generics)> {
+    let mut attrs =
+        coerce_shared_item.attrs.iter().filter(|attr| attr.has_name(sym::coerce_shared));
     let Some(attr) = attrs.next() else {
         cx.dcx().emit_err(MissingTarget { span });
         return None;
@@ -92,7 +105,7 @@ fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &ast::Item) -> Optio
     }
 
     let mut parser = cx.new_parser_from_tts(args.tokens.clone());
-    let target = match parser.parse_ty() {
+    let mut target = match parser.parse_ty() {
         Ok(target) => target,
         Err(err) => {
             err.cancel();
@@ -105,7 +118,87 @@ fn coerce_shared_target(cx: &ExtCtxt<'_>, span: Span, item: &ast::Item) -> Optio
         return None;
     }
 
-    Some(target)
+    let rustc_ast::TyKind::Path(_, path) = &mut target.kind else {
+        cx.dcx().emit_err(MalformedTargetType { span: target.span });
+        return None;
+    };
+
+    let Some(last) = path.segments.last_mut() else {
+        // It shouldn't be possible for segments to be empty.
+        cx.dcx().emit_err(MalformedTargetType { span: path.span });
+        return None;
+    };
+
+    let Some(rustc_ast::GenericArgs::AngleBracketed(target_args)) = last.args.as_deref_mut() else {
+        // FIXME(reborrow): same as above.
+        cx.dcx().emit_err(NoGenericsOnTargetType { span: last.span() });
+        return None;
+    };
+
+    // Map to check generated lifetime arg names against.
+    let mut lt_names: FxHashSet<Symbol> = target_args
+        .args
+        .iter()
+        .filter_map(|arg| {
+            if let AngleBracketedArg::Arg(GenericArg::Lifetime(arg)) = arg {
+                Some(arg.ident.name)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // struct Source<'a, 'b, T, const U> {} + coerce_shared(Target<'a>) =>
+    // impl<'a, 'a_, T, const U> CoerceShared<Target<'a_>> for Source<'a, T, const U>
+    //   where 'a: 'a_ {}
+    let coerce_shared_trait_param_count = source_generics.params.len() + lt_names.len();
+    let mut trait_params = ThinVec::with_capacity(coerce_shared_trait_param_count);
+    let mut trait_where_clause = source_generics.where_clause.clone();
+
+    // First add in the existing lifetimes.
+    trait_params.extend(
+        source_generics
+            .params
+            .iter()
+            .take_while(|p| matches!(p.kind, rustc_ast::GenericParamKind::Lifetime))
+            .cloned(),
+    );
+
+    // Remember how many lifetime parameters there were.
+    let source_generics_lt_count = trait_params.len();
+
+    // Replace all lifetime parameters 'a with a new 'a_ where 'a: 'a_ in the Target definition, and
+    // push the new lifetimes into trait params.
+    for arg in target_args.args.iter_mut() {
+        let AngleBracketedArg::Arg(GenericArg::Lifetime(arg)) = arg else {
+            continue;
+        };
+
+        // Eagerly intern the generated lifetime name - it is unlikely we have a naming conflict.
+        let mut name_string = format!("{}_", arg.ident.as_str());
+        let mut name = Symbol::intern(&name_string);
+        while lt_names.contains(&name) {
+            // Just keep piling on the underscores.
+            name_string.push('_');
+            name = Symbol::intern(&name_string);
+        }
+        // Now that we generated a unique lifetime name, add it into the set.
+        lt_names.insert(name);
+
+        // Create our lifetime, add it into the trait parameters and create a where-clause predicate
+        // for it.
+        let lt = rustc_ast::Lifetime { id: DUMMY_NODE_ID, ident: Ident::with_dummy_span(name) };
+        trait_params.push(cx.lifetime_param(lt.ident, Default::default()));
+        trait_where_clause.predicates.push(cx.where_outlives(*arg, lt));
+        // Note: this mutates `target` from `Target<'a>` to `Target<'a_>`.
+        *arg = lt;
+    }
+
+    // Finally add in any non-lifetime generics to the trait parameters: they must follow lifetimes
+    // hence this ordering. This is also why we made note of lifetime parameter count.
+    trait_params.extend_from_slice(&source_generics.params[source_generics_lt_count..]);
+
+    Some((target, Generics { params: trait_params, where_clause: trait_where_clause, span }))
 }
 
 fn push_marker_impl(
@@ -115,75 +208,24 @@ fn push_marker_impl(
     generics: &Generics,
     trait_name: Symbol,
     trait_args: Vec<GenericArg>,
+    self_args: Vec<GenericArg>,
     push: &mut dyn FnMut(Box<ast::Item>),
 ) {
-    let mut trait_parts = path!(span, core::marker);
-    trait_parts.push(Ident::new(trait_name, span));
-    let trait_path = cx.path_all(span, true, trait_parts, trait_args);
+    let trait_path = cx.std_path_all(span, &[sym::marker, trait_name], trait_args);
     let trait_ref = cx.trait_ref(trait_path);
 
-    let self_params: Vec<_> = generics
-        .params
-        .iter()
-        .map(|param| match param.kind {
-            GenericParamKind::Lifetime => {
-                GenericArg::Lifetime(cx.lifetime(param.span(), param.ident))
-            }
-            GenericParamKind::Type { .. } => {
-                GenericArg::Type(cx.ty_ident(param.span(), param.ident))
-            }
-            GenericParamKind::Const { .. } => {
-                GenericArg::Const(cx.const_ident(param.span(), param.ident))
-            }
-        })
-        .collect();
-    let self_ty = cx.ty_path(cx.path_all(span, false, vec![ident], self_params));
+    let self_ty = cx.ty_path(cx.path_all(span, &[ident], self_args));
 
-    push(cx.item(
+    push(cx.item_trait_impl(
         span,
-        thin_vec::thin_vec![cx.attr_word(sym::automatically_derived, span)],
-        ast::ItemKind::Impl(ast::Impl {
-            generics: impl_generics(cx, generics),
-            of_trait: Some(Box::new(ast::TraitImplHeader {
-                safety: ast::Safety::Default,
-                polarity: ast::ImplPolarity::Positive,
-                defaultness: ast::Defaultness::Implicit,
-                trait_ref,
-            })),
-            constness: ast::Const::No,
-            self_ty,
-            items: ThinVec::new(),
-        }),
+        thin_vec::thin_vec![cx.generated_attr(span, ast::GeneratedAttr::AutomaticallyDerived)],
+        generics_without_defaults(generics),
+        ast::Safety::Default,
+        false,
+        trait_ref,
+        self_ty,
+        ThinVec::new(),
     ));
-}
-
-fn impl_generics(cx: &ExtCtxt<'_>, generics: &Generics) -> Generics {
-    // Rebuild the generic parameter declarations because defaults are allowed on structs but
-    // rejected on impls. Preserve lifetime, type, and const parameters and their bounds, const
-    // parameter types, and the where-clause, while omitting type and const defaults.
-    Generics {
-        params: generics
-            .params
-            .iter()
-            .map(|param| match &param.kind {
-                GenericParamKind::Lifetime => {
-                    cx.lifetime_param(param.span(), param.ident, param.bounds.clone())
-                }
-                GenericParamKind::Type { default: _ } => {
-                    cx.typaram(param.span(), param.ident, param.bounds.clone(), None)
-                }
-                GenericParamKind::Const { ty, span: _, default: _ } => cx.const_param(
-                    param.span(),
-                    param.ident,
-                    param.bounds.clone(),
-                    ty.clone(),
-                    None,
-                ),
-            })
-            .collect(),
-        where_clause: generics.where_clause.clone(),
-        span: generics.span,
-    }
 }
 
 #[derive(Diagnostic)]
@@ -215,6 +257,22 @@ struct DuplicateTarget {
 #[diag("malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`", code = E0802)]
 #[note("expected a single target type, for example `#[coerce_shared(Target<'a, T>)]`")]
 struct MalformedTarget {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`", code = E0802)]
+#[note("expected target type to be a user-defined type")]
+struct MalformedTargetType {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`", code = E0802)]
+#[note("expected target type to have generics")]
+struct NoGenericsOnTargetType {
     #[primary_span]
     span: Span,
 }

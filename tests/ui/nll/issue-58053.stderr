@@ -13,7 +13,7 @@ error: lifetime may not live long enough
 LL |     let g = |x: &i32| { x };
    |                 -   -   ^ returning this value requires that `'1` must outlive `'2`
    |                 |   |
-   |                 |   return type of closure is &'2 i32
+   |                 |   return type of closure is `&'2 i32`
    |                 let's call the lifetime of this reference `'1`
 
 error: aborting due to 2 previous errors

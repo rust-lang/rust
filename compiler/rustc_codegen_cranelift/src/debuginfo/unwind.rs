@@ -1,6 +1,6 @@
 //! Unwind info generation (`.eh_frame`)
 
-use cranelift_codegen::FinalizedMachExceptionHandler;
+use cranelift_codegen::MachExceptionHandler;
 use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::unwind::UnwindInfo;
 use cranelift_module::DataId;
@@ -25,7 +25,7 @@ pub(crate) struct UnwindContext {
 }
 
 impl UnwindContext {
-    pub(crate) fn new(module: &mut dyn Module, pic_eh_frame: bool) -> Self {
+    pub(crate) fn new(module: &mut dyn Module, eh_personality: &str, pic_eh_frame: bool) -> Self {
         let endian = match module.isa().endianness() {
             Endianness::Little => RunTimeEndian::Little,
             Endianness::Big => RunTimeEndian::Big,
@@ -70,7 +70,7 @@ impl UnwindContext {
                 // FIXME use eh_personality lang item instead
                 let personality = module
                     .declare_function(
-                        "rust_eh_personality",
+                        eh_personality,
                         Linkage::Import,
                         &Signature {
                             params: vec![
@@ -89,7 +89,7 @@ impl UnwindContext {
                 // Use indirection here to support PIC the case where rust_eh_personality is defined in
                 // another DSO.
                 let personality_ref = module
-                    .declare_data("DW.ref.rust_eh_personality", Linkage::Local, false, false)
+                    .declare_data(&format!("DW.ref.{eh_personality}"), Linkage::Local, false, false)
                     .unwrap();
 
                 let mut personality_ref_data = DataDescription::new();
@@ -172,26 +172,19 @@ impl UnwindContext {
                         }
                         for &handler in call_site.exception_handlers {
                             match handler {
-                                FinalizedMachExceptionHandler::Tag(tag, landingpad) => {
-                                    match tag.as_u32() {
-                                        EXCEPTION_HANDLER_CLEANUP => {
-                                            gcc_except_table_data.call_sites.0.push(CallSite {
-                                                start: u64::from(call_site.ret_addr - 1),
-                                                length: 1,
-                                                landing_pad: u64::from(landingpad),
-                                                action_entry: None,
-                                            })
-                                        }
-                                        EXCEPTION_HANDLER_CATCH => {
-                                            gcc_except_table_data.call_sites.0.push(CallSite {
-                                                start: u64::from(call_site.ret_addr - 1),
-                                                length: 1,
-                                                landing_pad: u64::from(landingpad),
-                                                action_entry: Some(catch_action),
-                                            })
-                                        }
+                                MachExceptionHandler::Tag(tag, landingpad) => {
+                                    let landing_pad = u64::from(landingpad.as_offset());
+                                    let action_entry = match tag.as_u32() {
+                                        EXCEPTION_HANDLER_CLEANUP => None,
+                                        EXCEPTION_HANDLER_CATCH => Some(catch_action),
                                         _ => unreachable!(),
-                                    }
+                                    };
+                                    gcc_except_table_data.call_sites.0.push(CallSite {
+                                        start: u64::from(call_site.ret_addr - 1),
+                                        length: 1,
+                                        landing_pad,
+                                        action_entry,
+                                    });
                                 }
                                 _ => unreachable!(),
                             }

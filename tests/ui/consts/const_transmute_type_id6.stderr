@@ -1,6 +1,8 @@
 error[E0080]: invalid `TypeId` value: not all bytes carry type id metadata
   --> $DIR/const_transmute_type_id6.rs:12:5
    |
+LL | const X: bool = {
+...
 LL |     id == id
    |     ^^^^^^^^ evaluation of `X` failed inside this call
    |

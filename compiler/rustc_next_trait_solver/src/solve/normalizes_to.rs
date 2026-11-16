@@ -8,7 +8,8 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
-    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized, Upcast as _,
+    self as ty, Const, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized,
+    Upcast as _,
 };
 use tracing::instrument;
 
@@ -182,6 +183,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        _goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         let alias_def_id = match goal.predicate.alias.kind {
@@ -348,7 +350,7 @@ where
                             }
                             // Outside of coherence, we treat the associated item as rigid instead.
                             ty::TypingMode::Typeck { .. }
-                            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                            | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
                             | ty::TypingMode::Reflection
@@ -438,7 +440,7 @@ where
             let term = match target_item_kind {
                 ty::AliasTermKind::ProjectionTy { .. } => {
                     let t = cx.type_of(target_item_def_id).instantiate(cx, target_args);
-                    let t = ecx.normalize(GoalSource::Misc, goal.param_env, t)?;
+                    let t = ecx.normalize(goal.param_env, t)?;
                     t.into()
                 }
                 ty::AliasTermKind::ProjectionConst { def_id }
@@ -446,7 +448,7 @@ where
                         cx.const_of_item(ty::AliasConstKind::Projection { def_id }) =>
                 {
                     let c = c.instantiate(cx, target_args);
-                    let c = ecx.normalize(GoalSource::Misc, goal.param_env, c)?;
+                    let c = ecx.normalize(goal.param_env, c)?;
                     c.into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
@@ -457,7 +459,7 @@ where
                         },
                         target_args,
                     );
-                    return ecx.evaluate_const_and_instantiate_projection_term(
+                    return ecx.evaluate_const(
                         goal.param_env,
                         goal.predicate.alias,
                         goal.predicate.term,
@@ -527,6 +529,13 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         panic!("`FnPtr` does not have an associated type: {:?}", goal);
+    }
+
+    fn consider_builtin_fn_static_trait_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        panic!("`FnStatic` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_fn_trait_candidates(
@@ -807,6 +816,9 @@ where
                 "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
                 goal.predicate.self_ty()
             ),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
@@ -1027,6 +1039,9 @@ where
                 "unexpected self ty `{:?}` when normalizing `<T as DiscriminantKind>::Discriminant`",
                 goal.predicate.self_ty()
             ),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {

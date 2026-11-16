@@ -198,8 +198,8 @@ trait UnusedDelimLint {
             | Paren(_)
             | Become(_) => true,
             Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
-            // `direct_const_arg!()` is invalid in function/method argument position.
-            DirectConstArg(_) => false,
+            // `gca!()` is invalid in function/method argument position.
+            GcaMacro(_) => false,
             // don't lint for placeholder/error-recovery
             Underscore | Err(_) | Dummy => false,
         }
@@ -391,17 +391,36 @@ trait UnusedDelimLint {
         keep_space: (bool, bool),
         is_kw: bool,
     ) {
+        let sm = cx.sess().source_map();
+        // The warning points at the delimiter alone. The help only does so if there is a comment
+        // between the delimiter and the inner value, so the comment is kept.
+        let shrink = |span: Span, open: bool, in_help: bool| -> Span {
+            if span.is_empty() {
+                return span;
+            }
+            let (delim, gap) = if open {
+                let delim = span.with_hi(span.lo() + BytePos(1));
+                (delim, span.with_lo(delim.hi()))
+            } else {
+                let delim = span.with_lo(span.hi() - BytePos(1));
+                (delim, span.with_hi(delim.lo()))
+            };
+            let is_delim =
+                sm.span_to_snippet(delim).is_ok_and(|s| matches!(&*s, "(" | ")" | "{" | "}"));
+            let has_comment = sm.span_to_snippet(gap).is_ok_and(|s| !s.trim().is_empty());
+            if is_delim && (!in_help || has_comment) { delim } else { span }
+        };
         let primary_span = if let Some((lo, hi)) = spans {
             if hi.is_empty() {
                 // do not point at delims that do not exist
                 return;
             }
-            MultiSpan::from(vec![lo, hi])
+            MultiSpan::from(vec![shrink(lo, true, false), shrink(hi, false, false)])
         } else {
             MultiSpan::from(value_span)
         };
         let suggestion = spans.map(|(lo, hi)| {
-            let sm = cx.sess().source_map();
+            let (lo, hi) = (shrink(lo, true, true), shrink(hi, false, true));
             let lo_replace = if (keep_space.0 || is_kw)
                 && let Ok(snip) = sm.span_to_prev_source(lo)
                 && !snip.ends_with(' ')
@@ -553,7 +572,7 @@ trait UnusedDelimLint {
                 if let Some((init, els)) = local.kind.init_else_opt() {
                     if els.is_some()
                         && let ExprKind::Paren(paren) = &init.kind
-                        && !init.span.eq_ctxt(paren.span)
+                        && init.span.ctxt() != paren.span.ctxt()
                     {
                         // This branch prevents cases where parentheses wrap an expression
                         // resulting from macro expansion, such as:
@@ -783,6 +802,14 @@ impl UnusedParens {
         }
     }
 
+    /// A pattern that a `macro_rules!` metavariable brings in from the call site keeps the call
+    /// site's syntax context, while the pattern's surroundings keep the macro's. Parentheses in
+    /// such a pattern can be required by the matcher even when they are redundant in the
+    /// expansion, so removing them would break the macro call. (Issue #86959)
+    fn pat_is_macro_arg(pat_span: Span, parent_span: Span) -> bool {
+        pat_span.ctxt() != parent_span.ctxt()
+    }
+
     fn cast_followed_by_lt(&self, expr: &ast::Expr) -> Option<ast::NodeId> {
         if let ExprKind::Binary(op, lhs, _rhs) = &expr.kind
             && (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl)
@@ -811,7 +838,8 @@ impl EarlyLintPass for UnusedParens {
 
         match e.kind {
             ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop(ForLoop { ref pat, .. }) => {
-                self.check_unused_parens_pat(cx, pat, false, false, (true, true));
+                let avoid_or = Self::pat_is_macro_arg(pat.span, e.span);
+                self.check_unused_parens_pat(cx, pat, avoid_or, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already
             // handle a hard error for them during AST lowering in `lower_expr_mut`, but we still
@@ -890,13 +918,15 @@ impl EarlyLintPass for UnusedParens {
             | Err(_) => {}
             // These are list-like patterns; parens can always be removed.
             TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => {
-                for p in ps {
-                    self.check_unused_parens_pat(cx, p, false, false, keep_space);
+                for sub in ps {
+                    let avoid_or = Self::pat_is_macro_arg(sub.span, p.span);
+                    self.check_unused_parens_pat(cx, sub, avoid_or, false, keep_space);
                 }
             }
             Struct(_, _, fps, _) => {
                 for f in fps {
-                    self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
+                    let avoid_or = Self::pat_is_macro_arg(f.pat.span, p.span);
+                    self.check_unused_parens_pat(cx, &f.pat, avoid_or, false, keep_space);
                 }
             }
             // Avoid linting on `i @ (p0 | .. | pn)`, #64106.
@@ -938,7 +968,8 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        self.check_unused_parens_pat(cx, &arm.pat, false, false, (false, false));
+        let avoid_or = Self::pat_is_macro_arg(arm.pat.span, arm.span);
+        self.check_unused_parens_pat(cx, &arm.pat, avoid_or, false, (false, false));
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
@@ -988,7 +1019,7 @@ impl EarlyLintPass for UnusedParens {
 
                 self.with_self_ty_parens = false;
             }
-            ast::TyKind::Ref(_, mut_ty) | ast::TyKind::Ptr(mut_ty) => {
+            ast::TyKind::Ref(_, inner_ty, _) | ast::TyKind::Ptr(inner_ty, _) => {
                 // If this type itself appears in no-bounds position, we propagate its
                 // potentially tighter constraint or risk a false posive (issue 143653).
                 let own_constraint = self.in_no_bounds_pos.get(&ty.id);
@@ -997,7 +1028,7 @@ impl EarlyLintPass for UnusedParens {
                     Some(NoBoundsException::OneBound) => NoBoundsException::OneBound,
                     None => NoBoundsException::OneBound,
                 };
-                self.in_no_bounds_pos.insert(mut_ty.ty.id, constraint);
+                self.in_no_bounds_pos.insert(inner_ty.id, constraint);
             }
             ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
                 for i in 0..bounds.len() {

@@ -89,7 +89,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // document primitive items in an arbitrary crate by using
                         // `rustc_doc_primitive`.
                         let mut is_primitive_impl = false;
-                        if let clean::types::ItemKind::ImplItem(ref impl_) = item.kind
+                        if let clean::types::ItemKind::Impl(ref impl_) = item.kind
                             && impl_.trait_.is_none()
                             && let clean::types::Type::Primitive(_) = impl_.for_
                         {
@@ -113,8 +113,9 @@ impl<'tcx> JsonRenderer<'tcx> {
             .cache
             .paths
             .iter()
-            .chain(&self.cache.external_paths)
-            .map(|(&k, &(ref path, kind))| {
+            .map(|(k, info)| (k, (&info.parts, info.ty)))
+            .chain(self.cache.external_paths.iter().map(|(k, (parts, ty))| (k, (parts, *ty))))
+            .map(|(&k, (path, kind))| {
                 (
                     self.id_from_item_default(k.into()),
                     types::ItemSummary {
@@ -195,8 +196,9 @@ impl<'tcx> JsonRenderer<'tcx> {
         self.cache
             .paths
             .get(&item_id)
-            .or_else(|| self.cache.external_paths.get(&item_id))
-            .map(|(path, _)| path.iter().map(|name| name.to_string()).collect())
+            .map(|info| &info.parts)
+            .or_else(|| self.cache.external_paths.get(&item_id).map(|(parts, _)| parts))
+            .map(|path| path.iter().map(|name| name.to_string()).collect())
     }
 }
 
@@ -251,7 +253,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
-        if let ItemKind::StrippedItem(inner) = &item.kind {
+        if let ItemKind::Stripped(inner) = &item.kind {
             inner.inner_items().for_each(|i| self.item(i).unwrap());
         }
 

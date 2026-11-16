@@ -1,10 +1,11 @@
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{MacroUseArgs, find_attr};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 use rustc_structures::CollapseMacroDebuginfo;
 
 use super::prelude::*;
-use crate::diagnostics::MacroOnlyAttribute;
+use crate::diagnostics::{MacroExportOnDeclMacro, MacroOnlyAttribute};
 
 pub(crate) struct MacroEscapeParser;
 impl NoArgsAttributeParser for MacroEscapeParser {
@@ -38,6 +39,7 @@ const MACRO_USE_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListW
     Allow(Target::Mod),
     Allow(Target::ExternCrate),
     Error(Target::WherePredicate),
+    Error(Target::Param),
 ]);
 
 impl AttributeParser for MacroUseParser {
@@ -131,16 +133,12 @@ pub(crate) struct AllowInternalUnsafeParser;
 impl NoArgsAttributeParser for AllowInternalUnsafeParser {
     const PATH: &[Symbol] = &[sym::allow_internal_unsafe];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::MacroDef),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::MacroDef)]);
     const STABILITY: AttributeStability = unstable!(allow_internal_unsafe);
     const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         check_macro_only(cx, attr_span);
     }
 }
@@ -155,6 +153,7 @@ impl SingleAttributeParser for MacroExportParser {
         Allow(Target::MacroDef),
         Error(Target::WherePredicate),
         Error(Target::Crate),
+        Error(Target::Param),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -179,7 +178,18 @@ impl SingleAttributeParser for MacroExportParser {
                 return None;
             }
         };
+
         Some(AttributeKind::MacroExport { span: cx.attr_span, local_inner_macros })
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let AstTarget::MacroDef(_, macro_def) = cx.ast_target else {
+            return;
+        };
+
+        if !macro_def.macro_rules {
+            cx.emit_err(MacroExportOnDeclMacro { attr_span });
+        }
     }
 }
 

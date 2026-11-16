@@ -1,6 +1,7 @@
 use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
 use crate::ffi::{OsStr, OsString};
+use crate::marker::PhantomData;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{self, PathBuf};
 use crate::sys::pal::{helpers, unsupported_err};
@@ -68,6 +69,19 @@ impl<'a> Iterator for SplitPaths<'a> {
         } else {
             Some(PathBuf::from(OsString::from_wide(&in_progress)))
         }
+    }
+}
+
+pub struct SplitPathsRef<'a>(!, PhantomData<&'a ()>);
+
+pub fn split_paths_ref(_unparsed: &OsStr) -> Option<SplitPathsRef<'_>> {
+    None
+}
+
+impl<'a> Iterator for SplitPathsRef<'a> {
+    type Item = &'a path::Path;
+    fn next(&mut self) -> Option<&'a path::Path> {
+        self.0
     }
 }
 

@@ -45,8 +45,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Add sufficient constraints to ensure `a == b`. See also [Self::relate_types].
     pub(super) fn eq_args(
         &mut self,
-        a: ty::GenericArgsRef<'tcx>,
-        b: ty::GenericArgsRef<'tcx>,
+        a: ty::GenericArgs<'tcx>,
+        b: ty::GenericArgs<'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
@@ -338,9 +338,9 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
         a_ty: Ty<'tcx>,
         b_ty: Ty<'tcx>,
         def_id: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant context,

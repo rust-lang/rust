@@ -1,5 +1,5 @@
-// rustfmt-format_strings: true
-// rustfmt-max_width: 50
+//@ rustfmt-format_strings: true
+//@ rustfmt-max_width: 50
 
 // explicit line breaks should be kept in order to preserve the layout
 

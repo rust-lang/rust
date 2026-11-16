@@ -16,9 +16,6 @@
 //@ ignore-watchos needs the `.dSYM` files to be moved to the device
 //@ ignore-visionos needs the `.dSYM` files to be moved to the device
 
-// FIXME(#117097): backtrace (possibly unwinding mechanism) seems to be different on at least
-// `i686-mingw` (32-bit windows-gnu)? cc #128911.
-//@ ignore-windows-gnu
 //@ ignore-backends: gcc
 
 use std::env;

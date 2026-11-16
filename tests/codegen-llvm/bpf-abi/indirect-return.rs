@@ -11,6 +11,7 @@
 
 extern crate minicore;
 
+#[repr(C)]
 struct Big {
     a: [u16; 32],
     b: u64,

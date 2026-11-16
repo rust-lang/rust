@@ -1,5 +1,9 @@
 #![warn(clippy::new_without_default)]
-#![expect(clippy::extra_unused_lifetimes, clippy::missing_safety_doc)]
+#![expect(
+    clippy::extra_unused_lifetimes,
+    clippy::missing_safety_doc,
+    clippy::unnecessary_as_slice
+)]
 
 pub struct Foo;
 

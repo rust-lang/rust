@@ -14,7 +14,7 @@ publish = false
 doctest = false
 
 [dependencies]
-proc-macro-srv.workspace = true
+proc-macro-srv = { workspace = true, optional = true }
 proc-macro-api.workspace = true
 clap = {version = "4.5.42", default-features = false, features = ["std"]}
 

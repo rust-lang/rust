@@ -88,6 +88,7 @@ impl Drop for ZeroedMmap {
 }
 
 #[test]
+#[cfg(not(all(windows, skip_unsupported_miri_tests)))] // Miri has no net support on Windows
 fn hostname_smoketest() {
     // Just a smoke test to ensure it can be called.
     let name = crate::net::hostname();

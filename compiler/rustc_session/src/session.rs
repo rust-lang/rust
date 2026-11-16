@@ -17,8 +17,7 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort, PResult,
-    TerminalUrl,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, PResult, TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
 use rustc_macros::StableHash;
@@ -26,12 +25,12 @@ pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
-use rustc_structures::{CrateType, Limit};
+use rustc_structures::{CrateType, Limit, LintName};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CfgAbi, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel,
-    SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility,
-    Target, TargetTuple, TlsModel, apple,
+    Arch, CfgAbi, CodeModel, DebuginfoKind, MergeFunctions, Os, PanicStrategy, RelocModel,
+    RelroLevel, SanitizerSet, SmallDataThresholdSupport, SplitDebuginfo, StackProtector,
+    SymbolVisibility, Target, TargetTuple, TlsModel, apple,
 };
 
 use crate::code_stats::CodeStats;
@@ -424,6 +423,14 @@ impl EarlySession {
             .sanitizer
             .combine_with_defaults(self.target.options.default_sanitizers)
     }
+
+    pub fn merge_functions(&self) -> MergeFunctions {
+        self.opts.unstable_opts.merge_functions.unwrap_or(self.target.merge_functions)
+    }
+
+    pub fn is_nightly_build(&self) -> bool {
+        self.opts.unstable_features.is_nightly_build()
+    }
 }
 
 /// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
@@ -589,7 +596,7 @@ impl CodegenUnits {
 }
 
 pub struct LintGroup {
-    pub name: &'static str,
+    pub name: LintName,
     pub lints: Vec<LintId>,
     pub is_externally_loaded: bool,
 }
@@ -744,6 +751,10 @@ impl Session {
 
     pub fn is_sanitizer_cfi_diag_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer_cfi_diag == Some(true)
+    }
+
+    pub fn is_sanitizer_cfi_minimal_runtime_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_minimal_runtime == Some(true)
     }
 
     pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
@@ -951,6 +962,11 @@ impl Session {
             }
         }
     }
+
+    /// Should metadata be embedded within .rlib and .dylib files?
+    pub fn embed_metadata(&self) -> bool {
+        self.opts.cg.embed_metadata.or(self.opts.unstable_opts.embed_metadata).unwrap_or(true)
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns
@@ -970,6 +986,11 @@ impl Session {
 
     pub fn mir_opt_level(&self) -> usize {
         self.opts.unstable_opts.mir_opt_level.unwrap_or_else(|| self.opts.optimize.mir_opt_level())
+    }
+
+    /// What this compilation optimizes for; see [`config::OptimizationObjective`].
+    pub fn optimization_objective(&self) -> config::OptimizationObjective {
+        self.opts.optimize.objective()
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -1289,7 +1310,7 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
 
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType { short, unicode } => {
+            HumanReadableErrorType { no_graphics, short, unicode } => {
                 let emitter = AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .sm(source_map)
                     .short_message(short)
@@ -1300,7 +1321,8 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
-                    );
+                    )
+                    .no_graphics(no_graphics);
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         },
@@ -1684,6 +1706,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    // LLVM CFI minimal runtime requires CFI recovery or CFI diagnostics.
+    if sess.is_sanitizer_cfi_minimal_runtime_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfi);
+        } else if !(sess.is_sanitizer_cfi_recover_enabled() || sess.is_sanitizer_cfi_diag_enabled())
+        {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfiRecoverOrDiag);
+        }
+    }
+
     // LLVM CFI integer normalization requires CFI or KCFI.
     if sess.is_sanitizer_cfi_normalize_integers_enabled() {
         if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
@@ -1841,14 +1873,50 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
 /// Holds data on the current incremental compilation session, if there is one.
 pub struct IncrCompSession {
-    /// The directory containing all cached data. Cached data from a previous
-    /// session can be read out of it and new data for the current session will
-    /// be written into it.
-    pub session_directory: PathBuf,
-    /// `_lock_file` is never directly used, but its presence
-    /// alone has an effect, because the file will unlock when the session is
-    /// dropped.
-    pub _lock_file: flock::Lock,
+    /// The directory from which cached data of a previous session can be read.
+    pub old_session_directory: Option<flock::LockedDir>,
+    /// The directory to which cached data for the current session can be
+    /// written to.
+    pub new_session_directory: flock::LockedDir,
+    borrows: Arc<()>,
+}
+
+impl IncrCompSession {
+    pub fn new(
+        old_session_directory: Option<flock::LockedDir>,
+        new_session_directory: flock::LockedDir,
+    ) -> Self {
+        IncrCompSession { old_session_directory, new_session_directory, borrows: Arc::new(()) }
+    }
+
+    pub fn borrow(&self) -> BorrowedIncrCompSession {
+        BorrowedIncrCompSession {
+            old_session_directory: self.old_session_directory.as_deref().map(ToOwned::to_owned),
+            new_session_directory: (&*self.new_session_directory).to_owned(),
+            _borrows: Arc::clone(&self.borrows),
+        }
+    }
+}
+
+impl Drop for IncrCompSession {
+    fn drop(&mut self) {
+        // Check that there are no worker threads remaining that use the incr
+        // comp session before we unlock the old and new session dir. If there
+        // does exist a worker thread, there is not much we can do, but at
+        // least we will unconditionally complain rather than the worker thread
+        // sometimes crashing depending on what other rustc instances run.
+        assert!(
+            Arc::strong_count(&self.borrows) == 1,
+            "Incr comp session dropped while there are still references",
+        );
+    }
+}
+
+/// A runtime tracked borrow of the incr comp session. Can be sent to worker threads.
+pub struct BorrowedIncrCompSession {
+    pub old_session_directory: Option<PathBuf>,
+    pub new_session_directory: PathBuf,
+    _borrows: Arc<()>,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
@@ -1880,7 +1948,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().fatal(msg)
     }
 
-    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_, FatalAbort> {
+    pub fn early_struct_fatal(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_fatal(msg)
     }
 
@@ -1888,7 +1956,7 @@ impl EarlyDiagCtxt {
         self.dcx.handle().warn(msg)
     }
 
-    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_, ()> {
+    pub fn early_struct_warn(&self, msg: impl Into<DiagMessage>) -> Diag<'_> {
         self.dcx.handle().struct_warn(msg)
     }
 }
@@ -1896,10 +1964,11 @@ impl EarlyDiagCtxt {
 fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType { short, unicode } => Box::new(
+            HumanReadableErrorType { no_graphics, short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .short_message(short),
+                    .short_message(short)
+                    .no_graphics(no_graphics),
             ),
         },
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {

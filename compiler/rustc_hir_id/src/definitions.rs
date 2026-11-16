@@ -8,15 +8,18 @@ use std::fmt::{self, Write};
 use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};
+use rustc_serialize::Encodable;
 pub use rustc_span::def_id::DefPathHash;
 use rustc_span::def_id::{
     CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateId,
 };
-use rustc_span::{Symbol, kw, sym};
+use rustc_span::hygiene::{HygieneRemapper, LocalExpnIdRemapper, SyntaxContextRemapper};
+use rustc_span::{SpanEncoder, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 use crate::def_path_hash_map::DefPathHashMap;
@@ -46,25 +49,79 @@ impl LocalDefIdMap<PerParentDisambiguatorState> {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct DefPathToIndexMap {
+    /// Stores mapping from local hash to def indices which are allocated when the order
+    /// of their allocation is deterministic (see where `commit_end_of_determinism` is called,
+    /// at the moment of writing it is after prefetch of `hir_crate_items` in `run_required_analysis`).
+    pub before_parallel_alloc: DefPathHashMap,
+
+    /// Stores the same mapping as previous map but is used after the allocation order of def indices
+    /// is not deterministic, so when serializing metadata we have a ready to use sorted by stable local
+    /// hash (which does not change between compiler invocations) mapping. We use it for relatively small number
+    /// of definitions, so the majority of them would be stored in `DefPathHashMap`, which makes insertion
+    /// and serialization costs of `SortedMap` acceptable.
+    pub after_parallel_alloc: Option<SortedMap<Hash64, LocalDefId>>,
+}
+
+impl DefPathToIndexMap {
+    #[inline]
+    pub fn get(&self, hash: Hash64) -> Option<DefIndex> {
+        self.before_parallel_alloc.get(&hash).or_else(|| {
+            self.after_parallel_alloc
+                .as_ref()
+                .and_then(|map| map.get(&hash).map(|id| id.local_def_index))
+        })
+    }
+
+    /// This insert function does not behave like regular `insert` of a `HashMap`,
+    /// as the return value is used only for printing information about existing
+    /// def index for local hash before panicking. So we can do not actually insert
+    /// def index into `det_part` when we are in non-deterministic mode.
+    #[inline]
+    pub fn insert(&mut self, hash: Hash64, index: DefIndex) -> Option<DefIndex> {
+        match self.after_parallel_alloc.as_mut() {
+            None => self.before_parallel_alloc.insert(&hash, &index),
+            Some(map) => {
+                if let Some(existing) = self.before_parallel_alloc.get(&hash) {
+                    return Some(existing);
+                }
+
+                map.insert(hash, LocalDefId { local_def_index: index }).map(|id| id.local_def_index)
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Definitions {
     stable_crate_id: StableCrateId,
     def_id_to_key: IndexVec<LocalDefId, DefKey>,
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
-    def_path_hash_to_index: DefPathHashMap,
+    // The first non deterministic def index, may correspond to non-allocated
+    // def id, in this case `first_non_det_index.as_usize() == num_definitions`.
+    first_non_det_index: Option<DefIndex>,
+    def_path_hash_to_index: DefPathToIndexMap,
 }
 
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
+#[derive(Copy, Clone, PartialEq, Debug, BlobDecodable)]
 pub struct DefKey {
     /// The parent path.
     pub parent: Option<DefIndex>,
 
     /// The identifier of this node.
     pub disambiguated_data: DisambiguatedDefPathData,
+}
+
+impl<E: SpanEncoder> Encodable<E> for DefKey {
+    #[inline]
+    fn encode(&self, e: &mut E) {
+        e.encode_def_key(self.parent, self.disambiguated_data);
+    }
 }
 
 impl DefKey {
@@ -249,6 +306,23 @@ pub enum DefPathData {
 }
 
 impl Definitions {
+    /// This function indicates that the def id allocations
+    /// may be non-deterministic after it was called.
+    pub fn commit_end_of_determinism(&mut self) {
+        let prev = self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default());
+        assert!(prev.is_none(), "this function should be called only once");
+
+        let def_index = DefIndex::from_usize(self.def_id_to_key.len());
+        self.first_non_det_index.replace(def_index);
+
+        SyntaxContextRemapper::with(|mut r| r.commit_end_of_determinism());
+        LocalExpnIdRemapper::with(|mut r| r.commit_end_of_determinism());
+    }
+
+    pub fn first_non_det_index(&self) -> DefIndex {
+        self.first_non_det_index.expect("must contain index")
+    }
+
     #[inline(always)]
     pub fn def_key(&self, id: LocalDefId) -> DefKey {
         self.def_id_to_key[id]
@@ -300,6 +374,7 @@ impl Definitions {
             def_path_hashes: Default::default(),
             def_id_to_key: Default::default(),
             def_path_hash_to_index: Default::default(),
+            first_non_det_index: Default::default(),
         };
 
         // Create the root definition.
@@ -323,7 +398,7 @@ impl Definitions {
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
         if let Some(existing) =
-            self.def_path_hash_to_index.insert(&local_hash, &def_id.local_def_index)
+            self.def_path_hash_to_index.insert(local_hash, def_id.local_def_index)
         {
             let def_path1 = self.def_path(LocalDefId { local_def_index: existing });
             let def_path2 = self.def_path(def_id);
@@ -411,11 +486,11 @@ impl Definitions {
     pub fn local_def_path_hash_to_def_id(&self, hash: DefPathHash) -> Option<LocalDefId> {
         debug_assert!(hash.stable_crate_id() == self.stable_crate_id);
         self.def_path_hash_to_index
-            .get(&hash.local_hash())
+            .get(hash.local_hash())
             .map(|local_def_index| LocalDefId { local_def_index })
     }
 
-    pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {
+    pub fn def_path_hash_to_def_index_map(&self) -> &DefPathToIndexMap {
         &self.def_path_hash_to_index
     }
 

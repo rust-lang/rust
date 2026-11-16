@@ -5,7 +5,7 @@ use gccjit::{BinaryOp, RValue, ToRValue, Type};
 use gccjit::{ComparisonOp, UnaryOp};
 use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::base::compare_simd_types;
-use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::common::IntPredicate;
 #[cfg(feature = "master")]
 use rustc_codegen_ssa::diagnostics::ExpectedPointerMutability;
 use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
@@ -15,9 +15,9 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 #[cfg(feature = "master")]
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv as _, LayoutOf};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, span_bug, sym};
 
 use crate::builder::Builder;
 #[cfg(not(feature = "master"))]
@@ -191,7 +191,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
         );
         require!(
-            bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
+            bx.vector_element_type(llret_ty).is_some_and(|elem| bx.int_width(elem).is_some()),
             InvalidMonomorphization::ReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
@@ -246,7 +246,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     if matches!(name, sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctpop) {
         require!(
-            bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
+            bx.vector_element_type(llret_ty).is_some_and(|elem| bx.int_width(elem).is_some()),
             InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
         );
     }
@@ -279,7 +279,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     let simd_ctpop = |bx: &mut Builder<'a, 'gcc, 'tcx>, vector: RValue<'gcc>| -> RValue<'gcc> {
         let mut vector_elements = vec![];
-        let elem_ty = bx.element_type(llret_ty);
+        let elem_ty = bx.vector_element_type(llret_ty).expect("SIMD return type was not a vector");
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.ulong_type, i as i64);
             let element = bx.extract_element(vector, index).to_rvalue();
@@ -539,7 +539,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),
@@ -553,7 +553,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),
@@ -655,6 +655,38 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
     }
 
+    if name == sym::simd_arith_offset {
+        // This also checks that the first operand is a ptr type.
+        let pointee = in_elem.builtin_deref(true).unwrap_or_else(|| {
+            span_bug!(span, "must be called with a vector of pointer types as first argument")
+        });
+        let layout = bx.layout_of(pointee);
+        // The second argument must be a ptr-sized integer.
+        // (We don't care about the signedness, this is wrapping anyway.)
+        let (_, offsets_elem) = args[1].layout.ty.simd_size_and_type(bx.tcx());
+        if !matches!(offsets_elem.kind(), ty::Int(ty::IntTy::Isize) | ty::Uint(ty::UintTy::Usize)) {
+            span_bug!(
+                span,
+                "must be called with a vector of pointer-sized integers as second argument"
+            );
+        }
+
+        let pointers = args[0].immediate();
+        let offsets = args[1].immediate();
+        let elem_type = llret_ty.dyncast_vector().expect("vector return type").get_element_type();
+        let values: Vec<_> = (0..in_len)
+            .map(|i| {
+                let index = bx.context.new_rvalue_from_long(bx.usize_type, i as _);
+                let pointer = bx.extract_element(pointers, index);
+                let offset = bx.extract_element(offsets, index);
+                let pointer = bx.gep(layout.size, pointer, offset);
+                // GCC has no pointer vectors, so the lanes are `usize`.
+                bx.ptrtoint(pointer, elem_type)
+            })
+            .collect();
+        return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
+    }
+
     #[cfg(feature = "master")]
     if name == sym::simd_cast || name == sym::simd_as {
         require_simd!(ret_ty, InvalidMonomorphization::SimdReturn { span, name, ty: ret_ty });
@@ -675,20 +707,28 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             return Ok(args[0].immediate());
         }
 
+        #[derive(Copy, Clone)]
+        enum Sign {
+            Unsigned,
+            Signed,
+        }
+        use Sign::*;
+
         enum Style {
             Float,
-            Int,
+            Int(Sign),
             Unsupported,
         }
 
         let in_style = match *in_elem.kind() {
-            ty::Int(_) | ty::Uint(_) => Style::Int,
+            ty::Int(_) => Style::Int(Signed),
+            ty::Uint(_) => Style::Int(Unsigned),
             ty::Float(_) => Style::Float,
             _ => Style::Unsupported,
         };
-
         let out_style = match *out_elem.kind() {
-            ty::Int(_) | ty::Uint(_) => Style::Int,
+            ty::Int(_) => Style::Int(Signed),
+            ty::Uint(_) => Style::Int(Unsigned),
             ty::Float(_) => Style::Float,
             _ => Style::Unsupported,
         };
@@ -706,6 +746,19 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                         out_elem
                     }
                 );
+            }
+            (Style::Float, Style::Int(sign)) if name == sym::simd_as => {
+                let vector = args[0].immediate();
+                let elem_type =
+                    llret_ty.dyncast_vector().expect("vector return type").get_element_type();
+                let values: Vec<_> = (0..in_len)
+                    .map(|i| {
+                        let index = bx.context.new_rvalue_from_long(bx.usize_type, i as _);
+                        let value = bx.extract_element(vector, index);
+                        bx.cast_float_to_int(matches!(sign, Sign::Signed), value, elem_type)
+                    })
+                    .collect();
+                return Ok(bx.context.new_rvalue_from_vector(bx.location, llret_ty, &values));
             }
             _ => return Ok(bx.context.convert_vector(None, args[0].immediate(), llret_ty)),
         }
@@ -1310,32 +1363,28 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             (true, false) => {
                 // FIXME(antoyo): dyncast_vector should not require a call to unqualified.
                 let arg_type = lhs.get_type().unqualified();
-                // FIXME(antoyo): this uses the same algorithm from saturating add, but add the
-                // negative of the right operand. Find a proper subtraction algorithm.
-                let rhs = bx.context.new_unary_op(None, UnaryOp::Minus, arg_type, rhs);
-
                 // FIXME(antoyo): convert lhs and rhs to unsigned.
-                let sum = lhs + rhs;
+                let difference = lhs - rhs;
                 let vector_type = arg_type.dyncast_vector().expect("vector type");
                 let unit = vector_type.get_num_units();
                 let a = bx.context.new_rvalue_from_int(elem_ty, ((elem_width as i32) << 3) - 1);
                 let width = bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![a; unit]);
 
+                // The subtraction overflows when the operands have different signs and the result
+                // has a different sign than the left operand.
                 let xor1 = lhs ^ rhs;
-                let xor2 = lhs ^ sum;
-                let and =
-                    bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, xor1) & xor2;
-                let mask = and >> width;
+                let xor2 = lhs ^ difference;
+                let mask = (xor1 & xor2) >> width;
 
                 let one = bx.context.new_rvalue_one(elem_ty);
                 let ones =
                     bx.context.new_rvalue_from_vector(None, lhs.get_type(), &vec![one; unit]);
                 let shift1 = ones << width;
-                let shift2 = sum >> width;
+                let shift2 = difference >> width;
                 let mask_min = shift1 ^ shift2;
 
-                let and1 =
-                    bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask) & sum;
+                let and1 = bx.context.new_unary_op(None, UnaryOp::BitwiseNegate, arg_type, mask)
+                    & difference;
                 let and2 = mask & mask_min;
 
                 and1 + and2

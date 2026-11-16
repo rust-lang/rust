@@ -15,10 +15,10 @@ use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece, Mutability};
+use rustc_attr_ir::UnrollAttr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
@@ -35,8 +35,8 @@ use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, Ty,
-    TyCtxt, UpvarArgs,
+    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgs, Ty, TyCtxt,
+    UpvarArgs,
 };
 
 pub mod visit;
@@ -62,7 +62,7 @@ macro_rules! thir_with_elements {
         #[derive(Debug, StableHash, Clone)]
         pub struct Thir<'tcx> {
             pub body_type: BodyTy<'tcx>,
-            pub attributes: FxIndexMap<ExprId, ThinVec<AttributeKind>>,
+            pub loop_hint_attrs: FxIndexMap<ExprId, ThinVec<UnrollAttr>>,
             $(
                 pub $name: IndexVec<$id, $value>,
             )*
@@ -72,7 +72,7 @@ macro_rules! thir_with_elements {
             pub fn new(body_type: BodyTy<'tcx>) -> Thir<'tcx> {
                 Thir {
                     body_type,
-                    attributes: FxIndexMap::default(),
+                    loop_hint_attrs: FxIndexMap::default(),
                     $(
                         $name: IndexVec::new(),
                     )*
@@ -147,7 +147,7 @@ pub struct AdtExpr<'tcx> {
     pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
     pub variant_index: VariantIdx,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
 
     /// Optional user-given args: for something like `let x =
     /// Bar::<T> { ... }`.
@@ -466,7 +466,7 @@ pub enum ExprKind<'tcx> {
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
         did: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     },
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
@@ -529,7 +529,7 @@ pub enum ExprKind<'tcx> {
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         user_ty: UserTy<'tcx>,
     },
     ConstParam {
@@ -661,7 +661,7 @@ pub struct PatExtra<'tcx> {
     ///
     /// This is used by some diagnostics for non-exhaustive matches, to map
     /// the pattern node back to the `DefId` of its original constant.
-    pub expanded_const: Option<DefId>,
+    pub expanded_const: Option<ty::AliasConstKind<'tcx>>,
 
     /// User-written types that must be preserved into MIR so that they can be
     /// checked.
@@ -795,7 +795,7 @@ pub enum PatKind<'tcx> {
     /// multiple variants.
     Variant {
         adt_def: AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPat<'tcx>>,
     },

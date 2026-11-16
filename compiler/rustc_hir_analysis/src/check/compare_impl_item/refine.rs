@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use itertools::Itertools as _;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -7,8 +9,8 @@ use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::def_id::ModId;
 use rustc_span::{Span, span_bug};
@@ -71,8 +73,10 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     }
 
-    let mut collector = ImplTraitInTraitCollector { tcx, types: FxIndexSet::default() };
-    trait_m_sig.visit_with(&mut collector);
+    let mut collector = ImplTraitInTraitCollector { tcx, depth: 0, types: FxIndexSet::default() };
+    if trait_m_sig.visit_with(&mut collector).is_break() {
+        return;
+    }
 
     // Bound that we find on RPITITs in the trait signature.
     let mut trait_bounds = vec![];
@@ -206,8 +210,8 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     // Also, We have to anonymize binders in these types because they may contain
     // `BrNamed` bound vars, which contain unique `DefId`s which correspond to syntax
     // locations that we don't care about when checking bound equality.
-    let trait_bounds = FxIndexSet::from_iter(trait_bounds.fold_with(&mut Anonymize { tcx }));
-    let impl_bounds = impl_bounds.fold_with(&mut Anonymize { tcx });
+    let trait_bounds = FxIndexSet::from_iter(trait_bounds.fold_with(&mut FullyAnonymize { tcx }));
+    let impl_bounds = impl_bounds.fold_with(&mut FullyAnonymize { tcx });
 
     // Find any clauses that are present in the impl's RPITITs that are not
     // present in the trait's RPITITs. This will trigger on trivial predicates,
@@ -264,28 +268,43 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
 struct ImplTraitInTraitCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
+    depth: usize,
     types: FxIndexSet<ty::ProjectionAliasTy<'tcx>>,
 }
 
+/// Once depth exceeds `tcx.recursion_limit()`, the visitor immediately breaks
+/// the entire traversal using `ControlFlow::Break(())`.
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         if let ty::Alias(_, alias) = *ty.kind()
             && let Some(proj) = alias.try_to_projection()
             && self.tcx.is_impl_trait_in_trait(proj.kind)
         {
+            if !self.tcx.recursion_limit().value_within_limit(self.depth) {
+                self.tcx.dcx().span_delayed_bug(
+                    self.tcx.def_span(proj.kind),
+                    "recursion limit exceeded while collecting implied RPITIT bounds",
+                );
+                return ControlFlow::Break(());
+            }
             if self.types.insert(proj) {
+                self.depth += 1;
                 for (pred, _) in self
                     .tcx
                     .explicit_item_bounds(proj.kind)
                     .iter_instantiated_copied(self.tcx, proj.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
-                    pred.visit_with(self);
+                    pred.visit_with(self)?;
                 }
+                self.depth -= 1;
             }
         } else {
-            ty.super_visit_with(self);
+            ty.super_visit_with(self)?;
         }
+        ControlFlow::Continue(())
     }
 }
 
@@ -396,11 +415,13 @@ fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibili
     }
 }
 
-struct Anonymize<'tcx> {
+/// Contrary to [`TyCtxt::anonymize_bound_vars`] this anonymizes *all* binders and bound vars,
+/// not just the `Binder` and its bound vars that was provided as an argument.
+struct FullyAnonymize<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Anonymize<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FullyAnonymize<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -409,7 +430,48 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Anonymize<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.anonymize_bound_vars(t)
+        let bound_vars = self.tcx.mk_bound_variable_kinds_from_iter(t.bound_vars().iter().map(
+            |kind| match kind {
+                ty::BoundVariableKind::Ty(_) => ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon),
+                ty::BoundVariableKind::Region(_) => {
+                    ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)
+                }
+                ty::BoundVariableKind::Const => ty::BoundVariableKind::Const,
+            },
+        ));
+        ty::Binder::bind_with_vars(t.skip_binder().fold_with(self), bound_vars)
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if let ty::RegionKind::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_re) = r.kind()
+        {
+            ty::Region::new_anon_bound(self.tcx, debruijn, bound_re.var)
+        } else {
+            r
+        }
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if !t.has_bound_vars() {
+            return t;
+        }
+        if let ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty) = *t.kind() {
+            let bound_ty = ty::BoundTy { var: bound_ty.var, kind: ty::BoundTyKind::Anon };
+            Ty::new_bound(self.tcx, debruijn, bound_ty)
+        } else {
+            t.super_fold_with(self)
+        }
+    }
+
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if !c.has_bound_vars() {
+            return c;
+        }
+        if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ct) = c.kind() {
+            ty::Const::new_anon_bound(self.tcx, debruijn, bound_ct.var)
+        } else {
+            c.super_fold_with(self)
+        }
     }
 }
 

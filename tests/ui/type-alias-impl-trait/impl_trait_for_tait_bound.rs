@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 #![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;
@@ -8,7 +12,7 @@ impl Yay for Foo {}
 
 #[define_opaque(Foo)]
 fn foo() {
-    is_yay::<u32>(); //~ ERROR: the trait bound `u32: Yay` is not satisfied
+    is_yay::<u32>(); //[current]~ ERROR: the trait bound `u32: Yay` is not satisfied
     is_debug::<u32>(); // OK
     is_yay::<Foo>(); // OK
     is_debug::<Foo>(); // OK

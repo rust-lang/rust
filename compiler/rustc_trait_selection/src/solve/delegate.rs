@@ -1,17 +1,16 @@
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
-use std::mem;
 use std::ops::{ControlFlow, Deref};
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
-    QueryRegionConstraint,
+    Canonicalized, QueryRegionConstraint, instantiate_value,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::{
@@ -19,20 +18,22 @@ use rustc_infer::traits::solve::{
 };
 use rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{Certainty, MaybeInfo};
+use rustc_middle::traits::solve::MaybeInfo;
 use rustc_middle::ty::print::{FmtPrinter, Print};
+use rustc_middle::ty::transmute::Answer;
 use rustc_middle::ty::{
-    self, CanonicalizerState, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    self, CanonicalizerState, MayBeErased, Region, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_structures::Limit;
+use rustc_transmute::TransmuteTypeEnv;
 use thin_vec::{ThinVec, thin_vec};
 
 use super::inspect::InferCtxtProofTreeExt;
 use crate::solve::inspect::{self, InspectConfig, ProofTreeVisitor};
-use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, implicit_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -175,12 +176,27 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     goal_stalled_on_args_or_nonempty_opaques(thin_vec![TyOrConstInferVar::Ty(vid)])
                 } else if trait_pred.polarity() == ty::ClausePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                        Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
-                            let predicate = self.deeply_resolve_ignoring_regions(goal.predicate);
-                            if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                        Some(lang_item @ (LangItem::Sized | LangItem::MetaSized)) => {
+                            let sizedness = if lang_item == LangItem::Sized {
+                                ty::SizedTraitKind::Sized
+                            } else {
+                                ty::SizedTraitKind::MetaSized
+                            };
+
+                            // Avoid deep resolution when sizedness is already known.
+                            // Keep the fallback for error tainting and nontrivial goals.
+                            if !goal.predicate.references_error()
+                                && self_ty.has_trivial_sizedness(self.tcx, sizedness)
+                            {
                                 Outcome::TriviallyHolds
                             } else {
-                                Outcome::NoFastPath
+                                let predicate =
+                                    self.deeply_resolve_ignoring_regions(goal.predicate);
+                                if implicit_fast_path(self.tcx, predicate, goal.param_env) {
+                                    Outcome::TriviallyHolds
+                                } else {
+                                    Outcome::NoFastPath
+                                }
                             }
                         }
                         Some(LangItem::Copy | LangItem::Clone) => {
@@ -215,11 +231,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     return Outcome::NoFastPath;
                 }
 
+                // We use `VisibleForLeakCheck::Yes` for `RegionOutlives` goals without
+                // the fast path. However, we always change region constraints from nested
+                // goals to `VisibleForLeakCheck::No`, so to be consistent with this
+                // behavior as we avoid the nested goal boundary, we have to manually
+                // set the flag.
                 self.0.sub_regions(
                     SubregionOrigin::RelateRegionParamBound(span, None),
                     outlives.1,
                     outlives.0,
-                    ty::VisibleForLeakCheck::Yes,
+                    ty::VisibleForLeakCheck::No,
                 );
                 Outcome::TriviallyHolds
             }
@@ -229,6 +250,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
 
                 let ty = self.deeply_resolve_ignoring_regions(outlives.0);
+                if ty.has_non_rigid_aliases() {
+                    return Outcome::NoFastPath;
+                }
+
                 let mut infer_collector = CollectNonRegionInfer {
                     infers: Default::default(),
                     visited: Default::default(),
@@ -245,10 +270,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                             })
                             .collect(),
                     );
-                }
-
-                if ty.has_non_rigid_aliases() {
-                    return Outcome::NoFastPath;
                 }
 
                 self.0.register_type_outlives_constraint(
@@ -399,6 +420,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         constraints
     }
 
+    fn instantiate_value<V>(&self, value: Canonicalized<V>, values: CanonicalVarValues<'tcx>) -> V
+    where
+        V: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        instantiate_value(self.tcx, &values, value.into_uninstantiated())
+    }
+
     fn instantiate_canonical<V>(
         &self,
         canonical: Canonical<'tcx, V>,
@@ -414,16 +442,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         kind: CanonicalVarKind<'tcx>,
         span: Span,
-        var_values: &[ty::GenericArg<'tcx>],
+        prev_var_values: &[ty::GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, kind, var_values, universe_map)
+        self.0.instantiate_canonical_var(span, kind, prev_var_values, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(
         &self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
@@ -456,7 +484,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             match typing_mode {
                 TypingMode::Coherence
                 | TypingMode::Typeck { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostTypeckThroughBorrowck { .. }
                 | TypingMode::Reflection
                 | TypingMode::PostBorrowck { .. } => false,
                 TypingMode::PostAnalysis | TypingMode::Codegen => {
@@ -486,48 +514,55 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         src: Ty<'tcx>,
         dst: Ty<'tcx>,
         assume: ty::Const<'tcx>,
-    ) -> Result<Certainty, NoSolution> {
-        // Erase regions because we compute layouts in `rustc_transmute`,
-        // which will ICE for region vars.
-        let (dst, src) = self.tcx.erase_and_anonymize_regions((dst, src));
-
-        let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, assume) else {
-            return Err(NoSolution);
-        };
-
-        // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
-        match rustc_transmute::TransmuteTypeEnv::new(self.0.tcx).is_transmutable(src, dst, assume) {
-            rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
-            rustc_transmute::Answer::No(_) | rustc_transmute::Answer::If(_) => Err(NoSolution),
-        }
+    ) -> Result<Answer<Region<'tcx>, Ty<'tcx>>, NoSolution> {
+        rustc_transmute::Assume::from_const(self.tcx, assume)
+            .map(|assume| TransmuteTypeEnv::new(self.0.tcx).is_transmutable(src, dst, assume))
+            .ok_or(NoSolution)
     }
 
-    fn obtain_canonicalizer_state(&self) -> CanonicalizerState<Self::Interner> {
-        // We temporarily take the canonicalizer state.
-        mem::take(&mut self.canonicalizer_state.borrow_mut())
+    fn obtain_canonicalizer_state(&self) -> Box<CanonicalizerState<Self::Interner>> {
+        // Get the top state, or create a new one if none are available.
+        self.cx()
+            .caches
+            .canonicalizer_states
+            .lock()
+            .pop()
+            .unwrap_or_else(|| Box::new(CanonicalizerState::default()))
     }
 
-    fn release_canonicalizer_state(&self, mut state: CanonicalizerState<Self::Interner>) {
+    fn release_canonicalizer_state(&self, mut state: Box<CanonicalizerState<Self::Interner>>) {
         // Clear (don't deallocate) the state for later reuse.
         state.clear();
-        *self.canonicalizer_state.borrow_mut() = state;
+        self.cx().caches.canonicalizer_states.lock().push(state);
     }
 
     fn emit_next_solver_overflow_fcw(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>, span: Span) {
         let tcx = self.tcx;
-        let goal = self.deeply_resolve_ignoring_regions(goal);
-        let mut visitor = OverflowedGoalChain {
-            span,
-            predicates: vec![],
-            recursion_limit: usize::min(16, tcx.recursion_limit().0),
-        };
-        let _ = self
-            .with_disabled_next_solver_overflow_fcw(|| self.visit_proof_tree(goal, &mut visitor));
         tcx.emit_node_span_lint(
             RECURSION_DEPTH_EXCEEDING_LIMIT,
             CRATE_HIR_ID,
             span,
             rustc_errors::DiagDecorator(|diag| {
+                // We do this in the decorator as that avoids the work
+                // if we don't actually emit the lint.
+                let goal = self.deeply_resolve_ignoring_regions(goal);
+                let recursion_limit = if let Some(specified_limit) = tcx.next_solver_overflow_fcw_limit()
+                {
+                    // Double default limit allows us to see the whole chain.
+                    usize::min(specified_limit, tcx.recursion_limit().0 * 2)
+                } else {
+                    usize::min(16, tcx.recursion_limit().0)
+                };
+                let mut visitor = OverflowedGoalChain {
+                    span,
+                    predicates: vec![],
+                    recursion_limit,
+                };
+
+                let _ = self.with_disabled_next_solver_overflow_fcw(|| {
+                    self.visit_proof_tree(goal, &mut visitor)
+                });
+
                 // FIXME: share this with overflow error in fulfillment instead of duplicating.
                 let pred_str = |pred: ty::Predicate<'tcx>| {
                     let s = pred.to_string();

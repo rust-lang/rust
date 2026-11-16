@@ -274,10 +274,7 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     builder: &Builder<'_>,
 ) -> TestFilterCategory<'a> {
     let suite_path = suite_path.as_ref();
-    let path = match path.strip_prefix(".") {
-        Ok(p) => p,
-        Err(_) => path,
-    };
+    let path = path.trim_prefix(".");
     if !path.starts_with(suite_path) {
         return TestFilterCategory::Uninteresting;
     }
@@ -368,6 +365,7 @@ pub fn get_clang_cl_resource_dir(builder: &Builder<'_>, clang_cl_path: &str) -> 
     // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
     let mut builtins_locator = command(clang_cl_path);
     builtins_locator.args(["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
+    builtins_locator.run_in_dry_run();
 
     let clang_rt_builtins = builtins_locator.run_capture_stdout(builder).stdout();
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());

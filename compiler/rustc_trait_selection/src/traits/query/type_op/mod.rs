@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, ScrubbedTraitError};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -62,13 +62,13 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
 ///
 /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 'tcx {
-    type QueryResponse: TypeFoldable<TyCtxt<'tcx>>;
+    type QueryResponse: TypeFoldable<TyCtxt<'tcx>> + PartialEq;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with
     /// a final result or `None` to do the full path.
     fn try_fast_path(
-        tcx: TyCtxt<'tcx>,
+        infcx: &InferCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse>;
 
@@ -97,12 +97,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         ),
         NoSolution,
     > {
-        if !infcx.disable_trait_solver_fast_paths()
-            && let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key)
-        {
-            return Ok((result, None, PredicateObligations::new(), Certainty::Proven));
-        }
-
         let mut canonical_var_values = OriginalQueryValues::default();
         let old_param_env = query_key.param_env;
         let canonical_self = infcx.canonicalize_query(query_key, &mut canonical_var_values);
@@ -134,23 +128,38 @@ where
         root_def_id: LocalDefId,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        if !infcx.disable_trait_solver_fast_paths()
+            && let Some(value) = QueryTypeOp::try_fast_path(infcx, &self)
+        {
+            debug_assert_eq!(value, infcx.deeply_resolve_ignoring_regions(value.clone()));
+
+            return Ok(TypeOpOutput { output: value, constraints: None, error_info: None });
+        }
+
         let mut error_info = None;
         let mut region_constraints = QueryRegionConstraints::default();
 
-        // HACK(type_alias_impl_trait): When moving an opaque type to hidden type mapping from the query to the current inferctxt,
-        // we sometimes end up with `Opaque<'a> = Opaque<'b>` instead of an actual hidden type. In that case we don't register a
-        // hidden type but just equate the lifetimes. Thus we need to scrape the region constraints even though we're also manually
-        // collecting region constraints via `region_constraints`.
-        let (mut output, _) =
-            scrape_region_constraints(infcx, root_def_id, "fully_perform", span, |ocx| {
+        // HACK(type_alias_impl_trait): When moving an opaque type to hidden type mapping from the
+        // query to the current inferctxt, we sometimes end up with `Opaque<'a> = Opaque<'b>`
+        // instead of an actual hidden type. In that case we don't register a hidden type but just
+        // equate the lifetimes. Thus we need to scrape the region constraints even though we're
+        // also manually collecting region constraints via `region_constraints`.
+        let (mut output, _) = scrape_region_constraints::<_, _, ScrubbedTraitError<'_>>(
+            infcx,
+            root_def_id,
+            "fully_perform",
+            span,
+            |ocx| {
                 let (output, ei, obligations, _) =
                     Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
                 error_info = ei;
 
                 ocx.register_obligations(obligations);
                 Ok(output)
-            })?;
+            },
+        )?;
         output.error_info = error_info;
+
         if let Some(QueryRegionConstraints { constraints, assumptions }) = output.constraints {
             region_constraints.constraints.extend(constraints.iter().cloned());
             region_constraints.assumptions.extend(assumptions.iter().cloned());

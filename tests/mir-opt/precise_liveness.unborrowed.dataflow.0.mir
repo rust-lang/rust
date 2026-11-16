@@ -1,0 +1,22 @@
+// MIR for `unborrowed` 0 dataflow
+
+fn unborrowed() -> u32 {
+    let mut _0: u32;
+    let mut _1: u32;
+    let mut _2: u32;
+
+    bb0: {
+        // early: []
+        // late: [_1]
+        _1 = const 1_u32;
+        // early: [_1]
+        // late: [_1, _2]
+        _2 = const 2_u32;
+        // early: [_1, _2]
+        // late: [_0]
+        _0 = Add(copy _1, move _2);
+        // early: [_0]
+        // late: []
+        return;
+    }
+}

@@ -1,9 +1,9 @@
 // Demonstrate that generic const arguments in GAT constraints are rejected at
-// the definition site of an eager type alias.
+// the definition site of an unchecked type alias.
 
 //@ compile-flags: -Znext-solver=globally
 
-#![feature(generic_const_args, min_generic_const_args)]
+#![feature(gca_const_items, gca_min_const_items)]
 #![expect(incomplete_features)]
 
 // * dyn incompatible due to GAT

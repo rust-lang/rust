@@ -68,7 +68,7 @@ declare_lint_pass!(MissingAssertsForIndexing => [MISSING_ASSERTS_FOR_INDEXING]);
 
 fn report_lint<F>(cx: &LateContext<'_>, index_spans: Vec<Span>, msg: &'static str, f: F)
 where
-    F: FnOnce(&mut Diag<'_, ()>),
+    F: FnOnce(&mut Diag<'_>),
 {
     span_lint_and_then(cx, MISSING_ASSERTS_FOR_INDEXING, index_spans, msg, |diag| {
         f(diag);

@@ -7,6 +7,7 @@
 //! and highlight injection).
 
 use std::{
+    borrow::Cow,
     convert::Infallible,
     ops::{ControlFlow, Range},
 };
@@ -222,9 +223,12 @@ impl Docs {
     fn extend_with_doc_attr(&mut self, value: ast::String, indent: &mut Indent) {
         let Some(value_offset) = value.text_range_between_quotes() else { return };
         let value_offset = value_offset.start();
-        let Ok(value) = value.value() else { return };
-        // FIXME: Handle source maps for escaped text.
-        self.extend_with_doc_str(&value, value_offset, DocCommentKind::Desugared, indent);
+        let Ok(unescaped) = value.value() else { return };
+        // `value()` borrows the source text only when the string has no escapes. With escapes,
+        // offsets in the unescaped text don't match offsets in the source, so leave it unmapped.
+        // FIXME: Map the text between escapes.
+        let ast_offset = matches!(unescaped, Cow::Borrowed(_)).then_some(value_offset);
+        self.push_doc_lines(&unescaped, ast_offset, DocCommentKind::Desugared, indent);
     }
 
     fn extend_with_doc_str(
@@ -791,7 +795,7 @@ pub(crate) fn extract_docs<'a, 'db>(
 mod tests {
     use expect_test::expect;
     use hir_expand::InFile;
-    use syntax::{AstNode, ast};
+    use syntax::{AstNode, AstToken, ast};
     use test_fixture::WithFixture;
     use thin_vec::ThinVec;
     use tt::{TextRange, TextSize};
@@ -1078,5 +1082,55 @@ mod tests {
         // Both `foo` and `bar` map back past the stripped ` * ` decoration.
         assert_eq!(mapped(0, 3), Some((in_file(range(7, 10)), IsInnerDoc::No)));
         assert_eq!(mapped(4, 7), Some((in_file(range(14, 17)), IsInnerDoc::No)));
+    }
+
+    /// Extracts the docs of the first string in `source`, as if it were a `#[doc = "..."]` value.
+    fn doc_attr_docs(source: &str) -> Docs {
+        let (_db, file_id) = TestDB::with_single_file("");
+        let value = syntax::SourceFile::parse(source, span::Edition::CURRENT)
+            .syntax_node()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find_map(ast::String::cast)
+            .expect("no string in the fixture");
+        let mut docs = Docs {
+            docs: String::new(),
+            docs_source_map: Vec::new(),
+            outline_mod: None,
+            inline_file: file_id.into(),
+            prefix_len: TextSize::new(0),
+            inline_inner_docs_start: None,
+            outline_inner_docs_start: None,
+            macro_calls: ThinVec::new(),
+        };
+        let mut indent = Indent::default();
+        docs.extend_with_doc_attr(value, &mut indent);
+        docs.remove_indent(&indent);
+        docs.remove_last_newline();
+        docs
+    }
+
+    #[test]
+    fn doc_attr_source_map() {
+        let range = |start, end| TextRange::new(TextSize::new(start), TextSize::new(end));
+        let mapped = |docs: &Docs, start, end| {
+            docs.find_ast_range(range(start, end)).map(|(range, _)| range.value)
+        };
+
+        // No escapes: `bar` maps back to the source.
+        let docs = doc_attr_docs(r#"#[doc = "foo bar"] fn f() {}"#);
+        assert_eq!(docs.docs, "foo bar");
+        assert_eq!(mapped(&docs, 4, 7), Some(range(13, 16)));
+
+        // Raw strings have no escapes either.
+        let docs = doc_attr_docs(r##"#[doc = r"a\b"] fn f() {}"##);
+        assert_eq!(docs.docs, r"a\b");
+        assert_eq!(mapped(&docs, 2, 3), Some(range(12, 13)));
+
+        // With an escape, `b` is at offset 2 in the docs but at offset 3 in the source,
+        // so the docs can't be mapped back.
+        let docs = doc_attr_docs(r#"#[doc = "a\"b"] fn f() {}"#);
+        assert_eq!(docs.docs, "a\"b");
+        assert_eq!(mapped(&docs, 2, 3), None);
     }
 }

@@ -1,4 +1,4 @@
-// rustfmt-control_brace_style: AlwaysNextLine
+//@ rustfmt-control_brace_style: AlwaysNextLine
 
 fn main() {
     loop

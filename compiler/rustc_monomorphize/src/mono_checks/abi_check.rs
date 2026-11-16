@@ -6,7 +6,7 @@ use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::layout::{FnAbiRequest, codegen_handle_fn_abi_err};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, span_bug, sym};
 use rustc_target::callconv::{FnAbi, PassMode};
 
 use crate::diagnostics;
@@ -24,7 +24,9 @@ enum UsesVectorRegisters {
 /// scalable vector registers or no vector registers.
 fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorRegisters {
     match mode {
-        PassMode::Ignore | PassMode::Indirect { .. } => UsesVectorRegisters::No,
+        PassMode::Ignore | PassMode::Indirect { .. } | PassMode::IndirectUnsized { .. } => {
+            UsesVectorRegisters::No
+        }
         PassMode::Cast { pad_i32_count: _, cast }
             if cast.prefix.iter().any(|x| matches!(x.kind, RegKind::Vector { .. }))
                 || matches!(cast.rest.unit.kind, RegKind::Vector { .. }) =>
@@ -208,21 +210,58 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
 fn check_call_site_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     callee: Ty<'tcx>,
-    caller: InstanceKind<'tcx>,
+    caller: Instance<'tcx>,
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
     let extern_abi = callee.fn_sig(tcx).abi();
-    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::LlvmIntrinsic {
+    if extern_abi.is_rustic_abi() {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
         // FIXME(#161753, rustc_scalable_vector/stdarch_aarch64_sve): this is unsound! Above we
         // argue we need the callee-site check for the Rust ABI; we need the call-site check here as
         // well then.
-        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
-        // LLVM intrinsics. The caller is responsible for ensuring the ABI makes sense.
         return;
     }
+    if extern_abi == ExternAbi::LlvmIntrinsic {
+        // We disable all checks for the llvm-intrinsic ABI to allow linking to arbitrary
+        // LLVM intrinsics. The caller is responsible for ensuring the ABI makes sense.
+        let typing_env = ty::TypingEnv::fully_monomorphized();
+        match *callee.kind() {
+            ty::FnDef(def_id, args) => {
+                let instance = ty::Instance::expect_resolve(
+                    tcx,
+                    typing_env,
+                    def_id,
+                    args.no_bound_vars().unwrap(),
+                    DUMMY_SP,
+                );
+                let InstanceKind::LlvmIntrinsic(..) = instance.def else {
+                    span_bug!(
+                        loc().0,
+                        "`extern \"llvm-intrinsic\"` may only be used for LLVM intrinsics"
+                    );
+                };
+                let name = tcx
+                    .codegen_fn_attrs(def_id)
+                    .symbol_name
+                    .expect("llvm-intrinsic must be foreign function");
+                assert!(
+                    name.as_str().starts_with("llvm."),
+                    "llvm-intrinsic name must start with llvm."
+                );
+                return;
+            }
+            _ => {
+                span_bug!(loc().0, "`extern \"llvm-intrinsic\"` may only be used for direct calls")
+            }
+        };
+    }
     let typing_env = ty::TypingEnv::fully_monomorphized();
+    let callee = caller.instantiate_mir_and_normalize_erasing_regions(
+        tcx,
+        typing_env,
+        ty::EarlyBinder::bind(tcx, callee),
+    );
     let callee_abi = match *callee.kind() {
         ty::FnPtr(..) => {
             let sig = callee.fn_sig(tcx);
@@ -253,8 +292,15 @@ fn check_call_site_abi<'tcx>(
                 DUMMY_SP,
             );
             if let InstanceKind::LlvmIntrinsic(..) = instance.def {
-                // LLVM intrinsics don't have an ABI, so there is nothing to check.
-                return;
+                let name = tcx
+                    .codegen_fn_attrs(def_id)
+                    .symbol_name
+                    .expect("llvm-intrinsic must be foreign function");
+                // llvm.wasm.throw is the only unwinding LLVM intrinsic we have.
+                // FIXME maybe replace with inline asm?
+                if name.as_str() != "llvm.wasm.throw" {
+                    span_bug!(loc().0, "llvm.* function must use `extern \"llvm-intrinsic\"`");
+                }
             }
             match tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty()))) {
                 Ok(callee_abi) => callee_abi,
@@ -287,12 +333,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
             mir::TerminatorKind::Call { ref func, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref fn_span, .. } => {
                 let callee_ty = func.ty(body, tcx);
-                let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
-                    tcx,
-                    ty::TypingEnv::fully_monomorphized(),
-                    ty::EarlyBinder::bind(tcx, callee_ty),
-                );
-                check_call_site_abi(tcx, callee_ty, body.source.instance, || {
+                check_call_site_abi(tcx, callee_ty, instance, || {
                     let loc = Location {
                         block: bb,
                         statement_index: body.basic_blocks[bb].statements.len(),

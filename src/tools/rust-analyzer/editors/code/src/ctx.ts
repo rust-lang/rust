@@ -287,9 +287,9 @@ export class Ctx implements RustAnalyzerExtensionApi {
             let message = "bootstrap error. ";
 
             message +=
-                'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically).';
+                'See the logs in "OUTPUT > rust-analyzer Extension" (should open automatically).';
             message +=
-                'To enable verbose logs, click the gear icon in the "OUTPUT" tab and select "Debug".';
+                ' To enable verbose logs, click the gear icon in the "OUTPUT" tab and select "Debug".';
 
             log.error("Bootstrap error", err);
             throw new Error(message);

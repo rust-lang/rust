@@ -345,28 +345,26 @@ impl<'db> CastCheck<'db> {
                         // We also need to skip auto traits to emit an FCW and not an error.
                         let src_obj = Ty::new_dynamic(
                             ctx.interner(),
-                            BoundExistentialPredicates::new_from_iter(
-                                ctx.interner(),
-                                src_tty.iter().filter(|pred| {
+                            BoundExistentialPredicates::new_from_iter(src_tty.iter().filter(
+                                |pred| {
                                     !matches!(
                                         pred.skip_binder(),
                                         ExistentialPredicate::AutoTrait(_)
                                     )
-                                }),
-                            ),
+                                },
+                            )),
                             Region::new_erased(ctx.interner()),
                         );
                         let dst_obj = Ty::new_dynamic(
                             ctx.interner(),
-                            BoundExistentialPredicates::new_from_iter(
-                                ctx.interner(),
-                                dst_tty.iter().filter(|pred| {
+                            BoundExistentialPredicates::new_from_iter(dst_tty.iter().filter(
+                                |pred| {
                                     !matches!(
                                         pred.skip_binder(),
                                         ExistentialPredicate::AutoTrait(_)
                                     )
-                                }),
-                            ),
+                                },
+                            )),
                             Region::new_erased(ctx.interner()),
                         );
 

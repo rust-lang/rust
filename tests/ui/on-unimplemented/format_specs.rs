@@ -1,7 +1,7 @@
 #![feature(rustc_attrs)]
 
 #[rustc_on_unimplemented(
-    message = "normal: {This}, path: {This:path},  resolved: {This:resolved}"
+    message = "normal: {this}, path: {this:path},  resolved: {this:resolved}"
 )]
 pub trait Trait<'lifetime, const CONST_GENERIC: usize, A, B> where A: Send {}
 

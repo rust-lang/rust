@@ -36,6 +36,25 @@ mod x86_win32;
 mod x86_win64;
 mod xtensa;
 
+/// Different modes in which indirect arguments can be passed.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
+pub enum IndirectMode {
+    /// Passed as a normal pointer, nothing special.
+    Pointer,
+    /// The value should be passed at a fixed stack offset in accordance to
+    /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
+    /// attribute. The `byval` argument will use a byte array with the same size as the Rust type
+    /// (which ensures that padding is preserved and that we do not rely on LLVM's struct layout),
+    /// and will use the alignment specified in `attrs.pointee_align` (if `Some`) or the type's
+    /// alignment (if `None`). This means that the alignment will not always
+    /// match the Rust type's alignment; see documentation of `pass_by_stack_offset` for more info.
+    OnStack,
+    /// `AmdgpuKernelArg` behaves similar to `OnStack` except that the pointer does not necessarily
+    /// point to the stack, no extra copy is made, and the passed argument should not be modified.
+    /// This corresponds to the `byref` LLVM argument attribute.
+    AmdgpuKernelArg,
+}
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug, StableHash)]
 pub enum PassMode {
     /// Ignore the argument.
@@ -60,19 +79,16 @@ pub enum PassMode {
     Cast { pad_i32_count: u8, cast: Box<CastTarget> },
     /// Pass the argument indirectly via a hidden pointer.
     ///
-    /// The `meta_attrs` value, if any, is for the metadata (vtable or length) of an unsized
-    /// argument. (This is the only mode that supports unsized arguments.)
+    /// `address_space` specifies if the pointer is in a special address space or the default one.
     ///
-    /// `on_stack` defines that the value should be passed at a fixed stack offset in accordance to
-    /// the ABI rather than passed using a pointer. This corresponds to the `byval` LLVM argument
-    /// attribute. The `byval` argument will use a byte array with the same size as the Rust type
-    /// (which ensures that padding is preserved and that we do not rely on LLVM's struct layout),
-    /// and will use the alignment specified in `attrs.pointee_align` (if `Some`) or the type's
-    /// alignment (if `None`). This means that the alignment will not always
-    /// match the Rust type's alignment; see documentation of `pass_by_stack_offset` for more info.
+    /// `mode` can be a special way to pass an argument indirectly.
+    Indirect { attrs: ArgAttributes, address_space: Option<AddressSpace>, mode: IndirectMode },
+
+    /// Like `Indirect`, but for unsized parameters.
     ///
-    /// `on_stack` cannot be true for unsized arguments, i.e., when `meta_attrs` is `Some`.
-    Indirect { attrs: ArgAttributes, meta_attrs: Option<ArgAttributes>, on_stack: bool },
+    /// The `meta_attrs` value, is for the metadata (vtable or length) of an unsized argument.
+    /// (This is the only mode that supports unsized arguments.) `on_stack` is always false.
+    IndirectUnsized { attrs: ArgAttributes, meta_attrs: ArgAttributes },
 }
 
 impl PassMode {
@@ -89,13 +105,13 @@ impl PassMode {
                 PassMode::Cast { cast: c2, pad_i32_count: pad2 },
             ) => c1.eq_abi(c2) && pad1 == pad2,
             (
-                PassMode::Indirect { attrs: a1, meta_attrs: None, on_stack: s1 },
-                PassMode::Indirect { attrs: a2, meta_attrs: None, on_stack: s2 },
-            ) => a1.eq_abi(a2) && s1 == s2,
+                PassMode::Indirect { attrs: a1, address_space: as1, mode: m1 },
+                PassMode::Indirect { attrs: a2, address_space: as2, mode: m2 },
+            ) => a1.eq_abi(a2) && as1 == as2 && m1 == m2,
             (
-                PassMode::Indirect { attrs: a1, meta_attrs: Some(e1), on_stack: s1 },
-                PassMode::Indirect { attrs: a2, meta_attrs: Some(e2), on_stack: s2 },
-            ) => a1.eq_abi(a2) && e1.eq_abi(e2) && s1 == s2,
+                PassMode::IndirectUnsized { attrs: a1, meta_attrs: e1 },
+                PassMode::IndirectUnsized { attrs: a2, meta_attrs: e2 },
+            ) => a1.eq_abi(a2) && e1.eq_abi(e2),
             _ => false,
         }
     }
@@ -244,8 +260,9 @@ impl From<Reg> for Uniform {
 }
 
 impl Uniform {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        self.unit.align(cx)
+    /// Alignment used for the scratch space when this type is part of a `PassMode::Cast`.
+    pub fn scratch_align<C: HasDataLayout>(&self, cx: &C) -> Align {
+        self.unit.scratch_align(cx)
     }
 
     /// Pass using one or more values of the given type, without requiring them to be consecutive.
@@ -280,6 +297,12 @@ pub struct CastTarget {
     pub rest_offset: Option<Size>,
     pub rest: Uniform,
     pub attrs: ArgAttributes,
+    /// If `true`, indicates that this type will be passed on the x87 floating point stack on
+    /// 32-bit x86, changing the backend type to `x87_f80`. This is needed as LLVM needs to generate
+    /// extra code to ensure that signalling NaNs are passed losslessly on the x87 floating point
+    /// stack. Only valid on return types on 32-bit x86 with a cast target of either `Reg::f32()` or
+    /// `Reg::f64()`.
+    pub pass_via_x87_floating_point_stack: bool,
 }
 
 impl From<Reg> for CastTarget {
@@ -296,7 +319,13 @@ impl From<Uniform> for CastTarget {
 
 impl CastTarget {
     pub fn prefixed(prefix: ArrayVec<Reg, 8>, rest: Uniform) -> Self {
-        Self { prefix, rest_offset: None, rest, attrs: ArgAttributes::new() }
+        Self {
+            prefix,
+            rest_offset: None,
+            rest,
+            attrs: ArgAttributes::new(),
+            pass_via_x87_floating_point_stack: false,
+        }
     }
 
     pub fn offset_pair(a: Reg, offset_from_start: Size, b: Reg) -> Self {
@@ -307,6 +336,7 @@ impl CastTarget {
             rest_offset: Some(offset_from_start),
             rest: b.into(),
             attrs: ArgAttributes::new(),
+            pass_via_x87_floating_point_stack: false,
         }
     }
 
@@ -342,12 +372,10 @@ impl CastTarget {
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        self.prefix
-            .iter()
-            .map(|reg| reg.align(cx))
-            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)), |acc, align| {
-                acc.max(align)
-            })
+        self.prefix.iter().map(|reg| reg.scratch_align(cx)).fold(
+            cx.data_layout().aggregate_align.max(self.rest.scratch_align(cx)),
+            |acc, align| acc.max(align),
+        )
     }
 
     /// Checks if these two `CastTarget` are equal enough to be considered "the same for all
@@ -358,17 +386,20 @@ impl CastTarget {
             rest_offset: rest_offset_l,
             rest: rest_l,
             attrs: attrs_l,
+            pass_via_x87_floating_point_stack: x87_l,
         } = self;
         let CastTarget {
             prefix: prefix_r,
             rest_offset: rest_offset_r,
             rest: rest_r,
             attrs: attrs_r,
+            pass_via_x87_floating_point_stack: x87_r,
         } = other;
         prefix_l == prefix_r
             && rest_offset_l == rest_offset_r
             && rest_l == rest_r
             && attrs_l.eq_abi(attrs_r)
+            && x87_l == x87_r
     }
 }
 
@@ -420,11 +451,13 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             .set(ArgAttribute::NoUndef)
             .set(ArgAttribute::NoFree);
         attrs.pointee_size = layout.size;
-        attrs.pointee_align = Some(layout.align.abi);
+        attrs.pointee_align = Some(layout.align);
 
-        let meta_attrs = layout.is_unsized().then_some(ArgAttributes::new());
-
-        PassMode::Indirect { attrs, meta_attrs, on_stack: false }
+        if layout.is_unsized() {
+            PassMode::IndirectUnsized { attrs, meta_attrs: ArgAttributes::new() }
+        } else {
+            PassMode::Indirect { attrs, address_space: None, mode: IndirectMode::Pointer }
+        }
     }
 
     /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
@@ -435,10 +468,24 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {
                 self.mode = Self::indirect_pass_mode(&self.layout);
             }
-            PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
+            PassMode::Indirect { attrs: _, address_space: _, mode: IndirectMode::Pointer }
+            | PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 // already indirect
             }
             _ => panic!("Tried to make {:?} indirect", self.mode),
+        }
+    }
+
+    /// Pass this argument indirectly, by passing a (thin or wide) pointer to the argument instead.
+    /// This is valid for both sized and unsized arguments.
+    #[track_caller]
+    pub fn make_indirect_addrspace(&mut self, addrspace: AddressSpace) {
+        self.make_indirect();
+        match self.mode {
+            PassMode::Indirect { ref mut address_space, .. } => {
+                *address_space = Some(addrspace);
+            }
+            _ => unreachable!(),
         }
     }
 
@@ -450,7 +497,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             PassMode::Ignore => {
                 self.mode = Self::indirect_pass_mode(&self.layout);
             }
-            PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
+            PassMode::Indirect { attrs: _, address_space: _, mode: IndirectMode::Pointer }
+            | PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 // already indirect
             }
             _ => panic!("Tried to make {:?} indirect (expected `PassMode::Ignore`)", self.mode),
@@ -477,8 +525,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         assert!(!self.layout.is_unsized(), "used byval ABI for unsized layout");
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect { ref mut attrs, meta_attrs: _, ref mut on_stack } => {
-                *on_stack = true;
+            PassMode::Indirect { ref mut attrs, address_space: _, ref mut mode } => {
+                *mode = IndirectMode::OnStack;
 
                 // Some platforms, like 32-bit x86, change the alignment of the type when passing
                 // `byval`. Account for that.
@@ -492,11 +540,29 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
+    /// Pass this argument indirectly.
+    /// This corresponds to the `byref` LLVM argument attribute.
+    ///
+    /// `address_space` specifies the address space of the passed pointer.
+    pub fn pass_amdgpu_kernel_arg(&mut self, addrspace: Option<AddressSpace>) {
+        assert!(!self.layout.is_unsized(), "used amdgpu kernel arg ABI for unsized layout");
+        self.make_indirect();
+        match self.mode {
+            PassMode::Indirect { attrs: _, ref mut address_space, ref mut mode } => {
+                *mode = IndirectMode::AmdgpuKernelArg;
+                *address_space = addrspace;
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         if let BackendRepr::Scalar(scalar) = self.layout.backend_repr
             && let Primitive::Int(i, signed) = scalar.primitive()
-            && i.size().bits() < bits
+            // bools are i1 but their primitive is i8. Unlike other types,
+            // bools can be extended to their primitive size.
+            && (i.size().bits() < bits || self.layout.backend_repr.is_bool())
             && let PassMode::Direct(ref mut attrs) = self.mode
         {
             if signed {
@@ -541,15 +607,15 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { .. })
+        matches!(self.mode, PassMode::Indirect { .. } | PassMode::IndirectUnsized { .. })
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ })
+        matches!(self.mode, PassMode::Indirect { attrs: _, address_space: _, mode: _ })
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ })
+        matches!(self.mode, PassMode::IndirectUnsized { attrs: _, meta_attrs: _ })
     }
 
     pub fn is_ignore(&self) -> bool {
@@ -562,36 +628,9 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     where
         Ty: PartialEq,
     {
-        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
-        // at the type.
-        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode) && {
-            // `fn_arg_sanity_check` accepts `PassMode::Direct` for some aggregates.
-            // That elevates any type difference to an ABI difference since we just use the
-            // full Rust type as the LLVM argument/return type.
-            if matches!(self.mode, PassMode::Direct(..))
-                && matches!(self.layout.backend_repr, BackendRepr::Memory { .. })
-            {
-                // For aggregates in `Direct` mode to be compatible, the types need to be equal.
-                self.layout.ty == other.layout.ty
-            } else {
-                true
-            }
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, StableHash)]
-pub enum RiscvInterruptKind {
-    Machine,
-    Supervisor,
-}
-
-impl RiscvInterruptKind {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Machine => "machine",
-            Self::Supervisor => "supervisor",
-        }
+        // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will
+        // look at the type.
+        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
     }
 }
 
@@ -658,17 +697,16 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         let spec = cx.target_spec();
         match &spec.arch {
             Arch::X86 => {
-                let (flavor, regparm) = match abi {
-                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
-                        (x86::Flavor::FastcallOrVectorcall, None)
-                    }
+                let flavor = match abi {
+                    ExternAbi::Fastcall { .. } => x86::Flavor::Fastcall,
+                    ExternAbi::Vectorcall { .. } => x86::Flavor::Vectorcall,
                     ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
-                        (x86::Flavor::General, cx.x86_abi_opt().regparm)
+                        x86::Flavor::General { regparam: cx.x86_abi_opt().regparm }
                     }
-                    _ => (x86::Flavor::General, None),
+                    _ => x86::Flavor::General { regparam: None },
                 };
                 let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
-                let opts = x86::X86Options { flavor, regparm, reg_struct_return };
+                let opts = x86::X86Options { flavor, reg_struct_return };
                 if spec.is_like_msvc {
                     x86_win32::compute_abi_info(cx, self, opts);
                 } else {
@@ -758,7 +796,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 // x86-64 non-softfloat targets all require SSE2 so we can use SSE registers.
                 arg.layout.size.bits() <= 128
             }
-            // So far, we haven't implemented this logic for any other target.
+            Arch::AArch64 if spec.rustc_abi != Some(RustcAbi::Softfloat) => {
+                // aarch64 non-softfloat targets all require Neon
+                arg.layout.size.bits() <= 128
+            }
             _ => false,
         };
 
@@ -850,8 +891,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 BackendRepr::Memory { .. } => {
                     // Compute `Aggregate` ABI.
 
-                    let is_indirect_not_on_stack =
-                        matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
+                    let is_indirect_not_on_stack = matches!(
+                        arg.mode,
+                        PassMode::Indirect { mode: IndirectMode::Pointer, .. }
+                            | PassMode::IndirectUnsized { .. }
+                    );
                     assert!(is_indirect_not_on_stack);
 
                     let size = arg.layout.size;

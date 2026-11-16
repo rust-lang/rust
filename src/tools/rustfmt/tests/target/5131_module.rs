@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: Module
+//@ rustfmt-imports_granularity: Module
 
 #![allow(dead_code)]
 

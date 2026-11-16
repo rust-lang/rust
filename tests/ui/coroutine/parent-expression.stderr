@@ -1,6 +1,8 @@
 error: coroutine cannot be sent between threads safely
   --> $DIR/parent-expression.rs:25:13
    |
+LL |   macro_rules! type_combinations {
+...
 LL |               assert_send(g);
    |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
@@ -38,11 +40,12 @@ note: required by a bound in `assert_send`
    |
 LL | fn assert_send<T: Send>(_thing: T) {}
    |                   ^^^^ required by this bound in `assert_send`
-   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: coroutine cannot be sent between threads safely
   --> $DIR/parent-expression.rs:25:13
    |
+LL |   macro_rules! type_combinations {
+...
 LL |               assert_send(g);
    |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
@@ -80,11 +83,12 @@ note: required by a bound in `assert_send`
    |
 LL | fn assert_send<T: Send>(_thing: T) {}
    |                   ^^^^ required by this bound in `assert_send`
-   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: coroutine cannot be sent between threads safely
   --> $DIR/parent-expression.rs:25:13
    |
+LL |   macro_rules! type_combinations {
+...
 LL |               assert_send(g);
    |               ^^^^^^^^^^^^^^ coroutine is not `Send`
 ...
@@ -122,7 +126,6 @@ note: required by a bound in `assert_send`
    |
 LL | fn assert_send<T: Send>(_thing: T) {}
    |                   ^^^^ required by this bound in `assert_send`
-   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

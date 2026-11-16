@@ -3,16 +3,16 @@ use std::mem;
 use std::ops::Bound;
 
 use ast::Label;
-use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
+use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
-    AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
-    LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
+    self as ast, AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind,
+    HasAttrs, Local, LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::attr::InnerAttrForbiddenReason;
@@ -126,11 +126,7 @@ impl<'a> Parser<'a> {
                 diagnostics::InvalidVariableDeclarationSub::UseLetNotVar,
                 force_collect,
             )?
-        } else if self.check_path()
-            && !self.token.is_qpath_start()
-            && !self.is_path_start_item()
-            && !self.is_builtin()
-        {
+        } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
             // that starts like a path (1 token), but it fact not a path.
@@ -159,7 +155,12 @@ impl<'a> Parser<'a> {
             attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
-            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
+            FnParseMode {
+                req_name: |_, _| true,
+                context: FnContext::Free,
+                req_body: true,
+                allow_const_params: true,
+            },
             force_collect,
             AllowConstBlockItems::No,
         )? {
@@ -363,6 +364,14 @@ impl<'a> Parser<'a> {
         } else {
             (None, None, None)
         };
+
+        let init_wrapped = self
+            .tree_look_ahead(2, |tree| match tree {
+                TokenTree::Token(tok, _) => tok.is_keyword(kw::Else),
+                TokenTree::Delimited(..) => false,
+            })
+            .unwrap_or(false);
+
         let init = match (self.parse_initializer(err.is_some()), err) {
             (Ok(init), None) => {
                 // init parsed, ty parsed
@@ -400,6 +409,7 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
+        let trailing_token = self.prev_token;
         let kind = match init {
             None => LocalKind::Decl,
             Some(init) => {
@@ -411,8 +421,14 @@ impl<'a> Parser<'a> {
                         return Err(self.error_block_no_opening_brace_msg(Cow::from(msg)));
                     }
                     let els = self.parse_block()?;
-                    self.check_let_else_init_bool_expr(&init);
-                    self.check_let_else_init_trailing_brace(&init);
+                    // These checks should also respect invisible delimiter
+                    if !init_wrapped {
+                        self.check_let_else_init_bool_expr(&init);
+                    }
+                    if matches!(trailing_token.kind, TokenKind::CloseBrace) {
+                        self.check_let_else_init_trailing_brace(&init);
+                    }
+
                     LocalKind::InitElse(init, els)
                 } else {
                     LocalKind::Init(init)
@@ -467,7 +483,7 @@ impl<'a> Parser<'a> {
                 ),
             };
             self.dcx().emit_err(diagnostics::InvalidCurlyInLetElse {
-                span: span.with_lo(span.hi() - BytePos(1)),
+                span: self.psess.source_map().end_point(span),
                 sugg,
             });
         }
@@ -501,7 +517,7 @@ impl<'a> Parser<'a> {
             _ => self.eat(exp!(Eq)),
         };
 
-        Ok(if eq_consumed || eq_optional { Some(self.parse_expr()?) } else { None })
+        Ok(if eq_consumed || eq_optional { Some(self.parse_expr_in_let()?) } else { None })
     }
 
     /// Parses a block. No inner attributes are allowed.
@@ -745,7 +761,7 @@ impl<'a> Parser<'a> {
                 snapshot = Some(self.create_snapshot_for_diagnostic());
             }
             let stmt = match self.parse_full_stmt(recover) {
-                Err(mut err) if recover.yes() => {
+                Err(mut err) if recover.yes(self) => {
                     if let Some(ref mut snapshot) = snapshot {
                         snapshot.recover_vcs_conflict_marker();
                     }
@@ -780,7 +796,7 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    let guar = err.emit();
+                    let guar = err.emit_err();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     self.mk_stmt_err(self.token.span, guar)
                 }
@@ -1020,7 +1036,7 @@ impl<'a> Parser<'a> {
                                 && self.look_ahead(1, |t| {
                                     t.is_metavar_block()
                                         || t.kind == token::OpenBrace
-                                        || t.is_non_raw_ident_where(|ident| {
+                                        || t.non_raw_ident().is_some_and(|ident| {
                                             matches!(ident.name, kw::For | kw::Loop | kw::While)
                                         })
                                 })
@@ -1052,12 +1068,12 @@ impl<'a> Parser<'a> {
                             let res =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr);
 
-                            Some(if recover.no() {
+                            Some(if recover.no(self) {
                                 res?
                             } else {
                                 res.unwrap_or_else(|mut e| {
                                     self.recover_missing_dot(&mut e);
-                                    let guar = e.emit();
+                                    let guar = e.emit_err();
                                     self.recover_stmt();
                                     guar
                                 })
@@ -1119,7 +1135,7 @@ impl<'a> Parser<'a> {
                                 {
                                     true
                                 } else if let Some(op) = self.check_assoc_op()
-                                    && op.node.can_continue_expr_unambiguously()
+                                    && super::expr::diagnostics::op_can_continue_stmt_expr_unambiguously(op.node)
                                 {
                                     true
                                 } else {

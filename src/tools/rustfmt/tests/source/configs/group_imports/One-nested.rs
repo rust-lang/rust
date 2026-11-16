@@ -1,4 +1,4 @@
-// rustfmt-group_imports: One
+//@ rustfmt-group_imports: One
 mod test {
     use crate::foo::bar;
 

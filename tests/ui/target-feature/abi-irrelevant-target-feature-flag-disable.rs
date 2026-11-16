@@ -5,12 +5,9 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: -Ctarget-feature=-x87
 //@ build-pass
-//@ ignore-backends: gcc
 //@ add-minicore
 #![feature(no_core)]
 #![no_core]
 
 extern crate minicore;
 use minicore::*;
-
-//~? WARN unstable feature specified for `-Ctarget-feature`: `x87`

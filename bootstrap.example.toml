@@ -103,8 +103,11 @@
 # Whether to build Enzyme as AutoDiff backend.
 #llvm.enzyme = false
 
-# Whether to build LLVM with support for it's gpu offload runtime.
+# Whether to build LLVM with support for its gpu offload runtime.
 #llvm.offload = false
+
+# Whether to build TPDE as an experimental alternative LLVM backend.
+#llvm.tpde = false
 
 # Absolute path to the directory containing ClangConfig.cmake
 #llvm.offload-clang-dir = ""
@@ -431,7 +434,7 @@
 #    "rust-analyzer",
 #    "rust-analyzer-proc-macro-srv",
 #    "analysis",
-#    "src",
+#    "rust-src",
 #    "wasm-component-ld",
 #    "miri", "cargo-miri" # for dev/nightly channels
 #]
@@ -782,8 +785,7 @@
 # Indicates whether stack protectors should be used
 # via the unstable option `-Zstack-protector`.
 #
-# Valid options are : `none`(default),`basic`,`strong`, or `all`.
-# `strong` and `basic` options may be buggy and are not recommended, see rust-lang/rust#114903.
+# Valid options are : `none`(default), `strong`, or `all`.
 #rust.stack-protector = "none"
 
 # Prints each test name as it is executed, to help debug issues in the test harness itself.
@@ -842,7 +844,7 @@
 # sysroot.
 #rust.llvm-tools = true
 
-# Indicates whether the `self-contained` llvm-bitcode-linker, will be made available
+# Indicates whether the `self-contained` llvm-bitcode-linker will be made available
 # in the sysroot. It is required for running nvptx tests.
 #rust.llvm-bitcode-linker = false
 
@@ -956,6 +958,12 @@
 # want to enable this right now.
 #rust.wasm-proc-macros = false
 
+# Enables wasm targets to be built with `-Cpanic=unwind` by default instead of
+# the current `-Cpanic=abort`. This is currently used in testing the Rust
+# compiler itself and is only intended for local development/testing at this
+# time.
+#rust.wasm-panic-unwind-default = false
+
 # =============================================================================
 # Distribution options
 #
@@ -1038,6 +1046,11 @@
 # Instrument LLVM, so that when executed, it will gather profiles
 # Note: for LLVM specifically, this should be a directory, not a file path.
 #pgo.llvm.generate = "/tmp/profiles"
+# Use the following profile to PGO optimize the Cranelift codegen backend.
+#pgo.cranelift.use = "/tmp/profiles/foo.profraw"
+# Instrument the Cranelift codegen backend, so that when executed, it will gather profiles
+# to this path.
+#pgo.cranelift.generate = "/tmp/profiles/foo.profraw"
 
 # =============================================================================
 # Options for specific targets

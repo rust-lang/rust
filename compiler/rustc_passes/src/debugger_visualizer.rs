@@ -1,9 +1,8 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
 use rustc_ast::{ItemKind, ast};
+use rustc_attr_ir::{Attribute, AttributeKind, DebugVisualizer};
 use rustc_attr_parsing::AttributeParser;
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, DebugVisualizer};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;

@@ -3,7 +3,7 @@
 #![feature(rustc_attrs)]
 
 pub mod Bar {
-  #[rustc_on_unimplemented(label ="test error `{Self}` with `{Bar}` `{Baz}` `{Quux}` in `{This}`")]
+  #[rustc_on_unimplemented(label ="test error `{Self}` with `{Bar}` `{Baz}` `{Quux}` in `{this}`")]
   pub trait Foo<Bar, Baz, Quux> {}
 }
 

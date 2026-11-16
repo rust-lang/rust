@@ -31,15 +31,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// fn main() {
-    ///     if let Some(0) | Some(2) = Some(0) {}
-    /// }
+    /// if let Some(0) | Some(2) = Some(0) {}
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     if let Some(0 | 2) = Some(0) {}
-    /// }
+    /// if let Some(0 | 2) = Some(0) {}
     /// ```
     #[clippy::version = "1.46.0"]
     pub UNNESTED_OR_PATTERNS,
@@ -67,8 +63,8 @@ impl EarlyLintPass for UnnestedOrPatterns {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if self.msrv.meets(msrvs::OR_PATTERNS)
-            && let ast::ExprKind::Let(pat, _, _, _) = &e.kind
+        if let ast::ExprKind::Let(pat, _, _, _) = &e.kind
+            && self.msrv.meets(msrvs::OR_PATTERNS)
         {
             lint_unnested_or_patterns(cx, pat);
         }

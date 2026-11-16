@@ -1,6 +1,8 @@
 error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
   --> $DIR/simple_fail.rs:9:10
    |
+LL | fn test<const N: usize>() -> Arr<N>
+LL | where
 LL |     [u8; N - 1]: Sized,
    |          ^^^^^ evaluation of `test::<0>::{constant#0}` failed here
 

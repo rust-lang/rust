@@ -1,5 +1,5 @@
 //! Ensure that a box with a custom allocator detects when the pointer is dangling.
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 // This should not need the aliasing model.
 //@compile-flags: -Zmiri-disable-stacked-borrows
 use std::alloc::Layout;

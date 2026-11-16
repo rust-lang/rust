@@ -5,10 +5,10 @@ use cranelift_codegen::ir::UserFuncName;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -342,7 +342,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             crate::PrintOnPanic(|| format!("terminator {:?}", bb_data.terminator().kind));
 
         match &bb_data.terminator().kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, loop_hint_attrs: _ } => {
                 if let TerminatorKind::Return = fx.mir[*target].terminator().kind {
                     let mut can_immediately_return = true;
                     for stmt in &fx.mir[*target].statements {
@@ -719,7 +719,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(
                                     fx.tcx,
-                                    ty::TypingEnv::fully_monomorphized(),
+                                    fx.typing_env(),
                                     def_id,
                                     args.no_bound_vars().unwrap(),
                                 )
@@ -770,8 +770,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
 
                     fn is_wide_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
                         ty.builtin_deref(true).is_some_and(|pointee_ty| {
-                            fx.tcx
-                                .type_has_metadata(pointee_ty, ty::TypingEnv::fully_monomorphized())
+                            fx.tcx.type_has_metadata(pointee_ty, fx.typing_env())
                         })
                     }
 

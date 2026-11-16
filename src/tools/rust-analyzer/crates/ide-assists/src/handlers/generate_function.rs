@@ -126,6 +126,11 @@ fn fn_target_info(
             }
             Some(hir::PathResolution::SelfType(impl_)) => {
                 let adt = impl_.self_ty(ctx.db()).as_adt()?;
+                if let hir::Adt::Enum(_) = adt
+                    && fn_name.starts_with(char::is_uppercase)
+                {
+                    return None;
+                }
                 assoc_fn_target_info(ctx, call, adt, fn_name)
             }
             _ => None,
@@ -491,7 +496,7 @@ fn get_fn_target(
     let mut file = ctx.vfs_file_id();
     let target = match target_module {
         Some(target_module) => {
-            let (in_file, target) = next_space_for_fn_in_module(ctx.db(), target_module)?;
+            let (in_file, target) = next_space_for_fn_in_module(&ctx.sema, target_module)?;
             file = in_file;
             target
         }
@@ -1308,10 +1313,13 @@ fn next_space_for_fn_after_call_site(expr: ast::CallableExpr) -> Option<Generate
 }
 
 fn next_space_for_fn_in_module(
-    db: &dyn hir::db::HirDatabase,
+    sema: &Semantics<'_, RootDatabase>,
     target_module: hir::Module,
 ) -> Option<(FileId, GeneratedFunctionTarget)> {
+    let db = sema.db;
     let module_source = target_module.definition_source(db);
+
+    sema.parse_or_expand(module_source.file_id);
     let file = module_source.file_id.original_file(db);
     let assist_item = match &module_source.value {
         hir::ModuleSource::SourceFile(it) => match it.items().last() {
@@ -2459,6 +2467,29 @@ pub(crate) fn bar() {
     }
 
     #[test]
+    fn add_function_with_generic_param_in_another_file() {
+        check_assist(
+            generate_function,
+            r"
+//- /main.rs
+mod foo;
+fn caller<T>(h: &T) {
+    foo::bar$0(h)
+}
+//- /foo.rs
+fn existing() {}
+",
+            r"
+fn existing() {}
+
+pub(crate) fn bar<T>(h: &T) {
+    ${0:todo!()}
+}
+",
+        )
+    }
+
+    #[test]
     fn add_function_not_applicable_in_unresolved_module() {
         check_assist_not_applicable(
             generate_function,
@@ -3461,5 +3492,45 @@ impl Foo for Bar {
 }
 ",
         )
+    }
+    #[test]
+    fn not_applicable_for_self_enum_variant() {
+        check_assist_not_applicable(
+            generate_function,
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::Bar$0(true)
+  }
+}
+",
+        );
+    }
+    #[test]
+    fn applicable_for_self_enum_method() {
+        check_assist(
+            generate_function,
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::bar$0()
+  }
+}
+",
+            r"
+enum Foo {}
+impl Foo {
+  fn foo() {
+    Self::bar()
+  }
+
+    fn bar() {
+        ${0:todo!()}
+    }
+}
+",
+        );
     }
 }

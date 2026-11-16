@@ -3,7 +3,7 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
-use crate::{Interner, Region};
+use crate::{Const, Interner, Region};
 
 #[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
 #[derive(GenericTypeVisitable)]
@@ -14,7 +14,7 @@ use crate::{Interner, Region};
 pub enum GenericArgKind<I: Interner> {
     Lifetime(Region<I>),
     Type(I::Ty),
-    Const(I::Const),
+    Const(Const<I>),
 }
 
 impl<I: Interner> Eq for GenericArgKind<I> {}

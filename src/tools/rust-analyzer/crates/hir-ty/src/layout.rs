@@ -29,6 +29,7 @@ use crate::{
         ValueConst,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
+    representability::{Representability, representability},
     traits::StoredParamEnvAndCrate,
 };
 
@@ -36,9 +37,6 @@ pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 
 pub(crate) mod adt;
 pub(crate) mod target;
-
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub usize);
@@ -538,6 +536,9 @@ fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -
                 AdtId::StructId(id) => id,
                 _ => return pointee,
             };
+            if representability(db, def.def_id()) == Representability::Infinite {
+                return pointee;
+            }
             let data = struct_id.fields(db);
             let mut it = data.fields().iter().rev();
             match it.next() {

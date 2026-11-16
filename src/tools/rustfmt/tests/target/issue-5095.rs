@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 pub mod a_long_name {
     pub mod b_long_name {

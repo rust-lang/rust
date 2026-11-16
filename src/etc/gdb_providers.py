@@ -9,12 +9,14 @@ ZERO_FIELD = "__0"
 FIRST_FIELD = "__1"
 
 
-def unwrap_unique_or_non_null(unique_or_nonnull):
+# Gets the raw pointer out of a `NonNull` or a wrapper struct with a
+# `pointer: NonNull` field (with that exact name)
+def unwrap_non_null_or_wrapper(ptr):
     # BACKCOMPAT: rust 1.32
     # https://github.com/rust-lang/rust/commit/7a0911528058e87d22ea305695f4047572c5e067
     # BACKCOMPAT: rust 1.60
     # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
-    ptr = unique_or_nonnull["pointer"]
+    ptr = ptr["pointer"]
     return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
 
 
@@ -62,7 +64,7 @@ class StdStringProvider(printer_base):
         self._valobj = valobj
         vec = valobj["vec"]
         self._length = int(vec["len"])
-        self._data_ptr = unwrap_unique_or_non_null(vec["buf"]["inner"]["ptr"])
+        self._data_ptr = unwrap_non_null_or_wrapper(vec["buf"]["inner"]["ptr"])
 
     def to_string(self):
         return self._data_ptr.lazy_string(encoding="utf-8", length=self._length)
@@ -80,7 +82,7 @@ class StdOsStringProvider(printer_base):
         vec = buf["bytes"] if is_windows else buf
 
         self._length = int(vec["len"])
-        self._data_ptr = unwrap_unique_or_non_null(vec["buf"]["inner"]["ptr"])
+        self._data_ptr = unwrap_non_null_or_wrapper(vec["buf"]["inner"]["ptr"])
 
     def to_string(self):
         return self._data_ptr.lazy_string(encoding="utf-8", length=self._length)
@@ -160,7 +162,7 @@ class StdVecProvider(printer_base):
     def __init__(self, valobj):
         self._valobj = valobj
         self._length = int(valobj["len"])
-        self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["inner"]["ptr"])
+        self._data_ptr = unwrap_non_null_or_wrapper(valobj["buf"]["inner"]["ptr"])
         ptr_ty = gdb.Type.pointer(valobj.type.template_argument(0))
         self._data_ptr = self._data_ptr.reinterpret_cast(ptr_ty)
 
@@ -196,7 +198,7 @@ class StdVecDequeProvider(printer_base):
         if cap.type.code != gdb.TYPE_CODE_INT:
             cap = cap[ZERO_FIELD]
         self._cap = int(cap)
-        self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["inner"]["ptr"])
+        self._data_ptr = unwrap_non_null_or_wrapper(valobj["buf"]["inner"]["ptr"])
         ptr_ty = gdb.Type.pointer(valobj.type.template_argument(0))
         self._data_ptr = self._data_ptr.reinterpret_cast(ptr_ty)
 
@@ -221,7 +223,7 @@ class StdRcProvider(printer_base):
     def __init__(self, valobj, is_atomic=False):
         self._valobj = valobj
         self._is_atomic = is_atomic
-        self._ptr = unwrap_unique_or_non_null(valobj["ptr"])
+        self._ptr = unwrap_non_null_or_wrapper(valobj["ptr"])
         self._value = self._ptr["data" if is_atomic else "value"]
         # FIXME(shua): the debuginfo template type should be 'str' not 'u8'
         if self._ptr.type.target().name == "alloc::rc::RcInner<str>":
@@ -321,7 +323,7 @@ def children_of_btree_map(map):
         if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
             # BACKCOMPAT: rust 1.49
             node_ptr = node_ptr["ptr"]
-        node_ptr = unwrap_unique_or_non_null(node_ptr)
+        node_ptr = unwrap_non_null_or_wrapper(node_ptr)
         leaf = node_ptr.dereference()
         keys = leaf["keys"]
         vals = leaf["vals"]

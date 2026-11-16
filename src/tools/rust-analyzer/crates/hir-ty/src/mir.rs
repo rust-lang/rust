@@ -6,13 +6,11 @@ use hir_def::{
     FieldId, LocalFieldId, StaticId, UnionId, VariantId,
     hir::{BindingId, Expr, ExprId, Ordering, PatId},
 };
-use intern::{InternedSlice, InternedSliceRef, impl_slice_internable};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_ast_ir::Mutability;
-use rustc_hash::FxHashMap;
 use rustc_type_ir::{
-    CollectAndApply, GenericTypeVisitable,
+    GenericTypeVisitable,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
 use salsa::SalsaValue;
@@ -20,14 +18,14 @@ use smallvec::{SmallVec, smallvec};
 use stdx::impl_from;
 
 use crate::{
-    CallableDefId, InferBodyId, InferenceResult, MemoryMap,
+    CallableDefId, InferBodyId, InferenceResult, MemoryMap, ThinFxHashMap,
     db::{HirDatabase, InternedClosureId},
     infer::PointerCast,
     next_solver::{
         Allocation, AllocationData, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv,
         StoredAllocation, StoredConst, StoredGenericArgs, StoredTy, Ty, TyKind,
-        impl_stored_interned_slice,
         infer::{InferCtxt, traits::ObligationCause},
+        interned_slice,
         obligation_ctxt::ObligationCtxt,
     },
 };
@@ -35,7 +33,6 @@ use crate::{
 mod eval;
 mod lower;
 mod monomorphization;
-mod pretty;
 
 pub use eval::{
     Evaluator, IsSigned, MirEvalError, VTableMap, interpret_mir, pad16,
@@ -81,7 +78,7 @@ pub struct Local {
 /// validator.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Operand {
-    kind: OperandKind,
+    pub kind: OperandKind,
     // FIXME : This should actually just be of type `MirSpan`.
     span: Option<MirSpan>,
 }
@@ -214,55 +211,17 @@ impl<V: PartialEq> ProjectionElem<V> {
     }
 }
 
-type PlaceElem = ProjectionElem<LocalId>;
+pub type PlaceElem = ProjectionElem<LocalId>;
 
 impl<W: crate::next_solver::WorldExposer> GenericTypeVisitable<W> for PlaceElem {
     fn generic_visit_with(&self, _: &mut W) {}
 }
 
-impl_slice_internable!(gc; ProjectionStorage, (), PlaceElem);
-impl_stored_interned_slice!(ProjectionStorage, Projection, StoredProjection);
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Projection<'db> {
-    interned: InternedSliceRef<'db, ProjectionStorage>,
-}
-
-impl<'db> std::fmt::Debug for Projection<'db> {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        (*self).as_slice().fmt(fmt)
-    }
-}
+interned_slice!(ProjectionStorage, Projection, StoredProjection, projection, PlaceElem, PlaceElem);
 
 impl<'db> Projection<'db> {
-    pub fn new_from_iter<I, T>(args: I) -> T::Output
-    where
-        I: IntoIterator<Item = T>,
-        T: CollectAndApply<PlaceElem, Self>,
-    {
-        CollectAndApply::collect_and_apply(args.into_iter(), Self::new_from_slice)
-    }
-
-    #[inline]
-    pub fn new_from_slice(slice: &[PlaceElem]) -> Self {
-        Self { interned: InternedSlice::from_header_and_slice((), slice) }
-    }
-
-    #[inline]
-    pub fn as_slice(self) -> &'db [PlaceElem] {
-        &self.interned.get().slice
-    }
-
     pub fn project(self, projection: PlaceElem) -> Projection<'db> {
         Projection::new_from_iter(self.as_slice().iter().copied().chain([projection]))
-    }
-}
-
-impl<'db> std::ops::Deref for Projection<'db> {
-    type Target = [PlaceElem];
-
-    fn deref(&self) -> &Self::Target {
-        self.as_slice()
     }
 }
 
@@ -1059,7 +1018,7 @@ pub struct MirBody<'db> {
     pub start_block: BasicBlockId,
     pub owner: InferBodyId<'db>,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
-    pub upvar_locals: FxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
+    pub upvar_locals: ThinFxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
     pub param_locals: Vec<LocalId>,
     /// This field stores the closures directly owned by this body. It is used
     /// in traversing every mir body.

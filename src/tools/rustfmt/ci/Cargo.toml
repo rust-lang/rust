@@ -5,3 +5,21 @@ edition = "2024"
 publish = false
 
 [workspace]
+
+[dependencies]
+itertools = "0.15.0"
+toml = "1.1.5"
+
+[lints.clippy]
+# allow all rules with a low priority ..
+all = { level = "allow", priority = -1 }
+# so we can pick out an exact subset of rules to deny
+correctness = "deny"
+char_lit_as_u8 = "deny"
+four_forward_slashes = "deny"
+non_minimal_cfg = "deny"
+print_literal = "deny"
+same_item_push = "deny"
+single_char_add_str = "deny"
+to_string_in_format_args = "deny"
+unconditional_recursion = "deny"

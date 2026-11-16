@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `<Struct as Iterator>::Item == _`
+  --> $DIR/unexpected-infer-var-ice-102252.rs:15:1
+   |
+LL | struct Struct
+   | ^^^^^^^^^^^^^
+
+error: the type `Struct` is not well-formed
+  --> $DIR/unexpected-infer-var-ice-102252.rs:20:16
+   |
+LL | impl Trait for Struct {}
+   |                ^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

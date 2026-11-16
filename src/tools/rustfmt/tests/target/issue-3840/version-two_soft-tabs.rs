@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2024
+//@ rustfmt-style_edition: 2024
 
 impl<
     Target: FromEvent<A> + FromEvent<B>,

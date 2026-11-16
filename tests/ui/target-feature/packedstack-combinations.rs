@@ -1,7 +1,6 @@
 //@ add-minicore
 //@ revisions: wrong_arch only_packedstack backchain_attr backchain_cli with_softfloat
 //@ compile-flags: -Zpacked-stack --crate-type=rlib
-//@ ignore-backends: gcc
 
 //@ [wrong_arch] compile-flags: --target=x86_64-unknown-linux-gnu
 //@ [wrong_arch] should-fail
@@ -38,7 +37,5 @@ pub fn test() {
 }
 
 //[wrong_arch]~? ERROR `-Zpacked-stack` is only supported on s390x
-//[backchain_cli]~? WARN unstable feature specified for `-Ctarget-feature`: `backchain`
 //[backchain_cli]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
 //[backchain_attr]~? ERROR `-Zpacked-stack` is incompatible with `backchain` target feature
-//[with_softfloat]~? WARN unstable feature specified for `-Ctarget-feature`: `backchain`

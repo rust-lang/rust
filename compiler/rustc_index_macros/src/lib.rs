@@ -26,6 +26,7 @@ mod newtype;
 ///
 /// Accepted attributes for customization:
 /// - `#[stable_hash]`: derives `StableHash`.
+/// - `#[default]`: derives `std::default::Default` returning `Self::ZERO`.
 /// - `#[encodable]`: derives `Encodable`/`Decodable`.
 /// - `#[orderable]`: derives `PartialOrd`/`Ord`, plus step-related methods.
 /// - `#[debug_format = "Foo({})"]`: derives `Debug` with particular output.
@@ -40,7 +41,7 @@ mod newtype;
         rustc_attrs,
         trusted_step,
         pattern_types,
-        pattern_type_macro,
+        pattern_type_macro, // cfg(bootstrap) FIXME: remove on bump
         structural_match,
     )
 )]

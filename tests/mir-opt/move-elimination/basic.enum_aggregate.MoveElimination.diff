@@ -1,0 +1,57 @@
+- // MIR for `enum_aggregate` before MoveElimination
++ // MIR for `enum_aggregate` after MoveElimination
+  
+  fn enum_aggregate() -> Result<([u8; 8], [u8; 8]), ()> {
+      let mut _0: std::result::Result<([u8; 8], [u8; 8]), ()>;
+      let _1: [u8; 8];
+      let mut _3: ([u8; 8], [u8; 8]);
+      let mut _4: [u8; 8];
+      let mut _5: [u8; 8];
+      scope 1 {
+-         debug a => _1;
++         debug a => (((_0 as variant#0).0: ([u8; 8], [u8; 8])).0: [u8; 8]);
+          let _2: [u8; 8];
+          scope 2 {
+-             debug b => _2;
++             debug b => (((_0 as variant#0).0: ([u8; 8], [u8; 8])).1: [u8; 8]);
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
+-         _1 = [const 1_u8; 8];
+-         StorageLive(_2);
+-         _2 = [const 2_u8; 8];
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = move _1;
+-         StorageLive(_5);
+-         _5 = move _2;
+-         _3 = (move _4, move _5);
+-         StorageDead(_5);
+-         StorageDead(_4);
+-         _0 = Result::<([u8; 8], [u8; 8]), ()>::Ok(move _3);
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         (((_0 as variant#0).0: ([u8; 8], [u8; 8])).0: [u8; 8]) = [const 1_u8; 8];
++         nop;
++         (((_0 as variant#0).0: ([u8; 8], [u8; 8])).1: [u8; 8]) = [const 2_u8; 8];
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         discriminant(_0) = 0;
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

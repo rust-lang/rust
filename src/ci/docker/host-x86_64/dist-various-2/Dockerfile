@@ -66,6 +66,7 @@ WORKDIR /build
 COPY scripts/musl.sh /build
 COPY scripts/musl-cve-2026-6042.diff /build/
 COPY scripts/musl-cve-2026-40200.diff /build/
+COPY scripts/musl-cve-2026-107891.diff /build/
 RUN env \
     CC=arm-linux-gnueabi-gcc-9 CFLAGS="-march=armv7-a" \
     CXX=arm-linux-gnueabi-g++-9 CXXFLAGS="-march=armv7-a" \
@@ -79,7 +80,7 @@ RUN /tmp/build-fuchsia-toolchain.sh
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz | \
+RUN curl -L https://ci-mirrors.rust-lang.org/rustc/wasi-sdk-34.0-x86_64-linux.tar.gz | \
   tar -xz
 ENV WASI_SDK_PATH=/tmp/wasi-sdk-34.0-x86_64-linux
 

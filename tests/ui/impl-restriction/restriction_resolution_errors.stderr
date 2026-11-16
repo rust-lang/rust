@@ -21,10 +21,6 @@ help: there is a crate or module with a similar name
 LL -         pub impl(in a::b) trait T1 {}
 LL +         pub impl(in c::b) trait T1 {}
    |
-help: consider importing this module
-   |
-LL +         use a;
-   |
 
 error[E0433]: cannot find module `c` in the crate root
   --> $DIR/restriction_resolution_errors.rs:22:28

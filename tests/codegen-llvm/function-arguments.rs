@@ -1,4 +1,11 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
+//
+// LLVM23 changed the meaning of "dereferenceable", allowing us to apply it in more cases,
+// see <https://github.com/rust-lang/rust/pull/158863>.
+//@ revisions: LLVM22 LLVM23
+//@ [LLVM22] max-llvm-major-version: 22
+//@ [LLVM23] min-llvm-version: 23
+
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 #![feature(allocator_api, unsafe_unpin)]
@@ -84,7 +91,8 @@ pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {}
 
-// CHECK: noundef nonnull align 4 ptr @readonly_borrow_ret()
+// LLVM22: noundef nonnull align 4 ptr @readonly_borrow_ret()
+// LLVM23: noundef align 4 dereferenceable(4) ptr @readonly_borrow_ret()
 #[no_mangle]
 pub fn readonly_borrow_ret() -> &'static i32 {
     loop {}
@@ -104,7 +112,8 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {}
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {}
 
-// CHECK: noundef nonnull align 4 ptr @mutable_borrow_ret()
+// LLVM22: noundef nonnull align 4 ptr @mutable_borrow_ret()
+// LLVM23: noundef align 4 dereferenceable(4) ptr @mutable_borrow_ret()
 #[no_mangle]
 pub fn mutable_borrow_ret() -> &'static mut i32 {
     loop {}
@@ -147,8 +156,9 @@ pub fn raw_struct(_: *const S) {}
 pub fn raw_option_nonnull_struct(_: Option<NonNull<S>>) {}
 
 // `Box` can get deallocated during execution of the function, so it should
-// not get `dereferenceable`.
-// CHECK: noundef nonnull align 4 ptr @_box(ptr noalias noundef nonnull align 4 %x)
+// not get `nofree` (or `dereferenceable` prior to LLVM23).
+// LLVM22: noundef nonnull align 4 ptr @_box(ptr noalias noundef nonnull align 4 %x)
+// LLVM23: noundef align 4 dereferenceable(4) ptr @_box(ptr noalias noundef align 4 dereferenceable(4) %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
     x
@@ -157,7 +167,8 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
 // With a custom allocator, it should *not* have `noalias`. (See
 // <https://github.com/rust-lang/miri/issues/3341> for why.) The second argument is the allocator,
 // which is a reference here that still carries `noalias` as usual.
-// CHECK: @_box_custom(ptr noundef nonnull align 4 %x.0, ptr noalias nofree noundef nonnull readonly{{( captures\(address, read_provenance\))?}} %x.1)
+// LLVM22: @_box_custom(ptr noundef nonnull align 4 %x.0, ptr noalias nofree noundef nonnull readonly{{( captures\(address, read_provenance\))?}} %x.1)
+// LLVM23: @_box_custom(ptr noundef align 4 dereferenceable(4) %x.0, ptr noalias nofree noundef nonnull readonly{{( captures\(address, read_provenance\))?}} %x.1)
 #[no_mangle]
 pub fn _box_custom(x: Box<i32, &std::alloc::Global>) {
     drop(x)

@@ -216,7 +216,9 @@ functions to deal with macros:
       return;
   }
   ```
-  > Note: Code that is not from expansion is in the "root" context. So any spans
+
+  > [!NOTE]
+  > Code that is not from expansion is in the "root" context. So any spans
   > where `from_expansion` returns `true` can be assumed to have the same
   > context. And so just using `span.from_expansion()` is often good enough.
 

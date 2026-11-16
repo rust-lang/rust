@@ -8,7 +8,7 @@
 //@normalize-stderr-test: "alloc::[A-Za-z]+::" -> "alloc::PLATFORM::"
 //@normalize-stderr-test: "alloc/[A-Za-z]+.rs" -> "alloc/PLATFORM.rs"
 
-#![feature(allocator_api, slice_ptr_get)]
+#![feature(allocator_ext, slice_ptr_get)]
 
 use std::alloc::{Allocator, Global, Layout, System};
 

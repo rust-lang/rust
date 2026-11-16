@@ -40,13 +40,17 @@ pub(crate) struct AssocKindMismatch {
     #[primary_span]
     #[label("unexpected {$got}")]
     pub span: Span,
+    #[context]
+    pub item_span: Span,
+    #[context]
+    pub enclosing_span: Option<Span>,
     pub expected: &'static str,
     pub got: &'static str,
     #[label("expected a {$expected} because of this associated {$expected}")]
     pub expected_because_label: Option<Span>,
     pub assoc_kind: &'static str,
     #[note("the associated {$assoc_kind} is defined here")]
-    pub def_span: Span,
+    pub def_span: MultiSpan,
     #[label("bounds are not allowed on associated constants")]
     pub bound_on_assoc_const_label: Option<Span>,
     #[subdiagnostic]
@@ -292,13 +296,14 @@ pub(crate) struct FieldAlreadyDeclaredNestedHelp {
 }
 
 #[derive(Diagnostic)]
-#[diag("the trait `Copy` cannot be implemented for this type; the type has a destructor", code = E0184)]
-pub(crate) struct CopyImplOnTypeWithDtor {
+#[diag("the trait `{$trait_name}` cannot be implemented for this type; the type has a destructor", code = E0184)]
+pub(crate) struct TraitImplOnTypeWithDtor {
     #[primary_span]
-    #[label("`Copy` not allowed on types with destructors")]
+    #[label("`{$trait_name}` not allowed on types with destructors")]
     pub span: Span,
     #[note("destructor declared here")]
     pub impl_: Span,
+    pub trait_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -467,9 +472,9 @@ pub(crate) struct MissingGenericParams {
 }
 
 // FIXME: This doesn't need to be a manual impl!
-impl<'a, G> Diagnostic<'a, G> for MissingGenericParams {
+impl<'a> Diagnostic<'a> for MissingGenericParams {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut err = Diag::new(
             dcx,
             level,
@@ -1352,36 +1357,11 @@ pub(crate) struct CoerceMulti {
 
 #[derive(Diagnostic)]
 #[diag(
-    "implementing `{$trait_name}` requires that a single lifetime parameter is passed between source and target"
+    "implementing `{$trait_name}` requires at least one lifetime argument in the reborrowed type"
 )]
-pub(crate) struct CoerceSharedNotSingleLifetimeParam {
+pub(crate) struct ReborrowNoLifetimes {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "implementing `{$trait_name}` requires exactly one lifetime argument in the reborrowed type"
-)]
-pub(crate) struct CoerceSharedMulti {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "implementing `{$trait_name}` requires source and target to use the same reborrow lifetime \
-     argument"
-)]
-pub(crate) struct CoerceSharedLifetimeMismatch {
-    #[primary_span]
-    pub span: Span,
-    #[label("source reborrow lifetime")]
-    pub source_lifetime_span: Option<Span>,
-    #[label("target reborrow lifetime")]
-    pub target_lifetime_span: Option<Span>,
     pub trait_name: &'static str,
 }
 
@@ -1702,6 +1682,16 @@ pub(crate) struct OnlyCurrentTraitsPointerSugg<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("failed to inherit delegation {$kind}")]
+pub(crate) struct DelegationInheritanceFailed {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
+    #[label("callee defined here")]
+    pub callee_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$descr}")]
 pub(crate) struct UnsupportedDelegation<'a> {
     #[primary_span]
@@ -1736,7 +1726,7 @@ pub(crate) struct UnusedGenericParameter {
     pub span: Span,
     pub param_name: Ident,
     pub param_def_kind: &'static str,
-    #[label("`{$param_name}` is named here, but is likely unused in the containing type")]
+    #[label("`{$param_name}` is named here, but is not used in the type that wraps it")]
     pub usage_spans: Vec<Span>,
     #[subdiagnostic]
     pub help: UnusedGenericParameterHelp,
@@ -2069,8 +2059,8 @@ pub(crate) struct UncoveredTyParam<'tcx> {
     pub(crate) local_ty: Option<Ty<'tcx>>,
 }
 
-impl<G> Diagnostic<'_, G> for UncoveredTyParam<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+impl Diagnostic<'_> for UncoveredTyParam<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_> {
         let Self { param, local_ty } = self;
 
         let mut diag = Diag::new(dcx, level, "")
@@ -2151,4 +2141,25 @@ pub(crate) struct ParamInTyOfConstParam<'tcx> {
     #[label("the type `{$ty}` must not depend on other generic parameter")]
     pub(crate) span: Span,
     pub(crate) ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "field `{$field}` has a default value that is only checked when a value of `{$ty}` is \
+     constructed"
+)]
+#[help(
+    "structs and enums with type and const parameters only evaluate their default field values \
+     during construction, not eagerly when declared"
+)]
+pub(crate) struct UnevaluatedDefaultFieldValue {
+    pub(crate) field: Symbol,
+    pub(crate) ty: String,
+    #[suggestion(
+        "if this behavior is acceptable, allow the lint and preferably write a test relying on the default value",
+        code = "{padding}#[expect(unevaluated_default_field_value)]\n",
+        applicability = "maybe-incorrect"
+    )]
+    pub(crate) struct_start: Span,
+    pub(crate) padding: String,
 }

@@ -323,8 +323,13 @@ pub enum LineNumber {
 }
 
 pub fn match_ignore(contents: &str, whole_file: bool, check: Option<&str>) -> bool {
-    let comments = [("// ", ""), ("# ", ""), ("/* ", " */"), ("<!-- ", " -->")];
     let base = "ignore-tidy";
+    // fast-path
+    if !contents.contains(base) {
+        return false;
+    }
+
+    let comments = [("// ", ""), ("# ", ""), ("/* ", " */"), ("<!-- ", " -->")];
     let file = if whole_file { "file-" } else { "" };
 
     for (start, end) in comments {

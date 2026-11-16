@@ -85,7 +85,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 
     // Check if `malloc` failed:
     if p.is_null() {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     p
@@ -102,7 +102,7 @@ extern "C" fn main(_argc: c_int, _argv: *const *const u8) -> c_int {
 fn rust_eh_personality() {}
 
 #[panic_handler]
-fn panic_handler(_info: &PanicInfo) -> ! { intrinsics::abort() }
+fn panic_handler(_info: &PanicInfo) -> ! { intrinsics::abort_immediate() }
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to

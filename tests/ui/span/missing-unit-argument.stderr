@@ -68,6 +68,7 @@ LL |     S.baz();
 note: method defined here
   --> $DIR/missing-unit-argument.rs:6:8
    |
+LL | impl S {
 LL |     fn baz(self, (): ()) { }
    |        ^^^       ------
 help: provide the argument
@@ -84,6 +85,8 @@ LL |     S.generic::<()>();
 note: method defined here
   --> $DIR/missing-unit-argument.rs:7:8
    |
+LL | impl S {
+LL |     fn baz(self, (): ()) { }
 LL |     fn generic<T>(self, _: T) { }
    |        ^^^^^^^          ----
 help: provide the argument

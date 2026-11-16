@@ -1,8 +1,8 @@
 use std::fmt::Write;
 
+use rustc_attr_ir::find_attr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
 use rustc_middle::ty::{GenericArgs, TyCtxt};
 
 fn format_variances(tcx: TyCtxt<'_>, def_id: LocalDefId) -> String {

@@ -1,7 +1,10 @@
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
-use clippy_utils::{is_entrypoint_fn, is_trait_impl_item};
+use clippy_utils::macros::root_macro_call;
+use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, sym};
+use rustc_ast::attr::AttributeExt as _;
+use rustc_ast::token::DocFragmentKind;
 use rustc_attr_ir::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -247,7 +250,7 @@ declare_clippy_lint! {
     ///
     /// In addition, when writing documentation comments, including `[]` brackets
     /// inside a link text would trip the parser. Therefore, documenting link with
-    /// `[`SmallVec<[T; INLINE_CAPACITY]>`]` and then [`SmallVec<[T; INLINE_CAPACITY]>`]: SmallVec
+    /// ``[`SmallVec<[T; INLINE_CAPACITY]>`]`` and then ``[`SmallVec<[T; INLINE_CAPACITY]>`]: SmallVec``
     /// would fail.
     ///
     /// ### Examples
@@ -263,7 +266,7 @@ declare_clippy_lint! {
     /// /// Consume the array and return the inner
     /// /// [`SmallVec<[T; INLINE_CAPACITY]>`][SmallVec].
     /// /// [SmallVec]: SmallVec
-    /// fn main() {}
+    /// fn foo() {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DOC_MARKDOWN,
@@ -522,6 +525,11 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    ///
+    /// ### Notes
+    ///
+    /// - This lint doesn't trigger for functions attributed with `#[target_feature(enable = "...")]`,
+    ///   even if your MSRV is lower than 1.86, where these functions would be unconditionally unsafe.
     #[clippy::version = "1.39.0"]
     pub MISSING_SAFETY_DOC,
     style,
@@ -876,16 +884,32 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         return None;
     }
 
-    let (fragments, _) = attrs_to_doc_fragments(
-        attrs.iter().filter_map(|attr| {
-            if attr.doc_str_and_fragment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
-                None
-            } else {
-                Some((attr, None))
-            }
-        }),
-        true,
-    );
+    for attr in attrs {
+        let Some((_, kind, attr_span)) = attr.doc_str_and_fragment_kind() else {
+            continue;
+        };
+
+        let (is_raw, doc_str_span) = match kind {
+            DocFragmentKind::Sugared(_) => (false, attr_span),
+            DocFragmentKind::Raw(span) => (true, span),
+        };
+
+        let from_include_str_macro = is_raw
+            && !attr_span.in_external_macro(cx.sess().source_map())
+            && originated_from_include_str_macro(cx, doc_str_span);
+
+        // we can handle docs that aren't produced by macros except `include_str!` which could track
+        // errors from other files
+        if !doc_str_span.in_external_macro(cx.sess().source_map()) || from_include_str_macro {
+            continue;
+        }
+
+        // an unknown external macro generated a doc attr to avoid false positive results
+        // or inaccurate spans, silence all of the doc lints
+        return None;
+    }
+
+    let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
 
     let mut doc = String::with_capacity(fragments.iter().map(|frag| frag.doc.as_str().len() + 1).sum());
 
@@ -961,6 +985,10 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         },
         attrs,
     ))
+}
+
+fn originated_from_include_str_macro(cx: &LateContext<'_>, span: Span) -> bool {
+    root_macro_call(span).is_some_and(|macro_call| cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
 }
 
 enum Container {

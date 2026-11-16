@@ -6,6 +6,7 @@
 //! won't also be the ones defining the hidden type.
 
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![feature(type_alias_impl_trait)]

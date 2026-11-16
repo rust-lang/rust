@@ -122,7 +122,7 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
             .into_iter()
             .map(|(span, msg)| (msg, span))
             .collect::<Vec<_>>();
-        unsafe_ops.sort_unstable();
+        unsafe_ops.sort_unstable_by_key(|(s, span)| (*s, span.lo_hi()));
         unsafe_ops
     }
 
@@ -166,6 +166,15 @@ impl<'tcx> UnsafeExprCollector<'tcx> {
         }
 
         self.visit_expr(base);
+    }
+
+    fn visit_lhs(&mut self, mut expr: &'tcx hir::Expr<'tcx>) {
+        while let ExprKind::Field(base, _) = expr.kind
+            && self.typeck_results.expr_adjustments(base).is_empty()
+        {
+            expr = base;
+        }
+        self.visit_expr(expr);
     }
 }
 
@@ -248,7 +257,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                 }
             },
 
-            ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _) => {
+            ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _)
                 if matches!(
                     lhs.kind,
                     ExprKind::Path(QPath::Resolved(
@@ -264,10 +273,17 @@ impl<'tcx> Visitor<'tcx> for UnsafeExprCollector<'tcx> {
                             ..
                         }
                     ))
-                ) {
-                    self.insert_span(expr.span, "modification of a mutable static occurs here");
-                    return self.visit_expr(rhs);
-                }
+                ) =>
+            {
+                self.insert_span(expr.span, "modification of a mutable static occurs here");
+                self.visit_expr(rhs);
+                return;
+            },
+
+            ExprKind::Assign(lhs, rhs, _) => {
+                self.visit_lhs(lhs);
+                self.visit_expr(rhs);
+                return;
             },
 
             _ => {},

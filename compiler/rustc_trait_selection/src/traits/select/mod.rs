@@ -8,10 +8,10 @@ use std::fmt::{self, Display};
 use std::ops::ControlFlow;
 
 use hir::def::DefKind;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::Diag;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
@@ -25,7 +25,7 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgsRef,
+    self, CallerBoundsIterator, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgs,
     PolyProjectionClause, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode,
     Unnormalized, Upcast, elaborate, may_use_unstable_feature,
 };
@@ -35,7 +35,6 @@ use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
 use self::SelectionCandidate::*;
-use super::coherence::{self, Conflict};
 use super::project::ProjectionTermObligation;
 use super::util::closure_trait_ref_and_return_type;
 use super::{
@@ -48,7 +47,7 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{EvaluateConstErr, ProjectionCacheKey, effects, sizedness_fast_path};
+use crate::traits::{EvaluateConstErr, ProjectionCacheKey, effects, implicit_fast_path};
 
 mod _match;
 mod candidate_assembly;
@@ -63,7 +62,7 @@ pub enum IntercrateAmbiguityCause<'tcx> {
 impl<'tcx> IntercrateAmbiguityCause<'tcx> {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint<G>(&self, err: &mut Diag<'_, G>) {
+    pub fn add_intercrate_ambiguity_hint(&self, err: &mut Diag<'_>) {
         err.note(self.intercrate_ambiguity_hint());
     }
 
@@ -105,14 +104,6 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// important for checking for trait bounds that recursively
     /// require themselves.
     freshener: TypeFreshener<'cx, 'tcx>,
-
-    /// If `intercrate` is set, we remember predicates which were
-    /// considered ambiguous because of impls potentially added in other crates.
-    /// This is used in coherence to give improved diagnostics.
-    /// We don't do his until we detect a coherence error because it can
-    /// lead to false overflow results (#47139) and because always
-    /// computing it may negatively impact performance.
-    intercrate_ambiguity_causes: Option<FxIndexSet<IntercrateAmbiguityCause<'tcx>>>,
 
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
@@ -191,7 +182,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: TypeFreshener::new(infcx),
-            intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
         }
     }
@@ -206,27 +196,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> SelectionContext<'cx, 'tcx> {
         debug!(?query_mode, "with_query_mode");
         SelectionContext { query_mode, ..SelectionContext::new(infcx) }
-    }
-
-    /// Enables tracking of intercrate ambiguity causes. See
-    /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
-    pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert!(self.typing_mode().is_coherence());
-        assert!(self.intercrate_ambiguity_causes.is_none());
-
-        self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
-        debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
-    }
-
-    /// Gets the intercrate ambiguity causes collected since tracking
-    /// was enabled and disables tracking at the same time. If
-    /// tracking is not enabled, just returns an empty vector.
-    pub fn take_intercrate_ambiguity_causes(
-        &mut self,
-    ) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
-        assert!(self.typing_mode().is_coherence());
-
-        self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
     pub fn tcx(&self) -> TyCtxt<'tcx> {
@@ -363,42 +332,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        if let Err(conflict) = self.is_knowable(stack) {
-            debug!("coherence stage: not knowable");
-            if self.intercrate_ambiguity_causes.is_some() {
-                debug!("evaluate_stack: intercrate_ambiguity_causes is some");
-                // Heuristics: show the diagnostics when there are no candidates in crate.
-                if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                    let mut no_candidates_apply = true;
-
-                    for c in candidate_set.vec.iter() {
-                        if self.evaluate_candidate(stack, c)?.may_apply() {
-                            no_candidates_apply = false;
-                            break;
-                        }
-                    }
-
-                    if !candidate_set.ambiguous && no_candidates_apply {
-                        let trait_ref = self.infcx.deeply_resolve_ignoring_regions(
-                            stack.obligation.predicate.skip_binder().trait_ref,
-                        );
-                        if !trait_ref.references_error() {
-                            let self_ty = trait_ref.self_ty();
-                            let self_ty = self_ty.has_concrete_skeleton().then(|| self_ty);
-                            let cause = if let Conflict::Upstream = conflict {
-                                IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_ref, self_ty }
-                            } else {
-                                IntercrateAmbiguityCause::DownstreamCrate { trait_ref, self_ty }
-                            };
-                            debug!(?cause, "evaluate_stack: pushing cause");
-                            self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
-                        }
-                    }
-                }
-            }
-            return Ok(None);
-        }
-
         let candidate_set = self.assemble_candidates(stack)?;
 
         if candidate_set.ambiguous {
@@ -604,7 +537,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if !self.infcx.disable_trait_solver_fast_paths()
-            && sizedness_fast_path(self.tcx(), obligation.predicate, obligation.param_env)
+            && implicit_fast_path(self.tcx(), obligation.predicate, obligation.param_env)
         {
             return Ok(EvaluatedToOk);
         }
@@ -1000,9 +933,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !self.typing_mode().is_coherence()
-            && obligation.is_global()
-            && obligation.param_env.caller_bounds().all(|bound| bound.has_param())
+        debug_assert!(!self.typing_mode().is_coherence(), "old solver coherence");
+
+        if obligation.is_global()
+            && obligation
+                .param_env
+                .caller_bounds()
+                .all_clauses(self.tcx())
+                .iter()
+                .all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
@@ -1209,7 +1148,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         //
-        // FIXME(min_generic_const_args): Consider consts as well?
+        // FIXME(gca_min_const_items): Consider consts as well?
         let unbound_input_types =
             stack.fresh_trait_pred.skip_binder().trait_ref.args.types().any(|ty| ty.is_fresh());
 
@@ -1432,30 +1371,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates
     }
 
-    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
-        let obligation = &stack.obligation;
-        match self.typing_mode() {
-            TypingMode::Coherence => {}
-            TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
-            | TypingMode::Reflection
-            | TypingMode::PostBorrowck { .. }
-            | TypingMode::PostAnalysis
-            | TypingMode::Codegen => return Ok(()),
-        }
-
-        debug!("is_knowable()");
-
-        let predicate = self.infcx.deeply_resolve_ignoring_regions(obligation.predicate);
-
-        // Okay to skip binder because of the nature of the
-        // trait-ref-is-knowable check, which does not care about
-        // bound regions.
-        let trait_ref = predicate.skip_binder().trait_ref;
-
-        coherence::trait_ref_is_knowable(self.infcx, trait_ref, |ty| Ok::<_, !>(ty)).into_ok()
-    }
-
     /// Returns `true` if the global caches can be used.
     fn can_use_global_caches(
         &self,
@@ -1470,13 +1385,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.typing_mode() {
-            // Avoid using the global cache during coherence and just rely
-            // on the local cache. It is really just a simplification to
-            // avoid us having to fear that coherence results "pollute"
-            // the master cache. Since coherence executes pretty quickly,
-            // it's not worth going to more trouble to increase the
-            // hit-rate, I don't think.
-            TypingMode::Coherence => false,
             // Avoid using the global cache when we're defining opaque types
             // as their hidden type may impact the result of candidate selection.
             //
@@ -1486,7 +1394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // This is likely fixed by better caching in general in the new solver.
             // See: <https://github.com/rust-lang/rust/issues/132064>.
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types } => {
                 defining_opaque_types.is_empty()
                     || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
@@ -1502,6 +1410,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
             TypingMode::PostAnalysis | TypingMode::Codegen => true,
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         }
     }
 
@@ -1774,7 +1685,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // want, but fixing it causes some ambiguity:
             // <https://github.com/rust-lang/rust/issues/125196>.
             if !generics.is_own_empty()
-                && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {
+                && obligation.predicate.args.as_slice()[generics.parent_count..].iter().any(|&p| {
                     p.has_non_region_infer()
                         && match p.kind() {
                             ty::GenericArgKind::Const(ct) => {
@@ -2169,6 +2080,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Bound(..) => {
                 bug!("asked to assemble `Sized` of unexpected type: {:?}", self_ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2248,6 +2162,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}", self_ty);
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -2395,6 +2312,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     })
                 }
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         })
     }
 
@@ -2466,7 +2386,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         impl_def_id: DefId,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Normalized<'tcx, GenericArgsRef<'tcx>> {
+    ) -> Normalized<'tcx, GenericArgs<'tcx>> {
         let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
         match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
@@ -2483,7 +2403,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         impl_def_id: DefId,
         impl_trait_header: ty::ImplTraitHeader<'tcx>,
         obligation: &PolyTraitObligation<'tcx>,
-    ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
+    ) -> Result<Normalized<'tcx, GenericArgs<'tcx>>, ()> {
         let placeholder_obligation =
             self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
@@ -2528,14 +2448,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 return Err(());
             }
 
-            TypingMode::Coherence
-            | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_)
             | TypingMode::Reflection
             | TypingMode::PostAnalysis => {}
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         }
 
         Ok(Normalized { value: impl_args, obligations: nested_obligations })
@@ -2795,8 +2717,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         cause: &ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
-        def_id: DefId,              // of impl or trait
-        args: GenericArgsRef<'tcx>, // for impl or trait
+        def_id: DefId,           // of impl or trait
+        args: GenericArgs<'tcx>, // for impl or trait
         parent_trait_pred: ty::Binder<'tcx, ty::TraitClause<'tcx>>,
     ) -> PredicateObligations<'tcx> {
         let tcx = self.tcx();
@@ -2876,12 +2798,14 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             TypingMode::Typeck { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
             }
-            TypingMode::Coherence
-            | TypingMode::PostAnalysis
+            TypingMode::PostAnalysis
             | TypingMode::Reflection
             | TypingMode::Codegen
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ } => false,
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         }
     }
 }
@@ -3082,16 +3006,16 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
 
     /// Invoked when the node with dfn `dfn` does not get a successful
     /// result. This will clear out any provisional cache entries
-    /// that were added since `dfn` was created. This is because the
-    /// provisional entries are things which must assume that the
-    /// things on the stack at the time of their creation succeeded --
-    /// since the failing node is presently at the top of the stack,
-    /// these provisional entries must either depend on it or some
-    /// ancestor of it.
+    /// originating from nodes visited before this node (`from_dfn < dfn`).
+    /// This is because the provisional entries are things which must
+    /// assume that the things on the stack at the time of their creation
+    /// succeeded -- since the failing node is presently at the top of
+    /// the stack, these provisional entries must either depend on it or
+    /// some ancestor of it.
     fn on_failure(&self, dfn: usize) {
         debug!(?dfn, "on_failure");
         self.map.borrow_mut().retain(|key, eval| {
-            if !eval.from_dfn >= dfn {
+            if eval.from_dfn < dfn {
                 debug!("on_failure: removing {:?}", key);
                 false
             } else {

@@ -4,8 +4,8 @@ use rustc_abi::{Float, Integer, Primitive};
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
-    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
-    codegen_handle_fn_abi_err,
+    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv as _, LayoutError,
+    LayoutOfHelpers, codegen_handle_fn_abi_err,
 };
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -35,9 +35,12 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
         },
         Primitive::Float(float) => match float {
             Float::F16 => types::F16,
+            Float::F16B => bug!("f16b is not supported by the Cranelift codegen backend"),
             Float::F32 => types::F32,
             Float::F64 => types::F64,
+            Float::X87F80 => bug!("cranelift does not support x87 floats"),
             Float::F128 => types::F128,
+            Float::PpcF128 => bug!("cranelift does not support powerpc"),
         },
         // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
         Primitive::Pointer(_) => pointer_ty(tcx),
@@ -349,7 +352,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     {
         self.instance.instantiate_mir_and_normalize_erasing_regions(
             self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
+            self.typing_env(),
             ty::EarlyBinder::bind(self.tcx, value),
         )
     }

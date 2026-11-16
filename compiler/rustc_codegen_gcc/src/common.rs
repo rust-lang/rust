@@ -12,6 +12,7 @@ use rustc_session::PointerAuthSchema;
 
 use crate::consts::const_alloc_to_gcc;
 use crate::context::{CodegenCx, new_array_type};
+use crate::type_::struct_attributes;
 use crate::type_of::LayoutGccExt;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -27,12 +28,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.type_u16(), i as u64)
     }
 
-    fn global_string(&self, string: &str) -> LValue<'gcc> {
-        // FIXME(antoyo): handle non-null-terminated strings.
-        let string = self.context.new_string_literal(string);
+    fn global_const_string(&self, string: &str) -> LValue<'gcc> {
+        // The bytes of a Rust string are not NUL-terminated and can contain NULs.
+        let string = bytes_in_context(self, string.as_bytes());
         let sym = self.generate_local_symbol_name("str");
         let global = self.declare_private_global(&sym, self.val_ty(string));
         global.global_set_initializer_rvalue(string);
+        #[cfg(feature = "master")]
+        global.global_set_readonly();
         global
         // FIXME(antoyo): set linkage.
     }
@@ -123,79 +126,48 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
         Ok((value, None))
     }
+
+    pub(crate) fn const_struct(&self, values: &[RValue<'gcc>], packed: bool) -> RValue<'gcc> {
+        let fields: Vec<_> = values.iter().map(|value| value.get_type()).collect();
+        // FIXME(antoyo): cache the type? It's anonymous, so probably not.
+        let typ = self.type_struct(&fields, &struct_attributes(packed, None));
+        let struct_type = typ.is_struct().expect("struct type");
+        self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
+    }
+}
+
+/// The type [`bytes_in_context`] gives a run of `len` constant bytes.
+///
+/// Exposed separately so that the type of a constant allocation can be computed before any of its
+/// rvalues exist; see [`crate::consts::const_alloc_type`].
+///
+/// The result is cached because `gcc_jit_context_new_array_type` mints a fresh type every call.
+/// Two equal-but-distinct array types would key [`CodegenCx::type_struct`] differently and so
+/// produce two distinct anonymous structs, and libgccjit compares struct types by identity.
+pub fn bytes_type_in_context<'gcc>(cx: &CodegenCx<'gcc, '_>, len: usize) -> Type<'gcc> {
+    if let Some(&typ) = cx.byte_array_types.borrow().get(&len) {
+        return typ;
+    }
+    let typ = new_array_type(cx.context, None, cx.type_u8(), len as u64);
+    cx.byte_array_types.borrow_mut().insert(len, typ);
+    typ
 }
 
 pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) -> RValue<'gcc> {
-    // Instead of always using an array of bytes, use an array of larger integers of target endianness
-    // if possible. This reduces the amount of `rvalues` we use, which reduces memory usage significantly.
-    //
-    // FIXME(FractalFir): Consider using `global_set_initializer` instead. Before this is done, we need to confirm that
-    // `global_set_initializer` is more memory efficient than the current solution.
-    // `global_set_initializer` calls `global_set_initializer_rvalue` under the hood - does it generate an array of rvalues,
-    // or is it using a more efficient representation?
-    match bytes.len() % 8 {
-        0 => {
-            debug_assert_eq!(
-                bytes.len() % 8,
-                0,
-                "bytes length is not a multiple of 8, so bytes.as_chunks will have a remainder"
-            );
-            let context = &cx.context;
-            let byte_type = context.new_type::<u64>();
-            let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 8);
-            let elements: Vec<_> = bytes
-                .as_chunks::<8>()
-                .0
-                .iter()
-                .map(|&arr| {
-                    context.new_rvalue_from_long(
-                        byte_type,
-                        // Since we are representing arbitrary byte runs as integers, we need to follow the target
-                        // endianness.
-                        match cx.sess().target.options.endian {
-                            rustc_abi::Endian::Little => u64::from_le_bytes(arr) as i64,
-                            rustc_abi::Endian::Big => u64::from_be_bytes(arr) as i64,
-                        },
-                    )
-                })
-                .collect();
-            context.new_array_constructor(None, typ, &elements)
-        }
-        4 => {
-            debug_assert_eq!(
-                bytes.len() % 4,
-                0,
-                "bytes length is not a multiple of 4, so bytes.as_chunks will have a remainder"
-            );
-            let context = &cx.context;
-            let byte_type = context.new_type::<u32>();
-            let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 4);
-            let elements: Vec<_> = bytes
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|&arr| {
-                    context.new_rvalue_from_int(
-                        byte_type,
-                        match cx.sess().target.options.endian {
-                            rustc_abi::Endian::Little => u32::from_le_bytes(arr) as i32,
-                            rustc_abi::Endian::Big => u32::from_be_bytes(arr) as i32,
-                        },
-                    )
-                })
-                .collect();
-            context.new_array_constructor(None, typ, &elements)
-        }
-        _ => {
-            let context = cx.context;
-            let byte_type = context.new_type::<u8>();
-            let typ = new_array_type(context, None, byte_type, bytes.len() as u64);
-            let elements: Vec<_> = bytes
-                .iter()
-                .map(|&byte| context.new_rvalue_from_int(byte_type, byte as i32))
-                .collect();
-            context.new_array_constructor(None, typ, &elements)
-        }
+    let typ = bytes_type_in_context(cx, bytes.len());
+    // Raw bytes take far less RAM in libgccjit than one rvalue per array element.
+    #[cfg(feature = "master")]
+    {
+        cx.context.new_array_from_bytes(None, typ, bytes)
+    }
+    #[cfg(not(feature = "master"))]
+    {
+        let byte_type = cx.type_u8();
+        let elements: Vec<_> = bytes
+            .iter()
+            .map(|&byte| cx.context.new_rvalue_from_int(byte_type, byte as i32))
+            .collect();
+        cx.context.new_array_constructor(None, typ, &elements)
     }
 }
 
@@ -283,7 +255,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
         let mut const_str_cache = self.const_str_cache.borrow_mut();
         let str_global = const_str_cache.get(s).copied().unwrap_or_else(|| {
-            let g = self.global_string(s);
+            let g = self.global_const_string(s);
             const_str_cache.insert(s.to_owned(), g);
             g
         });
@@ -293,14 +265,6 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self)),
         );
         (cs, self.const_usize(len as u64))
-    }
-
-    fn const_struct(&self, values: &[RValue<'gcc>], packed: bool) -> RValue<'gcc> {
-        let fields: Vec<_> = values.iter().map(|value| value.get_type()).collect();
-        // FIXME(antoyo): cache the type? It's anonymous, so probably not.
-        let typ = self.type_struct(&fields, packed);
-        let struct_type = typ.is_struct().expect("struct type");
-        self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
     }
 
     fn const_vector(&self, values: &[RValue<'gcc>]) -> RValue<'gcc> {

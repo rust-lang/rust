@@ -7,6 +7,7 @@ use core::slice::memchr;
 use core::str::{self, FromStr, Utf8Error};
 use core::{fmt, mem, ops, ptr, slice};
 
+use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::Rc;
@@ -863,10 +864,10 @@ impl TryFrom<CString> for String {
 }
 
 #[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<CStr> {
+impl<A: Allocator + Clone> Clone for Box<CStr, A> {
     #[inline]
     fn clone(&self) -> Self {
-        (**self).into()
+        Box::clone_from_ref_in(&**self, Self::allocator(self).clone())
     }
 }
 

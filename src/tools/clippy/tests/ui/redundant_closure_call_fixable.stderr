@@ -60,24 +60,27 @@ LL |     let d = (async || something().await)();
 error: try not to call a closure in the expression where it is declared
   --> tests/ui/redundant_closure_call_fixable.rs:38:13
    |
+LL |     macro_rules! m2 {
+LL |         () => {
 LL |             (|| m!())()
    |             ^^^^^^^^^^^ help: try doing something like: `m!()`
 ...
 LL |     m2!();
    |     ----- in this macro invocation
-   |
-   = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: try not to call a closure in the expression where it is declared
   --> tests/ui/redundant_closure_call_fixable.rs:33:13
    |
-LL |             (|| 0)()
-   |             ^^^^^^^^ help: try doing something like: `0`
+LL | /     macro_rules! m {
+LL | |         () => {
+LL | |             (|| 0)()
+   | |             ^^^^^^^^ help: try doing something like: `0`
+LL | |         };
+LL | |     }
+   | |_____- this error originates in the macro `m` which comes from the expansion of the macro `m2`
 ...
-LL |     m2!();
-   |     ----- in this macro invocation
-   |
-   = note: this error originates in the macro `m` which comes from the expansion of the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
+LL |       m2!();
+   |       ----- in this macro invocation
 
 error: try not to call a closure in the expression where it is declared
   --> tests/ui/redundant_closure_call_fixable.rs:48:16

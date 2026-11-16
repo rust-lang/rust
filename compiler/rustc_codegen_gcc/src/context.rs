@@ -1,6 +1,8 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
+#[cfg(feature = "master")]
+use gccjit::Region;
 use gccjit::{Block, CType, Context, Function, FunctionType, LValue, Location, RValue, Type};
 use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
@@ -25,6 +27,13 @@ use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 use crate::abi::conv_to_fn_attribute;
 use crate::callee::get_fn;
 use crate::common::SignType;
+use crate::type_::StructTypeKey;
+
+#[cfg(feature = "master")]
+pub struct PendingCleanup<'gcc> {
+    pub region: Region<'gcc>,
+    pub landing_pad: Block<'gcc>,
+}
 
 #[cfg_attr(not(feature = "master"), expect(dead_code))]
 pub struct CodegenCx<'gcc, 'tcx> {
@@ -72,6 +81,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     pub supports_128bit_integers: bool,
     pub supports_f16_type: bool,
+    pub supports_f16b_type: bool,
     pub supports_f32_type: bool,
     pub supports_f64_type: bool,
     pub supports_f128_type: bool,
@@ -84,7 +94,20 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub types: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), Type<'gcc>>>,
     pub tcx: TyCtxt<'tcx>,
 
-    pub struct_types: RefCell<FxHashMap<Vec<Type<'gcc>>, Type<'gcc>>>,
+    /// Cache of the anonymous struct types.
+    pub struct_types: RefCell<FxHashMap<StructTypeKey<'gcc>, Type<'gcc>>>,
+
+    /// Cache of the array types used for runs of constant bytes, keyed by length.
+    ///
+    /// libgccjit mints a fresh type on every `new_array_type`, and struct types are keyed on their
+    /// field types, so without this two equal byte runs would yield two distinct anonymous structs.
+    pub byte_array_types: RefCell<FxHashMap<usize, Type<'gcc>>>,
+
+    /// Cache of the return types of the pairs returned in two registers, keyed by the types of the
+    /// two scalars.
+    pub two_register_pair_types: RefCell<FxHashMap<(Type<'gcc>, Type<'gcc>), Type<'gcc>>>,
+    /// The types of `two_register_pair_types`.
+    pub two_register_pair_type_set: RefCell<FxHashSet<Type<'gcc>>>,
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
@@ -100,8 +123,11 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Mapping from function to indexes of on stack parameters.
     pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
 
-    /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
+    /// Local holding the return value of the defined functions returning it in memory.
+    pub functions_with_indirect_return: RefCell<FxHashMap<Function<'gcc>, LValue<'gcc>>>,
+
+    /// Cache of emitted const globals (value -> global and its alignment)
+    pub const_globals: RefCell<FxHashMap<RValue<'gcc>, (RValue<'gcc>, Align)>>,
 
     /// Map from the address of a global variable (rvalue) to the global variable itself (lvalue).
     /// FIXME(antoyo): remove when the rustc API is fixed.
@@ -121,12 +147,18 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     eh_personality: Cell<Option<Function<'gcc>>>,
     #[cfg(feature = "master")]
-    pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
+    pub rust_try_fn: Cell<Option<Function<'gcc>>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
 
+    /// Blocks that are cleanup landing pads, so `invoke` can tell an unwind
+    /// edge into a cleanup from a catch/terminate.
     #[cfg(feature = "master")]
-    pub cleanup_blocks: RefCell<FxHashSet<Block<'gcc>>>,
+    pub landing_pads: RefCell<FxHashSet<Block<'gcc>>>,
+    /// Cleanup regions to be filled in once the function is fully codegened
+    /// (done in `populate_cleanup_regions`).
+    #[cfg(feature = "master")]
+    pub pending_cleanups: RefCell<Vec<PendingCleanup<'gcc>>>,
     /// The alignment of a u128/i128 type.
     // We cache this, since it is needed for alignment checks during loads.
     pub int128_align: Align,
@@ -140,6 +172,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         tcx: TyCtxt<'tcx>,
         supports_128bit_integers: bool,
         supports_f16_type: bool,
+        supports_f16b_type: bool,
         supports_f32_type: bool,
         supports_f64_type: bool,
         supports_f128_type: bool,
@@ -225,19 +258,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let isize_type = usize_type;
         let bool_type = context.new_type::<bool>();
 
-        let mut functions = FxHashMap::default();
-        let builtins = ["abort"];
-
-        for builtin in builtins.iter() {
-            functions.insert(builtin.to_string(), context.get_builtin_function(builtin));
-        }
+        let functions = FxHashMap::default();
 
         let mut cx = Self {
             int128_align: tcx
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.i128))
                 .expect("Can't get the layout of `i128`")
-                .align
-                .abi,
+                .align,
             const_cache: Default::default(),
             codegen_unit,
             context,
@@ -276,6 +303,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
             supports_128bit_integers,
             supports_f16_type,
+            supports_f16b_type,
             supports_f32_type,
             supports_f64_type,
             supports_f128_type,
@@ -288,6 +316,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             function_instances: Default::default(),
             intrinsic_instances: Default::default(),
             on_stack_function_params: Default::default(),
+            functions_with_indirect_return: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),
             global_lvalues: Default::default(),
@@ -297,6 +326,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             types: Default::default(),
             tcx,
             struct_types: Default::default(),
+            byte_array_types: Default::default(),
+            two_register_pair_types: Default::default(),
+            two_register_pair_type_set: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             global_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
@@ -304,22 +336,41 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             rust_try_fn: Cell::new(None),
             pointee_infos: Default::default(),
             #[cfg(feature = "master")]
-            cleanup_blocks: Default::default(),
+            landing_pads: Default::default(),
+            #[cfg(feature = "master")]
+            pending_cleanups: Default::default(),
         };
         // FIXME(antoyo): instead of doing this, add SsizeT to libgccjit.
         cx.isize_type = usize_type.to_signed(&cx);
         cx
     }
 
-    pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
-        let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
-        debug_assert!(
-            self.functions.borrow().values().any(|value| *value == function),
-            "{:?} ({:?}) is not a function",
-            value,
-            value.get_type()
-        );
-        function
+    /// Fill in the member blocks of every pending cleanup region.
+    ///
+    /// Clone all blocks reachable from a cleanup block into the cleanup region.
+    #[cfg(feature = "master")]
+    pub fn populate_cleanup_regions(&self) {
+        let pending = std::mem::take(&mut *self.pending_cleanups.borrow_mut());
+
+        for cleanup in pending {
+            // The landing pad is the region's entry, so it must come first.
+            let mut blocks = vec![];
+            let mut visited = FxHashSet::default();
+            let mut stack = vec![cleanup.landing_pad];
+            while let Some(block) = stack.pop() {
+                if !visited.insert(block) {
+                    continue;
+                }
+                blocks.push(block);
+                stack.extend(block.get_successors());
+            }
+
+            for clone in gccjit::clone_blocks(&blocks) {
+                cleanup.region.add_block(clone);
+            }
+        }
+
+        self.landing_pads.borrow_mut().clear();
     }
 
     pub fn is_native_int_type(&self, typ: Type<'gcc>) -> bool {
@@ -455,7 +506,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     tcx,
                     self.typing_env(),
                     def_id,
-                    ty::List::empty(),
+                    ty::GenericArgs::empty(),
                     DUMMY_SP,
                 );
 
@@ -465,10 +516,12 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.declare_fn(symbol_name, fn_abi)
             }
             _ => {
+                let rust_name;
                 let name = if wants_msvc_seh(&self.sess().target) {
                     "__CxxFrameHandler3"
                 } else {
-                    "rust_eh_personality"
+                    rust_name = rustc_symbol_mangling::eh_personality_symbol(tcx);
+                    &rust_name
                 };
                 self.declare_func(name, self.type_i32(), &[], true)
             }

@@ -22,92 +22,6 @@ help: must be of the form
 LL | #[cfg_attr(predicate, attr1, attr2, ...)]
    |           ++++++++++++++++++++++++++++++
 
-error[E0463]: can't find crate for `wloop`
-  --> $DIR/malformed-attrs.rs:213:1
-   |
-LL | extern crate wloop;
-   | ^^^^^^^^^^^^^^^^^^^ can't find crate
-
-error: malformed `allow` attribute input
-  --> $DIR/malformed-attrs.rs:179:1
-   |
-LL | #[allow]
-   | ^^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
-help: the following are the possible correct uses
-   |
-LL | #[allow(lint1)]
-   |        +++++++
-LL | #[allow(lint1, lint2, ...)]
-   |        +++++++++++++++++++
-LL | #[allow(lint1, lint2, lint3, reason = "...")]
-   |        +++++++++++++++++++++++++++++++++++++
-
-error: malformed `expect` attribute input
-  --> $DIR/malformed-attrs.rs:181:1
-   |
-LL | #[expect]
-   | ^^^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
-help: the following are the possible correct uses
-   |
-LL | #[expect(lint1)]
-   |         +++++++
-LL | #[expect(lint1, lint2, ...)]
-   |         +++++++++++++++++++
-LL | #[expect(lint1, lint2, lint3, reason = "...")]
-   |         +++++++++++++++++++++++++++++++++++++
-
-error: malformed `warn` attribute input
-  --> $DIR/malformed-attrs.rs:183:1
-   |
-LL | #[warn]
-   | ^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
-help: the following are the possible correct uses
-   |
-LL | #[warn(lint1)]
-   |       +++++++
-LL | #[warn(lint1, lint2, ...)]
-   |       +++++++++++++++++++
-LL | #[warn(lint1, lint2, lint3, reason = "...")]
-   |       +++++++++++++++++++++++++++++++++++++
-
-error: malformed `deny` attribute input
-  --> $DIR/malformed-attrs.rs:185:1
-   |
-LL | #[deny]
-   | ^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
-help: the following are the possible correct uses
-   |
-LL | #[deny(lint1)]
-   |       +++++++
-LL | #[deny(lint1, lint2, ...)]
-   |       +++++++++++++++++++
-LL | #[deny(lint1, lint2, lint3, reason = "...")]
-   |       +++++++++++++++++++++++++++++++++++++
-
-error: malformed `forbid` attribute input
-  --> $DIR/malformed-attrs.rs:187:1
-   |
-LL | #[forbid]
-   | ^^^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
-help: the following are the possible correct uses
-   |
-LL | #[forbid(lint1)]
-   |         +++++++
-LL | #[forbid(lint1, lint2, ...)]
-   |         +++++++++++++++++++
-LL | #[forbid(lint1, lint2, lint3, reason = "...")]
-   |         +++++++++++++++++++++++++++++++++++++
-
 error: the `proc_macro` attribute is only usable with crates of the `proc-macro` crate type
   --> $DIR/malformed-attrs.rs:106:3
    |
@@ -126,8 +40,14 @@ error: the `proc_macro_derive` attribute is only usable with crates of the `proc
 LL | #[proc_macro_derive]
    |   ^^^^^^^^^^^^^^^^^
 
+error[E0433]: cannot find module or crate `lint` in this scope
+  --> $DIR/malformed-attrs.rs:49:3
+   |
+LL | #[lint::as_ptr = 5]
+   |   ^^^^ use of unresolved module or unlinked crate `lint`
+
 error[E0539]: malformed `windows_subsystem` attribute input
-  --> $DIR/malformed-attrs.rs:26:4
+  --> $DIR/malformed-attrs.rs:25:4
    |
 LL | #![windows_subsystem]
    |    ^^^^^^^^^^^^^^^^^ expected this to be of the form `windows_subsystem = "..."`
@@ -141,7 +61,7 @@ LL | #![windows_subsystem = "windows"]
    |                      +++++++++++
 
 error[E0539]: malformed `export_name` attribute input
-  --> $DIR/malformed-attrs.rs:29:3
+  --> $DIR/malformed-attrs.rs:28:3
    |
 LL | #[unsafe(export_name)]
    |   ^^^^^^^^^^^^^^^^^^^
@@ -152,19 +72,19 @@ LL | #[unsafe(export_name = "name")]
    |                      ++++++++
 
 error: `rustc_allow_const_fn_unstable` expects a list of feature names
-  --> $DIR/malformed-attrs.rs:31:1
+  --> $DIR/malformed-attrs.rs:30:1
    |
 LL | #[rustc_allow_const_fn_unstable]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `allow_internal_unstable` expects a list of feature names
-  --> $DIR/malformed-attrs.rs:34:1
+  --> $DIR/malformed-attrs.rs:33:1
    |
 LL | #[allow_internal_unstable]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `rustc_confusables` attribute input
-  --> $DIR/malformed-attrs.rs:36:3
+  --> $DIR/malformed-attrs.rs:35:3
    |
 LL | #[rustc_confusables]
    |   ^^^^^^^^^^^^^^^^^ expected this to be a list
@@ -175,15 +95,17 @@ LL | #[rustc_confusables("name1", "name2", ...)]
    |                    +++++++++++++++++++++++
 
 error: the `rustc_confusables` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:36:3
+  --> $DIR/malformed-attrs.rs:35:3
    |
 LL | #[rustc_confusables]
    |   ^^^^^^^^^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `rustc_confusables` attribute can only be applied to inherent methods
 
 error[E0539]: malformed `deprecated` attribute input
-  --> $DIR/malformed-attrs.rs:39:3
+  --> $DIR/malformed-attrs.rs:38:3
    |
 LL | #[deprecated = 5]
    |   ^^^^^^^^^^^^^-
@@ -191,7 +113,7 @@ LL | #[deprecated = 5]
    |                expected a string literal here
 
 error[E0539]: malformed `rustc_macro_transparency` attribute input
-  --> $DIR/malformed-attrs.rs:45:3
+  --> $DIR/malformed-attrs.rs:44:3
    |
 LL | #[rustc_macro_transparency]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,33 +128,35 @@ LL | #[rustc_macro_transparency = "transparent"]
    |                            +++++++++++++++
 
 error: the `rustc_macro_transparency` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:45:3
+  --> $DIR/malformed-attrs.rs:44:3
    |
 LL | #[rustc_macro_transparency]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `rustc_macro_transparency` attribute can only be applied to macro defs
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/malformed-attrs.rs:48:3
+  --> $DIR/malformed-attrs.rs:47:3
    |
 LL | #[repr]
    |   ^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
-error[E0565]: malformed `rustc_as_ptr` attribute input
-  --> $DIR/malformed-attrs.rs:50:3
+error[E0565]: malformed `lint::as_ptr` attribute input
+  --> $DIR/malformed-attrs.rs:49:3
    |
-LL | #[rustc_as_ptr = 5]
+LL | #[lint::as_ptr = 5]
    |   ^^^^^^^^^^^^^---
    |                |
    |                didn't expect any arguments here
    |
 help: must be of the form
    |
-LL - #[rustc_as_ptr = 5]
-LL + #[rustc_as_ptr]
+LL - #[lint::as_ptr = 5]
+LL + #[lint::as_ptr]
    |
 
 error[E0539]: malformed `rustc_align` attribute input
@@ -410,6 +334,8 @@ error: the `used` attribute cannot be used on functions
    |
 LL | #[used()]
    |   ^^^^
+...
+LL | fn test() {
    |
    = help: the `used` attribute can only be applied to statics
 
@@ -550,6 +476,18 @@ help: must be of the form
    |
 LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
    |                           ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: attribute should be applied to `const fn`
+  --> $DIR/malformed-attrs.rs:30:1
+   |
+LL |   #[rustc_allow_const_fn_unstable]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | / fn test() {
+LL | |     #[coroutine = 63] || {}
+...  |
+LL | | }
+   | |_- not a `const fn`
 
 error[E0565]: malformed `coroutine` attribute input
   --> $DIR/malformed-attrs.rs:118:7
@@ -714,6 +652,86 @@ error[E0539]: malformed `linkage` attribute input
 LL |     #[linkage]
    |       ^^^^^^^ expected this to be of the form `linkage = "..."`
 
+error[E0539]: malformed `allow` attribute input
+  --> $DIR/malformed-attrs.rs:179:3
+   |
+LL | #[allow]
+   |   ^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[allow(lint1)]
+   |        +++++++
+LL | #[allow(lint1, lint2, ...)]
+   |        +++++++++++++++++++
+LL | #[allow(lint1, lint2, lint3, reason = "...")]
+   |        +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `expect` attribute input
+  --> $DIR/malformed-attrs.rs:181:3
+   |
+LL | #[expect]
+   |   ^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[expect(lint1)]
+   |         +++++++
+LL | #[expect(lint1, lint2, ...)]
+   |         +++++++++++++++++++
+LL | #[expect(lint1, lint2, lint3, reason = "...")]
+   |         +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `warn` attribute input
+  --> $DIR/malformed-attrs.rs:183:3
+   |
+LL | #[warn]
+   |   ^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[warn(lint1)]
+   |       +++++++
+LL | #[warn(lint1, lint2, ...)]
+   |       +++++++++++++++++++
+LL | #[warn(lint1, lint2, lint3, reason = "...")]
+   |       +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `deny` attribute input
+  --> $DIR/malformed-attrs.rs:185:3
+   |
+LL | #[deny]
+   |   ^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[deny(lint1)]
+   |       +++++++
+LL | #[deny(lint1, lint2, ...)]
+   |       +++++++++++++++++++
+LL | #[deny(lint1, lint2, lint3, reason = "...")]
+   |       +++++++++++++++++++++++++++++++++++++
+
+error[E0539]: malformed `forbid` attribute input
+  --> $DIR/malformed-attrs.rs:187:3
+   |
+LL | #[forbid]
+   |   ^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[forbid(lint1)]
+   |         +++++++
+LL | #[forbid(lint1, lint2, ...)]
+   |         +++++++++++++++++++
+LL | #[forbid(lint1, lint2, lint3, reason = "...")]
+   |         +++++++++++++++++++++++++++++++++++++
+
 error[E0539]: malformed `debugger_visualizer` attribute input
   --> $DIR/malformed-attrs.rs:189:3
    |
@@ -783,7 +801,7 @@ LL + #[no_link]
    |
 
 error[E0539]: malformed `macro_use` attribute input
-  --> $DIR/malformed-attrs.rs:211:3
+  --> $DIR/malformed-attrs.rs:213:3
    |
 LL | #[macro_use = 1]
    |   ^^^^^^^^^^---
@@ -801,7 +819,7 @@ LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0539]: malformed `macro_export` attribute input
-  --> $DIR/malformed-attrs.rs:216:3
+  --> $DIR/malformed-attrs.rs:217:3
    |
 LL | #[macro_export = 18]
    |   ^^^^^^^^^^^^^----
@@ -818,7 +836,7 @@ LL + #[macro_export(local_inner_macros)]
    |
 
 error[E0658]: the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint
-  --> $DIR/malformed-attrs.rs:218:3
+  --> $DIR/malformed-attrs.rs:219:3
    |
 LL | #[allow_internal_unsafe = 1]
    |   ^^^^^^^^^^^^^^^^^^^^^
@@ -827,7 +845,7 @@ LL | #[allow_internal_unsafe = 1]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
-  --> $DIR/malformed-attrs.rs:218:3
+  --> $DIR/malformed-attrs.rs:219:3
    |
 LL | #[allow_internal_unsafe = 1]
    |   ^^^^^^^^^^^^^^^^^^^^^^---
@@ -840,20 +858,8 @@ LL - #[allow_internal_unsafe = 1]
 LL + #[allow_internal_unsafe]
    |
 
-error: attribute should be applied to `const fn`
-  --> $DIR/malformed-attrs.rs:31:1
-   |
-LL |   #[rustc_allow_const_fn_unstable]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | / fn test() {
-LL | |     #[coroutine = 63] || {}
-...  |
-LL | | }
-   | |_- not a `const fn`
-
 error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
-  --> $DIR/malformed-attrs.rs:41:3
+  --> $DIR/malformed-attrs.rs:40:3
    |
 LL | #[doc]
    |   ^^^
@@ -865,7 +871,7 @@ LL | #![deny(invalid_doc_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
-  --> $DIR/malformed-attrs.rs:43:3
+  --> $DIR/malformed-attrs.rs:42:3
    |
 LL | #[doc()]
    |   ^^^^^
@@ -901,6 +907,8 @@ warning: the `link` attribute cannot be used on functions
    |
 LL | #[link]
    |   ^^^^
+...
+LL | fn test() {
    |
    = help: the `link` attribute can only be applied to foreign modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -910,6 +918,8 @@ warning: the `link_name` attribute cannot be used on functions
    |
 LL | #[link_name]
    |   ^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -928,6 +938,8 @@ warning: the `no_implicit_prelude` attribute cannot be used on functions
    |
 LL | #[no_implicit_prelude = 23]
    |   ^^^^^^^^^^^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `no_implicit_prelude` attribute can be applied to crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -960,12 +972,24 @@ warning: the `automatically_derived` attribute cannot be used on modules
    |
 LL | #[automatically_derived = 18]
    |   ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | mod yooo {
    |
    = help: the `automatically_derived` attribute can only be applied to trait impl blocks
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
+error: use of deprecated `no_link` attribute
+  --> $DIR/malformed-attrs.rs:209:1
+   |
+LL | #[no_link()]
+   | ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
+   = note: `#[deny(no_link_attributes)]` (part of `#[deny(future_incompatible)]`) on by default
+
 error: valid forms for the attribute are `ignore` and `ignore = "reason"`
-  --> $DIR/malformed-attrs.rs:225:3
+  --> $DIR/malformed-attrs.rs:226:3
    |
 LL | #[ignore = 1]
    |   ^^^^^^^^^^
@@ -984,9 +1008,9 @@ LL |     #[coroutine = 63] || {}
    = note: expected unit type `()`
               found coroutine `{coroutine@$DIR/malformed-attrs.rs:118:23: 118:25}`
 
-error: aborting due to 74 previous errors; 8 warnings emitted
+error: aborting due to 75 previous errors; 8 warnings emitted
 
-Some errors have detailed explanations: E0308, E0463, E0539, E0565, E0658, E0805.
+Some errors have detailed explanations: E0308, E0433, E0539, E0565, E0658, E0805.
 For more information about an error, try `rustc --explain E0308`.
 Future incompatibility report: Future breakage diagnostic:
 error: valid forms for the attribute are `inline`, `inline(always)`, and `inline(never)`
@@ -1011,8 +1035,19 @@ LL | #[ignore()]
    = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
+error: use of deprecated `no_link` attribute
+  --> $DIR/malformed-attrs.rs:209:1
+   |
+LL | #[no_link()]
+   | ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
+   = note: `#[deny(no_link_attributes)]` (part of `#[deny(future_incompatible)]`) on by default
+
+Future breakage diagnostic:
 error: valid forms for the attribute are `ignore` and `ignore = "reason"`
-  --> $DIR/malformed-attrs.rs:225:3
+  --> $DIR/malformed-attrs.rs:226:3
    |
 LL | #[ignore = 1]
    |   ^^^^^^^^^^

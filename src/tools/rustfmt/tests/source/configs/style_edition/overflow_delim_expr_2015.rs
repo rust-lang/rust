@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2015
+//@ rustfmt-style_edition: 2015
 
 fn combine_blocklike() {
     do_thing(

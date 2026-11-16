@@ -66,7 +66,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
                 TerminatorKind::FalseEdge { real_target, .. }
                 | TerminatorKind::FalseUnwind { real_target, .. } => {
                     invalidate_cfg = true;
-                    terminator.kind = TerminatorKind::Goto { target: real_target };
+                    terminator.kind = TerminatorKind::goto(real_target);
                 }
                 _ => {}
             }

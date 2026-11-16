@@ -168,7 +168,7 @@ macro_rules! optional {
 #[doc(hidden)]
 macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
-        use rustc_driver::{Callbacks, Compilation, run_compiler};
+        use rustc_driver::{Callbacks, Compilation, compiler_entrypoint};
         use rustc_middle::ty::TyCtxt;
         use rustc_interface::interface;
         use rustc_public::rustc_internal;
@@ -199,7 +199,7 @@ macro_rules! run_driver {
             /// Runs the compiler against given target and tests it with `test_function`
             pub fn run(&mut self, args: &[String]) -> Result<C, CompilerError<B>> {
                 let compiler_result = rustc_driver::catch_fatal_errors(|| -> interface::Result::<()> {
-                    run_compiler(&args, self);
+                    compiler_entrypoint(&args, self);
                     Ok(())
                 });
                 match (compiler_result, self.result.take()) {

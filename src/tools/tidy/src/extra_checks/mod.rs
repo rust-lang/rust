@@ -171,7 +171,7 @@ pub fn check(
 }
 
 fn py_prepare(root_path: &Path, outdir: &Path, tidy_ctx: &TidyCtx) -> Option<PathBuf> {
-    let mut check = tidy_ctx.start_check("extra_checks:py_prepare");
+    let check = tidy_ctx.start_check("extra_checks:py_prepare");
 
     let venv_path = outdir.join("venv");
     let mut reqs_path = root_path.to_owned();
@@ -187,7 +187,7 @@ fn py_prepare(root_path: &Path, outdir: &Path, tidy_ctx: &TidyCtx) -> Option<Pat
 }
 
 fn js_prepare(root_path: &Path, outdir: &Path, npm: &Path, tidy_ctx: &TidyCtx) -> Option<()> {
-    let mut check = tidy_ctx.start_check("extra_checks:js_prepare");
+    let check = tidy_ctx.start_check("extra_checks:js_prepare");
 
     if let Err(e) = rustdoc_js::npm_install(root_path, outdir, npm) {
         check.error(e.to_string());
@@ -206,7 +206,7 @@ fn show_bless_help(mode: &str, action: &str, bless: bool) {
 }
 
 fn check_spellcheck(root_path: &Path, outdir: &Path, cargo: &Path, tidy_ctx: &TidyCtx) {
-    let mut check = tidy_ctx.start_check("extra_checks:spellcheck");
+    let check = tidy_ctx.start_check("extra_checks:spellcheck");
 
     let bless = tidy_ctx.is_bless_enabled();
 
@@ -230,7 +230,7 @@ fn check_spellcheck(root_path: &Path, outdir: &Path, cargo: &Path, tidy_ctx: &Ti
 }
 
 fn check_js_lint(outdir: &Path, librustdoc_path: &Path, tools_path: &Path, tidy_ctx: &TidyCtx) {
-    let mut check = tidy_ctx.start_check("extra_checks:js_lint");
+    let check = tidy_ctx.start_check("extra_checks:js_lint");
 
     let bless = tidy_ctx.is_bless_enabled();
 
@@ -252,7 +252,7 @@ fn check_js_lint(outdir: &Path, librustdoc_path: &Path, tools_path: &Path, tidy_
 }
 
 fn check_js_typecheck(outdir: &Path, librustdoc_path: &Path, tidy_ctx: &TidyCtx) {
-    let mut check = tidy_ctx.start_check("extra_checks:js_typecheck");
+    let check = tidy_ctx.start_check("extra_checks:js_typecheck");
 
     eprintln!("typechecking javascript files");
     if let Err(e) = rustdoc_js::typecheck(outdir, librustdoc_path) {
@@ -266,7 +266,7 @@ fn check_shell_lint(
     file_args: &Vec<&OsStr>,
     tidy_ctx: &TidyCtx,
 ) {
-    let mut check = tidy_ctx.start_check("extra_checks:shell_lint");
+    let check = tidy_ctx.start_check("extra_checks:shell_lint");
 
     eprintln!("linting shell files");
 
@@ -297,7 +297,7 @@ fn check_python_lint(
     py_path: &Path,
     tidy_ctx: &TidyCtx,
 ) {
-    let mut check = tidy_ctx.start_check("extra_checks:python_lint");
+    let check = tidy_ctx.start_check("extra_checks:python_lint");
 
     let bless = tidy_ctx.is_bless_enabled();
 
@@ -340,7 +340,7 @@ fn check_python_fmt(
     py_path: &Path,
     tidy_ctx: &TidyCtx,
 ) {
-    let mut check = tidy_ctx.start_check("extra_checks:python_fmt");
+    let check = tidy_ctx.start_check("extra_checks:python_fmt");
 
     let bless = tidy_ctx.is_bless_enabled();
 
@@ -380,7 +380,7 @@ fn check_cpp_fmt(
     py_path: &Path,
     tidy_ctx: &TidyCtx,
 ) {
-    let mut check = tidy_ctx.start_check("extra_checks:cpp_fmt");
+    let check = tidy_ctx.start_check("extra_checks:cpp_fmt");
 
     let bless = tidy_ctx.is_bless_enabled();
 

@@ -1,4 +1,4 @@
-// rustfmt-format_strings: true
+//@ rustfmt-format_strings: true
 
 #[test]
 fn compile_empty_program() {

@@ -1,3 +1,5 @@
+#![expect(clippy::needless_doctest_main)]
+
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_entrypoint_fn, is_no_std_crate};
@@ -9,8 +11,8 @@ declare_clippy_lint! {
     /// Checks for recursion using the entrypoint.
     ///
     /// ### Why is this bad?
-    /// Apart from special setups (which we could detect following attributes like #![no_std]),
-    /// recursing into main() seems like an unintuitive anti-pattern we should be able to detect.
+    /// Apart from special setups (which we could detect following attributes like `#![no_std]`),
+    /// recursing into `main()` seems like an unintuitive anti-pattern we should be able to detect.
     ///
     /// ### Example
     /// ```no_run

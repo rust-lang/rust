@@ -163,7 +163,7 @@ LL |         pub use super::Enum::{self};
    = note: `Enum` must be defined only once in the type namespace of this module
 
 error[E0252]: the name `Trait` is defined multiple times
-  --> $DIR/use-self-at-end.rs:88:32
+  --> $DIR/use-self-at-end.rs:83:32
    |
 LL |         pub use super::Trait::self;
    |                 ------------------ previous import of the trait `Trait` here
@@ -195,25 +195,25 @@ LL |         pub use super::Struct::{self};
    |                        ^^^^^^ `Struct` is a struct, not a module
 
 error[E0433]: `self` in paths can only be used in start position or last position
-  --> $DIR/use-self-at-end.rs:92:24
+  --> $DIR/use-self-at-end.rs:87:24
    |
 LL |         pub use super::self::y::z;
    |                        ^^^^ can only be used in path start position or last position
 
 error[E0433]: `self` in paths can only be used in start position or last position
-  --> $DIR/use-self-at-end.rs:93:24
+  --> $DIR/use-self-at-end.rs:88:24
    |
 LL |         pub use super::self::y::z as z3;
    |                        ^^^^ can only be used in path start position or last position
 
 error[E0433]: `self` in paths can only be used in start position or last position
-  --> $DIR/use-self-at-end.rs:94:24
+  --> $DIR/use-self-at-end.rs:89:24
    |
 LL |         pub use super::self::y::{z};
    |                        ^^^^ can only be used in path start position or last position
 
 error[E0433]: `self` in paths can only be used in start position or last position
-  --> $DIR/use-self-at-end.rs:95:24
+  --> $DIR/use-self-at-end.rs:90:24
    |
 LL |         pub use super::self::y::{z as z4};
    |                        ^^^^ can only be used in path start position or last position
@@ -231,7 +231,7 @@ LL |         type G = z::self::self;
    |                     ^^^^ can only be used in path start position or last position
 
 error[E0433]: `self` in paths can only be used in start position or last position
-  --> $DIR/use-self-at-end.rs:91:25
+  --> $DIR/use-self-at-end.rs:86:25
    |
 LL |         type K = super::self::y::z;
    |                         ^^^^ can only be used in path start position or last position
@@ -272,30 +272,7 @@ error[E0425]: cannot find crate `self` in the list of imported crates
 LL |         type F = ::self;
    |                    ^^^^ not found in the list of imported crates
 
-error[E0223]: ambiguous associated type
-  --> $DIR/use-self-at-end.rs:68:18
-   |
-LL |         type H = super::Struct::self;
-   |                  ^^^^^^^^^^^^^^^^^^^
-   |
-help: if there were a trait named `Example` with associated type `self` implemented for `x::Struct`, you could use the fully-qualified path
-   |
-LL -         type H = super::Struct::self;
-LL +         type H = <x::Struct as Example>::self;
-   |
+error: aborting due to 35 previous errors
 
-error[E0782]: expected a type, found a trait
-  --> $DIR/use-self-at-end.rs:80:18
-   |
-LL |         type J = super::Trait::self;
-   |                  ^^^^^^^^^^^^^^^^^^
-   |
-help: you can add the `dyn` keyword if you want a trait object
-   |
-LL |         type J = dyn super::Trait::self;
-   |                  +++
-
-error: aborting due to 37 previous errors
-
-Some errors have detailed explanations: E0223, E0252, E0425, E0432, E0433, E0573, E0782.
-For more information about an error, try `rustc --explain E0223`.
+Some errors have detailed explanations: E0252, E0425, E0432, E0433, E0573.
+For more information about an error, try `rustc --explain E0252`.

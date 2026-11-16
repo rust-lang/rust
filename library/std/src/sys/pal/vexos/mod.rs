@@ -5,7 +5,6 @@ mod unsupported_common;
 pub use unsupported_common::{init, unsupported, unsupported_err};
 
 use crate::arch::global_asm;
-use crate::ptr;
 use crate::sys::stdio;
 use crate::time::{Duration, Instant};
 
@@ -16,8 +15,21 @@ global_asm!(
 
     .arm
     _boot:
-        ldr sp, =__stack_top @ Set up the user stack.
-        blx _start           @ Jump to the Rust entrypoint.
+        @ Set up the user stack.
+        ldr sp, =__stack_top
+
+        @ Clear the .bss (uninitialized statics) section by filling it with zeroes.
+        @ This is required, since the compiler assumes it will be zeroed on first access.
+        mov r0, #0
+        ldr r1, =__bss_start
+        ldr r2, =__bss_end
+    .Lclear_bss:
+        cmp r1, r2
+        beq .Lbss_done
+        str r0, [r1], #4
+        b .Lclear_bss
+    .Lbss_done:
+        blx _start @ Jump to the Rust entrypoint.
     "#
 );
 
@@ -25,19 +37,8 @@ global_asm!(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn _start() -> ! {
     unsafe extern "C" {
-        static mut __bss_start: u8;
-        static mut __bss_end: u8;
-
         fn main() -> i32;
     }
-
-    // Clear the .bss (uninitialized statics) section by filling it with zeroes.
-    // This is required, since the compiler assumes it will be zeroed on first access.
-    ptr::write_bytes(
-        &raw mut __bss_start,
-        0,
-        (&raw mut __bss_end).offset_from_unsigned(&raw mut __bss_start),
-    );
 
     main();
 

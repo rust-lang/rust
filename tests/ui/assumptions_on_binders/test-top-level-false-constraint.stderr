@@ -1,0 +1,8 @@
+error: top level false constraints are not supported
+  --> $DIR/test-top-level-false-constraint.rs:7:10
+   |
+LL |     impl { or {} }
+   |          ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

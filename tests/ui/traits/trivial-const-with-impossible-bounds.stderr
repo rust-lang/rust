@@ -1,6 +1,7 @@
 error[E0080]: entering unreachable code
   --> $DIR/trivial-const-with-impossible-bounds.rs:5:5
    |
+LL | impl Dummy where for<'a> &'a mut i32: Copy {
 LL |     const C: usize = 1;
    |     ^^^^^^^^^^^^^^^^^^^ evaluation of `Dummy::C` failed here
 

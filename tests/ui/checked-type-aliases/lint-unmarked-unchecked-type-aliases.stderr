@@ -1,0 +1,21 @@
+warning: unchecked type alias lacks attribute `#[rustc_unchecked_type_alias]`
+  --> $DIR/lint-unmarked-unchecked-type-aliases.rs:8:1
+   |
+LL | type Alias = [(); panic!()];
+   | ^^^^^^^^^^
+   |
+   = warning: this changes meaning in Rust future
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/future/checked-type-aliases.html>
+note: the lint level is defined here
+  --> $DIR/lint-unmarked-unchecked-type-aliases.rs:5:9
+   |
+LL | #![warn(unmarked_unchecked_type_aliases)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: annotate the type alias with `#[rustc_unchecked_type_alias]`
+   |
+LL + #[rustc_unchecked_type_alias]
+LL | type Alias = [(); panic!()];
+   |
+
+warning: 1 warning emitted
+

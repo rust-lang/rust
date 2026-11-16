@@ -4,6 +4,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths::{self, PathNS};
 use clippy_utils::sym;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::CoroutineLayout;
@@ -187,7 +188,18 @@ impl AwaitHolding {
             tcx,
             &conf.await_holding_invalid_types,
             PathNS::Type,
-            crate::disallowed_types::def_kind_predicate,
+            |def_kind| {
+                matches!(
+                    def_kind,
+                    DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Trait
+                        | DefKind::TyAlias
+                        | DefKind::ForeignTy
+                        | DefKind::AssocTy
+                )
+            },
             "type",
             false,
         );

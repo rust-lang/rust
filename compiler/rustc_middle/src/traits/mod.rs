@@ -21,7 +21,7 @@ use rustc_macros::{
     Decodable, Encodable, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, OrdSpan, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -29,7 +29,7 @@ pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, Selecti
 use crate::mir::ConstraintCategory;
 pub use crate::traits::solve::BuiltinImplSource;
 use crate::ty::abstract_const::NotConstEvaluatable;
-use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
+use crate::ty::{self, AdtKind, GenericArgs, Ty};
 
 /// The reason why we incurred this obligation; used for error reporting.
 ///
@@ -137,8 +137,8 @@ impl<'tcx> ObligationCause<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
             ObligationCauseCode::MatchImpl(cause, _) => cause.to_constraint_category(),
-            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span) => {
-                ConstraintCategory::Predicate(*predicate_span)
+            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span, def_id) => {
+                ConstraintCategory::Predicate(*predicate_span, *def_id)
             }
             _ => ConstraintCategory::BoringNoLocation,
         }
@@ -188,7 +188,7 @@ pub enum ObligationCauseCode<'tcx> {
     SliceOrArrayElem,
 
     /// An array `[T; N]` can only be indexed (and is only well-formed if) `N` has type usize.
-    ArrayLen(Ty<'tcx>),
+    ArrayLen(Ty<'tcx>, Span),
 
     /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
@@ -238,7 +238,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Return type must be `Sized`.
     SizedReturnType,
     /// Return type of a call expression must be `Sized`.
-    SizedCallReturnType,
+    SizedCallReturnType(HirId),
     /// Yield type must be `Sized`.
     SizedYieldType,
     /// Inline asm operand type must be `Sized`.
@@ -366,6 +366,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// Opaque return type of this function
     OpaqueReturnType(Option<(Ty<'tcx>, HirId)>),
 
+    ReturnType,
+
     /// Block implicit return
     BlockTailExpression(HirId, hir::MatchSource),
 
@@ -384,7 +386,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// This is purely for diagnostic purposes - it is always
     /// correct to use `Misc` instead, or to specify
     /// `WellFormed(None)`.
-    WellFormed(Option<WellFormedLoc>),
+    WellFormed(WellFormedLoc),
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching
     /// against.
@@ -402,7 +404,7 @@ pub enum ObligationCauseCode<'tcx> {
         output_ty: Option<Ty<'tcx>>,
     },
 
-    AscribeUserTypeProvePredicate(Span),
+    AscribeUserTypeProvePredicate(Span, DefId),
 
     RustCall,
 
@@ -414,6 +416,10 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
     ConstParam(Ty<'tcx>),
+
+    /// Requirement for the type of a const item used in the type system to implement
+    /// `ConstParamTy`.
+    ConstItemTy(Ty<'tcx>),
 
     /// Obligations emitted during the normalization of a free type alias.
     TypeAlias(ObligationCauseCodeHandle<'tcx>, Span, DefId),
@@ -461,6 +467,8 @@ pub enum WellFormedLoc {
         /// being the last 'parameter'
         param_idx: usize,
     },
+    HirId(HirId),
+    None,
 }
 
 impl<'tcx> ObligationCauseCode<'tcx> {
@@ -752,7 +760,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub nested: ThinVec<N>,
 }
 
@@ -863,15 +871,15 @@ impl DynCompatibilityViolation {
             | Self::SupertraitConst(_) => DynCompatibilityViolationSolution::None,
             Self::Method(
                 name,
-                MethodViolation::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
+                MethodViolation::StaticMethod(Some(((add_s, add_sp), (make_s, make_sp)))),
                 _,
             ) => DynCompatibilityViolationSolution::AddSelfOrMakeSized {
                 name: *name,
-                add_self_sugg: add_self_sugg.clone(),
-                make_sized_sugg: make_sized_sugg.clone(),
+                add_self_sugg: (add_s.clone(), OrdSpan(*add_sp)),
+                make_sized_sugg: (make_s.clone(), OrdSpan(*make_sp)),
             },
-            Self::Method(name, MethodViolation::UndispatchableReceiver(Some(span)), _) => {
-                DynCompatibilityViolationSolution::ChangeToRefSelf(*name, *span)
+            Self::Method(name, MethodViolation::UndispatchableReceiver(Some((span, lt))), _) => {
+                DynCompatibilityViolationSolution::ChangeToRefSelf(*name, OrdSpan(*span), *lt)
             }
             Self::Method(name, ..) | Self::AssocConst(name, ..) | Self::GenericAssocTy(name, _) => {
                 DynCompatibilityViolationSolution::MoveToAnotherTrait(*name)
@@ -901,20 +909,20 @@ impl DynCompatibilityViolation {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DynCompatibilityViolationSolution {
     None,
     AddSelfOrMakeSized {
         name: Symbol,
-        add_self_sugg: (String, Span),
-        make_sized_sugg: (String, Span),
+        add_self_sugg: (String, OrdSpan),
+        make_sized_sugg: (String, OrdSpan),
     },
-    ChangeToRefSelf(Symbol, Span),
+    ChangeToRefSelf(Symbol, OrdSpan, Symbol),
     MoveToAnotherTrait(Symbol),
 }
 
 impl DynCompatibilityViolationSolution {
-    pub fn add_to<G>(self, err: &mut Diag<'_, G>) {
+    pub fn add_to(self, err: &mut Diag<'_>) {
         match self {
             DynCompatibilityViolationSolution::None => {}
             DynCompatibilityViolationSolution::AddSelfOrMakeSized {
@@ -922,30 +930,30 @@ impl DynCompatibilityViolationSolution {
                 add_self_sugg,
                 make_sized_sugg,
             } => {
-                err.span_suggestion(
-                    add_self_sugg.1,
+                err.span_suggestion_verbose(
+                    add_self_sugg.1.0,
                     format!(
-                        "consider turning `{name}` into a method by giving it a `&self` \
-                             argument, so that it is accessible through the trait object's vtable"
+                        "consider turning `{name}` into a method by giving it a `&self` argument, \
+                         so that it is accessible through the trait object's vtable",
                     ),
                     add_self_sugg.0,
                     Applicability::MaybeIncorrect,
                 );
-                err.span_suggestion(
-                    make_sized_sugg.1,
+                err.span_suggestion_verbose(
+                    make_sized_sugg.1.0,
                     format!(
-                        "alternatively, consider constraining `{name}` so it is explicitly \
-                             marked as not applying to trait objects"
+                        "alternatively, consider constraining `{name}` so it is explicitly marked \
+                         as not applying to trait objects",
                     ),
                     make_sized_sugg.0,
                     Applicability::MaybeIncorrect,
                 );
             }
-            DynCompatibilityViolationSolution::ChangeToRefSelf(name, span) => {
-                err.span_suggestion(
-                    span,
+            DynCompatibilityViolationSolution::ChangeToRefSelf(name, span, lt) => {
+                err.span_suggestion_verbose(
+                    span.0,
                     format!("consider changing method `{name}`'s `self` parameter to be `&self`"),
-                    "&Self",
+                    format!("&{lt}{}self", if lt != sym::empty { " " } else { "" }),
                     Applicability::MachineApplicable,
                 );
             }
@@ -983,14 +991,17 @@ pub enum MethodViolation {
     /// e.g., `fn (mut ap: ...)`
     CVariadic,
 
-    /// the method's receiver (`self` argument) can't be dispatched on
-    UndispatchableReceiver(Option<Span>),
+    /// The method's receiver (`self` argument) can't be dispatched on
+    ///
+    /// The `Span` points at the receiver. The `Symbol` is the lifetime's name `'a` when we have
+    /// Arbitrary Self Types like `self: &'a ()`.
+    UndispatchableReceiver(Option<(Span, Symbol)>),
 }
 
 /// Reasons an associated const might not be dyn compatible.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, StableHash)]
 pub enum AssocConstViolation {
-    /// Unstable feature `min_generic_const_args` wasn't enabled.
+    /// Unstable feature `gca_min_const_items` wasn't enabled.
     FeatureNotEnabled,
 
     /// Not defined as a type-level associated const.

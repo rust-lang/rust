@@ -10,6 +10,9 @@ use std::rc::Rc;
 
 #[test]
 fn size_of_basic() {
+    assert_eq!(size_of::<()>(), 0);
+    assert_eq!(size_of::<!>(), 0);
+    assert_eq!(size_of::<bool>(), 1);
     assert_eq!(size_of::<u8>(), 1);
     assert_eq!(size_of::<u16>(), 2);
     assert_eq!(size_of::<u32>(), 4);
@@ -47,6 +50,9 @@ fn size_of_val_basic() {
 
 #[test]
 fn align_of_basic() {
+    assert_eq!(align_of::<()>(), 1);
+    assert_eq!(align_of::<!>(), 1);
+    assert_eq!(align_of::<bool>(), 1);
     assert_eq!(align_of::<u8>(), 1);
     assert_eq!(align_of::<u16>(), 2);
     assert_eq!(align_of::<u32>(), 4);

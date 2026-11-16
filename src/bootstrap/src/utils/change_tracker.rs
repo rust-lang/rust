@@ -671,4 +671,19 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The `override-allocator` option has been renamed: The global setting is now `build.allocator` and the per-target setting is `target.<target>.allocator`. It can now be set to 'system' to explicitly request the system allocator.",
     },
+    ChangeInfo {
+        change_id: 162423,
+        severity: ChangeSeverity::Warning,
+        summary: "You should now use `x install rust-src` instead of `x install src` to install the standard library source component. If you want to install it as part of a custom `build.tools` set, include `rust-src` in `build.tools.`",
+    },
+    ChangeInfo {
+        change_id: 165034,
+        severity: ChangeSeverity::Info,
+        summary: "You can now specify rustc_perf as an external repository, using `build.rustc-perf-path = '/home/meower/my-rustc-perf'`",
+    },
+    ChangeInfo {
+        change_id: 163731,
+        severity: ChangeSeverity::Info,
+        summary: "A new option `llvm.tpde` has been added to control whether the TPDE pass plugin should be built as an experimental alternative LLVM backend.",
+    },
 ];

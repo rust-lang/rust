@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/wf-const-arg-inherent-projection-ice.rs:15:5
+   |
+LL | / fn new<const N: usize>()
+LL | | where
+LL | |     [(); N * 1]:,
+   | |_________________- function `new` defined here
+...
+LL |       new
+   |       ^^^ expected `()`, found fn item
+   |
+   = note: expected unit type `()`
+                found fn item `fn() {new::<core::num::<impl usize>::MAX>}`
+help: try adding a return type
+   |
+LL | fn test<const N: usize>() -> fn()
+   |                           +++++++
+help: use parentheses to call this function
+   |
+LL |     new()
+   |        ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

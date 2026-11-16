@@ -1,6 +1,8 @@
 error[E0080]: `assume` called with `false`
   --> $DIR/const-assert-unchecked-ub.rs:3:5
    |
+LL | const _: () = unsafe {
+LL |     let n = u32::MAX.count_ones();
 LL |     std::hint::assert_unchecked(n < 32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 

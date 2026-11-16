@@ -422,6 +422,14 @@ impl<'db> Ty<'db> {
     }
 
     #[inline]
+    pub fn is_param(self, index: u32) -> bool {
+        match self.kind() {
+            TyKind::Param(data) => data.index == index,
+            _ => false,
+        }
+    }
+
+    #[inline]
     pub fn is_never(self) -> bool {
         matches!(self.kind(), TyKind::Never)
     }
@@ -610,7 +618,6 @@ impl<'db> Ty<'db> {
                     );
                     FnSig {
                         inputs_and_output: Tys::new_from_iter(
-                            interner,
                             sig.tupled_inputs_ty
                                 .tuple_fields()
                                 .iter()

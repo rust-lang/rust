@@ -26,6 +26,7 @@ allow-unauthenticated = [
     "beta-nominated",
     "CI-spurious-*",
     "const-hack",
+    "llm-assisted",
     "llvm-*",
     "needs-fcp",
     "relnotes",
@@ -224,8 +225,9 @@ new_draft = true
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
-    "C-tracking-issue",
     "A-diagnostics",
+    "C-tracking-issue",
+    "relnotes-tracking-issue",
 ]
 
 [autolabel."I-prioritize"]
@@ -242,6 +244,7 @@ exclude_labels = [
     "T-infra",
     "T-release",
     "requires-nightly",
+    "requires-internal-features",
     "F-*",
 ]
 
@@ -407,6 +410,184 @@ trigger_files = [
 ]
 exclude_labels = [
     "T-*",
+]
+
+[autolabel."T-testing-devex"]
+trigger_files = [
+    "library/test",
+]
+exclude_labels = [
+    "T-*",
+]
+
+[autolabel."A-libtest"]
+trigger_files = [
+    "library/test",
+]
+
+[autolabel."A-allocators"]
+trigger_files = [
+    "library/{core,alloc,std}/src/alloc{.rs,}",
+    "library/std/src/sys/**/alloc{.rs,}",
+]
+
+[autolabel."A-array"]
+trigger_files = [
+    "library/{core,alloc,std}/src/array{.rs,}",
+]
+
+[autolabel."A-atomic"]
+trigger_files = [
+    "library/{core,alloc,std}/src/sync/atomic{.rs,}",
+]
+
+[autolabel."A-backtrace"]
+trigger_files = [
+    "library/backtrace",
+    "library/{core,alloc,std}/src/backtrace{.rs,}",
+    "library/std/src/sys/**/backtrace{.rs,}",
+]
+
+[autolabel."A-box"]
+trigger_files = [
+    "library/{core,alloc,std}/src/boxed{.rs,}",
+]
+
+[autolabel."A-collections"]
+trigger_files = [
+    "library/{core,alloc,std}/src/collections{.rs,}",
+]
+
+[autolabel."A-binaryheap"]
+trigger_files = [
+    "library/{core,alloc,std}/src/collections/binary_heap{.rs,}",
+]
+
+[autolabel."A-btree"]
+trigger_files = [
+    "library/{core,alloc,std}/src/collections/btree{.rs,}",
+]
+
+[autolabel."A-hashtable"]
+trigger_files = [
+    "library/{core,alloc,std}/src/collections/hash{.rs,}",
+]
+
+[autolabel."A-linkedlist"]
+trigger_files = [
+    "library/{core,alloc,std}/src/collections/linked_list{.rs,}",
+]
+
+[autolabel."A-vecdeque"]
+trigger_files = [
+    "library/{core,alloc,std}/src/collections/vec_deque{.rs,}",
+]
+
+[autolabel."A-rawvec"]
+trigger_files = [
+    "library/{core,alloc,std}/src/raw_vec{.rs,}",
+]
+
+[autolabel."A-env"]
+trigger_files = [
+    "library/{core,alloc,std}/src/env{.rs,}",
+    "library/std/src/sys/**/env{.rs,}",
+    "library/std/src/sys/**/env_consts{.rs,}",
+]
+
+[autolabel."A-filesystem"]
+trigger_files = [
+    "library/{core,alloc,std}/src/fs{.rs,}",
+    "library/std/src/sys/**/fs{.rs,}",
+]
+
+[autolabel."A-fmt"]
+trigger_files = [
+    "library/{core,alloc,std}/src/fmt{.rs,}",
+]
+
+[autolabel."A-io"]
+trigger_files = [
+    "library/{core,alloc,std}/src/io{.rs,}",
+    "library/std/src/sys/**/io{.rs,}",
+    "library/std/src/sys/**/stdio{.rs,}",
+]
+
+[autolabel."A-iterators"]
+trigger_files = [
+    "library/{core,alloc,std}/src/iter{.rs,}",
+]
+
+[autolabel."A-networking"]
+trigger_files = [
+    "library/{core,alloc,std}/src/net{.rs,}",
+    "library/std/src/sys/**/net{.rs,}",
+]
+
+[autolabel."A-option-result"]
+trigger_files = [
+    "library/{core,alloc,std}/src/option{.rs,}",
+    "library/{core,alloc,std}/src/result{.rs,}",
+]
+
+[autolabel."A-path"]
+trigger_files = [
+    "library/{core,alloc,std}/src/path{.rs,}",
+    "library/std/src/sys/**/path{.rs,}",
+    "library/std/src/sys/**/paths{.rs,}",
+]
+
+[autolabel."A-panic"]
+trigger_files = [
+    "library/{core,alloc,std}/src/panic{.rs,}",
+    "library/{core,alloc,std}/src/panicking{.rs,}",
+]
+
+[autolabel."A-process"]
+trigger_files = [
+    "library/{core,alloc,std}/src/process{.rs,}",
+    "library/std/src/sys/**/process{.rs,}",
+]
+
+[autolabel."A-raw-pointers"]
+trigger_files = [
+    "library/{core,alloc,std}/src/ptr{.rs,}",
+]
+
+[autolabel."A-random"]
+trigger_files = [
+    "library/{core,alloc,std}/src/random{.rs,}",
+    "library/std/src/sys/**/random{.rs,}",
+]
+
+[autolabel."A-rc"]
+trigger_files = [
+    "library/{core,alloc,std}/src/rcs{.rs,}",
+]
+
+[autolabel."A-slice-vec"]
+trigger_files = [
+    "library/{core,alloc,std}/src/slice{.rs,}",
+    "library/{core,alloc,std}/src/vec{.rs,}",
+]
+
+[autolabel."A-str"]
+trigger_files = [
+    "library/{core,alloc,std}/src/str{.rs,}",
+    "library/{core,alloc,std}/src/string{.rs,}",
+]
+
+[autolabel."A-thread"]
+trigger_files = [
+    "library/{core,alloc,std}/src/thread{.rs,}",
+    "library/std/src/sys/**/thread{.rs,}",
+    "library/std/src/sys/**/thread_local{.rs,}",
+]
+
+[autolabel."A-time"]
+trigger_files = [
+    "library/{core,alloc,std}/src/time{.rs,}",
+    "library/std/src/sys/**/time{.rs,}",
 ]
 
 [autolabel."O-android"]
@@ -613,7 +794,6 @@ trigger_files = [
     "src/doc/rustc/src/exploit-mitigations.md",
     "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
     "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
-    "src/doc/unstable-book/src/compiler-flags/control-flow-guard.md",
     "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
@@ -702,9 +882,20 @@ topic = "#{number}: {title}"
 message_on_add = """\
 @*T-types* issue #{number} "{title}" has been nominated for team discussion.
 """
+github_comment = ":robot: A [dedicated `#t-types/nominated` topic]({zulip_topic_url}) has been opened for humans to discuss this issue :robot:"
 message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
 message_on_close = "Issue #{number} has been closed. Thanks for participating!"
 message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
+
+[notify-zulip."I-libs-nominated"]
+zulip_stream = 639962 # #t-libs/nominated
+topic = "#{number}: {title}"
+message_on_add = """\
+[#{number} "{title}"](https://github.com/rust-lang/rust/pull/{number}) has been nominated for discussion.
+"""
+message_on_remove = """\
+#{number} is no longer nominated.
+"""
 
 
 # ------------------------------------------------------------------------------
@@ -850,7 +1041,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@*T-libs-fcp* PR #{number} "{title}" has been nominated for beta backport.
+@*T-libs-ping* PR #{number} "{title}" has been nominated for beta backport.
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -874,7 +1065,7 @@ zulip_stream = 542373 # #t-libs/backports
 topic = "#{number}: stable-nominated"
 message_on_add = [
     """\
-@*T-libs-fcp* PR #{number} "{title}" has been nominated for stable backport.
+@*T-libs-ping* PR #{number} "{title}" has been nominated for stable backport.
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -951,53 +1142,53 @@ message_on_add = "PR #{number} has been **accepted** for **stable** backport."
 [notify-zulip."beta-nominated".rustfmt]
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
-topic = "#{number}: beta-nominated"
+topic = "rust#{number}: beta-nominated"
 message_on_add = [
     """\
-@*T-rustfmt* @*T-rustfmt-contributors* PR #{number} "{title}" has been nominated
+@*T-rustfmt* @*T-rustfmt-contributors* PR rust#{number} "{title}" has been nominated
 for beta backport.
 """,
     """\
-/poll Approve beta backport of #{number}?
+/poll Approve beta backport of rust#{number}?
 approve
 decline
 don't know
 """,
 ]
-message_on_remove = "PR #{number}'s beta-nomination has been removed."
+message_on_remove = "PR rust#{number}'s beta-nomination has been removed."
 
 [notify-zulip."beta-accepted".rustfmt]
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
 # Put it in the same thread as beta-nominated.
-topic = "#{number}: beta-nominated"
-message_on_add = "PR #{number} has been **accepted** for **beta** backport."
+topic = "rust#{number}: beta-nominated"
+message_on_add = "PR rust#{number} has been **accepted** for **beta** backport."
 
 [notify-zulip."stable-nominated".rustfmt]
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
-topic = "#{number}: stable-nominated"
+topic = "rust#{number}: stable-nominated"
 message_on_add = [
     """\
-@*T-rustfmt* @*T-rustfmt-contributors* PR #{number} "{title}" has been nominated
+@*T-rustfmt* @*T-rustfmt-contributors* PR rust#{number} "{title}" has been nominated
 for stable backport.
 """,
     """\
-/poll Approve stable backport of #{number}?
+/poll Approve stable backport of rust#{number}?
 approve
 approve (but does not justify new dot release on its own)
 decline
 don't know
 """,
 ]
-message_on_remove = "PR #{number}'s stable-nomination has been removed."
+message_on_remove = "PR rust#{number}'s stable-nomination has been removed."
 
 [notify-zulip."stable-accepted".rustfmt]
 required_labels = ["T-rustfmt"]
 zulip_stream = 621384 # #t-rustfmt/backports
 # Put it in the same thread as stable-nominated.
-topic = "#{number}: stable-nominated"
-message_on_add = "PR #{number} has been **accepted** for **stable** backport."
+topic = "rust#{number}: stable-nominated"
+message_on_add = "PR rust#{number} has been **accepted** for **stable** backport."
 
 
 [notify-zulip."A-edition-2021"]
@@ -1091,6 +1282,10 @@ cc = ["@BoxyUwU"]
 message = "Some changes occurred in `rustc_ty_utils::consts.rs`"
 cc = ["@BoxyUwU"]
 
+[mentions."compiler/rustc_ty_utils/src/layout/invariant.rs"]
+message = "Layout invariants are being changed"
+cc = ["@RalfJung"]
+
 [mentions."compiler/rustc_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
 cc = ["@rust-lang/initiative-trait-system-refactor"]
@@ -1181,6 +1376,10 @@ gets adapted for the changes, if necessary.
 cc = ["@rust-lang/miri", "@RalfJung", "@oli-obk", "@lcnr"]
 
 [mentions."library/core/src/num/imp/{dec2flt,flt2dec}"]
+message = "Some changes occurred in float parsing"
+cc = ["@tgross35"]
+
+[mentions."src/tools/test-float-parse"]
 message = "Some changes occurred in float parsing"
 cc = ["@tgross35"]
 
@@ -1399,7 +1598,7 @@ cc = ["@nnethercote"]
 
 [mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
-cc = ["@nnethercote"]
+cc = ["@nnethercote", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
@@ -1411,9 +1610,6 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/unstable-book/src/compiler-flags/cf-protection.md"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
-
-[mentions."src/doc/unstable-book/src/compiler-flags/control-flow-guard.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/unstable-book/src/compiler-flags/sanitizer.md"]
@@ -1549,6 +1745,29 @@ cc = ["@mejrs"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
 
+[mentions."compiler/rustc_codegen_llvm/src/debuginfo"]
+cc = ["@Walnut356"]
+[mentions."src/etc/debugger_tester"]
+cc = ["@Walnut356"]
+[mentions."src/etc/natvis"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_providers.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_providers.py"]
+cc = ["@Walnut356"]
+
+[mentions."RELEASES.md"]
+message = """
+`RELEASES.md` was changed. Upon merging, each section will be automatically synced with its \
+corresponding GitHub releases, but **only from the `main` branch**.
+
+If it's not already the case, make sure to also merge the changes in the `main` branch.
+"""
+
 # Content-based mentions
 
 [mentions."miri"]
@@ -1607,20 +1826,6 @@ branch = "stable"
 compiler_leads = [
     "@davidtwco",
     "@boxyuwu",
-]
-libs = [
-    "@Mark-Simulacrum",
-    "@workingjubilee",
-    "@jhpratt",
-    "@tgross35",
-    "@thomcc",
-    "@joboet",
-    "@nia-e",
-    "@LawnGnome",
-    "@clarfonthey",
-    "@aapoalas",
-    "@Darksonn",
-    "@JohnTitor",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1685,7 +1890,12 @@ ast_lowering = [
     "@spastorino",
 ]
 debuginfo = [
-    "@davidtwco"
+    "@davidtwco",
+    "@Walnut356",
+]
+debugger_visualizer = [
+    "@Mark-Simulacrum",
+    "@Walnut356",
 ]
 fallback = [
     "@Mark-Simulacrum",
@@ -1765,6 +1975,13 @@ dep-bumps = [
 "/src/doc/style-guide" =                                 ["style-team"]
 "/src/doc/unstable-book" =                               ["compiler"]
 "/src/etc" =                                             ["@Mark-Simulacrum"]
+"/src/etc/gdb_load_rust_pretty_printers.py" =            ["debugger_visualizer"]
+"/src/etc/gdb_lookup.py" =                               ["debugger_visualizer"]
+"/src/etc/gdb_providers.py" =                            ["debugger_visualizer"]
+"/src/etc/lldb_lookup.py" =                              ["debugger_visualizer"]
+"/src/etc/lldb_providers.py" =                           ["debugger_visualizer"]
+"/src/etc/natvis" =                                      ["debugger_visualizer"]
+"/src/etc/rust_types.py" =                               ["debugger_visualizer"]
 "/src/librustdoc" =                                      ["rustdoc"]
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]

@@ -6,7 +6,7 @@
 use std::iter;
 
 use either::Either;
-use rustc_middle::mir::{Body, Local, LocalKind, Location, START_BLOCK};
+use rustc_middle::mir::{Body, Local, LocalKind, Location};
 use rustc_middle::ty::{GenericArg, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 use tracing::debug;
@@ -80,8 +80,7 @@ fn emit_move_facts(
         }
     }
 
-    let fn_entry_start =
-        location_table.start_index(Location { block: START_BLOCK, statement_index: 0 });
+    let fn_entry_start = location_table.start_index(Location::START);
 
     // initialized_at
     for init in move_data.inits.iter() {
@@ -90,7 +89,7 @@ fn emit_move_facts(
                 let block_data = &body[location.block];
                 let is_terminator = location.statement_index == block_data.statements.len();
 
-                if is_terminator && init.kind == InitKind::NonPanicPathOnly {
+                if is_terminator && init.kind == InitKind::OnReturn {
                     // We are at the terminator of an init that has a panic path,
                     // and where the init should not happen on panic
 
@@ -101,7 +100,7 @@ fn emit_move_facts(
 
                         // The initialization happened in (or rather, when arriving at)
                         // the successors, but not in the unwind block.
-                        let first_statement = Location { block: successor, statement_index: 0 };
+                        let first_statement = successor.start_location();
                         facts
                             .path_assigned_at_base
                             .push((init.path, location_table.start_index(first_statement)));

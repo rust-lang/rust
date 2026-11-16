@@ -1,4 +1,4 @@
-#![feature(allocator_api)]
+#![feature(allocator_ext)]
 
 use std::alloc::{AllocError, Allocator, Layout, System};
 use std::ptr::NonNull;

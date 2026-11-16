@@ -35,8 +35,6 @@
 
 //@ compile-flags: -Zmerge-functions=disabled -Copt-level=3
 //@ compile-flags: --check-cfg=cfg(altivec,vsx,power9,power9be)
-// PowerPC `f16` was broken before LLVM 22
-//@ min-llvm-version: 22
 
 #![feature(no_core, f16)]
 #![cfg_attr(vsx, feature(f128))]

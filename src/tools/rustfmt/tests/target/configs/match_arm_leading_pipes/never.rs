@@ -1,4 +1,4 @@
-// rustfmt-match_arm_leading_pipes: Never
+//@ rustfmt-match_arm_leading_pipes: Never
 
 fn foo() {
     match foo {

@@ -1,4 +1,4 @@
-// rustfmt-float_literal_trailing_zero: Preserve
+//@ rustfmt-float_literal_trailing_zero: Preserve
 
 fn float_literals() {
     let a = 0.;

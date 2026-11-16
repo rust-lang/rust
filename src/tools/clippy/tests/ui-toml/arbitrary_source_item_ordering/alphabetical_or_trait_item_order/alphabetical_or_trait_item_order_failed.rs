@@ -103,4 +103,30 @@ impl ConstTrait2 for SkipMiddleFailed2 {
     fn method() {}
 }
 
+// Tests return position impl trait in trait (RPITIT) failed by invalid trait definition order (e.g.
+// Not in alphabetical order).
+trait Rpitit {
+    async fn a();
+    fn b();
+    fn c() -> impl Sized;
+}
+
+struct FullImplFailed4;
+
+impl Rpitit for FullImplFailed4 {
+    fn b() {}
+    fn c() -> impl Sized {}
+    async fn a() {}
+    //~^ arbitrary_source_item_ordering
+}
+
+struct FullImplFailed5;
+
+impl Rpitit for FullImplFailed5 {
+    fn b() {}
+    async fn a() {}
+    //~^ arbitrary_source_item_ordering
+    fn c() -> impl Sized {}
+}
+
 fn main() {}

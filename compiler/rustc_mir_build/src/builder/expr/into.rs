@@ -2,9 +2,10 @@
 
 use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
@@ -237,10 +238,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
 
-                    let goto = this.cfg.goto(body_block_end, source_info, loop_block);
-                    if let Some(attrs) = this.thir.attributes.get(&expr_id) {
-                        goto.attributes = attrs.clone();
-                    }
+                    let loop_hint_attrs = this
+                        .thir
+                        .loop_hint_attrs
+                        .get(&expr_id)
+                        .map(|attrs| attrs.clone())
+                        .unwrap_or_else(|| ThinVec::new());
+                    this.cfg.goto_with_hints(
+                        body_block_end,
+                        source_info,
+                        loop_block,
+                        loop_hint_attrs,
+                    );
 
                     // Loops are only exited by `break` expressions.
                     None
@@ -409,8 +418,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     sym::write_via_move => {
                         // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
 
-                        // The destination must have unit type (so we don't actually have to store anything
-                        // into it).
+                        // The destination must have unit type.
                         assert!(destination.ty(&this.local_decls, this.tcx).ty.is_unit());
 
                         // Compile this to an assignment of the argument into the destination.
@@ -422,7 +430,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span_bug!(expr_span, "invalid write_via_move call")
                         };
                         let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
-                        this.expr_into_dest(ptr_deref, block, val)
+                        unpack!(block = this.expr_into_dest(ptr_deref, block, val));
+                        this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
+                        block.unit()
                     }
                     sym::write_box_via_move => {
                         // The signature is:
@@ -772,7 +782,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.cfg.terminate(
                                 target,
                                 source_info,
-                                TerminatorKind::Goto { target: destination_block },
+                                TerminatorKind::goto(destination_block),
                             );
 
                             mir::InlineAsmOperand::Label { target_index }

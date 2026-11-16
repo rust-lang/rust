@@ -17,6 +17,7 @@ LL |     type Other = Tait;
 note: required by a bound in `Foo::Item`
   --> $DIR/issue-99348-impl-compatibility.rs:17:20
    |
+LL | trait Foo {
 LL |     type Item: Bar<Other = Self>;
    |                    ^^^^^^^^^^^^ required by this bound in `Foo::Item`
 

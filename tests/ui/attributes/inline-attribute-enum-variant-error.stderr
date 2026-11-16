@@ -3,6 +3,8 @@ error: the `inline` attribute cannot be used on enum variants
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |
+LL |     Variant,
    |
    = help: the `inline` attribute can only be applied to functions
 

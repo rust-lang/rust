@@ -83,6 +83,8 @@ LL |     'l4: 0;
 error: cannot use a `block` macro fragment here
   --> $DIR/labeled-no-colon-expr.rs:11:17
    |
+LL |     macro_rules! m {
+LL |         ($b:block) => {
 LL |             'l5 $b;
    |             ----^^
    |             |
@@ -91,7 +93,6 @@ LL |             'l5 $b;
 LL |     m!({});
    |     ------ in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
 LL |             'l5 { $b };

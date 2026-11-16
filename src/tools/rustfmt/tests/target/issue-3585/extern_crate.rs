@@ -1,4 +1,4 @@
-// rustfmt-inline_attribute_width: 100
+//@ rustfmt-inline_attribute_width: 100
 
 #[macro_use] extern crate static_assertions;
 

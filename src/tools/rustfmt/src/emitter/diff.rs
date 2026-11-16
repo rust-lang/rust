@@ -51,6 +51,7 @@ impl Emitter for DiffEmitter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::{formatdoc, indoc};
     use std::path::PathBuf;
 
     #[test]
@@ -75,11 +76,27 @@ mod tests {
     #[test]
     fn prints_file_names_when_config_is_enabled() {
         let bin_file = "src/bin.rs";
-        let bin_original = "fn main() {\nprintln!(\"Hello, world!\");\n}";
-        let bin_formatted = "fn main() {\n    println!(\"Hello, world!\");\n}";
+        let bin_original = indoc! {r#"
+            fn main() {
+            println!("Hello, world!");
+            }
+        "#};
+        let bin_formatted = indoc! {r#"
+            fn main() {
+                println!("Hello, world!");
+            }
+        "#};
         let lib_file = "src/lib.rs";
-        let lib_original = "fn greet() {\nprintln!(\"Greetings!\");\n}";
-        let lib_formatted = "fn greet() {\n    println!(\"Greetings!\");\n}";
+        let lib_original = indoc! {r#"
+            fn greet() {
+            println!("Greetings!");
+            }
+        "#};
+        let lib_formatted = indoc! {r#"
+            fn greet() {
+                println!("Greetings!");
+            }
+        "#};
 
         let mut writer = Vec::new();
         let mut config = Config::default();
@@ -108,7 +125,10 @@ mod tests {
 
         assert_eq!(
             String::from_utf8(writer).unwrap(),
-            format!("{bin_file}\n{lib_file}\n"),
+            formatdoc! {"
+                {bin_file}
+                {lib_file}
+            "},
         )
     }
 

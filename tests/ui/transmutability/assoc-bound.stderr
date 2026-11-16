@@ -8,6 +8,7 @@ LL |     type AssocB = T::AssocA;
 note: required by a bound in `B::AssocB`
   --> $DIR/assoc-bound.rs:9:18
    |
+LL | trait B {
 LL |     type AssocB: std::mem::TransmuteFrom<()>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `B::AssocB`
 help: consider further restricting the associated type
@@ -24,6 +25,7 @@ LL |     type AssocB = <&'static i32 as A>::AssocA;
 note: required by a bound in `B::AssocB`
   --> $DIR/assoc-bound.rs:9:18
    |
+LL | trait B {
 LL |     type AssocB: std::mem::TransmuteFrom<()>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `B::AssocB`
 

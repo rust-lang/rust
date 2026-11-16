@@ -4,7 +4,7 @@ trait Trait {
 
 impl Trait for () {
     type Foo<const N: u64> = u32;
-    //~^ error: type `Foo` has an incompatible generic parameter for trait
+    //~^ error: associated type `Foo` has an incompatible type for const generic parameter [E0053]
 }
 
 fn main() {}

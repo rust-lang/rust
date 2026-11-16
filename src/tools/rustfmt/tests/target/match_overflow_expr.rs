@@ -1,4 +1,4 @@
-// rustfmt-overflow_delimited_expr: true
+//@ rustfmt-overflow_delimited_expr: true
 
 fn main() {
     println!("Foobar: {}", match "input" {

@@ -23,7 +23,7 @@ mod tests {
         RootDatabase,
         base_db::{
             CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData, CratesIdMap,
-            DependencyBuilder, Env, LangCrateOrigin,
+            DependencyBuilder, Env, LangCrateOrigin, TargetKind,
         },
         span::{Edition, FileId},
     };
@@ -61,7 +61,7 @@ mod tests {
                 Env::default(),
                 origin.clone(),
                 Vec::new(),
-                false,
+                TargetKind::Lib { is_proc_macro: false },
                 proc_macro_cwd.clone(),
                 empty_ws_data(),
             );

@@ -2,7 +2,7 @@
 //! kind of thing.
 
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
@@ -32,7 +32,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns a zero literal operand for the appropriate type, works for
     /// bool, char and integers.
     pub(crate) fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = Const::from_bits(self.tcx, 0, ty::TypingEnv::fully_monomorphized(), ty);
+        let literal = Const::from_bits(self.tcx, 0, self.typing_env(), ty);
 
         self.literal_operand(span, literal)
     }

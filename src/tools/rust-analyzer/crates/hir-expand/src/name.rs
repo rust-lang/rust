@@ -16,6 +16,8 @@ use syntax::{ast, format_smolstr};
 /// This is because we want to show (in completions etc.) names as raw depending on the needs
 /// of the current crate, for example if it is edition 2021 complete `gen` even if the defining
 /// crate is in edition 2024 and wrote `r#gen`, and the opposite holds as well.
+///
+/// `k#` of forced keywords is *not* stripped, because `Name` is supposed to be used for names and not keywords.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     symbol: Symbol,

@@ -1,49 +1,51 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Callable
+
+from typing import TYPE_CHECKING, Callable, List
 
 import lldb
-
 from lldb_providers import (
-    LLDBFeature,
     FEATURE_FLAGS,
-    LLDBOpaque,
-    StructSyntheticProvider,
-    StdHashMapSyntheticProvider,
-    StdOldHashMapSyntheticProvider,
-    StdRcSyntheticProvider,
-    TupleSyntheticProvider,
-    EmptySyntheticProvider,
     ClangEncodedEnumProvider,
+    ClangEncodedEnumSummaryProvider,
     DefaultSyntheticProvider,
-    StdStringSyntheticProvider,
-    StdStringSummaryProvider,
-    StdSliceSyntheticProvider,
-    StdStrSummaryProvider,
-    MSVCStrSyntheticProvider,
-    SizeSummaryProvider,
+    EmptySyntheticProvider,
+    LLDBFeature,
+    LLDBOpaque,
+    MSVCEnumSummaryProvider,
+    MSVCEnumSyntheticProvider,
     MSVCStdSliceSyntheticProvider,
-    StdSliceSummaryProvider,
-    StdOsStringSummaryProvider,
-    StdVecSyntheticProvider,
-    StdVecDequeSyntheticProvider,
-    StdRcSummaryProvider,
+    MSVCStrSyntheticProvider,
+    MSVCTupleSyntheticProvider,
+    SizeSummaryProvider,
     StdCellSyntheticProvider,
-    StdRefSyntheticProvider,
-    StdRefSummaryProvider,
+    StdHashMapSyntheticProvider,
     StdNonZeroNumberSummaryProvider,
+    StdOldHashMapSyntheticProvider,
+    StdOsStringSummaryProvider,
     StdPathBufSummaryProvider,
     StdPathSummaryProvider,
-    MSVCEnumSyntheticProvider,
-    MSVCEnumSummaryProvider,
-    TupleSummaryProvider,
-    MSVCTupleSyntheticProvider,
-    ClangEncodedEnumSummaryProvider,
+    StdRcSummaryProvider,
+    StdRcSyntheticProvider,
+    StdRefSummaryProvider,
+    StdRefSyntheticProvider,
+    StdSliceSummaryProvider,
+    StdSliceSyntheticProvider,
+    StdStringSummaryProvider,
+    StdStringSyntheticProvider,
+    StdStrSummaryProvider,
+    StdVecDequeSyntheticProvider,
+    StdVecSyntheticProvider,
     StructSummaryProvider,
+    StructSyntheticProvider,
+    TupleSummaryProvider,
+    TupleSyntheticProvider,
     f16SummaryProvider,
-    # re-exports
-    get_template_args as get_template_args,
-    resolve_msvc_template_arg as resolve_msvc_template_arg,
+    f128SummaryProvider,
 )
+
+# re-exports
+from lldb_providers import get_template_args as get_template_args
+from lldb_providers import resolve_msvc_template_arg as resolve_msvc_template_arg
 from rust_types import (
     ENUM_DISR_FIELD_NAME,
     ENUM_LLDB_ENCODED_VARIANTS,
@@ -180,6 +182,17 @@ def register_providers_compatibility():
             ),
             DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
         )
+
+        if LLDBFeature.Float128 in FEATURE_FLAGS:
+            # Force f128 summary on windows-msvc since most Windows debuggers don't support PDB f128
+            register_summary(
+                f128SummaryProvider,
+                lldb.SBTypeNameSpecifier(
+                    MOD_PREFIX + is_msvc_f128.__name__,
+                    lldb.eFormatterMatchCallback,
+                ),
+                DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
+            )
 
         # Tuple-structs
         register_synth(
@@ -499,6 +512,11 @@ def is_tuple_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
 def is_msvc_f16(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
     # DWARF has a proper tag for f16, PDB does not.
     return type.GetName() == "f16" and type.IsAggregateType()
+
+
+def is_msvc_f128(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    # Most Windows debuggers don't support PDB f128.
+    return type.GetName() == "f128" and type.IsAggregateType()
 
 
 def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:

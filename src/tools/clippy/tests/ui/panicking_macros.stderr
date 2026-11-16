@@ -1,5 +1,5 @@
 error: `panic` should not be present in production code
-  --> tests/ui/panicking_macros.rs:22:5
+  --> tests/ui/panicking_macros.rs:24:5
    |
 LL |     panic!();
    |     ^^^^^^^^
@@ -8,37 +8,37 @@ LL |     panic!();
    = help: to override `-D warnings` add `#[allow(clippy::panic)]`
 
 error: `panic` should not be present in production code
-  --> tests/ui/panicking_macros.rs:25:5
+  --> tests/ui/panicking_macros.rs:27:5
    |
 LL |     panic!("message");
    |     ^^^^^^^^^^^^^^^^^
 
 error: `panic` should not be present in production code
-  --> tests/ui/panicking_macros.rs:28:5
+  --> tests/ui/panicking_macros.rs:30:5
    |
 LL |     panic!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `panic` should not be present in production code
-  --> tests/ui/panicking_macros.rs:36:5
+  --> tests/ui/panicking_macros.rs:38:5
    |
 LL |     panic!();
    |     ^^^^^^^^
 
 error: `panic` should not be present in production code
-  --> tests/ui/panicking_macros.rs:39:5
+  --> tests/ui/panicking_macros.rs:41:5
    |
 LL |     panic!("message");
    |     ^^^^^^^^^^^^^^^^^
 
 error: `panic` should not be present in production code
-  --> tests/ui/panicking_macros.rs:42:5
+  --> tests/ui/panicking_macros.rs:44:5
    |
 LL |     panic!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `todo` should not be present in production code
-  --> tests/ui/panicking_macros.rs:50:5
+  --> tests/ui/panicking_macros.rs:52:5
    |
 LL |     todo!();
    |     ^^^^^^^
@@ -47,19 +47,19 @@ LL |     todo!();
    = help: to override `-D warnings` add `#[allow(clippy::todo)]`
 
 error: `todo` should not be present in production code
-  --> tests/ui/panicking_macros.rs:53:5
+  --> tests/ui/panicking_macros.rs:55:5
    |
 LL |     todo!("message");
    |     ^^^^^^^^^^^^^^^^
 
 error: `todo` should not be present in production code
-  --> tests/ui/panicking_macros.rs:56:5
+  --> tests/ui/panicking_macros.rs:58:5
    |
 LL |     todo!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> tests/ui/panicking_macros.rs:64:5
+  --> tests/ui/panicking_macros.rs:66:5
    |
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^
@@ -68,19 +68,19 @@ LL |     unimplemented!();
    = help: to override `-D warnings` add `#[allow(clippy::unimplemented)]`
 
 error: `unimplemented` should not be present in production code
-  --> tests/ui/panicking_macros.rs:67:5
+  --> tests/ui/panicking_macros.rs:69:5
    |
 LL |     unimplemented!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> tests/ui/panicking_macros.rs:70:5
+  --> tests/ui/panicking_macros.rs:72:5
    |
 LL |     unimplemented!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of the `unreachable!` macro
-  --> tests/ui/panicking_macros.rs:78:5
+  --> tests/ui/panicking_macros.rs:80:5
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
@@ -89,40 +89,70 @@ LL |     unreachable!();
    = help: to override `-D warnings` add `#[allow(clippy::unreachable)]`
 
 error: usage of the `unreachable!` macro
-  --> tests/ui/panicking_macros.rs:81:5
+  --> tests/ui/panicking_macros.rs:83:5
    |
 LL |     unreachable!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of the `unreachable!` macro
-  --> tests/ui/panicking_macros.rs:84:5
+  --> tests/ui/panicking_macros.rs:86:5
    |
 LL |     unreachable!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `panic` should not be present in production code
-  --> tests/ui/panicking_macros.rs:92:5
+  --> tests/ui/panicking_macros.rs:94:5
    |
 LL |     panic!();
    |     ^^^^^^^^
 
 error: `todo` should not be present in production code
-  --> tests/ui/panicking_macros.rs:95:5
+  --> tests/ui/panicking_macros.rs:97:5
    |
 LL |     todo!();
    |     ^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> tests/ui/panicking_macros.rs:98:5
+  --> tests/ui/panicking_macros.rs:100:5
    |
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^
 
 error: usage of the `unreachable!` macro
-  --> tests/ui/panicking_macros.rs:101:5
+  --> tests/ui/panicking_macros.rs:103:5
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:139:16
+   |
+LL |         outer!(panic!());
+   |                ^^^^^^^^
+
+error: `todo` should not be present in production code
+  --> tests/ui/panicking_macros.rs:140:16
+   |
+LL |         outer!(todo!());
+   |                ^^^^^^^
+
+error: `unimplemented` should not be present in production code
+  --> tests/ui/panicking_macros.rs:141:16
+   |
+LL |         outer!(unimplemented!());
+   |                ^^^^^^^^^^^^^^^^
+
+error: usage of the `unreachable!` macro
+  --> tests/ui/panicking_macros.rs:142:16
+   |
+LL |         outer!(unreachable!());
+   |                ^^^^^^^^^^^^^^
+
+error: `panic` should not be present in production code
+  --> tests/ui/panicking_macros.rs:157:16
+   |
+LL |         twice!(panic!());
+   |                ^^^^^^^^
+
+error: aborting due to 24 previous errors
 

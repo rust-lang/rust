@@ -135,7 +135,8 @@ pub fn precedence(expr: &ast::Expr) -> ExprPrecedence {
         | Expr::TupleExpr(_)
         | Expr::UnderscoreExpr(_)
         | Expr::WhileExpr(_)
-        | Expr::IncludeBytesExpr(_) => ExprPrecedence::Unambiguous,
+        | Expr::IncludeBytesExpr(_)
+        | Expr::CfgPredExpr(_) => ExprPrecedence::Unambiguous,
     }
 }
 
@@ -242,7 +243,7 @@ impl Expr {
         }
 
         // Special-case `2 as x < 3`
-        if let ast::Expr::CastExpr(it) = self
+        if let Some(it) = self.right_side_cast_expr()
             && let Some(ty) = it.ty()
             && ty.syntax().last_token().and_then(|it| ast::NameLike::cast(it.parent()?)).is_some()
             && let Some(node) = place_of_parent()
@@ -384,7 +385,7 @@ impl Expr {
 
             ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_) | IfExpr(_)
             | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_) | BlockExpr(_)
-            | RecordExpr(_) | UnderscoreExpr(_) | IncludeBytesExpr(_) => (0, 0),
+            | RecordExpr(_) | UnderscoreExpr(_) | IncludeBytesExpr(_) | CfgPredExpr(_) => (0, 0),
         }
     }
 
@@ -529,7 +530,7 @@ impl Expr {
                 ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_)
                 | IfExpr(_) | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_)
                 | BlockExpr(_) | RecordExpr(_) | UnderscoreExpr(_) | MacroExpr(_)
-                | IncludeBytesExpr(_) => None,
+                | IncludeBytesExpr(_) | CfgPredExpr(_) => None,
             };
 
             token.map(|t| t.text_range()).unwrap_or_else(|| this.syntax().text_range()).start()
@@ -544,7 +545,7 @@ impl Expr {
             | ClosureExpr(_) | FieldExpr(_) | IndexExpr(_) | Literal(_) | LoopExpr(_)
             | MacroExpr(_) | MethodCallExpr(_) | ParenExpr(_) | PathExpr(_) | RecordExpr(_)
             | TryExpr(_) | TupleExpr(_) | UnderscoreExpr(_) | OffsetOfExpr(_)
-            | FormatArgsExpr(_) | AsmExpr(_) => false,
+            | FormatArgsExpr(_) | AsmExpr(_) | CfgPredExpr(_) => false,
 
             // For BinExpr and RangeExpr this is technically wrong -- the child can be on the left...
             BinExpr(_) | RangeExpr(_) | BreakExpr(_) | ContinueExpr(_) | PrefixExpr(_)
@@ -573,6 +574,13 @@ impl Expr {
             }
             _ => false,
         }
+    }
+
+    fn right_side_cast_expr(&self) -> Option<ast::CastExpr> {
+        std::iter::successors(Some(self.syntax().clone()), |it| {
+            it.last_child_or_token()?.into_node()
+        })
+        .find_map(ast::CastExpr::cast)
     }
 }
 

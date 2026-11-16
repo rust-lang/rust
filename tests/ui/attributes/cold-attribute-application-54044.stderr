@@ -3,6 +3,8 @@ error: the `cold` attribute cannot be used on structs
    |
 LL | #[cold]
    |   ^^^^
+...
+LL | struct Foo;
    |
    = help: the `cold` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -17,6 +19,8 @@ error: the `cold` attribute cannot be used on expressions
    |
 LL |     #[cold]
    |       ^^^^
+...
+LL |     5;
    |
    = help: the `cold` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

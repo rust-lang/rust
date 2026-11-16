@@ -1645,7 +1645,13 @@ impl<'db> ExprCollector<'db> {
             }
             ast::Expr::YieldExpr(e) => {
                 self.is_lowering_coroutine = true;
-                let expr = e.expr().map(|e| self.collect_expr(e));
+                let mut expr = e.expr().map(|e| self.collect_expr(e));
+                if matches!(self.awaitable_context, Some(Awaitable::Yes)) {
+                    // `async gen`.
+                    let yielded = expr.unwrap_or_else(|| self.alloc_expr_desugared_with_ptr(Expr::Tuple { exprs: Box::new([]) }, syntax_ptr));
+                    let async_gen_ready = self.alloc_expr_desugared(self.lang_path_expr(self.lang_items().AsyncGenReady));
+                    expr = Some(self.alloc_expr_desugared_with_ptr(Expr::Call { callee: async_gen_ready, args: Box::new([yielded]) }, syntax_ptr))
+                }
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
             ast::Expr::YeetExpr(e) => {
@@ -1925,7 +1931,11 @@ impl<'db> ExprCollector<'db> {
                 self.alloc_expr(Expr::OffsetOf(OffsetOf { container, fields }), syntax_ptr)
             }
             ast::Expr::FormatArgsExpr(f) => self.collect_format_args(f, syntax_ptr),
-            ast::Expr::IncludeBytesExpr(_) => self.alloc_expr(Expr::IncludeBytes, syntax_ptr)
+            ast::Expr::IncludeBytesExpr(_) => self.alloc_expr(Expr::IncludeBytes, syntax_ptr),
+            ast::Expr::CfgPredExpr(e) => {
+                let enabled = Expr::Literal(Literal::Bool(self.check_cfg_pred(e.cfg_predicate())));
+                self.alloc_expr(enabled, syntax_ptr)
+            },
         })
     }
 
@@ -3083,6 +3093,11 @@ impl<'db> ExprCollector<'db> {
             }
             ast::Pat::NotNull(_) => Pat::NotNull,
             ast::Pat::ConstBlockPat(_) => Pat::Missing,
+            ast::Pat::CfgPredPat(p) => {
+                let enabled = Expr::Literal(Literal::Bool(self.check_cfg_pred(p.cfg_predicate())));
+                let expr_id = self.alloc_expr_from_pat(enabled, AstPtr::new(&pat));
+                Pat::Lit(expr_id)
+            }
             ast::Pat::MacroPat(mac) => {
                 return self.collect_macro_pat_with(mac.clone(), |this, expanded_pat| {
                     this.collect_pat(expanded_pat, binding_list)
@@ -3325,6 +3340,12 @@ impl<'db> ExprCollector<'db> {
                 false
             }
         }
+    }
+
+    /// Used for `cfg!()`, conducting imprecise checks
+    fn check_cfg_pred(&self, pred: Option<ast::CfgPredicate>) -> bool {
+        let expr = pred.map_or(cfg::CfgExpr::Invalid, cfg::CfgExpr::parse_from_ast);
+        self.cfg_options.check(&expr) != Some(false)
     }
 
     fn add_definition_to_binding(&mut self, binding_id: BindingId, pat_id: PatId) {

@@ -1,5 +1,10 @@
 //! Regression test for ICE #139556
 
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] ignore-test: trait-system-refactor-initiative#242
+
 #![feature(type_alias_impl_trait)]
 
 trait T {}

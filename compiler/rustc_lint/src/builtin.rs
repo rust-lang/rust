@@ -21,15 +21,15 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, DocAttribute};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin, find_attr};
+use rustc_hir::{self as hir, Body, FnDecl, ImplItemImplKind, PatKind, PredicateOrigin};
 // Lints from rustc_lint_defs
 pub use rustc_lint_defs::builtin::*;
 use rustc_lint_defs::{declare_lint, declare_lint_pass, fcw, impl_lint_pass};
@@ -148,10 +148,7 @@ declare_lint_pass!(NonShorthandFieldPatterns => [NON_SHORTHAND_FIELD_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &hir::Pat<'_>) {
-        // The result shouldn't be tainted, otherwise it will cause ICE.
-        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind
-            && cx.typeck_results().tainted_by_errors.is_none()
-        {
+        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind {
             let variant = cx
                 .typeck_results()
                 .pat_ty(pat)
@@ -195,7 +192,7 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        decorate: impl for<'a> Diagnostic<'a, ()>,
+        decorate: impl for<'a> Diagnostic<'a>,
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
@@ -241,13 +238,13 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::MacroDef(..) => {
-                if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
-                    AttributeParser::parse_limited_sym(
-                        cx.builder.sess(),
-                        &it.attrs,
-                        &[sym::allow_internal_unsafe],
-                    )
-                {
+                if let Some(rustc_attr_ir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(
+                    span,
+                ))) = AttributeParser::parse_limited_sym(
+                    cx.builder.sess(),
+                    &it.attrs,
+                    &[sym::allow_internal_unsafe],
+                ) {
                     self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
@@ -309,12 +306,12 @@ pub struct MissingDoc;
 
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
-fn has_doc(attr: &hir::Attribute) -> bool {
-    if matches!(attr, hir::Attribute::Parsed(AttributeKind::DocComment { .. })) {
+fn has_doc(attr: &rustc_attr_ir::Attribute) -> bool {
+    if matches!(attr, rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. })) {
         return true;
     }
 
-    if let hir::Attribute::Parsed(AttributeKind::Doc(d)) = attr
+    if let rustc_attr_ir::Attribute::Parsed(AttributeKind::Doc(d)) = attr
         && matches!(d.as_ref(), DocAttribute { hidden: Some(..), .. })
     {
         return true;
@@ -469,21 +466,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             hir::ItemKind::Union(_, generics, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             hir::ItemKind::Enum(_, generics, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             _ => return,
         };
@@ -774,7 +771,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
                 AttrKind::DocComment(CommentKind::Block, _) => {
                     BuiltinUnusedDocCommentSub::BlockHelp
                 }
-                AttrKind::Synthetic(..) => unreachable!(),
+                AttrKind::Synthetic(..) | AttrKind::Generated(..) => unreachable!(),
             };
             cx.emit_span_lint(
                 UNUSED_DOC_COMMENTS,
@@ -1032,7 +1029,7 @@ declare_lint_pass!(
 );
 
 impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
-    fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[hir::Attribute]) {
+    fn check_attributes(&mut self, cx: &LateContext<'_>, attrs: &[rustc_attr_ir::Attribute]) {
         if let Some(features) = find_attr!(attrs, Feature(features, _) => features) {
             for feature in features {
                 cx.emit_span_lint(UNSTABLE_FEATURES, feature.span, BuiltinUnstableFeatures);
@@ -1150,49 +1147,46 @@ impl UnreachablePub {
         exportable: bool,
     ) {
         let mut applicability = Applicability::MachineApplicable;
-        if cx.tcx.visibility(def_id).is_public() && !cx.effective_visibilities.is_reachable(def_id)
+        if !cx.tcx.visibility(def_id).is_public() || cx.effective_visibilities.is_reachable(def_id)
         {
-            // prefer suggesting `pub(super)` instead of `pub(crate)` when possible,
-            // except when `pub(super) == pub(crate)`
-            let new_vis = if let Some(ty::Visibility::Restricted(restricted_did)) =
-                cx.effective_visibilities.effective_vis(def_id).map(|effective_vis| {
-                    effective_vis.at_level(rustc_middle::middle::privacy::Level::Reachable)
-                })
-                && let parent_parent = cx
-                    .tcx
-                    .parent_module_from_def_id(cx.tcx.parent_module_from_def_id(def_id).into())
-                && *restricted_did == parent_parent
-                && !restricted_did.to_def_id().is_crate_root()
-            {
-                "pub(super)"
-            } else {
-                "pub(crate)"
-            };
-
-            if vis_span.from_expansion() {
-                applicability = Applicability::MaybeIncorrect;
-            }
-            let def_span = cx.tcx.def_span(def_id);
-            cx.emit_span_lint(
-                UNREACHABLE_PUB,
-                def_span,
-                BuiltinUnreachablePub {
-                    what,
-                    new_vis,
-                    suggestion: (vis_span, applicability),
-                    help: exportable,
-                },
-            );
+            return;
         }
+
+        // prefer suggesting `pub(super)` instead of `pub(crate)` when possible,
+        // except when `pub(super) == pub(crate)`
+        let new_vis = if let Some(ty::Visibility::Restricted(restricted_did)) =
+            cx.effective_visibilities.effective_vis(def_id).map(|effective_vis| {
+                effective_vis.at_level(rustc_middle::middle::privacy::Level::Reachable)
+            })
+            && let parent_parent =
+                cx.tcx.parent_module_from_def_id(cx.tcx.parent_module_from_def_id(def_id).into())
+            && *restricted_did == parent_parent
+            && !restricted_did.to_def_id().is_crate_root()
+        {
+            "pub(super)"
+        } else {
+            "pub(crate)"
+        };
+
+        if vis_span.from_expansion() {
+            applicability = Applicability::MaybeIncorrect;
+        }
+        let def_span = cx.tcx.def_span(def_id);
+        cx.emit_span_lint(
+            UNREACHABLE_PUB,
+            def_span,
+            BuiltinUnreachablePub {
+                what,
+                new_vis,
+                suggestion: (vis_span, applicability),
+                help: exportable,
+            },
+        );
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        // Do not warn for fake `use` statements.
-        if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
-            return;
-        }
         self.perform_lint(cx, "item", item.owner_id.def_id, item.vis_span, true);
     }
 
@@ -1278,7 +1272,7 @@ impl TypeAliasBounds {
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item<'tcx>) {
         let hir::ItemKind::TyAlias(_, generics, hir_ty) = item.kind else { return };
 
         // There must not be a where clause.
@@ -1322,7 +1316,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         }
 
         let mut ty = Some(hir_ty);
-        let enable_feat_help = cx.tcx.sess.is_nightly_build();
 
         if let [.., label_sp] = *where_spans {
             cx.emit_span_lint(
@@ -1331,10 +1324,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 BuiltinTypeAliasBounds {
                     in_where_clause: true,
                     label: label_sp,
-                    enable_feat_help,
                     suggestions: vec![(generics.where_clause_span, String::new())],
+                    def_id: item.owner_id.def_id,
                     preds: generics.predicates,
                     ty: ty.take(),
+                    tcx: cx.tcx,
                 },
             );
         }
@@ -1345,10 +1339,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 BuiltinTypeAliasBounds {
                     in_where_clause: false,
                     label: label_sp,
-                    enable_feat_help,
                     suggestions: inline_sugg,
+                    def_id: item.owner_id.def_id,
                     preds: generics.predicates,
                     ty,
+                    tcx: cx.tcx,
                 },
             );
         }
@@ -1491,7 +1486,7 @@ impl EarlyLintPass for DoubleNegations {
             && let ExprKind::Unary(UnOp::Neg, ref inner2) = inner.kind
             && !matches!(inner2.kind, ExprKind::Unary(UnOp::Neg, _))
             // Don't lint if this jumps macro expansion boundary (Issue #143980)
-            && expr.span.eq_ctxt(inner.span)
+            && expr.span.ctxt() == inner.span.ctxt()
         {
             cx.emit_span_lint(
                 DOUBLE_NEGATIONS,
@@ -1757,11 +1752,11 @@ impl KeywordIdents {
             match tt {
                 // Only report non-raw idents.
                 TokenTree::Token(token, _) => {
-                    if let Some((ident, token::IdentIsRaw::No)) = token.ident() {
+                    if let Some((ident, token::IdentKind::Normal)) = token.ident() {
                         if !prev_dollar {
                             self.check_ident_token(cx, UnderMacro(true), ident, "");
                         }
-                    } else if let Some((ident, token::IdentIsRaw::No)) = token.lifetime() {
+                    } else if let Some((ident, token::IdentKind::Normal)) = token.lifetime() {
                         self.check_ident_token(
                             cx,
                             UnderMacro(true),
@@ -1982,204 +1977,202 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
         use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 
         let def_id = item.owner_id.def_id;
-        if let hir::ItemKind::Struct(_, generics, _)
-        | hir::ItemKind::Enum(_, generics, _)
-        | hir::ItemKind::Union(_, generics, _) = item.kind
-        {
-            let inferred_outlives = cx.tcx.inferred_outlives_of(def_id);
-            if inferred_outlives.is_empty() {
-                return;
+
+        let generics = match item.kind {
+            hir::ItemKind::Struct(_, generics, _)
+            | hir::ItemKind::Enum(_, generics, _)
+            | hir::ItemKind::Union(_, generics, _) => generics,
+            hir::ItemKind::TyAlias(_, generics, _) if cx.tcx.type_alias_is_checked(def_id) => {
+                generics
             }
+            _ => return,
+        };
 
-            let ty_generics = cx.tcx.generics_of(def_id);
-            let num_where_predicates = generics
-                .predicates
-                .iter()
-                .filter(|predicate| predicate.kind.in_where_clause())
-                .count();
+        let inferred_outlives = cx.tcx.inferred_outlives_of(def_id);
+        if inferred_outlives.is_empty() {
+            return;
+        }
 
-            let mut bound_count = 0;
-            let mut lint_spans = Vec::new();
-            let mut where_lint_spans = Vec::new();
-            let mut dropped_where_predicate_count = 0;
-            for (i, where_predicate) in generics.predicates.iter().enumerate() {
-                let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
-                    match where_predicate.kind {
-                        hir::WherePredicateKind::RegionPredicate(predicate) => {
-                            if let Some(ResolvedArg::EarlyBound(region_def_id)) =
-                                cx.tcx.named_bound_var(predicate.lifetime.hir_id)
-                            {
+        let ty_generics = cx.tcx.generics_of(def_id);
+        let num_where_predicates =
+            generics.predicates.iter().filter(|predicate| predicate.kind.in_where_clause()).count();
+
+        let mut bound_count = 0;
+        let mut lint_spans = Vec::new();
+        let mut where_lint_spans = Vec::new();
+        let mut dropped_where_predicate_count = 0;
+        for (i, where_predicate) in generics.predicates.iter().enumerate() {
+            let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
+                match where_predicate.kind {
+                    hir::WherePredicateKind::RegionPredicate(predicate) => {
+                        if let Some(ResolvedArg::EarlyBound(region_def_id)) =
+                            cx.tcx.named_bound_var(predicate.lifetime.hir_id)
+                        {
+                            (
+                                Self::lifetimes_outliving_lifetime(
+                                    cx.tcx,
+                                    // don't warn if the inferred span actually came from the predicate we're looking at
+                                    // this happens if the type is recursively defined
+                                    inferred_outlives
+                                        .iter()
+                                        .filter(|(_, span)| !where_predicate.span.contains(*span)),
+                                    item.owner_id.def_id,
+                                    region_def_id,
+                                ),
+                                &predicate.bounds,
+                                where_predicate.span,
+                                predicate.in_where_clause,
+                            )
+                        } else {
+                            continue;
+                        }
+                    }
+                    hir::WherePredicateKind::BoundPredicate(predicate) => {
+                        // FIXME we can also infer bounds on associated types,
+                        // and should check for them here.
+                        match predicate.bounded_ty.kind {
+                            hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
+                                let Res::Def(DefKind::TyParam, def_id) = path.res else {
+                                    continue;
+                                };
+                                let index = ty_generics.param_def_id_to_index[&def_id];
+                                // Removing a `T: 'r` outlives bound can silently change
+                                // the object lifetime default for `Struct<'r, dyn Trait>`
+                                // (RFC 599): the explicit bound sets the default to `'r`,
+                                // so removing it may change it to `'static` (or cause an
+                                // ambiguity error if there is no unique default). Only
+                                // suppress the lint for non-higher-ranked predicates when
+                                // T is not `Sized` (i.e. can hold trait object types).
+                                // Higher-ranked predicates (`for<'x> T: 'r`) are excluded
+                                // from RFC 599 object lifetime defaulting and are always
+                                // safe to remove.
+                                if predicate.bound_generic_params.is_empty() {
+                                    let ty_param = &ty_generics.own_params[index as usize];
+                                    let param_ty =
+                                        Ty::new_param(cx.tcx, ty_param.index, ty_param.name);
+                                    if !param_ty.is_sized(cx.tcx, cx.typing_env()) {
+                                        continue;
+                                    }
+                                }
                                 (
-                                    Self::lifetimes_outliving_lifetime(
-                                        cx.tcx,
+                                    Self::lifetimes_outliving_type(
                                         // don't warn if the inferred span actually came from the predicate we're looking at
                                         // this happens if the type is recursively defined
                                         inferred_outlives.iter().filter(|(_, span)| {
                                             !where_predicate.span.contains(*span)
                                         }),
-                                        item.owner_id.def_id,
-                                        region_def_id,
+                                        index,
                                     ),
                                     &predicate.bounds,
                                     where_predicate.span,
-                                    predicate.in_where_clause,
+                                    predicate.origin == PredicateOrigin::WhereClause,
                                 )
-                            } else {
+                            }
+                            _ => {
                                 continue;
                             }
                         }
-                        hir::WherePredicateKind::BoundPredicate(predicate) => {
-                            // FIXME we can also infer bounds on associated types,
-                            // and should check for them here.
-                            match predicate.bounded_ty.kind {
-                                hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
-                                    let Res::Def(DefKind::TyParam, def_id) = path.res else {
-                                        continue;
-                                    };
-                                    let index = ty_generics.param_def_id_to_index[&def_id];
-                                    // Removing a `T: 'r` outlives bound can silently change
-                                    // the object lifetime default for `Struct<'r, dyn Trait>`
-                                    // (RFC 599): the explicit bound sets the default to `'r`,
-                                    // so removing it may change it to `'static` (or cause an
-                                    // ambiguity error if there is no unique default). Only
-                                    // suppress the lint for non-higher-ranked predicates when
-                                    // T is not `Sized` (i.e. can hold trait object types).
-                                    // Higher-ranked predicates (`for<'x> T: 'r`) are excluded
-                                    // from RFC 599 object lifetime defaulting and are always
-                                    // safe to remove.
-                                    if predicate.bound_generic_params.is_empty() {
-                                        let ty_param = &ty_generics.own_params[index as usize];
-                                        let param_ty =
-                                            Ty::new_param(cx.tcx, ty_param.index, ty_param.name);
-                                        if !param_ty.is_sized(cx.tcx, cx.typing_env()) {
-                                            continue;
-                                        }
-                                    }
-                                    (
-                                        Self::lifetimes_outliving_type(
-                                            // don't warn if the inferred span actually came from the predicate we're looking at
-                                            // this happens if the type is recursively defined
-                                            inferred_outlives.iter().filter(|(_, span)| {
-                                                !where_predicate.span.contains(*span)
-                                            }),
-                                            index,
-                                        ),
-                                        &predicate.bounds,
-                                        where_predicate.span,
-                                        predicate.origin == PredicateOrigin::WhereClause,
-                                    )
-                                }
-                                _ => {
-                                    continue;
-                                }
-                            }
-                        }
-                    };
-                if relevant_lifetimes.is_empty() {
-                    continue;
-                }
-
-                let bound_spans = self.collect_outlives_bound_spans(
-                    cx.tcx,
-                    bounds,
-                    &relevant_lifetimes,
-                    predicate_span,
-                    item.owner_id.to_def_id(),
-                );
-                bound_count += bound_spans.len();
-
-                let drop_predicate = bound_spans.len() == bounds.len();
-                if drop_predicate && in_where_clause {
-                    dropped_where_predicate_count += 1;
-                }
-
-                if drop_predicate {
-                    if !in_where_clause {
-                        lint_spans.push(predicate_span);
-                    } else if predicate_span.from_expansion() {
-                        // Don't try to extend the span if it comes from a macro expansion.
-                        where_lint_spans.push(predicate_span);
-                    } else if i + 1 < num_where_predicates {
-                        // If all the bounds on a predicate were inferable and there are
-                        // further predicates, we want to eat the trailing comma.
-                        let next_predicate_span = generics.predicates[i + 1].span;
-                        if next_predicate_span.from_expansion() {
-                            where_lint_spans.push(predicate_span);
-                        } else {
-                            where_lint_spans
-                                .push(predicate_span.to(next_predicate_span.shrink_to_lo()));
-                        }
-                    } else {
-                        // Eat the optional trailing comma after the last predicate.
-                        let where_span = generics.where_clause_span;
-                        if where_span.from_expansion() {
-                            where_lint_spans.push(predicate_span);
-                        } else {
-                            where_lint_spans.push(predicate_span.to(where_span.shrink_to_hi()));
-                        }
                     }
-                } else {
-                    where_lint_spans.extend(self.consolidate_outlives_bound_spans(
-                        predicate_span.shrink_to_lo(),
-                        bounds,
-                        bound_spans,
-                    ));
-                }
+                };
+            if relevant_lifetimes.is_empty() {
+                continue;
             }
 
-            // If all predicates in where clause are inferable, drop the entire clause
-            // (including the `where`)
-            if generics.has_where_clause_predicates
-                && dropped_where_predicate_count == num_where_predicates
-            {
-                let where_span = generics.where_clause_span;
-                // Extend the where clause back to the closing `>` of the
-                // generics, except for tuple struct, which have the `where`
-                // after the fields of the struct.
-                let full_where_span =
-                    if let hir::ItemKind::Struct(_, _, hir::VariantData::Tuple(..)) = item.kind {
-                        where_span
-                    } else {
-                        generics.span.shrink_to_hi().to(where_span)
-                    };
+            let bound_spans = self.collect_outlives_bound_spans(
+                cx.tcx,
+                bounds,
+                &relevant_lifetimes,
+                predicate_span,
+                item.owner_id.to_def_id(),
+            );
+            bound_count += bound_spans.len();
 
-                // Due to macro expansions, the `full_where_span` might not actually contain all
-                // predicates.
-                if where_lint_spans.iter().all(|&sp| full_where_span.contains(sp)) {
-                    lint_spans.push(full_where_span);
+            let drop_predicate = bound_spans.len() == bounds.len();
+            if drop_predicate && in_where_clause {
+                dropped_where_predicate_count += 1;
+            }
+
+            if drop_predicate {
+                if !in_where_clause {
+                    lint_spans.push(predicate_span);
+                } else if predicate_span.from_expansion() {
+                    // Don't try to extend the span if it comes from a macro expansion.
+                    where_lint_spans.push(predicate_span);
+                } else if i + 1 < num_where_predicates {
+                    // If all the bounds on a predicate were inferable and there are
+                    // further predicates, we want to eat the trailing comma.
+                    let next_predicate_span = generics.predicates[i + 1].span;
+                    if next_predicate_span.from_expansion() {
+                        where_lint_spans.push(predicate_span);
+                    } else {
+                        where_lint_spans
+                            .push(predicate_span.to(next_predicate_span.shrink_to_lo()));
+                    }
                 } else {
-                    lint_spans.extend(where_lint_spans);
+                    // Eat the optional trailing comma after the last predicate.
+                    let where_span = generics.where_clause_span;
+                    if where_span.from_expansion() {
+                        where_lint_spans.push(predicate_span);
+                    } else {
+                        where_lint_spans.push(predicate_span.to(where_span.shrink_to_hi()));
+                    }
                 }
+            } else {
+                where_lint_spans.extend(self.consolidate_outlives_bound_spans(
+                    predicate_span.shrink_to_lo(),
+                    bounds,
+                    bound_spans,
+                ));
+            }
+        }
+
+        // If all predicates in the where clause are inferable, drop the entire clause
+        // (including the `where`)
+        if generics.has_where_clause_predicates
+            && dropped_where_predicate_count == num_where_predicates
+        {
+            let where_span = generics.where_clause_span;
+            let full_where_span = cx
+                .sess()
+                .source_map()
+                .span_extend_prev_while(where_span, char::is_whitespace)
+                .unwrap_or(where_span);
+
+            // Due to macro expansions, the `full_where_span` might not actually contain all
+            // predicates.
+            if where_lint_spans.iter().all(|&sp| full_where_span.contains(sp)) {
+                lint_spans.push(full_where_span);
             } else {
                 lint_spans.extend(where_lint_spans);
             }
+        } else {
+            lint_spans.extend(where_lint_spans);
+        }
 
-            if !lint_spans.is_empty() {
-                // Do not automatically delete outlives requirements from macros.
-                let applicability = if lint_spans.iter().all(|sp| sp.can_be_used_for_suggestions())
-                {
-                    Applicability::MachineApplicable
-                } else {
-                    Applicability::MaybeIncorrect
-                };
+        if !lint_spans.is_empty() {
+            // Do not automatically delete outlives requirements from macros.
+            let applicability = if lint_spans.iter().all(|sp| sp.can_be_used_for_suggestions()) {
+                Applicability::MachineApplicable
+            } else {
+                Applicability::MaybeIncorrect
+            };
 
-                // Due to macros, there might be several predicates with the same span
-                // and we only want to suggest removing them once.
-                lint_spans.sort_unstable();
-                lint_spans.dedup();
+            // Due to macros, there might be several predicates with the same span
+            // and we only want to suggest removing them once.
+            lint_spans.sort_unstable_by_key(|span| span.lo_hi());
+            lint_spans.dedup_by_key(|span| span.lo_hi());
 
-                cx.emit_span_lint(
-                    EXPLICIT_OUTLIVES_REQUIREMENTS,
-                    lint_spans.clone(),
-                    BuiltinExplicitOutlives {
-                        suggestion: BuiltinExplicitOutlivesSuggestion {
-                            spans: lint_spans,
-                            applicability,
-                            count: bound_count,
-                        },
+            cx.emit_span_lint(
+                EXPLICIT_OUTLIVES_REQUIREMENTS,
+                lint_spans.clone(),
+                BuiltinExplicitOutlives {
+                    suggestion: BuiltinExplicitOutlivesSuggestion {
+                        spans: lint_spans,
+                        applicability,
+                        count: bound_count,
                     },
-                );
-            }
+                },
+            );
         }
     }
 }
@@ -2400,7 +2393,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             variant: &VariantDef,
-            args: ty::GenericArgsRef<'tcx>,
+            args: ty::GenericArgs<'tcx>,
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
@@ -2499,7 +2492,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             adt_def.non_enum_variant(),
-                            args,
+                            *args,
                             "struct field",
                             init,
                         );
@@ -2509,7 +2502,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
                             .inhabited_predicate(cx.tcx)
-                            .instantiate(cx.tcx, args)
+                            .instantiate(cx.tcx, *args)
                             .apply_any_module(cx.tcx, cx.typing_env())
                         {
                             // Entirely skip uninhabited variants.
@@ -2534,7 +2527,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             first_variant.0,
-                            args,
+                            *args,
                             "field of the only potentially inhabited enum variant",
                             init,
                         );
@@ -2654,7 +2647,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
 
             match &expr.kind {
                 hir::ExprKind::Cast(expr, ty) => {
-                    if let hir::TyKind::Ptr(_) = ty.kind {
+                    if let hir::TyKind::Ptr(..) = ty.kind {
                         return is_zero(expr) || is_null_ptr(cx, expr);
                     }
                 }

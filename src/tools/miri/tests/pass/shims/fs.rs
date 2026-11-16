@@ -3,6 +3,8 @@
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
+#![feature(dirfd)]
+#![feature(seek_stream_len)]
 #![cfg_attr(unix, feature(unix_file_vectored_at))]
 #![allow(unused_features)] // feature use depends on target
 
@@ -14,19 +16,20 @@ use std::fs::{
 use std::io::{
     Error, ErrorKind, IoSlice, IoSliceMut, IsTerminal, Read, Result, Seek, SeekFrom, Write,
 };
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+#[rustfmt::skip]
+#[cfg(unix)]
+use std::os::unix::fs::{symlink as symlink_file, symlink as symlink_dir};
+#[cfg(windows)]
+use std::os::windows::fs::{symlink_dir, symlink_file};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
-use utils::check_nondet;
 
 fn main() {
     test_path_conversion();
     test_file();
-    // Partial reads/writes are apparently not a thing on Windows.
-    if cfg!(not(windows)) {
-        test_file_partial_reads_writes();
-    }
     test_file_create_new();
     test_metadata();
     test_seek();
@@ -42,23 +45,47 @@ fn main() {
         target_os = "freebsd",
         target_os = "solaris",
         target_os = "illumos",
-        target_os = "android"
+        target_os = "android",
+        not(miri)
     )) {
         test_file_set_times();
     }
+    // In Miri, only these targets lower `fs::set_times` to the `utimensat` shim. Natively, it
+    // works everywhere.
+    if cfg!(any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        not(miri)
+    )) {
+        test_set_times();
+        test_set_times_nofollow();
+    }
     // Windows file handling is very incomplete.
-    if cfg!(not(windows)) {
+    if cfg!(not(windows)) || cfg!(not(miri)) {
+        test_fs_set_permissions();
+        test_file_set_permissions();
+
+        test_create_new_dangling_symlink();
         test_directory();
         test_canonicalize();
         #[cfg(not(target_os = "solaris"))] // does not have flock
         test_flock();
+        test_symlink();
         test_hard_link();
+        // Uses different shims on apple that we do not support.
+        if cfg!(not(all(miri, target_vendor = "apple"))) {
+            test_copy();
+        }
 
         test_readv_writev();
         #[cfg(unix)]
         test_pread_pwrite();
         #[cfg(all(unix, not(target_os = "solaris")))]
         test_preadv_pwritev();
+
+        test_directory_handle();
     }
 }
 
@@ -74,6 +101,7 @@ fn test_file() {
 
     // Test creating, writing and closing a file (closing is tested when `file` is dropped).
     let mut file = File::create(&path).unwrap();
+    let _dbg = format!("{file:?}"); // ensure we have the shims for this
     assert!(!file.metadata().unwrap().permissions().readonly()); // new file shouldn't be read-only
     // Writing 0 bytes should not change the file contents.
     file.write(&mut []).unwrap();
@@ -92,9 +120,12 @@ fn test_file() {
 
     assert!(!file.is_terminal());
 
-    // Writing to a file opened for reading should error (and not stop interpretation). std does not
-    // categorize the error so we don't check for details.
-    file.write(&[0]).unwrap_err();
+    // Writing to a file opened for reading should error (and not stop interpretation). This
+    // produces EBADF on Unix but std does not categorize the error so we don't check for details.
+    let err = file.write(&[0]).unwrap_err();
+    if cfg!(windows) {
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+    }
     // However, writing 0 bytes can succeed or fail.
     let _ignore = file.write(&[]);
 
@@ -103,32 +134,48 @@ fn test_file() {
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
-}
 
-fn test_file_partial_reads_writes() {
-    if !cfg!(miri) {
-        // This test is not expected to work natively.
-        return;
+    // Opening a directory as a file has target-specific behavior.
+    let res = File::open(&path.parent().unwrap());
+    if cfg!(unix) {
+        // On Unix this just works.
+        let mut file = res.unwrap();
+        // But reading errors.
+        let err = file.read(&mut [0u8; 32]).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::IsADirectory);
+    } else {
+        // On Windows, it errors.
+        assert_eq!(res.unwrap_err().kind(), ErrorKind::PermissionDenied);
+    }
+    // Opening for writing has a target-specific error.
+    let err = OpenOptions::new().write(true).open(&path.parent().unwrap()).unwrap_err();
+    if cfg!(unix) {
+        assert_eq!(err.kind(), ErrorKind::IsADirectory);
+    } else {
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
     }
 
-    let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
-    let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
+    // We can get a file for stderr/stdout (but not on Windows).
+    cfg_select! {
+        unix => {
+            use std::os::fd::AsFd;
 
-    // Ensure we sometimes do incomplete writes.
-    check_nondet(|| {
-        let mut file = File::create(&path1).unwrap();
-        file.write(&[0; 4]).unwrap() == 4
-    });
-    // Ensure we sometimes do incomplete reads.
-    check_nondet(|| {
-        let mut file = File::open(&path2).unwrap();
-        let mut buf = [0; 4];
-        file.read(&mut buf).unwrap() == 4
-    });
+            let fd = std::io::stdout().as_fd().try_clone_to_owned().unwrap();
+            let mut f = std::fs::File::from(fd);
+            f.metadata().unwrap();
+            writeln!(f, "hello stdout").unwrap();
 
-    // Clean up
-    remove_file(&path1).unwrap();
-    remove_file(&path2).unwrap();
+            let fd = std::io::stderr().as_fd().try_clone_to_owned().unwrap();
+            let mut f = std::fs::File::from(fd);
+            f.metadata().unwrap();
+            writeln!(f, "hello stderr").unwrap();
+        }
+        _ => {
+            // keep the output consistent.
+            println!("hello stdout");
+            eprintln!("hello stderr");
+        }
+    }
 }
 
 fn test_file_clone() {
@@ -153,15 +200,27 @@ fn test_file_create_new() {
     // Creating a new file that doesn't yet exist should succeed.
     OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
     // Creating a new file that already exists should fail.
-    assert_eq!(
-        ErrorKind::AlreadyExists,
-        OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err().kind()
-    );
+    let err = OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
     // Optionally creating a new file that already exists should succeed.
     OpenOptions::new().write(true).create(true).open(&path).unwrap();
 
     // Clean up
     remove_file(&path).unwrap();
+}
+
+// Merge this into the test above once it works on Windows.
+fn test_create_new_dangling_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let path = utils::prepare("miri_test_fs_file_create_new_dangling_symlink.txt");
+    // Create dangling symlink
+    symlink_file("does-not-exist", &path).unwrap();
+    // That's enough to make `create_new` fail.
+    let err = OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
 }
 
 fn test_seek() {
@@ -170,21 +229,30 @@ fn test_seek() {
 
     let mut file = File::open(&path).unwrap();
     let mut contents = Vec::new();
+    assert_eq!(file.stream_position().unwrap(), 0);
+    if cfg!(not(windows)) {
+        // FIXME: stream_len not supported on Windows
+        assert_eq!(file.stream_len().unwrap(), bytes.len() as u64);
+    }
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
+    assert_eq!(file.stream_position().unwrap(), bytes.len() as u64);
     // Test that seeking to the beginning and reading until EOF gets the text again.
     file.seek(SeekFrom::Start(0)).unwrap();
+    assert_eq!(file.stream_position().unwrap(), 0);
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
     // Test seeking relative to the end of the file.
     file.seek(SeekFrom::End(-1)).unwrap();
+    assert_eq!(file.stream_position().unwrap(), bytes.len().strict_sub(1) as u64);
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(&bytes[bytes.len() - 1..], contents.as_slice());
     // Test seeking relative to the current position.
     file.seek(SeekFrom::Start(5)).unwrap();
     file.seek(SeekFrom::Current(-3)).unwrap();
+    assert_eq!(file.stream_position().unwrap(), 2);
     let mut contents = Vec::new();
     file.read_to_end(&mut contents).unwrap();
     assert_eq!(&bytes[2..], contents.as_slice());
@@ -297,6 +365,98 @@ fn test_file_set_times() {
     assert_eq!(metadata.accessed().unwrap(), accessed);
     assert_eq!(metadata.modified().unwrap(), newer_modified);
 
+    // 32-bit FreeBSD cannot represent timestamps beyond 2038.
+    if !cfg!(all(target_os = "freebsd", target_pointer_width = "32")) {
+        // On 32-bit glibc, std needs the weak `__futimens64` symbol for dates past 2038.
+        let future_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(3_000_000_000);
+        file.set_times(FileTimes::new().set_modified(future_modified)).unwrap();
+        let metadata = file.metadata().unwrap();
+        assert_eq!(metadata.accessed().unwrap(), accessed);
+        assert_eq!(metadata.modified().unwrap(), future_modified);
+
+        let future_accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(3_000_000_001);
+        file.set_times(FileTimes::new().set_accessed(future_accessed)).unwrap();
+        let metadata = file.metadata().unwrap();
+        assert_eq!(metadata.accessed().unwrap(), future_accessed);
+        assert_eq!(metadata.modified().unwrap(), future_modified);
+    }
+
+    remove_file(&path).unwrap();
+}
+
+fn test_set_times() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, SystemTime};
+
+    let path = utils::prepare_with_content("miri_test_fs_set_times_path.txt", b"hello");
+
+    // Use fixed, whole-second timestamps to avoid sub-second granularity differences between
+    // file systems.
+    let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_234_567_890);
+
+    // Setting both timestamps round-trips through the file's metadata.
+    fs::set_times(&path, FileTimes::new().set_accessed(accessed).set_modified(modified)).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), modified);
+
+    // Setting only the modification time (`UTIME_OMIT` for access) leaves the access time alone.
+    let newer_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(2_000_000_000);
+    fs::set_times(&path, FileTimes::new().set_modified(newer_modified)).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    // Setting neither timestamp (`UTIME_OMIT` for both) succeeds and changes nothing.
+    fs::set_times(&path, FileTimes::new()).unwrap();
+    let metadata = fs::metadata(&path).unwrap();
+    assert_eq!(metadata.accessed().unwrap(), accessed);
+    assert_eq!(metadata.modified().unwrap(), newer_modified);
+
+    remove_file(&path).unwrap();
+
+    // A missing file is reported as such.
+    let err = fs::set_times(&path, FileTimes::new().set_modified(modified)).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::NotFound);
+
+    // With nothing to update, Linux does not even look at the path. Other systems may still
+    // report the missing file.
+    let res = fs::set_times(&path, FileTimes::new());
+    if cfg!(target_os = "linux") {
+        res.expect("`set_times` without any timestamps should always succeed on Linux");
+    } else {
+        assert!(res.is_ok() || res.is_err_and(|e| e.kind() == ErrorKind::NotFound));
+    }
+}
+
+fn test_set_times_nofollow() {
+    use std::fs::FileTimes;
+    use std::time::{Duration, SystemTime};
+
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let path = utils::prepare_with_content("miri_test_fs_set_times_nofollow.txt", b"hello");
+    let symlink_path = utils::prepare("miri_test_fs_set_times_nofollow_symlink.txt");
+    symlink_file(&path, &symlink_path).unwrap();
+
+    let target_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000_000);
+    let symlink_modified = SystemTime::UNIX_EPOCH + Duration::from_secs(1_234_567_890);
+
+    // `set_times` through the symlink changes the target, `set_times_nofollow` the symlink itself.
+    fs::set_times(&symlink_path, FileTimes::new().set_modified(target_modified)).unwrap();
+    fs::set_times_nofollow(&symlink_path, FileTimes::new().set_modified(symlink_modified)).unwrap();
+    assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), target_modified);
+    assert_eq!(fs::symlink_metadata(&symlink_path).unwrap().modified().unwrap(), symlink_modified);
+
+    // Setting neither timestamp succeeds and changes neither the symlink nor its target.
+    fs::set_times_nofollow(&symlink_path, FileTimes::new()).unwrap();
+    assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), target_modified);
+    assert_eq!(fs::symlink_metadata(&symlink_path).unwrap().modified().unwrap(), symlink_modified);
+
+    remove_file(&symlink_path).unwrap();
     remove_file(&path).unwrap();
 }
 
@@ -337,7 +497,7 @@ fn test_rename() {
 }
 
 fn test_canonicalize() {
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
     let path = dir_path.join("test_file");
     drop(File::create(&path).unwrap());
@@ -349,7 +509,7 @@ fn test_canonicalize() {
 }
 
 fn test_directory() {
-    let dir_path = utils::prepare_dir("miri_test_fs_dir");
+    let dir_path = utils::prepare("miri_test_fs_dir");
     // Creating a directory should succeed.
     create_dir(&dir_path).unwrap();
     // Test that the metadata of a directory is correct.
@@ -365,22 +525,24 @@ fn test_directory() {
     let dir_1 = dir_path.join("test_dir_1");
     create_dir(&dir_1).unwrap();
     // Test that read_dir metadata calls succeed
+    let mut dir_iter = read_dir(&dir_path).unwrap();
     assert_eq!(
         BTreeMap::from([
             (OsString::from("test_file_1"), true),
             (OsString::from("test_file_2"), true),
             (OsString::from("test_dir_1"), false)
         ]),
-        read_dir(&dir_path)
-            .unwrap()
+        (&mut dir_iter)
             .map(|e| {
                 let e = e.unwrap();
                 (e.file_name(), e.metadata().unwrap().is_file())
             })
             .collect::<BTreeMap<_, _>>()
     );
+    // We can access the directory handle from this iterator.
+    let dir_handle = dir_iter.dir().unwrap();
+    drop(dir_handle.open_file("test_file_1").unwrap());
     // Deleting the directory should fail, since it is not empty.
-
     // Solaris/Illumos `rmdir` call set errno to EEXIST if directory contains
     // other entries than `.` and `..`.
     // https://docs.oracle.com/cd/E86824_01/html/E54765/rmdir-2.html
@@ -557,6 +719,64 @@ fn test_preadv_pwritev() {
     assert_eq!(written_bytes.as_slice(), &write_buffer[0..bytes_written]);
 }
 
+fn test_symlink() {
+    if !utils::have_symlink_permission() {
+        return;
+    }
+
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_link_target.txt", bytes);
+    let symlink_path = utils::prepare("miri_test_fs_symlink.txt");
+
+    // Creating a symbolic link should succeed.
+    symlink_file(&path, &symlink_path).unwrap();
+    // Test that the symbolic link has the same contents as the file.
+    let contents = fs::read(&symlink_path).unwrap();
+    assert_eq!(&contents, bytes);
+
+    // Test that metadata of a symbolic link (i.e., the file it points to) is correct.
+    check_metadata(bytes, &symlink_path).unwrap();
+    // Test that the metadata of a symbolic link is correct when not following it.
+    assert!(symlink_path.symlink_metadata().unwrap().file_type().is_symlink());
+    // Check that we can follow the link.
+    assert_eq!(fs::read_link(&symlink_path).unwrap(), path);
+    // Removing symbolic link should succeed.
+    remove_file(&symlink_path).unwrap();
+    // And it should remove the link, not the target!
+    assert!(path.is_file());
+    assert!(!symlink_path.exists());
+
+    // Relative paths are interpreted relative to the symlink.
+    let dirpath = utils::prepare("miri_test_fs_link_dir");
+    fs::create_dir(&dirpath).unwrap();
+    let symlink_path2 = dirpath.join("link");
+    // `/` in symlink target does not work natively on Windows hosts!
+    symlink_file(PathBuf::from("..").join("miri_test_fs_link_target.txt"), &symlink_path2).unwrap();
+    let contents = fs::read(&symlink_path2).unwrap();
+    assert_eq!(&contents, bytes);
+    remove_file(&symlink_path2).unwrap();
+
+    // Also test directory symlinks as that makes a difference on Windows hosts.
+    symlink_dir("miri_test_fs_link_dir", &symlink_path).unwrap();
+    fs::read_dir(&symlink_path).unwrap();
+    assert!(symlink_path.is_dir());
+    // Symlinks to dirs are more like files on Linux, and more like dirs on Windows.
+    if cfg!(windows) {
+        let err = remove_file(&symlink_path).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::PermissionDenied);
+        remove_dir(&symlink_path).unwrap();
+    } else {
+        let err = remove_dir(&symlink_path).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::NotADirectory);
+        remove_file(&symlink_path).unwrap();
+    }
+    assert!(!symlink_path.exists());
+
+    // Cleanup.
+    remove_file(&path).unwrap();
+    remove_dir(&dirpath).unwrap();
+}
+
 fn test_hard_link() {
     let source = utils::prepare_with_content("miri_test_fs_hard_link_source.txt", b"hello");
     let link = utils::prepare("miri_test_fs_hard_link_link.txt");
@@ -584,4 +804,102 @@ fn test_hard_link() {
     // Cleanup after test
     remove_file(&source).unwrap();
     remove_file(&link).unwrap();
+}
+
+fn test_directory_handle() {
+    let dirname = utils::prepare("miri_test_directory_handle");
+    assert!(dirname.is_absolute());
+    fs::create_dir(&dirname).unwrap();
+    let filename = dirname.join("file.txt");
+    fs::write(&filename, b"hello").unwrap();
+
+    let dir = fs::Dir::open(&dirname).unwrap();
+    assert!(dir.self_metadata().unwrap().is_dir());
+    let _dbg = format!("{dir:?}"); // ensure we have the shims for this
+
+    let stat = dir.metadata("file.txt").unwrap();
+    assert!(stat.is_file());
+    assert!(stat.len() == 5);
+    if cfg!(unix) {
+        // Windows does not seem to support opening an absolute path relative to a `Dir`.
+        // FIXME: is that intentional? <https://github.com/rust-lang/rust/issues/163923>
+        let stat = dir.metadata(&filename).unwrap(); // absolute path
+        assert!(stat.is_file());
+        assert!(stat.len() == 5);
+    }
+
+    if cfg!(unix) {
+        // Windows actually succeeds when opening a file as a directory.
+        // FIXME: is that intentional? <https://github.com/rust-lang/rust/issues/163926>
+        let err = fs::Dir::open(&filename).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::NotADirectory);
+    }
+
+    let mut file = dir.open_file("file.txt").unwrap();
+    let mut data = Vec::new();
+    file.read_to_end(&mut data).unwrap();
+    assert_eq!(&data, b"hello");
+
+    let err = dir
+        .open_file_with("file.txt", OpenOptions::new().write(true).create_new(true))
+        .unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+
+    fs::create_dir(dirname.join("subdir")).unwrap();
+    let _subdir = dir.open_dir("subdir").unwrap();
+}
+
+fn test_fs_set_permissions() {
+    let file = utils::prepare("miri_test_fs_set_permissions.txt");
+    drop(File::create(&file).unwrap());
+
+    // Make file read-only
+    let mut p = fs::metadata(&file).unwrap().permissions();
+    assert!(!p.readonly());
+    p.set_readonly(true);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Make it writable again
+    p.set_readonly(false);
+    fs::set_permissions(&file, p.clone()).unwrap();
+    assert!(!fs::metadata(&file).unwrap().permissions().readonly());
+
+    // Test error for non-existing file
+    match fs::set_permissions(&file.with_file_name("foo"), p) {
+        Ok(..) => panic!("wanted an error"),
+        Err(err) => assert_eq!(err.kind(), ErrorKind::NotFound),
+    }
+}
+
+fn test_file_set_permissions() {
+    let path = utils::prepare("miri_test_file_set_permissions.txt");
+
+    let file = File::create(&path).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(!attr.permissions().readonly());
+    let mut p = attr.permissions();
+    p.set_readonly(true);
+    file.set_permissions(p.clone()).unwrap();
+    let attr = fs::metadata(&path).unwrap();
+    assert!(attr.permissions().readonly());
+
+    p.set_readonly(false);
+    file.set_permissions(p).unwrap();
+}
+
+fn test_copy() {
+    // This efficiently allocates a lot of zeros, even in Miri.
+    let mut bytes = vec![0u8; 10_000];
+    // Make it not all-zero so we notice if some data goes missing.
+    for i in 0..200u8 {
+        bytes[(i as usize) * 47] = i;
+    }
+
+    let src_path = utils::prepare_with_content("miri_test_fs_copy_src.txt", &bytes);
+    let dst_path = utils::prepare("miri_test_fs_copy_dst.txt");
+    assert_eq!(fs::copy(&src_path, &dst_path).unwrap(), bytes.len() as u64);
+    assert_eq!(fs::read(&dst_path).unwrap(), bytes);
+    fs::remove_file(&src_path).unwrap();
+    fs::remove_file(&dst_path).unwrap();
 }

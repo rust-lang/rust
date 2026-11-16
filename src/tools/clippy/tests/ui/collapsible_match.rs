@@ -462,6 +462,70 @@ fn issue16705(x: Option<String>) {
     };
 }
 
+fn issue16910() {
+    // Don't lint when the else pattern is refutable, e.g. `None` or `n @ None`.
+
+    let opt: Option<u8> = Some(1);
+    match opt {
+        None => {
+            println!("do same thing");
+        },
+        Some(some) => {
+            if some == 1 {
+                let _ = 1_u8;
+            } else {
+                println!("do same thing");
+            }
+        },
+    }
+
+    let opt_in_nested: Option<u8> = Some(1);
+    match opt {
+        None => match opt_in_nested {
+            None => {
+                println!("do same thing");
+            },
+            Some(some) => {
+                if some == 1 {
+                    let _ = 1_u8;
+                } else {
+                    println!("do same thing");
+                }
+            },
+        },
+        Some(some) => {
+            if some == 1 {
+                let _ = 1_u8;
+            } else {
+                match opt_in_nested {
+                    None => {
+                        println!("do same thing");
+                    },
+                    Some(some) => {
+                        if some == 1 {
+                            let _ = 1_u8;
+                        } else {
+                            println!("do same thing");
+                        }
+                    },
+                }
+            }
+        },
+    }
+
+    let with_at_pattern: Option<u8> = Some(1);
+    match with_at_pattern {
+        None => println!("do same thing"),
+        n @ Some(some) => {
+            if some == 1 {
+                let _ = n;
+            } else {
+                println!("do same thing")
+            }
+        },
+    }
+}
+
 fn issue16916() {
     use std::env;
     match env::args().len() {
@@ -488,4 +552,20 @@ fn issue16916() {
         },
         _ => {},
     }
+}
+
+// Don't lint and suggest if condition moves a variable used in other arms
+fn issue_multi_arm_move() {
+    let x: Vec<u8> = vec![1];
+    let tag = 1u8;
+    match tag {
+        1 => if consume(x) {},
+        2 => {
+            if consume(x) {} // x already moved if first arm fires. We can't collapse it
+        },
+        _ => {},
+    }
+}
+fn consume(_: Vec<u8>) -> bool {
+    true
 }

@@ -9,7 +9,10 @@
     feature(stdarch_aarch64_feature_detection)
 )]
 #![cfg_attr(
-    all(target_arch = "powerpc", target_os = "linux"),
+    all(
+        any(target_arch = "powerpc", target_arch = "powerpc64"),
+        any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+    ),
     feature(stdarch_powerpc_feature_detection)
 )]
 #![cfg_attr(
@@ -111,24 +114,16 @@ fn aarch64_linux() {
 }
 
 #[test]
-#[cfg(all(target_arch = "powerpc", target_os = "linux"))]
+#[cfg(all(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+))]
 fn powerpc_linux() {
     use std::arch::is_powerpc_feature_detected;
     // tidy-alphabetical-start
     println!("altivec: {}", is_powerpc_feature_detected!("altivec"));
     println!("power8: {}", is_powerpc_feature_detected!("power8"));
     println!("vsx: {}", is_powerpc_feature_detected!("vsx"));
-    // tidy-alphabetical-end
-}
-
-#[test]
-#[cfg(all(target_arch = "powerpc64", target_os = "linux"))]
-fn powerpc64_linux() {
-    use std::arch::is_powerpc64_feature_detected;
-    // tidy-alphabetical-start
-    println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
-    println!("power8: {}", is_powerpc64_feature_detected!("power8"));
-    println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
     // tidy-alphabetical-end
 }
 

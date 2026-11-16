@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 
 use path::{C,/*A*/ A, B /* B */, self /* self */};
 

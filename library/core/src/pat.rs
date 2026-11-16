@@ -7,13 +7,11 @@ use crate::ops::{CoerceUnsized, DispatchFromDyn};
 /// ```ignore (cannot test this from within core yet)
 /// type Positive = std::pat::pattern_type!(i32 is 1..);
 /// ```
-#[macro_export]
-#[rustc_builtin_macro(pattern_type)]
-#[unstable(feature = "pattern_type_macro", issue = "123646")]
-macro_rules! pattern_type {
-    ($($arg:tt)*) => {
-        /* compiler built-in */
-    };
+#[allow_internal_unstable(internal_syntax)]
+#[unstable(feature = "pattern_types", issue = "123646")]
+#[diagnostic::opaque]
+pub macro pattern_type($( $arg:tt )*) {
+    k#pattern_type($( $arg )*)
 }
 
 /// A trait implemented for integer types and `char`.

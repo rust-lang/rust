@@ -1,5 +1,5 @@
-// rustfmt-max_width: 79
-// rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 79
+//@ rustfmt-wrap_comments: true
 
 /// ```rust
 /// unsafe fn sum_sse2(x: i32x4) -> i32 {

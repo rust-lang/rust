@@ -26,3 +26,51 @@ fn body_mir(db: &RootDatabase, position: FilePosition) -> Option<String> {
     };
     Some(def.debug_mir(db))
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::fixture;
+
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let mir = analysis.view_mir(position);
+        assert!(mir.is_ok());
+    }
+
+    #[test]
+    fn tuple_field_projection_uses_base_type() {
+        check(
+            r#"
+//- minicore: sized
+struct Inner { value: u32 }
+fn test$0(value: (u32, Inner)) -> Inner { value.1 }
+"#,
+        );
+    }
+
+    #[test]
+    fn nested_struct_field_projection_uses_base_type() {
+        check(
+            r#"
+//- minicore: sized
+struct Inner { value: u32 }
+struct Outer { first: u32, second: Inner }
+fn test$0(value: Outer) -> u32 { value.second.value }
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_field_projection_uses_base_variant() {
+        check(
+            r#"
+//- minicore: sized
+struct Inner { value: u32 }
+enum Outer { Variant { first: u32, second: Inner } }
+fn test$0(value: Outer) -> Inner {
+    match value { Outer::Variant { second, .. } => second }
+}
+"#,
+        );
+    }
+}

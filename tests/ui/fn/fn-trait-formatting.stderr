@@ -39,11 +39,11 @@ LL |     let _: () = Box::new(|| -> isize { unimplemented!() }) as Box<dyn FnMut
    = note: expected unit type `()`
                  found struct `Box<dyn FnMut() -> isize>`
 
-error[E0277]: expected an `Fn(isize)` closure, found `{integer}`
+error[E0277]: expected `Fn(isize)` signature, found `{integer}`
   --> $DIR/fn-trait-formatting.rs:19:14
    |
 LL |     needs_fn(1);
-   |     -------- ^ expected an `Fn(isize)` closure, found `{integer}`
+   |     -------- ^ expected `Fn(isize)` signature, found `{integer}`
    |     |
    |     required by a bound introduced by this call
    |

@@ -1,5 +1,6 @@
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, msg, struct_span_code_err};
@@ -37,7 +38,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         tcx,
         thir: &*thir,
         typeck_results,
-        typing_env: ty::TypingEnv::post_typeck_until_borrowck_for_mir_build(tcx, def_id),
+        typing_env: ty::TypingEnv::post_typeck_through_borrowck_for_mir_build(tcx, def_id),
         hir_source: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
@@ -412,7 +413,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             {
                 let mut redundant_subpats = redundant_subpats.clone();
                 // Emit lints in the order in which they occur in the file.
-                redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span);
+                redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span.lo_hi());
                 for (pat, explanation) in redundant_subpats {
                     report_unreachable_pattern(cx, arm.arm_data, pat, &explanation, None)
                 }
@@ -678,10 +679,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
         if let Some(def_id) = is_const_pat_that_looks_like_binding(self.tcx, pat) {
             let span = self.tcx.def_span(def_id);
-            let variable = self.tcx.item_name(def_id).to_string();
+            let name = self.tcx.item_name(def_id);
             // When we encounter a constant as the binding name, point at the `const` definition.
-            interpreted_as_const = Some(InterpretedAsConst { span, variable: variable.clone() });
-            interpreted_as_const_sugg = Some(InterpretedAsConstSugg { span: pat.span, variable });
+            interpreted_as_const =
+                Some(InterpretedAsConst { span, variable: name.to_ident_string() });
+            // The suggested name is suffixed, so it is never a keyword and never needs `r#`.
+            interpreted_as_const_sugg =
+                Some(InterpretedAsConstSugg { span: pat.span, variable: name.to_string() });
         } else if let PatKind::Constant { .. } = pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
@@ -726,7 +730,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             let variant_inhabited = adt
                 .variant(*variant_index)
                 .inhabited_predicate(self.tcx)
-                .instantiate(self.tcx, args);
+                .instantiate(self.tcx, *args);
             variant_inhabited.apply(self.tcx, cx.typing_env, cx.module)
                 && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env)
         } else {
@@ -979,6 +983,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
         inaccessible_constant: None,
         pattern_let_binding: None,
         suggest_remove: None,
+        non_exhaustive_attr: None,
     };
     let mut covered_by_many_n_more_count = None;
     match explanation.covered_by.as_slice() {
@@ -1028,6 +1033,16 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.covered_by_many = Some(multispan);
         }
     }
+
+    if let Constructor::Wildcard = pat.ctor()
+        && let ty::Adt(adt, _) = pat.ty().peel_refs().kind()
+        && adt.is_enum()
+        && let Some(did) = adt.did().as_local()
+        && let Some(span) = find_attr!(cx.tcx, did, NonExhaustive(span) => span)
+    {
+        lint.non_exhaustive_attr = Some(*span);
+    }
+
     cx.tcx.emit_node_span_lint(
         UNREACHABLE_PATTERNS,
         hir_id,
@@ -1062,7 +1077,7 @@ fn find_fallback_pattern_typo<'tcx>(
             if let DefKind::Use = cx.tcx.def_kind(item.owner_id) {
                 // Look for consts being re-exported.
                 let item = cx.tcx.hir_expect_item(item.owner_id.def_id);
-                let hir::ItemKind::Use(path, _) = item.kind else {
+                let hir::ItemKind::Use(hir::UseTree { prefix: path, .. }) = item.kind else {
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
@@ -1229,10 +1244,13 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // The pattern must be a named constant, and the name that appears in
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
-    if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && tcx.def_kind(def_id) == DefKind::Const
+    if let ty::AliasConstKind::Free { def_id } = pat.extra.as_deref()?.expanded_const?
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
-        && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
+        && snippet
+            .strip_prefix("r#")
+            .unwrap_or(&snippet)
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_')
     {
         Some(def_id)
     } else {
@@ -1402,7 +1420,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             let only_body = &thir[only.body];
             let comma = if matches!(only_body.kind, ExprKind::Block { .. })
-                && only.span.eq_ctxt(only_body.span)
+                && only.span.ctxt() == only_body.span.ctxt()
                 && is_multiline
             {
                 ""
@@ -1417,10 +1435,10 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         [.., prev, last] => {
             let prev = &thir[*prev];
             let last = &thir[*last];
-            if prev.span.eq_ctxt(last.span) {
+            if prev.span.ctxt() == last.span.ctxt() {
                 let last_body = &thir[last.body];
                 let comma = if matches!(last_body.kind, ExprKind::Block { .. })
-                    && last.span.eq_ctxt(last_body.span)
+                    && last.span.ctxt() == last_body.span.ctxt()
                 {
                     ""
                 } else {
@@ -1470,7 +1488,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     } else {
         err.help(msg);
     }
-    err.emit()
+    err.emit_err()
 }
 
 fn joined_uncovered_patterns<'p, 'tcx>(

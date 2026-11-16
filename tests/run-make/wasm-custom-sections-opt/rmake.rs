@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -6,7 +6,7 @@ use std::path::Path;
 use run_make_support::{rfs, rustc, wasmparser};
 
 fn main() {
-    rustc().input("foo.rs").target("wasm32-wasip1").opt().run();
+    rustc().input("foo.rs").opt().run();
 
     verify(Path::new("foo.wasm"));
 }
@@ -19,8 +19,7 @@ fn verify(path: &Path) {
     for payload in wasmparser::Parser::new(0).parse_all(&file) {
         let payload = payload.unwrap();
         if let wasmparser::Payload::CustomSection(s) = payload {
-            let prev = custom.insert(s.name(), s.data());
-            assert!(prev.is_none());
+            custom.insert(s.name(), s.data());
         }
     }
 

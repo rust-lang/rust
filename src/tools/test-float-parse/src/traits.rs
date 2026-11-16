@@ -123,6 +123,15 @@ pub trait Float:
     /// The exponent bias, also its maximum value
     const EXP_BIAS: u32 = Self::EXP_SAT >> 1;
 
+    /// Maximum unbiased exponent value.
+    const EXP_MAX: i32 = Self::EXP_BIAS as i32;
+
+    /// Minimum *NORMAL* unbiased exponent value.
+    const EXP_MIN: i32 = -(Self::EXP_MAX - 1);
+
+    /// Minimum subnormal exponent value.
+    const EXP_MIN_SUBNORM: i32 = Self::EXP_MIN - Self::MAN_BITS as i32;
+
     const MAN_MASK: Self::Int;
     const SIGN_MASK: Self::Int;
 

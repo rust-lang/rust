@@ -86,9 +86,8 @@ pub struct Sender<T> {
     inner: mpmc::Sender<T>,
 }
 
-// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
-// [`Sender`], it is perfectly safe to share a `&Sender` between threads (as it is effectively
-// useless without ownership).
+// SAFETY: Sending a value requires ownership of the sender. Shared references only inspect
+// channel state, so they cannot send a value of a non-`Send` type from another thread.
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 unsafe impl<T> Sync for Sender<T> {}
 
@@ -118,6 +117,20 @@ impl<T> Sender<T> {
     #[unstable(feature = "oneshot_channel", issue = "143674")]
     pub fn send(self, t: T) -> Result<(), SendError<T>> {
         self.inner.send(t)
+    }
+
+    /// Returns `true` if the corresponding [`Receiver`] has been dropped.
+    ///
+    /// If this method returns `true`, [`send`](Self::send) is guaranteed to return an error.
+    ///
+    /// On the receiving side, [`Receiver::is_ready`] checks whether a value is available without
+    /// consuming the receiver.
+    ///
+    /// A return value of `false` does not guarantee that a later call to [`send`](Self::send) will
+    /// succeed. The receiver may be dropped immediately after this method returns.
+    #[unstable(feature = "oneshot_channel", issue = "143674")]
+    pub fn is_closed(&self) -> bool {
+        self.inner.is_disconnected()
     }
 }
 
@@ -176,9 +189,8 @@ pub struct Receiver<T> {
     inner: mpmc::Receiver<T>,
 }
 
-// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
-// [`Receiver`], it is perfectly safe to share a `&Receiver` between threads (as it is unable to
-// receive any values without ownership).
+// SAFETY: Receiving a value requires ownership of the receiver. Shared references only inspect
+// channel state, so they cannot access a value of a non-`Send` type from another thread.
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 unsafe impl<T> Sync for Receiver<T> {}
 
@@ -212,7 +224,39 @@ impl<T> Receiver<T> {
 
     // Fallible methods.
 
+    /// Returns `Ok(true)` if the sender has sent a value over the channel.
+    ///
+    /// Returns `Ok(false)` if no value has been sent, but the corresponding [`Sender<T>`] still
+    /// exists (has not been dropped yet).
+    ///
+    /// Returns a [`RecvError`] if the corresponding [`Sender<T>`] has been dropped before a value
+    /// has been sent.
+    ///
+    /// If this method returns `Ok(true)`, then any of the `recv` methods are guaranteed to return
+    /// the value successfully without blocking.
+    ///
+    /// # Warnings
+    ///
+    /// A return value of `Ok(false)` does not guarantee that a later receive operation will block.
+    /// The sender may send a value or be dropped immediately after this method returns.
+    ///
+    /// Polling this method in a loop just to wait for a value wastes CPU time. Use
+    /// [`recv`](Self::recv) or [`recv_timeout`](Self::recv_timeout) instead.
+    #[unstable(feature = "oneshot_channel", issue = "143674")]
+    pub fn is_ready(&self) -> Result<bool, RecvError> {
+        // Sending consumes and drops the sender after writing the value, so the channel is ready
+        // only when it is both disconnected and nonempty.
+        if !self.inner.is_disconnected() {
+            return Ok(false);
+        }
+
+        if self.inner.is_empty() { Err(RecvError) } else { Ok(true) }
+    }
+
     /// Attempts to return a pending value on this receiver without blocking.
+    ///
+    /// To check whether a value is available without consuming the receiver, use
+    /// [`is_ready`](Self::is_ready).
     ///
     /// # Examples
     ///

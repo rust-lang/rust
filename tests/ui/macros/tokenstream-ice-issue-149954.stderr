@@ -82,13 +82,14 @@ LL |             A: A<{ struct A<A: A<{ #[cfg] () }>> ; enum A  }
 error[E0404]: expected trait, found struct `A`
   --> $DIR/tokenstream-ice-issue-149954.rs:10:16
    |
+LL |           #[derive(Debug)]
+   |                    ----- in this derive macro
+...
 LL |               A: A<{ struct A<A: A<{ #[cfg] () }>> ; enum A  }
    |  ________________^
 ...  |
 LL | |         >;
    | |_________^ not a trait
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0404]: expected trait, found type parameter `A`
   --> $DIR/tokenstream-ice-issue-149954.rs:10:32

@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed for `(_, usize)`
+  --> $DIR/pr-review-132289-2.rs:28:9
+   |
+LL |     let (arr, len) = function::<Param>();
+   |         ^^^^^^^^^^
+LL |
+LL |     assert_eq!(arr.len(), len);
+   |                --- type must be known at this point
+   |
+help: consider giving this pattern a type, where the placeholders `_` are specified
+   |
+LL |     let (arr, len): (_, _) = function::<Param>();
+   |                   ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

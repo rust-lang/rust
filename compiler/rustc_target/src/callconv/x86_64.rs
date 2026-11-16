@@ -2,7 +2,7 @@
 // https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
 use rustc_abi::{
-    BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
+    BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
     Variants,
 };
 
@@ -10,13 +10,34 @@ use crate::callconv::{ArgAbi, CastTarget, FnAbi};
 use crate::spec::HasTargetSpec;
 
 /// Classification of "eightbyte" components.
-// N.B., the order of the variants is from general to specific,
-// such that `unify(a, b)` is the "smaller" of `a` and `b`.
+///
+/// N.B., the order of the variants is from general to specific,
+/// such that `merge(a, b)` is the "smaller" of `a` and `b`, unless it is an error.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Class {
     Int,
     Sse,
     SseUp,
+    X87,
+    X87Up,
+}
+
+impl Class {
+    fn upper_half(self) -> Class {
+        match self {
+            Class::Sse | Class::SseUp => Class::SseUp,
+            Class::X87 | Class::X87Up => Class::X87Up,
+            Class::Int => Class::Int,
+        }
+    }
+
+    fn merge(self, other: Self) -> Result<Self, Memory> {
+        match (self, other) {
+            (Class::X87 | Class::X87Up, Class::Sse | Class::SseUp) => Err(Memory),
+            (Class::Sse | Class::SseUp, Class::X87 | Class::X87Up) => Err(Memory),
+            _ => Ok(Ord::min(self, other)),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -44,7 +65,7 @@ where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout,
     {
-        if !off.is_aligned(layout.align.abi) {
+        if !off.is_aligned(layout.align) {
             if !layout.is_zst() {
                 return Err(Memory);
             }
@@ -54,6 +75,7 @@ where
         let mut c = match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
                 Primitive::Int(..) | Primitive::Pointer(_) => Class::Int,
+                Primitive::Float(Float::X87F80) => Class::X87,
                 Primitive::Float(_) => Class::Sse,
             },
 
@@ -85,13 +107,13 @@ where
         let first = (off.bytes() / 8) as usize;
         let last = ((off.bytes() + layout.size.bytes() - 1) / 8) as usize;
         for cls in &mut cls[first..=last] {
-            *cls = Some(cls.map_or(c, |old| old.min(c)));
+            *cls = match cls {
+                Some(old) => Some(Class::merge(*old, c)?),
+                None => Some(c),
+            };
 
-            // Everything after the first Sse "eightbyte"
-            // component is the upper half of a register.
-            if c == Class::Sse {
-                c = Class::SseUp;
-            }
+            // Everything after the first "eightbyte" component is the upper half of a register.
+            c = c.upper_half();
         }
 
         Ok(())
@@ -127,21 +149,31 @@ where
         }
     }
 
+    // If X87UP is not preceded by X87, the whole argument is passed in memory.
+    if let [Some(Class::X87Up), ..] = cls {
+        return Err(Memory);
+    }
+
+    for [prev, curr] in cls[..n].array_windows() {
+        if *curr == Some(Class::X87Up) && *prev != Some(Class::X87) {
+            return Err(Memory);
+        }
+    }
+
     Ok(cls)
 }
 
 fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg> {
-    if *i >= cls.len() {
+    let Some(Some(class)) = cls.get(*i) else {
         return None;
-    }
+    };
 
-    match cls[*i] {
-        None => None,
-        Some(Class::Int) => {
+    match class {
+        Class::Int => {
             *i += 1;
             Some(if size.bytes() < 8 { Reg { kind: RegKind::Integer, size } } else { Reg::i64() })
         }
-        Some(Class::Sse) => {
+        Class::Sse => {
             let vec_len =
                 1 + cls[*i + 1..].iter().take_while(|&&c| c == Some(Class::SseUp)).count();
             *i += vec_len;
@@ -154,7 +186,14 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
                 Reg::opaque_vector(Size::from_bytes(8) * (vec_len as u64))
             })
         }
-        Some(c) => unreachable!("reg_component: unhandled class {:?}", c),
+        Class::X87 => {
+            let consumed =
+                1 + cls[*i + 1..].iter().take_while(|&&c| c == Some(Class::X87Up)).count();
+            assert_eq!(consumed, 2);
+            *i += consumed;
+            Some(Reg::x87_f80())
+        }
+        c => unreachable!("reg_component: unhandled class {:?}", c),
     }
 }
 
@@ -194,10 +233,29 @@ where
             arg.make_indirect();
             return;
         }
+        if is_arg && arg.layout.is_x87_f80(cx) {
+            // This branch and cast are not technically required, but it makes the IR more readable.
+            arg.cast_to(Reg::x87_f80());
+            return;
+        }
+        if !is_arg && arg.layout.complex_float(cx) == Some(Float::X87F80) {
+            // Return in registers.
+            //
+            // NOTE: an x87_f80 register is only 10 bytes wide. For the size of the CastTarget
+            // to be correct, we need the second component to start at 12/16 bytes into the
+            // value.
+            let offset = Size::from_bytes(arg.layout.size.bytes() / 2);
+            arg.cast_to(CastTarget::offset_pair(Reg::x87_f80(), offset, Reg::x87_f80()));
+            return;
+        }
         let mut cls_or_mem = classify_arg(cx, arg);
 
-        if is_arg {
-            if let Ok(cls) = cls_or_mem {
+        if is_arg && let Ok(cls) = cls_or_mem {
+            if cls.contains(&Some(Class::X87)) {
+                // An argument of class X87 is always passed in memory.
+                std::assert_matches!(cls, [Some(Class::X87), Some(Class::X87Up), ..]);
+                cls_or_mem = Err(Memory);
+            } else {
                 let mut needed_int = 0;
                 let mut needed_sse = 0;
                 for c in cls {
@@ -247,6 +305,11 @@ where
                     arg.cast_to(cast_target(cls, size));
                 } else if is_arg || cx.target_spec().is_like_darwin {
                     arg.extend_integer_width_to(32);
+                }
+                // The x86_64 psABI requires bools to be zero-extended to 8-bits, with high bits unspecified.
+                // zeroext i1 has this behavior in the LLVM X86 backend.
+                if !is_arg && arg.layout.backend_repr.is_bool() {
+                    arg.extend_integer_width_to(8);
                 }
             }
         }

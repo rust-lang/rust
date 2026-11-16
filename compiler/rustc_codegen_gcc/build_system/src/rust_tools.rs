@@ -72,7 +72,7 @@ impl RustcTools {
 
         let mut env: HashMap<String, String> = std::env::vars().collect();
         let mut config = ConfigInfo::default();
-        config.setup(&mut env, false)?;
+        config.setup(&mut env, false, false)?;
         let toolchain = get_toolchain()?;
 
         let toolchain_version = rustc_toolchain_version_info(&toolchain)?;

@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 // Some text
 // - some itemized block 1

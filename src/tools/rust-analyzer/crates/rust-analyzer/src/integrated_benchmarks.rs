@@ -320,6 +320,7 @@ fn completion_config() -> CompletionConfig<'static> {
         enable_self_on_the_fly: true,
         enable_private_editable: true,
         enable_term_search: true,
+        enable_turbofish: true,
         term_search_fuel: 200,
         full_function_signatures: false,
         callable: Some(CallableSnippets::FillArguments),
@@ -343,6 +344,7 @@ fn completion_config() -> CompletionConfig<'static> {
         exclude_traits: &[],
         enable_auto_await: true,
         enable_auto_iter: true,
+        enable_auto_dyn: true,
         ra_fixture: RaFixtureConfig::default(),
     }
 }

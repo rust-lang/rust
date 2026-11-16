@@ -5,14 +5,14 @@ use hir_def::{
     signatures::ImplSignature,
 };
 use hir_expand::name::Name;
-use la_arena::{Arena, ArenaMap};
+use la_arena::ArenaMap;
 use rustc_type_ir::inherent::Ty as _;
 use syntax::ast;
 
 use crate::{
     ImplTraitId, InferBodyId, InferenceResult,
     db::{HirDatabase, InternedOpaqueTyId},
-    lower::{ImplTrait, ImplTraitIdx},
+    lower::{ImplTraitIdx, SelfAndAssocBounds},
     next_solver::{
         DbInterner, ErrorGuaranteed, SolverDefId, StoredEarlyBinder, StoredTy, Ty, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
@@ -29,7 +29,7 @@ pub(crate) fn opaque_types_defined_by<'db>(
         // A function may define its own RPITs.
         extend_with_opaques(
             db,
-            ImplTrait::return_type_impl_traits(db, func),
+            SelfAndAssocBounds::return_type_impl_traits(db, func),
             |opaque_idx| ImplTraitId::ReturnTypeImplTrait(func, opaque_idx),
             result,
         );
@@ -38,7 +38,7 @@ pub(crate) fn opaque_types_defined_by<'db>(
     let extend_with_taits = |type_alias| {
         extend_with_opaques(
             db,
-            ImplTrait::type_alias_impl_traits(db, type_alias),
+            SelfAndAssocBounds::type_alias_impl_traits(db, type_alias),
             |opaque_idx| ImplTraitId::TypeAliasImplTrait(type_alias, opaque_idx),
             result,
         );
@@ -81,12 +81,17 @@ pub(crate) fn opaque_types_defined_by<'db>(
 
     fn extend_with_opaques<'db>(
         db: &'db dyn HirDatabase,
-        opaques: &Arena<ImplTrait>,
+        opaques: &[SelfAndAssocBounds],
         mut make_impl_trait: impl FnMut(ImplTraitIdx) -> ImplTraitId,
         result: &mut Vec<SolverDefId<'db>>,
     ) {
-        for (opaque_idx, _) in opaques.iter() {
-            let opaque_id = InternedOpaqueTyId::new(db, make_impl_trait(opaque_idx));
+        for (opaque_idx, _) in opaques.iter().enumerate() {
+            let opaque_id = InternedOpaqueTyId::new(
+                db,
+                make_impl_trait(ImplTraitIdx::from_raw(la_arena::RawIdx::from_u32(
+                    opaque_idx as u32,
+                ))),
+            );
             result.push(opaque_id.into());
         }
     }
@@ -114,7 +119,7 @@ pub(crate) fn tait_hidden_types(
     type_alias: TypeAliasId,
 ) -> ArenaMap<ImplTraitIdx, StoredEarlyBinder<StoredTy>> {
     // Call this first, to not perform redundant work if there are no TAITs.
-    let taits_count = ImplTrait::type_alias_impl_traits(db, type_alias).len();
+    let taits_count = SelfAndAssocBounds::type_alias_impl_traits(db, type_alias).len();
 
     let loc = type_alias.loc(db);
     let module = loc.module(db);

@@ -24,7 +24,8 @@ By far the most common method used for Clippy lints is [`check_expr`
 method][late_check_expr], this is because Rust is an expression language and,
 more often than not, the lint we want to work on must examine expressions.
 
-> _Note:_ If you don't fully understand what expressions are in Rust, take a
+> [!NOTE]
+> If you don't fully understand what expressions are in Rust, take a
 > look at the official documentation on [expressions][rust_expressions]
 
 Other common ones include the [`check_fn` method][late_check_fn] and the
@@ -65,7 +66,8 @@ impl<'tcx> LateLintPass<'tcx> for LintName {
 }
 ```
 
-> Note: The message should be matter of fact and avoid capitalization and
+> [!NOTE]
+> The message should be matter of fact and avoid capitalization and
 > punctuation. If multiple sentences are needed, the messages should probably be
 > split up into an error + a help / note / suggestion message.
 
@@ -253,7 +255,7 @@ cover in the next chapters.
 [`span_lint_and_sugg`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_sugg.html
 [`span_lint_and_then`]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/diagnostics/fn.span_lint_and_then.html
 [`clippy_utils::source`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/index.html
-[range_plus_one]: https://rust-lang.github.io/rust-clippy/master/index.html#range_plus_one
+[range_plus_one]: https://rust-lang.github.io/rust-clippy/main/index.html#range_plus_one
 [inclusive_range]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html
 [applicability]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_errors/enum.Applicability.html
 [snippet_fn]: https://doc.rust-lang.org/beta/nightly-rustc/clippy_utils/source/fn.snippet.html

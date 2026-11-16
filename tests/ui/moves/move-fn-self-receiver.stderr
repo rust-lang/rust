@@ -27,6 +27,7 @@ LL |     foo;
 note: `Foo::use_self` takes ownership of the receiver `self`, which moves `foo`
   --> $DIR/move-fn-self-receiver.rs:13:17
    |
+LL | impl Foo {
 LL |     fn use_self(self) {}
    |                 ^^^^
 
@@ -53,6 +54,8 @@ LL |     boxed_foo;
 note: `Foo::use_box_self` takes ownership of the receiver `self`, which moves `boxed_foo`
   --> $DIR/move-fn-self-receiver.rs:14:21
    |
+LL | impl Foo {
+LL |     fn use_self(self) {}
 LL |     fn use_box_self(self: Box<Self>) {}
    |                     ^^^^
 help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
@@ -78,6 +81,8 @@ LL |     pin_box_foo;
 note: `Foo::use_pin_box_self` takes ownership of the receiver `self`, which moves `pin_box_foo`
   --> $DIR/move-fn-self-receiver.rs:15:25
    |
+LL | impl Foo {
+...
 LL |     fn use_pin_box_self(self: Pin<Box<Self>>) {}
    |                         ^^^^
 help: you could `clone` the value and consume it, if the `Foo: Clone` trait bound could be satisfied
@@ -116,6 +121,8 @@ LL |     rc_foo;
 note: `Foo::use_rc_self` takes ownership of the receiver `self`, which moves `rc_foo`
   --> $DIR/move-fn-self-receiver.rs:16:20
    |
+LL | impl Foo {
+...
 LL |     fn use_rc_self(self: Rc<Self>) {}
    |                    ^^^^
 help: you can `clone` the value and consume it, but this might not be your desired behavior
@@ -187,6 +194,7 @@ LL |     container;
 note: `Container::custom_into_iter` takes ownership of the receiver `self`, which moves `container`
   --> $DIR/move-fn-self-receiver.rs:23:25
    |
+LL | impl Container {
 LL |     fn custom_into_iter(self) -> impl Iterator<Item = bool> {
    |                         ^^^^
 

@@ -98,12 +98,12 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{InlineAttr, Linkage};
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::par_join;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
@@ -654,7 +654,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 | ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::Clone(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::ThreadLocal(..))
-                | ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(..))
+                | ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::FutureDropPoll(..))
                 | ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..))
@@ -841,7 +841,7 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::Shim(ShimKind::ConstructCoroutineInClosure { .. })
         | InstanceKind::Shim(ShimKind::DropGlue(..))
         | InstanceKind::Shim(ShimKind::Clone(..))
-        | InstanceKind::Shim(ShimKind::FnPtrAsPtr(..))
+        | InstanceKind::Shim(ShimKind::FnAddrAsPtr(..))
         | InstanceKind::Shim(ShimKind::FnPtrFromPtr(..)) => return Visibility::Hidden,
     };
 
@@ -1252,7 +1252,6 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
                         Linkage::WeakODR => "WeakODR",
                         Linkage::Internal => "Internal",
                         Linkage::ExternalWeak => "ExternalWeak",
-                        Linkage::Common => "Common",
                     };
 
                     output.push('[');

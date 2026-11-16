@@ -1,5 +1,5 @@
-// rustfmt-normalize_comments: true
-// rustfmt-wrap_comments: true
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-wrap_comments: true
 // Test expressions
 
 fn foo() -> bool {

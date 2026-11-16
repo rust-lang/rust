@@ -20,12 +20,12 @@ extern "C" {
 
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo<'_>) -> ! {
-    core::intrinsics::abort();
+    core::intrinsics::abort_immediate();
 }
 
 #[alloc_error_handler]
 fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
-    core::intrinsics::abort();
+    core::intrinsics::abort_immediate();
 }
 
 #[lang = "eh_personality"]

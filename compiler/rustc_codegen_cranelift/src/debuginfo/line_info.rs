@@ -168,6 +168,7 @@ impl FunctionDebugContext {
 
         let mcr = context.compiled_code().unwrap();
         for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
+            let loc = loc.as_abs();
             debug_context.dwarf.unit.line_program.row().address_offset = u64::from(start);
             if !loc.is_default() {
                 let source_loc = self.source_loc_set[loc.bits() as usize];

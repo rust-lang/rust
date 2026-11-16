@@ -94,8 +94,7 @@ fn execute(cmd: &mut Command) -> Output {
     let output = match cmd.output() {
         Ok(status) => status,
         Err(e) => {
-            println!("\n\nfailed to execute command: {cmd:?}\nerror: {e}\n\n");
-            std::process::exit(1);
+            panic!("failed to execute command: {cmd:?}\nerror: {e}");
         }
     };
     if !output.status.success() {
@@ -484,9 +483,8 @@ fn main() {
     let llvm_static_stdcpp = tracked_env_var_os("LLVM_STATIC_STDCPP");
     let llvm_use_libcxx = tracked_env_var_os("LLVM_USE_LIBCXX");
 
-    let stdcppname = if target.contains("openbsd") {
-        if target.contains("sparc64") { "estdc++" } else { "c++" }
-    } else if target.contains("darwin")
+    let stdcppname = if target.contains("openbsd")
+        || target.contains("darwin")
         || target.contains("freebsd")
         || target.contains("windows-gnullvm")
         || target.contains("aix")

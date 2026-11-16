@@ -23,7 +23,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, BoundConstness, BoundPolarity, Closure, Destination, Expr, ExprKind, FieldDef,
     FnHeader, FnRetTy, HirId, Impl, ImplItem, ImplItemImplKind, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource,
-    MatchSource, MutTy, Node, PatExpr, PatExprKind, PatKind, Path, PolyTraitRef, QPath, Safety, TraitBoundModifiers,
+    MatchSource, Node, PatExpr, PatExprKind, PatKind, Path, PolyTraitRef, QPath, Safety, TraitBoundModifiers,
     TraitImplHeader, TraitItem, TraitItemKind, TraitRef, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData,
     YieldSource,
 };
@@ -161,7 +161,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         // e.g. `return format!(..)` would be considered to be from a proc macro
         // if we build up a pattern for the macro expansion and compare it to the invocation `format!()`.
         // So instead we return an empty pattern such that `span_matches_pat` always returns true.
-        if !e.span.eq_ctxt(outer_span) {
+        if e.span.ctxt() != outer_span.ctxt() {
             return (Pat::Str(""), Pat::Str(""));
         }
 
@@ -370,7 +370,7 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
                 (Pat::Str("#"), Pat::Str("]"))
             }
         },
-        AttrKind::Synthetic(..) => unreachable!(),
+        AttrKind::Synthetic(..) | AttrKind::Generated(..) => unreachable!(),
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
             if attr.style == AttrStyle::Outer {
                 (Pat::Str("///"), Pat::Str(""))
@@ -391,8 +391,8 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
 fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
     match ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
-        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
-        TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
+        TyKind::Ptr(ty, ..) => (Pat::Str("*"), ty_search_pat(ty).1),
+        TyKind::Ref(_, ty, ..) => (Pat::Str("&"), ty_search_pat(ty).1),
         TyKind::FnPtr(fn_ptr) => (
             if fn_ptr.safety.is_unsafe() {
                 Pat::Str("unsafe")
@@ -431,12 +431,12 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
 }
 
 fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
-    use ast::{Extern, FnRetTy, MutTy, Safety, TraitObjectSyntax, TyKind};
+    use ast::{Extern, FnRetTy, Safety, TraitObjectSyntax, TyKind};
 
     match &ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
-        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
-        TyKind::Ref(_, MutTy { ty, .. }) | TyKind::PinnedRef(_, MutTy { ty, .. }) => {
+        TyKind::Ptr(ty, ..) => (Pat::Str("*"), ast_ty_search_pat(ty).1),
+        TyKind::Ref(_, ty, ..) | TyKind::PinnedRef(_, ty, ..) => {
             (Pat::Str("&"), ast_ty_search_pat(ty).1)
         },
         TyKind::FnPtr(fn_ptr) => (
@@ -539,7 +539,7 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         | TyKind::Pat(..)
         | TyKind::FieldOf(..)
         | TyKind::View(..)
-        | TyKind::DirectConstArg(..)
+        | TyKind::GcaMacro(..)
 
         // unused
         | TyKind::CVarArgs

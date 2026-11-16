@@ -29,7 +29,7 @@ fn instant_monotonic() {
 }
 
 #[test]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 fn instant_monotonic_concurrent() -> std::thread::Result<()> {
     let threads: Vec<_> = (0..8)
         .map(|_| {

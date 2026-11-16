@@ -59,7 +59,7 @@ solver.
 `rustc_next_trait_solver` is intended to depend only on the abstract interfaces defined in
 `rustc_type_ir`.
 To support this, the type-system traits in `rustc_type_ir` must expose every interface the solver
-requires—for example, [creating a new inference type variable][ir new_infer] 
+requires—for example, [creating a new inference type variable][ir new_infer]
 ([rustc][rustc new_infer], [rust-analyzer][r-a new_infer]).
 For items that do not need compiler-specific representations, `rustc_type_ir` defines them directly
 as structs or enums parameterized over these traits—for example, [`TraitRef`][ir tr].
@@ -77,7 +77,8 @@ Among its essential responsibilities:
   instantiates the shared IR,
 - it provides the context required by the solver (e.g., querying [lang items][ir require_lang_item],
   enumerating [all blanket impls for a trait][ir for_each_blanket_impl]);
-- and it must implement [`IrPrint`][ir irprint] for formatting and tracing.  
+- and it must implement [`IrPrint`][ir irprint] for formatting and tracing.
+
   In practice, these `IrPrint` impls simply route to existing formatting logic inside rustc or
   rust-analyzer.
 
@@ -91,7 +92,8 @@ rather than rustc queries.
 
 Another notable item in `rustc_type_ir` is the [`inherent` module][ir inherent].
 This module provides *forward definitions* of inherent methods—expressed as traits—corresponding to
-methods that exist on compiler-specific types such as `Ty` or `GenericArg`.  
+methods that exist on compiler-specific types such as `Ty` or `GenericArg`.
+
 These definitions allow the generic crates (such as `rustc_next_trait_solver`) to call methods that
 are implemented differently in rustc and rust-analyzer.
 
@@ -151,9 +153,9 @@ This infrastructure is used by the external fuzzing project:
 - [`trait Lift` and `Lift_Generic`][lift-trait-macro]
 - [`trait GenericTypeVisitable`][generictypevisitable]
 
-These traits are used heavily in `rustc_type_ir`, their associated macros 
-primarily exist to reduce the amount of boilerplate otherwise required to
-implement `Lift`, `TypeFoldable`, `TypeVisitable` and `GenericTypeVisitable`.
+These traits are used heavily in `rustc_type_ir`, their associated macros
+primarily exist to reduce the amount of boilerplate otherwise required to implement `Lift`,
+`TypeFoldable`, `TypeVisitable` and `GenericTypeVisitable`.
 
 ### `trait TypeVisitable` and `TypeVisitable_Generic`
 [type-visitable-trait-macro]: #type-visitable-trait-macro
@@ -163,8 +165,7 @@ which in turn will transfer control to `TypeVisitor`, this can be
 [seen in detail here][rustc_typevisitable].
 
 While ostensibly similar due to their names, `TypeVisitable_Generic` and
-[`GenericTypeVisitable`][generictypevisitable] they implement two different
-visiting systems.
+[`GenericTypeVisitable`][generictypevisitable] they implement two different visiting systems.
 
 - `TypeVisitable_Generic` means: derive the ordinary `TypeVisitable` trait
   generically over an `Interner`.
@@ -175,50 +176,49 @@ visiting systems.
 [typevisitable_generic]: #typevisitable_generic
 
 It visits the value's fields in declaration order, delegating each field to that
-field's own `TypeVisitable<I>` implementation. The traversal can stop early if
-the visitor returns a residual result.
+field's own `TypeVisitable<I>` implementation.
+The traversal can stop early if the visitor returns a residual result.
 
 Use `#[type_visitable(ignore)]` to ignore a field; it will not be part of the
-traversal and will not need to implement `TypeVisitable<I>`. This should only
-be used when the field does not need to be traversed.
+traversal and will not need to implement `TypeVisitable<I>`.
+This should only be used when the field does not need to be traversed.
 
 ### `trait TypeFoldable` and `TypeFoldable_Generic`
 [type-foldable-trait-macro]: #type-foldable-trait-macro
 
-The trait is implemented by things that need to embed types. This concept is
-discussed in detail [here](../ty-fold.md) and can be
+The trait is implemented by things that need to embed types.
+This concept is discussed in detail [here](../ty-fold.md) and can be
 [followed in the source][rustc_typefoldable].
 
-`TypeFoldable_Generic` derives `rustc_type_ir::TypeFoldable<I>` for a struct or
-enum.
+`TypeFoldable_Generic` derives `rustc_type_ir::TypeFoldable<I>` for a struct or enum.
 
-It consumes a value and reconstructs the same struct or enum variant after
-folding its fields. It generates both fallible and infallible folding methods.
+It consumes a value and reconstructs the same struct or enum variant after folding its fields.
+It generates both fallible and infallible folding methods.
 
-Use `#[type_foldable(identity)]` for a field whose value must be preserved
-unchanged. The macro moves that field directly into the reconstructed value
-instead of passing it to the folder. Its type therefore does not need to
-implement `TypeFoldable<I>`.
+Use `#[type_foldable(identity)]` for a field whose value must be preserved unchanged.
+The macro moves that field directly into the reconstructed value
+instead of passing it to the folder.
+Its type therefore does not need to implement `TypeFoldable<I>`.
 
 For an enum, the generated match contains one reconstruction arm per variant.
 
 ### `trait Lift` and `Lift_Generic`
 [lift-trait-macro]: #lift-trait-macro
 
-The trait has a method `lift_to_interner(...)`. As the name suggests, it should
-'lift' something to the interner. [See here](../memory.md) to read more about
-the interner [and here for the source][rustc_lift].
+The trait has a method `lift_to_interner(...)`.
+As the name suggests, it should 'lift' something to the interner.
+[See here](../memory.md) to read more about the interner [and here for the source][rustc_lift].
 
-The macro `Lift_Generic` derives `Lift` for a struct or enum, with three
-non-obvious considerations:
+The macro `Lift_Generic` derives `Lift` for a struct or enum, with three non-obvious considerations:
 
 1. The generic parameters `I` and `J` are reserved for `I: Interner` and `J`
    being the interner it is being lifted to.
-2. `PhantomData` is handled automatically, creating a new `PhantomData`. But it
-   _has_ to be used in the fully unqualified form -- you cannot use
+2. `PhantomData` is handled automatically, creating a new `PhantomData`.
+   But it _has_ to be used in the fully unqualified form -- you cannot use
    `std::marker::PhantomData` directly in the field.
 3. The bounds are deliberately written as associated type bounds on the `Interner`
-   trait rather than as `where` clauses on `LiftInto`. Given only `I: LiftInto<J>`,
+   trait rather than as `where` clauses on `LiftInto`.
+   Given only `I: LiftInto<J>`,
    Rust can then treat bounds such as the following as implied:
 
 ```rust
@@ -228,15 +228,14 @@ I::Const: Lift<J, Lifted = J::Const>
 
 This allows `Lift_Generic` to emit the bound `I: LiftInto<J>` while still
 calling `lift_to_interner` on fields of type `I::Ty`, `I::Const`, and the other
-declared associated types. It also guarantees that each call produces the
-destination field type expected after the derive rewrites `I::Assoc` to
-`J::Assoc`.
+declared associated types.
+It also guarantees that each call produces the
+destination field type expected after the derive rewrites `I::Assoc` to `J::Assoc`.
 
 Without `declare_lift_into!`, the derive would need to generate a separate bound
-for every interner-associated type used by every field. If a new `Interner`
-associated type is expected to work with `Lift_Generic`, it needs an appropriate
-`Lift` implementation and normally needs to be included in the
-`declare_lift_into!` invocation.
+for every interner-associated type used by every field.
+If a new `Interner` associated type is expected to work with `Lift_Generic`, it needs an appropriate
+`Lift` implementation and normally needs to be included in the `declare_lift_into!` invocation.
 
 If you want to ignore a field, such as a primitive like a `u32` which can't be
 lifted you can skip the field with `#[lift(ignore)]`.
@@ -245,28 +244,28 @@ lifted you can skip the field with `#[lift(ignore)]`.
 [generictypevisitable]: #generictypevisitable
 
 This a separate more general traversal trait purely used by `rust-analyzer`.
-The visitor type is a parameter of the trait rather than a parameter of the
-method, and visiting neither returns a result nor supports short-circuiting.
+The visitor type is a parameter of the trait rather than a parameter of the method,
+and visiting neither returns a result nor supports short-circuiting.
 
-As such a struct or enum can derive both `TypeVisitable_Generic` and
-`GenericTypeVisitable`
+As such a struct or enum can derive both `TypeVisitable_Generic` and `GenericTypeVisitable`
 
-There is intentionally no ignore attribute. The traversal must visit every
-field. This is a soundness requirement for rust-analyzer's use of the traversal
+There is intentionally no ignore attribute.
+The traversal must visit every field.
+This is a soundness requirement for rust-analyzer's use of the traversal
 when tracing and garbage-collecting interned types.
 
 ## Long-term plans for supporting rust-analyzer
 
 In general, we aim to support rust-analyzer just as well as rustc in these shared crates—provided
-doing so does not substantially harm rustc's performance or maintainability. 
+doing so does not substantially harm rustc's performance or maintainability.
 (e.g., [#145377][pr 145377], [#146111][pr 146111], [#146182][pr 146182] and [#147723][pr 147723])
 
 Shared crates that require nightly-only features must guard such code behind a `nightly` feature
 flag, since rust-analyzer is built with the stable toolchain.
 
 Looking forward, we plan to uplift more shared logic into `rustc_type_ir`.
-There are still duplicated implementations between rustc and rust-analyzer—such as `ObligationCtxt` 
-([rustc][rustc oblctxt], [rust-analyzer][r-a oblctxt]) and type coercion logic 
+There are still duplicated implementations between rustc and rust-analyzer—such as `ObligationCtxt`
+([rustc][rustc oblctxt], [rust-analyzer][r-a oblctxt]) and type coercion logic
 ([rustc][rustc coerce], [rust-analyzer][r-a coerce])—that we would like to unify over time.
 
 [rustc-auto-publish]: https://github.com/rust-analyzer/rustc-auto-publish
@@ -303,5 +302,5 @@ There are still duplicated implementations between rustc and rust-analyzer—suc
 [rustc coerce]: https://github.com/rust-lang/rust/blob/63b1db05801271e400954e41b8600a3cf1482363/compiler/rustc_hir_typeck/src/coercion.rs
 [r-a coerce]: https://github.com/rust-lang/rust-analyzer/blob/34f47d9298c478c12c6c4c0348771d1b05706e09/crates/hir-ty/src/infer/coerce.rs
 [rustc_lift]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/lift.rs#L18
-[rustc_typevisitable]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/visit.rs#L62 
+[rustc_typevisitable]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/visit.rs#L62
 [rustc_typefoldable]: https://github.com/rust-lang/rust/blob/0913b18e489ac1011b580e31fa5559654be12bfc/compiler/rustc_type_ir/src/fold.rs#L71

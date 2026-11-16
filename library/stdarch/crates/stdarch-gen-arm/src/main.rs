@@ -14,19 +14,51 @@ mod typekinds;
 mod wildcards;
 mod wildstring;
 
+use clap::Parser;
 use intrinsic::Test;
 use itertools::Itertools;
 use quote::quote;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use stdarch_gen_common::{Mode, run_generator};
+use stdarch_gen_common::{GeneratorCtx, Mode, run_generator};
 use walkdir::WalkDir;
 
+#[derive(clap::Parser)]
+struct Args {
+    /// Directory with spec files: <input-dir>/<feature>/<arch>.spec.yml
+    input_dir: PathBuf,
+    /// Output directory to generate the files into, such as crates/core_arch/src
+    output_dir: Option<PathBuf>,
+    /// Generation mode.
+    #[arg(long, env = "STDARCH_GEN_MODE")]
+    mode: Option<Mode>,
+    /// Path to a rustfmt binary that will be used to reformat the generated code.
+    /// If unset, it will just use "rustfmt" from the environment.
+    #[arg(long)]
+    rustfmt_path: Option<PathBuf>,
+}
+
 fn main() -> Result<(), String> {
-    let (in_path, out_base) = parse_args();
-    let mode = Mode::from_env();
+    let args = Args::parse();
+
+    let in_path = args.input_dir;
+    let out_base = args.output_dir.unwrap_or_else(|| {
+        std::env::current_exe()
+            .ok()
+            .map(|mut f| {
+                f.pop();
+                f.push("../../crates/core_arch/src/");
+                f
+            })
+            .filter(|f| f.exists())
+            .expect("could not locate crates/core_arch/src; pass OUTPUT_DIR command-line argument explicitly")
+    });
+    assert!(in_path.exists());
+    assert!(out_base.exists());
+
+    let mode = args.mode.unwrap_or_default();
+    let ctx = GeneratorCtx::new(args.rustfmt_path);
 
     for filepath in WalkDir::new(&in_path)
         .into_iter()
@@ -42,7 +74,7 @@ fn main() -> Result<(), String> {
             .expect("generated output path must have a parent directory")
             .to_path_buf();
 
-        run_generator(&committed, mode, |scratch: &Path| {
+        run_generator(&ctx, &committed, mode, |scratch: &Path| {
             generate_spec(&filepath, scratch)
         })
         .map_err(|e| e.to_string())?;
@@ -92,7 +124,7 @@ fn generate_spec(filepath: &Path, out_dir: &Path) -> Result<(), String> {
             .expect("load/store test path must have a file name")
             .to_owned();
         let tests_path = out_dir.join(tests_name);
-        load_store_tests::generate_load_store_tests(loads, stores, Some(&tests_path))?;
+        load_store_tests::generate_load_store_tests(loads, stores, &tests_path)?;
     }
 
     let generated = input::GeneratorInput {
@@ -103,44 +135,6 @@ fn generate_spec(filepath: &Path, out_dir: &Path) -> Result<(), String> {
         .map_err(|e| format!("could not create output file: {e}"))?;
     generate_file(generated, Box::new(out_file) as Box<dyn Write>)
         .map_err(|e| format!("could not generate output file: {e}"))
-}
-
-fn parse_args() -> (PathBuf, PathBuf) {
-    let mut args_it = std::env::args().skip(1);
-    assert!(
-        1 <= args_it.len() && args_it.len() <= 2,
-        "Usage: cargo run -p stdarch-gen-arm -- INPUT_DIR [OUTPUT_DIR]\n\
-        where:\n\
-        - INPUT_DIR contains a tree like: INPUT_DIR/<feature>/<arch>.spec.yml\n\
-        - OUTPUT_DIR is a directory like: crates/core_arch/src/"
-    );
-
-    let in_path = Path::new(args_it.next().unwrap().as_str()).to_path_buf();
-    assert!(
-        in_path.exists() && in_path.is_dir(),
-        "invalid path {in_path:#?} given"
-    );
-
-    let out_base = if let Some(dir) = args_it.next() {
-        let out_path = Path::new(dir.as_str()).to_path_buf();
-        assert!(
-            out_path.exists() && out_path.is_dir(),
-            "invalid path {out_path:#?} given"
-        );
-        out_path
-    } else {
-        std::env::current_exe()
-            .ok()
-            .map(|mut f| {
-                f.pop();
-                f.push("../../crates/core_arch/src/");
-                f
-            })
-            .filter(|f| f.exists())
-            .expect("could not locate crates/core_arch/src; pass OUTPUT_DIR command-line argument explicitly")
-    };
-
-    (in_path, out_base)
 }
 
 fn generate_file(
@@ -171,23 +165,8 @@ use super::*;{uses_neon}
         },
     )?;
     let intrinsics = generated_input.intrinsics;
-    format_code(out, quote! { #(#intrinsics)* })?;
+    write!(out, "{}", quote! { #(#intrinsics)* })?;
     Ok(())
-}
-
-pub fn format_code(
-    mut output: impl std::io::Write,
-    input: impl std::fmt::Display,
-) -> std::io::Result<()> {
-    let proc = Command::new("rustfmt")
-        // Ensure that we generate the same file contents on both Linux and Windows.
-        .arg("--config")
-        .arg("newline_style=Unix")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
-    write!(proc.stdin.as_ref().unwrap(), "{input}")?;
-    output.write_all(proc.wait_with_output()?.stdout.as_slice())
 }
 
 /// Derive an output file path from an input file path and an output directory.

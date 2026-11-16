@@ -1,8 +1,8 @@
 note: now tracking allocation ALLOC of 123 bytes (alignment ALIGN bytes)
   --> tests/pass/alloc-access-tracking.rs:LL:CC
    |
-LL |         utils::miri_track_alloc(ptr);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
+LL |         utils::miri_track_alloc(ptr as *mut ());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ tracking was triggered here
 
 note: write access at ALLOC[0x0..0x1]
   --> tests/pass/alloc-access-tracking.rs:LL:CC

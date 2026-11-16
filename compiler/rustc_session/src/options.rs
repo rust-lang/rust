@@ -67,9 +67,11 @@ macro_rules! hash_substruct {
 /// Target modifier enum value + user value ('2') from external crate
 /// is converted into description: prefix ('Z'), name ('regparm'), tech value ('Some(2)').
 pub struct ExtendedTargetModifierInfo {
-    /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags)
+    /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags). And empty string
+    /// indicates a synthetic target modifier, which does not correspond directly to a flag.
     pub prefix: String,
-    /// Flag name
+    /// Flag name. For synthetic features, this is still relevant as the name used to suppress
+    /// the error for mismatches involving this target modifier.
     pub name: String,
     /// Flag parsed technical value
     pub tech_value: String,
@@ -136,6 +138,21 @@ mod target_modifier_consistency_check {
         }
         true
     }
+    pub(super) fn sanitizer_cfi_minimal_runtime(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        // For CFI, the helper flag -Zsanitizer-cfi-minimal-runtime should also be a target modifier
+        if sess.sanitizers().contains(SanitizerSet::CFI) {
+            if let Some(r) = r {
+                return l.extend().tech_value == r.extend().tech_value;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
     pub(super) fn target_cpu(
         sess: &Session,
         l: &TargetModifier,
@@ -158,6 +175,25 @@ mod target_modifier_consistency_check {
         };
         l_tech_value == r_tech_value
     }
+    pub(super) fn codegen_backend_name(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        let l_val = l.value_name.as_str();
+        let r_val = match r {
+            Some(r) => r.value_name.as_str(),
+            None => option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("dummy"),
+        };
+        if l_val == r_val {
+            // Same codegen backend: all good.
+            // (We assume codegen backends with the same name are compatible wrt target features.)
+            return true;
+        }
+        // If the codegen backends differ, there must be no LLVM target features. (Those are
+        // themselves a target modifier so we know they are consistent across the crate graph.)
+        sess.opts.unstable_opts.llvm_target_feature.is_empty()
+    }
 }
 
 impl TargetModifier {
@@ -178,6 +214,11 @@ impl TargetModifier {
                         sess, self, other,
                     );
                 }
+                UnstableOptionsTargetModifiers::SanitizerCfiMinimalRuntime => {
+                    return target_modifier_consistency_check::sanitizer_cfi_minimal_runtime(
+                        sess, self, other,
+                    );
+                }
                 _ => {}
             },
             OptionsTargetModifiers::CodegenOptions(codegen) => match codegen {
@@ -185,6 +226,10 @@ impl TargetModifier {
                     return target_modifier_consistency_check::target_cpu(sess, self, other);
                 }
             },
+            OptionsTargetModifiers::CodegenBackendName => {
+                return target_modifier_consistency_check::codegen_backend_name(sess, self, other);
+            }
+            _ => {}
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -223,6 +268,14 @@ macro_rules! top_level_options {
                     $tmod_variant($tmod_enum),
                 )?
             )*
+
+            // Synthetic target modifiers, manually computed.
+
+            /// List of target features that are actually target modifiers.
+            TargetFeatures,
+            /// Name of the codegen backend.
+            /// (Not the full path to the .so file to avoid storing file system paths.)
+            CodegenBackendName,
         }
 
         impl OptionsTargetModifiers {
@@ -233,11 +286,30 @@ macro_rules! top_level_options {
                             Self::$tmod_variant(v) => v.reparse(user_value),
                         )?
                     )*
+
+                    // Synthetic target modifiers.
+                    Self::TargetFeatures => {
+                        ExtendedTargetModifierInfo {
+                            prefix: String::new(),
+                            name: "target-feature".into(),
+                            tech_value: format!("{:?}", user_value),
+                        }
+                    }
+                    Self::CodegenBackendName => {
+                        ExtendedTargetModifierInfo {
+                            prefix: String::new(),
+                            name: "codegen-backend-name".into(),
+                            tech_value: format!("{:?}", user_value),
+                        }
+                    }
+
                     #[allow(unreachable_patterns)]
                     _ => panic!("unknown target modifier option: {self:?}"),
                 }
             }
 
+            /// Used by `-Cunsafe-allow-abi-mismatch` to determine whether this is a valid thing to
+            /// allow.
             pub fn is_target_modifier(flag_name: &str) -> bool {
                 $(
                     $(
@@ -246,6 +318,12 @@ macro_rules! top_level_options {
                         }
                     )?
                 )*
+
+                // Synthetic target modifiers. The names must match `reparse` above.
+                if flag_name == "target-feature" || flag_name == "codegen-backend-name" {
+                    return true;
+                }
+
                 false
             }
         }
@@ -257,6 +335,8 @@ macro_rules! top_level_options {
                 $(#[$attr])*
                 pub $opt: $t,
             )*
+            /// Store values for target modifiers. `gather_target_modifiers` takes those values
+            /// to decide what to store in metadata.
             pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
             pub mitigation_coverage_map: mitigation_coverage::MitigationCoverageMap,
         }
@@ -295,6 +375,7 @@ macro_rules! top_level_options {
 
             pub fn gather_target_modifiers(&self) -> Vec<TargetModifier> {
                 let mut mods = Vec::<TargetModifier>::new();
+                // Forward values from `self.target_modifiers` into `mods`.
                 $(
                     $(
                         // Only expand for flags that have `TARGET_MODIFIER`.
@@ -302,6 +383,8 @@ macro_rules! top_level_options {
                         self.$opt.gather_target_modifiers(&mut mods, &self.target_modifiers);
                     )?
                 )*
+                tmod_push_impl(OptionsTargetModifiers::TargetFeatures, &self.target_modifiers, &mut mods);
+                tmod_push_impl(OptionsTargetModifiers::CodegenBackendName, &self.target_modifiers, &mut mods);
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
@@ -438,6 +521,7 @@ top_level_options!(
         color: ColorConfig [UNTRACKED],
         verbose: bool [TRACKED_NO_CRATE_HASH],
         jobs: Jobs [UNTRACKED],
+        recommended_stack_size: usize [UNTRACKED],
     }
 );
 
@@ -856,7 +940,7 @@ mod desc {
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
-        "either `globally` (when used without an argument), `coherence` (default) or `no`";
+        "either `globally` (when used without an argument), or `coherence` (default)";
     pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
@@ -883,6 +967,7 @@ mod desc {
     pub(crate) const parse_target_feature: &str = parse_string;
     pub(crate) const parse_terminal_url: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `auto`";
+    pub(crate) const parse_llvm_tpde: &str = "either no value or one of: `try` (default), `only`";
     pub(crate) const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub(crate) const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
@@ -896,8 +981,7 @@ mod desc {
         "either no value or one of `legacy` (the default), `off`, or `next`";
     pub(crate) const parse_annotate_moves: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
-    pub(crate) const parse_stack_protector: &str =
-        "one of (`none` (default), `basic`, `strong`, or `all`)";
+    pub(crate) const parse_stack_protector: &str = "one of (`none` (default), `strong`, or `all`)";
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
@@ -1774,13 +1858,12 @@ pub mod parse {
     pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
         if let Some(config) = v {
             *slot = match config {
-                "no" => NextSolverConfig { coherence: false, globally: false },
-                "coherence" => NextSolverConfig { coherence: true, globally: false },
-                "globally" => NextSolverConfig { coherence: true, globally: true },
+                "no" | "coherence" => NextSolverConfig::Coherence,
+                "globally" => NextSolverConfig::Globally,
                 _ => return false,
             };
         } else {
-            *slot = NextSolverConfig { coherence: true, globally: true };
+            *slot = NextSolverConfig::Globally;
         }
 
         true
@@ -1876,6 +1959,15 @@ pub mod parse {
             Some("on" | "" | "yes" | "y") | None => TerminalUrl::Yes,
             Some("off" | "no" | "n") => TerminalUrl::No,
             Some("auto") => TerminalUrl::Auto,
+            _ => return false,
+        };
+        true
+    }
+
+    pub(crate) fn parse_llvm_tpde(slot: &mut Option<LlvmTpde>, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("try") | None => Some(LlvmTpde::Try),
+            Some("only") => Some(LlvmTpde::Only),
             _ => return false,
         };
         true
@@ -2231,6 +2323,8 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "embed metadata in rlibs and dylibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
@@ -2381,6 +2475,8 @@ options! {
     assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
         "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`); \
          implies `-Znext-solver=globally`"),
+    async_panic: bool = (true, parse_bool, [TRACKED],
+        "let async blocks and functions panic when polled after completion"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:
@@ -2494,7 +2590,8 @@ options! {
         them only if an error has not been emitted"),
     ehcont_guard: bool = (false, parse_bool, [TRACKED],
         "generate Windows EHCont Guard tables"),
-    embed_metadata: bool = (true, parse_bool, [TRACKED],
+    // FIXME(kobzol): remove in 2027
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "embed metadata in rlibs and dylibs (default: yes)"),
     embed_source: bool = (false, parse_bool, [TRACKED],
         "embed source text in DWARF debug sections (default: no)"),
@@ -2643,11 +2740,15 @@ options! {
     maximal_hir_to_mir_coverage: bool = (false, parse_bool, [TRACKED],
         "save as much information as possible about the correspondence between MIR and HIR \
         as source scopes (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::merge_functions` instead of this field")]
     merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
         "control the operation of the MergeFunctions LLVM pass, taking \
         the same values as the target option of the same name"),
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather metadata statistics (default: no)"),
+    metadata_crate_hash: bool = (true, parse_bool, [TRACKED],
+        "compute the crate hash (SVH) from the encoded crate metadata; set to `no` to \
+         revert to computing it from the HIR (default: yes)"),
     metrics_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "the directory metrics emitted by rustc are dumped into (implicitly enables default set of metrics)"),
     min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
@@ -2662,6 +2763,8 @@ options! {
     mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
+    mir_move_elimination: bool = (false, parse_bool, [TRACKED],
+        "enable the experimental MIR semantics for the move elimination optimization (default: no)"),
     mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "limit the number of MIR optimization pass executions (global across all bodies). \
         Pass executions after this limit are skipped and reported. (default: no limit)"),
@@ -2679,6 +2782,9 @@ options! {
         "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
+    next_solver_overflow_fcw_limit: Option<usize> = (None, parse_opt_number, [TRACKED_NO_CRATE_HASH],
+        "set the depth limit for displaying the overflow FCW chain \
+        (final limit = min(this, recursion_limit_from_crate * 2))"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
     nll_facts_dir: String = ("nll-facts".to_string(), parse_string, [UNTRACKED],
@@ -2797,7 +2903,7 @@ options! {
         \"C\", \"cdecl\", and \"stdcall\" fn.\
         It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "whether ELF relocations can be relaxed"),
+        "whether ELF relocations can be relaxed (x86 only)"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
@@ -2825,6 +2931,8 @@ written to standard error output)"),
         "enable CFI diagnostics (default: no)"),
     sanitizer_cfi_recover: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable CFI recovery (default: no)"),
+    sanitizer_cfi_minimal_runtime: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: SanitizerCfiMinimalRuntime },
+        "enable minimal UBSan runtime for CFI (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2918,6 +3026,7 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
+    llvm_tpde: Option<LlvmTpde> = (None, parse_llvm_tpde, [TRACKED], "enable the experimental TPDE-LLVM codegen backend for debug builds"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
@@ -2933,9 +3042,6 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
-    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_post_typeck` instead of this field")]
-    typing_mode_post_typeck_until_borrowck: bool = (false, parse_bool, [TRACKED],
-        "enable `TypingMode::PostTypeckUntilBorrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),

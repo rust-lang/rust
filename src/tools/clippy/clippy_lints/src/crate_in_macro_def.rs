@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `crate` refers to the macro call's crate, whereas `$crate` refers to the macro definition's
     /// crate. Rarely is the former intended. See:
-    /// https://doc.rust-lang.org/reference/macros-by-example.html#hygiene
+    /// <https://doc.rust-lang.org/reference/macros-by-example.html#hygiene>
     ///
     /// ### Example
     /// ```no_run

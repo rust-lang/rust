@@ -1,5 +1,6 @@
 //@no-rustfix
 #![warn(clippy::implicit_saturating_sub)]
+#![expect(arithmetic_overflow)]
 
 fn main() {
     let a = 12u32;

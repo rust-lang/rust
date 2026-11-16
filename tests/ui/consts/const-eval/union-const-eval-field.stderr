@@ -1,6 +1,7 @@
 error[E0080]: reading memory at ALLOC$ID[0x0..0x8], but memory is uninitialized at [0x4..0x8], and this operation requires initialized memory
   --> $DIR/union-const-eval-field.rs:30:37
    |
+LL | const fn read_field3() -> Field3 {
 LL |     const FIELD3: Field3 = unsafe { UNION.field3 };
    |                                     ^^^^^^^^^^^^ evaluation of `read_field3::FIELD3` failed here
    |

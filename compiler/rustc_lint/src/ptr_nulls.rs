@@ -1,5 +1,6 @@
 use rustc_ast::LitKind;
-use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind, find_attr};
+use rustc_attr_ir::find_attr;
+use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::RawPtr;
 use rustc_span::{Span, sym};
@@ -61,7 +62,7 @@ declare_lint_pass!(PtrNullChecks => [USELESS_PTR_NULL_CHECKS, INVALID_NULL_ARGUM
 /// This function checks if the expression is from a series of consecutive casts,
 /// i.e. `(my_fn as *const _ as *mut _).cast_mut()` and whether the original expression is either
 /// a fn ptr, a reference, or a function call whose definition is
-/// annotated with `#![rustc_never_returns_null_ptr]`.
+/// annotated with `#[lint::never_returns_null_ptr]`.
 /// If this situation is present, the function returns the appropriate diagnostic.
 fn useless_check<'a, 'tcx: 'a>(
     cx: &'a LateContext<'tcx>,
@@ -72,20 +73,20 @@ fn useless_check<'a, 'tcx: 'a>(
         e = e.peel_blocks();
         if let ExprKind::MethodCall(_, _expr, [], _) = e.kind
             && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPtr)
+            && find_attr!(cx.tcx, def_id, LintNeverReturnsNullPtr)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         } else if let ExprKind::Call(path, _args) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && find_attr!(cx.tcx, def_id, RustcNeverReturnsNullPtr)
+            && find_attr!(cx.tcx, def_id, LintNeverReturnsNullPtr)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
             return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         }
         e = if let ExprKind::Cast(expr, t) = e.kind
-            && let TyKind::Ptr(_) = t.kind
+            && let TyKind::Ptr(..) = t.kind
         {
             had_at_least_one_cast = true;
             expr

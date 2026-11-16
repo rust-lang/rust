@@ -2,6 +2,7 @@
 //! selection in a code path that succeeds.
 
 //@ revisions: next old
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 fn is_trait<T: Trait<U>, U: Default>(_: T) -> U {

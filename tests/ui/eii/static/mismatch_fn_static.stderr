@@ -1,5 +1,5 @@
 error: `#[hello]` must be used on a function
-  --> $DIR/mismatch_fn_static.rs:10:1
+  --> $DIR/mismatch_fn_static.rs:9:1
    |
 LL | #[hello]
    | ^^^^^^^^

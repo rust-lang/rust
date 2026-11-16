@@ -1,4 +1,4 @@
-// rustfmt-condense_wildcard_suffixes: true
+//@ rustfmt-condense_wildcard_suffixes: true
 fn main() {
     match (1, 2, 3) {
         (..) => (),

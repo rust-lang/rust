@@ -9,6 +9,7 @@ LL |     foo.method(42f32);
 note: method defined here
   --> $DIR/splat-overload-at-home-fail.rs:26:8
    |
+LL | impl Foo {
 LL |     fn method<T: MethodArgs>(&self, #[rustc_splat] args: T) {
    |        ^^^^^^                       ----------------------
 help: change the type of the numeric literal from `f32` to `i32`
@@ -28,6 +29,7 @@ LL |     foo.method(42i32, 42i32);
 note: method defined here
   --> $DIR/splat-overload-at-home-fail.rs:26:8
    |
+LL | impl Foo {
 LL |     fn method<T: MethodArgs>(&self, #[rustc_splat] args: T) {
    |        ^^^^^^
 help: try using a conversion method

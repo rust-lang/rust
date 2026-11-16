@@ -24,6 +24,8 @@ LL | |     }
 error: adding items after statements is confusing, since items exist from the start of the scope
   --> tests/ui/items_after_statement.rs:37:13
    |
+LL |       macro_rules! b {
+...
 LL | /             fn say_something() {
 LL | |
 LL | |                 println!("something");
@@ -32,8 +34,6 @@ LL | |             }
 ...
 LL |       b!();
    |       ---- in this macro invocation
-   |
-   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

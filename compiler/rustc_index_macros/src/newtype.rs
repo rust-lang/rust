@@ -24,6 +24,7 @@ impl Parse for Newtype {
         let mut encodable = false;
         let mut ord = false;
         let mut stable_hash = false;
+        let mut default = false;
         let mut gate_rustc_only = quote! {};
         let mut gate_rustc_only_cfg = quote! { all() };
 
@@ -44,6 +45,10 @@ impl Parse for Newtype {
                 }
                 "stable_hash" => {
                     stable_hash = true;
+                    false
+                }
+                "default" => {
+                    default = true;
                     false
                 }
                 "max" => {
@@ -178,6 +183,19 @@ impl Parse for Newtype {
                         hasher: &mut ::rustc_data_structures::stable_hash::StableHasher
                     ) {
                         self.as_u32().stable_hash(hcx, hasher)
+                    }
+                }
+            }
+        } else {
+            quote! {}
+        };
+
+        let default_impl = if default {
+            quote! {
+                impl std::default::Default for #name {
+                    #[inline]
+                    fn default() -> Self {
+                        Self::ZERO
                     }
                 }
             }
@@ -322,6 +340,8 @@ impl Parse for Newtype {
             #step
 
             #stable_hash_impl
+
+            #default_impl
 
             impl From<#name> for u32 {
                 #[inline]

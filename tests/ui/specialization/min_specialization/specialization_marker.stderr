@@ -1,12 +1,14 @@
 error[E0714]: marker traits cannot have associated items
   --> $DIR/specialization_marker.rs:7:5
    |
+LL | trait SpecMarker {
 LL |     fn f();
    |     ^^^^^^^
 
 error[E0714]: marker traits cannot have associated items
   --> $DIR/specialization_marker.rs:13:5
    |
+LL | trait SpecMarker2 {
 LL |     type X;
    |     ^^^^^^
 

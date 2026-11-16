@@ -1,4 +1,4 @@
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext};
 use rustc_middle::mir::*;
@@ -69,8 +69,12 @@ fn insert_null_check<'tcx>(
         // Other usages of null pointers only are UB if the pointee is not a ZST.
         _ => {
             let size_of = tcx.require_lang_item(LangItem::SizeOf, source_info.span);
-            let size_of =
-                Operand::unevaluated_constant(tcx, size_of, &[pointee_ty.into()], source_info.span);
+            let size_of = Operand::unevaluated_constant(
+                tcx,
+                size_of,
+                tcx.mk_args(&[pointee_ty.into()]),
+                source_info.span,
+            );
 
             let pointee_should_be_checked =
                 local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();

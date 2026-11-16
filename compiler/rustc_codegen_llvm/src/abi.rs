@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{assert_matches, cmp};
 
 use libc::c_uint;
 use rustc_abi::{
@@ -6,6 +6,7 @@ use rustc_abi::{
     RegKind, Size, X86Call,
 };
 use rustc_codegen_ssa::MemFlags;
+use rustc_codegen_ssa::common::RealPredicate;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
@@ -15,7 +16,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::{Session, config};
 use rustc_span::bug;
 use rustc_target::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, IndirectMode, PassMode,
 };
 use rustc_target::spec::{Arch, SanitizerSet};
 use smallvec::SmallVec;
@@ -27,12 +28,17 @@ use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 
 trait ArgAttributesExt {
-    fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
-    fn apply_attrs_to_callsite(
+    fn apply_attrs_to_llfn<'ll>(
         &self,
         idx: AttributePlace,
-        cx: &CodegenCx<'_, '_>,
-        callsite: &Value,
+        cx: &CodegenCx<'ll, '_>,
+        llfn: Value<'ll>,
+    );
+    fn apply_attrs_to_callsite<'ll>(
+        &self,
+        idx: AttributePlace,
+        cx: &CodegenCx<'ll, '_>,
+        callsite: Value<'ll>,
     );
 }
 
@@ -80,9 +86,11 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
     // Only apply remaining attributes when optimizing
     if cx.sess().opts.optimize != config::OptLevel::No {
         let deref = this.pointee_size.bytes();
-        // dereferenceable in LLVM currently implies nofree, so only emit dereferenceable if nofree
+        // Prior to <https://github.com/llvm/llvm-project/pull/204795> dereferenceable in LLVM
+        // implied nofree, so only emit dereferenceable on older versions of LLVM if nofree
         // is also set.
-        if deref != 0 && regular.contains(ArgAttribute::NoFree) {
+        let llvm_version = crate::llvm_util::get_version();
+        if deref != 0 && (llvm_version >= (23, 0, 0) || regular.contains(ArgAttribute::NoFree)) {
             if regular.contains(ArgAttribute::NonNull) {
                 attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
             } else {
@@ -114,16 +122,21 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
 }
 
 impl ArgAttributesExt for ArgAttributes {
-    fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value) {
+    fn apply_attrs_to_llfn<'ll>(
+        &self,
+        idx: AttributePlace,
+        cx: &CodegenCx<'ll, '_>,
+        llfn: Value<'ll>,
+    ) {
         let attrs = get_attrs(self, cx);
         attributes::apply_to_llfn(llfn, idx, &attrs);
     }
 
-    fn apply_attrs_to_callsite(
+    fn apply_attrs_to_callsite<'ll>(
         &self,
         idx: AttributePlace,
-        cx: &CodegenCx<'_, '_>,
-        callsite: &Value,
+        cx: &CodegenCx<'ll, '_>,
+        callsite: Value<'ll>,
     ) {
         let attrs = get_attrs(self, cx);
         attributes::apply_to_callsite(callsite, idx, &attrs);
@@ -131,20 +144,22 @@ impl ArgAttributesExt for ArgAttributes {
 }
 
 pub(crate) trait LlvmType {
-    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> Type<'ll>;
 }
 
 impl LlvmType for Reg {
-    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> Type<'ll> {
         match self.kind {
             RegKind::Integer => cx.type_ix(self.size.bits()),
             RegKind::Float => match self.size.bits() {
                 16 => cx.type_f16(),
                 32 => cx.type_f32(),
                 64 => cx.type_f64(),
+                80 => cx.type_x87_f80(),
                 128 => cx.type_f128(),
                 _ => bug!("unsupported float: {:?}", self),
             },
+            RegKind::PpcF128 => cx.type_ppcf128(),
             RegKind::Vector { hint_vector_elem } => {
                 // NOTE: it is valid to ignore the element type hint (and always pick i8).
                 // But providing a more accurate type means fewer casts in LLVM IR,
@@ -159,9 +174,12 @@ impl LlvmType for Reg {
                     },
                     Primitive::Float(float) => match float {
                         Float::F16 => cx.type_f16(),
+                        Float::F16B => cx.type_f16b(),
                         Float::F32 => cx.type_f32(),
                         Float::F64 => cx.type_f64(),
                         Float::F128 => cx.type_f128(),
+                        Float::PpcF128 => bug!("ppcf128 is not a valid vector element type"),
+                        Float::X87F80 => bug!("x87_f80 is not a valid vector element type"),
                     },
                     Primitive::Pointer(_) => cx.type_ptr(),
                 };
@@ -175,7 +193,10 @@ impl LlvmType for Reg {
 }
 
 impl LlvmType for CastTarget {
-    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> Type<'ll> {
+        if self.pass_via_x87_floating_point_stack {
+            return cx.type_x87_f80();
+        }
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
         let rest_count = if self.rest.total == Size::ZERO {
             0
@@ -192,15 +213,22 @@ impl LlvmType for CastTarget {
             self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes())
         };
 
-        // Simplify to a single unit or an array if there's no prefix.
-        // This produces the same layout, but using a simpler type.
+        // Simplify to an array if there is no prefix.
         if self.prefix.is_empty() {
-            // We can't do this if is_consecutive is set and the unit would get
-            // split on the target. Currently, this is only relevant for i128
-            // registers.
-            if rest_count == 1 && (!self.rest.is_consecutive || self.rest.unit != Reg::i128()) {
+            // Pass `[1 x unit]` as just `unit`.
+            //
+            // On little-endian targets this produces a compatible layout, but using a simpler type.
+            // But on big-endian targets (e.g. aarch64_be or powerpc64) the value may be passed in
+            // different halves of the register-sized slot, so unit and [1 x unit] are incompatible.
+            //
+            // Setting `is_consecutive` forces use of an array.
+            if rest_count == 1 && !self.rest.is_consecutive {
                 return rest_ll_unit;
             }
+
+            // The x87_f80 type has a store size of 10 bytes, but an allocation size of 12 or 16
+            // bytes. Ensure we don't cast to it, because that could have unintened behavior.
+            assert!(rest_ll_unit != cx.type_x87_f80());
 
             return cx.type_array(rest_ll_unit, rest_count);
         }
@@ -209,7 +237,15 @@ impl LlvmType for CastTarget {
         let prefix_args = self.prefix.iter().map(|reg| reg.llvm_type(cx));
         let rest_args = (0..rest_count).map(|_| rest_ll_unit);
         let args: Vec<_> = prefix_args.chain(rest_args).collect();
-        cx.type_struct(&args, false)
+
+        // The x87_f80 type has a store size of 10 bytes, but an allocation size of 12 or 16 bytes.
+        // Ensure we don't cast to it, because that could have unintened behavior.
+        //
+        // Make an exception when using a `rest_offset`, which is used when returning
+        // `Complex<x87_f80>`.
+        assert!(self.rest_offset.is_some() || args.iter().all(|a| *a != cx.type_x87_f80()));
+
+        cx.type_struct(&args)
     }
 }
 
@@ -217,14 +253,14 @@ trait ArgAbiExt<'ll, 'tcx> {
     fn store(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
-        val: &'ll Value,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        val: Value<'ll>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     );
     fn store_fn_arg(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     );
 }
 
@@ -236,18 +272,18 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     fn store(
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
-        val: &'ll Value,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        val: Value<'ll>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     ) {
         match &self.mode {
             PassMode::Ignore => {}
             // Sized indirect arguments
-            PassMode::Indirect { attrs, meta_attrs: None, on_stack: _ } => {
-                let align = attrs.pointee_align.unwrap_or(self.layout.align.abi);
+            PassMode::Indirect { attrs, address_space: _, mode: _ } => {
+                let align = attrs.pointee_align.unwrap_or(self.layout.align);
                 OperandValue::Ref(PlaceValue::new_sized(val, align)).store(bx, dst);
             }
             // Unsized indirect arguments cannot be stored
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Cast { cast, pad_i32_count: _ } => {
@@ -272,7 +308,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.val.llval,
-                    self.layout.align.abi,
+                    self.layout.align,
                     llscratch,
                     scratch_align,
                     bx.const_usize(copy_bytes),
@@ -291,7 +327,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         &self,
         bx: &mut Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     ) {
         let mut next = || {
             let val = llvm::get_param(bx.llfn(), *idx as c_uint);
@@ -303,11 +339,11 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
-            PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
             PassMode::Direct(_)
-            | PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ }
+            | PassMode::Indirect { attrs: _, address_space: _, mode: _ }
             | PassMode::Cast { .. } => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
@@ -325,35 +361,208 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     ) {
         arg_abi.store_fn_arg(self, idx, dst)
     }
+
     fn store_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-        val: &'ll Value,
-        dst: PlaceRef<'tcx, &'ll Value>,
+        val: Value<'ll>,
+        dst: PlaceRef<'tcx, Value<'ll>>,
     ) {
         arg_abi.store(self, val, dst)
+    }
+
+    fn x87_lossless_float_to_fp_stack(&mut self, value: Value<'ll>, no_undef: bool) -> Value<'ll> {
+        // If value is (partially) uninitialized (e.g. when returning `MaybeUninit<f64>`) then e.g.
+        // branching on it could lead to undefined behaviour. To ensure that doesn't happen and that
+        // any initialized bytes within a partially uninitialized value survive the round trip,
+        // freeze the value.
+        let value = if no_undef { value } else { self.freeze(value) };
+        // While we only need to manually convert sNaNs, all NaNs can be converted the same way and
+        // checking whether `value` is NaN only takes a single floating-point x86 instruction,
+        // whereas checking if it is a signalling NaN additionally requires bit operations. LLVM
+        // also generally won't know a non-constant `value` is not a sNaN but could be a qNaN, so
+        // being more general here doesn't prevent the branch from being optimised out in likely
+        // scenarios.
+        let is_nan = self.fcmp(RealPredicate::RealUNO, value, value);
+        let is_nan_block = self.append_sibling_block("float_pre_ret.is_nan");
+        let is_not_nan_block = self.append_sibling_block("float_pre_ret.is_not_nan");
+        let after_block = self.append_sibling_block("float_pre_ret.after");
+        let dbg_loc = self.get_dbg_loc();
+        self.cond_br(is_nan, is_nan_block, is_not_nan_block);
+
+        self.switch_to_block(is_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        // This manually converts a NaN to `x87_f80` to avoid the quiet NaN bit of signalling NaNs
+        // getting set. `f32`/`f64` and `x87_f80` have the same components (sign, exponent,
+        // significand) in the same order except that `x87_f80` has a wider exponent and
+        // significand, and the `x87_f80` significand has an explicit integer bit (which is always
+        // 1 for NaNs).
+        let value_type = self.val_ty(value);
+        let Some(float_type) = self.float_type(value_type) else {
+            bug!("{value_type:?} is not a float type");
+        };
+        assert_matches!(
+            float_type,
+            Float::F32 | Float::F64,
+            "attempt to return {float_type:?} on the x87 floating point stack",
+        );
+        let num_bits = float_type.size().bits();
+        let bits_ty = self.type_ix(num_bits);
+        let bits = self.bitcast(value, bits_ty);
+        // The high 16 bits of an x87_f80 are the exponent and sign (the sign is the highest
+        // bit) NaNs always have all bits of the exponent set to 1, so the only bit that is
+        // needed from `value` is the sign bit.
+        // Shift out the lower bits.
+        let exp_and_sign = self.lshr(bits, self.const_uint(bits_ty, num_bits - 16));
+        // Set the exponent to all 1s.
+        let exp_and_sign = self.or(exp_and_sign, self.const_uint(bits_ty, 0x7FFF));
+        // Shift the exponent and sign into position.
+        let exp_and_sign = self.zext(exp_and_sign, self.type_ix(80));
+        let exp_and_sign = self.shl(exp_and_sign, self.const_uint_big(self.type_ix(80), 64));
+
+        // The fraction of the input NaN needs to be shifted left to just before x87_f80's
+        // explicit integer bit. There's no need to manually set the integer bit itself, as it
+        // will be already set to 1 due to the all 1s exponent in the input NaN.
+        let (fraction_bits, fraction) = match num_bits {
+            32 => (f32::MANTISSA_DIGITS - 1, self.zext(bits, self.type_i64())),
+            64 => (f64::MANTISSA_DIGITS - 1, bits),
+            _ => bug!(),
+        };
+        // Shift the fraction into position.
+        let fraction = self.shl(fraction, self.const_u64(63 - u64::from(fraction_bits)));
+        let fraction = self.zext(fraction, self.type_ix(80));
+
+        let is_nan_res = self.or(exp_and_sign, fraction);
+        let is_nan_res = self.bitcast(is_nan_res, self.type_x87_f80());
+        self.br(after_block);
+
+        self.switch_to_block(is_not_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        let is_not_nan_res = self.fpext(value, self.type_x87_f80());
+        self.br(after_block);
+
+        self.switch_to_block(after_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        self.phi(
+            self.type_x87_f80(),
+            &[is_nan_res, is_not_nan_res],
+            &[is_nan_block, is_not_nan_block],
+        )
+    }
+
+    fn x87_lossless_fp_stack_to_float(
+        &mut self,
+        value: Value<'ll>,
+        float_type: Type<'ll>,
+        no_undef: bool,
+    ) -> Value<'ll> {
+        // If value is (partially) uninitialized (e.g. when returning `MaybeUninit<f64>`) then e.g.
+        // branching on it could lead to undefined behaviour. To ensure that doesn't happen and that
+        // any initialized bytes within a partially uninitialized value survive the round trip,
+        // freeze the value.
+        let value = if no_undef { value } else { self.freeze(value) };
+        let Some(float) = self.float_type(float_type) else {
+            bug!("{float_type:?} is not a float type");
+        };
+        let fraction_bits = u64::from(match float {
+            Float::F32 => f32::MANTISSA_DIGITS - 1,
+            Float::F64 => f64::MANTISSA_DIGITS - 1,
+            _ => bug!("attempt to return {float:?} on the x87 floating point stack"),
+        });
+        let num_bits = float.size().bits();
+        let dest_bits_type = self.type_ix(num_bits);
+        // While we only need to manually convert sNaNs, all NaNs can be converted the same way and
+        // checking whether `value` is NaN only takes a single floating-point x86 instruction,
+        // whereas checking if it is a signalling NaN additionally requires bit operations. LLVM
+        // also generally won't know a non-constant `value` is not a sNaN but could be a qNaN, so
+        // being more general here doesn't prevent the branch from being optimised out in likely
+        // scenarios.
+        let is_nan = self.fcmp(RealPredicate::RealUNO, value, value);
+        let is_nan_block = self.append_sibling_block("float_post_ret.is_nan");
+        let is_not_nan_block = self.append_sibling_block("float_post_ret.is_not_nan");
+        let after_block = self.append_sibling_block("float_post_ret.after");
+        let dbg_loc = self.get_dbg_loc();
+        self.cond_br(is_nan, is_nan_block, is_not_nan_block);
+
+        self.switch_to_block(is_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        // This block converts a NaN to `x87_f80` manually to avoid setting the quiet NaN bit of
+        // signalling NaNs.
+        // We don't handle the "invalid operand" bitpatterns here (which are treated like NaNs) as
+        // they can't be generated by any post-80387 hardware, and the return value should have been
+        // converted from an actual `f32`/`f64`. Even on non-SSE targets current compilers don't
+        // seem to miscompile code so badly as to allow user-supplied `x87_f80` "invalid operands"
+        // to be returned as `f32`/`f64`. Similarly, sNaNs are never produced by the hardware so we
+        // don't handle the case where the only fraction bits set are truncated, as that can never
+        // happen with sNaNs converted from `f32`s/`f64`s.
+        let bits = self.bitcast(value, self.type_ix(80));
+        // Mask out the extra 1s in the exponent as `f32`/`f64` have less bits in their
+        // exponents than `x87_f80`.
+        let exp_and_sign_bits = num_bits - fraction_bits;
+        let exp_and_sign_mask = u16::MAX << (16 - exp_and_sign_bits);
+        let exp_and_sign_mask = u128::from(exp_and_sign_mask) << 64;
+        let exp_and_sign = self.and(bits, self.const_uint_big(self.type_ix(80), exp_and_sign_mask));
+        // Shift the exponent and sign into position
+        let exp_and_sign = self
+            .lshr(exp_and_sign, self.const_uint_big(self.type_ix(80), 80 - u128::from(num_bits)));
+        let exp_and_sign = self.trunc(exp_and_sign, dest_bits_type);
+
+        // Truncate off the exponent and sign
+        let fraction = self.trunc(bits, self.type_i64());
+        // Shift the fraction in to position. There's no need to mask out `x87_f80`'s
+        // explicit integer bit as the fraction is right next to the exponent which is all
+        // 1s anyway.
+        let fraction = self.lshr(fraction, self.const_u64(63 - fraction_bits));
+        let fraction = if num_bits != 64 { self.trunc(fraction, dest_bits_type) } else { fraction };
+
+        // Combine the parts into the resulting float
+        let is_nan_res = self.or(exp_and_sign, fraction);
+        let is_nan_res = self.bitcast(is_nan_res, float_type);
+        self.br(after_block);
+
+        self.switch_to_block(is_not_nan_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        // Use a regular floating point conversion when the value it not a NaN.
+        let is_not_nan_res = self.fptrunc(value, float_type);
+        self.br(after_block);
+
+        self.switch_to_block(after_block);
+        if let Some(dbg_loc) = dbg_loc {
+            self.set_dbg_loc(dbg_loc);
+        }
+        self.phi(float_type, &[is_nan_res, is_not_nan_res], &[is_nan_block, is_not_nan_block])
     }
 }
 
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
+    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll>;
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
 
     /// Apply attributes to a function declaration/definition.
     fn apply_attrs_llfn(
         &self,
         cx: &CodegenCx<'ll, 'tcx>,
-        llfn: &'ll Value,
+        llfn: Value<'ll>,
         instance: Option<ty::Instance<'tcx>>,
     );
 
     /// Apply attributes to a function call.
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: Value<'ll>);
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
         let args =
@@ -368,10 +577,16 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
             PassMode::Cast { cast, pad_i32_count: _ } => cast.llvm_type(cx),
-            PassMode::Indirect { .. } => {
-                llargument_tys.push(cx.type_ptr());
+            PassMode::Indirect { address_space, .. } => {
+                let ty = if let Some(address_space) = address_space {
+                    cx.type_ptr_ext(*address_space)
+                } else {
+                    cx.type_ptr()
+                };
+                llargument_tys.push(ty);
                 cx.type_void()
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
         };
 
         for arg in args {
@@ -394,7 +609,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
+                PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => {
                     // Construct the type of a (wide) pointer to `ty`, and pass its two fields.
                     // Any two ABI-compatible unsized types have the same metadata type and
                     // moreover the same metadata value leads to the same dynamic size and
@@ -405,7 +620,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => cx.type_ptr(),
+                PassMode::Indirect { attrs: _, address_space, mode: _ } => {
+                    if let Some(address_space) = address_space {
+                        cx.type_ptr_ext(*address_space)
+                    } else {
+                        cx.type_ptr()
+                    }
+                }
                 PassMode::Cast { cast, pad_i32_count } => {
                     // Add padding.
                     llargument_tys.extend(std::iter::repeat_n(
@@ -428,7 +649,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> Type<'ll> {
         cx.type_ptr_ext(cx.data_layout().instruction_address_space)
     }
 
@@ -439,7 +660,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn apply_attrs_llfn(
         &self,
         cx: &CodegenCx<'ll, 'tcx>,
-        llfn: &'ll Value,
+        llfn: Value<'ll>,
         instance: Option<ty::Instance<'tcx>>,
     ) {
         let mut func_attrs = SmallVec::<[_; 3]>::new();
@@ -495,13 +716,11 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply_range_attr(llvm::AttributePlace::ReturnValue, scalar);
                 }
             }
-            PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
-                assert!(!on_stack);
+            PassMode::Indirect { attrs, address_space: _, mode } => {
+                assert!(*mode == IndirectMode::Pointer);
                 let i = apply(attrs);
-                let sret = llvm::CreateStructRetAttr(
-                    cx.llcx,
-                    cx.type_array(cx.type_i8(), self.ret.layout.size.bytes()),
-                );
+                let sret =
+                    llvm::CreateStructRetAttr(cx.llcx, cx.type_byte_array(self.ret.layout.size));
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
                 if cx.sess().opts.optimize != config::OptLevel::No {
                     attributes::apply_to_llfn(
@@ -514,6 +733,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                 }
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
             PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
             }
@@ -522,13 +742,19 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         for arg in self.args.iter() {
             match &arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::OnStack } => {
                     let i = apply(attrs);
-                    let byval = llvm::CreateByValAttr(
-                        cx.llcx,
-                        cx.type_array(cx.type_i8(), arg.layout.size.bytes()),
-                    );
+                    let byval = llvm::CreateByValAttr(cx.llcx, cx.type_byte_array(arg.layout.size));
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byval]);
+                }
+                PassMode::Indirect {
+                    attrs,
+                    address_space: _,
+                    mode: IndirectMode::AmdgpuKernelArg,
+                } => {
+                    let i = apply(attrs);
+                    let byref = llvm::CreateByRefAttr(cx.llcx, cx.type_byte_array(arg.layout.size));
+                    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byref]);
                 }
                 PassMode::Direct(attrs) => {
                     let i = apply(attrs);
@@ -536,7 +762,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar);
                     }
                 }
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::Pointer } => {
                     let i = apply(attrs);
                     if cx.sess().opts.optimize != config::OptLevel::No {
                         attributes::apply_to_llfn(
@@ -546,8 +772,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         );
                     }
                 }
-                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
-                    assert!(!on_stack);
+                PassMode::IndirectUnsized { attrs, meta_attrs } => {
                     apply(attrs);
                     apply(meta_attrs);
                 }
@@ -605,7 +830,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: Value<'ll>) {
         let mut func_attrs = SmallVec::<[_; 2]>::new();
         if self.ret.layout.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(bx.cx.llcx));
@@ -616,7 +841,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         attributes::apply_to_callsite(callsite, llvm::AttributePlace::Function, &{ func_attrs });
 
         let mut i = 0;
-        let mut apply = |cx: &CodegenCx<'_, '_>, attrs: &ArgAttributes| {
+        let mut apply = |cx: &CodegenCx<'ll, '_>, attrs: &ArgAttributes| {
             attrs.apply_attrs_to_callsite(llvm::AttributePlace::Argument(i), cx, callsite);
             i += 1;
             i - 1
@@ -625,15 +850,16 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Direct(attrs) => {
                 attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, bx.cx, callsite);
             }
-            PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
-                assert!(!on_stack);
+            PassMode::Indirect { attrs, address_space: _, mode } => {
+                assert!(*mode == IndirectMode::Pointer);
                 let i = apply(bx.cx, attrs);
                 let sret = llvm::CreateStructRetAttr(
                     bx.cx.llcx,
-                    bx.cx.type_array(bx.cx.type_i8(), self.ret.layout.size.bytes()),
+                    bx.cx.type_byte_array(self.ret.layout.size),
                 );
                 attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
+            PassMode::IndirectUnsized { .. } => bug!("unsized returns are not supported"),
             PassMode::Cast { cast, pad_i32_count: _ } => {
                 cast.attrs.apply_attrs_to_callsite(
                     llvm::AttributePlace::ReturnValue,
@@ -646,23 +872,35 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         for arg in self.args.iter() {
             match &arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
+                PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::OnStack } => {
                     let i = apply(bx.cx, attrs);
-                    let byval = llvm::CreateByValAttr(
-                        bx.cx.llcx,
-                        bx.cx.type_array(bx.cx.type_i8(), arg.layout.size.bytes()),
-                    );
+                    let byval =
+                        llvm::CreateByValAttr(bx.cx.llcx, bx.cx.type_byte_array(arg.layout.size));
                     attributes::apply_to_callsite(
                         callsite,
                         llvm::AttributePlace::Argument(i),
                         &[byval],
                     );
                 }
+                PassMode::Indirect {
+                    attrs,
+                    address_space: _,
+                    mode: IndirectMode::AmdgpuKernelArg,
+                } => {
+                    let i = apply(bx.cx, attrs);
+                    let byref =
+                        llvm::CreateByRefAttr(bx.cx.llcx, bx.cx.type_byte_array(arg.layout.size));
+                    attributes::apply_to_callsite(
+                        callsite,
+                        llvm::AttributePlace::Argument(i),
+                        &[byref],
+                    );
+                }
                 PassMode::Direct(attrs)
-                | PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                | PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::Pointer } => {
                     apply(bx.cx, attrs);
                 }
-                PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack: _ } => {
+                PassMode::IndirectUnsized { attrs, meta_attrs } => {
                     apply(bx.cx, attrs);
                     apply(bx.cx, meta_attrs);
                 }
@@ -679,7 +917,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
         }
 
-        let cconv = self.llvm_cconv(&bx.cx);
+        let cconv = self.llvm_cconv(bx.cx);
         if cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, cconv);
         }

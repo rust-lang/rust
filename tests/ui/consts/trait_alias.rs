@@ -1,5 +1,6 @@
 #![feature(trait_alias, const_trait_impl)]
 //@ revisions: next_pass next_fail pass fail
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next_pass] compile-flags: -Znext-solver
 //@[next_fail] compile-flags: -Znext-solver
 //@[next_pass] check-pass

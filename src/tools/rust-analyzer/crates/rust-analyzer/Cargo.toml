@@ -84,7 +84,7 @@ windows-sys = { version = "0.61", features = [
 ] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = { version = "0.5.4", package = "tikv-jemallocator", optional = true }
+jemallocator = { version = "0.7.0", package = "tikv-jemallocator", features = ["stats"], optional = true }
 
 [dev-dependencies]
 expect-test = "1.5.1"

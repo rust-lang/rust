@@ -39,8 +39,11 @@ use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_wi
 use super::{UCred, peer_cred};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::macros::rustdoc_skip_body;
 use crate::net::Shutdown;
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::io::{
+    AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
+};
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, cvt};
@@ -199,7 +202,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let sock_copy = socket.try_clone().expect("Couldn't clone socket");
+    ///     let sock_copy = socket.try_clone().expect("`UnixStream::try_clone` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -218,11 +221,12 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixStream::local_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
@@ -237,11 +241,12 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let addr = socket.peer_addr().expect("Couldn't get peer address");
+    ///     let addr = socket.peer_addr().expect("`UnixStream::peer_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(self.as_raw_fd(), addr, len) })
     }
@@ -257,7 +262,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let peer_cred = socket.peer_cred().expect("Couldn't get peer credentials");
+    ///     let peer_cred = socket.peer_cred().expect("`UnixStream::peer_cred` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -295,7 +300,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("`UnixStream::set_read_timeout` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -318,6 +323,7 @@ impl UnixStream {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
     }
@@ -340,7 +346,7 @@ impl UnixStream {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("Couldn't set write timeout");
+    ///         .expect("`UnixStream::connect` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -363,6 +369,7 @@ impl UnixStream {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
     }
@@ -378,12 +385,13 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("`UnixStream::set_read_timeout` should not fail");
     ///     assert_eq!(socket.read_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_RCVTIMEO)
     }
@@ -400,12 +408,13 @@ impl UnixStream {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("Couldn't set write timeout");
+    ///         .expect("`UnixStream::set_write_timeout` should not fail");
     ///     assert_eq!(socket.write_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_SNDTIMEO)
     }
@@ -420,7 +429,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_nonblocking(true).expect("Couldn't set nonblocking");
+    ///     socket.set_nonblocking(true).expect("`UnixStream::set_nonblocking` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -450,6 +459,7 @@ impl UnixStream {
     /// ```
     #[cfg(any(doc, target_os = "linux", target_os = "freebsd", target_os = "openbsd",))]
     #[unstable(feature = "unix_set_mark", issue = "96467")]
+    #[rustdoc_skip_body]
     pub fn set_mark(&self, mark: u32) -> io::Result<()> {
         self.0.set_mark(mark)
     }
@@ -493,7 +503,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.shutdown(Shutdown::Both).expect("shutdown function failed");
+    ///     socket.shutdown(Shutdown::Both).expect("`UnixStream::shutdown` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -520,7 +530,7 @@ impl UnixStream {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     let mut buf = [0; 10];
-    ///     let len = socket.peek(&mut buf).expect("peek failed");
+    ///     let len = socket.peek(&mut buf).expect("`UnixStream::peek` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -694,6 +704,7 @@ impl io::Write for UnixStream {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl<'a> io::Write for &'a UnixStream {
+    #[rustdoc_skip_body]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.send_with_flags(buf, MSG_NOSIGNAL)
     }
@@ -716,6 +727,7 @@ impl<'a> io::Write for &'a UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }
@@ -724,6 +736,7 @@ impl AsRawFd for UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixStream {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixStream {
         UnixStream(Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd))))
     }
@@ -732,6 +745,7 @@ impl FromRawFd for UnixStream {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_raw_fd()
     }
@@ -740,10 +754,16 @@ impl IntoRawFd for UnixStream {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
 }
+
+// SAFETY: It's a tower of 1-field wrappers around OwnedFd.
+// No methods to close the socket, no methods with safety preconditions,
+// other than the fd being valid.
+unsafe_impl_fd_asrefs!(UnixStream);
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixStream> for OwnedFd {

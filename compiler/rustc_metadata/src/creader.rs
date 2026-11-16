@@ -12,19 +12,20 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::{DefPathData, Definitions};
 use rustc_index::IndexVec;
 use rustc_lint_defs as lint;
-use rustc_lint_defs::builtin::UNUSED_CRATE_DEPENDENCIES;
+use rustc_lint_defs::builtin::{PARTIAL_STACK_PROTECTOR, UNUSED_CRATE_DEPENDENCIES};
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_session::Session;
-use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
+use rustc_session::config::mitigation_coverage::{
+    DeniedPartialMitigationKind, DeniedPartialMitigationLevel,
+};
 use rustc_session::config::{
     ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers, TargetModifier,
 };
@@ -75,6 +76,11 @@ pub struct CStore {
 
     /// Names that were used to load the crates via `extern crate` or paths.
     resolved_externs: UnordMap<Symbol, CrateNum>,
+    /// Given a crate id, get their extern crate import name (given by `--extern`,
+    /// `extern crate foo as bar;` or from the extern prelude). A crate might be known by more than
+    /// one extern name, but we only keep track of one of them. This name should *only be used for
+    /// diagnostics*.
+    extern_crate_name: UnordMap<CrateNum, Symbol>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -89,7 +95,7 @@ pub enum LoadedMacro {
     MacroDef {
         def: MacroDef,
         ident: Ident,
-        attrs: Vec<hir::Attribute>,
+        attrs: Vec<rustc_attr_ir::Attribute>,
         span: Span,
         edition: Edition,
     },
@@ -144,6 +150,10 @@ enum CrateOrigin<'a> {
         parent_private: bool,
         /// Dependency info about this crate.
         dep: &'a CrateDep,
+        /// The dependency's `-C extra-filename`, used to narrow the search for it on disk. Stored
+        /// separately from `dep` because it is encoded outside the hashed crate root; see
+        /// `CrateRootUnhashed::dep_extra_filenames`.
+        dep_extra_filename: &'a str,
     },
     /// Injected by `rustc`.
     Injected,
@@ -166,6 +176,14 @@ impl<'a> CrateOrigin<'a> {
     fn dep(&self) -> Option<&'a CrateDep> {
         match self {
             CrateOrigin::IndirectDependency { dep, .. } => Some(dep),
+            _ => None,
+        }
+    }
+
+    /// Return the dependency's `-C extra-filename`, if any.
+    fn dep_extra_filename(&self) -> Option<&'a str> {
+        match self {
+            CrateOrigin::IndirectDependency { dep_extra_filename, .. } => Some(dep_extra_filename),
             _ => None,
         }
     }
@@ -243,6 +261,7 @@ impl CStore {
     /// It's also not always the same as the `DefId`'s symbol due to renames `extern crate resolved_name as defid_name`.
     pub(crate) fn set_resolved_extern_crate_name(&mut self, name: Symbol, extern_crate: CrateNum) {
         self.resolved_externs.insert(name, extern_crate);
+        self.extern_crate_name.insert(extern_crate, name);
     }
 
     /// Crate resolved and loaded via the given extern name
@@ -251,6 +270,18 @@ impl CStore {
     /// May be `None` if the crate wasn't used
     pub fn resolved_extern_crate(&self, externs_name: Symbol) -> Option<CrateNum> {
         self.resolved_externs.get(&externs_name).copied()
+    }
+
+    /// A crate's extern crate import name.
+    ///
+    /// This name is given by `--extern`, `extern crate foo as bar;` or from the extern prelude. A
+    /// crate might be known by more than one extern name, but we only keep track of one of them.
+    /// This name should *only be used for diagnostics*.
+    // FIXME: find a way of making the provided name always suitable for structured suggestions, as
+    // right now this is will most of the time work, but could conceivably provide an incorrect name
+    // given the right circumstances.
+    pub fn opt_extern_crate_name(&self, c: CrateNum) -> Option<Symbol> {
+        self.extern_crate_name.get(&c).copied()
     }
 
     pub(crate) fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
@@ -348,6 +379,71 @@ impl CStore {
                 return;
             }
             let extern_crate = data.name();
+
+            if prefix.is_empty() {
+                // A synthetic target modifier, does not correspond to an actual flag.
+                match opt_name.as_str() {
+                    "target-feature" => {
+                        // Compute the features we have locally that don't exist in the other crate,
+                        // and the features the other crate has that are missing locally.
+                        let mut local_features = FxHashSet::from_iter(
+                            flag_local_value.unwrap().split(",").filter(|s| !s.is_empty()),
+                        );
+                        let mut extern_features = FxHashSet::from_iter(
+                            flag_extern_value.unwrap().split(",").filter(|s| !s.is_empty()),
+                        );
+                        #[allow(rustc::potential_query_instability)] // we are sorting below
+                        let both_features = FxHashSet::from_iter(
+                            local_features.intersection(&extern_features).copied(),
+                        );
+                        #[allow(rustc::potential_query_instability)] // we are sorting below
+                        for feature in both_features {
+                            local_features.remove(feature);
+                            extern_features.remove(feature);
+                        }
+                        let local_features =
+                            UnordSet::from(local_features).into_sorted_stable_ord();
+                        let extern_features =
+                            UnordSet::from(extern_features).into_sorted_stable_ord();
+                        assert!(local_features.len() > 0 || extern_features.len() > 0);
+
+                        let diag = format!(
+                            "mixing target features may cause an ABI mismatch in crate `{local_crate}`"
+                        );
+                        let mut diag = tcx.dcx().struct_warn(diag);
+                        diag.help("some target features modify the ABI so Rust crates compiled with different values for these target features cannot be used together safely");
+                        if local_features.len() > 0 {
+                            let features = local_features.join(", ");
+                            let before =
+                                if local_features.len() == 1 { "feature" } else { "features" };
+                            let after = if local_features.len() == 1 { "is" } else { "are" };
+                            diag.help(format!("the target {before} {features} {after} enabled in this crate but disabled in `{extern_crate}`"));
+                        }
+                        if extern_features.len() > 0 {
+                            let features = extern_features.join(", ");
+                            let before =
+                                if extern_features.len() == 1 { "feature" } else { "features" };
+                            let after = if extern_features.len() == 1 { "is" } else { "are" };
+                            diag.help(format!("the target {before} {features} {after} enabled in `{extern_crate}` but disabled in this crate"));
+                        }
+                        diag.help("if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=target-feature` to silence this warning");
+                        diag.emit();
+                    }
+                    "codegen-backend-name" => {
+                        let diag = format!(
+                            "mixing codegen backends while using backend-specific target features may cause an ABI mismatch in crate `{local_crate}`"
+                        );
+                        let mut diag = tcx.dcx().struct_err(diag);
+                        diag.help("this crate has `-Zllvm-target-feature` set, which means different codegen backends could interpret the target features differently, or ignore them entirely");
+                        diag.help("some target features modify the ABI so Rust crates compiled with different target features cannot be used together safely");
+                        diag.help("if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=codegen-backend-name` to silence this warning");
+                        diag.emit();
+                    }
+                    _ => panic!("unhandled synthetic target feature {opt_name}"),
+                }
+                return;
+            }
+
             let flag_name = opt_name.clone();
             let flag_name_prefixed = format!("-{}{}", prefix, opt_name);
 
@@ -488,11 +584,18 @@ impl CStore {
                     }
                     *errors += 1;
 
-                    tcx.dcx().emit_err(diagnostics::MitigationLessStrictInDependency {
+                    let diagnostic = diagnostics::MitigationLessStrictInDependency {
                         mitigation_name: my_mitigation.kind.to_string(),
                         mitigation_level: my_mitigation.level.level_str().to_string(),
                         extern_crate: data.name(),
-                    });
+                    };
+                    if my_mitigation.kind == DeniedPartialMitigationKind::StackProtector {
+                        // make stack-protector only a forward-compat warning since it was
+                        // pretty widely used
+                        tcx.sess.psess.buffer_crate_lint(PARTIAL_STACK_PROTECTOR, diagnostic);
+                    } else {
+                        tcx.dcx().emit_err(diagnostic);
+                    }
                 }
             }
         }
@@ -534,6 +637,7 @@ impl CStore {
             has_alloc_error_handler: false,
             hash_to_cnum: UnordMap::default(),
             resolved_externs: UnordMap::default(),
+            extern_crate_name: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
             has_crate_resolve_with_fail: false,
@@ -583,7 +687,8 @@ impl CStore {
 
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
-        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
+        let unhashed = metadata.get_root_unhashed();
+        let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_crate_hash());
         let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
@@ -636,6 +741,7 @@ impl CStore {
             tcx,
             metadata,
             crate_root,
+            unhashed,
             raw_proc_macros,
             cnum,
             cnum_map,
@@ -741,13 +847,11 @@ impl CStore {
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
-                // crate maybe injrected with `standard_library_imports::inject`, their span is dummy.
-                // we ignore compiler-injected prelude/sysroot loads here so they don't suppress
-                // unrelated diagnostics, such as `unsupported targets for std library` etc,
-                // these maybe helpful for users to resolve crate loading failure.
-                if !tcx.sess.dcx().has_errors().is_some() && !span.is_dummy() {
-                    self.has_crate_resolve_with_fail = true;
-                }
+                // Crate maybe injected with `standard_library_imports::inject`, its span is
+                // dummy. We ignore compiler-injected prelude/sysroot loads here so they don't
+                // suppress unrelated diagnostics, such as "unsupported targets for std library"
+                // etc., these may be helpful for users to resolve crate loading failure.
+                self.has_crate_resolve_with_fail = true;
                 let missing_core = self
                     .maybe_resolve_crate(
                         tcx,
@@ -778,7 +882,7 @@ impl CStore {
         let dep = origin.dep();
         let hash = dep.map(|d| d.hash);
         let host_hash = dep.map(|d| d.host_hash).flatten();
-        let extra_filename = dep.map(|d| &d.extra_filename[..]);
+        let extra_filename = origin.dep_extra_filename();
         let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
         let private_dep = origin.private_dep();
 
@@ -859,10 +963,11 @@ impl CStore {
         // against a hash, we could load a crate which has the same hash
         // as an already loaded crate. If this is the case prevent
         // duplicates by just using the first crate.
-        let root = library.metadata.get_root();
+        let root_name = library.metadata.get_root().name();
+        let root_hash = library.metadata.get_crate_hash();
         let mut result = LoadResult::Loaded(library);
         for (cnum, data) in self.iter_crate_data() {
-            if data.name() == root.name() && root.hash() == data.hash() {
+            if data.name() == root_name && data.hash() == root_hash {
                 assert!(locator.hash.is_none());
                 info!("load success, going to previous cnum: {}", cnum);
                 result = LoadResult::Previous(cnum);
@@ -896,15 +1001,26 @@ impl CStore {
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
         let deps = crate_root.decode_crate_deps(metadata);
+        // Encoded outside the hashed crate root; see `CrateRootUnhashed::dep_extra_filenames`.
+        // Holds one entry per dep after the unused `LOCAL_CRATE` slot, so it lines up with `deps`
+        // once that slot is skipped.
+        let dep_extra_filenames = metadata.get_dep_extra_filenames();
+        assert_eq!(
+            dep_extra_filenames.len(),
+            deps.len() + 1,
+            "expected one dep_extra_filename per crate dep, plus the unused LOCAL_CRATE slot",
+        );
         let mut crate_num_map = CrateNumMap::with_capacity(1 + deps.len());
         crate_num_map.push(krate);
-        for dep in deps {
+        for (dep, dep_extra_filename) in
+            deps.zip(dep_extra_filenames.iter().skip(1).map(String::as_str))
+        {
             info!(
                 "resolving dep `{}`->`{}` hash: `{}` extra filename: `{}` private {}",
                 crate_root.name(),
                 dep.name,
                 dep.hash,
-                dep.extra_filename,
+                dep_extra_filename,
                 dep.is_private,
             );
             let dep_kind = match dep_kind {
@@ -919,6 +1035,7 @@ impl CStore {
                     dep_root_for_errors,
                     parent_private: parent_is_private,
                     dep: &dep,
+                    dep_extra_filename,
                 },
             )?;
             crate_num_map.push(cnum);
@@ -1123,6 +1240,7 @@ impl CStore {
                         tcx.dcx().emit_err(diagnostics::ConflictingGlobalAlloc {
                             crate_name: data.name(),
                             other_crate_name: other_crate,
+                            this_crate: other_crate == this_crate,
                         });
                     }
                     None => global_allocator = Some(data.name()),
@@ -1332,14 +1450,24 @@ impl CStore {
                 let cnum =
                     self.resolve_crate(tcx, name, item.span, dep_kind, CrateOrigin::Extern)?;
 
-                let path_len = definitions.def_path(def_id).data.len();
+                let def_path = definitions.def_path(def_id);
+                // An extern crate is only globally nameable if every segment in its path
+                // is in the type namespace (i.e., it is purely nested inside modules).
+                // If any segment is in the value namespace (e.g. inside a fn or const),
+                // it is unnameable from outside that block.
+                let is_unnameable =
+                    def_path.data.iter().any(|d| !matches!(d.data, DefPathData::TypeNs(_)));
                 self.update_extern_crate(
                     cnum,
                     name,
                     ExternCrate {
-                        src: ExternCrateSource::Extern(def_id.to_def_id()),
+                        src: if is_unnameable {
+                            ExternCrateSource::Path
+                        } else {
+                            ExternCrateSource::Extern(def_id.to_def_id())
+                        },
                         span: item.span,
-                        path_len,
+                        path_len: if is_unnameable { usize::MAX } else { def_path.data.len() },
                         dependency_of: LOCAL_CRATE,
                     },
                 );
@@ -1374,7 +1502,14 @@ impl CStore {
     }
 
     pub fn maybe_process_path_extern(&mut self, tcx: TyCtxt<'_>, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern).ok()
+        match self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern)
+        {
+            Ok(cnum) => Some(cnum),
+            Err(_) => {
+                self.has_crate_resolve_with_fail = true;
+                None
+            }
+        }
     }
 }
 

@@ -39,9 +39,9 @@ Therefore, it does not include inference variables or other information.
 
 ### Steps
 
-The first thing that the probe phase does is to create a series of
-*steps*. This is done by progressively dereferencing the receiver type
-until it cannot be deref'd anymore, as well as applying an optional "unsize" step.
+The first thing that the probe phase does is to create a series of *steps*.
+This is done by progressively dereferencing the receiver type until it cannot be deref'd anymore,
+as well as applying an optional "unsize" step.
 So if the receiver has type `Rc<Box<[T; 3]>>`, this might yield:
 
 1. `Rc<Box<[T; 3]>>`
@@ -51,8 +51,8 @@ So if the receiver has type `Rc<Box<[T; 3]>>`, this might yield:
 
 ### Candidate assembly
 
-We then search along those steps to create a list of *candidates*. A
-`Candidate` is a method item that might plausibly be the method being invoked.
+We then search along those steps to create a list of *candidates*.
+A `Candidate` is a method item that might plausibly be the method being invoked.
 For each candidate, we'll derive a "transformed self type" that takes into account explicit self.
 
 Candidates are grouped into two kinds, inherent and extension.
@@ -71,8 +71,8 @@ trait methods (`to_string()`, in this case) are inherently associated with it.
 Another case is type parameters, in which case the methods of their bounds are inherent.
 However, this part of the rules is subject
 to change: when DST's "impl Trait for Trait" is complete, trait object
-dispatch could be subsumed into trait matching, and the type parameter
-behavior should be reconsidered in light of where clauses.
+dispatch could be subsumed into trait matching,
+and the type parameter behavior should be reconsidered in light of where clauses.
 
 Is this still accurate?
 -->
@@ -96,11 +96,11 @@ Then we might have two candidates:
 
 Finally, to actually pick the method, we will search down the steps,
 trying to match the receiver type against the candidate types.
-At each step, we also consider an auto-ref and auto-mut-ref to see whether
-that makes any of the candidates match.
+At each step,
+we also consider an auto-ref and auto-mut-ref to see whether that makes any of the candidates match.
 For each resulting receiver type, we consider inherent candidates before extension candidates.
-If there are multiple matching candidates in a group, we report an
-error, except that multiple impls of the same trait are treated as a single match.
+If there are multiple matching candidates in a group, we report an error,
+except that multiple impls of the same trait are treated as a single match.
 Otherwise we pick the first match we find.
 
 In the case of our example, the first step is `Rc<Box<[T; 3]>>`,

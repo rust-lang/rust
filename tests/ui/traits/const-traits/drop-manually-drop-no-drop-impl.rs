@@ -1,5 +1,6 @@
 //@[new] compile-flags: -Znext-solver
 //@ revisions: old new
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
 
 use std::mem::ManuallyDrop;

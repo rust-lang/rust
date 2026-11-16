@@ -15,7 +15,7 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
+use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, GenericArgs, PredicateKind, Ty};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -177,7 +177,7 @@ impl<'tcx> DerefTy<'tcx> {
             Self::Path => Ty::new_adt(
                 cx.tcx,
                 cx.tcx.adt_def(cx.tcx.get_diagnostic_item(sym::Path).unwrap()),
-                List::empty(),
+                GenericArgs::empty(),
             ),
             Self::Slice(_, ty) => Ty::new_slice(cx.tcx, ty),
         }
@@ -207,8 +207,8 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
         .filter_map(move |(i, (ty, hir_ty))| {
             if let ty::Ref(_, ty, mutability) = *ty.kind()
                 && let  ty::Adt(adt, args) = *ty.kind()
-                && let TyKind::Ref(lt, ref ty) = hir_ty.kind
-                && let TyKind::Path(QPath::Resolved(None, path)) = ty.ty.kind
+                && let TyKind::Ref(lt, inner_ty, _) = hir_ty.kind
+                && let TyKind::Path(QPath::Resolved(None, path)) = inner_ty.kind
                 // Check that the name as typed matches the actual name of the type.
                 // e.g. `fn foo(_: &Foo)` shouldn't trigger the lint when `Foo` is an alias for `Vec`
                 && let [.., name] = path.segments

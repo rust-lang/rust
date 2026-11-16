@@ -87,6 +87,31 @@ fn test_skip_advance_by() {
 }
 
 #[test]
+fn test_skip_unfused_advance_by() {
+    /// A legal non-fused iterator: `None` once, then `Some(1)`, `Some(2)`, ...
+    struct Gap(u32);
+
+    impl Iterator for Gap {
+        type Item = u32;
+        fn next(&mut self) -> Option<u32> {
+            self.0 += 1;
+            if self.0 == 1 { None } else { Some(self.0 - 1) }
+        }
+    }
+
+    assert_eq!(Gap(0).skip(1).next(), None);
+
+    let mut iter = Gap(0).skip(1);
+    assert_eq!(iter.advance_by(0), Ok(()));
+    // `Ok` means we didn't see the (unfused) end yet...
+    assert_eq!(iter.next(), None);
+
+    // Chain also depends on this behavior internally
+    assert_eq!(Gap(0).skip(1).chain(empty()).next(), None);
+    assert_eq!(Gap(0).skip(1).chain(empty()).nth(0), None);
+}
+
+#[test]
 fn test_iterator_skip_count() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
 

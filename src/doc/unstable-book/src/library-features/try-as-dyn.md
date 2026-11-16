@@ -37,7 +37,7 @@ The most obvious one: if you have `impl IsStatic for &'static str`, then determi
 ### Each outlives `where` bound (`Type: 'a` and `'a: 'b`) does not mention lifetime-infected parameters.
 
 Parameters are considered lifetime-infected if they are defined in an `impl` block's generic parameter list.
-Const generics are excempt, as they can't affect lifetimes.
+Const generics are exempt, as they can't affect lifetimes.
 `for<'a>` lifetimes (and in the future types) are not lifetime-infected.
 
 We can create lifetime discrimination this way. For instance, given `impl<'a, 'b> Outlives<'a> for &'b str where 'b : 'a {}`, `Outlives<'static>` amounts to `IsStatic` from previous bullet.

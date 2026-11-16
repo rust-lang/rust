@@ -188,4 +188,15 @@ fn alternating_chain_mismatch() {
     }
 }
 
+fn or_pattern_mismatch() {
+    let var = "BAR";
+
+    match var.to_ascii_lowercase().as_str() {
+        "foo" | "f" => {},
+        //~^ match_str_case_mismatch
+        "bar" => {},
+        _ => {},
+    }
+}
+
 fn main() {}

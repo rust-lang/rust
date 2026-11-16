@@ -1,4 +1,5 @@
 // This test ensures that opening the help page in its own tab works.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/help.html"
 set-window-size: (1000, 1000) // Try desktop size first.
 wait-for: "#help"
@@ -55,8 +56,24 @@ wait-for: "#search-tabs" // Waiting for the search.js to load.
 set-window-size: (1000, 1000) // Only supported on desktop.
 assert-false: "#help"
 click: "rustdoc-toolbar .help-menu > a"
-assert-css: ("#help", {"display": "block"})
+wait-for-css: ("#help", {"display": "block"})
 assert-css: ("#help dd", {"font-size": "16px"})
+
+define-function: ("check-arrow-color", [theme], block {
+    call-function: ("switch-theme", {"theme": |theme|})
+    click: "rustdoc-toolbar .help-menu > a"
+    wait-for-css: ("#help", {"display": "block"})
+    store-css: ("#help", {"background-color": background})
+    assert-css: ("#help::before", {
+        "background-color": |background|,
+    })
+})
+
+// We check that the "top arrow" has the same color as the popover background.
+call-function: ("check-arrow-color", {"theme": "ayu"})
+call-function: ("check-arrow-color", {"theme": "dark"})
+call-function: ("check-arrow-color", {"theme": "light"})
+
 click: "rustdoc-toolbar .help-menu > a"
 assert-false: "#help"
 

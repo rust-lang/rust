@@ -10,6 +10,8 @@ note: `Baz` defines an item `c`, perhaps you need to implement it
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
+LL |     fn c(&self) -> i32 {
+   |
 help: there is a method `a` with a similar name
    |
 LL -     bar.c();
@@ -28,6 +30,8 @@ note: `Bar` defines an item `b`, perhaps you need to implement it
    |
 LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
+LL |     fn b(&self) -> i32 {
+   |
 help: there is a method `a` with a similar name
    |
 LL -     foo.b();
@@ -46,6 +50,8 @@ note: `Baz` defines an item `c`, perhaps you need to implement it
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
+LL |     fn c(&self) -> i32 {
+   |
 help: there is a method `a` with a similar name
    |
 LL -     foo.c();
@@ -64,6 +70,8 @@ note: `Bar` defines an item `b`, perhaps you need to implement it
    |
 LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
+LL |     fn b(&self) -> i32 {
+   |
 help: there is a method `a` with a similar name
    |
 LL -     foo.b();
@@ -82,6 +90,8 @@ note: `Baz` defines an item `c`, perhaps you need to implement it
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
+LL |     fn c(&self) -> i32 {
+   |
 help: there is a method `a` with a similar name
    |
 LL -     foo.c();

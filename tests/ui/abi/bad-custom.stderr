@@ -418,7 +418,7 @@ LL | unsafe extern "custom" fn no_cold_attribute() {
    |        |
    |        `extern "custom"` because of this
 
-error[E0277]: expected an `Fn()` closure, found `unsafe extern "custom" fn()`
+error[E0277]: expected `Fn()` signature, found `unsafe extern "custom" fn()`
   --> $DIR/bad-custom.rs:144:64
    |
 LL | fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn() {

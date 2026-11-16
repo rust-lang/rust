@@ -491,7 +491,12 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         };
         let metadata_link = match &mut ar_kind {
             AddArchiveKind::Rlib(cache, _) => cache.get_or_insert_with(&archive_path, || {
-                rmeta_link::read(&archive, &archive_map, &archive_path)
+                rmeta_link::read(
+                    &archive,
+                    &archive_map,
+                    &archive_path,
+                    self.sess.target.is_like_aix,
+                )
             }),
             AddArchiveKind::Other => None,
         };

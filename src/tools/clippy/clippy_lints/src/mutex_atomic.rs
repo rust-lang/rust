@@ -135,7 +135,7 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty_ascription: &T
         && let Some(atomic_name) = get_atomic_name(mutex_param)
     {
         let msg = "using a `Mutex` where an atomic would do";
-        let diag = |diag: &mut Diag<'_, _>| {
+        let diag = |diag: &mut Diag<'_>| {
             // if `expr = Mutex::new(arg)`, we can try emitting a suggestion
             if let ExprKind::Call(qpath, [arg]) = expr.kind
                 && let ExprKind::Path(QPath::TypeRelative(_mutex, new)) = qpath.kind

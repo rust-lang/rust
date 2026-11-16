@@ -90,7 +90,7 @@ fn report_single_pattern(
 ) {
     let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
     let ctxt = expr.span.ctxt();
-    let note = |diag: &mut Diag<'_, ()>| {
+    let note = |diag: &mut Diag<'_>| {
         if contains_comments {
             diag.note("you might want to preserve the comments from inside the `match`");
         }
@@ -104,7 +104,7 @@ fn report_single_pattern(
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
 
-    if ex.span.eq_ctxt(expr.span) && snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
+    if ex.span.ctxt() == expr.span.ctxt() && snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
         let msg = "this pattern is irrefutable, `match` is useless";
         let (sugg, help) = if is_unit_expr(arm.body) {
             (String::new(), "`match` expression can be removed")

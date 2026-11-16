@@ -4,7 +4,7 @@
 
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, token};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrPath, CfgEntry};
 use rustc_attr_parsing::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use rustc_attr_parsing::{
@@ -46,7 +46,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
         AllowExprMetavar::Yes,
     )
-    .map_err(|diag| diag.emit())?;
+    .map_err(|diag| diag.emit_err())?;
     let cfg = AttributeParser::parse_single_args(
         cx.sess,
         span,
@@ -59,7 +59,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         span,
         cx.current_expansion.lint_node_id,
         // Doesn't matter what the target actually is here.
-        Target::Crate,
+        AstTarget::None(Target::Crate),
         Some(cx.ecfg.features),
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
         &meta,

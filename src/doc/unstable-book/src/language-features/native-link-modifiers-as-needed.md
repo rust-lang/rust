@@ -1,8 +1,8 @@
 # `native_link_modifiers_as_needed`
 
-The tracking issue for this feature is: [#81490]
+The tracking issue for this feature is: [#99424]
 
-[#81490]: https://github.com/rust-lang/rust/issues/81490
+[#99424]: https://github.com/rust-lang/rust/issues/99424
 
 ------------------------
 

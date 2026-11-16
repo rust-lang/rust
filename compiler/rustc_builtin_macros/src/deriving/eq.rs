@@ -1,14 +1,13 @@
-use rustc_ast::{self as ast, Safety};
+use rustc_ast::{self as ast};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_eq(
+pub(crate) fn expand_derive_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -19,8 +18,7 @@ pub(crate) fn expand_deriving_eq(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(cmp::Eq),
-        skip_path_as_bound: false,
+        path: path_std!(cx, span, cmp::Eq),
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: true,
@@ -29,26 +27,29 @@ pub(crate) fn expand_deriving_eq(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: smallvec![],
-            ret_ty: Unit,
+            has_other_selflike_arg: false,
+            ret_ty: cx.ty_unit(span),
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.
                 // We prevent this by adding `#[inline]`, which improves compile-time.
-                cx.attr_word(sym::inline, span),
-                cx.attr_nested_word(sym::doc, sym::hidden, span),
-                cx.attr_nested_word(sym::coverage, sym::off, span),
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::DocHidden),
+                cx.generated_attr(span, ast::GeneratedAttr::CoverageOff),
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(cs_total_eq_assert),
+            body: Box::new(assert_fields_eq_body),
         }],
-        associated_types: SmallVec::new(),
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand_ext(cx, item, push, true)
 }
 
-fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+fn assert_fields_eq_body(
+    cx: &ExtCtxt<'_>,
+    trait_span: Span,
+    substr: Substructure<'_>,
+) -> BlockOrExpr {
     let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &ast::VariantData| {
@@ -73,7 +74,7 @@ fn cs_total_eq_assert(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'
         }
     };
 
-    match substr.fields {
+    match substr {
         StaticStruct(vdata, ..) => {
             process_variant(vdata);
         }

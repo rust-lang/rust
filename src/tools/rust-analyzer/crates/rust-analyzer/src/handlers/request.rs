@@ -12,7 +12,7 @@ use ide::{
     HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, Runnable, RunnableKind,
     SingleResolve, SourceChange, TextEdit,
 };
-use ide_db::{FxHashMap, SymbolKind};
+use ide_db::{FxHashMap, SymbolKind, base_db::TargetKind};
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
@@ -25,7 +25,7 @@ use lsp_types::{
     SymbolInformation, SymbolTag, TextDocumentIdentifier, Uri, WorkspaceEdit,
 };
 use paths::Utf8PathBuf;
-use project_model::{CargoWorkspace, ManifestPath, ProjectWorkspaceKind, TargetKind};
+use project_model::{CargoWorkspace, ManifestPath, ProjectWorkspaceKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{TextRange, TextSize};

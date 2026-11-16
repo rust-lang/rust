@@ -6,7 +6,8 @@
 
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::path::Path;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum Lock {
@@ -66,5 +67,33 @@ cfg_select! {
     _ => {
         mod unsupported;
         use unsupported as fallback;
+    }
+}
+
+/// A directory together with a locked lockfile.
+pub struct LockedDir {
+    dir: PathBuf,
+    /// `_lock_file` is never directly used, but its presence
+    /// alone has an effect, because the file will unlock when the session is
+    /// dropped.
+    _lock_file: Lock,
+}
+
+impl LockedDir {
+    pub fn try_lock(
+        dir: PathBuf,
+        lock_file: &Path,
+        create: bool,
+        exclusive: bool,
+    ) -> io::Result<Self> {
+        Ok(LockedDir { dir, _lock_file: Lock::try_lock(lock_file, create, exclusive)? })
+    }
+}
+
+impl Deref for LockedDir {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        &self.dir
     }
 }

@@ -7,8 +7,8 @@ const fn not_fn_items() {
     const_eval_select((), || {}, || {});
     //~^ ERROR const FnOnce()` is not satisfied
     const_eval_select((), 42, 0xDEADBEEF);
-    //~^ ERROR expected an `FnOnce()` closure
-    //~| ERROR expected an `FnOnce()` closure
+    //~^ ERROR expected `FnOnce()`
+    //~| ERROR expected `FnOnce()`
 }
 
 const fn foo(n: i32) -> i32 {

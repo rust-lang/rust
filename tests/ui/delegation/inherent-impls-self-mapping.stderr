@@ -19,6 +19,7 @@ LL |     reuse X::foo;
 note: method defined here
   --> $DIR/inherent-impls-self-mapping.rs:7:8
    |
+LL | impl X {
 LL |     fn foo(self: Rc<Box<Self>>, other: Box<Rc<Self>>) -> Option<Box<Self>> {
    |        ^^^ ----                 --------------------
 

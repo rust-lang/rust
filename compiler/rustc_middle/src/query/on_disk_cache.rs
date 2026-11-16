@@ -14,7 +14,7 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{ContextOrd, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
@@ -25,6 +25,7 @@ use rustc_span::{
 };
 
 use crate::dep_graph::{DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
+use crate::ich::SourceSpanCache;
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::mono::MonoItem;
@@ -46,6 +47,9 @@ const TAG_EXPN_DATA: u8 = 1;
 const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
 const SYMBOL_PREDEFINED: u8 = 2;
+
+const DEF_ID_FULL: u8 = 0;
+const DEF_ID_OFFSET: u8 = 1;
 
 /// Provides an interface to incremental compilation data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -114,6 +118,9 @@ struct Footer {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
 struct SourceFileIndex(u32);
+
+// this is never used by the on disk cache, since it is not required to be deterministic
+impl<E> ContextOrd<E> for SourceFileIndex {}
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
 struct AbsoluteBytePos(u64);
@@ -230,11 +237,13 @@ impl OnDiskCache {
                 encoder,
                 type_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
+                def_id_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
                 caching_source_map_view: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
                 hygiene_context: Default::default(),
                 symbol_index_table: Default::default(),
+                source_span_cache: Default::default(),
                 query_values_index: Default::default(),
                 side_effects_index: Default::default(),
             };
@@ -281,10 +290,10 @@ impl OnDiskCache {
             HygieneEncodeContext::encode(
                 &Rc::clone(&encoder.hygiene_context),
                 &mut encoder,
-                |encoder, index, ctxt_data| {
+                |encoder, ctxt, ctxt_data| {
                     let pos = AbsoluteBytePos::new(encoder.position());
                     encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data);
-                    syntax_contexts.insert(index, pos);
+                    syntax_contexts.insert(ctxt.as_u32(), pos);
                 },
                 |encoder, expn_id, data, hash| {
                     if expn_id.krate == LOCAL_CRATE {
@@ -383,6 +392,7 @@ impl OnDiskCache {
             expn_data: &self.expn_data,
             foreign_expn_data: &self.foreign_expn_data,
             hygiene_context: &self.hygiene_context,
+            source_span_cache: SourceSpanCache::default(),
         };
         f(&mut decoder)
     }
@@ -403,6 +413,7 @@ pub struct CacheDecoder<'a, 'tcx> {
     expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
     hygiene_context: &'a HygieneDecodeContext,
+    source_span_cache: SourceSpanCache,
 }
 
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
@@ -545,15 +556,19 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
 impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_syntax_context(&mut self) -> SyntaxContext {
         let syntax_contexts = self.syntax_contexts;
-        rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
-            // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
-            // We look up the position of the associated `SyntaxData` and decode it.
-            let pos = syntax_contexts.get(&id).unwrap();
-            this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
-                data
-            })
-        })
+        rustc_span::hygiene::decode_syntax_context(
+            self,
+            self.hygiene_context,
+            |this, external_ctxt| {
+                // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
+                // We look up the position of the associated `SyntaxData` and decode it.
+                let pos = syntax_contexts.get(&external_ctxt.as_u32()).unwrap();
+                this.with_position(pos.to_usize(), |decoder| {
+                    let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                    data
+                })
+            },
+        )
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -611,7 +626,9 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
                 let dlo = u32::decode(self);
                 let dto = u32::decode(self);
 
-                let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
+                let enclosing = self
+                    .source_span_cache
+                    .lookup(parent.unwrap(), &self.tcx.untracked().source_span);
                 (
                     BytePos(enclosing.lo.0.wrapping_add(dlo)),
                     BytePos(enclosing.lo.0.wrapping_add(dto)),
@@ -646,7 +663,14 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     // sessions, to map the old `DefId` to the new one.
     fn decode_def_id(&mut self) -> DefId {
         // Load the `DefPathHash` which is was we encoded the `DefId` as.
-        let def_path_hash = DefPathHash::decode(self);
+        let def_path_hash = match self.read_u8() {
+            DEF_ID_FULL => DefPathHash::decode(self),
+            DEF_ID_OFFSET => {
+                let pos = self.read_usize();
+                self.opaque.with_position(pos, |decoder| DefPathHash::decode(decoder))
+            }
+            _ => unreachable!(),
+        };
 
         // Using the `DefPathHash`, we can lookup the new `DefId`.
         // Subtle: We only encode a `DefId` as part of a query result.
@@ -687,6 +711,10 @@ impl<'a, 'tcx> BlobDecoder for CacheDecoder<'a, 'tcx> {
     // context.
     fn decode_def_index(&mut self) -> DefIndex {
         panic!("trying to decode `DefIndex` outside the context of a `DefId`")
+    }
+
+    fn decode_local_def_id(&mut self) -> LocalDefId {
+        self.decode_def_id().expect_local()
     }
 }
 
@@ -738,12 +766,14 @@ pub struct CacheEncoder<'tcx> {
     encoder: FileEncoder<'static>,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::PredicateKind<'tcx>, usize>,
+    def_id_shorthands: FxHashMap<DefId, usize>,
     interpret_allocs: FxIndexSet<interpret::AllocId>,
     caching_source_map_view: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
     hygiene_context: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+    source_span_cache: SourceSpanCache,
 
     query_values_index: Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>,
     side_effects_index: Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>,
@@ -827,8 +857,8 @@ impl<'tcx> CacheEncoder<'tcx> {
 
 impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
-        let idx = self.hygiene_context.borrow_mut().get_syntax_ctxt_encoding_index(syntax_context);
-        idx.encode(self);
+        self.hygiene_context.borrow_mut().enqueue_syntax_context_for_encoding(syntax_context);
+        self.emit_u32(syntax_context.as_u32());
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
@@ -845,8 +875,9 @@ impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
             return TAG_PARTIAL_SPAN.encode(self);
         }
 
-        let parent =
-            span_data.parent.map(|parent| self.tcx.source_span_untracked(parent).data_untracked());
+        let parent = span_data
+            .parent
+            .map(|parent| self.source_span_cache.lookup(parent, &self.tcx.untracked().source_span));
         if let Some(parent) = parent
             && parent.contains(span_data)
         {
@@ -896,7 +927,19 @@ impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
-        self.tcx.def_path_hash(def_id).encode(self);
+        match self.def_id_shorthands.entry(def_id) {
+            Entry::Vacant(entry) => {
+                self.encoder.emit_u8(DEF_ID_FULL);
+                let pos = self.encoder.position();
+                entry.insert(pos);
+                self.tcx.def_path_hash(def_id).encode(self);
+            }
+            Entry::Occupied(entry) => {
+                let pos = *entry.get();
+                self.emit_u8(DEF_ID_OFFSET);
+                self.emit_usize(pos);
+            }
+        }
     }
 
     fn encode_def_index(&mut self, _def_index: DefIndex) {
@@ -929,10 +972,12 @@ impl<'tcx> TyEncoder<'tcx> for CacheEncoder<'tcx> {
 
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
-        #[inline]
-        $(fn $name(&mut self, value: $ty) {
-            self.encoder.$name(value)
-        })*
+        $(
+            #[inline]
+            fn $name(&mut self, value: $ty) {
+                self.encoder.$name(value)
+            }
+        )*
     }
 }
 

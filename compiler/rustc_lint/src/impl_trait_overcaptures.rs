@@ -452,12 +452,12 @@ struct ImplTraitOvercapturesLint<'tcx> {
     suggestion: Option<AddPreciseCapturingForOvercapture>,
 }
 
-impl<'a> Diagnostic<'a, ()> for ImplTraitOvercapturesLint<'_> {
+impl<'a> Diagnostic<'a> for ImplTraitOvercapturesLint<'_> {
     fn into_diag(
         self,
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
-    ) -> rustc_errors::Diag<'a, ()> {
+    ) -> rustc_errors::Diag<'a> {
         let mut diag = rustc_errors::Diag::new(
             dcx,
             level,
@@ -542,9 +542,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
         a_ty: Ty<'tcx>,
         _: Ty<'tcx>,
         def_id: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         let variances = self.cx().variances_of(def_id);
         relate_args_with_variances(self, variances, a_args, b_args)?;

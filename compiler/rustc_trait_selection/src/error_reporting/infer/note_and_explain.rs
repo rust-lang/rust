@@ -1,8 +1,9 @@
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{Diag, MultiSpan, pluralize};
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, find_attr};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
@@ -956,13 +957,14 @@ fn foo(&self) -> Self::T { String::new() }
                 {
                     let msg = match assoc_item.container {
                         ty::AssocContainer::Trait => {
-                            "associated type defaults can't be assumed inside the \
-                                            trait defining them"
+                            "associated type defaults can't be assumed inside the trait defining \
+                             them"
                         }
                         ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                             "associated type is `default` and may be overridden"
                         }
                     };
+                    diag.span_context(tcx.def_span(tcx.parent(assoc_item.def_id)));
                     diag.span_label(tcx.def_span(assoc_item.def_id), msg);
                     return true;
                 }
@@ -1048,7 +1050,7 @@ fn foo(&self) -> Self::T { String::new() }
 
     pub fn format_generic_args(&self, args: &[ty::GenericArg<'tcx>]) -> String {
         FmtPrinter::print_string(self.tcx, hir::def::Namespace::TypeNS, |p| {
-            p.print_path_with_generic_args(|_| Ok(()), args)
+            p.print_path_with_generic_args(|_| Ok(()), self.tcx.mk_args(args))
         })
         .expect("could not write to `String`.")
     }

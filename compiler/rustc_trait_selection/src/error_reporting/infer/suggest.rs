@@ -104,7 +104,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.single_field();
-                    let sole_field_ty = sole_field.ty(self.tcx, args).skip_norm_wip();
+                    let sole_field_ty = sole_field.ty(self.tcx, *args).skip_norm_wip();
                     if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
                         let variant_path =
                             with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
@@ -350,7 +350,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 .fields
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
-                .map(|field| (field.name, field.ty(self.tcx, expected_args).skip_norm_wip()))
+                .map(|field| (field.name, field.ty(self.tcx, *expected_args).skip_norm_wip()))
                 .find(|(_, ty)| self.same_type_modulo_infer(*ty, exp_found.found))
                 && let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code()
                 && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
@@ -521,7 +521,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let found_sig =
                     self.normalize_fn_sig(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
 
-                if self.same_type_modulo_infer(expected_sig, found_sig) {
+                let expected_sig_anon = self.tcx.anonymize_bound_vars(expected_sig);
+                let found_sig_anon = self.tcx.anonymize_bound_vars(found_sig);
+                if self.same_type_modulo_infer(expected_sig_anon, found_sig_anon) {
                     diag.subdiagnostic(FnUniqTypes);
                 }
 

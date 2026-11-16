@@ -13,19 +13,29 @@ use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_span::Span;
 use tracing::debug;
 
+use crate::comment::contains_comment;
+use crate::expr::is_unsafe_block;
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
+use crate::rewrite::RewriteContext;
 use crate::spanned::Spanned;
+
+// NB: parser recovery can return `Ok(expr)` (or other non-terminals) and still emit errors. We need
+// to properly reset the shared error count.
 
 pub(crate) fn parse_items_from_cfg_select<'a>(
     psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
-    match catch_unwind(AssertUnwindSafe(|| {
+    let result = catch_unwind(AssertUnwindSafe(|| {
         parse_items_from_cfg_select_inner(psess, mac)
-    })) {
-        Ok(Ok(items)) => Ok(items),
-        Ok(err @ Err(_)) => err,
+    }));
+    let dcx = psess.inner().dcx();
+    let recovered = dcx.has_errors().is_some();
+    dcx.reset_err_count();
+    match result {
+        Ok(Ok(_)) if recovered => Err("cfg_select! parsed with recovery"),
+        Ok(res) => res,
         Err(..) => Err("failed to parse cfg_select!"),
     }
 }
@@ -64,10 +74,13 @@ fn parse_items_from_cfg_select_inner<'a>(
                 .parse_item(ForceCollect::No, AllowConstBlockItems::DoesNotMatter)
             {
                 Ok(Some(item_ptr)) => *item_ptr,
-                Ok(None) => continue,
+                Ok(None) => {
+                    // Advance the parser by at least one token to prevent an infinite loop
+                    parser.bump();
+                    continue;
+                }
                 Err(err) => {
                     err.cancel();
-                    parser.psess.dcx().reset_err_count();
                     return Err(
                         "Expected item inside cfg_select block, but failed to parse it as an item",
                     );
@@ -149,12 +162,92 @@ impl std::fmt::Debug for CfgSelectArm {
     }
 }
 
+impl CfgSelectArm {
+    /// Is the `cfg_select!` arm written with two consecutive blocks in a way that we can apply a
+    /// concise formatting happy path? For example:
+    ///
+    /// ```text
+    /// $predicate => {{}}
+    /// ```
+    ///
+    /// If so, extract the inner block. rustfmt will preserve the double block syntax.
+    pub(crate) fn maybe_double_block_concise_formatting(
+        &self,
+        context: &RewriteContext<'_>,
+    ) -> Option<&ast::Expr> {
+        // To be able to safely use the concise double block `{{ ... }}` concise formatting, the
+        // outer block must satisfy all of the following properties:
+        //
+        // 1. It has a single statement that's also a block
+        // 2. It doesn't have a label
+        // 3. It isn't an unsafe block
+        // 4. It doesn't have any attributes
+        // 5. There are no comments between the outer blocks and the inner blocks, i.e.
+        //    ```
+        //    { /* A */ { ... } /* B */ }
+        //    ```
+        let outer_expr = &self.expr;
+        match &outer_expr.kind {
+            ast::ExprKind::Block(outer_block, label)
+                if let [stmt] = outer_block.stmts.as_slice()
+                    && label.is_none()
+                    && !is_unsafe_block(&outer_block)
+                    && self.expr.attrs.is_empty() =>
+            {
+                match &stmt.kind {
+                    // The inner expr has to be a block.
+                    ast::StmtKind::Expr(e)
+                        if let ast::ExprKind::Block(ref inner_block, _inner_label) = e.kind =>
+                    {
+                        // Check for comments in between outer/inner blocks. If there are in-between
+                        // comments, we should not apply the concise formatting. Let's call them
+                        // ```
+                        // {   { ... }   }
+                        // ^---       ^---
+                        // pre_sp     post_sp
+                        // ```
+                        let pre_sp = outer_block.span.until(inner_block.span);
+                        let post_sp = outer_block.span.with_lo(inner_block.span.hi());
+                        if contains_comment(context.snippet(pre_sp))
+                            || contains_comment(context.snippet(post_sp))
+                        {
+                            None
+                        } else {
+                            Some(e)
+                        }
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
 // FIXME(ytmimi) would be nice if rustfmt didn't need to implement parsing logic on its own
 // and could instead just call rustc_attr_parsing::parse_cfg_select, but this is fine for now.
 pub(crate) fn parse_cfg_select_arms(
     psess: &ParseSess,
     ts: TokenStream,
 ) -> Option<Vec<CfgSelectArm>> {
+    let result = catch_unwind(AssertUnwindSafe(|| parse_cfg_select_arms_inner(psess, ts)));
+    let dcx = psess.inner().dcx();
+    let recovered = dcx.has_errors().is_some();
+    dcx.reset_err_count();
+    match result {
+        Ok(Some(_)) if recovered => {
+            debug!("cfg_select! arms parsed with recovery");
+            None
+        }
+        Ok(arms) => arms,
+        Err(..) => {
+            debug!("failed to parse cfg_select! arms");
+            None
+        }
+    }
+}
+
+fn parse_cfg_select_arms_inner(psess: &ParseSess, ts: TokenStream) -> Option<Vec<CfgSelectArm>> {
     let mut cfg_select_predicates = vec![];
     let mut parser = build_stream_parser(psess.inner(), ts);
 
@@ -166,12 +259,13 @@ pub(crate) fn parse_cfg_select_arms(
                 debug!("Failed to parse cfg entry in cfg_select! predicate");
                 return None;
             };
+
             CfgSelectFormatPredicate::Cfg(meta_item)
         };
 
         if let Err(e) = parser.expect(exp!(FatArrow)) {
             e.cancel();
-            debug!("Expected to find a `=>` after cfg_selec! predicate.");
+            debug!("Expected to find a `=>` after cfg_select! predicate.");
             return None;
         };
 

@@ -26,7 +26,7 @@ note: `mac` could also refer to the unresolved item imported here
    |
 LL |     use nonexistent_module::mac;
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `self::mac` to refer to this unresolved item unambiguously
+   = help: consider removing this
 
 error: aborting due to 2 previous errors
 

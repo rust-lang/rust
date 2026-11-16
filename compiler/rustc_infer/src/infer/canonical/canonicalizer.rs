@@ -418,6 +418,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             | ty::UnsafeBinder(_)
             | ty::Never
             | ty::Tuple(..)
+            | ty::View(..)
             | ty::Alias(..)
             | ty::Foreign(..)
             | ty::Pat(..)

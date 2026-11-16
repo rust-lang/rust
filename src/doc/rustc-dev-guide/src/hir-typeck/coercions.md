@@ -248,7 +248,8 @@ the lub type relation will switch to invariance.
 
 This enforces that the binders of the higher ranked types are equivalent which avoids the need to pick a "most general" binder, which would be quite difficult to do.
 
-It also avoids the process of computing a mutual supertype being *order dependent*. Given the types `a` and `b`, it may be nice if computing the mutual supertype of `a` and `b` would yield the same result as computing the mutual supertype of `b` and `a`.
+It also avoids the process of computing a mutual supertype being *order dependent*.
+Given the types `a` and `b`, it may be nice if computing the mutual supertype of `a` and `b` would yield the same result as computing the mutual supertype of `b` and `a`.
 
 The current issues with higher ranked types and subtyping would cause this property to not hold if we were to use the naive method of computing a mutual supertype.
 

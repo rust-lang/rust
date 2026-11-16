@@ -17,6 +17,7 @@
 //! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
+// ignore-tidy-file-filelength
 
 use std::borrow::{Borrow, Cow};
 use std::{cmp, fmt};
@@ -38,7 +39,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 use crate::util::parser::{ExprPrecedence, Fixity};
 use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
@@ -124,6 +125,11 @@ impl StableHash for Path {
         self.segments.len().stable_hash(hcx, hasher);
         for segment in &self.segments {
             segment.ident.stable_hash(hcx, hasher);
+            if segment.args.is_some() {
+                // This should never happen, because Path::stable_hash is only used for attributes,
+                // which never have generic args. Check that to make sure, though.
+                panic!("Paths with generic args should not appear in incremental state");
+            }
         }
     }
 }
@@ -471,6 +477,10 @@ impl GenericParam {
             GenericParamKind::Const { span, .. } => *span,
         }
     }
+
+    pub fn span_with_attributes(&self) -> Span {
+        if let Some(first) = self.attrs.first() { first.span.to(self.span()) } else { self.span() }
+    }
 }
 
 /// Represents lifetime, type and const parameters attached to a declaration of
@@ -542,15 +552,6 @@ pub struct WhereRegionPredicate {
     pub lifetime: Lifetime,
     #[visitable(extra = BoundKind::Bound)]
     pub bounds: GenericBounds,
-}
-
-/// An equality predicate (unsupported).
-///
-/// E.g., `T = int`.
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct WhereEqPredicate {
-    pub lhs_ty: Box<Ty>,
-    pub rhs_ty: Box<Ty>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -651,8 +652,8 @@ impl Pat {
             PatKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
             PatKind::Ref(pat, pinned, mutbl) => pat.to_ty().map(|ty| match pinned {
-                Pinnedness::Not => TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }),
-                Pinnedness::Pinned => TyKind::PinnedRef(None, MutTy { ty, mutbl: *mutbl }),
+                Pinnedness::Not => TyKind::Ref(None, ty, *mutbl),
+                Pinnedness::Pinned => TyKind::PinnedRef(None, ty, *mutbl),
             })?,
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
@@ -1214,7 +1215,7 @@ impl Stmt {
     /// a trailing semicolon.
     ///
     /// This only modifies the parsed AST struct, not the attached
-    /// `LazyAttrTokenStream`. The parser is responsible for calling
+    /// `LazyTokenStream`. The parser is responsible for calling
     /// `ToAttrTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
     pub fn add_trailing_semicolon(mut self) -> Self {
@@ -1274,7 +1275,7 @@ pub struct MacCallStmt {
     pub mac: Box<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, Walkable)]
@@ -1301,7 +1302,7 @@ pub struct Local {
     pub span: Span,
     pub colon_sp: Option<Span>,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -1402,7 +1403,7 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Expr {
@@ -1507,7 +1508,7 @@ impl Expr {
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
 
             ExprKind::AddrOf(BorrowKind::Ref, mutbl, expr) => {
-                expr.to_ty().map(|ty| TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }))?
+                expr.to_ty().map(|ty| TyKind::Ref(None, ty, *mutbl))?
             }
 
             ExprKind::Repeat(expr, expr_len) => {
@@ -1623,7 +1624,7 @@ impl Expr {
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
             | ExprKind::Yield(YieldKind::Postfix(..))
-            | ExprKind::DirectConstArg(..)
+            | ExprKind::GcaMacro(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
@@ -1772,7 +1773,7 @@ pub enum ExprKind {
     Lit(token::Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(Box<Expr>, Box<Ty>),
-    /// A type ascription (e.g., `builtin # type_ascribe(42, usize)`).
+    /// A type ascription (e.g., `k#type_ascribe(42, usize)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `type_ascribe!(...)`.
@@ -1864,7 +1865,7 @@ pub enum ExprKind {
     /// Output of the `asm!()` macro.
     InlineAsm(Box<InlineAsm>),
 
-    /// An `offset_of` expression (e.g., `builtin # offset_of(Struct, field)`).
+    /// An `offset_of` expression (e.g., `k#offset_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
@@ -1920,8 +1921,8 @@ pub enum ExprKind {
 
     UnsafeBinderCast(UnsafeBinderCastKind, Box<Expr>, Option<Box<Ty>>),
 
-    /// An mGCA `direct_const_arg!()` expression.
-    DirectConstArg(Box<Expr>),
+    /// An mGCA `gca!()` expression.
+    GcaMacro(Box<Expr>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
@@ -2336,14 +2337,6 @@ impl LitKind {
     }
 }
 
-// N.B., If you change this, you'll probably want to change the corresponding
-// type structure in `middle/ty.rs` as well.
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct MutTy {
-    pub ty: Box<Ty>,
-    pub mutbl: Mutability,
-}
-
 /// Represents a function's signature in a trait declaration,
 /// trait implementation, or free function.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2402,7 +2395,7 @@ pub struct BorrowedFnSig<'a> {
 /// * the `G<Ty> = Ty` in `Trait<G<Ty> = Ty>`
 /// * the `A: Bound` in `Trait<A: Bound>`
 /// * the `RetTy` in `Trait(ArgTy, ArgTy) -> RetTy`
-/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `min_generic_const_args`)
+/// * the `C = { Ct }` in `Trait<C = { Ct }>` (feature `gca_min_const_items`)
 /// * the `f(..): Bound` in `Trait<f(..): Bound>` (feature `return_type_notation`)
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct AssocItemConstraint {
@@ -2470,8 +2463,7 @@ impl From<Box<Ty>> for Ty {
 impl Ty {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
-        while let TyKind::Ref(_, MutTy { ty, .. }) | TyKind::Ptr(MutTy { ty, .. }) = &final_ty.kind
-        {
+        while let TyKind::Ref(_, ty, _) | TyKind::Ptr(ty, ..) = &final_ty.kind {
             final_ty = ty;
         }
         final_ty
@@ -2528,13 +2520,13 @@ pub enum TyKind {
     /// A fixed length array (`[T; n]`).
     Array(Box<Ty>, AnonConst),
     /// A raw pointer (`*const T` or `*mut T`).
-    Ptr(MutTy),
+    Ptr(Box<Ty>, Mutability),
     /// A reference (`&'a T` or `&'a mut T`).
-    Ref(#[visitable(extra = LifetimeCtxt::Ref)] Option<Lifetime>, MutTy),
+    Ref(#[visitable(extra = LifetimeCtxt::Ref)] Option<Lifetime>, Box<Ty>, Mutability),
     /// A pinned reference (`&'a pin const T` or `&'a pin mut T`).
     ///
     /// Desugars into `Pin<&'a T>` or `Pin<&'a mut T>`.
-    PinnedRef(#[visitable(extra = LifetimeCtxt::Ref)] Option<Lifetime>, MutTy),
+    PinnedRef(#[visitable(extra = LifetimeCtxt::Ref)] Option<Lifetime>, Box<Ty>, Mutability),
     /// A function pointer type (e.g., `fn(usize) -> bool`).
     FnPtr(Box<FnPtrTy>),
     /// An unsafe existential lifetime binder (e.g., `unsafe<'a> &'a ()`).
@@ -2572,15 +2564,15 @@ pub enum TyKind {
     /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZero<u32>`,
     /// just as part of the type system.
     Pat(Box<Ty>, Box<TyPat>),
-    /// A `field_of` expression (e.g., `builtin # field_of(Struct, field)`).
+    /// A `field_of` expression (e.g., `k#field_of(Struct, field)`).
     ///
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.
     FieldOf(Box<Ty>, Option<Ident>, Ident),
     /// A view of a type. `T.{ field_1, field_2 }`.
     View(Box<Ty>, #[visitable(ignore)] ThinVec<Ident>),
-    /// An mGCA `direct_const_arg!()` expression.
-    DirectConstArg(Box<Expr>),
+    /// An mGCA `gca!()` expression.
+    GcaMacro(Box<Expr>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
@@ -2939,6 +2931,9 @@ pub struct Param {
     pub id: NodeId,
     pub span: Span,
     pub is_placeholder: bool,
+    /// Records whether `const` was written before the parameter.
+    /// This only tracks syntax, not whether it's a valid const generic param.
+    pub has_const_keyword: bool,
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
@@ -2979,12 +2974,10 @@ impl Param {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Ref(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
+                    TyKind::Ref(lt, ref ty, mutbl) if ty.kind.is_implicit_self() => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
-                    TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
-                        if ty.kind.is_implicit_self() =>
-                    {
+                    TyKind::PinnedRef(lt, ref ty, mutbl) if ty.kind.is_implicit_self() => {
                         Some(respan(self.pat.span, SelfKind::Pinned(lt, mutbl)))
                     }
                     _ => Some(respan(
@@ -3016,17 +3009,13 @@ impl Param {
             SelfKind::Value(mutbl) => (mutbl, infer_ty),
             SelfKind::Region(lt, mutbl) => (
                 Mutability::Not,
-                Box::new(Ty {
-                    id: DUMMY_NODE_ID,
-                    kind: TyKind::Ref(lt, MutTy { ty: infer_ty, mutbl }),
-                    span,
-                }),
+                Box::new(Ty { id: DUMMY_NODE_ID, kind: TyKind::Ref(lt, infer_ty, mutbl), span }),
             ),
             SelfKind::Pinned(lt, mutbl) => (
                 Mutability::Not,
                 Box::new(Ty {
                     id: DUMMY_NODE_ID,
-                    kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),
+                    kind: TyKind::PinnedRef(lt, infer_ty, mutbl),
                     span,
                 }),
             ),
@@ -3042,7 +3031,27 @@ impl Param {
             ty,
             id: DUMMY_NODE_ID,
             is_placeholder: false,
+            has_const_keyword: false,
         }
+    }
+
+    /// Returns the ident if this param is a valid arg position const param.
+    /// Unlike has_const_keyword, this also checks the pats
+    pub fn const_param_ident(&self) -> Option<Ident> {
+        if !self.has_const_keyword {
+            return None;
+        }
+
+        match self.pat.kind {
+            PatKind::Ident(BindingMode::NONE, ident, None) => Some(ident),
+            _ => None,
+        }
+    }
+
+    /// Checks if this is an arg position const param.
+    /// Use this instead of has_const_keyword, which only checks for the keyword.
+    pub fn is_const_param(&self) -> bool {
+        self.const_param_ident().is_some()
     }
 }
 
@@ -3451,13 +3460,143 @@ pub enum AttrKind {
     /// A normal attribute.
     Normal(Box<NormalAttr>),
 
-    /// A synthetic attribute inserted by the compiler.
-    Synthetic(Box<SyntheticAttr>),
-
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    ///
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
     DocComment(CommentKind, Symbol),
+
+    /// A synthetic attribute inserted by the compiler.
+    ///
+    /// See [`SyntheticAttr`] for the semantics of "synthetic" attributes.
+    Synthetic(Box<SyntheticAttr>),
+
+    /// A macro generated attribute inserted by a builtin macro.
+    ///
+    /// See [`GeneratedAttr`] for the semantics of "generated" attributes.
+    Generated(GeneratedAttr),
+}
+
+/// An attribute created by a macro expansion.
+///
+/// This attribute has no tokens, which means it cannot be allowed to re-enter the parser. This
+/// means it can only be added to items that cannot later be observed by other macros.
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum GeneratedAttr {
+    AutomaticallyDerived,
+    RustcConstUnstableDerived,
+    Inline,
+    DocHidden,
+    CoverageOff,
+    RustcTestMarker(Symbol),
+    RustcTrivialFieldReads,
+}
+
+impl GeneratedAttr {
+    pub fn descr(&self) -> String {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => "#[automatically_derived]".into(),
+            GeneratedAttr::RustcConstUnstableDerived => {
+                "#[rustc_const_unstable(feature = \"derive_const\", issue = \"143874\")]".into()
+            }
+            GeneratedAttr::Inline => "#[inline]".into(),
+            GeneratedAttr::DocHidden => "#[doc(hidden)]".into(),
+            GeneratedAttr::CoverageOff => "#[coverage(off)]".into(),
+            GeneratedAttr::RustcTestMarker(test_path) => {
+                format!("#[rustc_test_marker = \"{test_path}\"]")
+            }
+            GeneratedAttr::RustcTrivialFieldReads => "#[rustc_trivial_field_reads]".into(),
+        }
+    }
+    pub fn value_span(&self) -> Option<Span> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn is_doc_comment(&self) -> bool {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => false,
+            GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::Inline => false,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::RustcTestMarker(_) => false,
+            GeneratedAttr::RustcTrivialFieldReads => false,
+        }
+    }
+
+    pub fn path(&self) -> &[Symbol] {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => &[sym::automatically_derived],
+            GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
+            GeneratedAttr::Inline => &[sym::inline],
+            GeneratedAttr::DocHidden => &[sym::doc],
+            GeneratedAttr::CoverageOff => &[sym::coverage],
+            GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
+            GeneratedAttr::RustcTrivialFieldReads => &[sym::rustc_trivial_field_reads],
+        }
+    }
+
+    pub fn path_span(&self) -> Option<Span> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn is_word(&self) -> bool {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => true,
+            GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::Inline => true,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::RustcTestMarker(_) => false,
+            GeneratedAttr::RustcTrivialFieldReads => false,
+        }
+    }
+    pub fn value_str(&self) -> Option<Symbol> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(test_path) => Some(*test_path),
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn doc_str_and_fragment_kind(&self) -> Option<!> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::RustcTrivialFieldReads => None,
+        }
+    }
+
+    pub fn append_token_trees_to(&self, _res: &mut Vec<TokenTree>) {
+        unimplemented!(
+            "generated attribute `{}` cannot re-enter the parser at this time",
+            self.descr()
+        )
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3465,7 +3604,7 @@ pub struct NormalAttr {
     pub item: AttrItem,
     // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
     // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl NormalAttr {
@@ -3524,6 +3663,14 @@ pub enum SyntheticAttr {
     ///
     /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
     CfgAttrTrace(CfgEntry),
+
+    /// This synthetic attribute is added by the `#[test]` and `#[bench]` macros to the annotated
+    /// function, so that tools (e.g. rustc drivers doing analysis) can find test entry points
+    /// without relying on unstable details such test lowering.
+    ///
+    /// The attribute is not used by rustc directly and is instead only provided as a utility for
+    /// out of tree users.
+    TestEntrypoint,
 }
 
 impl AttrItem {
@@ -3736,7 +3883,7 @@ pub struct Item<K = ItemKind> {
     ///
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Item {
@@ -4083,11 +4230,26 @@ pub struct TestBinderConstraints {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderBody {
-    pub foralls: ThinVec<TestBinderForall>,
-    pub exists: ThinVec<TestBinderExists>,
-    pub constraints: Vec<TestBinderConstraint>,
+    pub span: Span,
+    pub items: Vec<TestBinderItem>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum TestBinderItem {
+    Forall(TestBinderForall),
+    Exists(TestBinderExists),
+    RegionEquality(TestBinderRegionEquality),
+    Constraint(TestBinderConstraint),
     /// These are not where clauses, but rather predicates within the body to be proven
-    pub predicates: Vec<WhereClause>,
+    Predicate(WherePredicate),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct TestBinderRegionEquality {
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub lhs: Lifetime,
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub rhs: Lifetime,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4114,6 +4276,9 @@ pub enum TestBinderConstraint {
     },
     Or {
         items: ThinVec<TestBinderConstraint>,
+    },
+    Ambiguity {
+        span: Span,
     },
     Lifetime {
         #[visitable(extra = LifetimeCtxt::Bound)]

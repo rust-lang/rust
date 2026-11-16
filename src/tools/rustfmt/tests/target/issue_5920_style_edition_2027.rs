@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2027
+//@ rustfmt-style_edition: 2027
 
 struct Demo {
     field_name_foo: (),

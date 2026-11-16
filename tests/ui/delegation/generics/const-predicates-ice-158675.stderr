@@ -10,7 +10,7 @@ note: required by a const generic parameter in `original_ice::Trait::fun`
 LL |     trait Trait<T, const B: bool> {
    |                    ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::fun`
 LL |         fn fun();
-   |            --- required by a bound in this associated function
+   |
 
 error: the constant `N` is not of type `bool`
   --> $DIR/const-predicates-ice-158675.rs:24:29
@@ -24,7 +24,7 @@ note: required by a const generic parameter in `with_child_constants::Trait::fun
 LL |     trait Trait<T, const B: bool> {
    |                    ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::fun`
 LL |         fn fun<const C: char>();
-   |            --- required by a bound in this associated function
+   |
 
 error: the constant `N` is not of type `char`
   --> $DIR/const-predicates-ice-158675.rs:24:39
@@ -35,6 +35,7 @@ LL |         reuse Trait::<S<N>, N>::fun::<N>;
 note: required by a const generic parameter in `with_child_constants::Trait::fun`
   --> $DIR/const-predicates-ice-158675.rs:20:16
    |
+LL |     trait Trait<T, const B: bool> {
 LL |         fn fun<const C: char>();
    |                ^^^^^^^^^^^^^ required by this const generic parameter in `Trait::fun`
 

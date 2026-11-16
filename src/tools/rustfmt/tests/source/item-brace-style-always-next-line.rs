@@ -1,4 +1,4 @@
-// rustfmt-brace_style: AlwaysNextLine
+//@ rustfmt-brace_style: AlwaysNextLine
 
 mod M {
     enum A {

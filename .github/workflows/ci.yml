@@ -21,6 +21,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 defaults:
   run:
@@ -46,7 +47,7 @@ jobs:
   # If you want to modify CI jobs, take a look at src/ci/github-actions/jobs.yml.
   calculate_matrix:
     name: Calculate job matrix
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     outputs:
       jobs: ${{ steps.jobs.outputs.jobs }}
       run_type: ${{ steps.jobs.outputs.run_type }}
@@ -121,12 +122,10 @@ jobs:
         with:
           fetch-depth: 2
 
-      # Free up disk space on Linux by removing preinstalled components that
-      # we do not need. We do this to enable some of the less resource
-      # intensive jobs to run on free runners, which however also have
-      # less disk space.
+      # Free up disk space on Linux or macOS by removing preinstalled components that
+      # we do not need.
       - name: free up disk space
-        run: src/ci/scripts/free-disk-space-linux.sh
+        run: src/ci/scripts/free-disk-space.sh
         if: matrix.free_disk
 
       # If we don't need to free up disk space then just report how much space we have
@@ -189,6 +188,26 @@ jobs:
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
+
+      - name: install required Python version
+        # LLDB on Windows requires the same Python version it was built against to be the first
+        # discoverable Python in $env:PATH. Only install if we're actually running Windows tests
+        # that use LLDB
+        if: ${{ startsWith(matrix.os, 'windows') && matrix.required_python_version}}
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.required_python_version }}
+
+      # msys2 link.exe conflicts with msvc's link.exe.
+      # Rather than trying to fight over PATH with msys2 we simply delete it
+      # thus avoiding the conflict.
+      - name: Remove link.exe
+        run: rm $(which link.exe) || true
+
+      - name: Workaroud for \#165953
+        if: ${{ contains(matrix.name, 'aarch64-msvc') }}
+        shell: pwsh -Command $ErrorActionPreference='stop'; $PSNativeCommandUseErrorActionPreference=$true; & '{0}'
+        run: src\ci\scripts\aarch64-msvc-workaround.ps1
 
       - name: enable ipv6 on Docker
         # Don't run on codebuild because systemctl is not available
@@ -254,7 +273,7 @@ jobs:
           df -h
 
       - name: upload artifacts to github
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # name is set in previous step
           name: ${{ env.DOC_ARTIFACT_NAME }}
@@ -262,11 +281,48 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
+      # We assume roles in two hops here. AssumeRoleWithWebIdentity, the first
+      # hop, does not support setting a property available as a [global AWS context key].
+      #
+      # The second hop, a normal AssumeRole call, supports setting arbitrary
+      # tags. The first hop only has permission to perform this second hop.
+      #
+      # We use the second role assumption to set the `sha` tag to the current
+      # Git commit, which is used in the matching AWS IAM policy to enforce
+      # that we can only write to S3 keys including that SHA. Note that the
+      # attacker-controlled code (this file) sets that tag's value, and
+      # currently there's no enforcement that it is the *right* value. We hope
+      # to improve on this in the future, but the right claim is not currently
+      # available natively in AWS ([supported claims]).
+      #
+      # [global AWS context key]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html
+      # [supported claims]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_iam-condition-keys.html#condition-keys-wif
+      - name: assume intermediate artifact role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::890664054962:role/rustc-ci--rust-lang--rust--github
+          aws-region: us-west-1
+          aws-profile: artifacts-src
+        # Should match condition on upload step
+        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
+
+      - name: assume final artifact role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        env:
+          AWS_PROFILE: artifacts-src
+        with:
+          role-to-assume: arn:aws:iam::890664054962:role/rustc-ci--rust-lang--rust--github-with-sha
+          custom-tags: '{"sha": "${{ github.sha }}"}'
+          role-chaining: true
+          aws-region: us-west-1
+          aws-profile: artifacts
+        # Should match condition on upload step
+        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
+
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY }}
+          AWS_PROFILE: artifacts
         # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
         # builders *should* have the AWS credentials available. Still, explicitly
         # adding the condition is helpful as this way CI will not silently skip
@@ -309,7 +365,7 @@ jobs:
   # This job is used to publish toolstate for successful auto builds.
   outcome:
     name: publish toolstate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [ calculate_matrix, job ]
     if: ${{ needs.calculate_matrix.outputs.run_type == 'auto' }}
     environment: ${{ (github.repository == 'rust-lang/rust' && 'bors') || '' }}

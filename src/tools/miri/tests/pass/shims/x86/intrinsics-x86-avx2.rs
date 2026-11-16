@@ -77,6 +77,42 @@ unsafe fn test_avx2() {
     test_mm256_abs_epi8();
 
     #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_avg_epu8() {
+        let (a, b) = (_mm256_set1_epi8(3), _mm256_set1_epi8(9));
+        let r = _mm256_avg_epu8(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi8(6));
+
+        // Intermediary sum can overflow, but the final result not.
+        let (a, b) = (_mm256_set1_epi8(u8::MAX as i8), _mm256_set1_epi8((u8::MAX - 2) as i8));
+        let r = _mm256_avg_epu8(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi8((u8::MAX - 1) as i8));
+
+        // Odd sums are rounded up.
+        let (a, b) = (_mm256_set1_epi8(3), _mm256_set1_epi8(6));
+        let r = _mm256_avg_epu8(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi8(5));
+    }
+    test_mm256_avg_epu8();
+
+    #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_avg_epu16() {
+        let (a, b) = (_mm256_set1_epi16(3), _mm256_set1_epi16(9));
+        let r = _mm256_avg_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(6));
+
+        // Intermediary sum can overflow, but the final result not.
+        let (a, b) = (_mm256_set1_epi16(u16::MAX as i16), _mm256_set1_epi16((u16::MAX - 2) as i16));
+        let r = _mm256_avg_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16((u16::MAX - 1) as i16));
+
+        // Odd sums are rounded up.
+        let (a, b) = (_mm256_set1_epi16(3), _mm256_set1_epi16(6));
+        let r = _mm256_avg_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(5));
+    }
+    test_mm256_avg_epu16();
+
+    #[target_feature(enable = "avx2")]
     unsafe fn test_mm256_hadd_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
@@ -1110,6 +1146,22 @@ unsafe fn test_avx2() {
     test_mm256_mulhrs_epi16();
 
     #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_mulhi_epi16() {
+        let (a, b) = (_mm256_set1_epi16(1000), _mm256_set1_epi16(-1001));
+        let r = _mm256_mulhi_epi16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(-16));
+    }
+    test_mm256_mulhi_epi16();
+
+    #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_mulhi_epu16() {
+        let (a, b) = (_mm256_set1_epi16(1000), _mm256_set1_epi16(1001));
+        let r = _mm256_mulhi_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(15));
+    }
+    test_mm256_mulhi_epu16();
+
+    #[target_feature(enable = "avx2")]
     unsafe fn test_mm256_packs_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
@@ -1452,7 +1504,21 @@ unsafe fn test_avx2() {
         let a = _mm_set_epi64x(2, 3);
         let b = _mm_set_epi64x(1, 2);
         let r = _mm_sllv_epi64(a, b);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi64x(2i64.unbounded_shl(1), 3i64.unbounded_shl(2));
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
         let e = _mm_set_epi64x(4, 12);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is 0.
+        let a = _mm_set_epi64x(1, 2);
+        let b = _mm_set_epi64x(64, 65);
+        let r = _mm_sllv_epi64(a, b);
+        let e = _mm_set_epi64x(1i64.unbounded_shl(64), 2i64.unbounded_shl(65));
+        assert_eq_m128i(r, e);
+        let e = _mm_set_epi64x(0, 0);
         assert_eq_m128i(r, e);
     }
     test_mm_sllv_epi64();
@@ -1473,6 +1539,23 @@ unsafe fn test_avx2() {
         let b = _mm_set_epi32(4, 3, 2, 1);
         let r = _mm_srav_epi32(a, b);
         let e = _mm_set_epi32(1, -4, 16, -64);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is -1.
+        let a = _mm_set_epi32(-16, -32, -64, -128);
+        let b = _mm_set_epi32(31, 32, 33, 0);
+        let r = _mm_srav_epi32(a, b);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi32(
+            (-16i32).unbounded_shr(31),
+            (-32i32).unbounded_shr(32),
+            (-64i32).unbounded_shr(33),
+            (-128i32).unbounded_shr(0),
+        );
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
+        let e = _mm_set_epi32(-1, -1, -1, -128);
         assert_eq_m128i(r, e);
     }
     test_mm_srav_epi32();
@@ -1512,7 +1595,21 @@ unsafe fn test_avx2() {
         let a = _mm_set_epi64x(4, 8);
         let b = _mm_set_epi64x(2, 1);
         let r = _mm_srlv_epi64(a, b);
+        // Compare with the scalar version of the same computation.
+        let e = _mm_set_epi64x(4i64.unbounded_shr(2), 8i64.unbounded_shr(1));
+        assert_eq_m128i(r, e);
+        // Compare with hardcoded output.
         let e = _mm_set_epi64x(1, 4);
+        assert_eq_m128i(r, e);
+
+        // The shift has unbounded semantics: if the shift amount
+        // is >= the number of bits the result is 0.
+        let a = _mm_set_epi64x(i64::MAX, i64::MAX);
+        let b = _mm_set_epi64x(64, 65);
+        let r = _mm_sllv_epi64(a, b);
+        let e = _mm_set_epi64x(i64::MAX.unbounded_shr(64), i64::MAX.unbounded_shr(65));
+        assert_eq_m128i(r, e);
+        let e = _mm_set_epi64x(0, 0);
         assert_eq_m128i(r, e);
     }
     test_mm_srlv_epi64();

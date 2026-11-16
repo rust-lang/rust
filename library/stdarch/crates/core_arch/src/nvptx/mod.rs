@@ -145,7 +145,7 @@ pub unsafe fn _thread_idx_z() -> u32 {
 #[inline]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn trap() -> ! {
-    crate::intrinsics::abort()
+    crate::intrinsics::abort_immediate()
 }
 
 // Basic CUDA syscall declarations.

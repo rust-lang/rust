@@ -14,7 +14,8 @@
 use run_make_support::{diff, rustc};
 
 fn main() {
-    let out = rustc().crate_type("rlib").stdin_buf(b"mod unknown;").arg("-").run_fail();
+    let out =
+        rustc().edition("2015").crate_type("rlib").stdin_buf(b"mod unknown;").arg("-").run_fail();
     diff()
         .actual_text("actual-stdout", out.stdout_utf8())
         .expected_file("unknown-mod.stdout")

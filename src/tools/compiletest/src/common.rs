@@ -60,6 +60,7 @@ impl TestMode {
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub(crate) enum TestSuite {
+        AssemblyGcc => "assembly-gcc",
         AssemblyLlvm => "assembly-llvm",
         CodegenLlvm => "codegen-llvm",
         CodegenUnits => "codegen-units",
@@ -172,7 +173,6 @@ string_enum! {
     pub(crate) enum CompareMode {
         Polonius => "polonius",
         NextSolver => "next-solver",
-        NextSolverCoherence => "next-solver-coherence",
         SplitDwarf => "split-dwarf",
         SplitDwarfSingle => "split-dwarf-single",
     }
@@ -682,6 +682,9 @@ pub(crate) struct Config {
     /// Whether to run `offload` autodiff tests.
     pub(crate) has_offload: bool,
 
+    /// Whether to run tests with the `tpde` LLVM backend
+    pub(crate) has_tpde: bool,
+
     /// The current Rust channel info.
     ///
     /// FIXME: treat this more carefully; "stable", "beta" and "nightly" are definitely valid, but
@@ -857,6 +860,10 @@ impl Config {
         // name, such as `wasm32-wasip1-threads`.
         if self.target.starts_with("wasm") {
             return self.target.contains("threads");
+        }
+        // UEFI targets don't have threads.
+        if self.target.contains("uefi") {
+            return false;
         }
         true
     }
@@ -1217,7 +1224,8 @@ pub(crate) fn query_rustc_output(
     };
     if !output.status.success() {
         fatal!(
-            "failed to run {command:?}\n--- stdout\n{}\n--- stderr\n{}",
+            "failed to run {command:?}\n{}\n--- stdout\n{}\n--- stderr\n{}",
+            output.status,
             String::from_utf8(output.stdout).unwrap(),
             String::from_utf8(output.stderr).unwrap(),
         );
@@ -1277,7 +1285,6 @@ pub(crate) fn expected_output_path(
 pub(crate) const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR,
     UI_SVG,
-    UI_WINDOWS_SVG,
     UI_STDOUT,
     UI_FIXED,
     UI_RUN_STDERR,
@@ -1290,7 +1297,6 @@ pub(crate) const UI_EXTENSIONS: &[&str] = &[
 ];
 pub(crate) const UI_STDERR: &str = "stderr";
 pub(crate) const UI_SVG: &str = "svg";
-pub(crate) const UI_WINDOWS_SVG: &str = "windows.svg";
 pub(crate) const UI_STDOUT: &str = "stdout";
 pub(crate) const UI_FIXED: &str = "fixed";
 pub(crate) const UI_RUN_STDERR: &str = "run.stderr";

@@ -77,12 +77,15 @@ pub enum Stability {
     /// features are actually ABI configuration flags (such as "soft-float" on many targets).
     ///
     /// However, "internal" target features can still sometimes be enabled or disabled via
-    /// `-Ctarget-cpu` or Rust/LLVM target feature implications. Make sure nothing implies this
-    /// target feature and nothing is implied by this target feature (except for other internal-only
-    /// features). Ideally, ABI-relevant target features are pinned down (marked as required or
-    /// incompatible) in [`Target::abi_required_features`].
+    /// `-Ctarget-cpu` or Rust/LLVM target feature implications. See `target_modifier` below for how
+    /// to protect ABI-relevant target features.
     InternalOnly {
         reason: &'static str,
+        /// Whether this target feature must be consistent across all crates in a crate graph. If
+        /// this is false, then either it should be fine for the target feature to differ across
+        /// crates, or the target feature is set by another flag that's already a target modifier,
+        /// or it needs to be pinned down via [`Target::abi_required_features`].
+        target_modifier: bool,
         /// True if this is always an error, false if this can be reported as a warning when set via
         /// `-Ctarget-feature` (and a hard error when set via `#[target_feature]`).
         hard_error: bool,
@@ -101,6 +104,11 @@ impl Stability {
                 | Stability::CfgStableToggleUnstable { .. }
                 | Stability::Unstable { .. }
         )
+    }
+
+    /// Returns whether this target feature is to be treated as a target modifier.
+    pub fn is_target_modifier(&self) -> bool {
+        matches!(self, Stability::InternalOnly { target_modifier: true, .. })
     }
 
     /// Returns the nightly feature that is required to toggle this target feature via
@@ -145,7 +153,7 @@ impl Stability {
             Stability::Unstable(_)
             | Stability::CfgStableToggleUnstable(_)
             | Stability::Stable { .. } => Ok(()),
-            Stability::InternalOnly { reason, hard_error: _ } => Err(reason),
+            Stability::InternalOnly { reason, .. } => Err(reason),
         }
     }
 }
@@ -164,13 +172,14 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
     (
         "atomics-32",
-        // Not implied by any CPU model or other feature.
         Stability::InternalOnly {
             reason: "unsound because it changes the ABI of atomic operations",
+            target_modifier: true,
             hard_error: false,
         },
         &[],
     ),
+    ("bf16", Unstable(sym::arm_target_feature), &["neon"]),
     ("crc", Unstable(sym::arm_target_feature), &[]),
     ("d32", Unstable(sym::arm_target_feature), &[]),
     ("dotprod", Unstable(sym::arm_target_feature), &["neon"]),
@@ -254,8 +263,11 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // We forbid directly toggling just `fp-armv8`; it must be toggled with `neon`.
     (
         "fp-armv8",
-        // Pinned down by [`Target::abi_required_features`] when needed.
-        Stability::InternalOnly { reason: "Rust ties `fp-armv8` to `neon`", hard_error: false },
+        Stability::InternalOnly {
+            reason: "unsound because it changes the ABI of float types",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     // FEAT_FP8
@@ -322,8 +334,13 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdm", Stable, &["neon"]),
     (
         "reserve-x18",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
-        InternalOnly { reason: "use `-Zfixed-x18` compiler flag instead", hard_error: false },
+        InternalOnly {
+            reason: "use `-Zfixed-x18` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
+            hard_error: false,
+        },
         &[],
     ),
     // FEAT_SB
@@ -496,6 +513,8 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),
     ("movbe", Stable, &[]),
+    ("movdir64b", Unstable(sym::movdir64b_target_feature), &[]),
+    ("movdiri", Unstable(sym::movdiri_target_feature), &[]),
     ("movrs", Unstable(sym::movrs_target_feature), &[]),
     ("pclmulqdq", Stable, &["sse2"]),
     ("popcnt", Stable, &[]),
@@ -504,27 +523,33 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdseed", Stable, &[]),
     (
         "retpoline-external-thunk",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
         Stability::InternalOnly {
             reason: "use `-Zretpoline-external-thunk` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
             hard_error: false,
         },
         &[],
     ),
     (
         "retpoline-indirect-branches",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
         Stability::InternalOnly {
             reason: "use `-Zretpoline` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
             hard_error: false,
         },
         &[],
     ),
     (
         "retpoline-indirect-calls",
-        // Not implied by any CPU model or other feature; the compiler flag is a target modifier.
         Stability::InternalOnly {
             reason: "use `-Zretpoline` compiler flag instead",
+            // The compiler flag is already a target modifier so we don't need to track this again.
+            // Cannot be implicitly toggled via implications or CPU models.
+            target_modifier: false,
             hard_error: false,
         },
         &[],
@@ -536,8 +561,11 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sm4", Stable, &["avx2"]),
     (
         "soft-float",
-        // Pinned down by [`Target::abi_required_features`].
-        Stability::InternalOnly { reason: "use a soft-float target instead", hard_error: false },
+        Stability::InternalOnly {
+            reason: "use a soft-float target instead",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("sse", Stable, &[]),
@@ -601,8 +629,11 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
     (
         "hard-float",
-        // Pinned down by [`Target::abi_required_features`].
-        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        InternalOnly {
+            reason: "unsupported ABI-configuration feature",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("msync", Unstable(sym::powerpc_target_feature), &[]),
@@ -616,8 +647,11 @@ static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("quadword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     (
         "spe",
-        // Pinned down by [`Target::abi_required_features`].
-        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        InternalOnly {
+            reason: "unsupported ABI-configuration feature",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("vsx", Unstable(sym::powerpc_target_feature), &["altivec"]),
@@ -685,9 +719,9 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("f", Stable, &["zicsr"]),
     (
         "forced-atomics",
-        // Not implied by any CPU model or other feature.
         Stability::InternalOnly {
             reason: "unsound because it changes the ABI of atomic operations",
+            target_modifier: true,
             hard_error: false,
         },
         &[],
@@ -857,7 +891,7 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sign-ext", Stable, &[]),
     ("simd128", Stable, &[]),
     ("tail-call", Stable, &[]),
-    ("wide-arithmetic", Unstable(sym::wasm_target_feature), &[]),
+    ("wide-arithmetic", Stable, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -954,8 +988,11 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("miscellaneous-extensions-3", Stable, &[]),
     ("miscellaneous-extensions-4", Stable, &[]),
     ("nnp-assist", Stable, &["vector"]),
-    // Pinned down by [`Target::abi_required_features`].
-    ("soft-float", InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false }, &[]),
+    (
+        "soft-float",
+        InternalOnly { reason: "unsupported ABI-configuration feature", target_modifier: true, hard_error: false },
+        &[],
+    ),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Stable, &[]),
     ("vector-enhancements-1", Stable, &["vector"]),
@@ -973,7 +1010,11 @@ const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
     (
         "soft-float",
-        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        InternalOnly {
+            reason: "unsupported ABI-configuration feature",
+            target_modifier: true,
+            hard_error: false,
+        },
         &[],
     ),
     ("v8plus", Unstable(sym::sparc_target_feature), &[]),
@@ -1016,8 +1057,12 @@ static AVR_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("spmx", Unstable(sym::avr_target_feature), &[]),
     (
         "sram",
-        // Pinned down by [`Target::abi_required_features`].
-        InternalOnly { reason: "devices that have no SRAM are unsupported", hard_error: false },
+        InternalOnly {
+            reason: "devices that have no SRAM are unsupported",
+            // Always required by [`Target::abi_required_features`].
+            target_modifier: false,
+            hard_error: false,
+        },
         &[],
     ),
     ("tinyencoding", Unstable(sym::avr_target_feature), &[]),
@@ -1032,9 +1077,10 @@ const XTENSA_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("interrupt", Unstable(sym::xtensa_target_feature), &["exception"]),
     (
         "windowed",
-        // Pinned down by [`Target::abi_required_features`].
         InternalOnly {
             reason: "windowed changes the Xtensa calling convention",
+            // Always required by [`Target::abi_required_features`].
+            target_modifier: false,
             hard_error: false,
         },
         &["exception"],
@@ -1062,26 +1108,28 @@ const XTENSA_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 ///
 /// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
 pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
-    std::iter::empty()
-        .chain(ARM_FEATURES)
-        .chain(AARCH64_FEATURES)
-        .chain(X86_FEATURES)
-        .chain(HEXAGON_FEATURES)
-        .chain(POWERPC_FEATURES)
-        .chain(MIPS_FEATURES)
-        .chain(NVPTX_FEATURES)
-        .chain(RISCV_FEATURES)
-        .chain(WASM_FEATURES)
-        .chain(BPF_FEATURES)
-        .chain(XTENSA_FEATURES)
-        .chain(CSKY_FEATURES)
-        .chain(LOONGARCH_FEATURES)
-        .chain(IBMZ_FEATURES)
-        .chain(SPARC_FEATURES)
-        .chain(M68K_FEATURES)
-        .chain(AVR_FEATURES)
-        .cloned()
-        .map(|(f, s, _)| (f, s))
+    [
+        ARM_FEATURES,
+        AARCH64_FEATURES,
+        X86_FEATURES,
+        HEXAGON_FEATURES,
+        POWERPC_FEATURES,
+        MIPS_FEATURES,
+        NVPTX_FEATURES,
+        RISCV_FEATURES,
+        WASM_FEATURES,
+        BPF_FEATURES,
+        XTENSA_FEATURES,
+        CSKY_FEATURES,
+        LOONGARCH_FEATURES,
+        IBMZ_FEATURES,
+        SPARC_FEATURES,
+        M68K_FEATURES,
+        AVR_FEATURES,
+    ]
+    .into_iter()
+    .flatten()
+    .map(|(f, s, _)| (*f, *s))
 }
 
 /// Find which target architectures a feature belongs to.

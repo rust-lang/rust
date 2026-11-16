@@ -1,5 +1,5 @@
 warning: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync`
-  --> $DIR/fcw-on-auto-trait.rs:22:5
+  --> $DIR/fcw-on-auto-trait.rs:23:5
    |
 LL |     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

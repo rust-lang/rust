@@ -1,6 +1,8 @@
 error[E0659]: `exported` is ambiguous
   --> $DIR/local-modularized-tricky-fail-1.rs:29:1
    |
+LL | macro_rules! define_exported { () => {
+...
 LL | exported!();
    | ^^^^^^^^ ambiguous name
    |
@@ -22,11 +24,12 @@ note: `exported` could also refer to the macro imported here
 LL | use inner1::*;
    |     ^^^^^^^^^
    = help: use `crate::exported` to refer to this macro unambiguously
-   = note: this error originates in the macro `define_exported` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `panic` is ambiguous
   --> $DIR/local-modularized-tricky-fail-1.rs:36:5
    |
+LL | macro_rules! define_panic { () => {
+...
 LL |     panic!();
    |     ^^^^^ ambiguous name
    |
@@ -44,11 +47,12 @@ LL |       define_panic!();
    = help: use `crate::panic` to refer to this macro unambiguously
 note: `panic` could also refer to a macro from prelude
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
-   = note: this error originates in the macro `define_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `include` is ambiguous
   --> $DIR/local-modularized-tricky-fail-1.rs:47:1
    |
+LL | macro_rules! define_include { () => {
+...
 LL | include!();
    | ^^^^^^^ ambiguous name
    |
@@ -66,7 +70,6 @@ LL |       define_include!();
    = help: use `crate::include` to refer to this macro unambiguously
 note: `include` could also refer to a macro from prelude
   --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
-   = note: this error originates in the macro `define_include` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

@@ -3,7 +3,7 @@
 
 use std::{assert_matches, iter};
 
-use rustc_ast::{self as ast, GenericParamKind, Mutability, Safety, attr, join_path_idents};
+use rustc_ast::{self as ast, GeneratedAttr, GenericParamKind, Mutability, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
@@ -30,7 +30,7 @@ pub(crate) fn expand_test_case(
     anno_item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
-    warn_on_duplicate_attribute(ecx, &anno_item, sym::test_case);
+    warn_on_duplicate_attribute(ecx, &anno_item, attr_sp, sym::test_case);
 
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let (mut item, is_stmt) = match anno_item {
@@ -65,7 +65,9 @@ pub(crate) fn expand_test_case(
                 ident,
             ));
             item.vis = ast::Visibility { span: item.vis.span, kind: ast::VisibilityKind::Public };
-            item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
+            item.attrs.push(
+                ecx.generated_attr(attr_sp, GeneratedAttr::RustcTestMarker(test_path_symbol)),
+            );
         }
         _ => {}
     }
@@ -86,7 +88,7 @@ pub(crate) fn expand_test(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::test);
-    warn_on_duplicate_attribute(cx, &item, sym::test);
+    warn_on_duplicate_attribute(cx, &item, attr_sp, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
@@ -97,7 +99,7 @@ pub(crate) fn expand_bench(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::bench);
-    warn_on_duplicate_attribute(cx, &item, sym::bench);
+    warn_on_duplicate_attribute(cx, &item, attr_path_sp, sym::bench);
     expand_test_or_bench(cx, attr_path_sp, item, true)
 }
 
@@ -107,7 +109,7 @@ pub(crate) fn expand_test_or_bench(
     item: Annotatable,
     is_bench: bool,
 ) -> Vec<Annotatable> {
-    let (item, is_stmt) = match item {
+    let (mut item, is_stmt) = match item {
         Annotatable::Item(i) => (i, false),
         Annotatable::Stmt(ast::Stmt { kind: ast::StmtKind::Item(i), .. }) => (i, true),
         other => {
@@ -128,6 +130,11 @@ pub(crate) fn expand_test_or_bench(
     // If we're not in test configuration, remove the annotated item
     if !cx.ecfg.should_test {
         return vec![];
+    }
+
+    if !is_bench {
+        // Mark the test function so tools can find it (#158854)
+        item.attrs.push(cx.synthetic_attr(attr_sp, ast::SyntheticAttr::TestEntrypoint));
     }
 
     if let Some(attr) = attr::find_by_name(&item.attrs, sym::naked) {
@@ -161,17 +168,13 @@ pub(crate) fn expand_test_or_bench(
     let test_ident = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(ret_ty_sp, vec![test_ident, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, &[test_ident, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
         cx.path(
             sp,
-            vec![
-                test_ident,
-                Ident::from_str_and_span("ShouldPanic", sp),
-                Ident::from_str_and_span(name, sp),
-            ],
+            &[test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
@@ -179,11 +182,7 @@ pub(crate) fn expand_test_or_bench(
     let test_type_path = |name| {
         cx.path(
             sp,
-            vec![
-                test_ident,
-                Ident::from_str_and_span("TestType", sp),
-                Ident::from_str_and_span(name, sp),
-            ],
+            &[test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
@@ -196,22 +195,22 @@ pub(crate) fn expand_test_or_bench(
     // corresponding macro declaration in `core::macros`.
     let coverage_off = |mut expr: Box<ast::Expr>| {
         assert_matches!(expr.kind, ast::ExprKind::Closure(_));
-        expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp));
+        expr.attrs.push(cx.generated_attr(sp, GeneratedAttr::CoverageOff));
         expr
     };
 
     let test_fn = if is_bench {
         // avoid name collisions by using the function name within the identifier, see bug #148275
-        let bencher_param =
-            Ident::from_str_and_span(&format!("__bench_{}", fn_.ident.name), attr_sp);
+        let bencher_param = Symbol::intern(&format!("__bench_{}", fn_.ident.name));
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
             thin_vec![
                 // #[coverage(off)]
                 // |__bench_fn_name| self::test::assert_test_result(
-                coverage_off(cx.lambda1(
+                coverage_off(cx.closure(
                     sp,
+                    vec![bencher_param],
                     cx.expr_call(
                         sp,
                         cx.expr_path(test_path("assert_test_result")),
@@ -219,12 +218,11 @@ pub(crate) fn expand_test_or_bench(
                             // super::$test_fn(__bench_fn_name)
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
-                                thin_vec![cx.expr_ident(sp, bencher_param)],
+                                cx.expr_path(cx.path_ident(sp, fn_.ident)),
+                                thin_vec![cx.expr_name(sp, bencher_param)],
                             ),
                         ],
                     ),
-                    bencher_param,
                 )), // )
             ],
         )
@@ -235,8 +233,9 @@ pub(crate) fn expand_test_or_bench(
             thin_vec![
                 // #[coverage(off)]
                 // || {
-                coverage_off(cx.lambda0(
+                coverage_off(cx.closure(
                     sp,
+                    vec![],
                     // test::assert_test_result(
                     cx.expr_call(
                         sp,
@@ -245,7 +244,7 @@ pub(crate) fn expand_test_or_bench(
                             // $test_fn()
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
+                                cx.expr_path(cx.path(sp, &[fn_.ident])),
                                 ThinVec::new(),
                             ), // )
                         ],
@@ -263,76 +262,74 @@ pub(crate) fn expand_test_or_bench(
 
     let location_info = get_location_info(cx, fn_);
 
-    let mut test_const =
-        cx.item(
+    // static $ident: test::TestDescAndFn =
+    // We use a static because these things only exist to have references taken
+    // to them for the test case array. No reason to introduce tons of promoteds for that.
+    // Promoteds have the advantage that they can be merged to save space, but every one
+    // of these points to a different function so that will not happen.
+    let mut test_const = cx.item_static(
+        sp,
+        thin_vec![
+            // #[cfg(test)]
+            cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
+            // #[rustc_test_marker = "test_case_sort_key"]
+            cx.generated_attr(attr_sp, GeneratedAttr::RustcTestMarker(test_path_symbol)),
+            // #[doc(hidden)]
+            cx.generated_attr(attr_sp, GeneratedAttr::DocHidden),
+        ],
+        Ident::new(fn_.ident.name, sp),
+        cx.ty_path(test_path("TestDescAndFn")),
+        Mutability::Not,
+        // test::TestDescAndFn {
+        cx.expr_struct(
             sp,
+            test_path("TestDescAndFn"),
             thin_vec![
-                // #[cfg(test)]
-                cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
-                // #[rustc_test_marker = "test_case_sort_key"]
-                cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
-                // #[doc(hidden)]
-                cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
-            ],
-            // static $ident: test::TestDescAndFn =
-            // We use a static because these things only exist to have references taken
-            // to them for the test case array. No reason to introduce tons of promoteds for that.
-            // Promoteds have the advantage that they can be merged to save space, but every one
-            // of these points to a different function so that will not happen.
-            ast::ItemKind::Static(
-                ast::StaticItem {
-                    ident: Ident::new(fn_.ident.name, sp),
-                    ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
-                    safety: Safety::Default,
-                    mutability: Mutability::Not,
-                    define_opaque: None,
-                    eii_impl: None,
-                    // test::TestDescAndFn {
-                    expr: Some(
-                        cx.expr_struct(
-                            sp,
-                            test_path("TestDescAndFn"),
-                            thin_vec![
-                        // desc: test::TestDesc {
-                        field(
-                            "desc",
-                            cx.expr_struct(sp, test_path("TestDesc"), thin_vec![
-                                // name: "path::to::test"
-                                field(
-                                    "name",
-                                    cx.expr_call(
-                                        sp,
-                                        cx.expr_path(test_path("StaticTestName")),
-                                        thin_vec![cx.expr_str(sp, test_path_symbol)],
-                                    ),
+                // desc: test::TestDesc {
+                field(
+                    "desc",
+                    cx.expr_struct(
+                        sp,
+                        test_path("TestDesc"),
+                        thin_vec![
+                            // name: "path::to::test"
+                            field(
+                                "name",
+                                cx.expr_call(
+                                    sp,
+                                    cx.expr_path(test_path("StaticTestName")),
+                                    thin_vec![cx.expr_str(sp, test_path_symbol)],
                                 ),
-                                // ignore: true | false
-                                field("ignore", cx.expr_bool(sp, should_ignore(&item)),),
-                                // ignore_message: Some("...") | None
-                                field(
-                                    "ignore_message",
-                                    if let Some(msg) = should_ignore_message(&item) {
-                                        cx.expr_some(sp, cx.expr_str(sp, msg))
-                                    } else {
-                                        cx.expr_none(sp)
-                                    },
-                                ),
-                                // source_file: <relative_path_of_source_file>
-                                field("source_file", cx.expr_str(sp, location_info.0)),
-                                // start_line: start line of the test fn identifier.
-                                field("start_line", cx.expr_usize(sp, location_info.1)),
-                                // start_col: start column of the test fn identifier.
-                                field("start_col", cx.expr_usize(sp, location_info.2)),
-                                // end_line: end line of the test fn identifier.
-                                field("end_line", cx.expr_usize(sp, location_info.3)),
-                                // end_col: end column of the test fn identifier.
-                                field("end_col", cx.expr_usize(sp, location_info.4)),
-                                // compile_fail: true | false
-                                field("compile_fail", cx.expr_bool(sp, false)),
-                                // no_run: true | false
-                                field("no_run", cx.expr_bool(sp, false)),
-                                // should_panic: ...
-                                field("should_panic", match should_panic(cx, &item) {
+                            ),
+                            // ignore: true | false
+                            field("ignore", cx.expr_bool(sp, should_ignore(&item)),),
+                            // ignore_message: Some("...") | None
+                            field(
+                                "ignore_message",
+                                if let Some(msg) = should_ignore_message(&item) {
+                                    cx.expr_some(sp, cx.expr_str(sp, msg))
+                                } else {
+                                    cx.expr_none(sp)
+                                },
+                            ),
+                            // source_file: <relative_path_of_source_file>
+                            field("source_file", cx.expr_str(sp, location_info.0)),
+                            // start_line: start line of the test fn identifier.
+                            field("start_line", cx.expr_usize(sp, location_info.1)),
+                            // start_col: start column of the test fn identifier.
+                            field("start_col", cx.expr_usize(sp, location_info.2)),
+                            // end_line: end line of the test fn identifier.
+                            field("end_line", cx.expr_usize(sp, location_info.3)),
+                            // end_col: end column of the test fn identifier.
+                            field("end_col", cx.expr_usize(sp, location_info.4)),
+                            // compile_fail: true | false
+                            field("compile_fail", cx.expr_bool(sp, false)),
+                            // no_run: true | false
+                            field("no_run", cx.expr_bool(sp, false)),
+                            // should_panic: ...
+                            field(
+                                "should_panic",
+                                match should_panic(cx, &item) {
                                     // test::ShouldPanic::No
                                     ShouldPanic::No => {
                                         cx.expr_path(should_panic_path("No"))
@@ -347,9 +344,12 @@ pub(crate) fn expand_test_or_bench(
                                         cx.expr_path(should_panic_path("YesWithMessage")),
                                         thin_vec![cx.expr_str(sp, sym)],
                                     ),
-                                },),
-                                // test_type: ...
-                                field("test_type", match test_type(cx) {
+                                },
+                            ),
+                            // test_type: ...
+                            field(
+                                "test_type",
+                                match test_type(cx) {
                                     // test::TestType::UnitTest
                                     TestType::UnitTest => {
                                         cx.expr_path(test_type_path("UnitTest"))
@@ -362,19 +362,18 @@ pub(crate) fn expand_test_or_bench(
                                     TestType::Unknown => {
                                         cx.expr_path(test_type_path("Unknown"))
                                     }
-                                },),
-                                // },
-                            ],),
-                        ),
-                        // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
-                        field("testfn", test_fn), // }
-                    ],
-                        ), // }
+                                },
+                            ),
+                            // },
+                        ],
                     ),
-                }
-                .into(),
-            ),
-        );
+                ),
+                // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
+                field("testfn", test_fn), // }
+            ],
+            // }
+        ),
+    );
     test_const.vis.kind = ast::VisibilityKind::Public;
 
     // extern crate test
@@ -411,10 +410,10 @@ fn not_testable_error(cx: &ExtCtxt<'_>, is_bench: bool, attr_sp: Span, item: Opt
     let level = match item.map(|i| &i.kind) {
         // These were a warning before #92959 and need to continue being that to avoid breaking
         // stable user code (#94508).
-        Some(ast::ItemKind::MacCall(_)) => Level::Warning,
+        Some(ast::ItemKind::MacCall(_)) => Level::Warning(None),
         _ => Level::Error,
     };
-    let mut err = Diag::<()>::new(dcx, level, msg);
+    let mut err = Diag::new(dcx, level, msg);
     err.span(attr_sp);
     if let Some(item) = item {
         err.span_label(

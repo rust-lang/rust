@@ -6,6 +6,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::{DUMMY_SP, Span, span_bug};
 use tracing::{debug, instrument};
 
@@ -48,9 +49,7 @@ pub(super) fn index_hir<'hir>(
     };
 
     match item {
-        OwnerNode::Crate(citem) => {
-            collector.visit_mod(citem, citem.spans.inner_span, hir::CRATE_HIR_ID)
-        }
+        OwnerNode::Crate(citem) => collector.visit_mod(citem, citem.spans.inner_span, CRATE_MOD_ID),
         OwnerNode::Item(item) => collector.visit_item(item),
         OwnerNode::TraitItem(item) => collector.visit_trait_item(item),
         OwnerNode::ImplItem(item) => collector.visit_impl_item(item),
@@ -149,6 +148,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         debug_assert_eq!(id.hir_id.owner, self.owner);
         let body = self.bodies[&id.hir_id.local_id];
         self.visit_body(body);
+    }
+
+    fn visit_use(&mut self, tree: &'hir UseTree<'hir>, hir_id: HirId, _def_id: LocalDefId) {
+        if !hir_id.is_owner() {
+            self.insert(tree.prefix.span, hir_id, Node::NestedUseTree(tree));
+        }
+        intravisit::walk_use(self, tree, hir_id);
     }
 
     fn visit_param(&mut self, param: &'hir Param<'hir>) {

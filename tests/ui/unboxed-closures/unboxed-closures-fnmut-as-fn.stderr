@@ -1,8 +1,8 @@
-error[E0277]: expected an `Fn(isize)` closure, found `S`
+error[E0277]: expected `Fn(isize)` signature, found `S`
   --> $DIR/unboxed-closures-fnmut-as-fn.rs:27:21
    |
 LL |     let x = call_it(&S, 22);
-   |             ------- ^^ expected an `Fn(isize)` closure, found `S`
+   |             ------- ^^ expected `Fn(isize)` signature, found `S`
    |             |
    |             required by a bound introduced by this call
    |

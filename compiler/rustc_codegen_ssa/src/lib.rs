@@ -18,11 +18,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_abi::Size;
+use rustc_attr_ir::{CfgEntry, WindowsSubsystemKind};
 use rustc_crate_store::{self as cstore, CrateSource};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_hir::attrs::{CfgEntry, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
 use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
 use rustc_macros::{Decodable, Encodable};
@@ -65,27 +65,15 @@ pub struct ModuleCodegen<M> {
     pub name: String,
     pub module_llvm: M,
     pub kind: ModuleKind,
-    /// Saving the ThinLTO buffer for embedding in the object file.
-    pub thin_lto_buffer: Option<Vec<u8>>,
 }
 
 impl<M> ModuleCodegen<M> {
     pub fn new_regular(name: impl Into<String>, module: M) -> Self {
-        Self {
-            name: name.into(),
-            module_llvm: module,
-            kind: ModuleKind::Regular,
-            thin_lto_buffer: None,
-        }
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Regular }
     }
 
     pub fn new_allocator(name: impl Into<String>, module: M) -> Self {
-        Self {
-            name: name.into(),
-            module_llvm: module,
-            kind: ModuleKind::Allocator,
-            thin_lto_buffer: None,
-        }
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Allocator }
     }
 
     pub fn into_compiled_module(
@@ -114,7 +102,6 @@ impl<M> ModuleCodegen<M> {
             bytecode,
             assembly,
             llvm_ir,
-            links_from_incr_cache: Vec::new(),
         }
     }
 }
@@ -129,7 +116,6 @@ pub struct CompiledModule {
     pub bytecode: Option<PathBuf>,
     pub assembly: Option<PathBuf>, // --emit=asm
     pub llvm_ir: Option<PathBuf>,  // --emit=llvm-ir, llvm-bc is in bytecode
-    pub links_from_incr_cache: Vec<PathBuf>,
 }
 
 impl CompiledModule {
@@ -315,6 +301,9 @@ pub struct TargetConfig {
     pub has_reliable_f16: bool,
     /// Option for `cfg(target_has_reliable_f16_math)`, true if `f16` math calls work.
     pub has_reliable_f16_math: bool,
+    /// Option for `cfg(target_has_reliable_f16b)`, presently true if both the ABI
+    /// and LLVM version supports `f16b`.
+    pub has_reliable_f16b: bool,
     /// Option for `cfg(target_has_reliable_f128)`, true if `f128` basic arithmetic works.
     pub has_reliable_f128: bool,
     /// Option for `cfg(target_has_reliable_f128_math)`, true if `f128` math calls work.
@@ -337,7 +326,6 @@ pub enum CodegenError {
 
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
-    crate::base::provide(&mut providers.queries);
     crate::target_features::provide(&mut providers.queries);
     crate::codegen_attrs::provide(&mut providers.queries);
 }

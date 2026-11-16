@@ -37,3 +37,7 @@ windows-sys = { version = "0.61", features = [
 # Make sure we are not part of the rustc workspace.
 [workspace]
 members = ["cross-crate-items"]
+
+[lints.cargo]
+# Not all tests use all of the above dependencies
+unused_dependencies = "allow"

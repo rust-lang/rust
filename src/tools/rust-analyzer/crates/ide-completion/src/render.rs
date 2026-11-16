@@ -177,7 +177,7 @@ pub(crate) fn render_field(
         );
 
         let expected_fn_type =
-            ctx.completion.expected_type.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
+            ctx.completion.expected.ty.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
 
         if !expected_fn_type
             && let Some(receiver) = &dot_access.receiver
@@ -428,9 +428,8 @@ fn render_resolution_path<'db>(
         }
         ScopeDef::ModuleDef(EnumVariant(var)) => {
             let ctx = ctx.clone().import_to_add(import_to_add.clone());
-            if let Some(item) =
-                render_variant_lit(ctx, path_ctx, Some(local_name.clone()), var, None)
-            {
+            let path = local_name.clone().into();
+            if let Some(item) = render_variant_lit(ctx, path_ctx, var, path) {
                 return item;
             }
         }
@@ -478,6 +477,12 @@ fn render_resolution_path<'db>(
         insert_text = format_smolstr!("{insert_text}::");
         item.lookup_by(name.clone()).label(insert_text.clone());
     }
+    let allow_dyn =
+        matches!(&path_ctx.kind, PathKind::Type { location } if location.complete_dyn());
+    if allow_dyn && config.enable_auto_dyn && matches!(resolution, ScopeDef::ModuleDef(Trait(_))) {
+        insert_text = format_smolstr!("dyn {insert_text}");
+        item.lookup_by(name.clone()).label(insert_text.clone());
+    }
     adds_ret_type_arrow(completion, path_ctx, &mut item, insert_text.into());
 
     let mut set_item_relevance = |ty: Type<'db>| {
@@ -516,13 +521,12 @@ fn render_resolution_path<'db>(
         ScopeDef::ModuleDef(ModuleDef::Const(konst)) => set_item_relevance(konst.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::Static(stat)) => set_item_relevance(stat.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::BuiltinType(bt)) => set_item_relevance(bt.ty(db)),
+        ScopeDef::ModuleDef(ModuleDef::TypeAlias(ta)) => set_item_relevance(ta.ty(db)),
         ScopeDef::ImplSelfType(imp) => set_item_relevance(imp.self_ty(db)),
         ScopeDef::GenericParam(_)
         | ScopeDef::Label(_)
         | ScopeDef::Unknown
-        | ScopeDef::ModuleDef(
-            ModuleDef::Trait(_) | ModuleDef::Module(_) | ModuleDef::TypeAlias(_),
-        ) => (),
+        | ScopeDef::ModuleDef(ModuleDef::Trait(_) | ModuleDef::Module(_)) => (),
     };
 
     item
@@ -685,11 +689,14 @@ fn compute_type_match(
     ctx: &CompletionContext<'_, '_>,
     completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
-    let expected_type = ctx.expected_type.as_ref()?;
+    let expected_type = ctx.expected.ty.as_ref()?;
 
     // We don't ever consider unit type to be an exact type match, since
     // nearly always this is not meaningful to the user.
-    if expected_type.is_unit() {
+    if expected_type.is_unit() || completion_ty.is_unit() {
+        return None;
+    }
+    if expected_type.is_unknown() || completion_ty.is_unknown() {
         return None;
     }
 
@@ -717,7 +724,11 @@ fn compute_has_local_inherent_impl(
 }
 
 fn compute_exact_name_match(ctx: &CompletionContext<'_, '_>, completion_name: &str) -> bool {
-    ctx.expected_name.as_ref().is_some_and(|name| name.text() == completion_name)
+    ctx.expected.name.as_ref().is_some_and(|name| {
+        let name = name.text().strip_prefix("r#").unwrap_or(name.text());
+        let completion_name = completion_name.strip_prefix("r#").unwrap_or(completion_name);
+        name.trim_matches('_') == completion_name.trim_matches('_')
+    })
 }
 
 fn compute_ref_match(
@@ -727,11 +738,12 @@ fn compute_ref_match(
     if compute_type_match(ctx, completion_ty).is_some() || completion_ty.is_unit() {
         return None;
     }
-    let expected_type = ctx.expected_type.as_ref()?;
+    let expected_type = ctx.expected.ty.as_ref()?;
     let expected_without_ref = expected_type.as_reference();
     let completion_without_ref = completion_ty.as_reference();
 
     if let Some((expected_without_ref, _)) = &expected_without_ref
+        && ctx.expected.refs_level >= 0
         && (completion_without_ref.is_none()
             || completion_ty.could_unify_with(ctx.db, expected_without_ref))
         && completion_ty
@@ -1235,6 +1247,35 @@ fn func(input: Struct) { }
             expect![[r#"
                 st Self Self [type]
                 st Struct Struct [type]
+                sp Self Struct [type]
+                st Struct Struct [type]
+                ex Struct  [type]
+                lc self &Struct [local]
+                fn func(…) fn(Struct) []
+                me self.test() fn(&self) []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn set_type_alias_completion_info() {
+        check_relevance(
+            r#"
+//- /main.rs crate:main
+struct Struct;
+type Alias = Struct;
+
+impl Struct {
+    fn test(&self) {
+        func(Self$0);
+    }
+}
+fn func(input: Struct) { }
+"#,
+            expect![[r#"
+                st Self Self [type]
+                st Struct Struct [type]
+                ta Alias Struct [type]
                 sp Self Struct [type]
                 st Struct Struct [type]
                 ex Struct  [type]
@@ -2076,13 +2117,16 @@ fn main() { A$0 }
                     CompletionItem {
                         label: "A",
                         detail_left: None,
-                        detail_right: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
                         source_range: 41..42,
                         delete: 41..42,
                         insert: "A",
                         kind: SymbolKind(
                             TypeAlias,
                         ),
+                        detail: "i32",
                         deprecated: true,
                         relevance: CompletionRelevance {
                             exact_name_match: false,
@@ -2174,9 +2218,7 @@ fn main() { A { the$0 } }
                         deprecated: true,
                         relevance: CompletionRelevance {
                             exact_name_match: false,
-                            type_match: Some(
-                                CouldUnify,
-                            ),
+                            type_match: None,
                             is_local: false,
                             is_missing: false,
                             trait_: None,
@@ -2460,6 +2502,229 @@ struct RawIdentTable { r#type: u32 }
 
 fn main() -> RawIdentTable {
     RawIdentTable { r#type: 42 }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_call_parens_if_param_with_fn_bounds() {
+        cov_mark::check!(no_call_parens_if_ty_with_fn_bounds);
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(f$0)
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(foo)
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn<F: FnOnce(u8, u8)>(f: F) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(f$0)
+}
+"#,
+            r#"
+fn needs_fn<F: FnOnce(u8, u8)>(f: F) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(foo)
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn<F>(f: F) where F: FnOnce(u8, u8) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(f$0)
+}
+"#,
+            r#"
+fn needs_fn<F>(f: F) where F: FnOnce(u8, u8) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(foo)
+}
+"#,
+        );
+        check_edit(
+            "unmap",
+            r#"
+//- minicore: fn
+trait Trait {
+    fn unmap(self) -> i32 { 0 }
+}
+mod module {
+    pub struct Ty;
+    impl super::Trait for Ty {}
+}
+fn needs_fn<T>(f: impl FnOnce(T) -> i32) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(module::Ty::u$0)
+}
+"#,
+            r#"
+trait Trait {
+    fn unmap(self) -> i32 { 0 }
+}
+mod module {
+    pub struct Ty;
+    impl super::Trait for Ty {}
+}
+fn needs_fn<T>(f: impl FnOnce(T) -> i32) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(module::Ty::unmap)
+}
+"#,
+        );
+        check_edit(
+            "neg",
+            r#"
+//- minicore: iterator, iterators, unary_ops, builtin_impls
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::n$0)
+}
+"#,
+            r#"
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::neg)
+}
+"#,
+        );
+        check_edit(
+            "neg",
+            r#"
+//- minicore: iterator, iterators, unary_ops, builtin_impls
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::$0)
+}
+"#,
+            r#"
+fn foo(iter: impl Iterator<Item = u32>) {
+    iter.map(core::ops::Neg::neg)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn call_parens_in_non_direct_expr() {
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(&f$0)
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(&foo(${1:a}, ${2:b})$0)
+}
+"#,
+        );
+        check_edit(
+            "method",
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.m$0)
+}
+"#,
+            r#"
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.method(${1:a}, ${2:b})$0)
+}
+"#,
+        );
+        check_edit(
+            "method",
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.$0)
+}
+"#,
+            r#"
+struct Foo;
+impl Foo { fn method(&self, a: u8, b: u8) {} }
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8, b: u8) {
+    needs_fn(Foo.method(${1:a}, ${2:b})$0)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn call_parens_in_bad_case() {
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8) {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8)) {}
+fn foo(a: u8) {
+    needs_fn(foo(${1:a})$0);
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn<T>(f: impl FnOnce(u8, u8) -> T) {}
+fn foo(a: u8, b: u8) -> impl FnOnce(u8, u8) {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn<T>(f: impl FnOnce(u8, u8) -> T) {}
+fn foo(a: u8, b: u8) -> impl FnOnce(u8, u8) {
+    needs_fn(foo(${1:a}, ${2:b})$0);
+}
+"#,
+        );
+        check_edit(
+            "foo",
+            r#"
+//- minicore: fn
+fn needs_fn(f: impl FnOnce(u8, u8) -> u8) {}
+fn foo(a: u8, b: u8) -> u16 {
+    needs_fn(f$0);
+}
+"#,
+            r#"
+fn needs_fn(f: impl FnOnce(u8, u8) -> u8) {}
+fn foo(a: u8, b: u8) -> u16 {
+    needs_fn(foo(${1:a}, ${2:b})$0);
 }
 "#,
         );
@@ -3024,6 +3289,52 @@ fn f() {
     }
 
     #[test]
+    fn name_match_special_case() {
+        check_relevance(
+            r#"
+fn foo(_db: &()) {}
+fn bar(db: &()) {
+    foo($0)
+}
+"#,
+            expect![[r#"
+                lc db &() [type+name+local]
+                ex db  [type]
+                fn bar(…) fn(&()) []
+                fn foo(…) fn(&()) []
+            "#]],
+        );
+        check_relevance(
+            r#"
+fn foo(impl_: &()) {}
+fn bar(r#impl: &()) {
+    foo($0)
+}
+"#,
+            expect![[r#"
+                lc impl &() [type+name+local]
+                ex r#impl  [type]
+                fn bar(…) fn(&()) []
+                fn foo(…) fn(&()) []
+            "#]],
+        );
+        check_relevance(
+            r#"
+fn foo(r#impl: &()) {}
+fn bar(impl_: &()) {
+    foo($0)
+}
+"#,
+            expect![[r#"
+                lc impl_ &() [type+name+local]
+                ex impl_  [type]
+                fn bar(…) fn(&()) []
+                fn foo(…) fn(&()) []
+            "#]],
+        );
+    }
+
+    #[test]
     fn score_has_local_inherent_impl() {
         check_relevance(
             r#"
@@ -3092,6 +3403,66 @@ fn go(foo: Foo) { match foo { Foo($0) } }
                 en Bar  []
                 st Foo  []
                 bn Foo(…) Foo($1)$0 []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn not_type_match_useless_types() {
+        check_relevance(
+            r#"
+fn foo() -> Unknown {}
+fn test() {
+    let unit = ();
+    let unknown = unknown;
+    let _: () = $0;
+}
+"#,
+            expect![[r#"
+                lc unit () [local]
+                fn foo() fn() -> {unknown} []
+                fn test() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+fn foo() -> Unknown {}
+fn test() {
+    let unit = ();
+    let unknown = unknown;
+    let _ = $0;
+}
+"#,
+            expect![[r#"
+                lc unit () [local]
+                fn foo() fn() -> {unknown} []
+                fn test() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+struct Matches;
+impl Matches {
+    fn opt_present(&self) -> bool {}
+}
+mod module {
+    pub fn max<T>(a: T, b: T) -> T {}
+    pub fn min<T>(a: T, b: T) -> T {}
+}
+use module::max;
+fn test(matches: &Matches) {
+    if m$0
+}
+"#,
+            expect![[r#"
+                ex false  [type]
+                ex true  [type]
+                lc matches &Matches [local]
+                st Matches Matches []
+                fn max(…) fn(T, T) -> T []
+                md module::  []
+                fn test(…) fn(&Matches) []
+                fn min(…) fn(T, T) -> T [requires_import]
             "#]],
         );
     }
@@ -3215,6 +3586,29 @@ fn main() {
                 st S S<T> []
                 fn foo(…) fn(&mut S<T>) []
                 fn main() fn() []
+            "#]],
+        );
+        check_relevance(
+            r#"
+struct S { info: u32 }
+impl S {
+    fn info(&self) -> u32 { self.info }
+    fn foo(&self) {
+        needs(i$0);
+    }
+}
+fn needs(info: &mut u32) {}
+            "#,
+            expect![[r#"
+                fd self.info u32 [name]
+                fd &mut self.info [type+name]
+                me self.info() fn(&self) -> u32 [name]
+                me &mut self.info() [type+name]
+                lc self &S [local]
+                st S S []
+                sp Self S []
+                fn needs(…) fn(&mut u32) []
+                me self.foo() fn(&self) []
             "#]],
         );
         // Regression test https://github.com/rust-lang/rust-analyzer/issues/22324
@@ -3381,6 +3775,32 @@ fn main() {
     }
 
     #[test]
+    fn do_not_suggest_ref_after_deref() {
+        check_relevance(
+            r#"
+struct S;
+fn foo(s: S) {}
+fn main() {
+    let val = S;
+    let valref = &S;
+    let valmut = &mut S;
+    foo(*$0);
+}
+            "#,
+            expect![[r#"
+                lc valmut &mut S [type+local]
+                lc valref &S [type+local]
+                ex valref  [type]
+                st S S []
+                lc val S [local]
+                st S S []
+                fn foo(…) fn(S) []
+                fn main() fn() []
+            "#]],
+        );
+    }
+
+    #[test]
     fn locals() {
         check_relevance(
             r#"
@@ -3539,9 +3959,59 @@ fn test() {
 }
 "#,
             expect![[r#"
-                fn fn_ctr() fn() -> Foo [type_could_unify]
-                fn fn_ctr_self() fn() -> Option<Foo> [type_could_unify]
-                fn fn_another(…) fn(u32) -> Other [type_could_unify]
+                fn fn_ctr() fn() -> Foo []
+                fn fn_ctr_self() fn() -> Option<Foo> []
+                fn fn_another(…) fn(u32) -> Other []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn trait_items_order() {
+        check_relevance(
+            r#"
+trait T{
+    fn a_optional() {}
+    fn b_required();
+}
+
+impl T for (){
+    $0
+}
+"#,
+            expect![[r#"
+                fn fn b_required()  [name+missing]
+                fn fn a_optional()  [name]
+            "#]],
+        );
+        check_relevance(
+            r#"
+trait T{
+    type Item;
+    fn optional() {}
+}
+impl T for (){
+    $0
+}
+"#,
+            expect![[r#"
+                ta type Item =  [name+missing]
+                fn fn optional()  [name]
+            "#]],
+        );
+        check_relevance(
+            r#"
+trait T{
+    const A: usize = 0;
+    const B: usize;
+}
+impl T for (){
+    $0
+}
+"#,
+            expect![[r#"
+                ct const B: usize =  [name+missing]
+                ct const A: usize =  [name]
             "#]],
         );
     }
@@ -3685,12 +4155,12 @@ fn test() {
             // Constructor
             // Others
             expect![[r#"
-                fn fn_direct_ctr() fn() -> Foo [type_could_unify]
-                fn fn_ctr_with_args(…) fn(u32) -> Foo [type_could_unify]
-                fn fn_builder() fn() -> FooBuilder [type_could_unify]
-                fn fn_ctr() fn() -> Result<Foo> [type_could_unify]
-                me fn_no_ret(…) fn(&self) [type_could_unify]
-                fn fn_other() fn() -> Result<u32> [type_could_unify]
+                fn fn_direct_ctr() fn() -> Foo []
+                fn fn_ctr_with_args(…) fn(u32) -> Foo []
+                fn fn_builder() fn() -> FooBuilder []
+                fn fn_ctr() fn() -> Result<Foo> []
+                me fn_no_ret(…) fn(&self) []
+                fn fn_other() fn() -> Result<u32> []
             "#]],
         );
 
@@ -3721,13 +4191,13 @@ fn test() {
 }
                 "#,
             expect![[r#"
-                fn fn_direct_ctr() fn() -> Foo<T> [type_could_unify]
-                fn fn_ctr_with_args(…) fn(T) -> Foo<T> [type_could_unify]
-                fn fn_builder() fn() -> FooBuilder [type_could_unify]
-                fn fn_ctr_wrapped() fn() -> Option<Foo<T>> [type_could_unify]
-                fn fn_ctr_wrapped_2() fn() -> Result<Foo<T>, u32> [type_could_unify]
-                fn fn_other() fn() -> Option<u32> [type_could_unify]
-                me fn_returns_unit(…) fn(&self) [type_could_unify]
+                fn fn_direct_ctr() fn() -> Foo<T> []
+                fn fn_ctr_with_args(…) fn(T) -> Foo<T> []
+                fn fn_builder() fn() -> FooBuilder []
+                fn fn_ctr_wrapped() fn() -> Option<Foo<T>> []
+                fn fn_ctr_wrapped_2() fn() -> Result<Foo<T>, u32> []
+                fn fn_other() fn() -> Option<u32> []
+                me fn_returns_unit(…) fn(&self) []
             "#]],
         );
     }
@@ -3757,13 +4227,13 @@ fn test() {
 }
                 "#,
             expect![[r#"
-                fn fn_direct_ctr() fn() -> Foo<T> [type_could_unify]
-                fn fn_ctr_with_args(…) fn(T) -> Foo<T> [type_could_unify]
-                fn fn_builder() fn() -> FooBuilder [type_could_unify]
-                fn fn_ctr() fn() -> Option<Foo<T>> [type_could_unify]
-                fn fn_ctr2() fn() -> Result<Foo<T>, u32> [type_could_unify]
-                me fn_no_ret(…) fn(&self) [type_could_unify]
-                fn fn_other() fn() -> Option<u32> [type_could_unify]
+                fn fn_direct_ctr() fn() -> Foo<T> []
+                fn fn_ctr_with_args(…) fn(T) -> Foo<T> []
+                fn fn_builder() fn() -> FooBuilder []
+                fn fn_ctr() fn() -> Option<Foo<T>> []
+                fn fn_ctr2() fn() -> Result<Foo<T>, u32> []
+                me fn_no_ret(…) fn(&self) []
+                fn fn_other() fn() -> Option<u32> []
             "#]],
         );
     }
@@ -4175,8 +4645,22 @@ fn main() {
             expect![[r#"
                 ct INFINITY pub const INFINITY: f32 []
                 ct NEG_INFINITY pub const NEG_INFINITY: f32 []
-                ct INFINITY f32 [type_could_unify+requires_import+deprecated]
-                ct NEG_INFINITY f32 [type_could_unify+requires_import+deprecated]
+                ct INFINITY f32 [requires_import+deprecated]
+                ct NEG_INFINITY f32 [requires_import+deprecated]
+            "#]],
+        );
+        check_relevance(
+            r#"
+//- minicore: float_consts
+fn main() {
+    let x: f32 = f32::INF$0
+}
+"#,
+            expect![[r#"
+                ct INFINITY pub const INFINITY: f32 [type]
+                ct NEG_INFINITY pub const NEG_INFINITY: f32 [type]
+                ct INFINITY f32 [type+requires_import+deprecated]
+                ct NEG_INFINITY f32 [type+requires_import+deprecated]
             "#]],
         );
     }

@@ -18,7 +18,7 @@ use crate::alloc::{Allocator, Global};
 pub struct Drain<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     // We can't just use a &mut VecDeque<T, A>, as that would make Drain invariant over T
     // and we want it to be covariant instead
@@ -71,6 +71,14 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
                 deque.slice_ranges(logical_remaining_range.clone(), logical_remaining_range.end);
             (deque.buffer_range(a_range), deque.buffer_range(b_range))
         }
+    }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        // SAFETY: `deque` is valid for reads for the lifetime of the `Drain`.
+        unsafe { self.deque.as_ref().allocator() }
     }
 }
 

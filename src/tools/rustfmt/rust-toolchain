@@ -1,3 +1,0 @@
-[toolchain]
-channel = "nightly-2026-08-27"
-components = ["llvm-tools", "rustc-dev"]

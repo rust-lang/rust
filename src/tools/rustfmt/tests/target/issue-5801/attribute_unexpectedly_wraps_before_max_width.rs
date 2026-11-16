@@ -1,4 +1,4 @@
-// rustfmt-config: issue-5801-v1.toml
+//@ rustfmt-config: issue-5801-v1.toml
 
 pub enum Severity {
     #[something(

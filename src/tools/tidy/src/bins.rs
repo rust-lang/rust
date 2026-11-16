@@ -111,7 +111,7 @@ mod os_impl {
 
     #[cfg(unix)]
     pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-        let mut check = tidy_ctx.start_check("bins");
+        let check = tidy_ctx.start_check("bins");
 
         use std::ffi::OsStr;
 

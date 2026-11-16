@@ -1,12 +1,12 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
+use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{AttributeKind, HasAttrs, UnrollAttr, find_attr};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
-use rustc_hir::attrs::{AttributeKind, HasAttrs};
+use rustc_hir::HirId;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{HirId, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -57,12 +57,12 @@ impl<'tcx> SplattedFunc<'tcx> {
     }
 }
 
-fn parsed_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<AttributeKind> {
+fn filter_loop_hint_attrs(id: HirId, tcx: TyCtxt<'_>) -> ThinVec<UnrollAttr> {
     HasAttrs::get_attrs(id, &tcx)
         .into_iter()
         .filter_map(|attr| match attr {
-            hir::Attribute::Parsed(attrkind) => Some(attrkind.clone()),
-            hir::Attribute::Unparsed(_) => None,
+            rustc_attr_ir::Attribute::Parsed(AttributeKind::Unroll(unroll)) => Some(unroll.clone()),
+            _ => None,
         })
         .collect()
 }
@@ -91,7 +91,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         trace!(?expr.ty);
 
-        let mut attrs = ThinVec::new();
+        let mut loop_hint_attrs = ThinVec::new();
 
         if let hir::ExprKind::Loop(_, _, _, span) = hir_expr.kind {
             match span.desugaring_kind() {
@@ -103,12 +103,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     // ignore async for loops
                     if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(expr.hir_id) {
                         std::assert_matches!(expr.kind, hir::ExprKind::DropTemps(..));
-                        attrs = parsed_attrs(expr.hir_id, self.tcx)
+                        loop_hint_attrs = filter_loop_hint_attrs(expr.hir_id, self.tcx)
                     }
                 }
                 // For loops defined with `loop` and `while`, the expr already has the attrs
                 Some(DesugaringKind::WhileLoop) | None => {
-                    attrs = parsed_attrs(hir_expr.hir_id, self.tcx);
+                    loop_hint_attrs = filter_loop_hint_attrs(hir_expr.hir_id, self.tcx);
                 }
                 _ => (),
             }
@@ -128,8 +128,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let ty = expr.ty;
         let value = self.thir.exprs.push(expr);
 
-        if !attrs.is_empty() {
-            self.thir.attributes.insert(value, attrs);
+        if !loop_hint_attrs.is_empty() {
+            self.thir.loop_hint_attrs.insert(value, loop_hint_attrs);
         }
 
         // Finally, wrap this up in the expr's scope.
@@ -412,10 +412,32 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     let expr = self.method_callee(expr, segment.ident.span, None);
                     info!("Using method span: {:?}", expr.span);
 
-                    let args = std::iter::once(receiver)
-                        .chain(args.iter())
-                        .map(|expr| self.mirror_expr(expr))
-                        .collect();
+                    // Arg position const args are already part of the callee's generic args,
+                    // so we skip them when building runtime arguments.
+                    let generics = match *expr.ty.kind() {
+                        ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
+                        _ => None,
+                    };
+                    let args = if generics.is_some_and(|g| g.has_arg_pos_consts) {
+                        let is_const_arg = |idx: usize| {
+                            generics.is_some_and(|g| {
+                                g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                            })
+                        };
+
+                        std::iter::once(receiver)
+                            .chain(args.iter())
+                            .enumerate()
+                            .filter(|&(idx, _)| !is_const_arg(idx))
+                            .map(|(_, arg)| self.mirror_expr(arg))
+                            .collect()
+                    } else {
+                        std::iter::once(receiver)
+                            .chain(args.iter())
+                            .map(|arg| self.mirror_expr(arg))
+                            .collect()
+                    };
+
                     ExprKind::Call {
                         ty: expr.ty,
                         fun: self.thir.exprs.push(expr),
@@ -517,10 +539,32 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             base: AdtExprBase::None,
                         }))
                     } else {
+                        // Arg position const args are already part of the callee's generic args,
+                        // so we skip them when building runtime arguments.
+                        let fn_ty = self.typeck_results.node_type(fun.hir_id);
+                        let generics = match *fn_ty.kind() {
+                            ty::FnDef(def_id, _) => Some(tcx.generics_of(def_id)),
+                            _ => None,
+                        };
+                        let args = if generics.is_some_and(|g| g.has_arg_pos_consts) {
+                            let is_const_arg = |idx: usize| {
+                                generics.is_some_and(|g| {
+                                    g.own_arg_pos_consts().any(|(_, pos)| pos as usize == idx)
+                                })
+                            };
+                            args.iter()
+                                .enumerate()
+                                .filter(|&(idx, _)| !is_const_arg(idx))
+                                .map(|(_, arg)| self.mirror_expr(arg))
+                                .collect()
+                        } else {
+                            args.iter().map(|arg| self.mirror_expr(arg)).collect()
+                        };
+
                         ExprKind::Call {
-                            ty: self.typeck_results.node_type(fun.hir_id),
+                            ty: fn_ty,
                             fun: self.mirror_expr(fun),
-                            args: self.mirror_exprs(args),
+                            args,
                             from_hir_call: true,
                             fn_span: expr.span,
                         }
@@ -691,7 +735,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         ExprKind::Adt(Box::new(AdtExpr {
                             adt_def: *adt,
                             variant_index: FIRST_VARIANT,
-                            args,
+                            args: *args,
                             user_ty,
                             fields: self.field_refs(fields),
                             base: match base {
@@ -734,7 +778,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                 ExprKind::Adt(Box::new(AdtExpr {
                                     adt_def: *adt,
                                     variant_index: index,
-                                    args,
+                                    args: *args,
                                     user_ty,
                                     fields: self.field_refs(fields),
                                     base: match base {
@@ -827,22 +871,27 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     .operands
                     .iter()
                     .map(|(op, _op_sp)| match *op {
-                        hir::InlineAsmOperand::In { reg, expr } => {
-                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
-                        }
+                        hir::InlineAsmOperand::In { reg, expr } => InlineAsmOperand::In {
+                            reg: reg.as_target(),
+                            expr: self.mirror_expr(expr),
+                        },
                         hir::InlineAsmOperand::Out { reg, late, ref expr } => {
                             InlineAsmOperand::Out {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
                         hir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                            InlineAsmOperand::InOut {
+                                reg: reg.as_target(),
+                                late,
+                                expr: self.mirror_expr(expr),
+                            }
                         }
                         hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
                             InlineAsmOperand::SplitInOut {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 in_expr: self.mirror_expr(in_expr),
                                 out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
@@ -855,9 +904,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             let parent_args = tcx.erase_and_anonymize_regions(
                                 GenericArgs::identity_for_item(tcx, typeck_root_def_id),
                             );
-                            let args =
-                                InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
-                                    .args;
+                            let args = InlineConstArgs::new(
+                                tcx,
+                                InlineConstArgsParts { parent_args: parent_args.as_slice(), ty },
+                            )
+                            .args;
 
                             let uneval = mir::UnevaluatedConst::new(did.to_def_id(), args);
                             let value = mir::Const::Unevaluated(uneval, ty);
@@ -937,7 +988,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     tcx,
                     typeck_root_def_id,
                 ));
-                let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
+                let args = InlineConstArgs::new(
+                    tcx,
+                    InlineConstArgsParts { parent_args: parent_args.as_slice(), ty },
+                )
+                .args;
 
                 ExprKind::ConstBlock { did: did.to_def_id(), args }
             }
@@ -1465,7 +1520,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     ty::Adt(adt_def, args) => ExprKind::Adt(Box::new(AdtExpr {
                         adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
-                        args,
+                        args: *args,
                         user_ty,
                         fields: Box::new([]),
                         base: AdtExprBase::None,

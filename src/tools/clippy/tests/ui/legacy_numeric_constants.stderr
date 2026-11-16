@@ -158,13 +158,14 @@ LL +     u128::MAX;
 error: usage of a legacy numeric constant
   --> tests/ui/legacy_numeric_constants.rs:18:25
    |
+LL | macro_rules! b {
+...
 LL |                 let x = std::u64::MAX;
    |                         ^^^^^^^^^^^^^
 ...
 LL |     b!();
    |     ---- in this macro invocation
    |
-   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the associated constant instead
    |
 LL -                 let x = std::u64::MAX;

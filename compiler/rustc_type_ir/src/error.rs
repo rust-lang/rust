@@ -3,7 +3,7 @@ use rustc_abi::ExternAbi;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::solve::{NoSolution, NoSolutionOrRerunNonErased};
-use crate::{self as ty, Interner, Region};
+use crate::{self as ty, Const, Interner, Region};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[derive(TypeFoldable_Generic, TypeVisitable_Generic, GenericTypeVisitable)]
@@ -30,7 +30,7 @@ pub enum TypeError<I: Interner> {
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),
-    ArraySize(ExpectedFound<I::Const>),
+    ArraySize(ExpectedFound<Const<I>>),
     ArgCount,
 
     RegionsDoesNotOutlive(Region<I>, Region<I>),
@@ -47,10 +47,10 @@ pub enum TypeError<I: Interner> {
     /// created a cycle (because it appears somewhere within that
     /// type).
     CyclicTy(I::Ty),
-    CyclicConst(I::Const),
+    CyclicConst(Const<I>),
     ProjectionMismatched(ExpectedFound<ty::AliasTermKind<I>>),
     ExistentialMismatch(ExpectedFound<I::BoundExistentialPredicates>),
-    ConstMismatch(ExpectedFound<I::Const>),
+    ConstMismatch(ExpectedFound<Const<I>>),
 
     IntrinsicCast,
     /// `#[rustc_force_inline]` functions must be inlined and must not be codegened independently,

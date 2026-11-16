@@ -6,11 +6,11 @@ use std::ops::{Deref, DerefMut};
 use rustc_abi::{ExternAbi, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_crate_store::{ExternCrate, ExternCrateSource};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, LOCAL_CRATE, ModId};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
@@ -264,7 +264,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_value_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         self.print_def_path(def_id, args)
     }
@@ -288,7 +288,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         f(value.as_ref().skip_binder(), self)
     }
 
-    /// Prints comma-separated elements.
+    /// Prints comma-separated elements. If `comma_sep_has_space` is `true`, there is a space after
+    /// each comma.
     fn comma_sep<T>(&mut self, mut elems: impl Iterator<Item = T>) -> Result<(), PrintError>
     where
         T: Print<Self>,
@@ -296,11 +297,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         if let Some(first) = elems.next() {
             first.print(self)?;
             for elem in elems {
-                self.write_str(", ")?;
+                if self.comma_sep_has_space() {
+                    self.write_str(", ")?;
+                } else {
+                    self.write_str(",")?;
+                }
                 elem.print(self)?;
             }
         }
         Ok(())
+    }
+
+    fn comma_sep_has_space(&self) -> bool {
+        true
     }
 
     /// Prints `{f: t}` or `{f as t}` depending on the `cast` argument
@@ -522,7 +531,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         // in cases where the `extern crate foo` has non-trivial
                         // parents, e.g. it's nested in `impl foo::Trait for Bar`
                         // (see also issues #55779 and #87932).
-                        with_no_visible_paths!(self.print_def_path(def_id, &[])?);
+                        with_no_visible_paths!(
+                            self.print_def_path(def_id, ty::GenericArgs::empty())?
+                        );
 
                         return Ok(true);
                     }
@@ -716,7 +727,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_closure_inner(
         &mut self,
         did: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         if self.should_truncate() {
             write!(self, "@...")
@@ -857,7 +868,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     write!(self, ")")?;
                 }
             }
-            ty::Foreign(def_id) => self.print_def_path(def_id, &[])?,
+            ty::Foreign(def_id) => self.print_def_path(def_id, ty::GenericArgs::empty())?,
             ty::Alias(
                 _,
                 ref data @ ty::AliasTy {
@@ -907,7 +918,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                     _ => {
                         if with_reduced_queries() {
-                            self.print_def_path(def_id, &[])?;
+                            self.print_def_path(def_id, ty::GenericArgs::empty())?;
                             return Ok(());
                         } else {
                             return self.pretty_print_opaque_impl_type(def_id, args);
@@ -1024,6 +1035,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty.print(self)?;
                 write!(self, "]")?;
             }
+            ty::View(def, args, fields) => {
+                write!(self, "view_type!(")?;
+                self.print_def_path(def.did(), args)?;
+                write!(self, ".{{ ")?;
+                self.print_type(fields)?;
+                write!(self, " }})")?;
+            }
         }
 
         Ok(())
@@ -1032,7 +1050,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_opaque_impl_type(
         &mut self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let tcx = self.tcx();
 
@@ -1174,7 +1192,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 trait_pred.trait_ref.print_only_trait_name().print(p)?;
 
                 let generics = tcx.generics_of(trait_pred.def_id());
-                let own_args = generics.own_args_no_defaults(tcx, trait_pred.trait_ref.args);
+                let own_args =
+                    generics.own_args_no_defaults(tcx, trait_pred.trait_ref.args.as_slice());
 
                 if !own_args.is_empty() || !assoc_items.is_empty() {
                     let mut first = true;
@@ -1313,14 +1332,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     &def_key.disambiguated_data,
                 )
             },
-            &alias_term.args[1..],
+            self.tcx().mk_args(&alias_term.args.as_slice()[1..]),
         )
     }
 
     fn pretty_print_rpitit(
         &mut self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let fn_args = if self.tcx().features().return_type_notation()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
@@ -1337,7 +1356,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 .all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
         {
             let num_args = generics.count();
-            Some((fn_def_id, &args[..num_args]))
+            Some((fn_def_id, self.tcx().mk_args(&args.as_slice()[..num_args])))
         } else {
             None
         };
@@ -1378,7 +1397,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         if let Some(bound_principal) = predicates.principal() {
             self.wrap_binder(&bound_principal, WrapBinderMode::ForAll, |principal, p| {
-                p.print_def_path(principal.def_id, &[])?;
+                p.print_def_path(principal.def_id, ty::GenericArgs::empty())?;
 
                 let mut resugared = false;
 
@@ -1409,7 +1428,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     let args = p
                         .tcx()
                         .generics_of(principal_with_self.def_id)
-                        .own_args_no_defaults(p.tcx(), principal_with_self.args);
+                        .own_args_no_defaults(p.tcx(), principal_with_self.args.as_slice());
 
                     let bound_principal_with_self = bound_principal
                         .with_self_ty(p.tcx(), p.tcx().types.trait_object_dummy_self);
@@ -1486,7 +1505,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             first = false;
 
-            self.print_def_path(def_id, &[])?;
+            self.print_def_path(def_id, ty::GenericArgs::empty())?;
         }
 
         Ok(())
@@ -1503,14 +1522,26 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let splatted_arg_index = splatted.map(usize::from);
         let mut input_iter = inputs.iter().copied();
         if let Some(index) = splatted_arg_index {
-            self.comma_sep((&mut input_iter).take(usize::from(index)))?;
-            write!(self, ", #[rustc_splat]")?;
+            self.comma_sep((&mut input_iter).take(index))?;
+            // Splitting the comma-separated list can miss a comma, but we only need that comma if
+            // there are arguments before the splat.
+            // FIXME(splat): if splatting becomes part of the type, we can remove this hack
+            if index > 0 {
+                if self.comma_sep_has_space() {
+                    write!(self, ", ")?;
+                } else {
+                    write!(self, ",")?;
+                }
+            }
+            write!(self, "#[rustc_splat] ")?;
             self.comma_sep(input_iter)?;
         } else {
             self.comma_sep(input_iter)?;
         }
         if c_variadic {
             if !inputs.is_empty() {
+                // In legacy mangling, most comma-separated lists have no spaces. But here we print
+                // a space before the `...` for readability.
                 write!(self, ", ")?;
             }
             write!(self, "...")?;
@@ -1668,7 +1699,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, "(")?;
                 self.pretty_print_const(fn_def, print_ty)?;
                 write!(self, ")(")?;
-                self.comma_sep(fn_args)?;
+                self.comma_sep(fn_args.into_iter())?;
                 write!(self, ")")?;
             }
             ty::ExprKind::Cast(kind) => {
@@ -1967,6 +1998,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             let mut first = true;
                             for (field_def, field) in iter::zip(&variant_def.fields, fields) {
                                 if !first {
+                                    // FIXME(legacy mangling): if this appears, should we enable
+                                    // spaces depending on `comma_sep_has_space`?
                                     write!(self, ", ")?;
                                 }
                                 write!(self, "{}: ", field_def.name)?;
@@ -2169,14 +2202,14 @@ impl<'t> TyCtxt<'t> {
     /// suitable for user output.
     pub fn def_path_str(self, def_id: impl IntoQueryKey<DefId>) -> String {
         let def_id = def_id.into_query_key();
-        self.def_path_str_with_args(def_id, &[])
+        self.def_path_str_with_args(def_id, ty::GenericArgs::empty())
     }
 
     /// For this one we determine the appropriate namespace for the `def_id`.
     pub fn def_path_str_with_args(
         self,
         def_id: impl IntoQueryKey<DefId>,
-        args: &'t [GenericArg<'t>],
+        args: ty::GenericArgs<'t>,
     ) -> String {
         let def_id = def_id.into_query_key();
         let ns = guess_def_namespace(self, def_id);
@@ -2189,7 +2222,7 @@ impl<'t> TyCtxt<'t> {
     pub fn value_path_str_with_args(
         self,
         def_id: impl IntoQueryKey<DefId>,
-        args: &'t [GenericArg<'t>],
+        args: ty::GenericArgs<'t>,
     ) -> String {
         let def_id = def_id.into_query_key();
         let ns = Namespace::ValueNS;
@@ -2227,7 +2260,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn print_def_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         if args.is_empty() {
             match self.try_print_trimmed_def_path(def_id)? {
@@ -2258,7 +2291,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
                 let span = self.tcx.def_span(def_id);
 
-                self.print_def_path(parent_def_id, &[])?;
+                self.print_def_path(parent_def_id, ty::GenericArgs::empty())?;
 
                 // HACK(eddyb) copy of `print_path_with_simple` to avoid
                 // constructing a `DisambiguatedDefPathData`.
@@ -2394,16 +2427,17 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.empty_path = true;
-        if cnum == LOCAL_CRATE && !with_resolve_crate_name() {
-            if self.tcx.sess.at_least_rust_2018() {
-                // We add the `crate::` keyword on Rust 2018, only when desired.
-                if with_crate_prefix() {
-                    write!(self, "{}", kw::Crate)?;
-                    self.empty_path = false;
-                }
+        if cnum == LOCAL_CRATE {
+            if with_resolve_crate_name() {
+                // The local crate can't be renamed by `--extern`, avoid the additional query.
+                write!(self, "{}", self.tcx.crate_name(cnum))?;
+                self.empty_path = false;
+            } else if with_crate_prefix() {
+                write!(self, "{}", kw::Crate)?;
+                self.empty_path = false;
             }
         } else {
-            write!(self, "{}", self.tcx.crate_name(cnum))?;
+            write!(self, "{}", self.tcx.crate_name_with_rename(cnum))?;
             self.empty_path = false;
         }
         Ok(())
@@ -2475,7 +2509,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        args: &[GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
 
@@ -2483,7 +2517,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             if self.in_value {
                 write!(self, "::")?;
             }
-            self.generic_delimiters(|p| p.comma_sep(args.iter().copied()))
+            self.generic_delimiters(|p| p.comma_sep(args.iter()))
         } else {
             Ok(())
         }
@@ -2506,7 +2540,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
     fn pretty_print_value_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let was_in_value = std::mem::replace(&mut self.in_value, true);
         self.print_def_path(def_id, args)?;
@@ -3099,11 +3133,6 @@ impl<'tcx> ty::PolyTraitClause<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, Lift)]
-pub struct PrintClosureAsImpl<'tcx> {
-    pub closure: ty::ClosureArgs<TyCtxt<'tcx>>,
-}
-
 macro_rules! forward_display_to_print {
     ($($ty:ty),+) => {
         $(
@@ -3143,8 +3172,7 @@ macro_rules! define_print_and_forward_display {
 
 forward_display_to_print! {
     Ty<'tcx>,
-    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-    ty::Const<'tcx>
+    &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>
 }
 
 define_print! {
@@ -3255,7 +3283,7 @@ define_print! {
             ty::PredicateKind::Coerce(predicate) => predicate.print(p)?,
             ty::PredicateKind::DynCompatible(trait_def_id) => {
                 write!(p, "the trait `")?;
-                p.print_def_path(trait_def_id, &[])?;
+                p.print_def_path(trait_def_id, ty::GenericArgs::empty())?;
                 write!(p, "` is dyn-compatible")?;
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
@@ -3274,7 +3302,7 @@ define_print! {
         match *self {
             ty::ExistentialPredicate::Trait(x) => x.print(p)?,
             ty::ExistentialPredicate::Projection(x) => x.print(p)?,
-            ty::ExistentialPredicate::AutoTrait(def_id) => p.print_def_path(def_id, &[])?,
+            ty::ExistentialPredicate::AutoTrait(def_id) => p.print_def_path(def_id, ty::GenericArgs::empty())?,
         }
     }
 
@@ -3289,8 +3317,8 @@ define_print! {
         let name = p.tcx().associated_item(self.def_id).name();
         // The args don't contain the self ty (as it has been erased) but the corresp.
         // generics do as the trait always has a self ty param. We need to offset.
-        let args = &self.args[p.tcx().generics_of(self.def_id).parent_count - 1..];
-        p.print_path_with_generic_args(|p| write!(p, "{name}"), args)?;
+        let args = &self.args.as_slice()[p.tcx().generics_of(self.def_id).parent_count - 1..];
+        p.print_path_with_generic_args(|p| write!(p, "{name}"), p.tcx().mk_args(args))?;
         write!(p, " = ")?;
         self.term.print(p)?;
     }
@@ -3367,7 +3395,7 @@ define_print_and_forward_display! {
     }
 
     TraitRefPrintOnlyTraitName<'tcx> {
-        p.print_def_path(self.0.def_id, &[])?;
+        p.print_def_path(self.0.def_id, ty::GenericArgs::empty())?;
     }
 
     TraitClausePrintModifiersAndPath<'tcx> {
@@ -3387,10 +3415,6 @@ define_print_and_forward_display! {
             write!(p, "!")?;
         }
         self.0.trait_ref.print_trait_sugared().print(p)?;
-    }
-
-    PrintClosureAsImpl<'tcx> {
-        p.pretty_print_closure_as_impl(self.closure)?;
     }
 
     ty::ParamTy {
@@ -3429,7 +3453,7 @@ define_print_and_forward_display! {
                     write!(p, " at <impl ")?;
                     let key = p.tcx().def_key(impl_def_id);
                     let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
-                    p.print_def_path(parent_def_id, &[])?;
+                    p.print_def_path(parent_def_id, ty::GenericArgs::empty())?;
                     write!(p, "::<{}> for ", key.disambiguated_data.as_sym(false))?;
                     self_ty.print(p)?;
                     write!(p, ">")?;

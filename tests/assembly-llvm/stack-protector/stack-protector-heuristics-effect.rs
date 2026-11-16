@@ -1,4 +1,4 @@
-//@ revisions: all strong basic none missing
+//@ revisions: all strong none missing
 //@ assembly-output: emit-asm
 //@ ignore-apple slightly different policy on stack protection of arrays
 //@ ignore-msvc stack check code uses different function names
@@ -6,9 +6,8 @@
 //@ ignore-wasm32-unknown-unknown
 //@ [all] compile-flags: -Z stack-protector=all
 //@ [strong] compile-flags: -Z stack-protector=strong
-//@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
+//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Z allow-partial-mitigations=stack-protector
 
 // NOTE: the heuristics for stack smash protection inappropriately rely on types in LLVM IR,
 // despite those types having no semantic meaning. This means that the `basic` and `strong`
@@ -24,7 +23,6 @@
 pub fn emptyfn() {
     // all: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -42,7 +40,6 @@ pub fn array_char(f: fn(*const char)) {
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -58,7 +55,6 @@ pub fn array_u8_1(f: fn(*const u8)) {
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -72,10 +68,10 @@ pub fn array_u8_small(f: fn(*const u8)) {
     f(&b as *const _);
 
     // Small arrays do not lead to stack protection by the 'basic' heuristic.
+    // (basic is not currently supported, leaving the test anyway).
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -88,10 +84,10 @@ pub fn array_u8_large(f: fn(*const u8)) {
 
     // Since `a` is a byte array with size greater than 8, the basic heuristic
     // will also protect this function.
+    // (basic is not currently supported, leaving the test anyway).
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -107,10 +103,10 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
 
     // Since `a` is a byte array in the LLVM output, the basic heuristic will
     // also protect this function.
+    // (basic is not currently supported, leaving the test anyway).
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -137,7 +133,6 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -153,7 +148,6 @@ pub fn local_string_addr_taken(f: fn(&String)) {
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -182,7 +176,6 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
 
     // all: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -219,7 +212,6 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -248,7 +240,6 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
 
     // all: __stack_chk_fail
     // strong: __stack_chk_fail
-    // basic: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -288,7 +279,6 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
 
     // all: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -300,7 +290,6 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
 
     // all: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
@@ -312,34 +301,10 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
 
     // all: __stack_chk_fail
     // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail
 }
 
-// The question then is: in what ways can Rust code generate array-`alloca`
-// LLVM instructions? This appears to only be generated by
-// rustc_codegen_ssa::traits::Builder::array_alloca() through
-// rustc_codegen_ssa::mir::operand::OperandValue::store_unsized(). FWICT
-// this is support for the "unsized locals" unstable feature:
-// https://doc.rust-lang.org/unstable-book/language-features/unsized-locals.html.
-
-// CHECK-LABEL: unsized_fn_param{{:|\[}}
-#[no_mangle]
-pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
-    let n = if l { 1 } else { 2 };
-    f(*Box::<[u8]>::from(&s[0..n])); // slice-copy with Box::from
-
-    // Even though slices are conceptually passed by-value both into this
-    // function and into `f()`, this is implemented with pass-by-reference
-    // using a suitably constructed fat-pointer (as if the functions
-    // accepted &[u8]). This function therefore doesn't need dynamic array
-    // alloca, and is therefore not protected by the `strong` or `basic`
-    // heuristics.
-
-    // all: __stack_chk_fail
-    // strong-NOT: __stack_chk_fail
-    // basic-NOT: __stack_chk_fail
-    // none-NOT: __stack_chk_fail
-    // missing-NOT: __stack_chk_fail
-}
+// rustc can currently (as of 1.98) not generate variable-sized allocas, except for
+// variable-sized scalable vector types, so their interaction with stack-protector
+// does not need to be tested.

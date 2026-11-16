@@ -1,4 +1,4 @@
-// rustfmt-format_strings: true
+//@ rustfmt-format_strings: true
 
 fn main() {
     println!("ThisIsAReallyLongStringWithNoSpaces.It_should_prefer_to_break_onpunctuation:Likethisssssssssssss");

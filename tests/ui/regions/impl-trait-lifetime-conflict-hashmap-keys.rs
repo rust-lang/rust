@@ -11,7 +11,7 @@ struct Subject<'a, T, V, R>(PhantomData<(&'a T, V, R)>);
 
 impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R> {
     fn key_set(&self) -> Subject<'static, Keys<K, V>, (), R> {
-        //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter '_ in generic type due to conflicting requirements
+        //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter `'_` in generic type due to conflicting requirements
         //~| ERROR mismatched types
     }
 }

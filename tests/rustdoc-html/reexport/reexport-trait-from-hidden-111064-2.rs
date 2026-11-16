@@ -15,11 +15,12 @@ pub trait Sized: MetaSized {}
 //@ files "foo" "['sidebar-items.js', 'all.html', 'hidden', 'index.html', 'struct.Bar.html', \
 //        'visible', 'trait.Sized.html', 'trait.MetaSized.html', 'trait.PointeeSized.html']"
 //@ files "foo/hidden" "['inner']"
-//@ files "foo/hidden/inner" "['trait.Foo.html']"
+//@ files "foo/hidden/inner" "['index.html', 'trait.Foo.html']"
 //@ files "foo/visible" "['index.html', 'sidebar-items.js', 'trait.Foo.html']"
 
 //@ !has 'foo/hidden/index.html'
-//@ !has 'foo/hidden/inner/index.html'
+//@ has 'foo/hidden/inner/index.html'
+//@ matchesraw - '<meta http-equiv="refresh" content="0;URL=../../../foo/visible/index.html">'
 // FIXME: Should be `@!has`: https://github.com/rust-lang/rust/issues/111249
 //@ has 'foo/hidden/inner/trait.Foo.html'
 //@ matchesraw - '<meta http-equiv="refresh" content="0;URL=../../../foo/visible/trait.Foo.html">'

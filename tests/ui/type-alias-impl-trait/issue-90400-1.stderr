@@ -7,6 +7,8 @@ LL |         move || bar.bar()
 note: required by a bound in `<MyFoo as Foo>::foo`
   --> $DIR/issue-90400-1.rs:21:15
    |
+LL | impl Foo for MyFoo {
+...
 LL |     fn foo<B: Bar>(&self, bar: B) -> Self::FooFn<B> {
    |               ^^^ required by this bound in `<MyFoo as Foo>::foo`
 help: consider restricting type parameter `B` with trait `Bar`

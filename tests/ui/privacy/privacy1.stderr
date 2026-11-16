@@ -38,15 +38,18 @@ error[E0603]: module `i` is private
   --> $DIR/privacy1.rs:172:20
    |
 LL |     use self::foo::i::A;
-   |                    ^  - struct `A` is not publicly re-exported
-   |                    |
-   |                    private module
+   |                    ^ private module
    |
 note: the module `i` is defined here
   --> $DIR/privacy1.rs:177:9
    |
 LL |         mod i {
    |         ^^^^^
+help: consider importing this struct through its public re-export instead
+   |
+LL -     use self::foo::i::A;
+LL +     use mytest::foo::Z;
+   |
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:148:18

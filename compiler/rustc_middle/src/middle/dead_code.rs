@@ -1,14 +1,31 @@
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir::def_id::{DefId, LocalDefIdMap, LocalDefIdSet};
+use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_macros::StableHash;
+use rustc_span::Span;
 
 /// A single snapshot of dead-code liveness analysis state.
 #[derive(Clone, Debug, StableHash)]
 pub struct DeadCodeLivenessSnapshot {
-    pub live_symbols: LocalDefIdSet,
-    /// Maps each ADT to derived traits (for example `Debug` and `Clone`) that should be ignored
-    /// when checking for dead code diagnostics.
-    pub ignored_derived_traits: LocalDefIdMap<FxIndexSet<DefId>>,
+    pub live: LocalDefIdSet,
+    /// This maps defs that were only used from items annotated with
+    /// `#[rustc_trivial_field_reads]` to those items
+    pub sites_by_defid: LocalDefIdMap<Vec<LocalDefId>>,
+    /// For each of the items annotated with `#[rustc_trivial_field_reads]`,
+    /// we store the attr span here, so we can use it for diagnostics if needed
+    pub sites: LocalDefIdMap<Span>,
+}
+
+impl DeadCodeLivenessSnapshot {
+    pub fn is_live(&self, id: &LocalDefId) -> bool {
+        self.live.contains(id)
+    }
+
+    pub fn trivial_usage_sites(&self, def_id: &LocalDefId) -> impl Iterator<Item = LocalDefId> {
+        self.sites_by_defid.get(def_id).into_iter().flatten().copied()
+    }
+
+    pub fn trivial_usage_site_span_by_id(&self, site_id: LocalDefId) -> Span {
+        *self.sites.get(&site_id).unwrap()
+    }
 }
 
 /// Dead-code liveness data for both analysis phases.

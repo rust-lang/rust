@@ -6,7 +6,7 @@ use libc::{c_char, c_int, c_void};
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::os::unix::prelude::*;
-use crate::path::{self, PathBuf};
+use crate::path::{self, Path, PathBuf};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::pal::cvt;
 use crate::{fmt, io, iter, mem, ptr, slice, str};
@@ -74,6 +74,28 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     }
 
     unparsed.as_bytes().split(is_separator).map(into_pathbuf)
+}
+
+pub type SplitPathsRef<'a> = iter::Map<
+    slice::Split<'a, u8, impl FnMut(&u8) -> bool + 'static>,
+    impl FnMut(&[u8]) -> &'_ Path + 'static,
+>;
+
+pub fn split_paths_ref(unparsed: &OsStr) -> Option<SplitPathsRef<'_>> {
+    #[define_opaque(SplitPathsRef)]
+    fn split_paths_ref(unparsed: &OsStr) -> SplitPathsRef<'_> {
+        fn is_separator(&b: &u8) -> bool {
+            b == PATH_SEPARATOR
+        }
+
+        fn into_path(part: &[u8]) -> &Path {
+            Path::new(OsStr::from_bytes(part))
+        }
+
+        unparsed.as_bytes().split(is_separator).map(into_path)
+    }
+
+    Some(split_paths_ref(unparsed))
 }
 
 #[derive(Debug)]
@@ -231,37 +253,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "openbsd")]
 pub fn current_exe() -> io::Result<PathBuf> {
+    let mut path = vec![0u8; libc::PATH_MAX as usize];
     unsafe {
-        let mut mib = [libc::CTL_KERN, libc::KERN_PROC_ARGS, libc::getpid(), libc::KERN_PROC_ARGV];
-        let mib = mib.as_mut_ptr();
-
-        // Determine the required size (in bytes) for the argument array ...
-        let mut argv_size = 0;
-        cvt(libc::sysctl(mib, 4, ptr::null_mut(), &mut argv_size, ptr::null_mut(), 0))?;
-
-        // ... allocate a buffer for it ...
-        let argc = argv_size.div_exact(size_of::<*const libc::c_char>()).unwrap();
-        let mut argv = Vec::<*const libc::c_char>::with_capacity(argc);
-
-        // ... and retrieve the argument array.
-        cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_size, ptr::null_mut(), 0))?;
-        let argc = argv_size.div_exact(size_of::<*const libc::c_char>()).unwrap();
-        argv.set_len(argc);
-
-        if argv[0].is_null() {
-            return Err(io::const_error!(io::ErrorKind::Uncategorized, "no current exe available"));
-        }
-        let argv0 = CStr::from_ptr(argv[0]).to_bytes();
-        if argv0.iter().any(|b| *b == b'/') {
-            // The program name is path-like, so try to canonicalize it.
-            crate::fs::canonicalize(OsStr::from_bytes(argv0))
-        } else {
-            // The program was probably found in the PATH. Instead of trying to
-            // find it again (which might not succeed if PATH has changed), just
-            // return the program name – this function is best-effort anyway.
-            Ok(PathBuf::from(OsStr::from_bytes(argv0)))
-        }
+        cvt(libc::getexecpath(path.as_mut_ptr().cast(), path.len()))?;
+        // SAFETY: getexecpath(3) NUL-terminates the buffer on success.
+        let len = CStr::from_ptr(path.as_ptr().cast()).count_bytes();
+        path.truncate(len);
     }
+    Ok(PathBuf::from(OsString::from_vec(path)))
 }
 
 #[cfg(any(

@@ -1,6 +1,6 @@
-// rustfmt-match_arm_indent: false
-// rustfmt-hard_tabs: true
-// rustfmt-tab_spaces: 8
+//@ rustfmt-match_arm_indent: false
+//@ rustfmt-hard_tabs: true
+//@ rustfmt-tab_spaces: 8
 
 // Large-indentation style, brought to you by the Linux kernel
 fn foo() {

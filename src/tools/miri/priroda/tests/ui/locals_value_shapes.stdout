@@ -2,11 +2,11 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_value_shapes.rs:49
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: dead_box, Id: _1, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
-Name: consumed, Id: _2, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
+Name: dead_box, Id: _1, Ty: std::boxed::Box<u8>, Value: Box(BoxRaw { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
+Name: consumed, Id: _2, Ty: std::boxed::Box<u8>, Value: Box(BoxRaw { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 Name: <none>, Id: _3, Ty: (), Value: <dead>
 Name: <none>, Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
-Name: pointed_box, Id: _5, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
+Name: pointed_box, Id: _5, Ty: std::boxed::Box<u8>, Value: Box(BoxRaw { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 Name: pointer_box, Id: _6, Ty: &std::boxed::Box<u8>, Value: {&_: &std::boxed::Box<u8>}
 Name: scalar, Id: _7, Ty: u8, Value: 42_u8
 Name: pointed, Id: _8, Ty: u8, Value: [33]
@@ -45,7 +45,7 @@ Name: <none>, Id: _40, Ty: &Choice, Value: <dead>
 Name: <none>, Id: _41, Ty: &[u8; 2], Value: {&_: &[u8; 2]}
 (priroda) Id: _0, Ty: (), Value: <uninit>
 (priroda) Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
-(priroda) Id: _5, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
+(priroda) Id: _5, Ty: std::boxed::Box<u8>, Value: Box(BoxRaw { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 (priroda) Id: _7, Ty: u8, Value: 42_u8
 (priroda) Id: _8, Ty: u8, Value: [33]
 (priroda) Id: _13, Ty: [u8; 2], Value: <uninit>

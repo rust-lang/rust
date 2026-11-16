@@ -243,7 +243,7 @@ fn main() -> ExitCode {
             let mut args: Vec<String> = orig_args.clone();
             pass_sysroot_env_if_given(&mut args, sys_root_env);
 
-            rustc_driver::run_compiler(&args, &mut DefaultCallbacks);
+            rustc_driver::compiler_entrypoint(&args, &mut DefaultCallbacks);
             return ExitCode::SUCCESS;
         }
 
@@ -304,9 +304,9 @@ fn main() -> ExitCode {
         let clippy_enabled = !cap_lints_allow && relevant_package && !info_query;
         if clippy_enabled {
             args.extend(clippy_args);
-            rustc_driver::run_compiler(&args, &mut ClippyCallbacks { clippy_args_var });
+            rustc_driver::compiler_entrypoint(&args, &mut ClippyCallbacks { clippy_args_var });
         } else {
-            rustc_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var });
+            rustc_driver::compiler_entrypoint(&args, &mut RustcCallbacks { clippy_args_var });
         }
         ExitCode::SUCCESS
     })

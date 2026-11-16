@@ -3,11 +3,11 @@
 
 use std::collections::BTreeMap;
 
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
@@ -115,7 +115,11 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         Err(CopyImplementationError::HasDestructor(did)) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             let impl_ = tcx.def_span(did);
-            Err(tcx.dcx().emit_err(diagnostics::CopyImplOnTypeWithDtor { span, impl_ }))
+            Err(tcx.dcx().emit_err(diagnostics::TraitImplOnTypeWithDtor {
+                span,
+                impl_,
+                trait_name: sym::Copy,
+            }))
         }
         Err(CopyImplementationError::HasUnsafeFields) => {
             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
@@ -472,10 +476,8 @@ pub(crate) fn reborrow_info<'tcx>(
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
-    if trait_impl_lifetime_params_count(tcx, impl_did) != 1 {
-        return Err(tcx
-            .dcx()
-            .emit_err(diagnostics::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
+    if trait_impl_lifetime_params_count(tcx, impl_did) == 0 {
+        return Err(tcx.dcx().emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
     }
 
     assert_eq!(trait_ref.def_id, reborrow_trait);
@@ -492,20 +494,12 @@ pub(crate) fn reborrow_info<'tcx>(
         }
     };
 
-    let lifetimes_count = generic_lifetime_params_count(args);
     let data_fields = collect_reborrow_data_fields(tcx, def, args);
 
-    if lifetimes_count != 1 {
-        let item = tcx.hir_expect_item(impl_did);
-        let _span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) = &item.kind {
-            of_trait.trait_ref.path.span
-        } else {
-            tcx.def_span(impl_did)
-        };
-
-        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMulti { span, trait_name }));
+    let lifetimes_count = generic_lifetime_params_count(args.as_slice());
+    if lifetimes_count == 0 {
+        return Err(tcx.dcx().emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
     }
-
     if data_fields.is_empty() {
         return Ok(());
     }
@@ -513,6 +507,7 @@ pub(crate) fn reborrow_info<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     // We've found some data fields. They must all be either be Copy or Reborrow.
     for mut field in data_fields {
+        field.ty.error_reported()?;
         field.ty = ocx
             .deeply_normalize(
                 &traits::ObligationCause::misc(field.span, impl_did),
@@ -535,6 +530,15 @@ pub(crate) fn reborrow_info<'tcx>(
 
         // Field does not implement Reborrow: it must be Copy.
         assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field.ty, field.span)?;
+    }
+
+    if let Some(did) = def.destructor(tcx).map(|dtor| dtor.did) {
+        let impl_ = tcx.def_span(did);
+        return Err(tcx.dcx().emit_err(diagnostics::TraitImplOnTypeWithDtor {
+            span,
+            impl_,
+            trait_name: sym::Reborrow,
+        }));
     }
 
     Ok(())
@@ -563,7 +567,7 @@ struct ReborrowDataField<'tcx> {
 fn collect_reborrow_data_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> Vec<ReborrowDataField<'tcx>> {
     def.non_enum_variant()
         .fields
@@ -1003,7 +1007,7 @@ fn infringing_fields_error<'tcx>(
         None,
     );
 
-    err.emit()
+    err.emit_err()
 }
 
 fn visit_implementation_of_coerce_pointee_validity(

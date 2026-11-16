@@ -78,7 +78,7 @@ pub(super) fn collect_defs(
         deps.insert(dep.as_name(), dep.clone());
     }
 
-    let proc_macros = if krate.is_proc_macro {
+    let proc_macros = if krate.target_kind.is_proc_macro() {
         ProcMacros::get_for_crate(db, def_map.krate)
             .and_then(|proc_macros| {
                 proc_macros.list(tree_id.file_id().syntax_context(db, krate.edition))
@@ -105,7 +105,7 @@ pub(super) fn collect_defs(
         skip_attrs: Default::default(),
         prev_active_attrs: Default::default(),
         unresolved_extern_crates: Default::default(),
-        is_proc_macro: krate.is_proc_macro,
+        is_proc_macro: krate.target_kind.is_proc_macro(),
         deferred_builtin_derives: Default::default(),
     };
     if tree_id.is_block() {

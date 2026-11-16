@@ -1,8 +1,10 @@
 //@ run-pass
 
 #![feature(supertrait_item_shadowing)]
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![allow(dead_code)]
+
+use std::gca;
 
 trait A {
     const CONST: i32;
@@ -16,7 +18,7 @@ trait B: A {
     const CONST: i32;
 }
 impl<T> B for T {
-    const CONST: i32 = core::direct_const_arg!(2);
+    const CONST: i32 = gca!(2);
 }
 
 trait C: B {}

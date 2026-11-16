@@ -6,7 +6,6 @@
 
 //@ run-pass
 //@ needs-subprocess
-//@ ignore-backends: gcc
 //@ ignore-i586 (no SSE2)
 
 #![allow(overflowing_literals)]

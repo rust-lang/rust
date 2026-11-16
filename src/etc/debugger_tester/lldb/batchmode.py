@@ -16,6 +16,7 @@
 import _thread as thread
 import os
 import re
+import signal
 import sys
 import threading
 import time
@@ -74,8 +75,7 @@ def execute_command(command_interpreter: lldb.SBCommandInterpreter, command: str
     command_interpreter.HandleCommand(command, res)
 
     if res.Succeeded():
-        if res.HasResult():
-            print(normalize_whitespace(res.GetOutput() or ""), end="\n")
+        print(normalize_whitespace(res.GetOutput() or ""), end="\n")
 
         # If the command introduced any breakpoints, make sure to register
         # them with the breakpoint
@@ -178,10 +178,41 @@ def get_env_arg(name):
 def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> bool:
     # We save importing the check until we actually see a repr command. This prevents us from trying
     # to load input data from tests that don't use `repr` commands.
-    from .check_lldb import check
     from ..common import Result
+    from .check_lldb import check
 
     return check(var_name, breakpoint_index, frame) == Result.Ok
+
+
+def flush_all(debugger: lldb.SBDebugger):
+    """
+    Flushes the output and error files of the passed-in debugger, the python interpreter, and
+    the parent LLDB debugger.
+    """
+    debugger.GetOutputFile().Flush()
+    debugger.GetErrorFile().Flush()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    lldb.debugger.GetOutputFile().Flush()
+    lldb.debugger.GetErrorFile().Flush()
+
+
+def quit_with_error(debugger: lldb.SBDebugger):
+    """Kills the parent LLDB process with a non-0 exit code"""
+
+    # file handles aren't guaranteed to be flushed when python doesn't return control back to LLDB,
+    # so we need to do it manually
+    flush_all(debugger)
+
+    # When using a debugger created from the python script (e.g. `lldb.SBDebugger.Create()`), this
+    # doesn't actually work, but it doesn't hurt to try =)
+    debugger.HandleCommand("quit 1")
+
+    # Returning status codes using `sys.exit` doesn't work since we're in an LLDB managed python
+    # instance. Instead, we kill the PID, which happens to be the parent LLDB process.
+    # Note: We use SIGTERM because it works on linux and windows, unlike SIGKILL, and doesn't cause
+    # LLDB to spit out a backtrace like SIGABRT.
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 ####################################################################################################
@@ -190,6 +221,9 @@ def dispatch_repr(var_name: str, breakpoint_index: int, frame: lldb.SBFrame) -> 
 
 
 def main():
+    # We need to make sure the debugger running this script doesn't run in async mode.
+    # This helps prevent a number of issues (e.g. file handles not being flushed).
+    lldb.debugger.SetAsync(False)
     target_path = get_env_arg("DEBUGGER_TESTER_TARGET_PATH")
     script_path = get_env_arg("DEBUGGER_TESTER_SCRIPT_PATH")
 
@@ -203,12 +237,12 @@ def main():
     # Start the timeout watchdog
     start_watchdog()
 
-    # This is the debugger instance of the lldb executable that imported and ran this python script.
-    # There is some weird behavior around LLDB reassigning, clearing, or not updating their own
-    # references (like `lldb.debugger`) while a python function is actively running (i.e. if control
-    # is not given back to the REPL). To prevent LLDB from changing things out from under us, we
-    # store this reference locally.
-    debugger = lldb.debugger
+    # We use a new `SBDebugger` instance, since LLDB often doesn't update internal state/python
+    # state while a command is being run. Since the entirety of `batchmode` is executed via a
+    # `script` command, the parent LLDB never gets a chance to update.
+    # In LLDB <23 this was less of an issue, but a change in LLDB 23 made it difficult to create
+    # targets from the parent debugger instance.
+    debugger = lldb.SBDebugger.Create()
 
     # When we step or continue, don't return from the function until the process
     # stops. We do this by setting the async mode to false.
@@ -283,21 +317,18 @@ def main():
         print(f"Could not read debugging script '{script_path}'.")
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
         print("Aborting.")
-        # Returning status codes using `sys.exit` doesn't work since we're in an LLDB managed python
-        # instance. This command sets the exit code but *does not* kill LLDB, the debugee process,
-        # or the SBDebugger object.
-        debugger.HandleCommand("quit 1")
+        quit_with_error(debugger)
     except Exception as e:
         traceback.print_exception(type(e), e, e.__traceback__, file=sys.stdout)
-        debugger.HandleCommand("quit 1")
+        quit_with_error(debugger)
     else:  # Executes if the `try` block throws no exceptions.
         if repr_cmd_run:
             # We save importing these until we actually see a repr command. This prevents us
             # from trying to load input data from tests that don't use `repr` commands.
             from ..common import (
                 BLESS,
-                BlessMetadata,
                 INPUT_DATA,
+                BlessMetadata,
                 tested_all_types,
                 tested_all_variables,
             )
@@ -329,7 +360,7 @@ the test data by overwriting the data in {path} with the following:")
                 )
 
             if not tested_all_types() or not tested_all_variables():
-                debugger.HandleCommand("quit 1")
+                quit_with_error(debugger)
             elif BLESS:
                 from lldb_providers import FEATURE_FLAGS
 
@@ -340,5 +371,7 @@ the test data by overwriting the data in {path} with the following:")
                         sys.version, debugger.GetVersionString(), str(FEATURE_FLAGS)
                     )
                 )
+
+            flush_all(debugger)
     finally:
         script_file.close()

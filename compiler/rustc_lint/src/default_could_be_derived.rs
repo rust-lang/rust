@@ -164,8 +164,8 @@ struct WrongDefaultImpl<'a, 'tcx> {
     impl_span: Span,
 }
 
-impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for WrongDefaultImpl<'b, 'tcx> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+impl<'a, 'b, 'tcx> Diagnostic<'a> for WrongDefaultImpl<'b, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let Self { tcx, type_def_id, orig_fields, fields, impl_span } = self;
         let mut diag =
             Diag::new(dcx, level, "`Default` impl doesn't use the declared default field values");

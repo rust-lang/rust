@@ -44,8 +44,14 @@ pub enum LifetimeBoundType {
 }
 
 impl LifetimeParamData {
+    #[inline]
     pub fn is_late_bound(&self) -> bool {
         self.bound_type == LifetimeBoundType::LateBound
+    }
+
+    #[inline]
+    pub fn is_early_bound(&self) -> bool {
+        self.bound_type == LifetimeBoundType::EarlyBound
     }
 }
 
@@ -164,6 +170,7 @@ pub struct GenericParams {
     pub(crate) type_or_consts: Arena<TypeOrConstParamData>,
     pub(crate) lifetimes: Arena<LifetimeParamData>,
     pub(crate) where_predicates: Box<[WherePredicate]>,
+    pub(crate) early_bound_lifetimes_len: usize,
 }
 
 impl ops::Index<LocalTypeOrConstParamId> for GenericParams {
@@ -194,6 +201,7 @@ static EMPTY: LazyLock<GenericParams> = LazyLock::new(|| GenericParams {
     type_or_consts: Arena::default(),
     lifetimes: Arena::default(),
     where_predicates: Box::default(),
+    early_bound_lifetimes_len: 0,
 });
 
 impl GenericParams {
@@ -305,13 +313,23 @@ impl GenericParams {
     }
 
     #[inline]
+    pub fn len_no_late(&self) -> usize {
+        self.type_or_consts.len() + self.early_bound_lifetimes_len
+    }
+
+    #[inline]
     pub fn len_lifetimes(&self) -> usize {
-        self.lifetimes.len() - self.len_late_bound_lifetimes()
+        self.lifetimes.len()
+    }
+
+    #[inline]
+    pub fn len_early_bound_lifetimes(&self) -> usize {
+        self.early_bound_lifetimes_len
     }
 
     #[inline]
     pub fn len_late_bound_lifetimes(&self) -> usize {
-        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::LateBound).count()
+        self.len_lifetimes() - self.len_early_bound_lifetimes()
     }
 
     #[inline]

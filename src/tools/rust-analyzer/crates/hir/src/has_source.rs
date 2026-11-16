@@ -8,7 +8,7 @@ use hir_def::{
     src::{HasChildSource, HasSource as _},
 };
 use hir_expand::{EditionedFileId, HirFileId, InFile};
-use hir_ty::{db::InternedClosure, next_solver::AnyImplId};
+use hir_ide::{db::InternedClosure, next_solver::AnyImplId};
 use syntax::{AstNode, ast};
 use tt::TextRange;
 

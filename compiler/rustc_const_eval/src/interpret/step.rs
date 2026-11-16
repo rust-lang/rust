@@ -340,6 +340,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if active_field_index.is_some() {
             assert_eq!(operands.len(), 1);
         }
+        // We generally rely on the `reset_provenance_and_padding` below to ensure that all padding
+        // is uninit. However, if we are creating a new union, everything outside the initialized
+        // field should be uninit -- but validity cannot know this as it cannot look into unions. So
+        // for unions we have to additionally reset everything before writing the fields.
+        // We skip this for non-unions for two reasons: (a) performance, and (b) to keep assignments
+        // where LHS and RHS overlap working for scalar types.
+        if dest.layout.ty.is_union() {
+            self.write_uninit(dest)?;
+        }
+        // Initialize the fields.
         for (field_index, operand) in operands.iter_enumerated() {
             let field_index = active_field_index.unwrap_or(field_index);
             let field_dest = self.project_field(&variant_dest, field_index)?;
@@ -347,9 +357,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // We validate manually below so we don't have to do it here.
             self.copy_op_no_validate(&op, &field_dest, /*allow_transmute*/ false)?;
         }
+        // At the end, write the discriminant.
         self.write_discriminant(variant_index, dest)?;
-        // Validate that the entire thing is valid, and reset padding that might be in between the
-        // fields.
+        // Validate that the entire thing is valid, and reset padding.
         if M::enforce_validity(self, dest.layout()) {
             self.validate_place(
                 dest,
@@ -496,15 +506,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             ty::FnDef(def_id, args) => {
                 let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
-                // Don't compute FnAbi for LLVM intrinsics. Trying to do that would panic.
-                // Rust intrinsics however *do* need a FnAbi as we may invoke the
-                // fallback body like a regular function.
-                let has_fn_abi = !matches!(instance.def, ty::InstanceKind::LlvmIntrinsic(_));
+                let fn_abi =
+                    match instance.def {
+                        // Don't compute FnAbi for LLVM intrinsics. Trying to do that would panic.
+                        ty::InstanceKind::LlvmIntrinsic(_) => None,
+                        // Rust intrinsics don't really have a normal ABI, except for the case
+                        // where we call the fallback body like a regular function.
+                        // So, we compute the ABI based on the fallback body.
+                        // We can't compute the ABI based on the `instance` directly,
+                        // because `#[track_caller]` affects the ABI of the fallback body,
+                        // but not affect the "ABI" of the intrinsic itself.
+                        // Even if there is no fallback body, this computes a valid ABI
+                        // (that we then mostly ignore).
+                        ty::InstanceKind::Intrinsic(def_id) => {
+                            let fallback_instance = ty::Instance {
+                                def: ty::InstanceKind::Item(def_id),
+                                args: instance.args,
+                            };
+                            Some(self.fn_abi_of_instance_no_deduced_attrs(
+                                fallback_instance,
+                                extra_args,
+                            )?)
+                        }
+                        _ => Some(self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?),
+                    };
                 (
                     FnVal::Instance(instance),
-                    has_fn_abi
-                        .then(|| self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args))
-                        .transpose()?,
+                    fn_abi,
                     instance.def.requires_caller_location(*self.tcx),
                 )
             }
@@ -532,7 +560,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.return_from_current_stack_frame(/* unwinding */ false)?
             }
 
-            Goto { target } => self.go_to_block(target),
+            Goto { target, loop_hint_attrs: _ } => self.go_to_block(target),
 
             SwitchInt { ref discr, ref targets } => {
                 let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
@@ -583,18 +611,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     with_caller_location,
                     &dest_place,
                     target,
-                    if fn_abi.map_or(false, |fn_abi| fn_abi.can_unwind) {
+                    if fn_abi.is_some_and(|fn_abi| fn_abi.can_unwind) {
                         unwind
                     } else {
                         mir::UnwindAction::Unreachable
                     },
                 )?;
 
-                // Sanity-check that `eval_fn_call` either pushed a new frame or
-                // did a jump to another block. We disable the sanity check for functions that
-                // can't return, since Miri sometimes does have to keep the location the same
-                // for those (which is fine since execution will continue on a different thread).
-                if target.is_some() && self.frame_idx() == old_stack && self.frame().loc == old_loc
+                // Sanity-check that if `eval_fn_call` returns, then it either cleared the entire
+                // stack (Miri does this for `exit`), pushed a new frame, or did a jump to another
+                // block.
+                if !self.stack().is_empty()
+                    && self.frame_idx() == old_stack
+                    && self.frame().loc == old_loc
                 {
                     span_bug!(terminator.source_info.span, "evaluating this call made no progress");
                 }

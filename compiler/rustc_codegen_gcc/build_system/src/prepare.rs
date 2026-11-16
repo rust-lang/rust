@@ -148,24 +148,6 @@ fn prepare_libcore(
     Ok(())
 }
 
-// FIXME: remove when we can ignore warnings in rustdoc tests.
-fn prepare_rand() -> Result<(), String> {
-    // Apply patch for the rand crate.
-    let file_path = "patches/crates/0001-Remove-deny-warnings.patch";
-    let rand_dir = Path::new("build/rand");
-    println!("[GIT] apply `{file_path}`");
-    let path = Path::new("../..").join(file_path);
-    run_git_command_with_output(&"apply", &[&path], Some(rand_dir))?;
-    run_git_command_with_output(&"add", &[&"-A"], Some(rand_dir))?;
-    run_git_command_with_output(
-        &"commit",
-        &[&"-m", &format!("Patch {}", path.display())],
-        Some(rand_dir),
-    )?;
-
-    Ok(())
-}
-
 // build with cg_llvm for perf comparison
 fn build_raytracer(repo_dir: &Path) -> Result<(), String> {
     run_command(&[&"cargo", &"build"], Some(repo_dir))?;
@@ -194,57 +176,12 @@ where
     Ok(())
 }
 
-struct PrepareArg {
-    cross_compile: bool,
-    only_libcore: bool,
-    libgccjit12_patches: bool,
-    sysroot_source: Option<String>,
-}
-
-impl PrepareArg {
-    fn new() -> Result<Option<Self>, String> {
-        let mut only_libcore = false;
-        let mut cross_compile = false;
-        let mut libgccjit12_patches = false;
-        let mut sysroot_source = None;
-
-        let mut args = std::env::args().skip(2);
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "--only-libcore" => only_libcore = true,
-                "--cross" => cross_compile = true,
-                "--libgccjit12-patches" => libgccjit12_patches = true,
-                "--sysroot-source" => {
-                    if let Some(path) = args.next() {
-                        sysroot_source = Some(path);
-                    } else {
-                        return Err(
-                            "Expected a value after `--sysroot-source`, found nothing".to_string()
-                        );
-                    }
-                }
-                "--help" => {
-                    Self::usage();
-                    return Ok(None);
-                }
-                a => return Err(format!("Unknown argument `{a}`")),
-            }
-        }
-        Ok(Some(Self { cross_compile, only_libcore, libgccjit12_patches, sysroot_source }))
-    }
-
-    fn usage() {
-        println!(
-            r#"
-`prepare` command help:
-
-    --only-libcore           : Only setup libcore and don't clone other repositories
-    --cross                  : Apply the patches needed to do cross-compilation
-    --libgccjit12-patches    : Apply patches needed for libgccjit12
-    --sysroot-source         : Specify custom path for sysroot source
-    --help                   : Show this help"#
-        )
-    }
+sub_command_decl! {
+    PrepareArg => "prepare",
+    cross_compile: bool = "--cross" => "Apply the patches needed to do cross-compilation",
+    only_libcore: bool = "--only-libcore" => "Only setup libcore and don't clone other repositories",
+    libgccjit12_patches: bool = "--libgccjit12-patches" => "Apply patches needed for libgccjit12",
+    sysroot_source: Option<String> = "--sysroot-source" => "Specify custom path for sysroot source",
 }
 
 pub fn run() -> Result<(), String> {
@@ -263,29 +200,11 @@ pub fn run() -> Result<(), String> {
     if !args.only_libcore {
         cargo_install("hyperfine")?;
 
-        let to_clone = &[
-            (
-                "https://github.com/rust-random/rand.git",
-                "1f4507a8e1cf8050e4ceef95eeda8f64645b6719",
-                None,
-            ),
-            (
-                "https://github.com/rust-lang/regex.git",
-                "341f207c1071f7290e3f228c710817c280c8dca1",
-                None,
-            ),
-            (
-                "https://github.com/ebobby/simple-raytracer",
-                "804a7a21b9e673a482797aa289a18ed480e4d813",
-                Some(build_raytracer),
-            ),
-        ];
-
-        for (repo_url, checkout_commit, cb) in to_clone {
-            clone_and_setup(repo_url, checkout_commit, *cb)?;
-        }
-
-        prepare_rand()?;
+        clone_and_setup(
+            "https://github.com/ebobby/simple-raytracer",
+            "804a7a21b9e673a482797aa289a18ed480e4d813",
+            Some(build_raytracer),
+        )?;
     }
 
     println!("Successfully ran `prepare`");

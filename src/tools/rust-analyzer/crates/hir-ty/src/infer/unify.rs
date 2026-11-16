@@ -34,11 +34,27 @@ use crate::{
     traits::ParamEnvAndCrate,
 };
 
+/// Whether to use subtyping or not when inspecting obligations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum UseSubtyping {
+    /// Do **not** use subtyping. [`InferenceTable::obligations_for_self_ty`] will only return
+    /// obligations where the self type is known to be equal to the provided vid.
+    No,
+
+    /// Use subtyping. [`InferenceTable::obligations_for_self_ty`] will return obligations
+    /// where the self type is related to the provided vid via subtyping.
+    ///
+    /// Using this requires extra care, as traits holding for a subtype or a supertype, does not
+    /// necessarily imply that they hold for the respective supertype or subtype.
+    Yes,
+}
+
 struct NestedObligationsForSelfTy<'a, 'db> {
     ctx: &'a InferenceTable<'db>,
     self_ty: TyVid,
     root_cause: &'a ObligationCause,
     obligations_for_self_ty: &'a mut SmallVec<[Obligation<'db, Predicate<'db>>; 4]>,
+    subtyping: UseSubtyping,
 }
 
 impl<'a, 'db> ProofTreeVisitor<'db> for NestedObligationsForSelfTy<'a, 'db> {
@@ -64,7 +80,7 @@ impl<'a, 'db> ProofTreeVisitor<'db> for NestedObligationsForSelfTy<'a, 'db> {
 
         let db = self.ctx.interner();
         let goal = inspect_goal.goal();
-        if self.ctx.predicate_has_self_ty(goal.predicate, self.self_ty) {
+        if self.ctx.predicate_has_self_ty(goal.predicate, self.self_ty, self.subtyping) {
             self.obligations_for_self_ty.push(Obligation::new(
                 db,
                 *self.root_cause,
@@ -180,7 +196,10 @@ impl<'db> InferenceTable<'db> {
         let Some(sized_did) = self.interner().lang_items().Sized else {
             return true;
         };
-        self.obligations_for_self_ty(self_ty).into_iter().any(|obligation| {
+        // NB: `T: Sized` implies that all subtypes and all supertypes of `T` are also sized,
+        // so it's valid to use subtyping here. (subtyping has to preserve layout and
+        // `T <: U => &T <: &U`, so subtyping can't change sizedness)
+        self.obligations_for_self_ty(self_ty, UseSubtyping::Yes).into_iter().any(|obligation| {
             match obligation.predicate.kind().skip_binder() {
                 PredicateKind::Clause(ClauseKind::Trait(data)) => data.def_id().0 == sized_did,
                 _ => false,
@@ -191,6 +210,7 @@ impl<'db> InferenceTable<'db> {
     pub(super) fn obligations_for_self_ty(
         &self,
         self_ty: TyVid,
+        subtyping: UseSubtyping,
     ) -> SmallVec<[Obligation<'db, Predicate<'db>>; 4]> {
         let obligations = self.fulfillment_cx.pending_obligations();
         let mut obligations_for_self_ty = SmallVec::new();
@@ -200,6 +220,7 @@ impl<'db> InferenceTable<'db> {
                 self_ty,
                 obligations_for_self_ty: &mut obligations_for_self_ty,
                 root_cause: &obligation.cause,
+                subtyping,
             };
 
             let goal = obligation.as_goal();
@@ -213,14 +234,21 @@ impl<'db> InferenceTable<'db> {
         obligations_for_self_ty
     }
 
-    fn predicate_has_self_ty(&self, predicate: Predicate<'db>, expected_vid: TyVid) -> bool {
+    fn predicate_has_self_ty(
+        &self,
+        predicate: Predicate<'db>,
+        expected_vid: TyVid,
+        subtyping: UseSubtyping,
+    ) -> bool {
         match predicate.kind().skip_binder() {
             PredicateKind::Clause(ClauseKind::Trait(data)) => {
-                self.type_matches_expected_vid(expected_vid, data.self_ty())
+                self.type_matches_expected_vid(expected_vid, data.self_ty(), subtyping)
             }
-            PredicateKind::Clause(ClauseKind::Projection(data)) => {
-                self.type_matches_expected_vid(expected_vid, data.projection_term.self_ty())
-            }
+            PredicateKind::Clause(ClauseKind::Projection(data)) => self.type_matches_expected_vid(
+                expected_vid,
+                data.projection_term.self_ty(),
+                subtyping,
+            ),
             PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -238,13 +266,24 @@ impl<'db> InferenceTable<'db> {
         }
     }
 
-    fn type_matches_expected_vid(&self, expected_vid: TyVid, ty: Ty<'db>) -> bool {
+    fn type_matches_expected_vid(
+        &self,
+        expected_vid: TyVid,
+        ty: Ty<'db>,
+        subtyping: UseSubtyping,
+    ) -> bool {
         let ty = self.shallow_resolve(ty);
 
         match ty.kind() {
-            TyKind::Infer(rustc_type_ir::TyVar(found_vid)) => {
-                self.infer_ctxt.root_var(expected_vid) == self.infer_ctxt.root_var(found_vid)
-            }
+            TyKind::Infer(rustc_type_ir::TyVar(found_vid)) => match subtyping {
+                UseSubtyping::No => {
+                    self.infer_ctxt.root_var(expected_vid) == self.infer_ctxt.root_var(found_vid)
+                }
+                UseSubtyping::Yes => {
+                    self.infer_ctxt.sub_unification_table_root_var(expected_vid)
+                        == self.infer_ctxt.sub_unification_table_root_var(found_vid)
+                }
+            },
             _ => false,
         }
     }

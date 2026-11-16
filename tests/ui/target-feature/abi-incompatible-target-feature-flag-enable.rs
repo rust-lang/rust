@@ -9,7 +9,6 @@
 // FIXME(#147881): *disable* the feature again for minicore as otherwise that will fail to build.
 //@[riscv] minicore-compile-flags: -Ctarget-feature=-d
 //@[riscv] needs-llvm-components: riscv
-//@ ignore-backends: gcc
 //@ add-minicore
 
 #![feature(no_core, riscv_target_feature)]

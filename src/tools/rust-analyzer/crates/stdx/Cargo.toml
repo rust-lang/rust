@@ -19,6 +19,8 @@ crossbeam-channel.workspace = true
 itertools.workspace = true
 tracing.workspace = true
 crossbeam-utils = "0.8.21"
+thin-vec.workspace = true
+salsa = { workspace = true, optional = true }
 # Think twice before adding anything here
 
 [target.'cfg(unix)'.dependencies]
@@ -32,6 +34,7 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation"] }
 # Uncomment to enable for the whole crate graph
 # default = [ "backtrace" ]
 force-always-assert = []
+salsa = ["dep:salsa"]
 
 [lints]
 workspace = true

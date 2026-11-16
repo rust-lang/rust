@@ -96,7 +96,7 @@ impl<'tcx> CValue<'tcx> {
     /// The ZST is represented by a dangling pointer of suitable alignment.
     pub(crate) fn zst(layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         assert!(layout.is_zst());
-        CValue::by_ref(crate::Pointer::dangling(layout.align.abi), layout)
+        CValue::by_ref(crate::Pointer::dangling(layout.align), layout)
     }
 
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
@@ -372,7 +372,7 @@ impl<'tcx> CPlace<'tcx> {
         assert!(layout.is_sized());
         if layout.size.bytes() == 0 {
             return CPlace {
-                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.abi), None),
+                inner: CPlaceInner::Addr(Pointer::dangling(layout.align), None),
                 layout,
             };
         }
@@ -693,7 +693,7 @@ impl<'tcx> CPlace<'tcx> {
         };
 
         let (field_ptr, field_layout) = codegen_field(fx, base, extra, layout, field);
-        if fx.tcx.type_has_metadata(field_layout.ty, ty::TypingEnv::fully_monomorphized()) {
+        if fx.tcx.type_has_metadata(field_layout.ty, fx.typing_env()) {
             CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
         } else {
             CPlace::for_ptr(field_ptr, field_layout)
@@ -808,7 +808,7 @@ impl<'tcx> CPlace<'tcx> {
 
     pub(crate) fn place_deref(self, fx: &mut FunctionCx<'_, '_, 'tcx>) -> CPlace<'tcx> {
         let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap());
-        if fx.tcx.type_has_metadata(inner_layout.ty, ty::TypingEnv::fully_monomorphized()) {
+        if fx.tcx.type_has_metadata(inner_layout.ty, fx.typing_env()) {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
             CPlace::for_ptr_with_extra(Pointer::new(addr), extra, inner_layout)
         } else {
@@ -821,7 +821,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CValue<'tcx> {
-        if fx.tcx.type_has_metadata(self.layout().ty, ty::TypingEnv::fully_monomorphized()) {
+        if fx.tcx.type_has_metadata(self.layout().ty, fx.typing_env()) {
             let (ptr, extra) = self.to_ptr_unsized();
             CValue::by_val_pair(ptr.get_addr(fx), extra, layout)
         } else {

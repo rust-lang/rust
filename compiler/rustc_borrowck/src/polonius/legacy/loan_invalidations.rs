@@ -195,7 +195,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Goto { target: _ }
+            TerminatorKind::Goto { target: _, loop_hint_attrs: _ }
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }

@@ -1,6 +1,8 @@
 error[E0080]: more C-variadic arguments read than were passed
   --> $DIR/c-variadic-fail.rs:27:13
    |
+LL | unsafe fn read_too_many() {
+...
 LL |     const { read_n::<1>() }
    |             ^^^^^^^^^^^^^ evaluation of `read_too_many::{constant#2}` failed inside this call
    |
@@ -29,6 +31,8 @@ LL |     const { read_n::<1>() }
 error[E0080]: more C-variadic arguments read than were passed
   --> $DIR/c-variadic-fail.rs:31:13
    |
+LL | unsafe fn read_too_many() {
+...
 LL |     const { read_n::<2>(1) }
    |             ^^^^^^^^^^^^^^ evaluation of `read_too_many::{constant#3}` failed inside this call
    |
@@ -57,6 +61,8 @@ LL |     const { read_n::<2>(1) }
 error[E0080]: va_arg value mismatch: value `-1_i32` cannot be represented by type `u32`
   --> $DIR/c-variadic-fail.rs:71:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<u32>(-1i32) };
    |             ^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#12}` failed inside this call
    |
@@ -85,6 +91,8 @@ LL |     const { read_as::<u32>(-1i32) };
 error[E0080]: va_arg value mismatch: value `-2147483648_i32` cannot be represented by type `u32`
   --> $DIR/c-variadic-fail.rs:73:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<u32>(i32::MIN) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#13}` failed inside this call
    |
@@ -113,6 +121,8 @@ LL |     const { read_as::<u32>(i32::MIN) };
 error[E0080]: va_arg value mismatch: value `4294967295_u32` cannot be represented by type `i32`
   --> $DIR/c-variadic-fail.rs:75:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<i32>(u32::MAX) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#14}` failed inside this call
    |
@@ -141,6 +151,8 @@ LL |     const { read_as::<i32>(u32::MAX) };
 error[E0080]: va_arg value mismatch: value `2147483648_u32` cannot be represented by type `i32`
   --> $DIR/c-variadic-fail.rs:77:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<i32>(i32::MAX as u32 + 1) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#15}` failed inside this call
    |
@@ -169,6 +181,8 @@ LL |     const { read_as::<i32>(i32::MAX as u32 + 1) };
 error[E0080]: va_arg value mismatch: value `18446744073709551615_u64` cannot be represented by type `i64`
   --> $DIR/c-variadic-fail.rs:79:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<i64>(u64::MAX) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#16}` failed inside this call
    |
@@ -197,6 +211,8 @@ LL |     const { read_as::<i64>(u64::MAX) };
 error[E0080]: va_arg value mismatch: value `9223372036854775808_u64` cannot be represented by type `i64`
   --> $DIR/c-variadic-fail.rs:81:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<i64>(i64::MAX as u64 + 1) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#17}` failed inside this call
    |
@@ -225,6 +241,8 @@ LL |     const { read_as::<i64>(i64::MAX as u64 + 1) };
 error[E0080]: va_arg type mismatch: requested `i32` is incompatible with next argument of type `u64`
   --> $DIR/c-variadic-fail.rs:84:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<i32>(1u64) };
    |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#18}` failed inside this call
    |
@@ -253,6 +271,8 @@ LL |     const { read_as::<i32>(1u64) };
 error[E0080]: va_arg type mismatch: requested `f64` is incompatible with next argument of type `i32`
   --> $DIR/c-variadic-fail.rs:87:13
    |
+LL | unsafe fn read_cast_numeric() {
+...
 LL |     const { read_as::<f64>(1i32) };
    |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_numeric::{constant#19}` failed inside this call
    |
@@ -281,6 +301,8 @@ LL |     const { read_as::<f64>(1i32) };
 error[E0080]: va_arg type mismatch: requested `*const u16` is incompatible with next argument of type `*const c_void`
   --> $DIR/c-variadic-fail.rs:110:13
    |
+LL | unsafe fn read_cast_pointer() {
+...
 LL |     const { read_as::<*const u16>(std::ptr::dangling::<c_void>()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_pointer::{constant#12}` failed inside this call
    |
@@ -309,6 +331,8 @@ LL |     const { read_as::<*const u16>(std::ptr::dangling::<c_void>()) };
 error[E0080]: va_arg type mismatch: requested `*const c_void` is incompatible with next argument of type `*const u16`
   --> $DIR/c-variadic-fail.rs:112:13
    |
+LL | unsafe fn read_cast_pointer() {
+...
 LL |     const { read_as::<*const c_void>(std::ptr::dangling::<u16>()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_pointer::{constant#13}` failed inside this call
    |
@@ -337,6 +361,8 @@ LL |     const { read_as::<*const c_void>(std::ptr::dangling::<u16>()) };
 error[E0080]: va_arg type mismatch: requested `*const u16` is incompatible with next argument of type `*const i32`
   --> $DIR/c-variadic-fail.rs:114:13
    |
+LL | unsafe fn read_cast_pointer() {
+...
 LL |     const { read_as::<*const u16>(std::ptr::dangling::<i32>()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_pointer::{constant#14}` failed inside this call
    |
@@ -365,6 +391,8 @@ LL |     const { read_as::<*const u16>(std::ptr::dangling::<i32>()) };
 error[E0080]: va_arg type mismatch: requested `*const u8` is incompatible with next argument of type `usize`
   --> $DIR/c-variadic-fail.rs:117:13
    |
+LL | unsafe fn read_cast_pointer() {
+...
 LL |     const { read_as::<*const u8>(1usize) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_pointer::{constant#15}` failed inside this call
    |
@@ -393,6 +421,8 @@ LL |     const { read_as::<*const u8>(1usize) };
 error[E0080]: va_arg type mismatch: requested `*const fn(&())` is incompatible with next argument of type `*const for<'a> fn(&'a ())`
   --> $DIR/c-variadic-fail.rs:126:13
    |
+LL | unsafe fn read_cast_lifetime() {
+...
 LL |     const { read_as::<*const fn(&'static ())>(std::ptr::dangling::<for<'a> fn(&'a ())>()) };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `read_cast_lifetime::{constant#1}` failed inside this call
    |
@@ -421,6 +451,10 @@ LL |     const { read_as::<*const fn(&'static ())>(std::ptr::dangling::<for<'a> 
 error[E0080]: memory access failed: ALLOC$ID has been freed, so this pointer is dangling
   --> $DIR/c-variadic-fail.rs:139:13
    |
+LL | fn use_after_free() {
+...
+LL |     const {
+...
 LL |             ap.next_arg::<i32>();
    |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `use_after_free::{constant#0}` failed inside this call
    |
@@ -454,12 +488,17 @@ LL | |     };
 error[E0080]: using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:161:22
    |
+LL | fn manual_copy_drop() {
+...
 LL |     const { unsafe { helper(1, 2, 3) } };
    |                      ^^^^^^^^^^^^^^^ evaluation of `manual_copy_drop::{constant#0}` failed inside this call
    |
 note: inside `manual_copy_drop::helper`
   --> $DIR/c-variadic-fail.rs:158:9
    |
+LL | fn manual_copy_drop() {
+LL |     const unsafe extern "C" fn helper(ap: ...) {
+...
 LL |         drop(ap);
    |         ^^^^^^^^
 note: inside `std::mem::drop::<VaList<'_>>`
@@ -486,12 +525,17 @@ LL |     const { unsafe { helper(1, 2, 3) } };
 error[E0080]: using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:177:22
    |
+LL | fn manual_copy_forget() {
+...
 LL |     const { unsafe { helper(1, 2, 3) } };
    |                      ^^^^^^^^^^^^^^^ evaluation of `manual_copy_forget::{constant#0}` failed inside this call
    |
 note: inside `manual_copy_forget::helper`
   --> $DIR/c-variadic-fail.rs:174:9
    |
+LL | fn manual_copy_forget() {
+LL |     const unsafe extern "C" fn helper(ap: ...) {
+...
 LL |         drop(ap);
    |         ^^^^^^^^
 note: inside `std::mem::drop::<VaList<'_>>`
@@ -518,12 +562,17 @@ LL |     const { unsafe { helper(1, 2, 3) } };
 error[E0080]: using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:190:22
    |
+LL | fn manual_copy_read() {
+...
 LL |     const { unsafe { helper(1, 2, 3) } };
    |                      ^^^^^^^^^^^^^^^ evaluation of `manual_copy_read::{constant#0}` failed inside this call
    |
 note: inside `manual_copy_read::helper`
   --> $DIR/c-variadic-fail.rs:187:17
    |
+LL | fn manual_copy_read() {
+LL |     const unsafe extern "C" fn helper(mut ap: ...) {
+...
 LL |         let _ = ap.next_arg::<i32>();
    |                 ^^^^^^^^^^^^^^^^^^^^
 note: inside `VaList::<'_>::next_arg::<i32>`
@@ -546,6 +595,9 @@ LL |     const { unsafe { helper(1, 2, 3) } };
 error[E0080]: pointer not dereferenceable: pointer must point to some allocation, but got null pointer
   --> $DIR/c-variadic-fail.rs:198:5
    |
+LL | fn drop_of_invalid() {
+LL |     const {
+...
 LL |     }
    |     ^ evaluation of `drop_of_invalid::{constant#0}` failed inside this call
    |

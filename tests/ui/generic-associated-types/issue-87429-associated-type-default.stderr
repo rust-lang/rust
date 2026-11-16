@@ -8,6 +8,8 @@ LL |     type Member<'a>: for<'b> PartialEq<Self::Member<'b>> = Foo;
 note: required by a bound in `Family2::Member`
   --> $DIR/issue-87429-associated-type-default.rs:13:22
    |
+LL | trait Family2 {
+LL |     // Not fine, not Foo: PartialEq<Foo>
 LL |     type Member<'a>: for<'b> PartialEq<Self::Member<'b>> = Foo;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Family2::Member`
 help: consider annotating `Foo` with `#[derive(PartialEq)]`

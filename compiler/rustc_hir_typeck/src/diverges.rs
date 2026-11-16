@@ -1,13 +1,13 @@
-use std::{cmp, ops};
+use std::ops;
 
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::Span;
 
 /// Tracks whether executing a node may exit normally (versus
 /// return/break/panic, which "diverge", leaving dead code in their
 /// wake). Tracked semi-automatically (through type variables marked
 /// as diverging), with some manual adjustments for control-flow
 /// primitives (approximating a CFG).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Diverges {
     /// Potentially unknown, some cases converge,
     /// others require a CFG to determine them.
@@ -40,14 +40,28 @@ pub(crate) enum Diverges {
 impl ops::BitAnd for Diverges {
     type Output = Self;
     fn bitand(self, other: Self) -> Self {
-        cmp::min(self, other)
+        match (self, other) {
+            (x @ Self::Maybe, _) => x,
+            (_, x @ Self::Maybe) => x,
+            // Using `span`/`custom_note` from `self` seems to give better error messages.
+            (x @ Self::Always { .. }, Self::Always { .. }) => x,
+            (Self::WarnedAlways, x) => x,
+            (x, Self::WarnedAlways) => x,
+        }
     }
 }
 
 impl ops::BitOr for Diverges {
     type Output = Self;
     fn bitor(self, other: Self) -> Self {
-        cmp::max(self, other)
+        match (self, other) {
+            (x @ Self::WarnedAlways, _) => x,
+            (_, x @ Self::WarnedAlways) => x,
+            // Using `span`/`custom_note` from `self` seems to give better error messages.
+            (x @ Self::Always { .. }, Self::Always { .. }) => x,
+            (Self::Maybe, x) => x,
+            (x, Self::Maybe) => x,
+        }
     }
 }
 
@@ -70,9 +84,6 @@ impl Diverges {
     }
 
     pub(super) fn is_always(self) -> bool {
-        // Enum comparison ignores the
-        // contents of fields, so we just
-        // fill them in with garbage here.
-        self >= Diverges::Always { span: DUMMY_SP, custom_note: None }
+        matches!(self, Diverges::WarnedAlways | Diverges::Always { .. })
     }
 }

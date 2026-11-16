@@ -5,7 +5,17 @@ use crate::cell::{Cell, UnsafeCell};
 use crate::mem::MaybeUninit;
 use crate::ptr;
 
-#[cfg(target_has_threads)]
+#[cfg(all(
+    target_has_threads,
+    // VEXos is only "target_has_threads" because it allows user interrupt handlers which preempt
+    // the main thread, but they are forbidden from accessing TLS (like UNIX signal handlers).
+    // Since there is only one context that's allowed to access thread locals, it's sound to use the
+    // no_threads implementation.
+    not(target_os = "vexos"),
+    // Trusty is "target_has_threads" because it needs atomics for shared-memory IPC, but processes
+    // can't spawn threads.
+    not(target_os = "trusty"),
+))]
 compile_error!("Using no_threads implementation on a target with threads");
 
 #[doc(hidden)]
@@ -31,14 +41,18 @@ pub macro thread_local_inner {
 
     // used to generate the `LocalKey` value for `thread_local!`
     (@key $t:ty, $(#[$align_attr:meta])*, $init:expr) => {{
+        // We intentionally have an argument-position `'static` lifetime so that elided lifetimes in `$t`
+        // become `'static` like they do for `const`s and `static`s, including in the other two
+        // `thread_local!` implementations.
+        #[allow(mismatched_lifetime_syntaxes)]
         #[inline]
-        fn __rust_std_internal_init_fn() -> $t { $init }
+        fn __rust_std_internal_init_fn(_lifetime_elision: $crate::marker::PhantomData<&'static ()>) -> $t { $init }
 
         unsafe {
             $crate::thread::LocalKey::new(|__rust_std_internal_init| {
                 $(#[$align_attr])*
                 static __RUST_STD_INTERNAL_VAL: $crate::thread::local_impl::LazyStorage<$t> = $crate::thread::local_impl::LazyStorage::new();
-                __RUST_STD_INTERNAL_VAL.get(__rust_std_internal_init, __rust_std_internal_init_fn)
+                __RUST_STD_INTERNAL_VAL.get(__rust_std_internal_init, || __rust_std_internal_init_fn($crate::marker::PhantomData))
             })
         }
     }},

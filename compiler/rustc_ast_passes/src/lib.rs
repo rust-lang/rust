@@ -12,3 +12,4 @@
 pub mod ast_validation;
 mod diagnostics;
 pub mod feature_gate;
+pub mod show_spans;

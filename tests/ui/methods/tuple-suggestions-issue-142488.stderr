@@ -33,6 +33,8 @@ note: `Trait` defines an item `meth`, perhaps you need to implement it
    |
 LL | trait Trait {
    | ^^^^^^^^^^^
+LL |     fn meth(self);
+   |
 
 error[E0599]: the method `f` exists for tuple `(_,)`, but its trait bounds were not satisfied
   --> $DIR/tuple-suggestions-issue-142488.rs:46:16
@@ -54,6 +56,8 @@ note: `Tr` defines an item `f`, perhaps you need to implement it
    |
 LL | trait Tr {
    | ^^^^^^^^
+LL |     fn f<A>(self) -> (A,)
+   |
 
 error: aborting due to 4 previous errors
 

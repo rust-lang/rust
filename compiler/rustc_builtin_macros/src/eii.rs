@@ -206,6 +206,8 @@ fn split_attrs(
                 foreign_item_attributes.push(attr.clone());
                 macro_attributes.push(attr);
             }
+            // Drop the test entrypoint marker -- unclear how that would interact.
+            AttrKind::Synthetic(SyntheticAttr::TestEntrypoint) => {}
             // Doc attributes should be forwarded to the macro and the foreign item, since those are
             // the two items you interact with as a user.
             // FIXME: idk yet how EIIs show up in docs, might want to customize
@@ -237,11 +239,11 @@ fn split_attrs(
                     }
                     Some(sym::eii) => unreachable!("should already be filtered out"),
                     _ => {
-                        ecx.dcx()
-                            .emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+                        ecx.dcx().emit_err(EiiAttributeNotSupported { span, attr_span: attr.span });
                     }
                 }
             }
+            AttrKind::Generated(..) => unreachable!(),
         }
     }
 
@@ -331,7 +333,7 @@ fn generate_default_impl(
             foreign_item_name.span,
             // prefix self to explicitly escape the const block generated below
             // NOTE: this is why EIIs can't be used on statements
-            vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
+            &[Ident::new(kw::SelfLower, foreign_item_name.span), foreign_item_name],
         )),
     });
 
@@ -349,9 +351,7 @@ fn generate_default_impl(
     };
 
     let anon_mod = |span: Span, stmts: ThinVec<ast::Stmt>| {
-        let unit = ecx.ty(item_span, ast::TyKind::Tup(ThinVec::new()));
-        let underscore = Ident::new(kw::Underscore, item_span);
-        ecx.item_const(span, underscore, unit, Some(ecx.expr_block(ecx.block(span, stmts))))
+        ecx.item_const_underscore(span, ecx.block(span, stmts))
     };
 
     // const _: () = {

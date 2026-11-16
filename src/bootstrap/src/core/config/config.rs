@@ -124,6 +124,8 @@ pub(crate) struct Config {
     pub android_ndk: Option<PathBuf>,
     pub optimized_compiler_builtins: CompilerBuiltins,
     pub record_failed_tests_path: PathBuf,
+    /// Path to an external checkout of rustc-perf, for running custom benchmarks.
+    pub rustc_perf_path: Option<PathBuf>,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -177,6 +179,7 @@ pub(crate) struct Config {
     pub llvm_enable_warnings: bool,
     pub llvm_ci_mode: LlvmCiMode,
     pub llvm_build_config: HashMap<String, String>,
+    pub llvm_tpde: bool,
 
     pub bootstrap_override_lld: BootstrapOverrideLld,
     pub lld_enabled: bool,
@@ -229,10 +232,13 @@ pub(crate) struct Config {
     pub rust_break_on_ice: bool,
     pub rust_parallel_frontend_threads: Option<u32>,
     pub rust_rustflags: Vec<String>,
+
+    // Note: modify the ReproducibleArtifacts step when adding new PGO configs here!
     pub rust_pgo: PgoConfig,
     pub rustdoc_pgo: PgoConfig,
     pub cargo_pgo: PgoConfig,
     pub clippy_pgo: PgoConfig,
+    pub cranelift_pgo: PgoConfig,
 
     pub stdlib_semver_baseline: Option<String>,
 
@@ -302,6 +308,7 @@ pub(crate) struct Config {
     pub enzyme_info: channel::GitInfo,
     pub in_tree_llvm_info: channel::GitInfo,
     pub in_tree_gcc_info: channel::GitInfo,
+    pub in_tree_tpde_info: channel::GitInfo,
 
     /// rustc/cargo/rustdoc/clippy paths specified in the config file
     /// Access the `initial_` fields from `Session` to use either the externally configured
@@ -345,6 +352,8 @@ pub(crate) struct Config {
     pub exec_ctx: ExecutionContext,
 
     pub wasm_proc_macros: bool,
+
+    pub wasm_panic_unwind_default: bool,
 }
 
 impl Config {
@@ -548,6 +557,7 @@ impl Config {
             compiletest_allow_stage0: build_compiletest_allow_stage0,
             sde: build_sde,
             allocator: build_allocator,
+            rustc_perf_path: build_rustc_perf_path,
         } = toml_build.unwrap_or_default();
 
         let Install {
@@ -621,6 +631,7 @@ impl Config {
             rustflags: rust_rustflags,
             stdlib_semver_baseline: rust_stdlib_semver_baseline,
             wasm_proc_macros,
+            wasm_panic_unwind_default,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -653,6 +664,7 @@ impl Config {
             enable_warnings: llvm_enable_warnings,
             download_ci_llvm: llvm_download_ci_llvm,
             build_config: llvm_build_config,
+            tpde: llvm_tpde,
         } = toml_llvm.unwrap_or_default();
 
         let Dist {
@@ -675,6 +687,7 @@ impl Config {
             rustdoc: pgo_rustdoc,
             cargo: pgo_cargo,
             clippy: pgo_clippy,
+            cranelift: pgo_cranelift,
             llvm: pgo_llvm,
         } = toml_pgo.unwrap_or_default();
 
@@ -732,6 +745,7 @@ impl Config {
         let pgo_rustdoc = init_pgo(pgo_rustdoc, "rustdoc");
         let pgo_cargo = init_pgo(pgo_cargo, "cargo");
         let pgo_clippy = init_pgo(pgo_clippy, "clippy");
+        let pgo_cranelift = init_pgo(pgo_cranelift, "cranelift");
 
         let bootstrap_override_lld = rust_bootstrap_override_lld.unwrap_or_default();
 
@@ -1361,6 +1375,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         let clippy_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/clippy"));
         let in_tree_gcc_info = git_info(&exec_ctx, false, &src.join("src/gcc"));
         let in_tree_llvm_info = git_info(&exec_ctx, false, &src.join("src/llvm-project"));
+        let in_tree_tpde_info = git_info(&exec_ctx, false, &src.join("src/tpde"));
         let enzyme_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
         let miri_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
         let rust_analyzer_info =
@@ -1426,6 +1441,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             compiletest_diff_tool: build_compiletest_diff_tool,
             config: toml_path,
             control_flow_guard: rust_control_flow_guard.unwrap_or(false),
+            cranelift_pgo: pgo_cranelift,
             datadir: install_datadir.map(PathBuf::from),
             deny_warnings,
             description: build_description,
@@ -1463,6 +1479,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             hosts,
             in_tree_gcc_info,
             in_tree_llvm_info,
+            in_tree_tpde_info,
             include_default_paths: flags_include_default_paths,
             incremental: flags_incremental || rust_incremental == Some(true),
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
@@ -1503,6 +1520,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             llvm_tests: llvm_tests.unwrap_or(false),
             llvm_thin_lto: llvm_thin_lto.unwrap_or(false),
             llvm_tools_enabled: rust_llvm_tools.unwrap_or(true),
+            llvm_tpde: llvm_tpde.unwrap_or(false),
             llvm_use_libcxx: llvm_use_libcxx.unwrap_or(false),
             llvm_use_linker,
             llvm_version_suffix,
@@ -1577,6 +1595,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
             rustc_default_linker: rust_default_linker,
             rustc_error_format: flags_rustc_error_format,
+            rustc_perf_path: build_rustc_perf_path,
             rustdoc_pgo: pgo_rustdoc,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
@@ -1606,6 +1625,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .unwrap_or(rust_debug == Some(true)),
             vendor,
             verbose_tests,
+            wasm_panic_unwind_default: wasm_panic_unwind_default.unwrap_or(false),
             wasm_proc_macros: wasm_proc_macros.unwrap_or(false),
             windows_rc: build_windows_rc.map(PathBuf::from),
             yarn: build_yarn.map(PathBuf::from),
@@ -2546,7 +2566,7 @@ pub(crate) fn update_submodule<'a>(
             // This syntax isn't accepted by `branch.{branch}`. Strip it.
             let branch = current_branch.stdout();
             let branch = branch.trim();
-            let branch = branch.strip_prefix("heads/").unwrap_or(branch);
+            let branch = branch.trim_prefix("heads/");
             git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
         }
         git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);

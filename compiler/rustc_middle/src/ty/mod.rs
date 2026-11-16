@@ -26,7 +26,7 @@ pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
-    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
+    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, Size, VariantIdx,
 };
 use rustc_ast::{self as ast};
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
@@ -124,6 +124,8 @@ pub mod abstract_const;
 pub mod adjustment;
 pub mod cast;
 pub mod codec;
+// FIXME(#159654): This should get deleted soon
+pub mod consts;
 pub mod error;
 pub mod fast_reject;
 pub mod inhabitedness;
@@ -143,7 +145,6 @@ pub mod vtable;
 mod adt;
 mod assoc;
 mod closure;
-mod consts;
 mod context;
 mod diagnostics;
 mod elaborate_impl;
@@ -428,19 +429,19 @@ impl Visibility<LocalModId> {
     }
 }
 
-impl<Id: Into<DefId>> Visibility<Id> {
-    /// Returns `true` if an item with this visibility is accessible from the given module.
-    pub fn is_accessible_from(self, module: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
+impl<Id: Into<ModId>> Visibility<Id> {
+    /// Returns `true` if an item with this visibility is accessible from the given definition.
+    pub fn is_accessible_from(self, def_id: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
         match self {
             // Public items are visible everywhere.
             Visibility::Public => true,
-            Visibility::Restricted(id) => tcx.is_descendant_of(module, id),
+            Visibility::Restricted(id) => tcx.is_descendant_of(def_id, id.into()),
         }
     }
 
     pub fn partial_cmp(
         self,
-        vis: Visibility<impl Into<DefId>>,
+        vis: Visibility<impl Into<ModId>>,
         tcx: TyCtxt<'_>,
     ) -> Option<Ordering> {
         match (self, vis) {
@@ -449,18 +450,18 @@ impl<Id: Into<DefId>> Visibility<Id> {
             (Visibility::Restricted(_), Visibility::Public) => Some(Ordering::Less),
             (Visibility::Restricted(lhs_id), Visibility::Restricted(rhs_id)) => {
                 let (lhs_id, rhs_id) = (lhs_id.into(), rhs_id.into());
-                tcx.def_id_partial_cmp(lhs_id, rhs_id)
+                tcx.def_id_partial_cmp(lhs_id.to_def_id(), rhs_id.to_def_id())
             }
         }
     }
 }
 
-impl<Id: Into<DefId> + Debug + Copy> Visibility<Id> {
+impl<Id: Into<ModId> + Debug + Copy> Visibility<Id> {
     /// Returns `true` if this visibility is strictly larger than the given visibility.
     #[track_caller]
     pub fn greater_than(
         self,
-        vis: Visibility<impl Into<DefId> + Debug + Copy>,
+        vis: Visibility<impl Into<ModId> + Debug + Copy>,
         tcx: TyCtxt<'_>,
     ) -> bool {
         match self.partial_cmp(vis, tcx) {
@@ -922,7 +923,7 @@ impl<'tcx> ProvisionalHiddenType<'tcx> {
         // This zip may have several times the same lifetime in `args` paired with a different
         // lifetime from `id_args`. Simply `collect`ing the iterator is the correct behaviour:
         // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
-        let map = args.iter().zip(id_args).collect();
+        let map = args.iter().zip(id_args.iter()).collect();
         debug!("map = {:#?}", map);
 
         // Convert the type from the function into a type valid outside by mapping generic
@@ -1029,7 +1030,10 @@ pub struct ParamEnv<'tcx> {
 static_assert_size!(ParamEnv<'_>, std::mem::size_of::<usize>());
 
 impl<'tcx> rustc_type_ir::inherent::ParamEnv<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> {
+    #[inline]
+    fn caller_bounds(
+        self,
+    ) -> CallerBoundsAccessor<TyCtxt<'tcx>, impl Iterator<Item = ty::Clause<'tcx>>, NoClauses> {
         self.caller_bounds()
     }
 }
@@ -1047,8 +1051,10 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> impl Iterator<Item = ty::Clause<'tcx>> + Clone {
-        self.caller_bounds.iter()
+    pub fn caller_bounds(
+        self,
+    ) -> CallerBoundsAccessor<TyCtxt<'tcx>, impl Iterator<Item = ty::Clause<'tcx>>, NoClauses> {
+        CallerBoundsAccessor::new(self.caller_bounds.iter())
     }
 
     #[inline]
@@ -1077,7 +1083,12 @@ impl<'tcx> ParamEnv<'tcx> {
         if tcx.next_trait_solver_globally() {
             self
         } else {
-            ParamEnv::new(tcx, tcx.reveal_opaque_types_in_bounds(self.caller_bounds).iter())
+            ParamEnv::new(
+                tcx,
+                tcx.reveal_opaque_types_in_bounds(
+                    tcx.mk_clauses_from_iter(self.caller_bounds().all_clauses(tcx).iter()),
+                ),
+            )
         }
     }
 }
@@ -1106,6 +1117,22 @@ pub struct TypingEnv<'tcx> {
     #[type_visitable(ignore)]
     typing_mode: TypingModeEqWrapper<'tcx>,
     pub param_env: ParamEnv<'tcx>,
+}
+
+impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> {
+    fn fully_monomorphized() -> Self {
+        Self::fully_monomorphized()
+    }
+
+    fn layout_size(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Size {
+        tcx.layout_of(self.as_query_input(ty))
+            .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
+            .size
+    }
+
+    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis(tcx, def_id)
+    }
 }
 
 impl<'tcx> TypingEnv<'tcx> {
@@ -1143,20 +1170,20 @@ impl<'tcx> TypingEnv<'tcx> {
 
     /// The `TypingEnv` which should be for everything happens after HIR typeck
     /// up-to and including borrowck itself.
-    pub fn post_typeck_until_borrowck(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> TypingEnv<'tcx> {
+    pub fn post_typeck_through_borrowck(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> TypingEnv<'tcx> {
         let param_env = tcx.param_env(def_id.to_def_id());
         TypingEnv::new(param_env, ty::TypingMode::borrowck(tcx, def_id))
     }
 
-    /// Ideally we just use `TypingMode::post_typeck_until_borrowck`.
+    /// Ideally we just use `TypingMode::post_typeck_through_borrowck`.
     /// But that's not compatible with the old solver yet.
     ///
     /// FIXME: this should not be needed in the long term.
-    pub fn post_typeck_until_borrowck_for_mir_build(
+    pub fn post_typeck_through_borrowck_for_mir_build(
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
     ) -> TypingEnv<'tcx> {
-        if tcx.use_typing_mode_post_typeck_until_borrowck() {
+        if tcx.use_typing_mode_post_typeck_through_borrowck() {
             TypingEnv::new(tcx.param_env(def_id.to_def_id()), ty::TypingMode::borrowck(tcx, def_id))
         } else {
             // FIXME(#132279): We're in a body, we should use a typing
@@ -1175,37 +1202,62 @@ impl<'tcx> TypingEnv<'tcx> {
 
     /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
     /// in the `param_env`.
-    pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+    ///
+    /// Changing the typing_mode to `PostAnalysis` can result in aliases now being normalizeable,
+    /// so we need to explicitly renormalize them. This mainly affects opaque types which were
+    /// previously treated as rigid but can now be normalized to their underlying type, as well as
+    /// aliases with opaque args.
+    /// Values that contain types/consts from the previous typing env and that will be used in the
+    /// new `PostAnalysis` typing env should be folded by this method to allow renormalization.
+    ///
+    /// FIXME: we might want to return `Unnormalized` since we force the value to be non-rigid.
+    pub fn with_post_analysis_normalized_invalidating_rigid_aliases<T>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        value: T,
+    ) -> PseudoCanonicalInput<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. } => {}
-            TypingMode::PostAnalysis | TypingMode::Codegen => return self,
+            TypingMode::PostAnalysis | TypingMode::Codegen => return self.as_query_input(value),
         }
 
         let param_env = param_env.with_normalized(tcx);
-        TypingEnv::new(param_env, TypingMode::PostAnalysis)
+        let value = ty::set_aliases_to_non_rigid(tcx, value).skip_norm_wip();
+        TypingEnv::new(param_env, TypingMode::PostAnalysis).as_query_input(value)
     }
 
-    /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
-    /// in the `param_env`.
-    pub fn with_codegen_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
+    /// Same as `with_post_analysis_normalized_invalidating_rigid_aliases` except that we use
+    /// the `Codegen` typing mode.
+    pub fn with_codegen_normalized_invalidating_rigid_aliases<T>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        value: T,
+    ) -> PseudoCanonicalInput<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         let TypingEnv { typing_mode, param_env } = self;
         match typing_mode.0.assert_not_erased() {
             TypingMode::Coherence
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis => {}
-            TypingMode::Codegen => return self,
+            TypingMode::Codegen => return self.as_query_input(value),
         }
 
         let param_env = param_env.with_normalized(tcx);
-        TypingEnv::new(param_env, TypingMode::Codegen)
+        let value = ty::set_aliases_to_non_rigid(tcx, value).skip_norm_wip();
+        TypingEnv::new(param_env, TypingMode::Codegen).as_query_input(value)
     }
 
     /// Combine this typing environment with the given `value` to be used by
@@ -1542,11 +1594,7 @@ impl Hash for FieldDef {
 impl<'tcx> FieldDef {
     /// Returns the type of this field. The `args` are typically obtained via
     /// the second field of [`TyKind::Adt`].
-    pub fn ty(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> Unnormalized<'tcx, Ty<'tcx>> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgs<'tcx>) -> Unnormalized<'tcx, Ty<'tcx>> {
         tcx.type_of(self.did).instantiate(tcx, args)
     }
 
@@ -1868,15 +1916,22 @@ impl<'tcx> TyCtxt<'tcx> {
         body
     }
 
-    /// Gets all attributes with the given name.
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
-    pub fn get_attrs(
+    /// Gets all tool attributes named `name`.
+    pub fn tool_attrs(
         self,
         did: impl Into<DefId>,
-        attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
+        name: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::AttrItem> {
         #[expect(deprecated)]
-        self.get_all_attrs(did).iter().filter(move |a: &&rustc_attr_ir::Attribute| a.has_name(attr))
+        self.get_all_attrs(did).iter().filter_map(|attr| {
+            if let rustc_attr_ir::Attribute::Tool(t) = attr
+                && *t.path.segments == *name
+            {
+                Some(&**t)
+            } else {
+                None
+            }
+        })
     }
 
     /// Gets all attributes.
@@ -1888,26 +1943,13 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// </div>
     ///
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to call rustc_hir::find_attr! instead."]
+    #[deprecated = "Though there are valid usecases for this method, usually you want to use `rustc_attr_ir::find_attr!` or `tool_attrs` instead."]
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [rustc_attr_ir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
             self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.attrs_for_def(did)
-        }
-    }
-
-    pub fn get_attrs_by_path(
-        self,
-        did: DefId,
-        attr: &[Symbol],
-    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
-        let filter_fn = move |a: &&rustc_attr_ir::Attribute| a.path_matches(attr);
-        if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
-        } else {
-            self.attrs_for_def(did).iter().filter(filter_fn)
         }
     }
 
@@ -1940,7 +1982,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn ordinary_coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
@@ -1981,7 +2023,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn async_drop_coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let ty = || Ty::new_coroutine(self, def_id, args);
         if args[0].has_placeholders() || args[0].has_non_region_param() {
@@ -1998,7 +2040,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,
@@ -2183,13 +2225,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         mut ident: Ident,
         scope: DefId,
-        item_id: LocalDefId,
+        mod_id: LocalModId,
     ) -> (Ident, ModId) {
         let scope = ident
             .span
             .normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope))
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
-            .unwrap_or_else(|| self.parent_module_from_def_id(item_id).to_mod_id());
+            .unwrap_or(mod_id.to_mod_id());
         (ident, scope)
     }
 

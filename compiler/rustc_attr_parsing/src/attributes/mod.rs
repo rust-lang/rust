@@ -52,6 +52,7 @@ pub(crate) mod dummy;
 pub(crate) mod inline;
 pub(crate) mod instruction_set;
 pub(crate) mod link_attrs;
+pub(crate) mod lint;
 pub(crate) mod lint_helpers;
 pub(crate) mod loop_match;
 pub(crate) mod macro_attrs;
@@ -169,7 +170,7 @@ pub(crate) trait SingleAttributeParser: 'static {
     /// combinations. `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`SingleAttributeParser`].
@@ -287,7 +288,7 @@ pub(crate) trait NoArgsAttributeParser: 'static {
     /// `attr_span` is the span of this attribute.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 pub(crate) struct WithoutArgs<T: NoArgsAttributeParser>(PhantomData<T>);
@@ -311,7 +312,7 @@ impl<T: NoArgsAttributeParser> SingleAttributeParser for WithoutArgs<T> {
         Some(T::CREATE(cx.attr_span))
     }
 
-    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
         T::finalize_check(cx, attr_span)
     }
 }
@@ -355,7 +356,7 @@ pub(crate) trait CombineAttributeParser: 'static {
     /// `attr_span` is the span of the first attribute that was encountered.
     ///
     /// Defaults to a no-op.
-    fn finalize_check(_cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
+    fn finalize_check(_cx: &mut FinalizeCheckContext<'_, '_>, _attr_span: Span) {}
 }
 
 /// Use in combination with [`CombineAttributeParser`].

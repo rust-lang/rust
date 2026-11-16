@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2015
+//@ rustfmt-style_edition: 2015
 
 fn foo<T>(_: T)
 where

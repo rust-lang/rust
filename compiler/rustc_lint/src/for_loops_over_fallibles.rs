@@ -1,6 +1,6 @@
 use hir::{Expr, Pat};
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
@@ -150,7 +150,7 @@ fn extract_iterator_next_call<'tcx>(
 fn suggest_question_mark<'tcx>(
     cx: &LateContext<'tcx>,
     adt: ty::AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     span: Span,
 ) -> bool {
     let Some(body_id) = cx.enclosing_body else { return false };

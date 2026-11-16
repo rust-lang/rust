@@ -602,6 +602,11 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(())
     }
 
+    /// Called immediately after a stack frame has its function arguments initialized.
+    fn after_stack_frame_init(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
+        interp_ok(())
+    }
+
     /// Called just before the frame is removed from the stack (followed by return value copy and
     /// local cleanup).
     fn before_stack_pop(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {

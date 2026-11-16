@@ -1,12 +1,15 @@
 error[E0080]: exposing pointers is not possible at compile-time
   --> $DIR/ptr_arith.rs:7:13
    |
+LL | static PTR_INT_CAST: () = {
 LL |     let x = &0 as *const _ as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `PTR_INT_CAST` failed here
 
 error[E0080]: unable to turn pointer into integer
   --> $DIR/ptr_arith.rs:14:14
    |
+LL | static PTR_INT_TRANSMUTE: () = unsafe {
+LL |     let x: usize = std::mem::transmute(&0);
 LL |     let _v = x + 0;
    |              ^ evaluation of `PTR_INT_TRANSMUTE` failed here
    |

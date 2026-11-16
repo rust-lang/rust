@@ -11,33 +11,9 @@ use crate::{Int, MinInt};
 /// Extension to `libm`'s `Float` trait with methods that are useful for tests but not
 /// needed in `libm` itself.
 pub trait FloatExt: Float {
-    /// The minimum subnormal number.
-    const TINY_BITS: Self::Int = Self::Int::ONE;
-
     /// Retrieve additional constants for this float type.
     fn consts() -> Consts<Self> {
         Consts::new()
-    }
-
-    /// Increment by one ULP, saturating at infinity.
-    fn next_up(self) -> Self {
-        let bits = self.to_bits();
-        if self.is_nan() || bits == Self::INFINITY.to_bits() {
-            return self;
-        }
-
-        let abs = self.abs().to_bits();
-        let next_bits = if abs == Self::Int::ZERO {
-            // Next up from 0 is the smallest subnormal
-            Self::TINY_BITS
-        } else if bits == abs {
-            // Positive: counting up is more positive
-            bits + Self::Int::ONE
-        } else {
-            // Negative: counting down is more positive
-            bits - Self::Int::ONE
-        };
-        Self::from_bits(next_bits)
     }
 
     /// A faster way to effectively call `next_up` `n` times.
@@ -66,27 +42,6 @@ pub trait FloatExt: Float {
         } else {
             // Negative, counting down is more positive
             bits - n
-        };
-        Self::from_bits(next_bits)
-    }
-
-    /// Decrement by one ULP, saturating at negative infinity.
-    fn next_down(self) -> Self {
-        let bits = self.to_bits();
-        if self.is_nan() || bits == Self::NEG_INFINITY.to_bits() {
-            return self;
-        }
-
-        let abs = self.abs().to_bits();
-        let next_bits = if abs == Self::Int::ZERO {
-            // Next up from 0 is the smallest negative subnormal
-            Self::TINY_BITS | Self::SIGN_MASK
-        } else if bits == abs {
-            // Positive: counting down is more negative
-            bits - Self::Int::ONE
-        } else {
-            // Negative: counting up is more negative
-            bits + Self::Int::ONE
         };
         Self::from_bits(next_bits)
     }

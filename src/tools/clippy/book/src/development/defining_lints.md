@@ -199,6 +199,6 @@ Without an entry in one of `early_lint_methods!` or `late_lint_methods!`, the
 lint pass in question will not be run.
 
 
-[all_lints]: https://rust-lang.github.io/rust-clippy/master/
+[all_lints]: https://rust-lang.github.io/rust-clippy/main/
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 [Lint Passes]: lint_passes.md

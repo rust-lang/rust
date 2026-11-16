@@ -13,6 +13,41 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
+#[diag("#[rustc_legacy_const_generics] functions must only have const generics")]
+pub(crate) struct RustcLegacyConstGenericsOnly {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("non-const generic parameter")]
+    pub param_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("#[rustc_legacy_const_generics] must have one index for each generic parameter")]
+pub(crate) struct RustcLegacyConstGenericsIndex {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("generic parameters")]
+    pub generics_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("index exceeds number of arguments")]
+pub(crate) struct RustcLegacyConstGenericsIndexExceed {
+    #[primary_span]
+    #[label(
+        "there {$arg_count ->
+            [one] is
+            *[other] are
+        } only {$arg_count} {$arg_count ->
+            [one] argument
+            *[other] arguments
+        }"
+    )]
+    pub span: Span,
+    pub arg_count: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag("`{$name}` attribute cannot be used at crate level")]
 pub(crate) struct InvalidAttrAtCrateLevel {
     #[primary_span]
@@ -83,6 +118,15 @@ pub(crate) struct UnsafeAttrOutsideUnsafeLint {
     pub span: Span,
     #[subdiagnostic]
     pub suggestion: Option<crate::diagnostics::UnsafeAttrOutsideUnsafeSuggestion>,
+}
+
+#[derive(Diagnostic)]
+#[diag("attribute should be applied to `const fn`")]
+pub(crate) struct RustcAllowConstFnUnstable {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a `const fn`")]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -286,11 +330,34 @@ pub(crate) struct DocTestUnknown {
 pub(crate) struct DocTestLiteral;
 
 #[derive(Diagnostic)]
+#[diag("conflicting doc inlining attributes")]
+#[help("remove one of the conflicting attributes")]
+pub(crate) struct DocInlineConflict {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
+
+#[derive(Diagnostic)]
+#[diag("this attribute can only be applied to a `use` item")]
+#[note(
+    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline> for more information"
+)]
+pub(crate) struct DocInlineOnlyUse {
+    #[label("only applicable on `use` items")]
+    pub attr_span: Span,
+    #[label("not a `use` item")]
+    pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("this attribute can only be applied at the crate level")]
 #[note(
     "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
 )]
-pub(crate) struct AttrCrateLevelOnly;
+pub(crate) struct AttrCrateLevelOnly {
+    #[primary_span]
+    pub attr_span: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
@@ -335,6 +402,29 @@ pub(crate) struct ExpectedNoArgs;
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 pub(crate) struct ExpectedNameValue;
+
+#[derive(Diagnostic)]
+#[diag("expected either `doc(notable_trait)` or `doc(notable_trait(color=\"...\"))`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+#[help("only one color should be specified")]
+pub(crate) struct DuplicateNotableTraitColor;
+
+#[derive(Diagnostic)]
+#[diag("expected either `doc(notable_trait)` or `doc(notable_trait(color=\"...\"))`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct InvalidNotableTraitAttr;
+
+#[derive(Diagnostic)]
+#[diag("unknown color in `doc(notable_trait(color=\"...\"))`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+#[help("expected grey, gray, red, green, yellow, blue, magenta, cyan, or transparent")]
+pub(crate) struct InvalidNotableTraitColor;
 
 #[derive(Diagnostic)]
 #[diag("malformed `{$attribute}` attribute")]
@@ -897,6 +987,13 @@ pub(crate) struct InlineForceInlineConflict {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[inline]` is ignored on externally exported functions")]
+#[help(
+    "externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`"
+)]
+pub(crate) struct InlineIgnoredForExported;
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
@@ -964,6 +1061,13 @@ pub(crate) struct DocAttrNotCrateLevel {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[doc(...)]` isn't allowed on parameters")]
+pub(crate) struct DocAttrNotParameters {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("nonexistent keyword `{$keyword}` used in `#[doc(keyword = \"...\")]`")]
 #[help("only existing keywords are allowed in core/std")]
 pub(crate) struct DocKeywordNotKeyword {
@@ -979,6 +1083,17 @@ pub(crate) struct DocAttributeNotAttribute {
     #[primary_span]
     pub span: Span,
     pub attribute: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#![doc({$attr_name})]` must be a trait attribute")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct DocAttrNotTraitLevel {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1169,7 +1284,7 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[non_exhaustive]` can't be used to annotate items with default field values")]
+#[diag("`#[non_exhaustive]` can't be used to annotate structs with default field values")]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
     pub attr_span: Span,
@@ -1223,12 +1338,11 @@ pub(crate) struct UnknownVersionLiteral {
     pub span: Span,
 }
 
-// FIXME(jdonszelmann) duplicated from `rustc_passes`, remove once `check_attr` is integrated.
 #[derive(Diagnostic)]
 #[diag("multiple `{$name}` attributes")]
-pub(crate) struct UnusedMultiple {
+pub struct UnusedMultiple {
     #[primary_span]
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -1327,6 +1441,8 @@ pub(crate) struct InvalidTarget {
     pub attr_span: Span,
     pub name: AttrPath,
     pub target: &'static str,
+    #[context]
+    pub target_span: Span,
     pub applied: DiagArgValue,
     pub only: &'static str,
     pub attribute_args: String,
@@ -1337,7 +1453,7 @@ pub(crate) struct InvalidTarget {
     )]
     pub previously_accepted: bool,
     #[note(
-        "placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute"
+        "attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion"
     )]
     pub on_macro_call: bool,
 }
@@ -1476,9 +1592,9 @@ pub(crate) enum AttributeParseErrorSuggestions {
 }
 
 impl<'a> AttributeParseError<'a> {
-    fn render_expected_specific_argument<G>(
+    fn render_expected_specific_argument(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         possibilities: &[Symbol],
         strings: bool,
     ) {
@@ -1509,9 +1625,9 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
-    fn render_expected_specific_argument_list<G>(
+    fn render_expected_specific_argument_list(
         &self,
-        diag: &mut Diag<'_, G>,
+        diag: &mut Diag<'_>,
         possibilities: &[Symbol],
         strings: bool,
     ) {
@@ -1543,7 +1659,7 @@ impl<'a> AttributeParseError<'a> {
         }
     }
 
-    fn render_suggestions<G>(&self, diag: &mut Diag<'_, G>) {
+    fn render_suggestions(&self, diag: &mut Diag<'_>) {
         let description = self.description();
 
         match &self.suggestions {
@@ -1592,8 +1708,8 @@ impl AttributeParseErrorSuggestions {
     }
 }
 
-impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for AttributeParseError<'_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let name = self.path.to_string();
 
         let description = self.description();
@@ -1604,7 +1720,7 @@ impl<'a, G> Diagnostic<'a, G> for AttributeParseError<'_> {
         match &self.reason {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
                 if let Some(start_point_span) = byte_string {
-                    diag.span_suggestion(
+                    diag.span_suggestion_short(
                         *start_point_span,
                         "consider removing the prefix",
                         "",
@@ -1818,12 +1934,32 @@ pub(crate) struct SuffixedLiteralInAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "{$count ->
+    [one] this attribute is
+    *[other] these attributes are
+    } not allowed in this context"
+)]
+pub(crate) struct AttributeInInvalidContext {
+    #[primary_span]
+    pub attrs: Vec<Span>,
+    pub count: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag("link name must not be empty", code = E0454)]
 pub(crate) struct EmptyLinkName {
     #[primary_span]
     #[label("empty link name")]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("attribute should be applied to an `extern` block with non-Rust ABI")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct Link;
 
 #[derive(Diagnostic)]
 #[diag("link kind `framework` is only supported on Apple targets", code = E0455)]
@@ -2047,7 +2183,7 @@ pub(crate) struct AdditionalCommaSuggestion {
 #[derive(Diagnostic)]
 #[diag("unused attribute")]
 pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "unspecified")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -2055,4 +2191,83 @@ pub(crate) struct UnusedDuplicate {
         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
     )]
     pub warning: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[macro_export]` is not allowed on declarative macro definitions")]
+#[note("declarative macros follow the same exporting rules as regular items")]
+pub(crate) struct MacroExportOnDeclMacro {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed lint attribute input", code = E0452)]
+pub(crate) struct MalformedAttribute {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub kind: MalformedAttributeKind,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MalformedAttributeKind {
+    #[label("reason in lint attribute must come last")]
+    ReasonMustComeLast(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed `{$kind}` attribute input")]
+pub(crate) struct MalformedLintAttributeInput {
+    #[primary_span]
+    #[label("not the name of a lint")]
+    pub span: Span,
+    pub kind: Symbol,
+    #[subdiagnostic]
+    pub help: MalformedLintAttributeInputHelp,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum MalformedLintAttributeInputHelp {
+    #[help("try using `#[{$kind}({$sym})]`")]
+    StrLit { sym: Symbol, kind: Symbol },
+    #[help("for example, write `#[{$kind}(dead_code)]` for `dead_code`")]
+    Other { kind: Symbol },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnusedNote {
+    #[note("attribute `{$name}` with an empty list has no effect")]
+    EmptyList { name: Symbol },
+    #[note("attribute `{$name}` without any lints has no effect")]
+    NoLints { name: Symbol },
+}
+
+#[derive(Diagnostic)]
+#[diag("unused attribute")]
+pub(crate) struct Unused {
+    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    pub attr_span: Span,
+    #[subdiagnostic]
+    pub note: UnusedNote,
+}
+
+#[derive(Diagnostic)]
+#[diag("use of deprecated `no_link` attribute")]
+pub(crate) struct NoLinkAttrUsed;
+
+#[derive(Diagnostic)]
+#[diag("`#[doc({$attr_name} = \"...\")]` should be used on anonymous constants")]
+pub(crate) struct DocKeywordAttributeNotAnonConst {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("the `lint::{$unknown}` attribute is not recognized")]
+pub(crate) struct UnknownLintHelper {
+    #[primary_span]
+    pub span: Span,
+    pub unknown: Symbol,
 }

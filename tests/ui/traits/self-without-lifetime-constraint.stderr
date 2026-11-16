@@ -1,9 +1,11 @@
 error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/self-without-lifetime-constraint.rs:46:5
    |
+LL | pub trait FromSql: Sized {
 LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self, &Self>;
    |     -------------------------------------------------------------------- expected `fn(ValueRef<'1>) -> Result<(&'2 str, &'1 &'2 str), _>`
 ...
+LL | impl FromSql for &str {
 LL |     fn column_result(value: ValueRef<'_>) -> FromSqlResult<&str, &&str> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(ValueRef<'1>) -> Result<(&'1 str, &'1 &'1 str), _>`
    |

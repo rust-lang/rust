@@ -7,9 +7,7 @@ authors = [
     "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
 ]
 description = "`core::arch` - Rust's core library architecture-specific intrinsics."
-homepage = "https://github.com/rust-lang/stdarch"
 repository = "https://github.com/rust-lang/stdarch"
-readme = "README.md"
 keywords = ["core", "simd", "arch", "intrinsics"]
 categories = ["hardware-support", "no-std"]
 license = "MIT OR Apache-2.0"
@@ -25,6 +23,9 @@ stdarch-test = { version = "0.*", path = "../stdarch-test" }
 
 [target.'cfg(all(target_arch = "x86_64", target_os = "linux"))'.dev-dependencies]
 syscalls = { version = "0.6.18", default-features = false }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_has_reliable_f16)'] }
 
 [lints.clippy]
 too_long_first_doc_paragraph = "allow"

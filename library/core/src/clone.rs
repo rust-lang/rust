@@ -189,7 +189,6 @@ mod uninit;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
 #[rustc_diagnostic_item = "Clone"]
-#[rustc_trivial_field_reads]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 pub const trait Clone: Sized {
     /// Returns a duplicate of the value.
@@ -242,6 +241,7 @@ pub const trait Clone: Sized {
     /// allocations.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[lang = "clone_from_fn"]
     fn clone_from(&mut self, source: &Self)
     where
         Self: [const] Destruct,
@@ -686,8 +686,8 @@ unsafe impl CloneToUninit for crate::ffi::CStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
-unsafe impl CloneToUninit for crate::bstr::ByteStr {
+#[unstable(feature = "byte_str", issue = "134915")]
+unsafe impl CloneToUninit for crate::byte_str::ByteStr {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut u8) {
@@ -732,7 +732,7 @@ mod impls {
         bool char
     }
 
-    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "never_type", since = "1.100.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     const impl Clone for ! {
         #[inline]

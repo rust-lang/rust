@@ -2,8 +2,10 @@
 // reference the `Self` type parameter (contrary to methods) and that such where clauses are
 // actually enforced.
 
-#![feature(min_generic_const_args, generic_const_items)]
+#![feature(gca_min_const_items, generic_const_items)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait Trait {
     #[rustc_always_gca]
@@ -11,7 +13,7 @@ trait Trait {
 }
 
 impl Trait for () {
-    const N: i32 = core::direct_const_arg!(0);
+    const N: i32 = gca!(0);
 }
 
 trait Bound {}

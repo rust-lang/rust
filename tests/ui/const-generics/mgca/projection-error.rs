@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
 
 // Regression test for #140642. Test that normalizing const aliases

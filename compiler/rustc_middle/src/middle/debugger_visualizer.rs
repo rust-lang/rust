@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rustc_hir::attrs::DebuggerVisualizerType;
+use rustc_attr_ir::DebuggerVisualizerType;
 use rustc_macros::{Decodable, Encodable, StableHash};
 
 /// A single debugger visualizer file.

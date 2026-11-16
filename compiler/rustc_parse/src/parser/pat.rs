@@ -2,7 +2,7 @@ use std::ops::Bound;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token};
+use rustc_ast::token::{self, IdentKind, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -120,8 +120,7 @@ impl<'a> Parser<'a> {
                 Box::new(Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) })
             };
 
-            // Feature-gate guard patterns
-            self.psess.gated_spans.gate(sym::guard_patterns, guard.span());
+            self.psess.gated_spans.gate(sym::guard_patterns, guard.span_with_leading_if);
             let span = pat.span.to(guard.span());
             Ok(self.mk_pat(span, PatKind::Guard(Box::new(pat), guard)))
         } else {
@@ -354,7 +353,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, token::IdentIsRaw::No) // e.g. `a | if expr`.
+                | token::Ident(kw::If, token::IdentKind::Normal | token::IdentKind::ForcedKeyword) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
@@ -802,8 +801,17 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Expr(const_expr)
             }
-        } else if self.is_builtin() {
-            self.parse_pat_builtin()?
+        } else if self.eat_forced_keyword_noexpect(kw::Deref) {
+            self.expect(exp!(OpenParen))?;
+            let pat = ast::PatKind::Deref(Box::new(self.parse_pat_allow_top_guard(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::LikelyTuple,
+            )?));
+            self.expect(exp!(CloseParen))?;
+            self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+            pat
         }
         // Don't eagerly error on semantically invalid tokens when matching
         // declarative macros, as the input to those doesn't have to be
@@ -843,7 +851,7 @@ impl<'a> Parser<'a> {
                     None => PatKind::Path(qself, path),
                 }
             }
-        } else if let Some((lt, IdentIsRaw::No)) = self.token.lifetime()
+        } else if let Some((lt, IdentKind::Normal)) = self.token.lifetime()
             // In pattern position, we're totally fine with using "next token isn't colon"
             // as a heuristic. We could probably just always try to recover if it's a lifetime,
             // because we never have `'a: label {}` in a pattern position anyways, but it does
@@ -1335,7 +1343,7 @@ impl<'a> Parser<'a> {
         err.span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.psess.source_map().start_point(self.token.span);
-        if let Some(sp) = self.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        if let Some(sp) = self.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp) {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
 
@@ -1562,7 +1570,7 @@ impl<'a> Parser<'a> {
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.span_label(path.span, "while parsing the fields for this pattern");
-            let guar = e.emit();
+            let guar = e.emit_err();
             self.recover_stmt();
             // When recovering, pretend we had `Foo { .. }`, to avoid cascading errors.
             (ThinVec::new(), PatFieldsRest::Recovered(guar))
@@ -1607,23 +1615,6 @@ impl<'a> Parser<'a> {
             token::CloseParen,
         ]
         .contains(&self.token.kind)
-    }
-
-    fn parse_pat_builtin(&mut self) -> PResult<'a, PatKind> {
-        self.parse_builtin(|self_, _lo, ident| {
-            Ok(match ident.name {
-                // builtin#deref(PAT)
-                sym::deref => {
-                    Some(ast::PatKind::Deref(Box::new(self_.parse_pat_allow_top_guard(
-                        None,
-                        RecoverComma::Yes,
-                        RecoverColon::Yes,
-                        CommaRecoveryMode::LikelyTuple,
-                    )?)))
-                }
-                _ => None,
-            })
-        })
     }
 
     // FIXME: remove this entirely eventually
@@ -1937,17 +1928,15 @@ impl<'a> Parser<'a> {
             let subpat = if let Some(box_span) = is_box {
                 let prefix_span = box_span.until(boxed_span);
 
-                self.dcx()
-                    .create_err(diagnostics::BoxPatsRemoved {
-                        span: box_span,
-                        sugg_deref_macro_call: diagnostics::UseDerefMacro {
-                            field: Some((prefix_span, fieldname)),
-                            before: boxed_span.shrink_to_lo(),
-                            after: hi.shrink_to_hi(),
-                        },
-                        sugg_removal: prefix_span,
-                    })
-                    .emit();
+                self.dcx().emit_err(diagnostics::BoxPatsRemoved {
+                    span: box_span,
+                    sugg_deref_macro_call: diagnostics::UseDerefMacro {
+                        field: Some((prefix_span, fieldname)),
+                        before: boxed_span.shrink_to_lo(),
+                        after: hi.shrink_to_hi(),
+                    },
+                    sugg_removal: prefix_span,
+                });
 
                 self.mk_pat(lo.to(hi), PatKind::Deref(Box::new(fieldpat)))
             } else {

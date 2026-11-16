@@ -32,20 +32,22 @@ LL |     fn method(self: &unsafe<'ops> &'a dyn Bar) {}
 error[E0038]: the trait `Foo` is not dyn compatible
   --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:17:13
    |
-LL |     fn method(self: &unsafe<'ops> &'a Bar) {}
-   |                     --------------------- help: consider changing method `method`'s `self` parameter to be `&self`: `&Self`
-...
 LL | fn test(x: &dyn Foo) {
    |             ^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:10:21
+  --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:10:15
    |
 LL | trait Foo: Deref<Target = unsafe<'a> &'a dyn Bar> {
    |       --- this trait is not dyn compatible...
 LL |     fn method(self: &unsafe<'ops> &'a Bar) {}
-   |                     ^^^^^^^^^^^^^^^^^^^^^ ...because method `method`'s `self` parameter cannot be dispatched on
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because method `method`'s `self` parameter cannot be dispatched on
+help: consider changing method `method`'s `self` parameter to be `&self`
+   |
+LL -     fn method(self: &unsafe<'ops> &'a Bar) {}
+LL +     fn method(&self) {}
+   |
 
 error[E0599]: no method named `method` found for reference `&dyn Foo` in the current scope
   --> $DIR/unsafe-binders-bare-trait-object-next-solver.rs:19:7

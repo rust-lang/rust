@@ -3,8 +3,10 @@
 
 //@ check-pass
 
-#![feature(min_generic_const_args)]
+#![feature(gca_min_const_items)]
 #![expect(incomplete_features)]
+
+use std::gca;
 
 trait Trait: SuperTrait<C = 3> {
     #[rustc_always_gca]
@@ -24,7 +26,7 @@ trait Bound {
 }
 
 impl Bound for () {
-    const N: usize = core::direct_const_arg!(10);
+    const N: usize = gca!(10);
 }
 
 fn main() {

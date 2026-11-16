@@ -94,3 +94,5 @@ fn main() {
         }
     }
 }
+
+//@ reference: items.union.ref.borrow

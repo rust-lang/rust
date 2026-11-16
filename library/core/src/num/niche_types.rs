@@ -5,9 +5,10 @@
 )]
 
 use crate::cmp::Ordering;
+use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::marker::StructuralPartialEq;
-use crate::{fmt, pattern_type};
+use crate::pat::pattern_type;
 
 macro_rules! define_valid_range_type {
     ($(
@@ -111,6 +112,7 @@ const impl Default for Nanoseconds {
 }
 
 const HALF_USIZE: usize = usize::MAX >> 1;
+const HALF_USIZE_MINUS_ONE: usize = HALF_USIZE - 1;
 
 define_valid_range_type! {
     pub struct NonZeroU8Inner(u8 is 1..);
@@ -126,6 +128,7 @@ define_valid_range_type! {
     pub struct NonZeroI128Inner(i128 is ..0 | 1..);
 
     pub struct UsizeNoHighBit(usize is 0..=HALF_USIZE);
+    pub struct UsizeNoHighBitMinusOne(usize is 0..=HALF_USIZE_MINUS_ONE);
     pub struct NonZeroUsizeInner(usize is 1..);
     pub struct NonZeroIsizeInner(isize is ..0 | 1..);
 

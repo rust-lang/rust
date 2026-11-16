@@ -85,6 +85,67 @@ pub trait Encoder {
     }
 
     fn emit_raw_bytes(&mut self, s: &[u8]);
+
+    /// Controls whether `HashMap`-s are stable sorted by their key before encoding. Some encoders
+    /// don't need determinism, improving performance.
+    const DETERMINISTIC_HASH_MAP_ENCODE: bool = false;
+
+    fn encode_hash_map<K, V, S>(&mut self, map: &HashMap<K, V, S>)
+    where
+        Self: Sized,
+        K: Encodable<Self> + for<'a> ContextOrd<&'a Self>,
+        V: Encodable<Self>,
+        S: BuildHasher,
+    {
+        self.emit_usize(map.len());
+        if Self::DETERMINISTIC_HASH_MAP_ENCODE {
+            // we are sorting right after
+            #[expect(rustc::potential_query_instability)]
+            let mut values: Vec<_> = map.iter().collect();
+            let mut cmp = <K as ContextOrd<&Self>>::stable_cmp_with_context(self);
+            values.sort_by(|(k1, _), (k2, _)| cmp(*k1, *k2));
+            drop(cmp);
+
+            for (key, val) in values {
+                key.encode(self);
+                val.encode(self);
+            }
+        } else {
+            // this is explicitly allowed when Self::DETERMINISTIC_HASH_MAP_ENCODE is false
+            #[expect(rustc::potential_query_instability)]
+            for (key, val) in map.iter() {
+                key.encode(self);
+                val.encode(self);
+            }
+        }
+    }
+
+    fn encode_hash_set<K, S>(&mut self, map: &HashSet<K, S>)
+    where
+        Self: Sized,
+        K: Encodable<Self> + for<'a> ContextOrd<&'a Self>,
+        S: BuildHasher,
+    {
+        self.emit_usize(map.len());
+        if Self::DETERMINISTIC_HASH_MAP_ENCODE {
+            // we are sorting right after
+            #[expect(rustc::potential_query_instability)]
+            let mut values: Vec<_> = map.iter().collect();
+            let mut cmp = <K as ContextOrd<&Self>>::stable_cmp_with_context(self);
+            values.sort_by(|k1, k2| cmp(*k1, *k2));
+            drop(cmp);
+
+            for key in values {
+                key.encode(self);
+            }
+        } else {
+            // this is explicitly allowed when Self::DETERMINISTIC_HASH_MAP_ENCODE is false
+            #[expect(rustc::potential_query_instability)]
+            for key in map.iter() {
+                key.encode(self);
+            }
+        }
+    }
 }
 
 // Note: all the methods in this trait are infallible, which may be surprising.
@@ -608,16 +669,13 @@ where
 
 impl<E: Encoder, K, V, S> Encodable<E> for HashMap<K, V, S>
 where
-    K: Encodable<E> + Eq,
+    E: Sized,
+    K: Encodable<E> + Eq + for<'a> ContextOrd<&'a E>,
     V: Encodable<E>,
     S: BuildHasher,
 {
     fn encode(&self, e: &mut E) {
-        e.emit_usize(self.len());
-        for (key, val) in self {
-            key.encode(e);
-            val.encode(e);
-        }
+        e.encode_hash_map(self)
     }
 }
 
@@ -635,14 +693,11 @@ where
 
 impl<E: Encoder, T, S> Encodable<E> for HashSet<T, S>
 where
-    T: Encodable<E> + Eq,
+    T: Encodable<E> + for<'a> ContextOrd<&'a E>,
     S: BuildHasher,
 {
-    fn encode(&self, s: &mut E) {
-        s.emit_usize(self.len());
-        for e in self {
-            e.encode(s);
-        }
+    fn encode(&self, e: &mut E) {
+        e.encode_hash_set(self)
     }
 }
 
@@ -763,3 +818,26 @@ impl<D: Decoder> Decodable<D> for Hash128 {
         Self::new(u128::from_le_bytes(d.read_raw_bytes(16).try_into().unwrap()))
     }
 }
+
+pub trait ContextOrd<Ctx> {
+    /// The returned comparator must be stable.
+    /// E. g. compares `DefPathHash` instead of `DefIndex`
+    fn stable_cmp_with_context(_context: Ctx) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        unimplemented!();
+        #[allow(unused)]
+        |_i, _i2| unreachable!()
+    }
+}
+
+impl<Ctx> ContextOrd<Ctx> for String {
+    fn stable_cmp_with_context(_context: Ctx) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        <Self as Ord>::cmp
+    }
+}
+
+// FIXME remove this. This is only here because CacheEncoder, which does not need to be
+// deterministic, encodes a HashMap<u32,V>. If a real implementation is ever needed, that use should
+// be switched to a new type instead of u32
+impl<Ctx> ContextOrd<Ctx> for u32 {}
+
+impl<Ctx> ContextOrd<Ctx> for i64 {}

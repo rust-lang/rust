@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: Module
+//@ rustfmt-imports_granularity: Module
 
 use a::b::c;
 use a::d::e;

@@ -59,6 +59,118 @@
     <!-- Normal -->
     <DisplayString>{(float) (sign() * (raw_significand() + 1.0) * two_pow_exponent())}</DisplayString>
   </Type>
+  <Type Name="f128">
+    <Intrinsic Name="sign_mask" Expression="(unsigned __int64) 0x8000000000000000" />
+    <Intrinsic Name="exponent_mask" Expression="(unsigned __int64) 0x7fff000000000000" />
+    <Intrinsic Name="high_significand_mask" Expression="(unsigned __int64) 0x0000ffffffffffff" />
+    <Intrinsic Name="sign_bit" Expression="(unsigned __int64) (high_bits &amp; sign_mask())" />
+    <Intrinsic Name="exponent_bits" Expression="(unsigned __int64) (high_bits &amp; exponent_mask())" />
+    <Intrinsic Name="high_significand_bits" Expression="(unsigned __int64) (high_bits &amp; high_significand_mask())" />
+    <Intrinsic Name="high_non_sign_bits" Expression="(unsigned __int64) (high_bits &amp; ~sign_mask())" />
+
+    <!-- Either "-" or an empty string for positive numbers -->
+    <Intrinsic Name="sign" Expression="sign_bit() == 0 ? &quot;&quot; : &quot;-&quot;" />
+    <Intrinsic Name="normal_exponent" Expression="(__int64) (((__int64) (exponent_bits() &gt;&gt; 48)) - 0x3fff)" />
+    <!-- "+" if the exponent is positive or zero, otherwise an empty string as converting a negative
+      exponent to a decimal string will already prepend a "-".  -->
+    <Intrinsic Name="normal_exponent_sign" Expression="normal_exponent() >= 0 ? &quot;+&quot; : &quot;&quot;" />
+
+    <!-- Converts a number between 0 and 15 (inclusive) to a single hexdecimal character -->
+    <Intrinsic Name="to_hex" Expression="v == 0x0 ? &quot;0&quot; : v == 0x1 ? &quot;1&quot; : v == 0x2 ? &quot;2&quot; : v == 0x3 ? &quot;3&quot; : v == 0x4 ? &quot;4&quot; : v == 0x5 ? &quot;5&quot; : v == 0x6 ? &quot;6&quot; : v == 0x7 ? &quot;7&quot; : v == 0x8 ? &quot;8&quot; : v == 0x9 ? &quot;9&quot; : v == 0xa ? &quot;a&quot; : v == 0xb ? &quot;b&quot; : v == 0xc ? &quot;c&quot; : v == 0xd ? &quot;d&quot; : v == 0xe ? &quot;e&quot; : v == 0xf ? &quot;f&quot; : &quot;ERROR&quot;">
+      <Parameter Name="v" Type="unsigned __int64" />
+    </Intrinsic>
+    <!-- hexN convert integers of size N to hexdecimal strings. `count` specifies how many bits should be displayed.
+      `count` is rounded up to the nearest hexdecimal digit, and is presumed to be non-zero -->
+    <Intrinsic Name="hex4" Expression="to_hex(value &amp; 0xf)">
+      <Parameter Name="value" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="hex8" Expression="count > 4 ? hex4(value >> 4) + hex4(value) : hex4(value)">
+      <Parameter Name="value" Type="unsigned __int64" />
+      <Parameter Name="count" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="hex16" Expression="count > 8 ? hex8(value >> 8, count - 8) + hex8(value, 8) : hex8(value, count)">
+      <Parameter Name="value" Type="unsigned __int64" />
+      <Parameter Name="count" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="hex32" Expression="count > 16 ? hex16(value >> 16, count - 16) + hex16(value, 16) : hex16(value, count)">
+      <Parameter Name="value" Type="unsigned __int64" />
+      <Parameter Name="count" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="hex64" Expression="count > 32 ? hex32(value >> 32, count - 32) + hex32(value, 32) : hex32(value, count)">
+      <Parameter Name="value" Type="unsigned __int64" />
+      <Parameter Name="count" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="hex128" Expression="count > 64 ? hex64(value_high, count - 64) + hex64(value_low, 64) : hex64(value_low, count)">
+      <Parameter Name="value_high" Type="unsigned __int64" />
+      <Parameter Name="value_low" Type="unsigned __int64" />
+      <Parameter Name="count" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <!-- trailingN does the equivalent of `iN::trailing_zeros` in Rust. -->
+    <!-- We only need to count in whole hex digits (4 bits) -->
+    <Intrinsic Name="trailing4" Expression="(unsigned __int64) ((value &amp; 0xf) == 0 ? 4 : 0)">
+      <Parameter Name="value" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="trailing8" Expression="(unsigned __int64) ((value &amp; 0xf) == 0 ? 4 + trailing4(value &gt;&gt; 4) : trailing4(value))">
+      <Parameter Name="value" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="trailing16" Expression="(unsigned __int64) ((value &amp; 0xff) == 0 ? 8 + trailing8(value &gt;&gt; 8) : trailing8(value))">
+      <Parameter Name="value" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="trailing32" Expression="(unsigned __int64) ((value &amp; 0xffff) == 0 ? 16 + trailing16(value &gt;&gt; 16) : trailing16(value))">
+      <Parameter Name="value" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="trailing64" Expression="(unsigned __int64) ((value &amp; 0xffffffff) == 0 ? 32 + trailing32(value &gt;&gt; 32) : trailing32(value))">
+      <Parameter Name="value" Type="unsigned __int64" />
+    </Intrinsic>
+    <Intrinsic Name="trailing128" Expression="(unsigned __int64) (value_low == 0 ? 64 + trailing64(value_high) : trailing64(value_low))">
+      <Parameter Name="value_high" Type="unsigned __int64" />
+      <Parameter Name="value_low" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <!-- Equivalent to `u128::funnel_shr` -->
+    <Intrinsic Name="funnel_shift_right" Expression="(unsigned __int64) (shift == 0 ? low : ((low &gt;&gt; shift) | (high &lt;&lt; (64 - shift))))">
+      <Parameter Name="high" Type="unsigned __int64" />
+      <Parameter Name="low" Type="unsigned __int64" />
+      <Parameter Name="shift" Type="unsigned __int64" />
+    </Intrinsic>
+    <!-- Equivalent to `u128::funnel_shl` -->
+    <Intrinsic Name="funnel_shift_left" Expression="(unsigned __int64) (shift == 0 ? high : ((high &lt;&lt; shift) | (low &gt;&gt; (64 - shift))))">
+      <Parameter Name="high" Type="unsigned __int64" />
+      <Parameter Name="low" Type="unsigned __int64" />
+      <Parameter Name="shift" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <Intrinsic Name="bits_to_hex_inner" Expression="trailing >= 64 ? hex64(high &gt;&gt; (trailing - 64), 48 - (trailing - 64)) : hex128(high &gt;&gt; trailing, funnel_shift_right(high, low, trailing), 112 - trailing)">
+      <Parameter Name="high" Type="unsigned __int64" />
+      <Parameter Name="low" Type="unsigned __int64" />
+      <Parameter Name="trailing" Type="unsigned __int64" />
+    </Intrinsic>
+    <!-- Converts the low 48 bits of `high` and all 64 bits of `low` to a hexdecimal string, without
+      any trailing zeros. The result will start with a "." unless it is empty. -->
+    <!-- Trailing is precomputed here as an argument to `bits_to_hex_inner` avoid needing to
+      calculate it multiple times. -->
+    <Intrinsic Name="bits_to_hex" Expression="(high &amp; high_significand_mask()) == 0 &amp;&amp; low == 0 ? &quot;&quot; : &quot;.&quot; + bits_to_hex_inner(high, low, trailing128(high, low))">
+      <Parameter Name="high" Type="unsigned __int64" />
+      <Parameter Name="low" Type="unsigned __int64" />
+    </Intrinsic>
+
+    <Intrinsic Name="normal_hex" Expression="bits_to_hex(high_significand_bits(), low_bits)" />
+    <Intrinsic Name="subnormal_shift" Expression="(__int64) (high_significand_bits() == 0 ? 48 + (64 - __log2(low_bits)) : (48 - __log2(high_significand_bits())))" />
+    <Intrinsic Name="subnormal_hex" Expression="subnormal_shift() >= 64 ? bits_to_hex(low_bits &lt;&lt; (subnormal_shift() - 64), 0) : bits_to_hex(funnel_shift_left(high_significand_bits(), low_bits, subnormal_shift()), low_bits &lt;&lt; subnormal_shift())" />
+
+    <DisplayString Condition="high_non_sign_bits() == exponent_mask() &amp;&amp; low_bits == 0">{sign()}inf</DisplayString>
+    <DisplayString Condition="exponent_bits() == exponent_mask()">NaN</DisplayString>
+    <!-- Handle zeros separately so they use the conventional exponent "+0". -->
+    <DisplayString Condition="high_non_sign_bits() == 0 &amp;&amp; low_bits == 0">{sign()}0x0p+0</DisplayString>
+    <!-- Subnormals are shifted so that the integer portion is "1", with the exponent adjusted. -->
+    <DisplayString Condition="exponent_bits() == 0">{sign()}0x1{subnormal_hex()}p{-16382 - subnormal_shift(),d}</DisplayString>
+    <DisplayString>{sign()}0x1{normal_hex()}p{normal_exponent_sign()}{normal_exponent(),d}</DisplayString>
+    <Expand>
+      <!-- Display the bits as a single number instead of the two `u64` halves. -->
+      <Item Name="bits">"0x" + hex128(high_bits, low_bits, 128)</Item>
+    </Expand>
+  </Type>
   <Type Name="tuple$&lt;&gt;">
     <DisplayString>()</DisplayString>
   </Type>

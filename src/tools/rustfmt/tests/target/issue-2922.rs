@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Visual
+//@ rustfmt-indent_style: Visual
 struct Functions {
     RunListenServer: unsafe extern "C" fn(*mut c_void,
                                           *mut c_char,

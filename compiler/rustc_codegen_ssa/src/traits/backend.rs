@@ -52,6 +52,7 @@ pub trait CodegenBackend {
             // support the float types, rather than accidentally quietly skipping all tests.
             has_reliable_f16: true,
             has_reliable_f16_math: true,
+            has_reliable_f16b: true,
             has_reliable_f128: true,
             has_reliable_f128_math: true,
         }
@@ -118,14 +119,6 @@ pub trait CodegenBackend {
         outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap);
-
-    fn print_pass_timings(&self) {}
-
-    fn print_statistics(&self) {}
-
-    fn print_statistics_json(&self) -> String {
-        String::new()
-    }
 
     /// This is called on the returned [`CompiledModules`] from [`join_codegen`](Self::join_codegen).
     fn link(

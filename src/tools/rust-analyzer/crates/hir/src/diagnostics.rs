@@ -21,6 +21,7 @@ use hir_def::{
         assoc::{ImplItems, TraitItems},
         diagnostics::{DefDiagnosticKind, DefDiagnostics},
     },
+    resolver::ValueNs,
     signatures::{
         ConstSignature, FunctionSignature, ImplFlags, ImplSignature, TraitFlags, TraitSignature,
         TypeAliasSignature,
@@ -32,7 +33,7 @@ use hir_expand::{
     HirFileId, InFile, MacroCallId, MacroCallKind, MacroKind, RenderedExpandError, ValueResult,
     mod_path::ModPath, name::Name,
 };
-use hir_ty::{
+use hir_ide::{
     CastError, ExplicitDropMethodUseKind, InferBodyId, InferenceDiagnostic, InferenceResult,
     ParamEnvAndCrate, PathGenericsSource, PathLoweringDiagnostic, TyLoweringDiagnostic,
     check_orphan_rules,
@@ -63,7 +64,7 @@ use crate::{
 };
 
 pub use hir_def::{VariantId, expr_store::MissingBodyItemKind};
-pub use hir_ty::{
+pub use hir_ide::{
     GenericArgsProhibitedReason, IncorrectGenericsLenKind, ReturnKind,
     diagnostics::{CaseType, IncorrectCase},
 };
@@ -154,6 +155,7 @@ diagnostics![AnyDiagnostic<'db> ->
     InvalidDeriveTarget,
     InvalidLhsOfAssignment,
     InvalidRangePatType,
+    InvalidPatPathRes,
     MacroDefError,
     MacroError,
     MacroExpansionParseError,
@@ -208,6 +210,8 @@ diagnostics![AnyDiagnostic<'db> ->
     UnimplementedTrait<'db>,
     YieldOutsideCoroutine,
     ReturnOutsideFunction,
+    MatchInheritedImmRefWithMutRefPat,
+    UnresolvedAssociatedType,
 ];
 
 #[derive(Debug)]
@@ -716,6 +720,31 @@ pub struct ReturnOutsideFunction {
     pub kind: ReturnKind,
 }
 
+#[derive(Debug)]
+pub struct MatchInheritedImmRefWithMutRefPat {
+    pub pat: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidPatPathResKind {
+    Function,
+    GenericParam,
+    ImplSelf,
+    LocalBinding,
+    Static,
+}
+
+#[derive(Debug)]
+pub struct InvalidPatPathRes {
+    pub pat: InFile<ExprOrPatPtr>,
+    pub kind: InvalidPatPathResKind,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedAssociatedType {
+    pub segment: InFile<AstPtr<ast::PathSegment>>,
+}
+
 pub(crate) struct DiagnosticsCollector<'a, 'db> {
     db: &'db dyn HirDatabase,
     krate: base_db::Crate,
@@ -872,7 +901,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
 
     fn emit_case_diagnostics(&mut self, def: ModuleDefId) {
         self.acc
-            .extend(hir_ty::diagnostics::incorrect_case(self.db, def).into_iter().map(Into::into));
+            .extend(hir_ide::diagnostics::incorrect_case(self.db, def).into_iter().map(Into::into));
     }
 
     fn collect_macro_call(&mut self, macro_call_id: MacroCallId) {
@@ -1064,7 +1093,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
                                 AssocItem::Const(it) => it.id.into(),
                                 AssocItem::TypeAlias(it) => it.id.into(),
                             };
-                            !hir_ty::dyn_compatibility::generics_require_sized_self(self.db, assoc_item)
+                            !hir_ide::dyn_compatibility::generics_require_sized_self(self.db, assoc_item)
                         });
                 }
             }
@@ -1243,7 +1272,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
         self.emit_inference_errors(def.into(), source_map, type_owner);
 
         // FIXME: Missing unsafe and body validation should be defined for any `InferBodyId`.
-        let missing_unsafe = hir_ty::diagnostics::missing_unsafe(self.db, def);
+        let missing_unsafe = hir_ide::diagnostics::missing_unsafe(self.db, def);
         for (node, reason) in missing_unsafe.unsafe_exprs {
             match source_map.expr_or_pat_syntax(node) {
                 Ok(node) => self.acc.push(
@@ -1915,6 +1944,24 @@ impl<'db> AnyDiagnostic<'db> {
                     _ => return None,
                 }
             }
+            InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                MatchInheritedImmRefWithMutRefPat { pat }.into()
+            }
+            InferenceDiagnostic::InvalidPatPathRes { pat, res } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                let kind = match res {
+                    ValueNs::FunctionId(_) => InvalidPatPathResKind::Function,
+                    ValueNs::GenericParam(_) => InvalidPatPathResKind::GenericParam,
+                    ValueNs::ImplSelf(_) => InvalidPatPathResKind::ImplSelf,
+                    ValueNs::LocalBinding(_) => InvalidPatPathResKind::LocalBinding,
+                    ValueNs::StaticId(_) => InvalidPatPathResKind::Static,
+                    ValueNs::ConstId(_) | ValueNs::EnumVariantId(_) | ValueNs::StructId(_) => {
+                        return None;
+                    }
+                };
+                InvalidPatPathRes { pat, kind }.into()
+            }
         })
     }
 
@@ -2041,6 +2088,11 @@ impl<'db> AnyDiagnostic<'db> {
                 let segment = path.with_value(AstPtr::new(&segment));
                 GenericDefaultRefersToSelf { segment }.into()
             }
+            PathLoweringDiagnostic::UnresolvedAssociatedType { segment } => {
+                let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+                let segment = path.with_value(AstPtr::new(&segment));
+                UnresolvedAssociatedType { segment }.into()
+            }
         })
     }
 
@@ -2075,20 +2127,20 @@ impl<'db> AnyDiagnostic<'db> {
     }
 
     fn span_syntax(
-        span: hir_ty::Span,
+        span: hir_ide::Span,
         source_map: &ExpressionStoreSourceMap,
     ) -> Option<InFile<AstPtr<SpanAst>>> {
         Some(match span {
-            hir_ty::Span::ExprId(idx) => Self::expr_syntax(idx, source_map)?.map(|it| it.upcast()),
-            hir_ty::Span::PatId(idx) => Self::pat_syntax(idx, source_map)?.map(|it| it.upcast()),
-            hir_ty::Span::TypeRefId(idx) => {
+            hir_ide::Span::ExprId(idx) => Self::expr_syntax(idx, source_map)?.map(|it| it.upcast()),
+            hir_ide::Span::PatId(idx) => Self::pat_syntax(idx, source_map)?.map(|it| it.upcast()),
+            hir_ide::Span::TypeRefId(idx) => {
                 Self::type_syntax(idx, source_map)?.map(|it| it.upcast())
             }
-            hir_ty::Span::BindingId(idx) => {
+            hir_ide::Span::BindingId(idx) => {
                 let &pat = source_map.patterns_for_binding(idx).first()?;
                 Self::pat_syntax(pat, source_map)?.map(|it| it.upcast())
             }
-            hir_ty::Span::Dummy => {
+            hir_ide::Span::Dummy => {
                 never!("should never create a diagnostic for dummy spans");
                 return None;
             }

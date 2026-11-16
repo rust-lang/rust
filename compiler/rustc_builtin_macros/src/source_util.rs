@@ -66,12 +66,12 @@ pub(crate) fn expand_file(
     check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
-    let loc = cx.source_map().lookup_char_pos(topmost.lo());
+    let file = cx.source_map().lookup_source_file(topmost.lo());
 
     use rustc_span::RemapPathScopeComponents;
     ExpandResult::Ready(MacEager::expr(cx.expr_str(
         topmost,
-        Symbol::intern(&loc.file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
+        Symbol::intern(&file.name.display(RemapPathScopeComponents::MACRO).to_string_lossy()),
     )))
 }
 
@@ -120,7 +120,7 @@ pub(crate) fn expand_include<'cx>(
     let path = match cx.sess.resolve_path(path.as_str(), sp) {
         Ok(path) => path,
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
     };
@@ -225,7 +225,7 @@ pub(crate) fn expand_include_str(
             Err(utf8err) => {
                 let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
                 utf8_error(cx.source_map(), path.as_str(), None, &mut err, utf8err, &bytes[..]);
-                DummyResult::any(sp, err.emit())
+                DummyResult::any(sp, err.emit_err())
             }
         },
         Err(dummy) => dummy,
@@ -270,7 +270,7 @@ fn load_binary_file(
     let resolved_path = match cx.sess.resolve_path(original_path, macro_span) {
         Ok(path) => path,
         Err(err) => {
-            let guar = err.emit();
+            let guar = err.emit_err();
             return Err(DummyResult::any(macro_span, guar));
         }
     };
@@ -306,7 +306,7 @@ fn load_binary_file(
                     );
                 }
             }
-            let guar = err.emit();
+            let guar = err.emit_err();
             Err(DummyResult::any(macro_span, guar))
         }
     }

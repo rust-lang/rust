@@ -14,35 +14,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         new_size: &OpTy<'tcx>,
         flags: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let old_address = this.read_pointer(old_address)?;
-        let old_size = this.read_target_usize(old_size)?;
-        let new_size = this.read_target_usize(new_size)?;
-        let flags = this.read_scalar(flags)?.to_i32()?;
+        let old_address = ecx.read_pointer(old_address)?;
+        let old_size = ecx.read_target_usize(old_size)?;
+        let new_size = ecx.read_target_usize(new_size)?;
+        let flags = ecx.read_scalar(flags)?.to_i32()?;
 
         // old_address must be a multiple of the page size
-        if !old_address.addr().bytes().is_multiple_of(this.machine.page_size) || new_size == 0 {
-            this.set_last_error(LibcError("EINVAL"))?;
-            return interp_ok(this.eval_libc("MAP_FAILED"));
+        if !old_address.addr().bytes().is_multiple_of(ecx.machine.page_size) || new_size == 0 {
+            ecx.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(ecx.eval_libc("MAP_FAILED"));
         }
 
-        if flags & this.eval_libc_i32("MREMAP_FIXED") != 0 {
+        if flags & ecx.eval_libc_i32("MREMAP_FIXED") != 0 {
             throw_unsup_format!("Miri does not support mremap wth MREMAP_FIXED");
         }
 
-        if flags & this.eval_libc_i32("MREMAP_DONTUNMAP") != 0 {
+        if flags & ecx.eval_libc_i32("MREMAP_DONTUNMAP") != 0 {
             throw_unsup_format!("Miri does not support mremap wth MREMAP_DONTUNMAP");
         }
 
-        if flags & this.eval_libc_i32("MREMAP_MAYMOVE") == 0 {
+        if flags & ecx.eval_libc_i32("MREMAP_MAYMOVE") == 0 {
             // We only support MREMAP_MAYMOVE, so not passing the flag is just a failure
-            this.set_last_error(LibcError("EINVAL"))?;
-            return interp_ok(this.eval_libc("MAP_FAILED"));
+            ecx.set_last_error(LibcError("EINVAL"))?;
+            return interp_ok(ecx.eval_libc("MAP_FAILED"));
         }
 
-        let align = this.machine.page_align();
-        let ptr = this.reallocate_ptr(
+        let align = ecx.machine.page_align();
+        let ptr = ecx.reallocate_ptr(
             old_address,
             Some((Size::from_bytes(old_size), align)),
             Size::from_bytes(new_size),
@@ -51,6 +51,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             AllocInit::Zero,
         )?;
 
-        interp_ok(Scalar::from_pointer(ptr, this))
+        interp_ok(Scalar::from_pointer(ptr, ecx))
     }
 }

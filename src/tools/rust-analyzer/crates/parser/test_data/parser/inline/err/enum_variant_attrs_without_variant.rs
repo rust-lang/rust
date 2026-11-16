@@ -1,0 +1,1 @@
+enum E {#[attr]}

@@ -1,8 +1,7 @@
 use rustc_abi::{HasDataLayout, TargetDataLayout};
-use rustc_hir::attrs::RustcDumpLayoutKind;
+use rustc_attr_ir::{RustcDumpLayoutKind, find_attr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers};
 use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::{Span, span_bug};
@@ -42,7 +41,7 @@ pub fn ensure_wf<'tcx>(
         traits::ObligationCause::new(
             span,
             def_id,
-            traits::ObligationCauseCode::WellFormed(Some(traits::WellFormedLoc::Ty(def_id))),
+            traits::ObligationCauseCode::WellFormed(traits::WellFormedLoc::Ty(def_id)),
         ),
         param_env,
         pred,
@@ -69,7 +68,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, kinds: &[RustcDumpLa
         Ok(ty_layout) => {
             for kind in kinds {
                 let message = match kind {
-                    RustcDumpLayoutKind::Align => format!("align: {:?}", *ty_layout.align),
+                    RustcDumpLayoutKind::Align => format!("align: {:?}", ty_layout.align),
                     RustcDumpLayoutKind::BackendRepr => {
                         format!("backend_repr: {:?}", ty_layout.backend_repr)
                     }

@@ -108,7 +108,7 @@ impl<'tcx> InferCtxt<'tcx> {
         };
 
         self.canonicalize_response(QueryResponse {
-            var_values: inference_vars,
+            var_values: inference_vars.var_values,
             region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
             opaque_types,
@@ -164,7 +164,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .collect();
 
         Ok(QueryResponse {
-            var_values: inference_vars,
+            var_values: inference_vars.var_values,
             region_constraints,
             certainty,
             value: answer,
@@ -282,9 +282,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
-            let result_value = query_response.instantiate_projected(self.tcx, &result_args, |v| {
-                v.var_values[BoundVar::new(index)]
-            });
+            let result_value = query_response
+                .instantiate_projected(self.tcx, &result_args, |v| v.var_values[index]);
             match (original_value.kind(), result_value.kind()) {
                 (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                     if re1.is_erased() && re2.is_erased() =>
@@ -435,7 +434,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // the inputs to the query. Therefore, we begin by unifying
         // these values with the original inputs that were
         // canonicalized.
-        let result_values = &query_response.value.var_values;
+        let result_values = query_response.value.var_values;
         assert_eq!(original_values.var_values.len(), result_values.len());
 
         // Quickly try to find initial values for the canonical
@@ -489,27 +488,31 @@ impl<'tcx> InferCtxt<'tcx> {
         // a fresh inference variable.
         let tcx = self.tcx;
         let var_kinds = query_response.var_kinds;
-        let var_values = CanonicalVarValues::instantiate(tcx, var_kinds, |var_values, kind| {
-            if kind.universe() != ty::UniverseIndex::ROOT {
-                // A variable from inside a binder of the query. While ideally these shouldn't
-                // exist at all, we have to deal with them for now.
-                self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
-                    universe_map[u.as_usize()]
-                })
-            } else if kind.is_existential() {
-                match opt_values[BoundVar::new(var_values.len())] {
-                    Some(k) => k,
-                    None => self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
+        let var_values =
+            CanonicalVarValues::instantiate(tcx, var_kinds, |prev_var_values, kind| {
+                if kind.universe() != ty::UniverseIndex::ROOT {
+                    // A variable from inside a binder of the query. While ideally these shouldn't
+                    // exist at all, we have to deal with them for now.
+                    self.instantiate_canonical_var(cause.span, kind, &prev_var_values, |u| {
                         universe_map[u.as_usize()]
-                    }),
+                    })
+                } else if kind.is_existential() {
+                    match opt_values[BoundVar::new(prev_var_values.len())] {
+                        Some(k) => k,
+                        None => self.instantiate_canonical_var(
+                            cause.span,
+                            kind,
+                            &prev_var_values,
+                            |u| universe_map[u.as_usize()],
+                        ),
+                    }
+                } else {
+                    // For placeholders which were already part of the input, we simply map this
+                    // universal bound variable back the placeholder of the input.
+                    opt_values[BoundVar::new(prev_var_values.len())]
+                        .expect("expected placeholder to be unified with itself during response")
                 }
-            } else {
-                // For placeholders which were already part of the input, we simply map this
-                // universal bound variable back the placeholder of the input.
-                opt_values[BoundVar::new(var_values.len())]
-                    .expect("expected placeholder to be unified with itself during response")
-            }
-        });
+            });
 
         let mut obligations = PredicateObligations::new();
 
@@ -557,7 +560,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // canonical variable; this is taken from
         // `query_response.var_values` after applying the instantiation
         // by `result_args`.
-        let instantiated_query_response = |index: BoundVar| -> GenericArg<'tcx> {
+        let instantiated_query_response = |index: usize| -> GenericArg<'tcx> {
             query_response.instantiate_projected(self.tcx, result_args, |v| v.var_values[index])
         };
 
@@ -573,11 +576,11 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         variables1: &OriginalQueryValues<'tcx>,
-        variables2: impl Fn(BoundVar) -> GenericArg<'tcx>,
+        variables2: impl Fn(usize) -> GenericArg<'tcx>,
     ) -> InferResult<'tcx, ()> {
         let mut obligations = PredicateObligations::new();
         for (index, value1) in variables1.var_values.iter().enumerate() {
-            let value2 = variables2(BoundVar::new(index));
+            let value2 = variables2(index);
 
             match (value1.kind(), value2.kind()) {
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
@@ -643,7 +646,7 @@ pub fn make_query_region_constraints<'tcx>(
             }
 
             ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
-                let constraint = ty::RegionEqPredicate(c.sup, c.sub).into();
+                let constraint = ty::RegionEqPredicate(c.sub, c.sup).into();
                 QueryRegionConstraint {
                     constraint,
                     category: origin.to_constraint_category(),

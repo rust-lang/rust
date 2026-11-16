@@ -293,7 +293,16 @@ fn verify_all_signatures() {
             "_MM_SHUFFLE" |
             "_xabort_code" |
             // Not listed with intel, but manually verified
-            "cmpxchg16b"
+            "cmpxchg16b" |
+            // Apparently forgotten in the Intel Intrinsics Guide
+            // but present in other Intel documentation and clang,
+            // see https://github.com/rust-lang/rust/issues/158196
+            "_mm_cvtepu32_ps" |
+            "_mm_mask_cvtepu32_ps" |
+            "_mm_maskz_cvtepu32_ps" |
+            "_mm256_cvtepu32_ps" |
+            "_mm256_mask_cvtepu32_ps" |
+            "_mm256_maskz_cvtepu32_ps"
             => continue,
             _ => {}
         }

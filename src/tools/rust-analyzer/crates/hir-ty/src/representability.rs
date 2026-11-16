@@ -89,7 +89,8 @@ fn representability_adt_ty<'db>(
 
 fn params_in_repr(db: &dyn HirDatabase, def_id: AdtId) -> Box<[bool]> {
     let generics = GenericParams::of(db, def_id.into());
-    let mut params_in_repr = (0..generics.len_lifetimes() + generics.len_type_or_consts())
+    let mut params_in_repr = (0..generics.len_early_bound_lifetimes()
+        + generics.len_type_or_consts())
         .map(|_| false)
         .collect::<Box<[bool]>>();
     let mut handle_variant = |variant| {

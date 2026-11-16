@@ -211,6 +211,8 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `miscsr`
 `mops`
 `movbe`
+`movdir64b`
+`movdiri`
 `movrs`
 `movw`
 `mp`

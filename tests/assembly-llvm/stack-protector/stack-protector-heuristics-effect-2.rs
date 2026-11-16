@@ -7,7 +7,7 @@
 //@ [all] compile-flags: -Z stack-protector=all
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [none] compile-flags: -Z stack-protector=none
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
+//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Z allow-partial-mitigations=stack-protector
 //@ min-llvm-version: 23
 
 #![crate_type = "lib"]

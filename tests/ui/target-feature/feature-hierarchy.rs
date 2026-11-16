@@ -12,7 +12,6 @@
 //@ [hexagon-hvxv66] needs-llvm-components: hexagon
 //@ build-pass
 //@ add-minicore
-//@ ignore-backends: gcc
 #![no_core]
 #![crate_type = "rlib"]
 #![feature(intrinsics, rustc_attrs, no_core, staged_api)]
@@ -62,10 +61,6 @@ fn check_sve2_includes_neon() {
     assert!(cfg!(target_feature = "neon"));
     assert!(cfg!(target_feature = "sve2"));
 }
-
-//[hexagon-v60]~? WARN unstable feature specified for `-Ctarget-feature`: `v60`
-//[hexagon-v68]~? WARN unstable feature specified for `-Ctarget-feature`: `v68`
-//[hexagon-hvxv66]~? WARN unstable feature specified for `-Ctarget-feature`: `hvxv66`
 
 #[cfg(hexagon_v60)]
 fn check_v60_not_v68() {

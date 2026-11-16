@@ -1,0 +1,18 @@
+error[E0277]: the trait bound `for<'a> F: Trait<&'a u32>` is not satisfied
+  --> $DIR/higher-ranked-param-env-normalization-155977.rs:11:1
+   |
+LL | / fn walk2<F>()
+LL | |
+LL | | where
+LL | |     for<'a> F: 'a,
+LL | |     for<'a> <F as Trait<&'a u32>>::Output: 'a,
+   | |______________________________________________^ the trait `for<'a> Trait<&'a u32>` is not implemented for `F`
+   |
+help: consider further restricting type parameter `F` with trait `Trait`
+   |
+LL |     for<'a> F: 'a + for<'a> Trait<&'a u32>,
+   |                   ++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

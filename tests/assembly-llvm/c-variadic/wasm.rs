@@ -13,32 +13,8 @@
 // Check that the assembly that rustc generates matches what clang emits.
 
 extern crate minicore;
+use minicore::ffi::VaList;
 use minicore::*;
-
-#[lang = "va_arg_safe"]
-pub unsafe trait VaArgSafe {}
-
-unsafe impl VaArgSafe for i32 {}
-unsafe impl VaArgSafe for i64 {}
-unsafe impl VaArgSafe for i128 {}
-unsafe impl VaArgSafe for f64 {}
-unsafe impl<T> VaArgSafe for *const T {}
-
-#[repr(transparent)]
-struct VaListInner {
-    ptr: *const c_void,
-}
-
-#[repr(transparent)]
-#[lang = "va_list"]
-pub struct VaList<'a> {
-    inner: VaListInner,
-    _marker: PhantomData<&'a mut ()>,
-}
-
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub const unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaList<'_>) -> T;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
@@ -73,7 +49,7 @@ unsafe extern "C" fn read_f64(ap: &mut VaList<'_>) -> f64 {
     // WASM64-NEXT: local.get 1
     // WASM64-NEXT: f64.load 0
     // WASM64-NEXT: end_function
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -101,7 +77,7 @@ unsafe extern "C" fn read_i32(ap: &mut VaList<'_>) -> i32 {
     // WASM64-NEXT: local.get 1
     // WASM64-NEXT: i32.load 0
     // WASM64-NEXT: end_function
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -133,7 +109,7 @@ unsafe extern "C" fn read_ptr(ap: &mut VaList<'_>) -> *const u8 {
     // WASM64-NEXT: local.get 1
     // WASM64-NEXT: i64.load 0
     // WASM64-NEXT: end_function
-    va_arg(ap)
+    ap.next_arg()
 }
 
 #[unsafe(no_mangle)]
@@ -169,7 +145,7 @@ unsafe extern "C" fn read_i64(ap: &mut VaList<'_>) -> i64 {
     // WASM64-NEXT: local.get 1
     // WASM64-NEXT: i64.load 0
     // WASM64-NEXT: end_function
-    va_arg(ap)
+    ap.next_arg()
 }
 
 // Clang and Rustc use a different ABI for i128 on wasm32, and LLVM optimizes differently if we use
@@ -220,5 +196,6 @@ unsafe extern "C" fn read_i128(out: *mut i128, ap: *mut VaList<'_>) {
     // WASM64-NEXT: i64.load 8
     // WASM64-NEXT: i64.store 8
     // WASM64-NEXT: end_function
-    *out = va_arg(mem::transmute(ap));
+    let ap = &mut *ap;
+    *out = ap.next_arg();
 }

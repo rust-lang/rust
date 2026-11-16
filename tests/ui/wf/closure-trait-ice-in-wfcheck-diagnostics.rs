@@ -9,8 +9,8 @@
 trait Tr {}
 trait Foo {
     fn foo() -> impl Sized
-    //~^ ERROR: expected an `FnOnce<&'a i32>` closure, found `()`
-    //~| ERROR: expected an `FnOnce<&'a i32>` closure, found `()`
+    //~^ ERROR: expected `FnOnce<&'a i32>` signature, found `()`
+    //~| ERROR: expected `FnOnce<&'a i32>` signature, found `()`
     where
         for<'a> <() as FnOnce<&'a i32>>::Output: Tr,
     {

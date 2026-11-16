@@ -1,5 +1,5 @@
 //@ run-pass
-//@ reference: cfg.predicate.literal
+//@ reference: cfg.predicate-literal
 
 #![feature(link_cfg)]
 

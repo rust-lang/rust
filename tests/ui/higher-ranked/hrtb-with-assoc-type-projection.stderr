@@ -15,7 +15,6 @@ note: required by a bound in `trigger_error`
   --> $DIR/hrtb-with-assoc-type-projection.rs:12:72
    |
 LL | pub fn trigger_error<I, F>(iterable: I, functor: F)
-   |        ------------- required by a bound in this function
 ...
 LL | for<'t> <Map<<&'t I as IntoIterator>::IntoIter, F> as Iterator>::Item: Foo,
    |                                                                        ^^^ required by this bound in `trigger_error`

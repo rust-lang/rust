@@ -1,6 +1,8 @@
 error[E0080]: evaluation panicked: called `Option::unwrap()` on a `None` value
   --> $DIR/hrtb.rs:15:25
    |
+LL | const _: () = {
+LL |     let x: Option<*const dyn for<'a> Foo<'a, 'a>> = None;
 LL |     let _dy: &dyn Bar = try_as_dyn(&x).unwrap();
    |                         ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
 

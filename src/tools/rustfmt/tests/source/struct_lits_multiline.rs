@@ -1,6 +1,6 @@
-// rustfmt-normalize_comments: true
-// rustfmt-wrap_comments: true
-// rustfmt-struct_lit_single_line: false
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-struct_lit_single_line: false
 
 // Struct literal expressions.
 

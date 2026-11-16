@@ -8,6 +8,7 @@ use rustc_abi::{Size, TyAndLayout};
 use rustc_middle::mir::interpret::{
     AllocId, AllocInit, AllocRange, Allocation, ConstAllocation, Pointer, Scalar, alloc_range,
 };
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{Ty, layout};
 
 use super::{CompilerCtxt, Tables};
@@ -18,8 +19,7 @@ pub fn create_ty_and_layout<'tcx, B: Bridge>(
     cx: &CompilerCtxt<'tcx, B>,
     ty: Ty<'tcx>,
 ) -> Result<TyAndLayout<'tcx, Ty<'tcx>>, &'tcx layout::LayoutError<'tcx>> {
-    use crate::context::TypingEnvHelpers;
-    cx.tcx.layout_of(cx.fully_monomorphized().as_query_input(ty))
+    cx.tcx.layout_of(cx.typing_env().as_query_input(ty))
 }
 
 pub fn try_new_scalar<'tcx, B: Bridge>(
@@ -28,7 +28,7 @@ pub fn try_new_scalar<'tcx, B: Bridge>(
     cx: &CompilerCtxt<'tcx, B>,
 ) -> Result<Allocation, B::Error> {
     let size = scalar.size();
-    let mut allocation = Allocation::new(size, layout.align.abi, AllocInit::Uninit, ());
+    let mut allocation = Allocation::new(size, layout.align, AllocInit::Uninit, ());
     allocation
         .write_scalar(&cx.tcx, alloc_range(Size::ZERO, size), scalar)
         .map_err(|e| B::Error::from_internal(e))?;
@@ -45,7 +45,7 @@ pub fn try_new_slice<'tcx, B: Bridge>(
     let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
     let scalar_ptr = Scalar::from_pointer(ptr, &cx.tcx);
     let scalar_meta: Scalar = Scalar::from_target_usize(meta, &cx.tcx);
-    let mut allocation = Allocation::new(layout.size, layout.align.abi, AllocInit::Uninit, ());
+    let mut allocation = Allocation::new(layout.size, layout.align, AllocInit::Uninit, ());
     let ptr_size = cx.tcx.data_layout.pointer_size();
     allocation
         .write_scalar(&cx.tcx, alloc_range(Size::ZERO, ptr_size), scalar_ptr)

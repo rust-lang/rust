@@ -1,0 +1,21 @@
+SOURCE_FILE
+  ENUM
+    ENUM_KW "enum"
+    WHITESPACE " "
+    NAME
+      IDENT "E"
+    WHITESPACE " "
+    VARIANT_LIST
+      L_CURLY "{"
+      ATTR
+        POUND "#"
+        L_BRACK "["
+        PATH_META
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "attr"
+        R_BRACK "]"
+      R_CURLY "}"
+  WHITESPACE "\n"
+error 15: expected enum variant

@@ -15,8 +15,7 @@ declare_clippy_lint! {
     /// This lint warns about the use of literals as `print!`/`println!` args.
     ///
     /// ### Why is this bad?
-    /// Using literals as `println!` args is inefficient
-    /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
+    /// Using literals as `println!` args is [inefficient] and unnecessary
     /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
@@ -27,6 +26,8 @@ declare_clippy_lint! {
     /// ```no_run
     /// println!("foo");
     /// ```
+    ///
+    /// [inefficient]: https://github.com/matthiaskrgr/rust-str-bench
     #[clippy::version = "pre 1.29.0"]
     pub PRINT_LITERAL,
     style,
@@ -153,8 +154,7 @@ declare_clippy_lint! {
     /// This lint warns about the use of literals as `write!`/`writeln!` args.
     ///
     /// ### Why is this bad?
-    /// Using literals as `writeln!` args is inefficient
-    /// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
+    /// Using literals as `writeln!` args is [inefficient] and unnecessary
     /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
@@ -170,6 +170,8 @@ declare_clippy_lint! {
     /// # let mut buf = String::new();
     /// writeln!(buf, "foo");
     /// ```
+    ///
+    /// [inefficient]: https://github.com/matthiaskrgr/rust-str-bench
     #[clippy::version = "pre 1.29.0"]
     pub WRITE_LITERAL,
     style,

@@ -65,7 +65,7 @@ fn cfg_attr_meta(p: &mut Parser<'_>, m: Marker) {
 
 const CFG_PREDICATE_FIRST_SET: TokenSet = TokenSet::new(&[T![true], T![false], T![ident]]);
 
-fn cfg_predicate(p: &mut Parser<'_>) {
+pub(super) fn cfg_predicate(p: &mut Parser<'_>) {
     let m = p.start();
     if p.eat(T![true]) || p.eat(T![false]) {
         // test cfg_true_false_pred

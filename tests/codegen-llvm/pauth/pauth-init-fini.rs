@@ -1,6 +1,5 @@
 // ignore-tidy-file-linelength
 //@ add-minicore
-//@ only-pauthtest
 //@ revisions: O0_PAUTH O3_PAUTH O0_PAUTH-ADDR-DISC O3_PAUTH-ADDR-DISC O0_PAUTH-NO-INIT-FINI O3_PAUTH-NO-INIT-FINI
 
 //@ [O0_PAUTH] needs-llvm-components: aarch64

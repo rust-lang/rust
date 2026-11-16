@@ -1,5 +1,5 @@
-// rustfmt-format_strings: true
-// rustfmt-newline_style: Windows
+//@ rustfmt-format_strings: true
+//@ rustfmt-newline_style: Windows
 
 #[test]
 fn compile_empty_program() {

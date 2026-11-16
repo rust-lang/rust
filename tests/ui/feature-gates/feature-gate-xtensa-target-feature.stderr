@@ -1,5 +1,5 @@
 error[E0658]: the target feature `bool` is currently unstable
-  --> $DIR/feature-gate-xtensa-target-feature.rs:12:18
+  --> $DIR/feature-gate-xtensa-target-feature.rs:11:18
    |
 LL | #[target_feature(enable = "bool")]
    |                  ^^^^^^^^^^^^^^^

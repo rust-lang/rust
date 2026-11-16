@@ -1,5 +1,5 @@
 use rustc_abi::Align;
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::PlaceContext;
@@ -58,8 +58,12 @@ fn insert_alignment_check<'tcx>(
 
     // Get the alignment of the pointee
     let align_def_id = tcx.require_lang_item(LangItem::AlignOf, source_info.span);
-    let alignment =
-        Operand::unevaluated_constant(tcx, align_def_id, &[pointee_ty.into()], source_info.span);
+    let alignment = Operand::unevaluated_constant(
+        tcx,
+        align_def_id,
+        tcx.mk_args(&[pointee_ty.into()]),
+        source_info.span,
+    );
 
     // Subtract 1 from the alignment to get the alignment mask
     let alignment_mask =

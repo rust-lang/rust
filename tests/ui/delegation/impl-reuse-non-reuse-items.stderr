@@ -1,6 +1,8 @@
 error[E0324]: item `CONST` is an associated method, which doesn't match its trait `Trait`
   --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
+LL |     trait Trait {
+LL |         fn method(&self);
 LL |         const CONST: u8;
    |         ---------------- item in trait
 ...
@@ -10,6 +12,8 @@ LL |     reuse impl Trait for S { &self.0 }
 error[E0324]: item `Type` is an associated method, which doesn't match its trait `Trait`
   --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
+LL |     trait Trait {
+...
 LL |         type Type;
    |         ---------- item in trait
 ...
@@ -19,6 +23,7 @@ LL |     reuse impl Trait for S { &self.0 }
 error[E0201]: duplicate definitions with name `method`:
   --> $DIR/impl-reuse-non-reuse-items.rs:22:5
    |
+LL |     trait Trait {
 LL |         fn method(&self);
    |         ----------------- item in trait
 ...

@@ -90,19 +90,19 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
 pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> io::Result<Vec<u16>> {
+        if s.as_encoded_bytes().contains(&0) {
+            return Err(io::const_error!(
+                io::ErrorKind::InvalidInput,
+                "strings passed to WinAPI cannot contain NULs",
+            ));
+        }
+
         // Most paths are ASCII, so reserve capacity for as much as there are bytes
         // in the OsStr plus one for the null-terminating character. We are not
         // wasting bytes here as paths created by this function are primarily used
         // in an ephemeral fashion.
         let mut maybe_result = Vec::with_capacity(s.len() + 1);
         maybe_result.extend(s.encode_wide());
-
-        if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(io::const_error!(
-                io::ErrorKind::InvalidInput,
-                "strings passed to WinAPI cannot contain NULs",
-            ));
-        }
         maybe_result.push(0);
         Ok(maybe_result)
     }
@@ -207,7 +207,7 @@ pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
 }
 
 pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
-    if s.as_ref().encode_wide().any(|b| b == 0) {
+    if s.as_ref().as_encoded_bytes().contains(&0) {
         Err(io::const_error!(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
         Ok(s)
@@ -275,7 +275,7 @@ pub fn abort_internal() -> ! {
                 core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
             }
             _ => {
-                core::intrinsics::abort();
+                core::intrinsics::abort_immediate();
             }
         }
     }
@@ -284,7 +284,7 @@ pub fn abort_internal() -> ! {
 #[cfg(miri)]
 #[track_caller] // even without panics, this helps for Miri backtraces
 pub fn abort_internal() -> ! {
-    crate::intrinsics::abort();
+    crate::intrinsics::abort_immediate();
 }
 
 /// Align the inner value to 8 bytes.

@@ -1,11 +1,10 @@
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
-use rustc_middle::ty::relate::solver_relating::RelateExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -16,6 +15,7 @@ use super::{
     ReborrowDataField, assert_field_type_is_copy, collect_reborrow_data_fields, field_type_is_copy,
     field_type_is_reborrow, trait_impl_lifetime_params_count,
 };
+use crate::coherence::builtin::generic_lifetime_params_count;
 use crate::diagnostics;
 
 #[derive(Clone, Copy)]
@@ -131,14 +131,14 @@ fn first_explicit_lifetime_span_in_ambig_ty(ty: &hir::Ty<'_, hir::AmbigArg>) -> 
 
 fn first_explicit_lifetime_span_in_ty(ty: &hir::Ty<'_>) -> Option<Span> {
     match ty.kind {
-        hir::TyKind::Ref(lifetime, mut_ty) => first_explicit_lifetime_span(lifetime)
-            .or_else(|| first_explicit_lifetime_span_in_ty(mut_ty.ty)),
+        hir::TyKind::Ref(lifetime, ty, _) => first_explicit_lifetime_span(lifetime)
+            .or_else(|| first_explicit_lifetime_span_in_ty(ty)),
         hir::TyKind::Slice(ty)
         | hir::TyKind::Array(ty, _)
         | hir::TyKind::Pat(ty, _)
         | hir::TyKind::FieldOf(ty, _)
         | hir::TyKind::View(ty, _) => first_explicit_lifetime_span_in_ty(ty),
-        hir::TyKind::Ptr(mut_ty) => first_explicit_lifetime_span_in_ty(mut_ty.ty),
+        hir::TyKind::Ptr(ty, _) => first_explicit_lifetime_span_in_ty(ty),
         hir::TyKind::Tup(tys) => tys.iter().find_map(first_explicit_lifetime_span_in_ty),
         hir::TyKind::Path(qpath) => first_explicit_lifetime_span_in_qpath(qpath),
         hir::TyKind::TraitObject(bounds, lifetime) => bounds
@@ -240,10 +240,8 @@ pub(super) fn coerce_shared_info<'tcx>(
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
-    if trait_impl_lifetime_params_count(tcx, impl_did) != 1 {
-        return Err(tcx
-            .dcx()
-            .emit_err(diagnostics::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
+    if trait_impl_lifetime_params_count(tcx, impl_did) == 0 {
+        return Err(tcx.dcx().emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
     }
 
     assert_eq!(trait_ref.def_id, coerce_shared_trait);
@@ -267,25 +265,12 @@ pub(super) fn coerce_shared_info<'tcx>(
         (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
-            let a_lifetime = single_region_arg(args_a);
-            let b_lifetime = single_region_arg(args_b);
-
-            if a_lifetime.is_none() || b_lifetime.is_none() {
-                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMulti {
-                    span: diagnostic_context.trait_span,
-                    trait_name,
-                }));
+            let lifetimes_count = generic_lifetime_params_count(args_a.as_slice());
+            if lifetimes_count == 0 {
+                return Err(tcx
+                    .dcx()
+                    .emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
             }
-
-            if a_lifetime != b_lifetime {
-                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedLifetimeMismatch {
-                    span: diagnostic_context.trait_span,
-                    source_lifetime_span: diagnostic_context.source_lifetime_span,
-                    target_lifetime_span: diagnostic_context.target_lifetime_span,
-                    trait_name,
-                }));
-            }
-
             validate_reborrow_field_access(
                 tcx,
                 impl_did,
@@ -342,21 +327,15 @@ enum CoerceSharedFieldPairError<'tcx> {
     MissingSourceField { target: ReborrowDataField<'tcx> },
 }
 
-fn single_region_arg<'tcx>(args: ty::GenericArgsRef<'tcx>) -> Option<ty::Region<'tcx>> {
-    let mut lifetimes = args.iter().filter_map(|arg| arg.as_region());
-    let lifetime = lifetimes.next()?;
-    lifetimes.next().is_none().then_some(lifetime)
-}
-
 // This is a coherence/WF check only. It verifies that the CoerceShared impl
 // describes a structurally valid field-wise relation. Runtime lowering of the
 // operation is not modeled here.
 fn collect_coerce_shared_field_pairs<'tcx>(
     tcx: TyCtxt<'tcx>,
     source_def: ty::AdtDef<'tcx>,
-    source_args: ty::GenericArgsRef<'tcx>,
+    source_args: ty::GenericArgs<'tcx>,
     target_def: ty::AdtDef<'tcx>,
-    target_args: ty::GenericArgsRef<'tcx>,
+    target_args: ty::GenericArgs<'tcx>,
 ) -> Result<CoerceSharedFields<'tcx>, CoerceSharedFieldPairError<'tcx>> {
     let source_variant = source_def.non_enum_variant();
     let target_variant = target_def.non_enum_variant();
@@ -400,29 +379,20 @@ fn validate_reborrow_field_access(
 ) -> Result<(), ErrorGuaranteed> {
     let module = tcx.parent_module_from_def_id(impl_did);
     let variant = def.non_enum_variant();
-    if variant.field_list_has_applicable_non_exhaustive() {
-        return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
+
+    if variant.field_list_has_applicable_non_exhaustive()
+        || variant.fields.iter().any(|f| !f.vis.is_accessible_from(module, tcx))
+    {
+        Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
             span: diagnostic_context.impl_span,
             type_span: role.type_span(diagnostic_context),
             trait_name,
             role: role.as_str(),
             type_name: tcx.item_name(def.did()),
-        }));
+        }))
+    } else {
+        Ok(())
     }
-
-    for field in &variant.fields {
-        if !field.vis.is_accessible_from(module, tcx) {
-            return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedInaccessibleField {
-                span: diagnostic_context.impl_span,
-                type_span: role.type_span(diagnostic_context),
-                trait_name,
-                role: role.as_str(),
-                type_name: tcx.item_name(def.did()),
-            }));
-        }
-    }
-
-    Ok(())
 }
 
 fn validate_coerce_shared_fields<'tcx>(
@@ -434,9 +404,9 @@ fn validate_coerce_shared_fields<'tcx>(
     span: Span,
     diagnostic_context: CoerceSharedDiagnosticContext,
     source_def: ty::AdtDef<'tcx>,
-    source_args: ty::GenericArgsRef<'tcx>,
+    source_args: ty::GenericArgs<'tcx>,
     target_def: ty::AdtDef<'tcx>,
-    target_args: ty::GenericArgsRef<'tcx>,
+    target_args: ty::GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
     let fields = match collect_coerce_shared_field_pairs(
@@ -519,9 +489,9 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
     span: Span,
     diagnostic_context: CoerceSharedDiagnosticContext,
     source_def: ty::AdtDef<'tcx>,
-    source_args: ty::GenericArgsRef<'tcx>,
+    source_args: ty::GenericArgs<'tcx>,
     target_def: ty::AdtDef<'tcx>,
-    target_args: ty::GenericArgsRef<'tcx>,
+    target_args: ty::GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
     let source_non_zst_fields =
@@ -588,7 +558,7 @@ fn non_zst_reborrow_data_fields<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     def: ty::AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> Vec<ReborrowDataField<'tcx>> {
     let tcx = infcx.tcx;
     collect_reborrow_data_fields(tcx, def, args)
@@ -760,6 +730,9 @@ enum FieldRelation {
 // instantiating a field can expose projections. Each candidate relation uses a
 // fresh inference context, so failed checks cannot affect the next one; this
 // intentionally normalizes the fields for each check.
+//
+// FIXME(field_projections): This function should take `Unnormalized<Ty<'tcx>>` for
+// `source_ty` and `target_ty`.
 fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
@@ -783,9 +756,18 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
         return false;
     }
 
+    // impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
+    //
+    // We expect all fields of `Source<'a>` to be one of:
+    // 1. `CoreceShared<TargetField<'b>>`: this is handled separately
+    // 2. assignable to target field: this is checked with a covariant .relate() call.
+    // 3. `&'a mut T` assigned to `&'b T`: this is checked below with .sub_regions() and .sup().
     match relation {
         FieldRelation::Equal => {
-            if infcx.relate(param_env, source_ty, ty::Variance::Invariant, target_ty, span).is_err()
+            if infcx
+                .at(&cause, param_env)
+                .relate(DefineOpaqueTypes::Yes, source_ty, ty::Variance::Covariant, target_ty)
+                .is_err()
             {
                 return false;
             }
@@ -798,9 +780,15 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
             else {
                 return false;
             };
-            if source_region != target_region {
-                return false;
-            }
+            // Here we're effectively checking assignability of `&'source_region mut T` to
+            // `&'target_region T`, so we require `'source_region: 'target_region` using
+            // `.sub_regions()` and the `T`'s to be unifiable with `.sup()`.
+            infcx.sub_regions(
+                SubregionOrigin::Reborrow(span),
+                target_region,
+                source_region,
+                ty::VisibleForLeakCheck::Yes,
+            );
             if ocx.sup(&cause, param_env, target_referent_ty, source_referent_ty).is_err() {
                 return false;
             }

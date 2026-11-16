@@ -47,7 +47,7 @@ use crate::sys::sync as sys;
 /// ```
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonMutex")]
-pub struct Mutex<T: ?Sized> {
+pub struct Mutex<#[rustc_assert_variance(invariant)] T: ?Sized> {
     inner: sys::Mutex,
     data: UnsafeCell<T>,
 }
@@ -96,7 +96,10 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 #[clippy::has_significant_drop]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonMutexGuard")]
-pub struct MutexGuard<'a, T: ?Sized + 'a> {
+pub struct MutexGuard<
+    #[rustc_assert_variance(covariant)] 'a,
+    #[rustc_assert_variance(invariant)] T: ?Sized + 'a,
+> {
     lock: &'a Mutex<T>,
 }
 
@@ -138,7 +141,10 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 // #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 #[clippy::has_significant_drop]
-pub struct MappedMutexGuard<'a, T: ?Sized + 'a> {
+pub struct MappedMutexGuard<
+    #[rustc_assert_variance(covariant)] 'a,
+    #[rustc_assert_variance(invariant)] T: ?Sized + 'a,
+> {
     // NB: we use a pointer instead of `&'a mut T` to avoid `noalias` violations, because a
     // `MappedMutexGuard` argument doesn't hold uniqueness for its whole scope, only until it drops.
     // `NonNull` is covariant over `T`, so we add a `PhantomData<&'a mut T>` field

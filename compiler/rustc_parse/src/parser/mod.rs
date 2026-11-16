@@ -27,7 +27,7 @@ pub(crate) use function::{FnContext, FnParseMode, FrontMatterParsingMode, IsDotD
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 use rustc_ast::token::{
-    self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
+    self, IdentKind, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{
     ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
@@ -125,6 +125,9 @@ bitflags::bitflags! {
         /// expression, but halts parsing the expression when reaching certain
         /// tokens like `=`.
         const IS_PAT            = 1 << 5;
+        /// Used to detect a missing `else` in a let statement.
+        /// e.g. let Some(foo) = bar{return;};
+        const IN_LET            = 1 << 6;
     }
 }
 
@@ -212,7 +215,7 @@ pub struct Parser<'a> {
     // token. For example, capturing the `Vec<u8>` in `Option<Vec<u8>>`
     // requires us to unglue the trailing `>>` token. The `break_last_token`
     // field is used to track these tokens. They get appended to the captured
-    // stream when we evaluate a `LazyAttrTokenStream`.
+    // stream when we evaluate a `LazyTokenStream`.
     //
     // This value is always 0, 1, or 2. It can only reach 2 when splitting
     // `>>=` or `<<=`.
@@ -257,14 +260,12 @@ struct ClosureSpans {
     body: Span,
 }
 
-/// Controls how we capture tokens. Capturing can be expensive,
-/// so we try to avoid performing capturing in cases where
-/// we will never need an `AttrTokenStream`.
+/// Controls how we capture tokens. Capturing can be expensive, so we avoid it when possible.
 #[derive(Copy, Clone, Debug)]
 enum Capturing {
     /// We aren't performing any capturing - this is the default mode.
     No,
-    /// We are capturing tokens
+    /// We are capturing tokens.
     Yes,
 }
 
@@ -454,21 +455,23 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(recover)?;
+        let (ident, kind) = self.ident_or_err(recover)?;
 
-        if is_raw == IdentIsRaw::No && ident.is_reserved() {
+        if token::ident_of_kind_is_reserved(ident, kind) {
             let err = self.expected_ident_found_err();
-            if recover {
+            if recover && kind != IdentKind::ForcedKeyword {
                 err.emit();
             } else {
                 return Err(err);
             }
         }
+
         self.bump();
+
         Ok(ident)
     }
 
-    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentIsRaw)> {
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentKind)> {
         match self.token.ident() {
             Some(ident) => Ok(ident),
             None => self.expected_ident_found(recover),
@@ -550,7 +553,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -582,7 +585,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp) {
             true
         } else if case == Case::Insensitive
-            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
+            && let Some(ident) = self.token.non_raw_ident()
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
@@ -625,6 +628,15 @@ impl<'a> Parser<'a> {
     /// Otherwise, eats it.
     pub fn expect_keyword(&mut self, exp: ExpKeywordPair) -> PResult<'a, ()> {
         if !self.eat_keyword(exp) { self.unexpected() } else { Ok(()) }
+    }
+
+    #[must_use]
+    pub(crate) fn eat_forced_keyword_noexpect(&mut self, kw: Symbol) -> bool {
+        if self.token.is_forced_keyword(kw) {
+            self.bump();
+            return true;
+        }
+        false
     }
 
     /// Consume a sequence produced by a metavar expansion, if present.
@@ -719,7 +731,10 @@ impl<'a> Parser<'a> {
 
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match t.uninterpolate().kind {
-                token::Ident(kw::Move | kw::Use | kw::Static, IdentIsRaw::No)
+                token::Ident(
+                    kw::Move | kw::Use | kw::Static,
+                    IdentKind::Normal | IdentKind::ForcedKeyword,
+                )
                 | token::OrOr
                 | token::Or => true,
                 _ => false,
@@ -1086,7 +1101,7 @@ impl<'a> Parser<'a> {
     /// Parses a comma-separated sequence, including both delimiters.
     /// The function `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    pub fn parse_delim_comma_seq<T>(
+    fn parse_delim_comma_seq<T>(
         &mut self,
         open: ExpTokenPair,
         close: ExpTokenPair,
@@ -1289,7 +1304,7 @@ impl<'a> Parser<'a> {
                 .with_help(
                     "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
                 )
-                .emit();
+                .emit_err();
             ExprKind::Err(guar)
         } else {
             ExprKind::ConstBlock(anon_const)
@@ -1336,7 +1351,7 @@ impl<'a> Parser<'a> {
     /// ```enbf
     /// FieldName = IntLit | Ident
     /// ```
-    pub fn parse_field_name(&mut self) -> PResult<'a, Ident> {
+    fn parse_field_name(&mut self) -> PResult<'a, Ident> {
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
             if let Some(suffix) = suffix {
@@ -1795,7 +1810,7 @@ impl<'a> Parser<'a> {
                 ";",
                 Applicability::MaybeIncorrect,
             );
-            return Some((lhs.span, err.emit()));
+            return Some((lhs.span, err.emit_err()));
         }
         None
     }
@@ -1809,8 +1824,8 @@ impl<'a> Parser<'a> {
 #[derive(Clone, Debug)]
 pub enum ParseNtResult {
     Tt(TokenTree),
-    Ident(Ident, IdentIsRaw),
-    Lifetime(Ident, IdentIsRaw),
+    Ident(Ident, IdentKind),
+    Lifetime(Ident, IdentKind),
     Item(Box<ast::Item>),
     Block(WithTokens<Box<ast::Block>>),
     Stmt(Box<ast::Stmt>),

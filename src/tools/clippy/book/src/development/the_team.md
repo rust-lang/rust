@@ -127,3 +127,26 @@ you to the alumni group. You're always welcome to come back.
 [calendar repository]: https://github.com/rust-lang/calendar/blob/main/clippy.toml
 [clippy.ics]: https://rust-lang.github.io/calendar/clippy.ics
 [labeling with @rustbot]: https://forge.rust-lang.org/triagebot/labeling.html
+
+
+### Final Comment Period (FCPs)
+
+Team members can nominate lints (or other big changes) for inclusion via
+the [`lint-nominated`] label or via `@rustbot label +lint-nominated`.
+Triagebot then opens a thread in Zulip and the rest of the team discusses it.
+
+Although anyone can vote on an FCP and raise concerns, and this is encouraged
+even for non-members, only team votes are accounted towards FCP resolution.
+
+----
+
+An FCP can only be closed if:
+
+1. 2 Team members have accepted it (including the one who opened it).
+2. A grace period of 1 to 2 weeks has passed.
+3. All concerns are resolved.
+
+If an FCP goes stale or does not meet the necessary votes for it to be closed,
+it can also be nominated for discussion in a meeting.
+
+[`lint-nominated`]: https://github.com/rust-lang/rust-clippy/pulls?q=sort%3Aupdated-desc+is%3Apr+state%3Aopen+label%3Alint-nominated

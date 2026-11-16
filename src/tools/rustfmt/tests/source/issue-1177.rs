@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 fn main() {
     // Line Comment
     /* Block Comment */

@@ -1,6 +1,4 @@
 //@ run-pass
-//@ reference: items.union.common-storage
-//@ reference: type.union.access
 
 union U {
     a: (u8, u8),
@@ -25,3 +23,7 @@ fn main() {
         assert_eq!(w.a, 0b1_11111111_00000000000000000000000);
     }
 }
+
+//@ reference: items.union.common-storage
+//@ reference: items.union.fields.intro
+//@ reference: type.union.access

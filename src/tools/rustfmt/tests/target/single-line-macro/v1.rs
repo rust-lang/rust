@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2015
+//@ rustfmt-style_edition: 2015
 
 // #2652
 // Preserve trailing comma inside macro, even if it looks an array.

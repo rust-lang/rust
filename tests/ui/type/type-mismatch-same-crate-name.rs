@@ -16,17 +16,18 @@ fn main() {
         extern crate crate_a1 as a;
         a::try_foo(foo2);
         //~^ ERROR mismatched types
-        //~| NOTE expected `main::a::Foo`, found a different `main::a::Foo`
+        //~| NOTE expected `crate_a1::Foo`, found `crate_a2::Foo`
         //~| NOTE arguments to this function are incorrect
-        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
+        //~| NOTE `crate_a2::Foo` and `crate_a1::Foo` have similar names, but are actually distinct types
+        //~| NOTE `crate_a2::Foo` is defined in crate `crate_a2`
+        //~| NOTE `crate_a1::Foo` is defined in crate `crate_a1`
         //~| NOTE function defined here
-        //~| HELP you can use `cargo tree` to explore your dependency tree
         a::try_bar(bar2);
         //~^ ERROR mismatched types
-        //~| NOTE expected trait `main::a::Bar`, found a different trait `main::a::Bar`
+        //~| NOTE expected trait `crate_a1::Bar`, found trait `crate_a2::Bar`
         //~| NOTE arguments to this function are incorrect
-        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
+        //~| NOTE expected struct `Box<(dyn crate_a1::Bar + 'static)>`
+        //~| NOTE    found struct `Box<dyn crate_a2::Bar>`
         //~| NOTE function defined here
-        //~| HELP you can use `cargo tree` to explore your dependency tree
     }
 }

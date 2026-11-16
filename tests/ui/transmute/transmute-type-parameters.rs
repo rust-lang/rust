@@ -1,5 +1,7 @@
 // Tests that `transmute` cannot be called on type parameters.
-
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 use std::mem::transmute;
 
 unsafe fn f<T>(x: T) {

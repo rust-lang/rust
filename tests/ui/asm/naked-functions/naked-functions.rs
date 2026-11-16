@@ -224,7 +224,7 @@ pub extern "C" fn compatible_doc_attributes() {
     naked_asm!("", options(raw));
 }
 
-#[linkage = "external"]
+#[linkage = "weak"]
 #[unsafe(naked)]
 pub extern "C" fn compatible_linkage() {
     naked_asm!("", options(raw));

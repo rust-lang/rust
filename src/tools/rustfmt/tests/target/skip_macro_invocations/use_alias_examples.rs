@@ -1,4 +1,4 @@
-// rustfmt-skip_macro_invocations: ["aaa","ccc"]
+//@ rustfmt-skip_macro_invocations: ["aaa","ccc"]
 
 // These tests demonstrate a realistic use case with use aliases.
 // The use statements should not impact functionality in any way.

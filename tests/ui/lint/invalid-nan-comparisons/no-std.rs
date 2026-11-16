@@ -1,0 +1,18 @@
+//@ check-pass
+//@ run-rustfix
+//@ compile-flags: --crate-type=lib
+
+#![no_std]
+
+pub type MacroFloat = ::core::primitive::f64;
+
+#[allow(non_camel_case_types)]
+pub struct f64;
+
+pub fn check() {
+    #[allow(unused_macros)]
+    macro_rules! nan { () => { $crate::MacroFloat::NAN }; }
+    let b = &3.3;
+    let _ = b != &nan!();
+    //~^ WARN incorrect NaN comparison
+}

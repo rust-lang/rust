@@ -1,5 +1,5 @@
-// rustfmt-float_literal_trailing_zero: Preserve
-// rustfmt-spaces_around_ranges: true
+//@ rustfmt-float_literal_trailing_zero: Preserve
+//@ rustfmt-spaces_around_ranges: true
 
 fn float_literals() {
     let a = 0.;

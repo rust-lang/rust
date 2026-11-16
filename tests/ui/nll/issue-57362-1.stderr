@@ -10,6 +10,8 @@ note: `Trait` defines an item `f`, perhaps you need to implement it
    |
 LL | trait Trait {
    | ^^^^^^^^^^^
+LL |     fn f(self);
+   |
 
 error: aborting due to 1 previous error
 

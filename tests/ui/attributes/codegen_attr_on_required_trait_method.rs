@@ -11,7 +11,7 @@ trait Test {
     //~^ ERROR cannot be used on required trait methods [unused_attributes]
     //~| WARN previously accepted
     fn method2(&self);
-    #[linkage = "common"]
+    #[linkage = "weak"]
     //~^ ERROR `linkage` attribute cannot be used on required trait methods
     fn method3(&self);
     #[track_caller]

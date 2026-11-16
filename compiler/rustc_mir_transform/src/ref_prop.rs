@@ -335,7 +335,7 @@ fn compute_replacement<'tcx>(
                     //
                     // This also allows to detect cases where `target.local` is not replaceable,
                     // and mark it as such.
-                    if let &[PlaceElem::Deref] = &target.projection[..] {
+                    if target.is_indirect_first_projection() {
                         assert!(perform_opt);
                         self.allowed_replacements.insert((target.local, loc));
                         place.local = target.local;

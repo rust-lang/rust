@@ -1,4 +1,4 @@
-#![feature(panic_handler, alloc_error_handler)]
+#![feature(alloc_error_handler)]
 #![crate_type = "cdylib"]
 #![no_std]
 
@@ -30,5 +30,14 @@ fn a(_: core::alloc::Layout) -> ! {
 
 #[panic_handler]
 fn b(_: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
+#[cfg(target_env = "p3")]
+#[no_mangle]
+pub extern "C" fn __wasm_task_hook(_: u32) {}
+#[cfg(target_env = "p3")]
+#[no_mangle]
+pub extern "C" fn cabi_realloc(_: *mut u8, _: usize, _: usize, _: usize) -> *mut u8 {
     loop {}
 }

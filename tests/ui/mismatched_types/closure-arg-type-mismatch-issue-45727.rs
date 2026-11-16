@@ -5,8 +5,8 @@
 fn main() {
     let _ = (-10..=10).find(|x: i32| x.signum() == 0);
     //[current]~^ ERROR type mismatch in closure arguments
-    //[next]~^^ ERROR: expected an `FnMut(&{integer})` closure, found
+    //[next]~^^ ERROR: expected `FnMut(&{integer})` signature, found
     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
     //[current]~^ ERROR type mismatch in closure arguments
-    //[next]~^^ ERROR: expected an `FnMut(&{integer})` closure, found
+    //[next]~^^ ERROR: expected `FnMut(&{integer})` signature, found
 }

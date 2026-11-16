@@ -1,5 +1,5 @@
 error: `#[eii]` cannot be used on statics with a value on Apple targets
-  --> $DIR/default_apple.rs:7:25
+  --> $DIR/default_apple.rs:6:25
    |
 LL | pub static DECL1: u64 = 5;
    |                         ^

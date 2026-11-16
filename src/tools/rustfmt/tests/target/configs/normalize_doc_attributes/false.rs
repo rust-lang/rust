@@ -1,4 +1,4 @@
-// rustfmt-normalize_doc_attributes: false
+//@ rustfmt-normalize_doc_attributes: false
 // Normalize doc attributes
 
 #![doc = " Example documentation"]

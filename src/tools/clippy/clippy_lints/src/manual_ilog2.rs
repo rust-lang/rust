@@ -53,7 +53,7 @@ impl LateLintPass<'_> for ManualIlog2 {
         match expr.kind {
             // `BIT_WIDTH - 1 - n.leading_zeros()`
             ExprKind::Binary(op, left, right)
-                if left.span.eq_ctxt(right.span)
+                if left.span.ctxt() == right.span.ctxt()
                     && op.node == BinOpKind::Sub
                     && let ExprKind::Lit(lit) = left.kind
                     && let LitKind::Int(Pu128(val), _) = lit.node
@@ -80,7 +80,7 @@ impl LateLintPass<'_> for ManualIlog2 {
 
             // `n.ilog(2)`
             ExprKind::MethodCall(ilog, recv, [two], _)
-                if expr.span.eq_ctxt(two.span)
+                if expr.span.ctxt() == two.span.ctxt()
                     && ilog.ident.name == sym::ilog
                     && let ExprKind::Lit(lit) = two.kind
                     && let LitKind::Int(Pu128(2), _) = lit.node

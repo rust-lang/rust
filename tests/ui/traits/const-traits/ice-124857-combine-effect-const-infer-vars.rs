@@ -1,5 +1,3 @@
-//@ compile-flags: -Znext-solver=coherence
-
 #![feature(const_trait_impl)]
 
 const trait Foo {}

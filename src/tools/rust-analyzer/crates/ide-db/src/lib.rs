@@ -183,6 +183,8 @@ impl SourceDatabase for RootDatabase {
     }
 }
 
+hir::impl_hir_database!(RootDatabase);
+
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
         RootDatabase::new(None)

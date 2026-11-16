@@ -1,7 +1,7 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 #![deny(warnings)]
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{rfs, rustc, wasm};
 
 fn main() {
     test("a");
@@ -15,14 +15,15 @@ fn test(cfg: &str) {
 
     rustc()
         .input("foo.rs")
-        .target("wasm32-wasip1")
         .arg("-Clto")
+        .arg("-Cpanic=abort")
         .arg("-Cstrip=debuginfo")
         .opt()
         .cfg(cfg)
         .run();
 
     let bytes = rfs::read("foo.wasm");
-    println!("{}", bytes.len());
-    assert!(bytes.len() < 45_000, "bytes len was: {}", bytes.len());
+    let size = wasm::wasm_binary_size(&bytes);
+    println!("{size}");
+    assert!(size < 60_000, "bytes len was: {size}");
 }

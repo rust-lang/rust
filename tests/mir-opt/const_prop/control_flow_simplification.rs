@@ -13,6 +13,7 @@ impl<This> NeedsDrop for This {}
 fn hello<T>() {
     // CHECK-LABEL: fn hello(
     // CHECK: bb0:
+    // CHECK-NEXT: _0 = const ();
     // CHECK-NEXT: return;
     if <bool>::NEEDS {
         panic!()

@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-max_width: 89
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 89
 
 // Code block in doc comments that will exceed max width.
 /// ```rust

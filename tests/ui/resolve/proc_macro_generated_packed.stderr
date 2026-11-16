@@ -8,9 +8,7 @@ LL | struct Dealigned<T>(u8, T);
    |                         ^
 
 
-builtin derive created an unaligned reference
-error: the compiler unexpectedly panicked. This is a bug
-
+Box<dyn Any>
 query stack during panic:
 #0 [mir_built] building MIR for `<impl at $DIR/proc_macro_generated_packed.rs:16:10: 16:19>::eq`
 #1 [check_unsafety] unsafety-checking `<impl at $DIR/proc_macro_generated_packed.rs:16:10: 16:19>::eq`

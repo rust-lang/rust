@@ -11,7 +11,7 @@ use crate::{DebruijnIndex, TypeFlags};
 /// A helper type that you can wrap round your own type in order to automatically
 /// cache the type flags and debruijn index on creation and not recompute it
 /// whenever the information is needed.
-#[derive(Copy, Clone, GenericTypeVisitable)]
+#[derive(Copy, Clone, Debug, GenericTypeVisitable)]
 pub struct WithCachedTypeInfo<T> {
     pub internee: T,
 

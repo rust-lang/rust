@@ -4,7 +4,11 @@ error[E0282]: type annotations needed
 LL |     needs_send::<Foo>();
    |     ^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `needs_send`
    |
-   = note: cannot infer type of hidden type of opaque
+note: cannot infer type of hidden type of opaque
+  --> $DIR/dont-type_of-tait-in-defining-scope.rs:10:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

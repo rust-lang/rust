@@ -55,6 +55,17 @@ impl From<MacroKind> for MacroKinds {
 }
 
 impl MacroKinds {
+    // Constants to allow easy pattern-matching on any combination.
+    /// `ATTR | BANG`
+    pub const ATTR_BANG: MacroKinds = MacroKinds::ATTR.union(MacroKinds::BANG);
+    /// `DERIVE | BANG`
+    pub const DERIVE_BANG: MacroKinds = MacroKinds::DERIVE.union(MacroKinds::BANG);
+    /// `DERIVE | ATTR`
+    pub const DERIVE_ATTR: MacroKinds = MacroKinds::DERIVE.union(MacroKinds::ATTR);
+    /// `DERIVE | ATTR | BANG`
+    pub const DERIVE_ATTR_BANG: MacroKinds =
+        MacroKinds::DERIVE.union(MacroKinds::ATTR).union(MacroKinds::BANG);
+
     /// Convert the MacroKinds to a static string.
     ///
     /// This hardcodes all the possibilities, in order to return a static string.
@@ -64,10 +75,10 @@ impl MacroKinds {
             Self::BANG => "macro",
             Self::ATTR => "attribute macro",
             Self::DERIVE => "derive macro",
-            _ if self == (Self::ATTR | Self::BANG) => "attribute/function macro",
-            _ if self == (Self::DERIVE | Self::BANG) => "derive/function macro",
-            _ if self == (Self::ATTR | Self::DERIVE) => "attribute/derive macro",
-            _ if self.is_all() => "attribute/derive/function macro",
+            Self::ATTR_BANG => "attribute/function macro",
+            Self::DERIVE_BANG => "derive/function macro",
+            Self::DERIVE_ATTR => "attribute/derive macro",
+            Self::DERIVE_ATTR_BANG => "attribute/derive/function macro",
             _ if self.is_empty() => "useless macro",
             _ => unreachable!(),
         }
@@ -574,6 +585,25 @@ pub enum Res<Id = HirId> {
     ///
     /// **Not bound to a specific namespace.**
     Err,
+}
+
+impl Res {
+    pub fn in_namespace(self) -> PerNS<Option<Res>> {
+        match self {
+            Res::Def(DefKind::Mod | DefKind::Trait, _) => {
+                PerNS { type_ns: Some(self), value_ns: None, macro_ns: None }
+            }
+            Res::Def(DefKind::Enum, _) => {
+                PerNS { type_ns: None, value_ns: Some(self), macro_ns: None }
+            }
+            Res::Err => {
+                // Propagate the error to all namespaces, just to be sure.
+                let err = Some(Res::Err);
+                PerNS { type_ns: err, value_ns: err, macro_ns: err }
+            }
+            _ => panic!("bad path segment res {self:?}"),
+        }
+    }
 }
 
 impl<Id> IntoDiagArg for Res<Id> {

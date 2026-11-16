@@ -1,7 +1,7 @@
 //@ run-pass
-#![allow(improper_ctypes, improper_ctypes_definitions)]
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct S {
     x: u64,
     y: u64,

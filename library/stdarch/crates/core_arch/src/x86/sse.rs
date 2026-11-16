@@ -3,7 +3,7 @@
 use crate::{
     core_arch::{simd::*, x86::*},
     intrinsics::simd::*,
-    intrinsics::sqrtf32,
+    intrinsics::sqrt,
     mem, ptr,
 };
 
@@ -123,7 +123,7 @@ pub const fn _mm_div_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(sqrtss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_sqrt_ss(a: __m128) -> __m128 {
-    unsafe { simd_insert!(a, 0, sqrtf32(_mm_cvtss_f32(a))) }
+    unsafe { simd_insert!(a, 0, sqrt(_mm_cvtss_f32(a))) }
 }
 
 /// Returns the square root of packed single-precision (32-bit) floating-point

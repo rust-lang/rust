@@ -89,6 +89,8 @@ LL |     reuse X::<usize>::foo_self as foo_self1;
 note: method defined here
   --> $DIR/inherent-impls-ambig.rs:13:12
    |
+LL |     impl X<usize> {
+LL |         fn foo() {}
 LL |         fn foo_self(self) {}
    |            ^^^^^^^^ ----
 help: provide the argument

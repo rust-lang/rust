@@ -10,9 +10,10 @@
 use run_make_support::{diff, rust_lib_name, rustc};
 
 fn main() {
-    rustc().input("foo-prev.rs").run();
+    rustc().edition("2015").input("foo-prev.rs").run();
 
     let out = rustc()
+        .edition("2015")
         .extra_filename("current")
         .metadata("current")
         .input("foo-current.rs")

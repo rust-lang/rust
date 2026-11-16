@@ -10,7 +10,7 @@ trait Fun {
 
 impl<T> Fun for T {
     type F<'a> = Self;
-    //~^ ERROR expected an `Fn()` closure, found `T`
+    //~^ ERROR expected `Fn()` signature, found `T`
 }
 
 fn main() {

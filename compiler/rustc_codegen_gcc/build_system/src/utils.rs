@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
+use std::io::{BufReader, Read};
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output};
+use std::process::{Command, ExitStatus, Output, Stdio};
 
 fn exec_command(
     input: &[&dyn AsRef<OsStr>],
@@ -47,7 +48,7 @@ pub(crate) fn get_command_inner(
     command
 }
 
-fn check_exit_status(
+pub(crate) fn check_exit_status(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
     exit_status: ExitStatus,
@@ -115,6 +116,30 @@ pub fn run_command_with_output(
     check_exit_status(input, cwd, exit_status, None, true)
 }
 
+pub fn run_command_with_output_and_get_it(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+) -> Result<(ExitStatus, String), String> {
+    let mut child = get_command_inner(input, cwd, None)
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| command_error(input, &cwd, e))?;
+
+    let stderr = child.stderr.take().expect("Failed to capture stderr");
+    let mut captured = String::new();
+    BufReader::new(stderr).read_to_string(&mut captured).expect("failed to read stderr");
+
+    let status = child.wait().map_err(|e| command_error(input, &cwd, e))?;
+    #[cfg(unix)]
+    {
+        if let Some(signal) = status.signal() {
+            // In case the signal didn't kill the current process.
+            return Err(command_error(input, &cwd, format!("Process received signal {signal}")));
+        }
+    }
+    Ok((status, captured))
+}
+
 pub fn run_command_with_output_and_env(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
@@ -124,7 +149,6 @@ pub fn run_command_with_output_and_env(
     check_exit_status(input, cwd, exit_status, None, true)
 }
 
-#[cfg(not(unix))]
 pub fn run_command_with_output_and_env_no_err(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
@@ -132,6 +156,16 @@ pub fn run_command_with_output_and_env_no_err(
 ) -> Result<(), String> {
     let exit_status = exec_command(input, cwd, env)?;
     check_exit_status(input, cwd, exit_status, None, false)
+}
+
+pub fn run_command_with_env_no_err(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
+) -> Result<(), String> {
+    let output =
+        get_command_inner(input, cwd, env).output().map_err(|e| command_error(input, &cwd, e))?;
+    check_exit_status(input, cwd, output.status, None, false)
 }
 
 pub fn cargo_install(to_install: &str) -> Result<(), String> {
@@ -218,9 +252,9 @@ fn rustc_version_info_inner(
 }
 
 pub fn get_toolchain() -> Result<String, String> {
-    let content = match fs::read_to_string("rust-toolchain") {
+    let content = match fs::read_to_string("rust-toolchain.toml") {
         Ok(content) => content,
-        Err(_) => return Err("No `rust-toolchain` file found".to_string()),
+        Err(_) => return Err("No `rust-toolchain.toml` file found".to_string()),
     };
     match content
         .split('\n')
@@ -235,7 +269,7 @@ pub fn get_toolchain() -> Result<String, String> {
         .next()
     {
         Some(toolchain) => Ok(toolchain.to_string()),
-        None => Err("Couldn't find `channel` in `rust-toolchain` file".to_string()),
+        None => Err("Couldn't find `channel` in `rust-toolchain.toml` file".to_string()),
     }
 }
 
@@ -417,6 +451,85 @@ pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> R
 
 pub fn get_sysroot_dir() -> PathBuf {
     Path::new(crate::BUILD_DIR).join("build_sysroot")
+}
+
+pub fn run_tool_and_install_it_if_not_present(cmd: &[&dyn AsRef<OsStr>]) -> Result<(), String> {
+    let (exit_status, stderr) = run_command_with_output_and_get_it(cmd, Some(Path::new(".")))?;
+    if exit_status.success() {
+        return Ok(());
+    }
+    let mut iter = stderr.split('\n');
+    if let Some(line) = iter.next()
+        && line.contains("is not installed for the toolchain")
+        && let Some(line) = iter.next()
+        && line.contains("run `rustup component add")
+        && let Some(cmd) = line.split('`').nth(1)
+        && let Some(tool_name) = cmd.rsplit(' ').next()
+    {
+        println!("`{tool_name}` is not installed for this toolchain, installing it...");
+        // A weird round-about way to get a `&&str` so I can get a `&dyn AsRef<OsStr>` but
+        // as long as it works...
+        let cmd = cmd.split(' ').collect::<Vec<_>>();
+        let cmd = cmd.iter().map(|s: &&str| s as &dyn AsRef<OsStr>).collect::<Vec<_>>();
+        run_command_with_output(cmd.as_slice(), Some(Path::new(".")))?;
+    } else {
+        // If the component is installed, then it's something else. In this case we fail like we
+        // should have and let the user handles the error.
+        return check_exit_status(cmd, Some(Path::new(".")), exit_status, None, true);
+    }
+    // We retry the command...
+    run_command_with_output(cmd, Some(Path::new(".")))
+}
+
+pub fn setup_rustc_folder(env: &HashMap<String, String>) -> Result<PathBuf, String> {
+    let rust_dir_path = Path::new(crate::BUILD_DIR).join("rust");
+    // If the repository was already cloned, command will fail, so doesn't matter.
+    let _ = git_clone("https://github.com/rust-lang/rust.git", Some(&rust_dir_path), false);
+    let rust_dir: Option<&Path> = Some(&rust_dir_path);
+    run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
+    let rustc_commit = match rustc_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
+        Some(commit_hash) => commit_hash,
+        None => return Err("Couldn't retrieve rustc commit hash".to_string()),
+    };
+    if rustc_commit != "unknown" {
+        // GitHub rate-limits a fetch right after a full clone, so only fetch a missing commit.
+        let commit_object = format!("{rustc_commit}^{{commit}}");
+        let has_commit = run_command_with_env_no_err(
+            &[&"git", &"rev-parse", &"--quiet", &"--verify", &commit_object],
+            rust_dir,
+            Some(env),
+        )
+        .is_ok();
+        if !has_commit {
+            run_command_with_output_and_env(
+                &[&"git", &"fetch", &"origin", &rustc_commit],
+                rust_dir,
+                Some(env),
+            )?;
+        }
+        run_command_with_output_and_env(
+            &[&"git", &"checkout", &rustc_commit],
+            rust_dir,
+            Some(env),
+        )?;
+    } else {
+        run_command(&[&"git", &"fetch"], rust_dir)?;
+        run_command(&[&"git", &"checkout"], rust_dir)?;
+    }
+    Ok(rust_dir_path)
+}
+
+pub fn show_help_with_indent(mut commands: Vec<(&str, &str)>, add_help: bool) {
+    commands.sort_unstable_by(|a, b| a.0.cmp(b.0));
+    if add_help {
+        // Always at the end.
+        commands.push(("--help", "Show this help"));
+    }
+    let longest = commands.iter().map(|(name, _)| name.len()).max().unwrap();
+    for (name, doc) in commands {
+        let spacing = " ".repeat(longest - name.len() + 1);
+        println!("    {name}{spacing}: {doc}");
+    }
 }
 
 #[cfg(test)]

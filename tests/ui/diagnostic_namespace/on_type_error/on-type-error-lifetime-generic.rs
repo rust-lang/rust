@@ -1,6 +1,6 @@
 #![feature(diagnostic_on_type_error)]
 #[diagnostic::on_type_error(
-    note = "custom on_type_error note: expected `{Expected}`, found `{Found}`"
+    note = "custom on_type_error note: expected `{expected}`, found `{found}`"
 )]
 struct Ref<'a, T>(&'a T);
 

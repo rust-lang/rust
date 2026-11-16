@@ -49,6 +49,8 @@ LL | fn get_flag<const FlagSet: bool, const ShortName: char>() -> Option<char> {
 error[E0080]: reading memory at ALLOC$ID[0x0..0x4], but memory is uninitialized at [0x1..0x4], and this operation requires initialized memory
   --> $DIR/invalid-patterns.rs:40:32
    |
+LL | fn main() {
+...
 LL |   get_flag::<false, { unsafe { char_raw.character } }>();
    |                                ^^^^^^^^^^^^^^^^^^ evaluation of `main::{constant#7}` failed here
    |
@@ -81,6 +83,8 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character
 error[E0080]: reading memory at ALLOC$ID[0x0..0x4], but memory is uninitialized at [0x1..0x4], and this operation requires initialized memory
   --> $DIR/invalid-patterns.rs:44:58
    |
+LL | fn main() {
+...
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
    |                                                          ^^^^^^^^^^^^^^^^^^ evaluation of `main::{constant#11}` failed here
    |

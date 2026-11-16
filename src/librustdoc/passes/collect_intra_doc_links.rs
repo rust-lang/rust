@@ -8,21 +8,21 @@ use std::mem;
 use std::ops::Range;
 
 use rustc_ast::util::comments::may_have_doc_links;
+use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
-use rustc_hir::{Attribute, Mutability, Safety, find_attr};
+use rustc_hir::{Mutability, Safety};
 use rustc_lint::Lint;
 use rustc_middle::ty;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
-    source_span_for_markdown_range, strip_generics_from_path,
+    DocStrings, MalformedGenerics, has_primitive_or_keyword_or_attribute_docs_hir,
+    prepare_to_doc_link_resolution, source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -35,7 +35,7 @@ use tracing::{debug, info, instrument, trace};
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType, reexport_chain};
 use crate::core::DocContext;
-use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
+use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, MarkdownLinks, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::visit::DocVisitor;
 
@@ -217,6 +217,7 @@ pub(crate) struct DiagnosticInfo<'a> {
     dox: &'a str,
     ori_link: &'a str,
     link_range: MarkdownLinkRange,
+    link_kind: LinkType,
 }
 
 pub(crate) struct OwnedDiagnosticInfo {
@@ -224,6 +225,7 @@ pub(crate) struct OwnedDiagnosticInfo {
     dox: String,
     ori_link: String,
     link_range: MarkdownLinkRange,
+    link_kind: LinkType,
 }
 
 impl From<DiagnosticInfo<'_>> for OwnedDiagnosticInfo {
@@ -233,6 +235,7 @@ impl From<DiagnosticInfo<'_>> for OwnedDiagnosticInfo {
             dox: f.dox.to_string(),
             ori_link: f.ori_link.to_string(),
             link_range: f.link_range.clone(),
+            link_kind: f.link_kind,
         }
     }
 }
@@ -244,6 +247,7 @@ impl OwnedDiagnosticInfo {
             ori_link: &self.ori_link,
             dox: &self.dox,
             link_range: self.link_range.clone(),
+            link_kind: self.link_kind,
         }
     }
 }
@@ -543,9 +547,9 @@ fn ty_to_res<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Res> {
         ty::FnDef(..) => panic!("type alias to a function definition"),
         ty::FnPtr(..) => Res::Primitive(Fn),
         ty::Never => Res::Primitive(Never),
-        ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
-            Res::from_def_id(tcx, did)
-        }
+        ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _)
+        | ty::View(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _, _)
+        | ty::Foreign(did) => Res::from_def_id(tcx, did),
         ty::Alias(_, ..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
@@ -1064,10 +1068,59 @@ fn preprocess_link(
     }))
 }
 
-fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
+fn preprocessed_markdown_links(s: &str) -> MarkdownLinks<PreprocessedMarkdownLink> {
     markdown_links(s, |link| {
         preprocess_link(&link, s).map(|pp_link| PreprocessedMarkdownLink(pp_link, link))
     })
+}
+
+/// Compare lowercase labels so case differences are less likely to hide a typo,
+/// but return the original candidate to preserve its spelling in suggestions.
+fn find_best_match_for_reference_label(candidates: &[Symbol], lookup: Symbol) -> Option<Symbol> {
+    let normalize = |name: Symbol| Symbol::intern(&name.as_str().to_lowercase());
+
+    let normalized_lookup = normalize(lookup);
+    let normalized_candidates =
+        candidates.iter().map(|&candidate| normalize(candidate)).collect::<Vec<_>>();
+
+    let best = find_best_match_for_name(&normalized_candidates, normalized_lookup, None)?;
+
+    let index = normalized_candidates.iter().position(|&candidate| candidate == best)?;
+
+    Some(candidates[index])
+}
+
+/// Returns a source span for replacing a Markdown reference label.
+/// Returns `None` when the source or replacement is unsuitable for a direct edit.
+fn reference_label_suggestion_span(
+    tcx: TyCtxt<'_>,
+    diag_info: &DiagnosticInfo<'_>,
+    replacement: &str,
+) -> Option<rustc_span::Span> {
+    let MarkdownLinkRange::Destination(label_range) = &diag_info.link_range else {
+        return None;
+    };
+
+    if replacement.chars().any(|ch| matches!(ch, '[' | ']' | '\\' | '\n' | '\r')) {
+        return None;
+    }
+
+    let (label_span, _) = source_span_for_markdown_range(
+        tcx,
+        diag_info.dox,
+        label_range,
+        &diag_info.item.attrs.doc_strings,
+    )?;
+
+    let source_map = tcx.sess.source_map();
+    if label_span.in_external_macro(source_map) || source_map.is_imported(label_span) {
+        return None;
+    }
+
+    let original_label = diag_info.dox.get(label_range.clone())?;
+    let source = source_map.span_to_snippet(label_span).ok()?;
+
+    (source.as_str() == original_label).then_some(label_span)
 }
 
 impl LinkCollector<'_, '_> {
@@ -1081,7 +1134,7 @@ impl LinkCollector<'_, '_> {
                 && item_id
                     .as_local()
                     .is_some_and(|local_def_id| !effective_visibilities.is_exported(local_def_id))
-                && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+                && !has_primitive_or_keyword_or_attribute_docs_hir(&item.attrs.other_attrs)
         };
 
         if let Some(def_id) = item.item_id.as_def_id()
@@ -1091,16 +1144,19 @@ impl LinkCollector<'_, '_> {
             return;
         }
 
-        let mut try_insert_links = |item_id, doc: &str| {
-            if should_skip_link_resolution(item_id) {
-                return;
-            }
-            let module_id = match tcx.def_kind(item_id) {
-                DefKind::Mod if item.inner_docs(tcx) => ModId::new_unchecked(item_id),
-                _ => find_nearest_parent_module(tcx, item_id).unwrap(),
-            };
-            for md_link in preprocessed_markdown_links(&doc) {
-                let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
+        let mut try_insert_links_inner = |item_id, module_id, doc: &str| {
+            let markdown_links = preprocessed_markdown_links(doc);
+
+            for md_link in &markdown_links.links {
+                let link = self.resolve_link(
+                    doc,
+                    item,
+                    item_id,
+                    module_id,
+                    md_link,
+                    &markdown_links.reference_labels,
+                );
+
                 if let Some(link) = link {
                     self.cx
                         .cache
@@ -1112,16 +1168,45 @@ impl LinkCollector<'_, '_> {
             }
         };
 
+        let mut try_insert_links = |item_id, docs: &DocStrings| {
+            if should_skip_link_resolution(item_id) {
+                return;
+            }
+            match tcx.def_kind(item_id) {
+                DefKind::Mod => {
+                    if !docs.outer.is_empty() {
+                        try_insert_links_inner(
+                            item_id,
+                            find_nearest_parent_module(tcx, item_id).unwrap(),
+                            &docs.outer,
+                        );
+                    }
+                    if !docs.inner.is_empty() {
+                        try_insert_links_inner(item_id, ModId::new_unchecked(item_id), &docs.inner);
+                    }
+                }
+                _ => {
+                    // It's the same handling for non-module items.
+                    let module_id = find_nearest_parent_module(tcx, item_id).unwrap();
+                    try_insert_links_inner(
+                        item_id,
+                        module_id,
+                        &format!("{}{}", docs.outer, docs.inner),
+                    );
+                }
+            }
+        };
+
         // We want to resolve in the lexical scope of the documentation.
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
         for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
-            if !may_have_doc_links(&doc) {
+            if !may_have_doc_links(&doc.inner) && !may_have_doc_links(&doc.outer) {
                 continue;
             }
 
-            debug!("combined_docs={doc}");
+            debug!("combined_docs=outer: {} inner: {}", doc.outer, doc.inner);
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
@@ -1130,8 +1215,11 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let Attribute::Parsed(AttributeKind::Deprecated { span: depr_span, deprecation }) =
-                attr
+            let Attribute::Parsed(AttributeKind::Deprecated {
+                span: depr_span,
+                deprecation,
+                is_inner,
+            }) = attr
             else {
                 continue;
             };
@@ -1163,7 +1251,12 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            try_insert_links(item_id, note)
+            let attr = if *is_inner {
+                DocStrings { outer: String::new(), inner: note.to_owned() }
+            } else {
+                DocStrings { outer: note.to_owned(), inner: String::new() }
+            };
+            try_insert_links(item_id, &attr);
         }
     }
 
@@ -1179,6 +1272,7 @@ impl LinkCollector<'_, '_> {
         item_id: DefId,
         module_id: ModId,
         PreprocessedMarkdownLink(pp_link, ori_link): &PreprocessedMarkdownLink,
+        refdef_labels: &[String],
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
 
@@ -1187,10 +1281,19 @@ impl LinkCollector<'_, '_> {
             dox,
             ori_link: &ori_link.link,
             link_range: ori_link.range.clone(),
+            link_kind: ori_link.kind,
         };
         let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
             pp_link.as_ref().map_err(|err| err.report(self.cx, diag_info.clone())).ok()?;
         let disambiguator = *disambiguator;
+        // A missing Markdown definition might indicate a misspelled label.
+        // The link might still resolve to a Rust item, so don't diagnose it yet.
+        let refdef_labels = match ori_link.kind {
+            LinkType::ShortcutUnknown | LinkType::CollapsedUnknown | LinkType::ReferenceUnknown => {
+                Some(refdef_labels)
+            }
+            _ => None,
+        };
 
         let mut resolved = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
@@ -1205,6 +1308,8 @@ impl LinkCollector<'_, '_> {
             // resolutions are cached, for other links we want to report an error every
             // time so they are not cached.
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
+            // Borrowed labels, available if Rust-item resolution fails.
+            refdef_labels,
         )?;
 
         if resolved.len() > 1 {
@@ -1229,7 +1334,7 @@ impl LinkCollector<'_, '_> {
 
     /// Returns `true` if a link could be generated from the given intra-doc information.
     ///
-    /// This is a very light version of `format::href_with_root_path` since we're only interested
+    /// This is a very light version of `format::href_with_jump_to_def_path_depth` since we're only interested
     /// about whether we can generate a link to an item or not.
     ///
     /// * If `original_did` is local, then we check if the item is reexported or public.
@@ -1471,7 +1576,7 @@ impl LinkCollector<'_, '_> {
     ) {
         // The resolved item did not match the disambiguator; give a better error than 'not found'
         let msg = format!("incompatible link kind for `{path_str}`");
-        let callback = |diag: &mut Diag<'_, ()>, sp: Option<rustc_span::Span>, link_range| {
+        let callback = |diag: &mut Diag<'_>, sp: Option<rustc_span::Span>, link_range| {
             let note = format!(
                 "this link resolved to {} {}, which is not {} {}",
                 resolved.article(),
@@ -1521,6 +1626,7 @@ impl LinkCollector<'_, '_> {
         // If errors are cached then they are only reported on first occurrence
         // which we want in some cases but not in others.
         cache_errors: bool,
+        refdef_labels: Option<&[String]>,
     ) -> Option<Vec<(Res, Option<UrlFragment>)>> {
         if let Some(res) = self.links.visited.get(&key)
             && (res.is_some() || cache_errors)
@@ -1528,7 +1634,7 @@ impl LinkCollector<'_, '_> {
             return res.clone().map(|r| vec![r]);
         }
 
-        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone());
+        let mut candidates = self.resolve_with_disambiguator(&key, diag.clone(), refdef_labels);
 
         // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
         // However I'm not sure how to check that across crates.
@@ -1581,6 +1687,7 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: &ResolutionInfo,
         diag: DiagnosticInfo<'_>,
+        refdef_labels: Option<&[String]>,
     ) -> Vec<(Res, Option<DefId>)> {
         let disambiguator = key.dis;
         let path_str = &key.path_str;
@@ -1609,7 +1716,14 @@ impl LinkCollector<'_, '_> {
                                 break;
                             }
                         }
-                        resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
+                        resolution_failure(
+                            self,
+                            diag,
+                            path_str,
+                            disambiguator,
+                            smallvec![err],
+                            refdef_labels,
+                        );
                         vec![]
                     }
                 }
@@ -1649,6 +1763,7 @@ impl LinkCollector<'_, '_> {
                         path_str,
                         disambiguator,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
+                        refdef_labels,
                     );
                     vec![]
                 } else if len == 1 {
@@ -1928,8 +2043,8 @@ fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
     msg: impl Into<DiagMessage> + Display,
-    DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
-    decorate: impl FnOnce(&mut Diag<'_, ()>, Option<rustc_span::Span>, MarkdownLinkRange),
+    DiagnosticInfo { item, dox, link_range, .. }: &DiagnosticInfo<'_>,
+    decorate: impl FnOnce(&mut Diag<'_>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
@@ -2007,7 +2122,7 @@ fn report_diagnostic(
 
 fn suggest_path_name_typo(
     collector: &LinkCollector<'_, '_>,
-    diag: &mut Diag<'_, ()>,
+    diag: &mut Diag<'_>,
     span: Option<rustc_span::Span>,
     link_range: &MarkdownLinkRange,
     dox: &str,
@@ -2015,10 +2130,10 @@ fn suggest_path_name_typo(
     unresolved: &str,
     has_partial_res: bool,
     disambiguator: Option<Disambiguator>,
-) {
+) -> bool {
     if unresolved.chars().count() <= 1 {
         // There are too many false positives for single character typos.
-        return;
+        return false;
     }
 
     let tcx = collector.cx.tcx;
@@ -2036,8 +2151,10 @@ fn suggest_path_name_typo(
         .map(|child| child.ident.name)
         .filter(|&name| name != lookup)
         .collect::<Vec<_>>();
+
     let Some(candidate) = find_best_match_for_name(&candidates, lookup, None) else {
-        return;
+        // No plausible correction was found.
+        return false;
     };
 
     let msg = format!("there's a similarly named item `{candidate}`");
@@ -2049,10 +2166,16 @@ fn suggest_path_name_typo(
             let mut suggestion = link.to_owned();
             suggestion.replace_range(start..start + unresolved.len(), candidate.as_str());
             diag.span_suggestion_verbose(span, msg, suggestion, Applicability::MaybeIncorrect);
-            return;
+
+            // A replacement suggestion was emitted.
+            return true;
         }
     }
+
+    // We found a candidate but could not construct a precise replacement.
+    // Textual typo advice still counts as useful advice.
     diag.help(msg);
+    true
 }
 
 /// Reports a link that failed to resolve.
@@ -2066,6 +2189,7 @@ fn resolution_failure(
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
+    refdef_labels: Option<&[String]>,
 ) {
     let tcx = collector.cx.tcx;
     report_diagnostic(
@@ -2101,6 +2225,47 @@ fn resolution_failure(
                 }) = &mut failure
                 {
                     use DefKind::*;
+
+                    let reference_candidate = refdef_labels.and_then(|labels| {
+                        // Match the original link label, rather than the path produced by
+                        // Rust-specific preprocessing.
+                        let label = diag_info.ori_link;
+
+                        if labels.is_empty() || label.is_empty() {
+                            return None;
+                        }
+
+                        let lookup = Symbol::intern(label);
+                        let candidates = labels
+                            .iter()
+                            .map(|reference_label| Symbol::intern(reference_label))
+                            .collect::<Vec<_>>();
+
+                        find_best_match_for_reference_label(&candidates, lookup)
+                    });
+
+                    // Both a replacement and plain help count as reference-label advice.
+                    // Suppress the Rust-item typo and bracket-escaping fallbacks after either.
+                    let refdef_label_was_suggested = reference_candidate.is_some_and(|candidate| {
+                        let replacement = candidate.as_str();
+                        let message =
+                            format!("there is a similarly named reference label `{replacement}`");
+
+                        if let Some(span) =
+                            reference_label_suggestion_span(tcx, &diag_info, replacement)
+                        {
+                            diag.span_suggestion_verbose(
+                                span,
+                                message,
+                                replacement,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            diag.help(message);
+                        }
+
+                        true
+                    });
 
                     let item_id = *item_id;
                     let module_id = *module_id;
@@ -2182,8 +2347,10 @@ fn resolution_failure(
                             diag.note(note);
                         }
 
-                        if !path_is_invalid {
-                            suggest_path_name_typo(
+                        // Prefer a concrete correction over generic advice about external links.
+                        let suggested_item = !path_is_invalid
+                            && !refdef_label_was_suggested
+                            && suggest_path_name_typo(
                                 collector,
                                 diag,
                                 sp,
@@ -2194,7 +2361,6 @@ fn resolution_failure(
                                 partial_res.is_some(),
                                 disambiguator,
                             );
-                        }
 
                         if !path_str.contains("::") {
                             if disambiguator.is_none_or(|d| d.ns() == MacroNS)
@@ -2209,13 +2375,37 @@ fn resolution_failure(
                                     "`macro_rules` named `{path_str}` exists in this crate, \
                                      but it is not in scope at this link's location"
                                 ));
-                            } else {
+                            } else if !refdef_label_was_suggested {
                                 // If the link has `::` in it, assume it was meant to be an
                                 // intra-doc link. Otherwise, the `[]` might be unrelated.
                                 diag.help(
                                     "to escape `[` and `]` characters, \
                                            add '\\' before them like `\\[` or `\\]`",
                                 );
+
+                                // Use the original Markdown label in the reference-definition example.
+                                let label = diag_info.ori_link;
+
+                                // Keep this as fallback advice for missing references, rather than
+                                // competing with a typo correction or a more specific Rust-path error.
+                                if !suggested_item
+                                    && !path_is_invalid
+                                    && partial_res.is_none()
+                                    && disambiguator.is_none()
+                                    && matches!(
+                                        diag_info.link_kind,
+                                        LinkType::ShortcutUnknown
+                                            | LinkType::CollapsedUnknown
+                                            | LinkType::ReferenceUnknown
+                                    )
+                                    && !label.contains(['[', ']', '\\', '\n', '\r'])
+                                {
+                                    // We cannot know the destination, so offer help rather than an edit.
+                                    diag.help(format!(
+                                        "if you intended to link to external documentation, \
+                                         add a link reference definition: `[{label}]: https://...`"
+                                    ));
+                                }
                             }
                         }
 
@@ -2522,7 +2712,7 @@ fn ambiguity_error(
 /// disambiguator.
 fn suggest_disambiguator(
     res: Res,
-    diag: &mut Diag<'_, ()>,
+    diag: &mut Diag<'_>,
     path_str: &str,
     link_range: MarkdownLinkRange,
     sp: Option<rustc_span::Span>,

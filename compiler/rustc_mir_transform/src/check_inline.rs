@@ -1,9 +1,8 @@
 //! Check that a body annotated with `#[rustc_force_inline]` will not fail to inline based on its
 //! definition alone (irrespective of any specific caller).
 
-use rustc_hir::attrs::InlineAttr;
+use rustc_attr_ir::{InlineAttr, find_attr};
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{Body, TerminatorKind};
 use rustc_middle::ty;

@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 
 use std::collections::HashMap;
 
@@ -6,8 +6,8 @@ use run_make_support::{rfs, rustc, wasmparser};
 use wasmparser::TypeRef::Func;
 
 fn main() {
-    rustc().input("foo.rs").target("wasm32-wasip1").run();
-    rustc().input("bar.rs").target("wasm32-wasip1").arg("-Clto").opt().run();
+    rustc().input("foo.rs").run();
+    rustc().input("bar.rs").emit_wasm_core_module().arg("-Clto").opt().run();
 
     let file = rfs::read("bar.wasm");
 

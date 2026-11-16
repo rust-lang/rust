@@ -67,6 +67,8 @@ LL |         Some(_) => (),
 error: type of pattern does not match the expression type
   --> tests/ui/pattern_type_mismatch/syntax.rs:145:17
    |
+LL |     macro_rules! matching_macro {
+...
 LL |                 Some(_) => (),
    |                 ^^^^^^^
 ...
@@ -74,7 +76,6 @@ LL |     matching_macro!(value);
    |     ---------------------- in this macro invocation
    |
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
-   = note: this error originates in the macro `matching_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 9 previous errors
 

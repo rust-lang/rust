@@ -1,6 +1,7 @@
 # Expect errors from these deprecated configs
 cyclomatic-complexity-threshold = 2
 blacklisted-names = [ "..", "wibble" ]
+lint-inconsistent-struct-field-initializers = true
 
 # that one is white-listed
 [third-party]

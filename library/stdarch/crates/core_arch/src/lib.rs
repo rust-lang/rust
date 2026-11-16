@@ -32,7 +32,6 @@
     x86_amx_intrinsics,
     f16,
     aarch64_unstable_target_feature,
-    funnel_shifts,
     avx10_target_feature,
     const_trait_impl,
     const_cmp,
@@ -40,9 +39,23 @@
     maybe_uninit_as_bytes,
     movrs_target_feature,
     clflushopt_target_feature,
-    min_adt_const_params
+    min_adt_const_params,
+    num_internals
 )]
-#![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
+#![cfg_attr(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    feature(powerpc_ppcf128)
+)]
+#![cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), feature(x87_f80))]
+#![cfg_attr(
+    test,
+    feature(
+        test,
+        abi_vectorcall,
+        stdarch_internal,
+        cfg_target_has_reliable_f16_f128
+    )
+)]
 #![deny(clippy::missing_inline_in_public_items)]
 #![allow(
     clippy::identity_op,
@@ -96,4 +109,4 @@ pub mod arch {
 }
 
 #[allow(unused_imports)]
-use core::{array, cmp, convert, ffi, fmt, hint, intrinsics, marker, mem, ops, ptr, sync};
+use core::{array, cmp, convert, ffi, fmt, hint, intrinsics, marker, mem, num, ops, ptr, sync};

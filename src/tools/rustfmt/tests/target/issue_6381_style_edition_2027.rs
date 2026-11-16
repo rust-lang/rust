@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2027
+//@ rustfmt-style_edition: 2027
 
 fn my_function_no_wrap_at_exactly_100_characters_wide(
     my_long_impl_trait_parameter: impl Into<LongTypeNameThatMakesThisWholeLineExactly100Chars_____>,

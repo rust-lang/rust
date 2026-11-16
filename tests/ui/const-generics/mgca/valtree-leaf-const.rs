@@ -1,8 +1,8 @@
 //@ compile-flags: -Znext-solver
 
-#![feature(macroless_generic_const_args)]
-#![feature(generic_const_args)]
-#![feature(min_generic_const_args)]
+#![feature(gca_macroless_args)]
+#![feature(gca_const_items)]
+#![feature(gca_min_const_items)]
 
 const TUPLE: (&'static str, &'static str) = ("a", true);
 //~^ ERROR mismatched type

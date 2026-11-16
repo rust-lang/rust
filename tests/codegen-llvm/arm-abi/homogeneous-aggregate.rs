@@ -19,37 +19,69 @@ extern crate minicore;
 use minicore::simd::*;
 use minicore::*;
 
-// A homogeneous float aggregate, which a hard-float ABI passes in VFP registers.
+// A singleton homogeneous float aggregate.
 #[repr(C)]
-pub struct Hfa {
+pub struct Hfa1 {
     pub a: f32,
-    pub b: f32,
 }
-impl Copy for Hfa {}
 
-// linux:   define void @test_hfa([2 x float] %0)
-// eabi:    define dso_local void @test_hfa([2 x i32] %0)
-// watchos: define void @test_hfa([2 x float] %0)
+// linux:   define void @test_hfa1([1 x float] %0)
+// eabi:    define dso_local void @test_hfa1([1 x i32] %0)
+// watchos: define void @test_hfa1([1 x float] %0)
 #[unsafe(no_mangle)]
-pub extern "C" fn test_hfa(a: Hfa) {
+pub extern "C" fn test_hfa1(a: Hfa1) {
     hint::black_box(a);
 }
 
-// linux:   define [2 x float] @ret_hfa([2 x float] %0)
-// eabi:    define dso_local void @ret_hfa(ptr sret([8 x i8]) align 4 %_0, [2 x i32] %0)
-// watchos: define [2 x float] @ret_hfa([2 x float] %0)
+// linux:   define [1 x float] @ret_hfa1([1 x float] %0)
+// eabi:    define dso_local i32 @ret_hfa1([1 x i32] %0)
+// watchos: define [1 x float] @ret_hfa1([1 x float] %0)
 #[unsafe(no_mangle)]
-pub extern "C" fn ret_hfa(a: Hfa) -> Hfa {
+pub extern "C" fn ret_hfa1(a: Hfa1) -> Hfa1 {
     a
 }
 
 // When we ask for `extern "aapcs"` specifically, GPRs are used, except on watchOS.
 //
-// linux:   define arm_aapcscc void @test_hfa_aapcs([2 x i32] %0)
-// eabi:    define dso_local arm_aapcscc void @test_hfa_aapcs([2 x i32] %0)
-// watchos: define arm_aapcscc void @test_hfa_aapcs([2 x float] %0)
+// linux:   define arm_aapcscc void @test_hfa1_aapcs([1 x i32] %0)
+// eabi:    define dso_local arm_aapcscc void @test_hfa1_aapcs([1 x i32] %0)
+// watchos: define arm_aapcscc void @test_hfa1_aapcs([1 x float] %0)
 #[unsafe(no_mangle)]
-pub extern "aapcs" fn test_hfa_aapcs(a: Hfa) {
+pub extern "aapcs" fn test_hfa1_aapcs(a: Hfa1) {
+    hint::black_box(a);
+}
+
+// A homogeneous float aggregate, which a hard-float ABI passes in VFP registers.
+#[repr(C)]
+pub struct Hfa2 {
+    pub a: f32,
+    pub b: f32,
+}
+impl Copy for Hfa2 {}
+
+// linux:   define void @test_hfa2([2 x float] %0)
+// eabi:    define dso_local void @test_hfa2([2 x i32] %0)
+// watchos: define void @test_hfa2([2 x float] %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_hfa2(a: Hfa2) {
+    hint::black_box(a);
+}
+
+// linux:   define [2 x float] @ret_hfa2([2 x float] %0)
+// eabi:    define dso_local void @ret_hfa2(ptr sret([8 x i8]) align 4 %_0, [2 x i32] %0)
+// watchos: define [2 x float] @ret_hfa2([2 x float] %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn ret_hfa2(a: Hfa2) -> Hfa2 {
+    a
+}
+
+// When we ask for `extern "aapcs"` specifically, GPRs are used, except on watchOS.
+//
+// linux:   define arm_aapcscc void @test_hfa2_aapcs([2 x i32] %0)
+// eabi:    define dso_local arm_aapcscc void @test_hfa2_aapcs([2 x i32] %0)
+// watchos: define arm_aapcscc void @test_hfa2_aapcs([2 x float] %0)
+#[unsafe(no_mangle)]
+pub extern "aapcs" fn test_hfa2_aapcs(a: Hfa2) {
     hint::black_box(a);
 }
 
@@ -216,7 +248,7 @@ extern "C" {
     // linux:   declare void @test_hfa_variadic_c([2 x i32], ...)
     // eabi:    declare dso_local void @test_hfa_variadic_c([2 x i32], ...)
     // watchos: declare void @test_hfa_variadic_c([2 x float], ...)
-    fn test_hfa_variadic_c(_: Hfa, ...);
+    fn test_hfa_variadic_c(_: Hfa2, ...);
 
     // linux:   declare void @test_ints_6_variadic_c([6 x i32], ...)
     // eabi:    declare dso_local void @test_ints_6_variadic_c([6 x i32], ...)
@@ -228,7 +260,7 @@ extern "aapcs" {
     // linux:   declare arm_aapcscc void @test_hfa_variadic_aapcs([2 x i32], ...)
     // eabi:    declare dso_local arm_aapcscc void @test_hfa_variadic_aapcs([2 x i32], ...)
     // watchos: declare arm_aapcscc void @test_hfa_variadic_aapcs([2 x float], ...)
-    fn test_hfa_variadic_aapcs(_: Hfa, ...);
+    fn test_hfa_variadic_aapcs(_: Hfa2, ...);
 
     // linux:   declare arm_aapcscc void @test_ints_6_variadic_aapcs([6 x i32], ...)
     // eabi:    declare dso_local arm_aapcscc void @test_ints_6_variadic_aapcs([6 x i32], ...)
@@ -236,7 +268,7 @@ extern "aapcs" {
     fn test_ints_6_variadic_aapcs(_: Ints6, ...);
 }
 
-pub unsafe fn call_variadics(a: Hfa, b: Ints6) {
+pub unsafe fn call_variadics(a: Hfa2, b: Ints6) {
     test_hfa_variadic_c(a);
     test_ints_6_variadic_c(b);
 

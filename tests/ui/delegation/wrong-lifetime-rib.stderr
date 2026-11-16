@@ -4,6 +4,12 @@ error[E0423]: expected function, found unit variant `None`
 LL |         reuse None::<&()>;
    |               ^^^^^^^^^^^ not a function
 
+error: failed to resolve delegation callee
+  --> $DIR/wrong-lifetime-rib.rs:11:15
+   |
+LL |         reuse None::<&()>;
+   |               ^^^^
+
 error: inferred lifetimes are not allowed in delegations as we need to inherit signature
   --> $DIR/wrong-lifetime-rib.rs:17:18
    |
@@ -144,7 +150,7 @@ help: you can add the `dyn` keyword if you want a trait object
 LL |             let _: &dyn X;
    |                     +++
 
-error: aborting due to 19 previous errors
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0116, E0223, E0423, E0782.
 For more information about an error, try `rustc --explain E0116`.

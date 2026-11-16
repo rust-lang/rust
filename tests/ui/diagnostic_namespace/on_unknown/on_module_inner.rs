@@ -3,7 +3,7 @@
 #![feature(custom_inner_attributes)]
 
 pub mod x {
-    #![diagnostic::on_unknown(message = "oh no, `{Unresolved}` is not in module `{This}`")]
+    #![diagnostic::on_unknown(message = "oh no, `{unresolved}` is not in module `{this}`")]
     pub struct Foo;
 }
 

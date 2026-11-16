@@ -1,6 +1,8 @@
 error[E0080]: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
   --> $DIR/slice-index-overflow-issue-130284.rs:7:20
    |
+LL | const C: () = {
+...
 LL |         let _ice = (*fat)[usize::MAX - 1];
    |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `C` failed here
 

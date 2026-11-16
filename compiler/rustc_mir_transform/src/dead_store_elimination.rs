@@ -63,6 +63,13 @@ fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
                 loc,
             );
 
+            // The logic in LivenessTransferFunction isn't quite what we need; it ignores call
+            // destinations that are just locals because they are killed by the call, which makes
+            // it eligible to be moved-from in the argument list. That's backwards.
+            if !destination.is_indirect() {
+                state.insert(destination.local);
+            }
+
             for (index, arg) in args.iter().map(|a| &a.node).enumerate().rev() {
                 if let Operand::Copy(place) = *arg
                     && !place.is_indirect()

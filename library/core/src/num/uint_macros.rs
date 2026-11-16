@@ -60,6 +60,83 @@ macro_rules! uint_impl {
         #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = Self::MAX.count_ones();
 
+        /// Tests the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than or equal to [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let n = 0b0111_1001", stringify!($SelfT), ";")]
+        ///
+        /// assert!(n.bit(0));
+        /// assert!(!n.bit(1));
+        /// assert!(!n.bit(2));
+        /// assert!(n.bit(3));
+        /// assert!(n.bit(4));
+        /// assert!(n.bit(5));
+        /// assert!(n.bit(6));
+        /// assert!(!n.bit(7));
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn bit(self, index: u32) -> bool {
+            (self & (1 << index)) != 0
+        }
+
+        /// Sets the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than or equal [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let mut n = 0b0101_0101", stringify!($SelfT), ";")]
+        ///
+        /// n = n.set_bit(0, false);
+        /// n = n.set_bit(1, true);
+        /// n = n.set_bit(2, false);
+        /// n = n.set_bit(3, true);
+        /// n = n.set_bit(4, false);
+        /// n = n.set_bit(5, true);
+        /// n = n.set_bit(6, false);
+        /// n = n.set_bit(7, true);
+        ///
+        /// assert_eq!(n, 0b1010_1010);
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn set_bit(mut self, index: u32, value: bool) -> Self {
+            self &= !(1 << index);
+            self |= (value as $SelfT) << index;
+
+            self
+        }
+
         /// Returns the number of ones in the binary representation of `self`.
         ///
         /// # Examples
@@ -526,8 +603,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(funnel_shifts)]
-        ///
         #[doc = concat!("let a = ", $rot_op, "_", stringify!($SelfT), ";")]
         #[doc = concat!("let b = ", $fsh_op, "_", stringify!($SelfT), ";")]
         ///
@@ -547,10 +622,8 @@ macro_rules! uint_impl {
         /// rotating by an unbounded amount like [`rotate_left`](Self::rotate_left) does:
         ///
         /// ```should_panic
-        /// #![feature(funnel_shifts)]
         /// # #![feature(cfg_overflow_checks)]
         /// # #[cfg(overflow_checks)] {
-        ///
         #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
         /// // Okay
         #[doc = concat!("let _ = a.rotate_left(", stringify!($SelfT), "::BITS);")]
@@ -559,8 +632,8 @@ macro_rules! uint_impl {
         /// # }
         /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[rustc_inherit_overflow_checks]
@@ -597,8 +670,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(funnel_shifts)]
-        ///
         #[doc = concat!("let a = ", $rot_op, "_", stringify!($SelfT), ";")]
         #[doc = concat!("let b = ", $fsh_op, "_", stringify!($SelfT), ";")]
         ///
@@ -618,10 +689,8 @@ macro_rules! uint_impl {
         /// rotating by an unbounded amount like [`rotate_right`](Self::rotate_right) does:
         ///
         /// ```should_panic
-        /// #![feature(funnel_shifts)]
         /// # #![feature(cfg_overflow_checks)]
         /// # #[cfg(overflow_checks)] {
-        ///
         #[doc = concat!("let a = ", stringify!($SelfT), "::MAX;")]
         /// // Okay
         #[doc = concat!("let _ = a.rotate_right(", stringify!($SelfT), "::BITS);")]
@@ -630,8 +699,8 @@ macro_rules! uint_impl {
         /// # }
         /// # #[cfg(not(overflow_checks))] panic!("fulfill should_panic");
         /// ```
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[rustc_inherit_overflow_checks]
@@ -654,8 +723,9 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shl`](Self::funnel_shl) would panic.
         ///
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[track_caller]
@@ -680,8 +750,9 @@ macro_rules! uint_impl {
         #[doc = concat!("`", stringify!($SelfT) , "::BITS`,")]
         /// i.e. when [`funnel_shr`](Self::funnel_shr) would panic.
         ///
-        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
-        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[rustc_const_stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[stable(feature = "funnel_shifts", since = "1.101.0")]
+        #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, without modifying the original"]
         #[inline(always)]
         #[track_caller]
@@ -810,7 +881,7 @@ macro_rules! uint_impl {
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
-        ///                 second least-significant bit becomes second most-significant bit, etc.
+        /// second least-significant bit becomes second most-significant bit, etc.
         ///
         /// # Examples
         ///
@@ -1015,9 +1086,8 @@ macro_rules! uint_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX`,")]
-        /// i.e. when [`checked_add`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_add`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
@@ -1194,9 +1264,8 @@ macro_rules! uint_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self - rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_sub`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_sub`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
@@ -1403,9 +1472,8 @@ macro_rules! uint_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX`,")]
-        /// i.e. when [`checked_mul`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_mul`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
@@ -1743,48 +1811,45 @@ macro_rules! uint_impl {
             self % rhs
         }
 
-        /// Same value as `self | other`, but UB if any bit position is set in both inputs.
+        /// Disjoint, bitwise or. Computes `self | rhs`, assuming no overlapping one bits.
         ///
-        /// This is a situational micro-optimization for places where you'd rather
-        /// use addition on some platforms and bitwise or on other platforms, based
-        /// on exactly which instructions combine better with whatever else you're
-        /// doing.  Note that there's no reason to bother using this for places
-        /// where it's clear from the operations involved that they can't overlap.
-        /// For example, if you're combining `u16`s into a `u32` with
-        /// `((a as u32) << 16) | (b as u32)`, that's fine, as the backend will
-        /// know those sides of the `|` are disjoint without needing help.
+        /// Practically, this requires that `self | rhs`, `self ^ rhs`, and `self + rhs` all
+        /// yield the same result, allowing for any of the three to be emitted in codegen --
+        /// depending on whichever is cheapest.
         ///
         /// # Examples
         ///
         /// ```
         /// #![feature(disjoint_bitor)]
         ///
-        /// // SAFETY: `1` and `4` have no bits in common.
-        /// unsafe {
-        #[doc = concat!("    assert_eq!(1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4), 5);")]
-        /// }
+        /// assert_eq!(
+        ///     // SAFETY: `1` and `4` have no ones in common.
+        #[doc = concat!("    unsafe { 1_", stringify!($SelfT), ".unchecked_disjoint_bitor(4) },")]
+        ///     5,
+        /// );
         /// ```
         ///
         /// # Safety
         ///
-        /// Requires that `(self & other) == 0`, otherwise it's immediate UB.
-        ///
-        /// Equivalently, requires that `(self | other) == (self + other)`.
+        /// This results in undefined behaviour if `self` and `rhs` have any overlapping one
+        /// bits, i.e. `lhs & rhs` must be zero.
         #[unstable(feature = "disjoint_bitor", issue = "135758")]
         #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
         #[inline]
-        pub const unsafe fn unchecked_disjoint_bitor(self, other: Self) -> Self {
+        pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
                 check_language_ub,
-                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot have overlapping bits"),
+                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot bitor overlapping ones"),
                 (
                     lhs: $SelfT = self,
-                    rhs: $SelfT = other,
+                    rhs: $SelfT = rhs,
                 ) => (lhs & rhs) == 0,
             );
 
-            // SAFETY: Same precondition
-            unsafe { intrinsics::disjoint_bitor(self, other) }
+            // SAFETY: Same precondition.
+            unsafe { intrinsics::disjoint_bitor(self, rhs) }
         }
 
         /// Returns the logarithm of the number with respect to an arbitrary base,
@@ -3745,7 +3810,6 @@ macro_rules! uint_impl {
         pub const fn div_euclid(self, rhs: Self) -> Self {
             self / rhs
         }
-
 
         /// Calculates the least remainder of `self` when divided by
         /// `rhs`.

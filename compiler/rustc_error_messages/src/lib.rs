@@ -101,7 +101,7 @@ impl MultiSpan {
     }
 
     pub fn from_spans(mut vec: Vec<Span>) -> MultiSpan {
-        vec.sort();
+        vec.sort_by_key(|span| span.lo_hi());
         MultiSpan { primary_spans: vec, span_labels: vec![], span_context: vec![] }
     }
 
@@ -213,6 +213,12 @@ impl MultiSpan {
 impl From<Span> for MultiSpan {
     fn from(span: Span) -> MultiSpan {
         MultiSpan::from_span(span)
+    }
+}
+
+impl From<Option<Span>> for MultiSpan {
+    fn from(span: Option<Span>) -> MultiSpan {
+        MultiSpan::from_spans(span.into_iter().collect())
     }
 }
 

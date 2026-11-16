@@ -15,7 +15,8 @@ where
     // Contrary to X86, trailing padding is allowed on s390x.
 
     loop {
-        layout = layout.peel_transparent_wrappers(cx);
+        // We're only looking for scalar types that are non-ZST.
+        layout = layout.peel_transparent_wrappers_from_non_1zst(cx);
 
         return match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
@@ -64,7 +65,7 @@ where
         // s390x-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         if cx.target_spec().os == Os::Linux
             && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
-            && arg.layout.is_zst()
+            && arg.layout.is_repr_c()
         {
             arg.make_indirect_from_ignore();
         }

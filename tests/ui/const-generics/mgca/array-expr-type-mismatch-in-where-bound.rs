@@ -1,7 +1,5 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/151024>
-#![feature(min_generic_const_args, macroless_generic_const_args)]
-#![feature(adt_const_params)]
-#![expect(incomplete_features)]
+#![feature(adt_const_params, gca_adts, gca_min_const_items, gca_macroless_args)]
 
 trait Trait1<const N: usize> {}
 trait Trait2<const N: [u8; 3]> {}

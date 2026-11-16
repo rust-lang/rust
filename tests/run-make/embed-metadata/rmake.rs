@@ -1,8 +1,7 @@
 //@ ignore-cross-compile
 //@ needs-crate-type: dylib
 
-// Tests the -Zembed-metadata compiler flag.
-// Tracking issue: https://github.com/rust-lang/rust/issues/139165
+// Tests the -Cembed-metadata compiler flag.
 
 use run_make_support::rfs::{create_dir, remove_file, rename};
 use run_make_support::{Rustc, dynamic_lib_name, path, run_in_tmpdir, rust_lib_name, rustc};
@@ -78,7 +77,7 @@ fn lookup_rmeta_missing(kind: LibraryKind) {
 fn build_dep_rustc(kind: LibraryKind) -> Rustc {
     let mut dep_rustc = rustc();
     dep_rustc
-        .arg("-Zembed-metadata=no")
+        .arg("-Cembed-metadata=no")
         .crate_type(kind.crate_type())
         .input("dep1.rs")
         .emit("metadata,link");

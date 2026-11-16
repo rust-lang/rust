@@ -4,20 +4,20 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
+use rustc_attr_ir::{
+    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow, RustcVersion,
+    find_attr,
+};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_hir as hir;
-use rustc_hir::attrs::{
-    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow, RustcVersion,
-};
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HeaderSafety, Safety, find_attr, intravisit};
+use rustc_hir::{HeaderSafety, Safety, intravisit};
 use rustc_hir_pretty::PpAnn;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::ModId;
-use rustc_span::{Pos, Symbol, bug, kw, sym};
+use rustc_span::{Pos, RemapPathScopeComponents, Symbol, bug, kw, sym};
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
@@ -56,13 +56,13 @@ impl JsonRenderer<'_> {
         let clean::ItemInner { name, item_id, .. } = *item.inner;
         let id = self.id_from_item(item);
         let inner = match item.kind {
-            clean::KeywordItem | clean::AttributeItem => return None,
-            clean::StrippedItem(ref inner) => {
+            clean::ItemKind::Keyword | clean::ItemKind::Attribute => return None,
+            clean::ItemKind::Stripped(ref inner) => {
                 match &**inner {
                     // We document stripped modules as with `Module::is_stripped` set to
                     // `true`, to prevent contained items from being orphaned for downstream users,
                     // as JSON does no inlining.
-                    clean::ModuleItem(_)
+                    clean::ItemKind::Module(_)
                         if self.imported_items.contains(&item_id.expect_def_id()) =>
                     {
                         from_clean_item(item, self)
@@ -87,7 +87,7 @@ impl JsonRenderer<'_> {
         // JSON consumers already have to do path-based reasoning to reconstruct item reachability,
         // names, and stability. Keeping component-wise stability allows them to easily reconstruct
         // stability from the module, use item, and target item records.
-        let stability_def_id = if matches!(&item.kind, clean::ImportItem(_)) {
+        let stability_def_id = if matches!(&item.kind, clean::ItemKind::Import(_)) {
             item.inline_stmt_id
                 .map(|def_id| def_id.to_def_id())
                 .or_else(|| item.item_id.as_def_id())
@@ -191,17 +191,14 @@ impl FromClean<clean::Span> for Option<Span> {
     fn from_clean(span: &clean::Span, renderer: &JsonRenderer<'_>) -> Self {
         match span.filename(renderer.sess()) {
             rustc_span::FileName::Real(name) => {
-                if let Some(local_path) = name.into_local_path() {
-                    let hi = span.hi(renderer.sess());
-                    let lo = span.lo(renderer.sess());
-                    Some(Span {
-                        filename: local_path,
-                        begin: (lo.line, lo.col.to_usize() + 1),
-                        end: (hi.line, hi.col.to_usize() + 1),
-                    })
-                } else {
-                    None
-                }
+                let filename = name.path(RemapPathScopeComponents::DOCUMENTATION);
+                let hi = span.hi(renderer.sess());
+                let lo = span.lo(renderer.sess());
+                Some(Span {
+                    filename: filename.to_path_buf(),
+                    begin: (lo.line, lo.col.to_usize() + 1),
+                    end: (hi.line, hi.col.to_usize() + 1),
+                })
             }
             _ => None,
         }
@@ -222,9 +219,9 @@ impl FromClean<Option<ty::Visibility<ModId>>> for Visibility {
     }
 }
 
-impl FromClean<attrs::Deprecation> for Deprecation {
-    fn from_clean(deprecation: &attrs::Deprecation, _renderer: &JsonRenderer<'_>) -> Self {
-        let attrs::Deprecation { since, note, suggestion: _ } = deprecation;
+impl FromClean<rustc_attr_ir::Deprecation> for Deprecation {
+    fn from_clean(deprecation: &rustc_attr_ir::Deprecation, _renderer: &JsonRenderer<'_>) -> Self {
+        let rustc_attr_ir::Deprecation { since, note, suggestion: _ } = deprecation;
         let since = match since {
             DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
             DeprecatedSince::Future => Some("TBD".to_string()),
@@ -235,45 +232,48 @@ impl FromClean<attrs::Deprecation> for Deprecation {
     }
 }
 
-impl FromClean<hir::Stability> for Stability {
-    fn from_clean(stab: &hir::Stability, _renderer: &JsonRenderer<'_>) -> Self {
+impl FromClean<rustc_attr_ir::Stability> for Stability {
+    fn from_clean(stab: &rustc_attr_ir::Stability, _renderer: &JsonRenderer<'_>) -> Self {
         let feature = stab.feature.to_string();
         let level = match stab.level {
-            hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
+            rustc_attr_ir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
-                    hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
+                    rustc_attr_ir::StableSince::Version(since) => Some(since.to_string()),
+                    rustc_attr_ir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
-                    hir::StableSince::Err(_) => None,
+                    rustc_attr_ir::StableSince::Err(_) => None,
                 },
             },
-            hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+            rustc_attr_ir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
         };
         Stability { feature, level }
     }
 }
 
-impl FromClean<hir::ConstStability> for Stability {
-    fn from_clean(stab: &hir::ConstStability, _renderer: &JsonRenderer<'_>) -> Self {
+impl FromClean<rustc_attr_ir::ConstStability> for Stability {
+    fn from_clean(stab: &rustc_attr_ir::ConstStability, _renderer: &JsonRenderer<'_>) -> Self {
         let feature = stab.feature.to_string();
         let level = match stab.level {
-            hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
+            rustc_attr_ir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
-                    hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
+                    rustc_attr_ir::StableSince::Version(since) => Some(since.to_string()),
+                    rustc_attr_ir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
-                    hir::StableSince::Err(_) => None,
+                    rustc_attr_ir::StableSince::Err(_) => None,
                 },
             },
-            hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+            rustc_attr_ir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
         };
         Stability { feature, level }
     }
 }
 
-impl FromClean<hir::DefaultBodyStability> for Box<ProvidedDefaultUnstable> {
-    fn from_clean(stab: &hir::DefaultBodyStability, _renderer: &JsonRenderer<'_>) -> Self {
-        let hir::StabilityLevel::Unstable { .. } = stab.level else {
+impl FromClean<rustc_attr_ir::DefaultBodyStability> for Box<ProvidedDefaultUnstable> {
+    fn from_clean(
+        stab: &rustc_attr_ir::DefaultBodyStability,
+        _renderer: &JsonRenderer<'_>,
+    ) -> Self {
+        let rustc_attr_ir::StabilityLevel::Unstable { .. } = stab.level else {
             bug!(
                 "unexpected stable default-body stability, \
                  there's no stable equivalent of `#[rustc_default_body_unstable]`"
@@ -318,12 +318,11 @@ impl FromClean<clean::GenericArg> for GenericArg {
     }
 }
 
-impl FromClean<clean::ConstantKind> for Constant {
-    // FIXME(generic_const_items): Add support for generic const items.
-    fn from_clean(constant: &clean::ConstantKind, renderer: &JsonRenderer<'_>) -> Self {
+impl FromClean<clean::ConstantExpr> for Constant {
+    fn from_clean(constant: &clean::ConstantExpr, renderer: &JsonRenderer<'_>) -> Self {
         let tcx = renderer.tcx;
-        let expr = constant.expr(tcx);
-        let value = constant.value(tcx);
+        let expr = constant.rendered(tcx);
+        let value = constant.evaluated_rendered(tcx);
         let is_literal = constant.is_literal(tcx);
         Constant { expr, value, is_literal }
     }
@@ -350,101 +349,92 @@ impl FromClean<clean::AssocItemConstraintKind> for AssocItemConstraintKind {
 }
 
 fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
-    use clean::ItemKind::*;
+    use clean::ItemKind;
     let name = item.name;
     let is_crate = item.is_crate();
     let header = item.fn_header(renderer.tcx);
 
     match &item.inner.kind {
-        ModuleItem(m) => {
+        ItemKind::Module(m) => {
             ItemEnum::Module(Module { is_crate, items: renderer.ids(&m.items), is_stripped: false })
         }
-        ImportItem(i) => ItemEnum::Use(i.into_json(renderer)),
-        StructItem(s) => ItemEnum::Struct(s.into_json(renderer)),
-        UnionItem(u) => ItemEnum::Union(u.into_json(renderer)),
-        StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
-        EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
-        VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => {
-            ItemEnum::Function(from_clean_function(f, true, None, header.unwrap(), renderer))
+        ItemKind::Import(i) => ItemEnum::Use(i.into_json(renderer)),
+        ItemKind::Struct(s) => ItemEnum::Struct(s.into_json(renderer)),
+        ItemKind::Union(u) => ItemEnum::Union(u.into_json(renderer)),
+        ItemKind::StructField(f) => ItemEnum::StructField(f.into_json(renderer)),
+        ItemKind::Enum(e) => ItemEnum::Enum(e.into_json(renderer)),
+        ItemKind::Variant(v) => ItemEnum::Variant(v.into_json(renderer)),
+        ItemKind::Function(f) | ItemKind::ForeignFunction(f, _) => ItemEnum::Function(Function {
+            sig: f.decl.into_json(renderer),
+            generics: f.generics.into_json(renderer),
+            header: header.unwrap().into_json(renderer),
+            has_body: match item.kind {
+                ItemKind::Function(_) => true,
+                ItemKind::ForeignFunction(..) => false,
+                _ => unreachable!(),
+            },
+            default_unstable: None,
+        }),
+        ItemKind::Trait(t) => ItemEnum::Trait(t.into_json(renderer)),
+        ItemKind::TraitAlias(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
+        ItemKind::AssocFunction(f) => ItemEnum::Function(Function {
+            sig: f.decl.into_json(renderer),
+            generics: f.generics.into_json(renderer),
+            header: header.unwrap().into_json(renderer),
+            has_body: f.body.is_some(),
+            default_unstable: f.body.as_ref().and_then(|_| {
+                default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                    .map(|stab| stab.into_json(renderer))
+            }),
+        }),
+        ItemKind::Impl(i) => ItemEnum::Impl(i.into_json(renderer)),
+        ItemKind::Static(s) => {
+            ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer))
         }
-        ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_clean_function(f, false, None, header.unwrap(), renderer))
+        ItemKind::ForeignStatic(s, safety) => {
+            ItemEnum::Static(from_clean_static(s, *safety, renderer))
         }
-        TraitItem(t) => ItemEnum::Trait(t.into_json(renderer)),
-        TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => ItemEnum::Function(from_clean_function(
-            m,
-            true,
-            default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
-                .map(|stab| stab.into_json(renderer)),
-            header.unwrap(),
-            renderer,
-        )),
-        RequiredMethodItem(m, _) => {
-            ItemEnum::Function(from_clean_function(m, false, None, header.unwrap(), renderer))
-        }
-        ImplItem(i) => ItemEnum::Impl(i.into_json(renderer)),
-        StaticItem(s) => ItemEnum::Static(from_clean_static(s, rustc_hir::Safety::Safe, renderer)),
-        ForeignStaticItem(s, safety) => ItemEnum::Static(from_clean_static(s, *safety, renderer)),
-        ForeignTypeItem => ItemEnum::ExternType,
-        TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
+        ItemKind::ForeignType => ItemEnum::ExternType,
+        ItemKind::TypeAlias(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
         // FIXME(generic_const_items): Add support for generic free consts
-        ConstantItem(ci) => ItemEnum::Constant {
+        ItemKind::Constant(ci) => ItemEnum::Constant {
             type_: ci.type_.into_json(renderer),
-            const_: ci.kind.into_json(renderer),
+            const_: ci.body.into_json(renderer),
         },
-        MacroItem(m, _) => ItemEnum::Macro(m.source.clone()),
-        ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
-        PrimitiveItem(p) => {
+        ItemKind::DeclMacro(m, _) => ItemEnum::Macro(m.source.clone()),
+        ItemKind::ProcMacro(m) => ItemEnum::ProcMacro(m.into_json(renderer)),
+        ItemKind::PrimitiveType(p) => {
             ItemEnum::Primitive(Primitive {
                 name: p.as_sym().to_string(),
                 impls: Vec::new(), // Added in JsonRenderer::item
             })
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        RequiredAssocConstItem(_generics, ty) => ItemEnum::AssocConst {
-            type_: ty.into_json(renderer),
-            value: None,
-            default_unstable: None,
+        ItemKind::AssocConstant(ct) => ItemEnum::AssocConst {
+            type_: ct.type_.into_json(renderer),
+            value: ct.body.as_ref().map(|body| body.rendered(renderer.tcx)),
+            default_unstable: ct.body.as_ref().and_then(|_| {
+                default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                    .map(|stab| stab.into_json(renderer))
+            }),
         },
-        // FIXME(generic_const_items): Add support for generic associated consts.
-        ProvidedAssocConstItem(ci) => ItemEnum::AssocConst {
-            type_: ci.type_.into_json(renderer),
-            value: Some(ci.kind.expr(renderer.tcx)),
-            default_unstable: default_body_stability_for_def_id(
-                renderer.tcx,
-                item.item_id.expect_def_id(),
-            )
-            .map(|stab| stab.into_json(renderer)),
-        },
-        ImplAssocConstItem(ci) => ItemEnum::AssocConst {
-            type_: ci.type_.into_json(renderer),
-            value: Some(ci.kind.expr(renderer.tcx)),
-            default_unstable: None,
-        },
-        RequiredAssocTypeItem(g, b) => ItemEnum::AssocType {
-            generics: g.into_json(renderer),
-            bounds: b.into_json(renderer),
-            type_: None,
-            default_unstable: None,
-        },
-        AssocTypeItem(t, b) => ItemEnum::AssocType {
-            generics: t.generics.into_json(renderer),
-            bounds: b.into_json(renderer),
-            type_: Some(t.item_type.as_ref().unwrap_or(&t.type_).into_json(renderer)),
-            default_unstable: default_body_stability_for_def_id(
-                renderer.tcx,
-                item.item_id.expect_def_id(),
-            )
-            .map(|stab| stab.into_json(renderer)),
+        ItemKind::AssocType(ty) => ItemEnum::AssocType {
+            generics: ty.generics.into_json(renderer),
+            bounds: ty.bounds.into_json(renderer),
+            type_: ty.type_.as_ref().map(|type_| {
+                type_.middle_type.as_ref().unwrap_or(&type_.type_).into_json(renderer)
+            }),
+            default_unstable: ty.type_.as_ref().and_then(|_| {
+                default_body_stability_for_def_id(renderer.tcx, item.item_id.expect_def_id())
+                    .map(|stab| stab.into_json(renderer))
+            }),
         },
         // `convert_item` early returns `None` for stripped items, keywords, attributes and
         // "special" macro rules.
-        KeywordItem | AttributeItem => unreachable!(),
-        StrippedItem(inner) => {
+        ItemKind::Keyword | ItemKind::Attribute => unreachable!(),
+        ItemKind::Stripped(inner) => {
             match inner.as_ref() {
-                ModuleItem(m) => ItemEnum::Module(Module {
+                ItemKind::Module(m) => ItemEnum::Module(Module {
                     is_crate,
                     items: renderer.ids(&m.items),
                     is_stripped: true,
@@ -453,12 +443,12 @@ fn from_clean_item(item: &clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum 
                 _ => unreachable!(),
             }
         }
-        ExternCrateItem { src } => ItemEnum::ExternCrate {
+        ItemKind::ExternCrate { src } => ItemEnum::ExternCrate {
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
         // All placeholder impl items should have been removed in the stripper passes.
-        PlaceholderImplItem => unreachable!(),
+        ItemKind::PlaceholderImpl => unreachable!(),
     }
 }
 
@@ -662,7 +652,7 @@ impl FromClean<clean::Type> for Type {
     fn from_clean(ty: &clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
+            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder, View,
         };
 
         match ty {
@@ -701,6 +691,8 @@ impl FromClean<clean::Type> for Type {
             QPath(qpath) => qpath.into_json(renderer),
             // FIXME(unsafe_binder): Implement rustdoc-json.
             UnsafeBinder(_) => unimplemented!(),
+            // FIXME(view_types): that's quite bad but heh
+            View(path, _) => Type::ResolvedPath(path.into_json(renderer)),
         }
     }
 }
@@ -848,22 +840,6 @@ impl FromClean<clean::Impl> for Impl {
     }
 }
 
-pub(crate) fn from_clean_function(
-    clean::Function { decl, generics }: &clean::Function,
-    has_body: bool,
-    default_unstable: Option<Box<ProvidedDefaultUnstable>>,
-    header: rustc_hir::FnHeader,
-    renderer: &JsonRenderer<'_>,
-) -> Function {
-    Function {
-        sig: decl.into_json(renderer),
-        generics: generics.into_json(renderer),
-        header: header.into_json(renderer),
-        has_body,
-        default_unstable,
-    }
-}
-
 impl FromClean<clean::Enum> for Enum {
     fn from_clean(enum_: &clean::Enum, renderer: &JsonRenderer<'_>) -> Self {
         let has_stripped_variants = enum_.has_stripped_entries();
@@ -947,7 +923,7 @@ impl FromClean<rustc_span::hygiene::MacroKind> for MacroKind {
 
 impl FromClean<clean::TypeAlias> for TypeAlias {
     fn from_clean(type_alias: &clean::TypeAlias, renderer: &JsonRenderer<'_>) -> Self {
-        let clean::TypeAlias { type_, generics, item_type: _, inner_type: _ } = type_alias;
+        let clean::TypeAlias { type_, generics, inner_type: _ } = type_alias;
         TypeAlias { type_: type_.into_json(renderer), generics: generics.into_json(renderer) }
     }
 }
@@ -988,7 +964,7 @@ impl FromClean<ItemType> for ItemKind {
             Struct => ItemKind::Struct,
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
-            Function | TyMethod | Method => ItemKind::Function,
+            Function | AssocFnWithoutBody | AssocFnWithBody => ItemKind::Function,
             TypeAlias => ItemKind::TypeAlias,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,
@@ -1013,15 +989,18 @@ impl FromClean<ItemType> for ItemKind {
 fn default_body_stability_for_def_id(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<hir::DefaultBodyStability> {
+) -> Option<rustc_attr_ir::DefaultBodyStability> {
     let stability = tcx.lookup_default_body_stability(def_id)?;
     match stability.level {
-        hir::StabilityLevel::Unstable { .. } => Some(stability),
-        hir::StabilityLevel::Stable { .. } => None,
+        rustc_attr_ir::StabilityLevel::Unstable { .. } => Some(stability),
+        rustc_attr_ir::StabilityLevel::Stable { .. } => None,
     }
 }
 
-fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::ConstStability> {
+fn const_stability_for_def_id(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> Option<rustc_attr_ir::ConstStability> {
     if !tcx.is_conditionally_const(def_id) {
         // The item cannot be conditionally-const. No const stability here.
         //
@@ -1064,7 +1043,7 @@ fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Con
     } else {
         std::debug_assert_matches!(
             tcx.lookup_stability(def_id).map(|s| s.level),
-            Some(hir::StabilityLevel::Unstable { .. })
+            Some(rustc_attr_ir::StabilityLevel::Unstable { .. })
         );
         None
     }
@@ -1073,13 +1052,17 @@ fn const_stability_for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Con
 /// Maybe convert a attribute from hir to json.
 ///
 /// Returns `None` if the attribute shouldn't be in the output.
-fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) -> Vec<Attribute> {
-    use attrs::AttributeKind as AK;
+fn maybe_from_hir_attr(
+    attr: &rustc_attr_ir::Attribute,
+    item_id: ItemId,
+    tcx: TyCtxt<'_>,
+) -> Vec<Attribute> {
+    use rustc_attr_ir::AttributeKind as AK;
 
     let kind = match attr {
-        hir::Attribute::Parsed(kind) => kind,
+        rustc_attr_ir::Attribute::Parsed(kind) => kind,
 
-        hir::Attribute::Unparsed(_) => {
+        rustc_attr_ir::Attribute::Tool(_) | rustc_attr_ir::Attribute::DeriveHelper(_) => {
             // FIXME: We should handle `#[doc(hidden)]`.
             return vec![other_attr(tcx, attr)];
         }
@@ -1162,7 +1145,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
                 ret.push(Attribute::Other(format!("#[doc(alias = {:?})]", alias.as_str())));
             }
             toggle_attr(&mut ret, "hidden", hidden);
-            if let Some(inline) = inline.first() {
+            if let Some(inline) = inline {
                 ret.push(Attribute::Other(format!(
                     "#[doc({})]",
                     match inline.0 {
@@ -1218,7 +1201,13 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             name_value_attr(&mut ret, "keyword", keyword);
             name_value_attr(&mut ret, "attribute", attribute);
             toggle_attr(&mut ret, "masked", masked);
-            toggle_attr(&mut ret, "notable_trait", notable_trait);
+            if let Some((notable_trait, _span)) = notable_trait {
+                if let Some((color, _span)) = notable_trait {
+                    ret.push(Attribute::Other(format!("#[doc(notable_trait = \"{color}\")]")));
+                } else {
+                    ret.push(Attribute::Other(format!("#[doc(notable_trait)]")));
+                }
+            }
             toggle_attr(&mut ret, "search_unbox", search_unbox);
             name_value_attr(&mut ret, "html_favicon_url", html_favicon_url);
             name_value_attr(&mut ret, "html_logo_url", html_logo_url);
@@ -1242,7 +1231,7 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
     }]
 }
 
-fn other_attr(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Attribute {
+fn other_attr(tcx: TyCtxt<'_>, attr: &rustc_attr_ir::Attribute) -> Attribute {
     let mut s = rustc_hir_pretty::attribute_to_string(
         &(&tcx as &dyn intravisit::HirTyCtxt<'_>) as &dyn PpAnn,
         attr,

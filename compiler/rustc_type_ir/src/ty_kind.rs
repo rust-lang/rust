@@ -8,7 +8,7 @@ use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableHash_NoContext};
 use rustc_type_ir::data_structures::{NoError, UnifyKey, UnifyValue};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
@@ -19,7 +19,7 @@ pub use self::closure::*;
 use crate::inherent::*;
 use crate::ty::AliasTy;
 use crate::{
-    self as ty, BoundVarIndexKind, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
+    self as ty, BoundVarIndexKind, Const, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
     OpaqueAliasTy, ProjectionAliasTy, Region, UintTy, Unnormalized,
 };
 
@@ -115,7 +115,7 @@ impl<I: Interner> AliasTyKind<I> {
 /// Rigidness becomes outdated when the surrounding typing mode or param env changes,
 /// because further normalization might be possible.
 /// We should also note that rigidness can be shared within some typing mode groups
-/// if the param env is the same, e.g., `Typeck/PostTypeckUntilBorrowck` and
+/// if the param env is the same, e.g., `Typeck/PostTypeckThroughBorrowck` and
 /// `PostAnalysis/Codegen`.
 ///
 /// We always reveal auto traits for rigid aliases and this can cause query cycle in
@@ -187,7 +187,7 @@ pub enum TyKind<I: Interner> {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(I::Ty, I::Const),
+    Array(I::Ty, Const<I>),
 
     /// A pattern newtype.
     ///
@@ -259,7 +259,9 @@ pub enum TyKind<I: Interner> {
     /// `ClosureArgs` for more details.
     Closure(I::ClosureId, I::GenericArgs),
 
-    /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
+    /// The anonymous type of an async closure. Used to represent the type of `async |a| a`.
+    ///
+    /// This type itself is not a coroutine, it just represents a closure that returns one.
     ///
     /// Coroutine-closure args contain both the - potentially instantiated - generic
     /// parameters of its parent and some synthetic parameters. See the documentation
@@ -282,7 +284,7 @@ pub enum TyKind<I: Interner> {
     /// the type of the coroutine, we convert them to higher ranked
     /// lifetimes bound by the witness itself.
     ///
-    /// This contains the `DefId` and the `GenericArgsRef` of the coroutine.
+    /// This contains the `DefId` and the `GenericArg` of the coroutine.
     /// The actual witness types are computed on MIR by the `mir_coroutine_witnesses` query.
     ///
     /// Looking at the following example, the witness for this coroutine
@@ -304,6 +306,13 @@ pub enum TyKind<I: Interner> {
 
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(I::Tys),
+
+    /// A view over an [`Adt`].
+    ///
+    /// This variant contains the same data as `Adt` as well as a `Ty` field that represents the
+    /// set of fields that are viewed. This `Ty` should be either a type variable or a tuple of
+    /// `FieldRepresentingType`.
+    View(I::AdtDef, I::GenericArgs, I::Ty),
 
     /// A projection, opaque type, free type alias, or inherent associated type.
     ///
@@ -419,6 +428,9 @@ impl<I: Interner> TyKind<I> {
             | ty::Param(_)
             | ty::Bound(_, _)
             | ty::Placeholder(_) => false,
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }
@@ -486,6 +498,9 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
             TyKind::Error(_) => write!(f, "{{type error}}"),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }
@@ -604,10 +619,16 @@ impl<I: Interner> AliasTy<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
+    pub fn trait_ref_and_own_args<'a>(
+        &'a self,
+        interner: I,
+    ) -> (ty::TraitRef<I>, I::GenericArgsSlice<'a>)
+    where
+        I: 'a,
+    {
         let AliasTyKind::Projection { def_id } = self.kind else { panic!("expected a projection") };
 
-        interner.trait_ref_and_own_args_for_alias(def_id.into(), self.args)
+        interner.trait_ref_and_own_args_for_alias(def_id.into(), &self.args)
     }
 
     /// Extracts the underlying trait reference from this projection.
@@ -855,12 +876,31 @@ impl UnifyKey for FloatVid {
 impl StableHash for InferTy {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         use InferTy::*;
-        std::mem::discriminant(self).stable_hash(hcx, hasher);
+
+        #[derive(StableHash)]
+        enum Tag {
+            FreshTy,
+            FreshIntTy,
+            FreshFloatTy,
+        }
+
         match self {
             TyVar(_) | IntVar(_) | FloatVar(_) => {
                 panic!("type variables should not be hashed: {self:?}")
             }
-            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.stable_hash(hcx, hasher),
+
+            FreshTy(v) => {
+                Tag::FreshTy.stable_hash(hcx, hasher);
+                v.stable_hash(hcx, hasher);
+            }
+            FreshIntTy(v) => {
+                Tag::FreshIntTy.stable_hash(hcx, hasher);
+                v.stable_hash(hcx, hasher);
+            }
+            FreshFloatTy(v) => {
+                Tag::FreshFloatTy.stable_hash(hcx, hasher);
+                v.stable_hash(hcx, hasher);
+            }
         }
     }
 }
@@ -1145,7 +1185,7 @@ impl<I: Interner> FnSig<I> {
     }
 
     pub fn is_fn_trait_compatible(self) -> bool {
-        !self.c_variadic() && self.safety().is_safe() && self.abi() == ExternAbi::Rust
+        !self.c_variadic() && self.safety().is_safe() && self.abi().is_fn_trait_compatible()
     }
 
     /// Set the safety flag.

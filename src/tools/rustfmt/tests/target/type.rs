@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 fn types() {
     let x: [Vec<_>] = [];
     let y: *mut [SomeType; konst_funk()] = expr();

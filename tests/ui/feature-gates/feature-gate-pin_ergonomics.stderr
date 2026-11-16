@@ -375,6 +375,7 @@ LL |     x.foo();
 note: `Foo::foo` takes ownership of the receiver `self`, which moves `x`
   --> $DIR/feature-gate-pin_ergonomics.rs:9:12
    |
+LL | impl Foo {
 LL |     fn foo(self: Pin<&mut Self>) {}
    |            ^^^^
 help: consider reborrowing the `Pin` instead of moving it

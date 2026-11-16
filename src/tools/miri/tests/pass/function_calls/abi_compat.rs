@@ -1,8 +1,18 @@
+#![feature(cfi_encoding)]
+
 use std::rc::Rc;
 use std::{mem, num, ptr};
 
 #[derive(Copy, Clone, Default)]
 struct Zst;
+
+#[derive(Copy, Clone, Default)]
+#[repr(align(1))]
+struct ReprAlignZst;
+
+#[derive(Copy, Clone, Default)]
+#[repr(C)]
+struct ReprCZst;
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]
@@ -77,6 +87,28 @@ fn test_abi_newtype<T: Copy + Default>() {
     test_abi_compat(t, mem::MaybeUninit::new(t));
 }
 
+/// The `#[cfi_encoding]` has the ability of changing the C struct tag,
+/// like `typedef struct Foo { int x; int y; } Bar;`, where `Foo` is the important name for ABI.
+/// In the future, we may want to use a better syntax for this mechanism which is not CFI specific,
+/// like `#[repr(C, tag = "Foo")]`
+fn test_abi_cfi_encoding() {
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    #[cfi_encoding = "10CfiEncoded"] // CFI encodings say that we should prefix the struct tag with its length
+    pub struct CfiEncoded1 {
+        pub x: i32,
+        pub y: i32,
+    }
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    #[cfi_encoding = "10CfiEncoded"]
+    pub struct CfiEncoded2 {
+        pub x: i32,
+        pub y: i32,
+    }
+    test_abi_compat(CfiEncoded1 { x: 2, y: 6 }, CfiEncoded2 { x: 2, y: 6 });
+}
+
 fn main() {
     // Here we check some of the guaranteed ABI compatibilities:
     // - Different integer types of the same size and sign.
@@ -100,6 +132,8 @@ fn main() {
     test_abi_compat(main as fn(), id::<i32> as fn(i32) -> i32);
     // - trivial-ABI types
     test_abi_compat((), [(); 0]);
+    test_abi_compat((), Zst);
+    test_abi_compat((), ReprAlignZst);
 
     // Guaranteed null-pointer-layout optimizations:
     // - Guaranteed Option<X> null-pointer-optimizations (RFC 3391).
@@ -133,6 +167,8 @@ fn main() {
     // with the wrapped field.
     test_abi_newtype::<()>();
     test_abi_newtype::<Zst>();
+    test_abi_newtype::<ReprAlignZst>();
+    test_abi_newtype::<ReprCZst>();
     test_abi_newtype::<u32>();
     test_abi_newtype::<f32>();
     test_abi_newtype::<(u8, u16, f32)>();
@@ -154,4 +190,7 @@ fn main() {
     // Make sure that does not break newtype wrapping for them.
     let non_capturing_closure = || {};
     test_abi_compat(non_capturing_closure.clone(), Wrapper(non_capturing_closure));
+
+    // Check that we take the CFI tag into account.
+    test_abi_cfi_encoding();
 }

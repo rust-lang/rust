@@ -895,5 +895,41 @@ LL -     usr_println!(true, "{:.1}", local_f64);
 LL +     usr_println!(true, "{local_f64:.1}");
    |
 
-error: aborting due to 75 previous errors
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args.rs:383:5
+   |
+LL |     nested_format_args!("{}", local_i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     nested_format_args!("{}", local_i32);
+LL +     nested_format_args!("{local_i32}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args.rs:385:5
+   |
+LL |     nested_format_args!("val='{}'", local_i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     nested_format_args!("val='{}'", local_i32);
+LL +     nested_format_args!("val='{local_i32}'");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> tests/ui/uninlined_format_args.rs:387:5
+   |
+LL |     nested_format_args!("{:.1}", local_f64);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: change this to
+   |
+LL -     nested_format_args!("{:.1}", local_f64);
+LL +     nested_format_args!("{local_f64:.1}");
+   |
+
+error: aborting due to 78 previous errors
 

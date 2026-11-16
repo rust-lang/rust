@@ -1,7 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni,+avx512vbmi
-//@run-native
+//@run-native: ignore-output
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -33,7 +33,34 @@ fn main() {
         test_avx512ternarylogic();
         test_avx512vnni();
         test_avx512vbmi();
+        test_avx512_shifts();
+        test_mm512_permutex2var_epi32();
     }
+}
+
+#[target_feature(enable = "avx512f")]
+unsafe fn test_avx512_shifts() {
+    let a = transmute([1u64, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX]);
+    let counts = transmute([0u64, 1, 63, 64, 65, 256, 1 << 32, u64::MAX]);
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_sllv_epi64(a, counts)),
+        [1, u64::MAX - 1, 1 << 63, 0, 0, 0, 0, 0],
+    );
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_srlv_epi64(a, counts)),
+        [1, u64::MAX >> 1, 1, 0, 0, 0, 0, 0],
+    );
+}
+
+#[target_feature(enable = "avx512f")]
+unsafe fn test_mm512_permutex2var_epi32() {
+    let a = transmute([0i32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b = transmute([16i32, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
+    let indices = transmute([0i32, 15, 16, 31, 32, 47, 48, 63, -1, i32::MIN, 17, 2, 30, 13, 29, 4]);
+    assert_eq!(
+        transmute::<_, [i32; 16]>(_mm512_permutex2var_epi32(a, indices, b)),
+        [0, 15, 16, 31, 0, 15, 16, 31, 31, 0, 17, 2, 30, 13, 29, 4],
+    );
 }
 
 #[target_feature(enable = "avx512bw")]
@@ -545,6 +572,80 @@ unsafe fn test_avx512ternarylogic() {
         assert_eq_m128i(r, e);
     }
     test_mm_ternarylogic_epi32();
+
+    #[target_feature(enable = "avx512f")]
+    unsafe fn test_mm512_ternarylogic_epi64() {
+        let a = _mm512_set4_epi64(0b100, 0b110, 0b001, 0b101);
+        let b = _mm512_set4_epi64(0b010, 0b011, 0b001, 0b110);
+        let c = _mm512_set4_epi64(0b001, 0b000, 0b001, 0b111);
+
+        // Identity of A.
+        let r = _mm512_ternarylogic_epi64::<0b1111_0000>(a, b, c);
+        assert_eq_m512i(r, a);
+
+        // Bitwise xor.
+        let r = _mm512_ternarylogic_epi64::<0b10010110>(a, b, c);
+        let e = _mm512_set4_epi64(0b111, 0b101, 0b001, 0b100);
+        assert_eq_m512i(r, e);
+
+        // Majority (2 or more bits set).
+        let r = _mm512_ternarylogic_epi64::<0b1110_1000>(a, b, c);
+        let e = _mm512_set4_epi64(0b000, 0b010, 0b001, 0b111);
+        assert_eq_m512i(r, e);
+
+        // Every bit of every lane: with these inputs, bit `i` indexes the table with
+        // `i % 8`, so the result is the table repeated in every byte.
+        let a = _mm512_set1_epi64(0xF0F0_F0F0_F0F0_F0F0_u64 as i64);
+        let b = _mm512_set1_epi64(0xCCCC_CCCC_CCCC_CCCC_u64 as i64);
+        let c = _mm512_set1_epi64(0xAAAA_AAAA_AAAA_AAAA_u64 as i64);
+        let r = _mm512_ternarylogic_epi64::<0x6C>(a, b, c);
+        assert_eq_m512i(r, _mm512_set1_epi64(0x6C6C_6C6C_6C6C_6C6C));
+    }
+    test_mm512_ternarylogic_epi64();
+
+    #[target_feature(enable = "avx512f,avx512vl")]
+    unsafe fn test_mm256_ternarylogic_epi64() {
+        let a = _mm256_setr_epi64x(0b100, 0b110, 0b001, 0b101);
+        let b = _mm256_setr_epi64x(0b010, 0b011, 0b001, 0b110);
+        let c = _mm256_setr_epi64x(0b001, 0b000, 0b001, 0b111);
+
+        // Identity of A.
+        let r = _mm256_ternarylogic_epi64::<0b1111_0000>(a, b, c);
+        assert_eq_m256i(r, a);
+
+        // Bitwise xor.
+        let r = _mm256_ternarylogic_epi64::<0b10010110>(a, b, c);
+        let e = _mm256_setr_epi64x(0b111, 0b101, 0b001, 0b100);
+        assert_eq_m256i(r, e);
+
+        // Majority (2 or more bits set).
+        let r = _mm256_ternarylogic_epi64::<0b1110_1000>(a, b, c);
+        let e = _mm256_setr_epi64x(0b000, 0b010, 0b001, 0b111);
+        assert_eq_m256i(r, e);
+    }
+    test_mm256_ternarylogic_epi64();
+
+    #[target_feature(enable = "avx512f,avx512vl")]
+    unsafe fn test_mm_ternarylogic_epi64() {
+        let a = _mm_set_epi64x(0b100, 0b110);
+        let b = _mm_set_epi64x(0b010, 0b011);
+        let c = _mm_set_epi64x(0b001, 0b000);
+
+        // Identity of A.
+        let r = _mm_ternarylogic_epi64::<0b1111_0000>(a, b, c);
+        assert_eq_m128i(r, a);
+
+        // Bitwise xor.
+        let r = _mm_ternarylogic_epi64::<0b10010110>(a, b, c);
+        let e = _mm_set_epi64x(0b111, 0b101);
+        assert_eq_m128i(r, e);
+
+        // Majority (2 or more bits set).
+        let r = _mm_ternarylogic_epi64::<0b1110_1000>(a, b, c);
+        let e = _mm_set_epi64x(0b000, 0b010);
+        assert_eq_m128i(r, e);
+    }
+    test_mm_ternarylogic_epi64();
 }
 
 #[target_feature(enable = "avx512vnni")]
@@ -764,10 +865,82 @@ unsafe fn test_avx512bw() {
         assert_eq_m512i(_mm512_packus_epi32(a, b), dst);
     }
     test_mm512_packus_epi32();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_avg_epu8() {
+        let a = _mm512_set1_epi8(1);
+        let b = _mm512_set1_epi8(1);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8(1);
+        assert_eq_m512i(r, e);
+
+        // Intermediary sum can overflow, but the final result not.
+        let a = _mm512_set1_epi8(u8::MAX as i8);
+        let b = _mm512_set1_epi8((u8::MAX - 2) as i8);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8((u8::MAX - 1) as i8);
+        assert_eq_m512i(r, e);
+
+        // Odd sums are rounded up.
+        let a = _mm512_set1_epi8(3);
+        let b = _mm512_set1_epi8(6);
+        let r = _mm512_avg_epu8(a, b);
+        let e = _mm512_set1_epi8(5);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_avg_epu8();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_avg_epu16() {
+        let a = _mm512_set1_epi16(1);
+        let b = _mm512_set1_epi16(1);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16(1);
+        assert_eq_m512i(r, e);
+
+        // Intermediary sum can overflow, but the final result not.
+        let a = _mm512_set1_epi16(u16::MAX as i16);
+        let b = _mm512_set1_epi16((u16::MAX - 2) as i16);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16((u16::MAX - 1) as i16);
+        assert_eq_m512i(r, e);
+
+        // Odd sums are rounded up.
+        let a = _mm512_set1_epi16(3);
+        let b = _mm512_set1_epi16(6);
+        let r = _mm512_avg_epu16(a, b);
+        let e = _mm512_set1_epi16(5);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_avg_epu16();
 }
 
 #[target_feature(enable = "avx512vbmi,avx512vl")]
 unsafe fn test_avx512vbmi() {
+    #[target_feature(enable = "avx512vbmi,avx512vl")]
+    unsafe fn test_mm256_permutex2var_epi8() {
+        let a = transmute([
+            0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31,
+        ]);
+        let b = transmute([
+            32u8, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52,
+            53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+        ]);
+        let indices = transmute([
+            0u8, 15, 16, 31, 32, 47, 48, 63, 64, 95, 96, 127, 128, 159, 160, 191, 192, 223, 224,
+            255, 1, 17, 33, 49, 14, 30, 46, 62, 2, 18, 34, 50,
+        ]);
+        assert_eq!(
+            transmute::<_, [u8; 32]>(_mm256_permutex2var_epi8(a, indices, b)),
+            [
+                0, 15, 16, 31, 32, 47, 48, 63, 0, 31, 32, 63, 0, 31, 32, 63, 0, 31, 32, 63, 1, 17,
+                33, 49, 14, 30, 46, 62, 2, 18, 34, 50,
+            ],
+        );
+    }
+    test_mm256_permutex2var_epi8();
+
     #[target_feature(enable = "avx512vbmi")]
     unsafe fn test_mm512_permutex2var_epi8() {
         // For each index byte in `idx`: the low 6 bits (bits [5:0]) select

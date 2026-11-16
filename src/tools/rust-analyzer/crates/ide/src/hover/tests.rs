@@ -857,7 +857,7 @@ struct Foo$0(pub u32) where u32: Copy;
             ```rust
             struct Foo(pub u32)
             where
-                u32: Copy,
+                u32: Copy,;
             ```
 
             ---
@@ -1032,7 +1032,7 @@ pub struct Foo(pub i32, i32, pub(crate) i32);
             ```
 
             ```rust
-            pub struct Foo(pub i32, /* … */)
+            pub struct Foo(pub i32, /* … */);
             ```
         "#]],
     );
@@ -1547,7 +1547,7 @@ struct Foo$0 where u32: Copy;
             ```rust
             struct Foo
             where
-                u32: Copy,
+                u32: Copy,;
             ```
 
             ---
@@ -2205,7 +2205,7 @@ where
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo;
             ```
 
             ---
@@ -2923,7 +2923,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -2959,7 +2959,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -2988,7 +2988,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -3016,7 +3016,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar
+            pub struct Bar;
             ```
 
             ---
@@ -3047,7 +3047,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar
+            pub struct Bar;
             ```
 
             ---
@@ -3190,7 +3190,7 @@ struct S$0<T>(core::marker::PhantomData<T>);
             ```
 
             ```rust
-            struct S<T>(PhantomData<T>)
+            struct S<T>(PhantomData<T>);
             ```
 
             ---
@@ -3352,7 +3352,7 @@ fn test_hover_layout_padding_info() {
             ```
 
             ```rust
-            struct Foo(i16, u128, u64)
+            struct Foo(i16, u128, u64);
             ```
 
             ---
@@ -4719,7 +4719,7 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = {const}, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T);
             ```
 
             ---
@@ -4744,7 +4744,7 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = {const}, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T);
             ```
 
             ---
@@ -4770,7 +4770,7 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = {const}, T = Foo>(T)
+            struct ST<const C: usize = {const}, T = Foo>(T);
             ```
 
             ---
@@ -6274,6 +6274,29 @@ const FOO$0: Option<&i32> = Some(2).as_ref();
 }
 
 #[test]
+fn hover_const_eval_enum_niche_tag_outside_range() {
+    check(
+        r#"
+enum Empty {}
+enum Bar { BarValue(u64), BarUnit }
+enum Foo { FooValue(Bar), FooUnit, FooEmpty(Empty) }
+const GOAL$0: Foo = Foo::FooValue(Bar::BarValue(0));
+"#,
+        expect![[r#"
+            *GOAL*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            const GOAL: Foo = FooValue(BarValue(0))
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval_dyn_trait() {
     check(
         r#"
@@ -6835,7 +6858,7 @@ pub fn gimme() -> theitem::TheItem {
             ```
 
             ```rust
-            pub struct TheItem
+            pub struct TheItem;
             ```
 
             ---
@@ -6983,7 +7006,7 @@ mod string {
             ```
 
             ```rust
-            struct String
+            struct String;
             ```
 
             ---
@@ -7651,7 +7674,7 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo
+            pub struct Foo;
             ```
 
             ---
@@ -7676,7 +7699,7 @@ pub struct Foo(i32);
             ```
 
             ```rust
-            pub struct Foo(i32)
+            pub struct Foo(i32);
             ```
 
             ---
@@ -7823,7 +7846,7 @@ pub struct Foo<T>(T);
             ```
 
             ```rust
-            pub struct Foo<T>(T)
+            pub struct Foo<T>(T);
             ```
 
             ---
@@ -7978,6 +8001,7 @@ impl T for () {
             ```
 
             ```rust
+            impl T for ()
             fn func()
             ```
 
@@ -8192,6 +8216,7 @@ fn f() {
             ```
 
             ```rust
+            impl core::ops::Deref for Struct
             fn deref(&self) -> &Self::Target
             ```
         "#]],
@@ -8741,6 +8766,158 @@ foo!(r"{$0aaaaa}");
             ```rust
             let aaaaa: &str
             ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_cfg_predicate() {
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0true)]
+fn test() {}
+"#,
+        expect![[r#"
+            *true*
+            cfg predicate evaluated: `true` (`true`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg(any($0true, false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *true*
+            cfg predicate evaluated: `true` (`true`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg(any(true, $0false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *false*
+            cfg predicate evaluated: `false` (`false`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0any(true, false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *any*
+            cfg predicate evaluated: `true` (`any(true, false)`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0all(true, false))]
+fn test() {}
+"#,
+        expect![[r#"
+            *all*
+            cfg predicate evaluated: `false` (`all(true, false)`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0test)]
+fn test() {}
+"#,
+        expect![[r#"
+            *test*
+            cfg predicate evaluated: `true` (`test`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0opt_level = "2")]
+fn test() {}
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level = "2"`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0opt_level = "3")]
+fn test() {}
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `false` (`opt_level = "3"`)
+        "#]],
+    );
+    check(
+        r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    #[cfg($0test)]
+    fn test() {}
+}
+"#,
+        expect![[r#"
+            *test*
+            cfg predicate evaluated: `true` (`test`)
+        "#]],
+    );
+    check(
+        r#"
+//- /lib1.rs crate:dep cfg:opt_level=3
+#[macro_export]
+macro_rules! expand_cfg { ($val:tt) => { #[cfg(opt_level = $val)] fn f(){} }; }
+//- /main.rs crate:bin deps:dep cfg:test,dbg=false,opt_level=2
+dep::expand_cfg!("$02");
+"#,
+        expect![[r#"
+            *"2"*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!($0opt_level = "2") }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!($0opt_level = "3") }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `false` (`opt_level="3"`)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn test() { cfg!(and(false, $0opt_level = "2")) }
+"#,
+        expect![[r#"
+            *opt_level*
+            cfg predicate evaluated: `true` (`opt_level="2"`)
         "#]],
     );
 }
@@ -9329,7 +9506,7 @@ impl Iterator for S {
             ```
 
             ```rust
-            struct S
+            struct S;
             ```
         "#]],
     );
@@ -10993,7 +11170,7 @@ struct NoDrop$0;
             ```
 
             ```rust
-            struct NoDrop
+            struct NoDrop;
             ```
 
             ---
@@ -11017,7 +11194,7 @@ impl Drop for NeedsDrop {
             ```
 
             ```rust
-            struct NeedsDrop
+            struct NeedsDrop;
             ```
 
             ---
@@ -11142,7 +11319,7 @@ struct Foo$0<T>(T);
             ```
 
             ```rust
-            struct Foo<T>(T)
+            struct Foo<T>(T);
             ```
 
             ---
@@ -11165,7 +11342,7 @@ struct Foo$0<T: Copy>(T);
             ```rust
             struct Foo<T>(T)
             where
-                T: Copy,
+                T: Copy,;
             ```
 
             ---
@@ -11191,7 +11368,7 @@ struct Foo$0<T: Trait>(T::Assoc);
             ```rust
             struct Foo<T>(<T as Trait>::Assoc)
             where
-                T: Trait,
+                T: Trait,;
             ```
 
             ---
@@ -11362,6 +11539,56 @@ fn bar(v: &Foo<i32>) {
 }
 
 #[test]
+fn show_impl_container_without_type_params() {
+    check(
+        r#"
+trait Trait { fn method(); }
+impl Trait for Foo { fn method() {} }
+struct Foo;
+
+fn main() {
+    Foo::$0method()
+}
+    "#,
+        expect![[r#"
+            *method*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl Trait for Foo
+            fn method()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: clone, derive
+#[derive(Clone)]
+struct Foo;
+
+fn main() {
+    Foo::$0clone()
+}
+    "#,
+        expect![[r#"
+            *clone*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl Clone for Foo
+            pub fn clone(&self) -> Self
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn extra_lifetime_param_on_trait_method_subst() {
     check(
         r#"
@@ -11387,6 +11614,7 @@ fn main() {
             ```
 
             ```rust
+            impl ValueEnum for AudioFormat
             fn to_possible_value<'a>(&'a self)
             ```
         "#]],
@@ -11710,7 +11938,7 @@ doc_comment! {
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -11742,7 +11970,7 @@ struct Ba$0r;
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -11779,7 +12007,7 @@ Multiple lines of docs.
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -11813,7 +12041,7 @@ struct Ba$0r;
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -11846,7 +12074,7 @@ struct Ba$0r;
             ```
 
             ```rust
-            struct Bar
+            struct Bar;
             ```
 
             ---
@@ -12062,6 +12290,37 @@ fn generic_tn<T, const N: usize>(_: [T; N], _: impl Sized) {}
             ---
 
             `T` = `()`
+        "#]],
+    );
+}
+
+#[test]
+fn hover_with_enum_closure_capture() {
+    check(
+        r#"
+enum Request {
+    Resolve { url: () },
+}
+
+fn main() {
+    let event = Request::Resolve { url: () };
+    let _handler = move || {
+        let Request::Resolve { url: _url } = event;
+    };
+}
+
+const FOO$0: () = main();
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            const FOO: () = ()
+            ```
         "#]],
     );
 }

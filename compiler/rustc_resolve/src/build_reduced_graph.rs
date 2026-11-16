@@ -13,12 +13,11 @@ use rustc_ast::{
     DelegationSource, Fn, ForeignItem, ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem,
     StmtKind, TraitAlias, TyAlias,
 };
+use rustc_attr_ir::{Attribute, AttributeKind, MacroUseArgs};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::WriteGuard;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
-use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -753,26 +752,28 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = path_res {
                         self.r.prelude = Some(module);
                     } else {
-                        self.r.dcx().span_err(use_tree.span(), "cannot resolve a prelude import");
+                        // We already emitted: "error[E0463]: can't find crate for `std`/`core`"
+                        self.r
+                            .dcx()
+                            .span_delayed_bug(use_tree.span(), "cannot resolve a prelude import");
                     }
                 }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
                 for tree in items {
                     let id = tree.id;
-                    self.with_owner(id, None, DefKind::Use, use_tree.span(), |this, feed| {
-                        this.build_reduced_graph_for_use_tree(
-                            item,
-                            &tree.inner,
-                            id,
-                            &prefix,
-                            true,
-                            false,
-                            vis,
-                            root_span,
-                            feed,
-                        )
-                    });
+                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
+                    self.build_reduced_graph_for_use_tree(
+                        item,
+                        &tree.inner,
+                        id,
+                        &prefix,
+                        true,
+                        false,
+                        vis,
+                        root_span,
+                        feed,
+                    );
                 }
 
                 // Empty groups `a::b::{}` are turned into synthetic `self` imports
@@ -1296,7 +1297,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     // items will be reported as `unused_macros`.
     fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
-            self.r.unused_macros.insert(def_id, (node_id, ident));
+            self.r
+                .unused_macros
+                .insert(def_id, (node_id, ident, self.parent_scope.module.opt_def_id()));
             if let SyntaxExtensionKind::MacroRules(mr) = &self.r.local_macro_map[&def_id].kind {
                 let value = (def_id, DenseBitSet::new_filled(mr.nrules()));
                 self.r.unused_macro_rules.insert(node_id, value);
@@ -1335,7 +1338,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
         if macro_rules {
             let ident = IdentKey::new(orig_ident);
-            self.r.macro_names.insert(ident);
+            self.r.macro_names.insert(ident, def_id);
             let is_macro_export = ast::attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 Visibility::Public
@@ -1432,6 +1435,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 }
                 match item.kind {
                     ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
+                        self.r.macro_use_mods.insert(item.id);
                         self.parent_scope.macro_rules
                     }
                     _ => orig_macro_rules_scope,

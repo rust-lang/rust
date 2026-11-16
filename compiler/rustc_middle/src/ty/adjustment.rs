@@ -1,6 +1,6 @@
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
@@ -205,6 +205,15 @@ pub enum AutoBorrow {
 
     /// Converts from T to Pin<&T>.
     Pin(hir::Mutability),
+}
+
+impl AutoBorrow {
+    pub fn mutability(self) -> hir::Mutability {
+        match self {
+            Self::Ref(mutbl) => mutbl.into(),
+            Self::RawPtr(mutbl) | Self::Pin(mutbl) => mutbl,
+        }
+    }
 }
 
 /// Information for `CoerceUnsized` impls, storing information we

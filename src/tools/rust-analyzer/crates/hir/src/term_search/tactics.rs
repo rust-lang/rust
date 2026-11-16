@@ -10,7 +10,7 @@
 
 use std::iter;
 
-use hir_ty::db::HirDatabase;
+use hir_ide::db::HirDatabase;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 

@@ -14,7 +14,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn eval_atomic_intrinsic(
         &mut self,
         intrinsic_name: Symbol,
-        generic_args: ty::GenericArgsRef<'tcx>,
+        generic_args: ty::GenericArgs<'tcx>,
         args: &[OpTy<'tcx, M::Provenance>],
         dest: &PlaceTy<'tcx, M::Provenance>,
         ret: Option<mir::BasicBlock>,
@@ -126,7 +126,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => return interp_ok(false),
         }
 
-        trace!("{:?}", self.dump_place(&dest.clone().into()));
+        trace!("{:?}", self.dump_place(&dest));
         self.return_to_block(ret)?;
         interp_ok(true)
     }

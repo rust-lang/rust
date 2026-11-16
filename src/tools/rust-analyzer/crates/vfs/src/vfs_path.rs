@@ -134,7 +134,6 @@ impl VfsPath {
                 #[cfg(windows)]
                 {
                     use windows_paths::Encode;
-                    let path: &std::path::Path = path.as_ref();
                     let components = path.components();
                     let mut add_sep = false;
                     for component in components {
@@ -143,30 +142,25 @@ impl VfsPath {
                         }
                         let len_before = buf.len();
                         match component {
-                            std::path::Component::Prefix(prefix) => {
+                            paths::Utf8Component::Prefix(prefix) => {
                                 // kind() returns a normalized and comparable path prefix.
                                 prefix.kind().encode(buf);
                             }
-                            std::path::Component::RootDir => {
+                            paths::Utf8Component::RootDir => {
                                 if !add_sep {
-                                    component.as_os_str().encode(buf);
+                                    component.as_str().encode(buf);
                                 }
                             }
-                            _ => component.as_os_str().encode(buf),
+                            _ => component.as_str().encode(buf),
                         }
 
                         // some components may be encoded empty
                         add_sep = len_before != buf.len();
                     }
                 }
-                #[cfg(unix)]
+                #[cfg(not(windows))]
                 {
-                    use std::os::unix::ffi::OsStrExt;
-                    buf.extend(path.as_os_str().as_bytes());
-                }
-                #[cfg(not(any(windows, unix)))]
-                {
-                    buf.extend(path.as_os_str().to_string_lossy().as_bytes());
+                    buf.extend(path.as_str().as_bytes());
                 }
             }
             VfsPathRepr::VirtualPath(VirtualPath(s)) => buf.extend(s.as_bytes()),
@@ -180,28 +174,15 @@ mod windows_paths {
         fn encode(&self, buf: &mut Vec<u8>);
     }
 
-    impl Encode for std::ffi::OsStr {
-        fn encode(&self, buf: &mut Vec<u8>) {
-            use std::os::windows::ffi::OsStrExt;
-            for wchar in self.encode_wide() {
-                buf.extend(wchar.to_le_bytes().iter().copied());
-            }
-        }
-    }
-
     impl Encode for u8 {
         fn encode(&self, buf: &mut Vec<u8>) {
-            let wide = *self as u16;
-            buf.extend(wide.to_le_bytes().iter().copied())
+            buf.push(*self);
         }
     }
 
     impl Encode for &str {
         fn encode(&self, buf: &mut Vec<u8>) {
-            debug_assert!(self.is_ascii());
-            for b in self.as_bytes() {
-                b.encode(buf)
-            }
+            buf.extend(self.as_bytes());
         }
     }
 
@@ -211,14 +192,14 @@ mod windows_paths {
     const DEVICE: &str = "\\\\.\\";
     const COLON: &str = ":";
 
-    impl Encode for std::path::Prefix<'_> {
+    impl Encode for paths::Utf8Prefix<'_> {
         fn encode(&self, buf: &mut Vec<u8>) {
             match self {
-                std::path::Prefix::Verbatim(c) => {
+                paths::Utf8Prefix::Verbatim(c) => {
                     VERBATIM.encode(buf);
                     c.encode(buf);
                 }
-                std::path::Prefix::VerbatimUNC(server, share) => {
+                paths::Utf8Prefix::VerbatimUNC(server, share) => {
                     VERBATIM.encode(buf);
                     UNC.encode(buf);
                     SEP.encode(buf);
@@ -226,23 +207,23 @@ mod windows_paths {
                     SEP.encode(buf);
                     share.encode(buf);
                 }
-                std::path::Prefix::VerbatimDisk(d) => {
+                paths::Utf8Prefix::VerbatimDisk(d) => {
                     VERBATIM.encode(buf);
                     d.encode(buf);
                     COLON.encode(buf);
                 }
-                std::path::Prefix::DeviceNS(device) => {
+                paths::Utf8Prefix::DeviceNS(device) => {
                     DEVICE.encode(buf);
                     device.encode(buf);
                 }
-                std::path::Prefix::UNC(server, share) => {
+                paths::Utf8Prefix::UNC(server, share) => {
                     SEP.encode(buf);
                     SEP.encode(buf);
                     server.encode(buf);
                     SEP.encode(buf);
                     share.encode(buf);
                 }
-                std::path::Prefix::Disk(d) => {
+                paths::Utf8Prefix::Disk(d) => {
                     d.encode(buf);
                     COLON.encode(buf);
                 }
@@ -269,7 +250,7 @@ mod windows_paths {
     fn test_sep_root_dir_encoding() {
         let mut buf = Vec::new();
         vfs("C:/x/y").encode(&mut buf);
-        assert_eq!(&buf, &[0, 67, 0, 58, 0, 92, 0, 120, 0, 92, 0, 121, 0])
+        assert_eq!(&buf, &[0, 67, 58, 92, 120, 92, 121])
     }
 
     #[cfg(test)]

@@ -42,7 +42,7 @@ use crate::alloc::{AllocatorClone, Global};
 pub enum Entry<
     'a,
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     /// An occupied entry.
     ///
@@ -133,7 +133,7 @@ impl<T: Debug + Ord, A: AllocatorClone> Debug for Entry<'_, T, A> {
 pub struct OccupiedEntry<
     'a,
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     pub(super) inner: map::OccupiedEntry<'a, T, SetValZST, A>,
 }
@@ -175,7 +175,7 @@ impl<T: Debug + Ord, A: AllocatorClone> Debug for OccupiedEntry<'_, T, A> {
 pub struct VacantEntry<
     'a,
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     pub(super) inner: map::VacantEntry<'a, T, SetValZST, A>,
 }

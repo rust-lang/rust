@@ -1,4 +1,5 @@
-/// The unary logical negation operator `!`.
+/// The unary negation operator `!`. It performs either logical or bitwise negation,
+/// depending on the type.
 ///
 /// # Examples
 ///
@@ -37,15 +38,23 @@ pub const trait Not {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// Performs the unary `!` operation.
+    /// Performs the unary `!` operation using logical or bitwise negation.
     ///
     /// # Examples
     ///
     /// ```
+    /// // Logical negation changes between true and false:
     /// assert_eq!(!true, false);
     /// assert_eq!(!false, true);
+    ///
+    /// // Bitwise negation changes between 0 and 1 in the binary
+    /// // representation of integers:
     /// assert_eq!(!1u8, 254);
     /// assert_eq!(!0u8, 255);
+    ///
+    /// // The same examples, represented in binary:
+    /// assert_eq!(!0b0000_0001u8, 0b1111_1110);
+    /// assert_eq!(!0b0000_0000u8, 0b1111_1111);
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]

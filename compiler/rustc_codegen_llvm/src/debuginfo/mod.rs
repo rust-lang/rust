@@ -15,7 +15,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
@@ -34,7 +34,7 @@ use self::metadata::{
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::debuginfo::di_builder::DIBuilderBox;
 use crate::llvm::debuginfo::{
     DIArray, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
@@ -55,13 +55,13 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
-    adt_stack: RefCell<Vec<(DefId, GenericArgsRef<'tcx>)>>,
+    adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
-    pub(crate) fn new(llmod: &'ll llvm::Module, sess: &Session) -> Self {
+    pub(crate) fn new(llmod: llvm::Module<'ll>, sess: &Session) -> Self {
         debug!("CodegenUnitDebugContext::new");
 
         match sess.target.debuginfo_kind {
@@ -121,7 +121,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 
 impl<'ll> Builder<'_, 'll, '_> {
     pub(crate) fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
+        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder()) }
     }
 }
 
@@ -130,7 +130,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        maybe_definition_llfn: Option<&'ll Value>,
+        maybe_definition_llfn: Option<Value<'ll>>,
     ) -> &'ll DIScope {
         let tcx = self.tcx;
 
@@ -197,9 +197,9 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateMethod(
                 DIB(self),
                 containing_scope,
-                name.as_c_char_ptr(),
+                name.as_ptr(),
                 name.len(),
-                linkage_name.as_c_char_ptr(),
+                linkage_name.as_ptr(),
                 linkage_name.len(),
                 file_metadata,
                 loc.line,
@@ -214,9 +214,9 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
-                name.as_c_char_ptr(),
+                name.as_ptr(),
                 name.len(),
-                linkage_name.as_c_char_ptr(),
+                linkage_name.as_ptr(),
                 linkage_name.len(),
                 file_metadata,
                 loc.line,
@@ -287,7 +287,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         fn get_template_parameters<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
-            args: GenericArgsRef<'tcx>,
+            args: GenericArgs<'tcx>,
         ) -> &'ll DIArray {
             if args.terms().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
@@ -540,22 +540,22 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         if direct_offset.bytes() > 0 {
             addr_ops.push(DW_OP_plus_uconst);
-            addr_ops.push(direct_offset.bytes() as u64);
+            addr_ops.push(direct_offset.bytes());
             addr_ops.push(DW_OP_stack_value);
         }
         for &offset in indirect_offsets {
             addr_ops.push(DW_OP_deref);
             if offset.bytes() > 0 {
                 addr_ops.push(DW_OP_plus_uconst);
-                addr_ops.push(offset.bytes() as u64);
+                addr_ops.push(offset.bytes());
             }
         }
         if let Some(fragment) = fragment {
             // `DW_OP_LLVM_fragment` takes as arguments the fragment's
             // offset and size, both of them in bits.
             addr_ops.push(DW_OP_LLVM_fragment);
-            addr_ops.push(fragment.start.bits() as u64);
-            addr_ops.push((fragment.end - fragment.start).bits() as u64);
+            addr_ops.push(fragment.start.bits());
+            addr_ops.push((fragment.end - fragment.start).bits());
         }
 
         let di_builder = DIB(self.cx());
@@ -576,13 +576,13 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
     fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {
         unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, dbg_loc);
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder(), dbg_loc);
         }
     }
 
     fn clear_dbg_loc(&mut self) {
         unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder(), ptr::null());
         }
     }
 
@@ -590,7 +590,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 
-    fn set_var_name(&mut self, value: &'ll Value, name: &str) {
+    fn set_var_name(&mut self, value: Value<'ll>, name: &str) {
         // Avoid wasting time if LLVM value names aren't even enabled.
         if self.sess().fewer_names() {
             return;
@@ -716,7 +716,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                 DIB(self),
                 None,
-                name.as_c_char_ptr(),
+                name.as_ptr(),
                 name.len(),
                 actual_type_metadata,
             )

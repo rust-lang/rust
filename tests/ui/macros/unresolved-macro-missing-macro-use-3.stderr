@@ -1,0 +1,31 @@
+error[E0432]: unresolved import `crate::has_a_macro::a_macro`
+  --> $DIR/unresolved-macro-missing-macro-use-3.rs:9:5
+   |
+LL | use crate::has_a_macro::a_macro;
+   |     ^^^^^^^^^^^^^^^^^^^^-------
+   |                         |
+   |                         no `a_macro` in `has_a_macro`
+
+error[E0659]: `a_macro` is ambiguous
+  --> $DIR/unresolved-macro-missing-macro-use-3.rs:15:5
+   |
+LL |     a_macro!();
+   |     ^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a `macro_rules` name and a non-`macro_rules` name from another module
+note: `a_macro` could refer to the macro defined here
+  --> $DIR/unresolved-macro-missing-macro-use-3.rs:5:5
+   |
+LL |     macro_rules! a_macro { () => {} }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `a_macro` could also refer to the unresolved item imported here
+  --> $DIR/unresolved-macro-missing-macro-use-3.rs:9:5
+   |
+LL | use crate::has_a_macro::a_macro;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider removing this
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0432, E0659.
+For more information about an error, try `rustc --explain E0432`.

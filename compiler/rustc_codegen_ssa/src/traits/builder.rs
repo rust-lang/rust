@@ -1,9 +1,8 @@
-use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_ast::expand::typetree::{FncTree, TypeTree};
-use rustc_hir::attrs::AttributeKind;
+use rustc_attr_ir::UnrollAttr;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -23,7 +22,7 @@ use super::misc::MiscCodegenMethods;
 use super::type_::{ArgAbiBuilderMethods, BaseTypeCodegenMethods, LayoutTypeCodegenMethods};
 use super::{CodegenMethods, StaticBuilderMethods};
 use crate::MemFlags;
-use crate::common::{AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
+use crate::common::{AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
 use crate::mir::operand::{OperandRef, OperandValue};
 use crate::mir::place::{PlaceRef, PlaceValue};
 
@@ -94,7 +93,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
-    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _attributes: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _loop_hint_attrs: &[UnrollAttr]) {
         self.br(dest)
     }
     fn cond_br(
@@ -320,10 +319,12 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
 
-    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
-    fn store_to_place(&mut self, val: Self::Value, place: PlaceValue<Self::Value>) -> Self::Value {
+    fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) {
+        self.store_with_flags(val, ptr, align, MemFlags::empty())
+    }
+    fn store_to_place(&mut self, val: Self::Value, place: PlaceValue<Self::Value>) {
         assert_eq!(place.llextra, None);
-        self.store(val, place.llval, place.align)
+        self.store(val, place.llval, place.align);
     }
     fn store_with_flags(
         &mut self,
@@ -331,13 +332,13 @@ pub trait BuilderMethods<'a, 'tcx>:
         ptr: Self::Value,
         align: Align,
         flags: MemFlags,
-    ) -> Self::Value;
+    );
     fn store_to_place_with_flags(
         &mut self,
         val: Self::Value,
         place: PlaceValue<Self::Value>,
         flags: MemFlags,
-    ) -> Self::Value {
+    ) {
         assert_eq!(place.llextra, None);
         self.store_with_flags(val, place.llval, place.align, flags)
     }
@@ -350,26 +351,23 @@ pub trait BuilderMethods<'a, 'tcx>:
         size: Size,
     );
 
-    fn gep(&mut self, ty: Self::Type, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
-    fn inbounds_gep(
-        &mut self,
-        ty: Self::Type,
-        ptr: Self::Value,
-        indices: &[Self::Value],
-    ) -> Self::Value;
+    fn gep(&mut self, stride: Size, ptr: Self::Value, index: Self::Value) -> Self::Value;
+    fn inbounds_gep(&mut self, stride: Size, ptr: Self::Value, index: Self::Value) -> Self::Value {
+        self.gep(stride, ptr, index)
+    }
     fn inbounds_nuw_gep(
         &mut self,
-        ty: Self::Type,
+        stride: Size,
         ptr: Self::Value,
-        indices: &[Self::Value],
+        index: Self::Value,
     ) -> Self::Value {
-        self.inbounds_gep(ty, ptr, indices)
+        self.inbounds_gep(stride, ptr, index)
     }
     fn ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
-        self.gep(self.cx().type_i8(), ptr, &[offset])
+        self.gep(Size::from_bytes(1), ptr, offset)
     }
     fn inbounds_ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
-        self.inbounds_gep(self.cx().type_i8(), ptr, &[offset])
+        self.inbounds_gep(Size::from_bytes(1), ptr, offset)
     }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
@@ -406,18 +404,15 @@ pub trait BuilderMethods<'a, 'tcx>:
         dest_ty: Self::Type,
     ) -> Self::Value {
         let in_ty = self.cx().val_ty(x);
-        let (float_ty, int_ty) = if self.cx().type_kind(dest_ty) == TypeKind::Vector
-            && self.cx().type_kind(in_ty) == TypeKind::Vector
+        let (float_ty, int_ty) = if let Some(dest_ty) = self.cx().vector_element_type(dest_ty)
+            && let Some(in_ty) = self.cx().vector_element_type(in_ty)
         {
-            (self.cx().element_type(in_ty), self.cx().element_type(dest_ty))
+            (in_ty, dest_ty)
         } else {
             (in_ty, dest_ty)
         };
-        assert_matches!(
-            self.cx().type_kind(float_ty),
-            TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::FP128
-        );
-        assert_eq!(self.cx().type_kind(int_ty), TypeKind::Integer);
+        assert!(self.cx().float_type(float_ty).is_some_and(|f| f.is_ieee()));
+        assert!(self.cx().int_width(int_ty).is_some());
 
         if signed { self.fptosi_sat(x, dest_ty) } else { self.fptoui_sat(x, dest_ty) }
     }
@@ -539,12 +534,15 @@ pub trait BuilderMethods<'a, 'tcx>:
             let tt = tt.add_indirection();
             let fnc_tree = FncTree { args: vec![tt.clone(), tt], ret: TypeTree::new() };
             let bytes = self.const_usize(layout.size.bytes());
-            let bytes = if layout.peel_transparent_wrappers(self).ty.is_scalable_vector() {
-                let vscale = self.vscale(self.type_i64());
-                self.mul(vscale, bytes)
-            } else {
-                bytes
-            };
+            let bytes =
+                // FIXME(rustc_scalable_vector/stdarch_aarch64_sve): Scalable vectors aren't
+                // actually sized, but we pretend they are. Here we have to hack around that.
+                if layout.peel_transparent_wrappers_from_non_1zst(self).ty.is_scalable_vector() {
+                    let vscale = self.vscale(self.type_i64());
+                    self.mul(vscale, bytes)
+                } else {
+                    bytes
+                };
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, Some(fnc_tree));
         }
     }
@@ -582,7 +580,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn va_arg(&mut self, list: Self::Value, ty: Self::Type) -> Self::Value;
     fn extract_element(&mut self, vec: Self::Value, idx: Self::Value) -> Self::Value;
-    fn vector_splat(&mut self, num_elts: usize, elt: Self::Value) -> Self::Value;
+    fn vector_splat(&mut self, num_elts: u64, elt: Self::Value) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
 

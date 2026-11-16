@@ -1,6 +1,8 @@
 error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refers_to_static_cross_crate.rs:27:15
    |
+LL | const U8_MUT3: &u8 = {
+LL |     unsafe {
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `U8_MUT3` failed here
 

@@ -141,6 +141,8 @@ mod exp10;
 mod exp10f;
 mod exp2;
 mod exp2f;
+mod exp2m1;
+mod exp2m1f;
 mod expf;
 mod expm1;
 mod expm1f;
@@ -232,6 +234,8 @@ pub use self::erff::{erfcf, erff};
 pub use self::exp::exp;
 pub use self::exp2::exp2;
 pub use self::exp2f::exp2f;
+pub use self::exp2m1::exp2m1;
+pub use self::exp2m1f::exp2m1f;
 pub use self::exp10::exp10;
 pub use self::exp10f::exp10f;
 pub use self::expf::expf;
@@ -299,11 +303,13 @@ pub use self::trunc::{trunc, truncf};
 
 cfg_select_nofmt! {
     f16_enabled => {
+        mod exp2m1f16;
         mod fmaf16;
 
         // verify-sorted-start
         pub use self::ceil::ceilf16;
         pub use self::copysign::copysignf16;
+        pub use self::exp2m1f16::exp2m1f16;
         pub use self::fabs::fabsf16;
         pub use self::fdim::fdimf16;
         pub use self::floor::floorf16;

@@ -189,7 +189,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 pub struct BTreeMap<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     root: Option<Root<K, V>>,
     length: usize,
@@ -205,8 +205,14 @@ pub struct BTreeMap<
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocatorClone> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
-        // ignore-tidy-undocumented-unsafe
-        drop(unsafe { ptr::read(self) }.into_iter())
+        if let Some(root) = self.root.take() {
+            // SAFETY: The tree won't be used after this point.
+            // The allocator has not been moved out and will be moved into `drop_tree`.
+            unsafe { root.into_dying().drop_tree(ManuallyDrop::take(&mut self.alloc)) };
+        } else {
+            // SAFETY: The allocator has not been moved out and won't be used after this point.
+            unsafe { ManuallyDrop::drop(&mut self.alloc) };
+        }
     }
 }
 
@@ -446,7 +452,7 @@ impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
 pub struct IntoIter<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     range: LazyLeafRange<marker::Dying, K, V>,
     length: usize,
@@ -554,7 +560,7 @@ impl<K, V: fmt::Debug> fmt::Debug for ValuesMut<'_, K, V> {
 pub struct IntoKeys<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     inner: IntoIter<K, V, A>,
 }
@@ -577,7 +583,7 @@ impl<K: fmt::Debug, V, A: AllocatorClone> fmt::Debug for IntoKeys<K, V, A> {
 pub struct IntoValues<
     K,
     V,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     inner: IntoIter<K, V, A>,
 }
@@ -684,7 +690,6 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
     ///
     /// use std::collections::BTreeMap;
@@ -692,10 +697,17 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     ///
     /// let map: BTreeMap<i32, i32> = BTreeMap::new_in(Global);
     /// ```
-    #[unstable(feature = "btreemap_alloc", issue = "32838")]
+    #[unstable(feature = "btreemap_alloc", issue = "163177")]
     #[must_use]
     pub const fn new_in(alloc: A) -> BTreeMap<K, V, A> {
         BTreeMap { root: None, length: 0, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
+    }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "btreemap_alloc", issue = "163177")]
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        &self.alloc
     }
 }
 
@@ -2143,7 +2155,7 @@ pub struct ExtractIf<
     V,
     R,
     F,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocatorClone = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: AllocatorClone = Global,
 > {
     pred: F,
     inner: ExtractIfInner<'a, K, V, R>,
@@ -2825,11 +2837,7 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(
-        feature = "const_btree_len",
-        issue = "71835",
-        implied_by = "const_btree_new"
-    )]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.length
@@ -2849,11 +2857,7 @@ impl<K, V, A: AllocatorClone> BTreeMap<K, V, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(
-        feature = "const_btree_len",
-        issue = "71835",
-        implied_by = "const_btree_new"
-    )]
+    #[rustc_const_stable(feature = "const_btree_len", since = "1.101.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -3152,7 +3156,7 @@ pub struct CursorMut<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A = Global,
 > {
     inner: CursorMutKey<'a, K, V, A>,
 }
@@ -3190,7 +3194,7 @@ pub struct CursorMutKey<
     'a,
     K: 'a,
     V: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A = Global,
+    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A = Global,
 > {
     // If current is None then it means the tree has not been allocated yet.
     current: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,

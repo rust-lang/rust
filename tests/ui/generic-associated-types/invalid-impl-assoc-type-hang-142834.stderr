@@ -1,0 +1,69 @@
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/invalid-impl-assoc-type-hang-142834.rs:11:19
+   |
+LL | impl<T, U> Trait for W
+   |      - first use of `T`
+...
+LL |     type NewAssoc<T, U>
+   |                   ^ already used
+
+error[E0403]: the name `U` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/invalid-impl-assoc-type-hang-142834.rs:11:22
+   |
+LL | impl<T, U> Trait for W
+   |         - first use of `U`
+...
+LL |     type NewAssoc<T, U>
+   |                      ^ already used
+
+error[E0437]: type `NewAssoc` is not a member of trait `Trait`
+  --> $DIR/invalid-impl-assoc-type-hang-142834.rs:11:5
+   |
+LL | /     type NewAssoc<T, U>
+...  |
+LL | |     where
+LL | |         W<U>: Trait;
+   | |____________________^ not a member of trait `Trait`
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/invalid-impl-assoc-type-hang-142834.rs:15:13
+   |
+LL |         = (&'a (), &'b ())
+   |             ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a, T, U> Trait for W
+   |      +++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/invalid-impl-assoc-type-hang-142834.rs:15:21
+   |
+LL |         = (&'a (), &'b ())
+   |                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, T, U> Trait for W
+   |      +++
+
+error[E0107]: missing generics for struct `W`
+  --> $DIR/invalid-impl-assoc-type-hang-142834.rs:5:22
+   |
+LL | impl<T, U> Trait for W
+   |                      ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/invalid-impl-assoc-type-hang-142834.rs:4:8
+   |
+LL | struct W<T>(T);
+   |        ^ -
+help: add missing generic argument
+   |
+LL | impl<T, U> Trait for W<T>
+   |                       +++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0107, E0261, E0403, E0437.
+For more information about an error, try `rustc --explain E0107`.

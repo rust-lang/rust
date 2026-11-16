@@ -135,6 +135,14 @@ where
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn advance_by(&mut self, mut n: usize) -> Result<(), NonZero<usize>> {
+        if self.n > 0 && n == 0 {
+            // If we try to process our skips now, we might witness the end of the inner iterator,
+            // but there's no valid `Err(k)` that we could return. This is especially a problem for
+            // unfused iterators that might end up called again by `Chain`, for example, so it's
+            // better that we do nothing at all.
+            return Ok(());
+        }
+
         let skip_inner = self.n;
         let skip_and_advance = skip_inner.saturating_add(n);
 

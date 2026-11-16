@@ -402,6 +402,13 @@ Show method calls and field accesses completions with `await` prefixed to them w
 completing on a future.
 
 
+## rust-analyzer.completion.autoDyn.enable {#completion.autoDyn.enable}
+
+Default: `true`
+
+Complete traits with `dyn` prefixed to them when completing in a type position.
+
+
 ## rust-analyzer.completion.autoIter.enable {#completion.autoIter.enable}
 
 Default: `true`
@@ -583,6 +590,13 @@ Enable term search based snippets like `Some(foo.bar().baz())`.
 Default: `1000`
 
 Term search fuel in "units of work" for autocompletion (Defaults to 1000).
+
+
+## rust-analyzer.completion.turbofish.enable {#completion.turbofish.enable}
+
+Default: `true`
+
+Complete turbofish (`::<>`) at the call site (if needed).
 
 
 ## rust-analyzer.diagnostics.disabled {#diagnostics.disabled}
@@ -1062,7 +1076,7 @@ Show generic type parameter name inlay hints.
 
 ## rust-analyzer.inlayHints.implicitDrops.enable {#inlayHints.implicitDrops.enable}
 
-Default: `false`
+Default: `"never"`
 
 Show implicit drop hints.
 

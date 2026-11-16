@@ -4,7 +4,17 @@ error: cannot find macro `in_mod` in this scope
 LL | #![doc = in_mod!()]
    |          ^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:27:5
+   |
+LL | / mod macros_stay {
+LL | |     #![doc = in_mod!()]
+...  |
+LL | |     macro_rules! in_mod { () => { "" } }
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | }
+   | |_- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:6:10
@@ -12,7 +22,11 @@ error: cannot find macro `in_block` in this scope
 LL | #![doc = in_block!()]
    |          ^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:54:5
+   |
+LL |     macro_rules! in_block { () => { "" } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `in_root` in this scope
   --> $DIR/key-value-expansion-scope.rs:8:9
@@ -20,7 +34,19 @@ error: cannot find macro `in_root` in this scope
 LL | #[doc = in_root!()]
    |         ^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:19:1
+   |
+LL | / #![doc = in_root!()]
+LL | |
+LL | | #![doc = in_mod!()]
+LL | | #![doc = in_mod_escape!()]
+...  |
+LL | | macro_rules! in_root { () => { "" } }
+   | | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | fn main() {}
+   | |____________- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_mod` in this scope
   --> $DIR/key-value-expansion-scope.rs:9:9
@@ -28,7 +54,17 @@ error: cannot find macro `in_mod` in this scope
 LL | #[doc = in_mod!()]
    |         ^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:27:5
+   |
+LL | / mod macros_stay {
+LL | |     #![doc = in_mod!()]
+...  |
+LL | |     macro_rules! in_mod { () => { "" } }
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | }
+   | |_- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_mod_escape` in this scope
   --> $DIR/key-value-expansion-scope.rs:10:9
@@ -36,7 +72,17 @@ error: cannot find macro `in_mod_escape` in this scope
 LL | #[doc = in_mod_escape!()]
    |         ^^^^^^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:42:5
+   |
+LL | / mod macros_escape {
+LL | |     #![doc = in_mod_escape!()]
+...  |
+LL | |     macro_rules! in_mod_escape { () => { "" } }
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | }
+   | |_- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:11:9
@@ -44,7 +90,11 @@ error: cannot find macro `in_block` in this scope
 LL | #[doc = in_block!()]
    |         ^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:54:5
+   |
+LL |     macro_rules! in_block { () => { "" } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `in_root` in this scope
   --> $DIR/key-value-expansion-scope.rs:13:14
@@ -52,7 +102,19 @@ error: cannot find macro `in_root` in this scope
 LL |     #![doc = in_root!()]
    |              ^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:19:1
+   |
+LL | / #![doc = in_root!()]
+LL | |
+LL | | #![doc = in_mod!()]
+LL | | #![doc = in_mod_escape!()]
+...  |
+LL | | macro_rules! in_root { () => { "" } }
+   | | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | fn main() {}
+   | |____________- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_mod` in this scope
   --> $DIR/key-value-expansion-scope.rs:14:14
@@ -60,7 +122,17 @@ error: cannot find macro `in_mod` in this scope
 LL |     #![doc = in_mod!()]
    |              ^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:27:5
+   |
+LL | / mod macros_stay {
+LL | |     #![doc = in_mod!()]
+...  |
+LL | |     macro_rules! in_mod { () => { "" } }
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | }
+   | |_- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_mod_escape` in this scope
   --> $DIR/key-value-expansion-scope.rs:15:14
@@ -68,7 +140,17 @@ error: cannot find macro `in_mod_escape` in this scope
 LL |     #![doc = in_mod_escape!()]
    |              ^^^^^^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:42:5
+   |
+LL | / mod macros_escape {
+LL | |     #![doc = in_mod_escape!()]
+...  |
+LL | |     macro_rules! in_mod_escape { () => { "" } }
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | }
+   | |_- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:16:14
@@ -76,7 +158,11 @@ error: cannot find macro `in_block` in this scope
 LL |     #![doc = in_block!()]
    |              ^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:54:5
+   |
+LL |     macro_rules! in_block { () => { "" } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:50:9
@@ -84,7 +170,11 @@ error: cannot find macro `in_block` in this scope
 LL | #[doc = in_block!()]
    |         ^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:54:5
+   |
+LL |     macro_rules! in_block { () => { "" } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:52:14
@@ -92,7 +182,11 @@ error: cannot find macro `in_block` in this scope
 LL |     #![doc = in_block!()]
    |              ^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:54:5
+   |
+LL |     macro_rules! in_block { () => { "" } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `in_mod` in this scope
   --> $DIR/key-value-expansion-scope.rs:63:9
@@ -100,7 +194,17 @@ error: cannot find macro `in_mod` in this scope
 LL | #[doc = in_mod!()]
    |         ^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:27:5
+   |
+LL | / mod macros_stay {
+LL | |     #![doc = in_mod!()]
+...  |
+LL | |     macro_rules! in_mod { () => { "" } }
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | }
+   | |_- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:65:9
@@ -108,7 +212,11 @@ error: cannot find macro `in_block` in this scope
 LL | #[doc = in_block!()]
    |         ^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:54:5
+   |
+LL |     macro_rules! in_block { () => { "" } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `in_mod` in this scope
   --> $DIR/key-value-expansion-scope.rs:68:14
@@ -116,7 +224,17 @@ error: cannot find macro `in_mod` in this scope
 LL |     #![doc = in_mod!()]
    |              ^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:27:5
+   |
+LL | / mod macros_stay {
+LL | |     #![doc = in_mod!()]
+...  |
+LL | |     macro_rules! in_mod { () => { "" } }
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
+...  |
+LL | | }
+   | |_- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find macro `in_block` in this scope
   --> $DIR/key-value-expansion-scope.rs:70:14
@@ -124,7 +242,11 @@ error: cannot find macro `in_block` in this scope
 LL |     #![doc = in_block!()]
    |              ^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/key-value-expansion-scope.rs:54:5
+   |
+LL |     macro_rules! in_block { () => { "" } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `in_root` in the current scope when looking from the crate root
   --> $DIR/key-value-expansion-scope.rs:1:10

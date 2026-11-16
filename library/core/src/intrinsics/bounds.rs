@@ -44,7 +44,9 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
 ///
 /// # Safety
 /// Must actually *be* such a type.
-pub unsafe trait FloatPrimitive: Sized + Copy {
+pub unsafe trait FloatPrimitive:
+    Sized + Copy + core::ops::Mul<Output = Self> + core::ops::Add<Output = Self>
+{
     type UInt: const core::ops::BitOr<Output = Self::UInt>
         + const core::ops::BitAnd<Output = Self::UInt>
         + const core::ops::Not<Output = Self::UInt>;

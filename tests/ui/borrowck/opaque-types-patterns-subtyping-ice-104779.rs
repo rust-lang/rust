@@ -1,3 +1,8 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
+
 // issue: rust-lang/rust#104779
 // ICE region infer, IndexMap: key not found
 
@@ -13,11 +18,11 @@ fn foo() -> impl Sized {
 //~^ WARN function cannot return without recursing
     loop {
         match foo() {
-        //~^ ERROR higher-ranked subtype error
-        //~^^ ERROR higher-ranked subtype error
+        //[current]~^ ERROR higher-ranked subtype error
+        //[current]~^^ ERROR higher-ranked subtype error
             Subtype::Bar => (),
-            //~^ ERROR higher-ranked subtype error
-            //~^^ ERROR higher-ranked subtype error
+            //[current]~^ ERROR higher-ranked subtype error
+            //[current]~^^ ERROR higher-ranked subtype error
             Supertype::Var(x) => {}
         }
     }

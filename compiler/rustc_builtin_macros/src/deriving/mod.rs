@@ -7,11 +7,11 @@ use rustc_span::{Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 macro pathvec($($rest:ident)::+) {{
-    vec![ $( sym::$rest ),+ ]
+    &[ $( sym::$rest ),+ ]
 }}
 
-macro path_std($($x:tt)*) {
-    generic::ty::Path::new( pathvec!( $($x)* ) )
+macro path_std($cx: expr, $span: expr, $($x:tt)*) {
+    $cx.std_path($span, pathvec!( $($x)* ) )
 }
 
 pub(crate) mod clone;
@@ -75,21 +75,14 @@ impl MultiItemModifier for BuiltinDerive {
     }
 }
 
-/// Constructs an expression that calls an intrinsic
-fn call_intrinsic(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    intrinsic: Symbol,
-    args: ThinVec<Box<ast::Expr>>,
-) -> Box<ast::Expr> {
-    let span = cx.with_def_site_ctxt(span);
-    let path = cx.std_path(&[sym::intrinsics, intrinsic]);
-    cx.expr_call_global(span, path, args)
+/// Constructs an expression that calls the `discriminant_value` intrinsic.
+fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast::Expr> {
+    cx.expr_call_intrinsic(span, sym::discriminant_value, thin_vec![cx.expr_name(span, arg)])
 }
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
+    let call = cx.expr_call_intrinsic(span, sym::unreachable, ThinVec::new());
     cx.expr_block(Box::new(ast::Block {
         stmts: thin_vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
@@ -107,6 +100,6 @@ fn assert_ty_bounds(
 ) {
     // Generate statement `let _: assert_path<ty>;`.
     let span = cx.with_def_site_ctxt(span);
-    let assert_path = cx.path_all(span, true, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
+    let assert_path = cx.std_path_all(span, assert_path, vec![GenericArg::Type(ty)]);
     stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
 }

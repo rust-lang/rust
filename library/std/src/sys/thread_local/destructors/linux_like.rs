@@ -37,14 +37,17 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
         >;
     }
 
-    if let Some(f) = unsafe { __cxa_thread_atexit_impl } {
+    if let Some(f) = unsafe { __cxa_thread_atexit_impl }
+        && let dso = unsafe { __dso_handle }
+        && !dso.is_null()
+    {
         unsafe {
             f(
                 transmute::<unsafe extern "C" fn(*mut u8), unsafe extern "C" fn(*mut libc::c_void)>(
                     dtor,
                 ),
                 t.cast(),
-                (&raw const __dso_handle) as *mut _,
+                dso as *mut _,
             );
         }
     } else {

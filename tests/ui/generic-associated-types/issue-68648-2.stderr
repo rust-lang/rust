@@ -13,6 +13,8 @@ LL |     T::identity(())
 note: associated function defined here
   --> $DIR/issue-68648-2.rs:4:8
    |
+LL | trait Fun {
+...
 LL |     fn identity<'a>(t: Self::F<'a>) -> Self::F<'a> { t }
    |        ^^^^^^^^     --------------
 

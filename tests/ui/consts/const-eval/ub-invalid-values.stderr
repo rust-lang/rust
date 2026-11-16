@@ -1,6 +1,8 @@
 error[E0080]: interpreting an invalid 8-bit value as a bool: 0x03
   --> $DIR/ub-invalid-values.rs:8:5
    |
+LL | const _: () = {
+LL |     let v = 3_u8;
 LL |     bool_cast(&v as *const u8 as *const bool);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed inside this call
    |

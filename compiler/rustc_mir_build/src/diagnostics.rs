@@ -585,7 +585,7 @@ pub(crate) struct UnsafeNotInheritedLintNote {
 }
 
 impl Subdiagnostic for UnsafeNotInheritedLintNote {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.span_note(
             self.signature_span,
             msg!("an unsafe function restricts its caller, but its body is safe by default"),
@@ -625,8 +625,8 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'a, 'tcx> {
     pub(crate) ty: Ty<'tcx>,
 }
 
-impl<'a, G> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+impl<'a> Diagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag =
             Diag::new(dcx, level, msg!("non-exhaustive patterns: type `{$ty}` is non-empty"));
         diag.span(self.scrut_span);
@@ -730,9 +730,9 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) inner: UnreachablePatternInner<'tcx>,
 }
 
-impl<'a, 'tcx, G> Diagnostic<'a, G> for UnreachablePattern<'tcx> {
+impl<'a, 'tcx> Diagnostic<'a> for UnreachablePattern<'tcx> {
     #[track_caller]
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
         let mut diag = self.inner.into_diag(dcx, level);
         if let Some(covered_by_many_n_more_count) = self.covered_by_many_n_more_count {
             diag.arg("covered_by_many_n_more_count", covered_by_many_n_more_count);
@@ -775,6 +775,10 @@ pub(crate) struct UnreachablePatternInner<'tcx> {
     pub(crate) covered_by_many: Option<MultiSpan>,
     #[suggestion("remove the match arm", code = "", applicability = "machine-applicable")]
     pub(crate) suggest_remove: Option<Span>,
+    #[note(
+        "`#[non_exhaustive]` does not affect exhaustiveness checking within the defining crate"
+    )]
+    pub(crate) non_exhaustive_attr: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1260,7 +1264,7 @@ pub(crate) struct Variant {
 }
 
 impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
-    fn add_to_diag<G>(self, diag: &mut Diag<'_, G>) {
+    fn add_to_diag(self, diag: &mut Diag<'_>) {
         diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);
 

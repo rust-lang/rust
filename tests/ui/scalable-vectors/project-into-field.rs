@@ -3,7 +3,6 @@
 //@ compile-flags: -Copt-level=0 --target=aarch64-unknown-linux-gnu
 //@ dont-check-compiler-stderr
 //@ failure-status: 101
-//@ ignore-backends: gcc
 //@ needs-llvm-components: aarch64
 #![feature(no_core, rustc_attrs)]
 #![no_std]

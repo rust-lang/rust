@@ -1,6 +1,8 @@
 error[E0080]: `extern type` field does not have a known offset
   --> $DIR/issue-91827-extern-types-field-offset.rs:38:17
    |
+LL | const OFFSET: () = unsafe {
+...
 LL |     let field = &x.a;
    |                 ^^^^ evaluation of `OFFSET` failed here
 

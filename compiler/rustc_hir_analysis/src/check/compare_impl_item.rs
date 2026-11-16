@@ -14,11 +14,11 @@ use rustc_infer::infer::{self, BoundRegionConversionTime, InferCtxt, TyCtxtInfer
 use rustc_infer::traits::{TraitErrors, util};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Unnormalized, Upcast,
+    self, BottomUpFolder, CallerBoundsIterator, GenericArgs, GenericParamDefKind, Generics, Ty,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, TypingMode, Unnormalized, Upcast,
 };
-use rustc_span::{BytePos, DUMMY_SP, Span, bug, span_bug};
+use rustc_span::{BytePos, DUMMY_SP, Span, bug, kw, span_bug};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -86,6 +86,7 @@ fn check_method_is_structurally_compatible<'tcx>(
     compare_self_type(tcx, impl_m, trait_m, impl_trait_ref, delay)?;
     compare_number_of_generics(tcx, impl_m, trait_m, delay)?;
     compare_generic_param_kinds(tcx, impl_m, trait_m, delay)?;
+    compare_const_generic_param_types(tcx, impl_m, trait_m, impl_trait_ref, delay)?;
     compare_number_of_method_arguments(tcx, impl_m, trait_m, delay)?;
     compare_synthetic_generics(tcx, impl_m, trait_m, delay)?;
     check_region_bounds_on_impl_item(tcx, impl_m, trait_m, delay)?;
@@ -624,12 +625,16 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 "method `{}` has an incompatible return type for trait",
                 trait_m.name()
             );
+            diag.span_context(tcx.def_span(impl_m.container_id(tcx)).shrink_to_lo());
             infcx.err_ctxt().note_type_err(
                 &mut diag,
                 &cause,
-                tcx.hir_get_if_local(impl_m.def_id)
-                    .and_then(|node| node.fn_decl())
-                    .map(|decl| (decl.output.span(), Cow::from("return type in trait"), false)),
+                tcx.hir_get_if_local(trait_m.def_id).and_then(|node| node.fn_decl()).map(|decl| {
+                    let mut span: MultiSpan = decl.output.span().into();
+                    span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
+                    span.push_span_context(tcx.def_span(trait_m.def_id).shrink_to_lo());
+                    (span, Cow::from("return type in trait"), false)
+                }),
                 Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
                     expected: trait_return_ty.into(),
                     found: impl_return_ty.into(),
@@ -638,7 +643,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 false,
                 None,
             );
-            return Err(diag.emit());
+            return Err(diag.emit_err());
         }
     }
 
@@ -794,7 +799,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
 struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     ocx: &'a ObligationCtxt<'a, 'tcx, E>,
-    types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
+    types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgs<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
     impl_m_id: LocalDefId,
@@ -950,7 +955,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                             "hidden type must only reference lifetimes captured by this impl trait",
                         )
                         .with_note(format!("hidden type inferred to be `{}`", self.ty))
-                        .emit()
+                        .emit_err()
                 }
                 None => {
                     // This code path is not reached in any tests, but may be
@@ -1013,6 +1018,7 @@ fn report_trait_method_mismatch<'tcx>(
         "method `{}` has an incompatible type for trait",
         trait_m.name()
     );
+    diag.span_context(tcx.def_span(impl_m.container_id(tcx)).shrink_to_lo());
     match &terr {
         TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
             if trait_m.is_method() =>
@@ -1066,22 +1072,65 @@ fn report_trait_method_mismatch<'tcx>(
                     };
                 };
             } else if let Some(trait_ty) = trait_sig.inputs().get(*i) {
-                diag.span_suggestion_verbose(
+                rustc_middle::ty::print::with_crate_prefix!(diag.span_suggestion_verbose(
                     impl_err_span,
                     "change the parameter type to match the trait",
                     trait_ty,
                     Applicability::MachineApplicable,
-                );
+                ));
             }
         }
         _ => {}
     }
 
     cause.span = impl_err_span;
+
+    let mut labels = vec![];
+    let mut context = vec![];
+    if let TypeError::ArgumentSorts(_, i) = &terr
+        && let Some(ty) =
+            tcx.fn_sig(trait_m.def_id).skip_binder().inputs_and_output().skip_binder().get(*i)
+        && let ty::Param(param) = ty.kind()
+        // The expected type corresponds to a type parameter, which migh thave a default type or
+        // have been explicitly set in the `impl` with a different type.
+        && let generics = tcx.generics_of(trait_m.def_id)
+        && let param = generics.type_param(*param, tcx)
+        && let GenericParamDefKind::Type { has_default: true, .. } = param.kind
+    {
+        context.push(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
+
+        let param_name = param.name;
+        let msg = if let Some(ty) = trait_sig.inputs_and_output.get(*i)
+            && infcx.can_eq(param_env, *ty, tcx.type_of(param.def_id).skip_binder())
+        {
+            format!("expected to match the default of type parameter `{param_name}`")
+        } else if let Some(ty) = trait_sig.inputs_and_output.get(*i)
+            && let ty::Param(p) = tcx.type_of(param.def_id).skip_binder().kind()
+            && p.name == kw::SelfUpper
+            && infcx.can_eq(param_env, *ty, impl_trait_ref.self_ty())
+        {
+            format!("expected to match the `Self` default of type parameter `{param_name}`")
+        } else {
+            format!("expected to match type parameter `{param_name}`")
+        };
+        labels.push((tcx.def_span(param.def_id), msg));
+    }
+
     infcx.err_ctxt().note_type_err(
         &mut diag,
         &cause,
-        trait_err_span.map(|sp| (sp, Cow::from("type in trait"), false)),
+        trait_err_span.map(|sp| {
+            let mut span: MultiSpan = sp.into();
+            span.push_span_context(tcx.def_span(trait_m.container_id(tcx)).shrink_to_lo());
+            span.push_span_context(tcx.def_span(trait_m.def_id).shrink_to_lo());
+            for (sp, label) in labels {
+                span.push_span_label(sp, label);
+            }
+            for sp in context {
+                span.push_span_context(sp);
+            }
+            (span, Cow::from("type in trait"), false)
+        }),
         Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
             expected: ty::Binder::dummy(trait_sig),
             found: ty::Binder::dummy(impl_sig),
@@ -1091,7 +1140,7 @@ fn report_trait_method_mismatch<'tcx>(
         None,
     );
 
-    diag.emit()
+    diag.emit_err()
 }
 
 fn check_region_bounds_on_impl_item<'tcx>(
@@ -1134,7 +1183,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             bounds_span,
             where_span,
         })
-        .emit_unless_delay(delay);
+        .emit_err_unless_delay(delay);
 
     Err(reported)
 }
@@ -1435,7 +1484,7 @@ fn check_region_late_boundedness<'tcx>(
         }
     }
 
-    Some(diag.emit())
+    Some(diag.emit_err())
 }
 
 fn find_region_in_clauses<'tcx>(
@@ -1538,7 +1587,7 @@ fn compare_self_type<'tcx>(
             } else {
                 err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
-            return Err(err.emit_unless_delay(delay));
+            return Err(err.emit_err_unless_delay(delay));
         }
 
         (true, false) => {
@@ -1559,7 +1608,7 @@ fn compare_self_type<'tcx>(
                 err.note_trait_signature(trait_m.name(), trait_m.signature(tcx));
             }
 
-            return Err(err.emit_unless_delay(delay));
+            return Err(err.emit_err_unless_delay(delay));
         }
     }
 
@@ -1719,8 +1768,8 @@ fn compare_number_of_generics<'tcx>(
                 err.span_label(*span, "`impl Trait` introduces an implicit type parameter");
             }
 
-            let reported = err.emit_unless_delay(delay);
-            err_occurred = Some(reported);
+            let guar = err.emit_err_unless_delay(delay);
+            err_occurred = Some(guar);
         }
     }
 
@@ -1901,7 +1950,7 @@ fn compare_number_of_method_arguments<'tcx>(
             }
         }
 
-        return Err(err.emit_unless_delay(delay));
+        return Err(err.emit_err_unless_delay(delay));
     }
 
     Ok(())
@@ -2028,37 +2077,14 @@ fn compare_synthetic_generics<'tcx>(
                     );
                 };
             }
-            error_found = Some(err.emit_unless_delay(delay));
+            error_found = Some(err.emit_err_unless_delay(delay));
         }
     }
     if let Some(reported) = error_found { Err(reported) } else { Ok(()) }
 }
 
-/// Checks that all parameters in the generics of a given assoc item in a trait impl have
-/// the same kind as the respective generic parameter in the trait def.
-///
-/// For example all 4 errors in the following code are emitted here:
-/// ```rust,ignore (pseudo-Rust)
-/// trait Foo {
-///     fn foo<const N: u8>();
-///     type Bar<const N: u8>;
-///     fn baz<const N: u32>();
-///     type Blah<T>;
-/// }
-///
-/// impl Foo for () {
-///     fn foo<const N: u64>() {}
-///     //~^ error
-///     type Bar<const N: u64> = ();
-///     //~^ error
-///     fn baz<T>() {}
-///     //~^ error
-///     type Blah<const N: i64> = u32;
-///     //~^ error
-/// }
-/// ```
-///
-/// This function does not handle lifetime parameters
+/// Checks that corresponding generic parameters in a trait item and its impl
+/// are both type parameters or both const parameters.
 fn compare_generic_param_kinds<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_item: ty::AssocItem,
@@ -2081,11 +2107,6 @@ fn compare_generic_param_kinds<'tcx>(
     {
         use GenericParamDefKind::*;
         if match (&param_impl.kind, &param_trait.kind) {
-            (Const { .. }, Const { .. })
-                if tcx.type_of(param_impl.def_id) != tcx.type_of(param_trait.def_id) =>
-            {
-                true
-            }
             (Const { .. }, Type { .. }) | (Type { .. }, Const { .. }) => true,
             // this is exhaustive so that anyone adding new generic param kinds knows
             // to make sure this error is reported for them.
@@ -2104,7 +2125,7 @@ fn compare_generic_param_kinds<'tcx>(
                 "{} `{}` has an incompatible generic parameter for trait `{}`",
                 impl_item.descr(),
                 trait_item.name(),
-                &tcx.def_path_str(tcx.parent(trait_item.def_id))
+                tcx.def_path_str(tcx.parent(trait_item.def_id))
             );
 
             let make_param_message = |prefix: &str, param: &ty::GenericParamDef| match param.kind {
@@ -2130,12 +2151,114 @@ fn compare_generic_param_kinds<'tcx>(
             err.span_context(impl_header_span);
             err.span_label(param_impl_span, make_param_message("found", param_impl));
 
-            let reported = err.emit_unless_delay(delay);
-            return Err(reported);
+            let guar = err.emit_err_unless_delay(delay);
+            return Err(guar);
         }
     }
 
     Ok(())
+}
+
+/// Checks that corresponding const generic parameters in a trait item and its
+/// impl have compatible types.
+fn compare_const_generic_param_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_item: ty::AssocItem,
+    trait_item: ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+    delay: bool,
+) -> Result<(), ErrorGuaranteed> {
+    assert_eq!(impl_item.tag(), trait_item.tag());
+    use GenericParamDefKind::*;
+
+    let const_params_of = |def_id| {
+        tcx.generics_of(def_id).own_params.iter().filter(|param| matches!(param.kind, Const { .. }))
+    };
+
+    // Map the trait item's generic parameters into the impl item's generic context.
+    let trait_to_impl_args = ty::GenericArgs::identity_for_item(tcx, impl_item.def_id).rebase_onto(
+        tcx,
+        impl_item.container_id(tcx),
+        impl_trait_ref.args,
+    );
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+    let param_env = tcx.param_env(impl_item.def_id);
+
+    let param_iter =
+        iter::zip(const_params_of(impl_item.def_id), const_params_of(trait_item.def_id));
+
+    for (param_impl, param_trait) in param_iter {
+        // If `impl_item` comes from RPITIT:
+        // <https://rustc-dev-guide.rust-lang.org/return-position-impl-trait-in-trait.html>
+        // then expecting a `LocalDefId` for `param_impl` is fraught: the synthetic
+        // associated type reuses the trait's generic parameters, which may be nonlocal.
+        // Use the impl item's span instead.
+        let param_impl_ty_span = if impl_item.is_impl_trait_in_trait() {
+            tcx.def_span(impl_item.def_id)
+        } else {
+            tcx.ty_span(param_impl.def_id.expect_local())
+        };
+
+        let cause = ObligationCause::new(
+            param_impl_ty_span,
+            impl_item.def_id.expect_local(),
+            ObligationCauseCode::CompareImplItem {
+                impl_item_def_id: impl_item.def_id.expect_local(),
+                trait_item_def_id: trait_item.def_id,
+                kind: impl_item.kind,
+            },
+        );
+
+        let impl_ty =
+            ocx.normalize(&cause, param_env, tcx.type_of(param_impl.def_id).instantiate_identity());
+
+        let trait_ty = ocx.normalize(
+            &cause,
+            param_env,
+            tcx.type_of(param_trait.def_id).instantiate(tcx, trait_to_impl_args),
+        );
+
+        match ocx.eq(&cause, param_env, trait_ty, impl_ty) {
+            // Despite returning `Ok` all may not be well. As such, outside of this
+            // loop we invoke `ocx.evaluate_obligations_error_on_ambiguity()` to check
+            // for any other errors that may have occurred.
+            Ok(_) => {}
+            Err(terr) => {
+                let param_trait_ty_span =
+                    param_trait.def_id.as_local().map(|def_id| tcx.ty_span(def_id));
+                let mut diag = struct_span_code_err!(
+                    tcx.dcx(),
+                    param_impl_ty_span,
+                    E0053,
+                    "{} `{}` has an incompatible type for const generic parameter",
+                    trait_item.descr(),
+                    trait_item.name(),
+                );
+                infcx.err_ctxt().note_type_err(
+                    &mut diag,
+                    &cause,
+                    param_trait_ty_span
+                        .map(|span| (span.into(), Cow::from("type in trait"), false)),
+                    Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
+                        expected: trait_ty.into(),
+                        found: impl_ty.into(),
+                    }))),
+                    terr,
+                    false,
+                    None,
+                );
+                let reported = diag.emit_err_unless_delay(delay);
+                return Err(reported);
+            }
+        }
+    }
+
+    if let TraitErrors::HasErrors(errors) = ocx.evaluate_obligations_error_on_ambiguity() {
+        Err(infcx.err_ctxt().report_fulfillment_errors(errors))
+    } else {
+        Ok(())
+    }
 }
 
 fn compare_impl_const<'tcx>(
@@ -2147,6 +2270,13 @@ fn compare_impl_const<'tcx>(
     compare_const_directness(tcx, impl_const_item, trait_const_item)?;
     compare_number_of_generics(tcx, impl_const_item, trait_const_item, false)?;
     compare_generic_param_kinds(tcx, impl_const_item, trait_const_item, false)?;
+    compare_const_generic_param_types(
+        tcx,
+        impl_const_item,
+        trait_const_item,
+        impl_trait_ref,
+        false,
+    )?;
     check_region_bounds_on_impl_item(tcx, impl_const_item, trait_const_item, false)?;
     compare_const_clause_entailment(tcx, impl_const_item, trait_const_item, impl_trait_ref)
 }
@@ -2162,8 +2292,8 @@ pub(super) fn compare_const_directness<'tcx>(
     if trait_is_gca == impl_is_gca {
         return Ok(());
     }
-    // feature(generic_const_args) is allowed to impl non-GCA traits with a GCA const
-    if tcx.features().generic_const_args() && !trait_is_gca && impl_is_gca {
+    // feature(gca_const_items) is allowed to impl non-GCA traits with a GCA const
+    if tcx.features().gca_const_items() && !trait_is_gca && impl_is_gca {
         return Ok(());
     }
 
@@ -2171,24 +2301,24 @@ pub(super) fn compare_const_directness<'tcx>(
         tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a `#[rustc_always_gca]` must have a `direct_const_arg!` RHS",
+                "implementation of a `#[rustc_always_gca]` must have a `gca!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),
                 "trait declaration of const is marked as `#[rustc_always_gca]`",
             )
-            .emit()
+            .emit_err()
     } else {
         tcx.dcx()
             .struct_span_err(
                 tcx.def_span(impl_const_item.def_id),
-                "implementation of a regular const cannot have a `direct_const_arg!` RHS",
+                "implementation of a regular const cannot have a `gca!` RHS",
             )
             .with_span_note(
                 tcx.def_span(trait_const_item.def_id),
                 "trait declaration of const is not marked as `#[rustc_always_gca]`",
             )
-            .emit()
+            .emit_err()
     };
     Err(guar)
 }
@@ -2284,6 +2414,8 @@ fn compare_const_clause_entailment<'tcx>(
             "implemented const `{}` has an incompatible type for trait",
             trait_ct.name()
         );
+        diag.span_context(tcx.def_span(impl_ct.container_id(tcx)).shrink_to_lo());
+        diag.span_context(tcx.def_span(impl_ct.def_id).shrink_to_lo());
 
         let trait_c_span = trait_ct.def_id.as_local().map(|trait_ct_def_id| {
             // Add a label to the Span containing just the type of the const
@@ -2294,7 +2426,12 @@ fn compare_const_clause_entailment<'tcx>(
         infcx.err_ctxt().note_type_err(
             &mut diag,
             &cause,
-            trait_c_span.map(|span| (span, Cow::from("type in trait"), false)),
+            trait_c_span.map(|span| {
+                let mut span: MultiSpan = span.into();
+                span.push_span_context(tcx.def_span(trait_ct.container_id(tcx)).shrink_to_lo());
+                span.push_span_context(tcx.def_span(trait_ct.def_id).shrink_to_lo());
+                (span, Cow::from("type in trait"), false)
+            }),
             Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
                 expected: trait_ty.into(),
                 found: impl_ty.into(),
@@ -2303,7 +2440,7 @@ fn compare_const_clause_entailment<'tcx>(
             false,
             None,
         );
-        return Err(diag.emit());
+        return Err(diag.emit_err());
     };
 
     // Check that all obligations are satisfied by the implementation's
@@ -2325,6 +2462,7 @@ fn compare_impl_ty<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     compare_number_of_generics(tcx, impl_ty, trait_ty, false)?;
     compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
+    compare_const_generic_param_types(tcx, impl_ty, trait_ty, impl_trait_ref, false)?;
     check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
     compare_type_clause_entailment(tcx, impl_ty, trait_ty, impl_trait_ref)?;
     check_type_bounds(tcx, trait_ty, impl_ty, impl_trait_ref)
@@ -2639,7 +2777,7 @@ fn param_env_with_gat_bounds<'tcx>(
 ) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    let mut clauses = param_env.caller_bounds().collect::<Vec<_>>();
+    let mut clauses = param_env.caller_bounds().all_clauses(tcx).iter().collect::<Vec<_>>();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking

@@ -219,5 +219,17 @@ error: manual implementation of `Option::filter`
 LL |     opt.and_then(|x| unsafe { if f(x as u32) { Some(x) } else { None } });
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(|&x| unsafe { f(x as u32) })`
 
-error: aborting due to 20 previous errors
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter.rs:364:20
+   |
+LL |     Some(Inner(0)).and_then(|x| if x.peek() { Some(x) } else { None });
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(|x| x.peek())`
+
+error: manual implementation of `Option::filter`
+  --> tests/ui/manual_filter.rs:367:22
+   |
+LL |     Some(&mut inner).and_then(|x| if x.peek() { Some(x) } else { None });
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `filter(|x| x.peek())`
+
+error: aborting due to 22 previous errors
 

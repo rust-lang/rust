@@ -3,12 +3,13 @@ use std::cmp::max;
 use std::ops::Deref;
 use std::{assert_matches, debug_assert_matches};
 
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, ExprKind, HirId, Node, find_attr};
+use rustc_hir::{self as hir, ExprKind, HirId, Node};
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
@@ -21,8 +22,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::{
-    self, AssocContainer, AssocItem, GenericArgs, GenericArgsRef, GenericParamDefKind, ParamEnvAnd,
-    Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
+    self, AssocContainer, AssocItem, CallerBoundsIterator, GenericArgs, GenericParamDefKind,
+    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
@@ -523,8 +524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     MethodCallOnDivergingInferenceVariable,
                 );
-                let root_ty = Ty::new_var(self.tcx, ty_id);
-                self.demand_eqtype(span, root_ty, self.tcx.types.never);
+                self.demand_eqtype(span, ty, self.tcx.types.never);
             } else {
                 let guar = match *ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,
@@ -555,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if raw_ptr_call {
                             err.span_label(span, "cannot call a method on a raw pointer with an unknown pointee type");
                         }
-                        err.emit()
+                        err.emit_err()
                     }
                     ty::Error(guar) => guar,
                     _ => bug!("unexpected bad final type in method autoderef"),
@@ -859,8 +859,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
             let container_id = item.container_id(self.tcx);
-            let def_scope =
-                self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_def_id).1;
+            let def_scope = self.tcx.adjust_ident_and_get_scope(name, container_id, self.mod_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -955,6 +954,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Pat(..)
             | ty::Placeholder(..)
             | ty::UnsafeBinder(..) => {}
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1043,22 +1045,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().filter_map(|clause| {
-            let bound_clause = clause.kind();
-            match bound_clause.skip_binder() {
-                ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
-                    .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
-                    .then(|| bound_clause.rebind(trait_predicate.trait_ref)),
-                ty::ClauseKind::RegionOutlives(_)
-                | ty::ClauseKind::TypeOutlives(_)
-                | ty::ClauseKind::Projection(_)
-                | ty::ClauseKind::ConstArgHasType(_, _)
-                | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_)
-                | ty::ClauseKind::UnstableFeature(_)
-                | ty::ClauseKind::HostEffect(..) => None,
-            }
-        });
+        let bounds = self.param_env.caller_bounds().trait_clauses(tcx).iter().filter_map(
+            |bound_trait_clause| {
+                let trait_clause = bound_trait_clause.skip_binder();
+                DeepRejectCtxt::relate_rigid_rigid(tcx)
+                    .types_may_unify(param_ty, trait_clause.trait_ref.self_ty())
+                    .then(|| bound_trait_clause.rebind(trait_clause.trait_ref))
+            },
+        );
 
         self.assemble_candidates_for_bounds(bounds, |this, poly_trait_ref, item| {
             this.push_candidate(
@@ -1877,8 +1871,8 @@ impl<'tcx> Pick<'tcx> {
             span: Span,
         }
 
-        impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for ItemMaybeBeAddedToStd<'b, 'tcx> {
-            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        impl<'a, 'b, 'tcx> Diagnostic<'a> for ItemMaybeBeAddedToStd<'b, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
                 let Self { this, tcx, span } = self;
                 let def_kind = this.item.as_def_kind();
                 let mut lint = Diag::new(
@@ -1903,7 +1897,10 @@ impl<'tcx> Pick<'tcx> {
                             tcx.def_path_str(this.item.def_id),
                         ));
                     }
-                    (ty::AssocKind::Const { name, .. }, ty::AssocContainer::Trait) => {
+                    (
+                        ty::AssocKind::Const { data: ty::AssocConstData::Named(name) },
+                        ty::AssocContainer::Trait,
+                    ) => {
                         let def_id = this.item.container_id(tcx);
                         lint.span_suggestion(
                             span,
@@ -1972,7 +1969,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self.xform_self_ty(candidate.item, trait_ref.self_ty(), trait_ref.args);
                 // Guide the trait selection to show impls that have methods whose type matches
                 // up with the `self` parameter of the method.
-                let _ = self.at(&ObligationCause::dummy(), self.param_env).sup(
+                let _ = self.sup_raw(
+                    &ObligationCause::dummy(),
+                    self.param_env,
                     DefineOpaqueTypes::Yes,
                     xform_self_ty,
                     self_ty,
@@ -2383,18 +2382,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        // They are all the same, so if any of them is ambiguous, we report the pick as ambiguous.
-        let is_ambiguously_imported = probes.iter().any(|(p, _)| match p.kind {
-            TraitCandidate { is_ambiguously_imported, .. } => is_ambiguously_imported,
-            _ => false,
+        // We try and find the ambiguous candidate in order to report the pick as ambiguous.
+        let ambiguous_candidate = probes.iter().find_map(|(p, _)| match p.kind {
+            TraitCandidate { is_ambiguously_imported: true, .. } => Some(p),
+            _ => None,
         });
+
+        // If there isn't any, then we just use the first probe.
+        let (is_ambiguously_imported, candidate) =
+            ambiguous_candidate.map(|c| (true, *c)).unwrap_or_else(|| (false, probes[0].0));
 
         // FIXME: check the return type here somehow.
         // If so, just use this trait and call it a day.
         Some(Pick {
-            item: probes[0].0.item,
+            item: candidate.item,
             kind: TraitPick { is_ambiguously_imported },
-            import_ids: probes[0].0.import_ids,
+            import_ids: candidate.import_ids,
             autoderefs: 0,
             autoref_or_ptr_adjustment: None,
             self_ty,
@@ -2587,7 +2590,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         item: ty::AssocItem,
         impl_ty: Ty<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
         if item.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, args);
@@ -2598,7 +2601,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn xform_method_sig(&self, method: DefId, args: GenericArgsRef<'tcx>) -> ty::FnSig<'tcx> {
+    fn xform_method_sig(&self, method: DefId, args: GenericArgs<'tcx>) -> ty::FnSig<'tcx> {
         let fn_sig = self.tcx.fn_sig(method);
         debug!(?fn_sig);
 
@@ -2665,7 +2668,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         {
             return true;
         }
-
         false
     }
 
@@ -2679,7 +2681,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
-                    .in_definition_order()
+                    .named_items_in_definition_order()
                     .filter(|x| {
                         if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;

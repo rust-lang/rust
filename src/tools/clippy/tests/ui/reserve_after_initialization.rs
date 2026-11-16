@@ -1,5 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::reserve_after_initialization)]
+#![allow(clippy::new_instead_of_clear)]
 #![no_main]
 
 extern crate proc_macros;

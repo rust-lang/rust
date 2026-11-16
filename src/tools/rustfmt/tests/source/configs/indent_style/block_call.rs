@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Block
+//@ rustfmt-indent_style: Block
 // Function call style
 
 fn main() {

@@ -22,6 +22,7 @@ extend-exclude = [
     "compiler/rustc_codegen_gcc",
     "src/tools/clippy",
     "src/tools/miri",
+    "src/tpde",
     # Hack: CI runs from a subdirectory under the main checkout
     "../src/doc/nomicon/",
     "../src/tools/cargo/",
@@ -40,6 +41,7 @@ extend-exclude = [
     "../compiler/rustc_codegen_gcc",
     "../src/tools/clippy",
     "../src/tools/miri",
+    "../src/tpde",
 ]
 
 [lint]

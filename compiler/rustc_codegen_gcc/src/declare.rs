@@ -1,12 +1,12 @@
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, ToRValue};
+use gccjit::{FnAttribute, ToRValue, VarAttribute};
 use gccjit::{Function, FunctionType, GlobalKind, LValue, RValue, Type};
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use crate::abi::{FnAbiGcc, FnAbiGccExt};
+use crate::abi::FnAbiGccExt;
 use crate::context::CodegenCx;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -14,6 +14,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         &self,
         name: &str,
         ty: Type<'gcc>,
+        global_kind: GlobalKind,
         is_tls: bool,
         link_section: Option<Symbol>,
     ) -> LValue<'gcc> {
@@ -24,11 +25,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 global.set_tls_model(self.tls_model);
             }
             if let Some(link_section) = link_section {
+                #[cfg(feature = "master")]
+                global.add_attribute(VarAttribute::Section(link_section.as_str()));
+                #[cfg(not(feature = "master"))]
                 global.set_link_section(link_section.as_str());
             }
             global
         } else {
-            self.declare_global(name, ty, GlobalKind::Exported, is_tls, link_section)
+            self.declare_global(name, ty, global_kind, is_tls, link_section)
         }
     }
 
@@ -73,6 +77,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             global.set_tls_model(self.tls_model);
         }
         if let Some(link_section) = link_section {
+            #[cfg(feature = "master")]
+            global.add_attribute(VarAttribute::Section(link_section.as_str()));
+            #[cfg(not(feature = "master"))]
             global.set_link_section(link_section.as_str());
         }
         let global_address = global.get_address(None);
@@ -110,22 +117,38 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
-        let FnAbiGcc {
-            return_type,
-            arguments_type,
-            is_c_variadic,
-            on_stack_param_indices,
-            #[cfg(feature = "master")]
-            fn_attributes,
-        } = fn_abi.gcc_type(self);
+        let fn_abi_gcc = fn_abi.gcc_type(self);
         #[cfg(feature = "master")]
         let conv = fn_abi.gcc_cconv(self);
         #[cfg(not(feature = "master"))]
         let conv = None;
-        let func = declare_raw_fn(self, name, conv, return_type, &arguments_type, is_c_variadic);
-        self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
+        let func = declare_raw_fn(
+            self,
+            name,
+            conv,
+            fn_abi_gcc.return_type,
+            &fn_abi_gcc.arguments_type,
+            fn_abi_gcc.is_c_variadic,
+        );
+        self.on_stack_function_params.borrow_mut().insert(func, fn_abi_gcc.on_stack_param_indices);
         #[cfg(feature = "master")]
-        for fn_attr in fn_attributes {
+        if fn_abi_gcc.has_indirect_return {
+            // Return in memory even where the target ABI would use registers, as cg_llvm does for
+            // `PassMode::Indirect`.
+            func.set_indirect_return();
+            // `get_param(0)` hands out this local's address and `ret_void` returns it. As the named
+            // return value, it lives in the caller's return slot instead of being copied there.
+            if self.linkage.get() != FunctionType::Extern {
+                self.functions_with_indirect_return.borrow_mut().entry(func).or_insert_with(|| {
+                    let return_value =
+                        func.new_local(None, fn_abi_gcc.return_type, "indirectReturn");
+                    func.set_named_return_value(return_value);
+                    return_value
+                });
+            }
+        }
+        #[cfg(feature = "master")]
+        for fn_attr in fn_abi_gcc.fn_attributes {
             func.add_attribute(fn_attr);
         }
         func
@@ -135,10 +158,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         &self,
         name: &str,
         ty: Type<'gcc>,
+        global_kind: GlobalKind,
         is_tls: bool,
         link_section: Option<Symbol>,
     ) -> LValue<'gcc> {
-        self.get_or_insert_global(name, ty, is_tls, link_section)
+        self.get_or_insert_global(name, ty, global_kind, is_tls, link_section)
     }
 
     pub fn get_declared_value(&self, name: &str) -> Option<RValue<'gcc>> {
@@ -179,7 +203,7 @@ fn declare_raw_fn<'gcc>(
         cx.functions.borrow_mut().insert(name.to_string(), func);
 
         #[cfg(feature = "master")]
-        if name == "rust_eh_personality" {
+        if name.ends_with("rust_eh_personality") {
             // NOTE: GCC will sometimes change the personality function set on a function from
             // rust_eh_personality to __gcc_personality_v0 as an optimization.
             // As such, we need to create a weak alias from __gcc_personality_v0 to

@@ -145,7 +145,7 @@ impl<'tcx> PlaceTy<'tcx> {
         } else {
             match self_ty.kind() {
                 ty::Adt(adt_def, args) if !adt_def.is_enum() => {
-                    adt_def.non_enum_variant().fields[f].ty(tcx, args)
+                    adt_def.non_enum_variant().fields[f].ty(tcx, *args)
                 }
                 ty::Closure(_, args) => Unnormalized::dummy(
                     args.as_closure()
@@ -448,7 +448,7 @@ impl<'tcx> Place<'tcx> {
         let ty = self.ty(local_decls, tcx).ty;
         let ty::Adt(adt, args) = ty.kind() else { panic!("projecting to field of non-ADT {ty}") };
         let field = &adt.non_enum_variant().fields[idx];
-        let field_ty = field.ty(tcx, args).skip_norm_wip();
+        let field_ty = field.ty(tcx, *args).skip_norm_wip();
         self.project_deeper(&[ProjectionElem::Field(idx, field_ty)], tcx)
     }
 
@@ -638,7 +638,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn unevaluated_constant(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: &[GenericArg<'tcx>],
+        args: GenericArgs<'tcx>,
         span: Span,
     ) -> Self {
         let const_ = Const::from_unevaluated(tcx, def_id).instantiate(tcx, args).skip_norm_wip();
@@ -711,7 +711,7 @@ impl<'tcx> Operand<'tcx> {
     ///
     /// While this is unlikely in general, it's the normal case of what you'll
     /// find as the `func` in a [`TerminatorKind::Call`].
-    pub fn const_fn_def(&self) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+    pub fn const_fn_def(&self) -> Option<(DefId, GenericArgs<'tcx>)> {
         let const_ty = self.constant()?.const_.ty();
         if let ty::FnDef(def_id, args) = *const_ty.kind() {
             Some((def_id, args.no_bound_vars().unwrap()))

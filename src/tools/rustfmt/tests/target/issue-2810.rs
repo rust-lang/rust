@@ -1,4 +1,4 @@
-// rustfmt-newline_style: Windows
+//@ rustfmt-newline_style: Windows
 
 #[macro_export]
 macro_rules! hmmm___ffi_error {

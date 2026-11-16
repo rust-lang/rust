@@ -991,6 +991,21 @@ fn f(ty: Enum) {
     }
 
     #[test]
+    fn builtin_cfg_pred_pat() {
+        check_diagnostics_no_bails(
+            r#"
+//- minicore: cfg
+fn f(ty: bool) {
+    match ty {
+        //^^ error: missing match arm: `false` not covered
+        cfg!(true) => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn unexpected_ty_fndef() {
         cov_mark::check!(validate_match_bailed_out);
         check_diagnostics_with_disabled(

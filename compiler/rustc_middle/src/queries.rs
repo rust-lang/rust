@@ -53,8 +53,9 @@ use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_attr_ir::diagnostic_items::DiagnosticItems;
 use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
-use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
+use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, NotableTraitColor, StrippedCfgItem};
 use rustc_crate_store::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
@@ -73,7 +74,7 @@ use rustc_lint_defs::{LintId, StableLintExpectationId};
 use rustc_macros::rustc_queries;
 use rustc_middle::middle::resolve::TypeRelativeDelegationRes;
 use rustc_session::Limits;
-use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
+use rustc_session::config::{EntryFnType, OutputFilenames, SymbolManglingVersion};
 use rustc_span::def_id::{LOCAL_CRATE, ModId};
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
@@ -116,7 +117,7 @@ use crate::ty::layout::ValidityRequirement;
 use crate::ty::print::PrintTraitRefExt;
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
-    self, CrateInherentImpls, GenericArg, GenericArgsRef, LitToConstInput, PseudoCanonicalInput,
+    self, CrateInherentImpls, GenericArg, GenericArgs, LitToConstInput, PseudoCanonicalInput,
     RequiredDepth, SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
 };
 use crate::{mir, thir};
@@ -205,13 +206,11 @@ rustc_queries! {
         desc { "getting the resolver for lowering" }
     }
 
-    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Steal<(
-        // There is only a single `ResolverAstLowering` for all owners.
-        // We want to drop it once the whole HIR has been lowered.
-        // We rely on reference counting to know when all definitions have been stolen.
-        Arc<ResolverAstLowering<'tcx>>,
-        AstOwner,
-    )>> {
+    // There is only a single `ResolverAstLowering` for all owners.
+    // We want to drop it once the whole HIR has been lowered.
+    // We rely on reference counting to know when all definitions have been stolen.
+    // None if the `LocalDefId` is not an owner.
+    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>>  {
         eval_always
         no_hash
         desc { "getting the AST for lowering" }
@@ -287,8 +286,8 @@ rustc_queries! {
     }
 
     /// Returns the const of the RHS of a (free or assoc) const item, if it is a `type const`, or if
-    /// it is a directly represented `const` (i.e. a const with a `direct_const_arg!` RHS, or a
-    /// const that `feature(macroless_generic_const_args)` has decided is direct).
+    /// it is a directly represented `const` (i.e. a const with a `gca!` RHS, or a const that
+    /// `feature(gca_macroless_args)` has decided is direct).
     ///
     /// When a const item is used in a type-level expression, like in equality for an assoc const
     /// projection, this allows us to retrieve the typesystem-appropriate representation of the
@@ -309,7 +308,7 @@ rustc_queries! {
 
     /// Returns the *type* of the definition given by `DefId`.
     ///
-    /// For type aliases (whether eager or lazy) and associated types, this returns
+    /// For type aliases (whether unchecked or checked) and associated types, this returns
     /// the underlying aliased type (not the corresponding [alias type]).
     ///
     /// For opaque types, this returns and thus reveals the hidden type! If you
@@ -1230,7 +1229,7 @@ rustc_queries! {
     }
 
     /// Return dead-code liveness summary for the crate.
-    query live_symbols_and_ignored_derived_traits(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
+    query live_symbols_and_trivial_usage_sites(_: ()) -> Result<&'tcx DeadCodeLivenessSummary, ErrorGuaranteed> {
         arena_cache
         desc { "finding live symbols in crate" }
     }
@@ -1326,7 +1325,7 @@ rustc_queries! {
     }
 
     /// Obtain all the calls into other local functions
-    query mir_inliner_callees(key: ty::InstanceKind<'tcx>) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
+    query mir_inliner_callees(key: ty::InstanceKind<'tcx>) -> &'tcx [(DefId, GenericArgs<'tcx>)] {
         desc {
             "computing all local function calls in `{}`",
             tcx.def_path_str(key.def_id()),
@@ -1493,19 +1492,19 @@ rustc_queries! {
         cache_on_disk
     }
 
-    query lookup_stability(def_id: DefId) -> Option<hir::Stability> {
+    query lookup_stability(def_id: DefId) -> Option<rustc_attr_ir::Stability> {
         desc { "looking up stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk
         separate_provide_extern
     }
 
-    query lookup_const_stability(def_id: DefId) -> Option<hir::ConstStability> {
+    query lookup_const_stability(def_id: DefId) -> Option<rustc_attr_ir::ConstStability> {
         desc { "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk
         separate_provide_extern
     }
 
-    query lookup_default_body_stability(def_id: DefId) -> Option<hir::DefaultBodyStability> {
+    query lookup_default_body_stability(def_id: DefId) -> Option<rustc_attr_ir::DefaultBodyStability> {
         desc { "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1530,8 +1529,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Determines whether an item is annotated with `#[doc(notable_trait)]`.
-    query is_doc_notable_trait(def_id: DefId) -> bool {
+    /// If an item is annotated with `#[doc(notable_trait)]`,
+    /// returns the color used to render its badge. If the crate specifies
+    /// no color, `Transparent` is used.
+    query doc_notable_trait(def_id: DefId) -> Option<&'tcx NotableTraitColor> {
         desc { "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
     }
 
@@ -1609,7 +1610,7 @@ rustc_queries! {
         desc { "finding all vtable entries for trait `{}`", tcx.def_path_str(key.def_id) }
     }
 
-    query first_method_vtable_slot(key: ty::TraitRef<'tcx>) -> usize {
+    query first_method_vtable_slot(key: ty::TraitRef<'tcx>) -> Option<usize> {
         desc { "finding the slot within the vtable of `{}` for the implementation of `{}`", key.self_ty(), key.print_only_trait_name() }
     }
 
@@ -1967,7 +1968,7 @@ rustc_queries! {
     /// crate. Instead use the narrower `upstream_monomorphizations_for`,
     /// `upstream_drop_glue_for`, `upstream_async_drop_glue_for`, or,
     /// even better, `Instance::upstream_monomorphization()`.
-    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<UnordMap<GenericArgsRef<'tcx>, CrateNum>> {
+    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<UnordMap<GenericArgs<'tcx>, CrateNum>> {
         arena_cache
         desc { "collecting available upstream monomorphizations" }
     }
@@ -1980,7 +1981,7 @@ rustc_queries! {
     /// You likely want to call `Instance::upstream_monomorphization()`
     /// instead of invoking this query directly.
     query upstream_monomorphizations_for(def_id: DefId)
-        -> Option<&'tcx UnordMap<GenericArgsRef<'tcx>, CrateNum>>
+        -> Option<&'tcx UnordMap<GenericArgs<'tcx>, CrateNum>>
     {
         desc {
             "collecting available upstream monomorphizations for `{}`",
@@ -2004,7 +2005,7 @@ rustc_queries! {
     /// NOTE: This query could easily be extended to also support other
     ///       common functions that have are large set of monomorphizations
     ///       (like `Clone::clone` for example).
-    query upstream_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
+    query upstream_drop_glue_for(args: GenericArgs<'tcx>) -> Option<CrateNum> {
         desc { "available upstream drop-glue for `{:?}`", args }
     }
 
@@ -2024,7 +2025,7 @@ rustc_queries! {
     /// NOTE: This query could easily be extended to also support other
     ///       common functions that have are large set of monomorphizations
     ///       (like `Clone::clone` for example).
-    query upstream_async_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
+    query upstream_async_drop_glue_for(args: GenericArgs<'tcx>) -> Option<CrateNum> {
         desc { "available upstream async-drop-glue for `{:?}`", args }
     }
 
@@ -2111,7 +2112,7 @@ rustc_queries! {
         desc { "inheriting delegation signature" }
     }
 
-    query delegation_user_specified_args(def_id: LocalDefId) -> (&'tcx [GenericArg<'tcx>], &'tcx [GenericArg<'tcx>]) {
+    query delegation_user_specified_args(def_id: LocalDefId) -> (ty::GenericArgs<'tcx>, ty::GenericArgs<'tcx>) {
         desc { "getting delegation user-specified args" }
     }
 
@@ -2226,8 +2227,8 @@ rustc_queries! {
     }
 
     /// Do not call this query directly: invoke `Ty::is_opsem_inhabited` instead.
-    query is_opsem_inhabited_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
-        desc { "computing whether `{}` is inhabited on the opsem level", env.value }
+    query is_opsem_inhabited_adt_cached(env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgs<'tcx>)>) -> bool {
+        desc { "computing whether `{:?}` is inhabited on the opsem level", env.value }
     }
 
     query crate_dep_kind(_: CrateNum) -> CrateDepKind {
@@ -2242,6 +2243,15 @@ rustc_queries! {
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
+
+    /// Gets the name of the crate, taking into account crate renames caused by `--extern`,
+    /// `extern crate foo as bar;` or from the extern prelude. A crate might be known by more than
+    /// one extern name, but we only keep track of one of them. This name should *only be used for
+    /// diagnostics*.
+    query crate_name_with_rename(_: CrateNum) -> Symbol {
+        desc { "fetching what name a crate is accessible under" }
+    }
+
 
     /// Iterates over all named children of the given module,
     /// including both proper items and reexports.
@@ -2296,13 +2306,12 @@ rustc_queries! {
     /// Returns the lang items defined in all crates by loading them from metadata of dependencies
     /// and collecting the ones from the current crate.
     query get_lang_items(_: ()) -> &'tcx LanguageItems {
-        arena_cache
         eval_always
         desc { "calculating the lang items map" }
     }
 
     /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
+    query all_diagnostic_items(_: ()) -> &'tcx DiagnosticItems {
         arena_cache
         eval_always
         desc { "calculating the diagnostic items map" }
@@ -2322,7 +2331,7 @@ rustc_queries! {
     }
 
     /// Returns the diagnostic items defined in a crate.
-    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::attrs::diagnostic_items::DiagnosticItems {
+    query diagnostic_items(_: CrateNum) -> &'tcx DiagnosticItems {
         arena_cache
         desc { "calculating the diagnostic items map in a crate" }
         separate_provide_extern
@@ -2488,10 +2497,6 @@ rustc_queries! {
         desc { "getting codegen unit `{sym}`" }
     }
 
-    query backend_optimization_level(_: ()) -> OptLevel {
-        desc { "optimization level used by backend" }
-    }
-
     /// Return the filenames where output artefacts shall be stored.
     ///
     /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
@@ -2648,7 +2653,7 @@ rustc_queries! {
         desc { "normalizing `{:?}`", goal.canonical.value.value.value.skip_normalization() }
     }
 
-    query instantiate_and_check_impossible_clauses(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
+    query instantiate_and_check_impossible_clauses(key: (DefId, GenericArgs<'tcx>)) -> bool {
         desc {
             "checking impossible instantiated clauses: `{}`",
             tcx.def_path_str(key.0)
@@ -2703,16 +2708,16 @@ rustc_queries! {
     }
 
     /// Attempt to resolve the given `DefId` to an `Instance`, for the
-    /// given generics args (`GenericArgsRef`), returning one of:
+    /// given generics args (`GenericArgs`), returning one of:
     ///  * `Ok(Some(instance))` on success
-    ///  * `Ok(None)` when the `GenericArgsRef` are still too generic,
+    ///  * `Ok(None)` when the `GenericArgs` are still too generic,
     ///    and therefore don't allow finding the final `Instance`
     ///  * `Err(ErrorGuaranteed)` when the `Instance` resolution process
     ///    couldn't complete due to errors elsewhere - this is distinct
     ///    from `Ok(None)` to avoid misleading diagnostics when an error
     ///    has already been/will be emitted, for the original cause.
     query resolve_instance_raw(
-        key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>
+        key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgs<'tcx>)>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc { "resolving instance `{}`", ty::Instance::new_raw(key.value.0, key.value.1) }
     }
@@ -2722,6 +2727,7 @@ rustc_queries! {
     }
 
     query limits(key: ()) -> Limits {
+        feedable
         desc { "looking up limits" }
     }
 
@@ -2856,17 +2862,49 @@ rustc_queries! {
     // "Non-queries" are special dep kinds that are not queries.
     //-----------------------------------------------------------------------------
 
-    /// We use this for most things when incr. comp. is turned off.
+    /// Sentinel for an unused slot in a dense sequence of decoded dep-nodes.
+    ///
+    /// Dep-nodes are written to disk in non-sequential order, and the ID range
+    /// might have gaps due to IDs being allocated in per-thread chunks. Having a
+    /// sentinel makes it easier for the decoder to allocate a single dense vector
+    /// of Null nodes, and then decode the actual nodes into that vector.
     non_query Null
-    /// We use this to create a forever-red node.
+
+    /// The singleton always-red node, with index `DepNodeIndex::FOREVER_RED_NODE`.
+    ///
+    /// A node that depends on the always-red node is never able to skip execution
+    /// due to having marked all of its dependencies green.
+    ///
+    /// Used when query feeding would copy the dependencies of the enclosing query,
+    /// but the enclosing query has the `eval_always` modifier.
+    ///
+    /// (Conceptually, `eval_always` query nodes should also have a `Red` dependency,
+    /// but instead they are special-cased to avoid having to store one explicitly.)
     non_query Red
-    /// We use this to create a side effect node.
+
+    /// A "side-effect" node, e.g. emitting a diagnosting or recording that an
+    /// unstable feature was used.
+    ///
+    /// "Forcing" a side-effect node causes its side-effect to be replayed.
     non_query SideEffect
-    /// We use this to create the anon node with zero dependencies.
+
+    // "Anonymous tasks" are similar to queries, but their identity is based on a
+    // hash of their dep-graph dependencies, rather than a hash of a query key.
+
+    /// The singleton node with index `DepNodeIndex::SINGLETON_ZERO_DEPS_ANON_NODE`,
+    /// for anonymous tasks that didn't have any dep-graph dependencies.
     non_query AnonZeroDeps
+    /// Anonymous task for trait solving.
     non_query TraitSelect
+
+    // These special tasks are also similar to queries, and have an associated key.
+    // But they bypass the usual query system machinery for various reasons.
+
+    /// Special task for compiling a CGU.
     non_query CompileCodegenUnit
+    /// Special task for compiling a single `MonoItem`. Used by `rustc_codegen_cranelift`.
     non_query CompileMonoItem
+    /// Special task for emitting crate metadata.
     non_query Metadata
 }
 

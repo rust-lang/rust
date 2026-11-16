@@ -1,4 +1,4 @@
-// rustfmt-file_lines: [{"file":"tests/source/file-lines-6.rs","range":[9,10]}]
+//@ rustfmt-file_lines: [{"file":"tests/source/file-lines-6.rs","range":[9,10]}]
 
 struct A {
     t: i64,

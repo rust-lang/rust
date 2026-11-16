@@ -1,16 +1,16 @@
-warning: unknown parameter `Expected`
+warning: unknown parameter `expected`
   --> $DIR/on-type-error-invalid-placeholders.rs:2:64
    |
-LL | #[diagnostic::on_move(message = "Foo", label = "Bar", note = "{Expected} {Found}")]
+LL | #[diagnostic::on_move(message = "Foo", label = "Bar", note = "{expected} {found}")]
    |                                                                ^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: unknown parameter `Found`
+warning: unknown parameter `found`
   --> $DIR/on-type-error-invalid-placeholders.rs:2:75
    |
-LL | #[diagnostic::on_move(message = "Foo", label = "Bar", note = "{Expected} {Found}")]
+LL | #[diagnostic::on_move(message = "Foo", label = "Bar", note = "{expected} {found}")]
    |                                                                           ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
@@ -25,7 +25,7 @@ LL |     takes_foo(foo);
 LL |     let bar = foo;
    |               ^^^ value used here after move
    |
-   = note: {Expected} {Found}
+   = note: {expected} {found}
 note: consider changing this parameter type in function `takes_foo` to borrow instead if owning the value isn't necessary
   --> $DIR/on-type-error-invalid-placeholders.rs:7:17
    |

@@ -116,6 +116,20 @@ impl<I: Idx, T> IndexVec<I, T> {
         idx
     }
 
+    /// Pushes an element using the given function, which receives the new index and
+    /// the vector's data as arguments. This is useful when you need the element's index
+    /// during its construction.
+    #[inline]
+    pub fn push_with<F>(&mut self, func: F) -> I
+    where
+        F: FnOnce(I, &mut IndexSlice<I, T>) -> T,
+    {
+        let idx = self.next_index();
+        let new_elem = func(idx, self.as_mut_slice());
+        self.raw.push(new_elem);
+        idx
+    }
+
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
         self.raw.pop()

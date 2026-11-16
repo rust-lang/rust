@@ -128,5 +128,55 @@ LL |
 LL ~     Foo { value: () };
    |
 
-error: aborting due to 9 previous errors
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:277:13
+   |
+LL |             let value = super::takes_unit(());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: omit the `let` binding
+   |
+LL -             let value = super::takes_unit(());
+LL +             super::takes_unit(());
+   |
+
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:293:9
+   |
+LL | /         let value = {
+LL | |
+LL | |             // #[cfg(test)]
+LL | |             let _s = "#[cfg(test)]";
+LL | |         };
+   | |__________^
+   |
+help: omit the `let` binding and replace variable usages with `()`
+   |
+LL ~         {
+LL |
+...
+LL |
+LL ~         std::hint::black_box(());
+   |
+
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:304:9
+   |
+LL | /         let value = {
+LL | |
+LL | |             //#[cfg_attr(test, allow(unused))]
+LL | |             let _s = "#[cfg_attr(test, allow(unused))]";
+LL | |         };
+   | |__________^
+   |
+help: omit the `let` binding and replace variable usages with `()`
+   |
+LL ~         {
+LL |
+...
+LL |
+LL ~         std::hint::black_box(());
+   |
+
+error: aborting due to 12 previous errors
 

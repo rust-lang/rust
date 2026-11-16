@@ -1,4 +1,4 @@
-// rustfmt-write_mode: modified
+//@ rustfmt-write_mode: modified
 // Test "modified" output
 
 fn

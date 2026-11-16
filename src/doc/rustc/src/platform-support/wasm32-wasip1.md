@@ -73,13 +73,13 @@ be used instead.
 ## Building the target in rustc
 
 To build this target first acquire a copy of [`wasi-sdk`]. At this time version
-33 is the minimum needed.
+34 is the minimum needed.
 
 Next configure the `WASI_SDK_PATH` environment variable to point to where this
 is installed. For example:
 
 ```text
-export WASI_SDK_PATH=/path/to/wasi-sdk-33.0
+export WASI_SDK_PATH=/path/to/wasi-sdk-34.0
 ```
 
 Next be sure to enable LLD when building Rust from source as LLVM's `wasm-ld`

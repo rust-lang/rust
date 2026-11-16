@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 //@ compile-flags: -Ctarget-feature=+relaxed-simd --crate-type=lib
 //@ build-pass
 

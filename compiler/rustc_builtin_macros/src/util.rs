@@ -1,6 +1,6 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
-use rustc_attr_parsing::{AttributeTemplate, validate_attr};
+use rustc_attr_parsing::{AttributeTemplate, UnusedMultiple, validate_attr};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
@@ -26,30 +26,33 @@ pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaI
 
 /// Emit a warning if the item is annotated with the given attribute. This is used to diagnose when
 /// an attribute may have been mistakenly duplicated.
-pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable, name: Symbol) {
-    let attrs: Option<&[Attribute]> = match item {
-        Annotatable::Item(item) => Some(&item.attrs),
-        Annotatable::AssocItem(item, _) => Some(&item.attrs),
-        Annotatable::ForeignItem(item) => Some(&item.attrs),
-        Annotatable::Expr(expr) => Some(&expr.attrs),
-        Annotatable::Arm(arm) => Some(&arm.attrs),
-        Annotatable::ExprField(field) => Some(&field.attrs),
-        Annotatable::PatField(field) => Some(&field.attrs),
-        Annotatable::GenericParam(param) => Some(&param.attrs),
-        Annotatable::Param(param) => Some(&param.attrs),
-        Annotatable::FieldDef(def) => Some(&def.attrs),
-        Annotatable::Variant(variant) => Some(&variant.attrs),
-        _ => None,
+pub(crate) fn warn_on_duplicate_attribute(
+    ecx: &ExtCtxt<'_>,
+    item: &Annotatable,
+    span: Span,
+    name: Symbol,
+) {
+    let attrs: &[Attribute] = match item {
+        Annotatable::Item(item) => &item.attrs,
+        Annotatable::AssocItem(item, _) => &item.attrs,
+        Annotatable::ForeignItem(item) => &item.attrs,
+        Annotatable::Expr(expr) => &expr.attrs,
+        Annotatable::Arm(arm) => &arm.attrs,
+        Annotatable::ExprField(field) => &field.attrs,
+        Annotatable::PatField(field) => &field.attrs,
+        Annotatable::GenericParam(param) => &param.attrs,
+        Annotatable::Param(param) => &param.attrs,
+        Annotatable::FieldDef(def) => &def.attrs,
+        Annotatable::Variant(variant) => &variant.attrs,
+        _ => return,
     };
-    if let Some(attrs) = attrs {
-        if let Some(attr) = attr::find_by_name(attrs, name) {
-            ecx.psess().buffer_lint(
-                DUPLICATE_MACRO_ATTRIBUTES,
-                attr.span,
-                ecx.current_expansion.lint_node_id,
-                diagnostics::DuplicateMacroAttribute,
-            );
-        }
+    if let Some(attr) = attr::find_by_name(attrs, name) {
+        ecx.psess().buffer_lint(
+            DUPLICATE_MACRO_ATTRIBUTES,
+            attr.span,
+            ecx.current_expansion.lint_node_id,
+            UnusedMultiple { this: attr.span, other: span, name },
+        );
     }
 }
 
@@ -106,7 +109,7 @@ pub(crate) fn expr_to_spanned_string<'a>(
             Ok(ast::LitKind::ByteStr(..)) => {
                 let mut err = cx.dcx().struct_span_err(expr.span, err_msg);
                 let span = expr.span.shrink_to_lo();
-                err.span_suggestion(
+                err.span_suggestion_short(
                     span.with_hi(span.lo() + BytePos(1)),
                     "consider removing the leading `b`",
                     "",
@@ -136,7 +139,7 @@ pub(crate) fn expr_to_string(
 ) -> ExpandResult<Result<(Symbol, ast::StrStyle), ErrorGuaranteed>, ()> {
     expr_to_spanned_string(cx, expr, err_msg).map(|res| {
         res.map_err(|err| match err {
-            Ok((err, _)) => err.emit(),
+            Ok((err, _)) => err.emit_err(),
             Err(guar) => guar,
         })
         .map(|ExprToSpannedString { symbol, style, .. }| (symbol, style))
@@ -157,7 +160,7 @@ pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, nam
 pub(crate) fn parse_expr(p: &mut parser::Parser<'_>) -> Result<Box<ast::Expr>, ErrorGuaranteed> {
     let guar = match p.parse_expr() {
         Ok(expr) => return Ok(expr),
-        Err(err) => err.emit(),
+        Err(err) => err.emit_err(),
     };
     while p.token != token::Eof {
         p.bump();
@@ -191,7 +194,7 @@ pub(crate) fn get_single_str_spanned_from_tts(
     };
     expr_to_spanned_string(cx, ret, "argument must be a string literal").map(|res| {
         res.map_err(|err| match err {
-            Ok((err, _)) => err.emit(),
+            Ok((err, _)) => err.emit_err(),
             Err(guar) => guar,
         })
         .map(|ExprToSpannedString { symbol, span, .. }| (symbol, span))

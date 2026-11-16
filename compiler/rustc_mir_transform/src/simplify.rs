@@ -235,7 +235,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // We can move all debuginfos to the last basic block.
         let mut trivial_goto_chain = true;
         while let Some(terminator) = self.take_terminator_if_simple_goto(current) {
-            let Terminator { kind: TerminatorKind::Goto { target }, .. } = terminator else {
+            let Terminator { kind: TerminatorKind::Goto { target, .. }, .. } = terminator else {
                 unreachable!();
             };
             trivial_goto_chain &= self.pred_count[target] == 1;
@@ -246,7 +246,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         *changed |= *start != last;
         *start = last;
         while let Some((current, mut terminator)) = terminators.pop() {
-            let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator
+            let Terminator { kind: TerminatorKind::Goto { ref mut target, .. }, .. } = terminator
             else {
                 unreachable!();
             };
@@ -284,7 +284,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         terminator: &mut Terminator<'tcx>,
     ) -> bool {
         let target = match terminator.kind {
-            TerminatorKind::Goto { target } if self.pred_count[target] == 1 => target,
+            TerminatorKind::Goto { target, .. } if self.pred_count[target] == 1 => target,
             _ => return false,
         };
 
@@ -325,7 +325,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         self.pred_count[first_succ] -= (count - 1) as u32;
 
         debug!("simplifying branch {:?}", terminator);
-        terminator.kind = TerminatorKind::Goto { target: first_succ };
+        terminator.kind = TerminatorKind::goto(first_succ);
         true
     }
 

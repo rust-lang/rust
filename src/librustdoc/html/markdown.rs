@@ -698,6 +698,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
     }
 }
 
+/// A type representing a position of a code block in Markdown.
+///
+/// Either a relative one or more precisely via a `Span`.
+pub(crate) enum CodeBlockPosition {
+    Relative(MdRelLine),
+    Span(Span),
+}
+
 /// A newtype that represents a relative line number in Markdown.
 ///
 /// In other words, this represents an offset from the first line of Markdown
@@ -780,8 +788,26 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
                 if nb_lines != 0 && !&doc[prev_offset..offset.start].ends_with('\n') {
                     nb_lines -= 1;
                 }
-                let line = MdRelLine::new(nb_lines);
-                tests.visit_test(text, block_info, line, code_mappings);
+
+                let position = if let Some(extra_info) = extra_info
+                    && let Some(fragments) = &extra_info.fragments
+                {
+                    let code_block_str = &doc[offset.clone()];
+                    // let's find the end of line of the lang string, if not assume at least ```
+                    let nl_offset = code_block_str.find('\n').unwrap_or(3);
+                    let lang_range = offset.start..(offset.start + nl_offset);
+                    if let Some((sp, _)) =
+                        source_span_for_markdown_range(extra_info.tcx, doc, &lang_range, fragments)
+                    {
+                        CodeBlockPosition::Span(sp)
+                    } else {
+                        CodeBlockPosition::Relative(MdRelLine::new(nb_lines))
+                    }
+                } else {
+                    CodeBlockPosition::Relative(MdRelLine::new(nb_lines))
+                };
+
+                tests.visit_test(text, block_info, position, code_mappings);
                 prev_offset = offset.start;
             }
             Event::Start(Tag::Heading { level, .. }) => {
@@ -875,7 +901,7 @@ impl<'doc, 'tcx> ExtraInfo<'doc, 'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagMessage>,
-        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
+        f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a>),
     ) {
         self.tcx.emit_node_span_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
@@ -1770,6 +1796,18 @@ pub(crate) struct MarkdownLink {
     pub range: MarkdownLinkRange,
 }
 
+#[derive(Debug)]
+pub(crate) struct MarkdownLinks<R> {
+    pub links: Vec<R>,
+    pub reference_labels: Vec<String>,
+}
+
+impl<R> Default for MarkdownLinks<R> {
+    fn default() -> Self {
+        Self { links: Vec::new(), reference_labels: Vec::new() }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum MarkdownLinkRange {
     /// Normally, markdown link warnings point only at the destination.
@@ -1793,10 +1831,10 @@ impl MarkdownLinkRange {
 pub(crate) fn markdown_links<'md, R>(
     md: &'md str,
     preprocess_link: impl Fn(MarkdownLink) -> Option<R>,
-) -> Vec<R> {
+) -> MarkdownLinks<R> {
     use itertools::Itertools;
     if md.is_empty() {
-        return vec![];
+        return MarkdownLinks::default();
     }
 
     // FIXME: remove this function once pulldown_cmark can provide spans for link definitions.
@@ -1993,7 +2031,11 @@ pub(crate) fn markdown_links<'md, R>(
         }
     }
 
-    for (_label, (is_used, dest_url, span)) in refdefs.into_iter() {
+    let mut reference_labels = Vec::with_capacity(refdefs.len());
+
+    for (label, (is_used, dest_url, span)) in refdefs {
+        reference_labels.push(label);
+
         if !is_used
             && let Some(link) = preprocess_link(MarkdownLink {
                 kind: LinkType::Reference,
@@ -2005,7 +2047,7 @@ pub(crate) fn markdown_links<'md, R>(
         }
     }
 
-    links
+    MarkdownLinks { links, reference_labels }
 }
 
 #[derive(Debug)]

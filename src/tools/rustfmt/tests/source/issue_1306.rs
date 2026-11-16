@@ -1,8 +1,8 @@
-// rustfmt-max_width: 160
-// rustfmt-fn_call_width: 96
-// rustfmt-fn_args_layout: Compressed
-// rustfmt-trailing_comma: Always
-// rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 160
+//@ rustfmt-fn_call_width: 96
+//@ rustfmt-fn_args_layout: Compressed
+//@ rustfmt-trailing_comma: Always
+//@ rustfmt-wrap_comments: true
 
 fn foo() {
     for elem in try!(gen_epub_book::ops::parse_descriptor_file(&mut try!(File::open(&opts.source_file.1).map_err(|_| {

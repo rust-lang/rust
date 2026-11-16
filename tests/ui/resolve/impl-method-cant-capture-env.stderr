@@ -3,8 +3,6 @@ error[E0434]: can't capture dynamic environment in a fn item
    |
 LL |            self.v0 = k0 ^ 0x736f6d6570736575;
    |                      ^^
-   |
-   = help: use the `|| { ... }` closure form instead
 
 error: aborting due to 1 previous error
 

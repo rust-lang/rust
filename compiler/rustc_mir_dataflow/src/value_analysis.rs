@@ -214,17 +214,6 @@ impl<V: Clone + HasBottom> State<V> {
         }
     }
 
-    /// Helper method for assignments to a discriminant.
-    pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map<'_>)
-    where
-        V: HasTop,
-    {
-        self.flood_discr(target, map);
-        if let Some(target) = map.find_discr(target) {
-            self.insert_idx(target, result, map);
-        }
-    }
-
     /// Retrieve the value stored for a place, or `None` if it is not tracked.
     fn try_get(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
         let place = map.find(place)?;
@@ -797,6 +786,12 @@ impl<'tcx> Map<'tcx> {
         };
         let elems = place.projection.iter().map(|&elem| elem.try_into()).chain(tail_elem.map(Ok));
         for elem in elems {
+            // All fields of a union alias each other.
+            if self.places[index].ty.is_union() {
+                self.for_each_value_inside(index, f);
+                return;
+            }
+
             // A field aliases the parent place.
             if let Some(vi) = self.places[index].value_index {
                 f(vi);
@@ -1016,7 +1011,7 @@ pub fn iter_fields<'tcx>(
             for (v_index, v_def) in def.variants().iter_enumerated() {
                 let variant = if def.is_struct() { None } else { Some(v_index) };
                 for (f_index, f_def) in v_def.fields.iter().enumerate() {
-                    let field_ty = f_def.ty(tcx, args);
+                    let field_ty = f_def.ty(tcx, *args);
                     let field_ty =
                         tcx.try_normalize_erasing_regions(typing_env, field_ty).unwrap_or_else(
                             |_| tcx.erase_and_anonymize_regions(field_ty.skip_norm_wip()),

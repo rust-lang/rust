@@ -1,10 +1,14 @@
 error[E0282]: type annotations needed
-  --> $DIR/auto-trait-selection-freeze.rs:19:16
+  --> $DIR/auto-trait-selection-freeze.rs:20:16
    |
 LL |     if false { is_trait(foo()) } else { Default::default() }
    |                ^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `is_trait`
    |
-   = note: cannot infer type of hidden type of opaque
+note: cannot infer type of hidden type of opaque
+  --> $DIR/auto-trait-selection-freeze.rs:19:13
+   |
+LL | fn foo() -> impl Sized {
+   |             ^^^^^^^^^^
 help: consider specifying the generic arguments
    |
 LL |     if false { is_trait::<T, U>(foo()) } else { Default::default() }

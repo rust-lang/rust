@@ -1,7 +1,9 @@
 //@ check-pass
 // This test should compile without an ICE.
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args, macroless_generic_const_args)]
+#![feature(gca_min_const_items, gca_macroless_args)]
+
+use std::gca;
 
 pub struct A;
 
@@ -12,7 +14,7 @@ pub trait Array {
 }
 
 impl Array for A {
-    const LEN: usize = core::direct_const_arg!(4);
+    const LEN: usize = gca!(4);
 
     #[allow(unused_braces)]
     fn arr() -> [u8; const { Self::LEN }] {

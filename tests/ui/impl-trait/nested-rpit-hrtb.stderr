@@ -102,7 +102,11 @@ LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = 
    |                                                                                             ^^ implementation of `Bar` is not general enough
    |
    = note: `()` must implement `Bar<'a>`
-   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
+note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
+  --> $DIR/nested-rpit-hrtb.rs:16:1
+   |
+LL | impl<'a> Bar<'a> for () {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
   --> $DIR/nested-rpit-hrtb.rs:60:64

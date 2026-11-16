@@ -101,7 +101,7 @@ note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
 LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
    |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
-   |        ---------- required by a bound in this associated function
+   |
 help: consider specifying the generic arguments
    |
 LL - reuse E::foo_static as e;
@@ -117,6 +117,7 @@ LL | reuse E::foo_static as e;
 note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
   --> $DIR/inherent-impls-parent-generics.rs:10:34
    |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
    |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
 help: consider specifying the generic arguments
@@ -133,6 +134,8 @@ LL | reuse E::foo_self as e1;
 note: method defined here
   --> $DIR/inherent-impls-parent-generics.rs:11:8
    |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 help: provide the argument
@@ -171,7 +174,7 @@ note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
 LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
    |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
-   |        ---------- required by a bound in this associated function
+   |
 help: consider specifying the generic arguments
    |
 LL - reuse E::foo_static::<'static, (), true> as e2;
@@ -187,6 +190,8 @@ LL | reuse E::foo_self::<'static, (), true> as e3;
 note: method defined here
   --> $DIR/inherent-impls-parent-generics.rs:11:8
    |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 help: provide the argument
@@ -220,7 +225,7 @@ note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
 LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
    |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
-   |        ---------- required by a bound in this associated function
+   |
 
 error[E0284]: type annotations needed
   --> $DIR/inherent-impls-parent-generics.rs:37:23
@@ -231,6 +236,7 @@ LL | reuse E::<'_, (), _>::foo_static as e8;
 note: required by a const generic parameter in `E::<'a, A, C>::foo_static`
   --> $DIR/inherent-impls-parent-generics.rs:10:34
    |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
    |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `E::<'a, A, C>::foo_static`
 help: consider specifying the generic arguments
@@ -247,6 +253,8 @@ LL | reuse E::<'_, _, _>::foo_self as e9;
 note: method defined here
   --> $DIR/inherent-impls-parent-generics.rs:11:8
    |
+LL | impl<'a, 'b, 'c, A: 'a, const C: usize> E<'a, A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 help: provide the argument
@@ -284,7 +292,7 @@ note: required by a const generic parameter in `S::<A, C>::foo_static`
 LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
    |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
-   |        ---------- required by a bound in this associated function
+   |
 help: consider specifying the generic arguments
    |
 LL | reuse S::<A, C>::foo_static as s;
@@ -299,6 +307,7 @@ LL | reuse S::foo_static as s;
 note: required by a const generic parameter in `S::<A, C>::foo_static`
   --> $DIR/inherent-impls-parent-generics.rs:51:34
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
    |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 help: consider specifying the generic arguments
@@ -315,6 +324,8 @@ LL | reuse S::foo_self as s1;
 note: method defined here
   --> $DIR/inherent-impls-parent-generics.rs:52:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 help: provide the argument
@@ -352,7 +363,7 @@ note: required by a const generic parameter in `S::<A, C>::foo_static`
 LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
    |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
-   |        ---------- required by a bound in this associated function
+   |
 help: consider specifying the generic arguments
    |
 LL | reuse S::<A, C>::foo_static::<'static, (), true> as s2;
@@ -367,6 +378,8 @@ LL | reuse S::foo_self::<'static, (), true> as s3;
 note: method defined here
   --> $DIR/inherent-impls-parent-generics.rs:52:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 help: provide the argument
@@ -400,7 +413,7 @@ note: required by a const generic parameter in `S::<A, C>::foo_static`
 LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
    |                     ^^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
-   |        ---------- required by a bound in this associated function
+   |
 
 error[E0284]: type annotations needed
   --> $DIR/inherent-impls-parent-generics.rs:78:19
@@ -411,6 +424,7 @@ LL | reuse S::<(), _>::foo_static as s8;
 note: required by a const generic parameter in `S::<A, C>::foo_static`
   --> $DIR/inherent-impls-parent-generics.rs:51:34
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
 LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
    |                                  ^^^^^^^^^^^^^ required by this const generic parameter in `S::<A, C>::foo_static`
 help: consider specifying the generic arguments
@@ -427,6 +441,8 @@ LL | reuse S::<_, 123>::foo_self as s9;
 note: method defined here
   --> $DIR/inherent-impls-parent-generics.rs:52:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+LL |     fn foo_static<'d: 'd, 'e, T, const B: bool>() {}
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 help: provide the argument

@@ -32,6 +32,8 @@ impl Category {
     /// Determines the category for a given expression. Note that scope
     /// and paren expressions have no category.
     pub(crate) fn of(ek: &ExprKind<'_>) -> Option<Category> {
+        // NB: this needs to be kept in sync with `hir::Expr::is_constant_for_zero_repeat`
+
         match *ek {
             ExprKind::Scope { .. } => None,
 

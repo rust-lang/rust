@@ -1,6 +1,5 @@
 use std::any::Any;
 use std::default::Default;
-use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -24,7 +23,7 @@ use rustc_span::def_id::{CrateNum, DefId, LocalDefId, ModId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use rustc_structures::{CollapseMacroDebuginfo, Limit};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -690,7 +689,7 @@ pub enum SyntaxExtensionKind {
     ),
 
     /// An AST-based function-like macro.
-    LegacyBang(
+    AstBang(
         /// An expander with signature TokenStream -> AST.
         Arc<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
     ),
@@ -704,7 +703,7 @@ pub enum SyntaxExtensionKind {
     ),
 
     /// An AST-based attribute macro.
-    LegacyAttr(
+    AstAttr(
         /// An expander with signature (AST, AST) -> AST.
         /// The first AST fragment is the attribute itself, the second is the annotated item.
         /// The produced AST fragment replaces the input AST fragment.
@@ -723,14 +722,14 @@ pub enum SyntaxExtensionKind {
         /// The produced TokenStream is appended to the input TokenStream.
         ///
         /// FIXME: The text above describes how this should work. Currently it
-        /// is handled identically to `LegacyDerive`. It should be migrated to
+        /// is handled identically to `AstDerive`. It should be migrated to
         /// a token-based representation like `Bang` and `Attr`, instead of
         /// using `MultiItemModifier`.
         Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based derive macro.
-    LegacyDerive(
+    AstDerive(
         /// An expander with signature AST -> AST.
         /// The produced AST fragment is appended to the input AST fragment.
         Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
@@ -743,12 +742,12 @@ pub enum SyntaxExtensionKind {
 }
 
 impl SyntaxExtensionKind {
-    /// Returns `Some(expander)` for a macro usable as a `LegacyBang`; otherwise returns `None`
+    /// Returns `Some(expander)` for a macro usable as a `AstBang`; otherwise returns `None`
     ///
     /// This includes a `MacroRules` with function-like rules.
-    pub fn as_legacy_bang(&self) -> Option<&(dyn TTMacroExpander + sync::DynSync + sync::DynSend)> {
+    pub fn as_ast_bang(&self) -> Option<&(dyn TTMacroExpander + sync::DynSync + sync::DynSend)> {
         match self {
-            SyntaxExtensionKind::LegacyBang(exp) => Some(exp.as_ref()),
+            SyntaxExtensionKind::AstBang(exp) => Some(exp.as_ref()),
             SyntaxExtensionKind::MacroRules(exp) if exp.kinds().contains(MacroKinds::BANG) => {
                 Some(exp.as_ref())
             }
@@ -806,12 +805,12 @@ impl SyntaxExtension {
     pub fn macro_kinds(&self) -> MacroKinds {
         match self.kind {
             SyntaxExtensionKind::Bang(..)
-            | SyntaxExtensionKind::LegacyBang(..)
+            | SyntaxExtensionKind::AstBang(..)
             | SyntaxExtensionKind::GlobDelegation(..) => MacroKinds::BANG,
             SyntaxExtensionKind::Attr(..)
-            | SyntaxExtensionKind::LegacyAttr(..)
+            | SyntaxExtensionKind::AstAttr(..)
             | SyntaxExtensionKind::NonMacroAttr => MacroKinds::ATTR,
-            SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::LegacyDerive(..) => {
+            SyntaxExtensionKind::Derive(..) | SyntaxExtensionKind::AstDerive(..) => {
                 MacroKinds::DERIVE
             }
             SyntaxExtensionKind::MacroRules(ref m) => m.kinds(),
@@ -1323,16 +1322,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn set_trace_macros(&mut self, x: bool) {
         self.ecfg.trace_mac = x
-    }
-    pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
-        let def_site = self.with_def_site_ctxt(DUMMY_SP);
-        iter::once(Ident::new(kw::DollarCrate, def_site))
-            .chain(components.iter().map(|&s| Ident::new(s, def_site)))
-            .collect()
-    }
-    pub fn def_site_path(&self, components: &[Symbol]) -> Vec<Ident> {
-        let def_site = self.with_def_site_ctxt(DUMMY_SP);
-        components.iter().map(|&s| Ident::new(s, def_site)).collect()
     }
 
     pub fn check_unused_macros(&mut self) {

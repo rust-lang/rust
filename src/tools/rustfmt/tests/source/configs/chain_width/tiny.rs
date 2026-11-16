@@ -1,4 +1,4 @@
-// rustfmt-chain_width: 20
+//@ rustfmt-chain_width: 20
 
 struct Fluent {}
 

@@ -82,6 +82,9 @@ Options:
         --sort-modules-by-appearance 
                         sort modules by where they appear in the program,
                         rather than alphabetically
+        --crate-list-heading TEXT
+                        heading under which to list this crate in the sidebar
+                        crate list
         --default-theme THEME
                         Set the default theme. THEME should be the theme name,
                         generally lowercase. If an unknown default theme is
@@ -137,8 +140,7 @@ Options:
                         to reach the documentation root.
         --persist-doctests PATH
                         Directory to persist doctest executables into
-        --show-coverage 
-                        calculate percentage of public items with
+        --coverage      calculate percentage of public items with
                         documentation
         --test-runtool The tool to run tests with when building for a different target than host
                         

@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// let x: u32 = 5;
     /// let bit_width = x.bit_width();
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub MANUAL_BIT_WIDTH,
     pedantic,
     "manually reimplementing `bit_width`"
@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// let x: u64 = 5;
     /// let bit_width = x.bit_width();
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub MISMATCHED_BIT_WIDTH_TYPE,
     suspicious,
     "type mismatch in bit width calculation"
@@ -111,7 +111,7 @@ impl LateLintPass<'_> for ManualBitWidth {
             && let left_ty = cx.typeck_results().node_type(hir_ty.hir_id)
             && let Some(left_int_kind) = get_int_kind(cx, left_ty)
             && self.msrv.meets(cx, msrvs::BIT_WIDTH)
-            && left.span.eq_ctxt(right.span)
+            && left.span.ctxt() == right.span.ctxt()
             && !is_from_proc_macro(cx, expr)
         {
             if left_int_kind == right_int_kind {

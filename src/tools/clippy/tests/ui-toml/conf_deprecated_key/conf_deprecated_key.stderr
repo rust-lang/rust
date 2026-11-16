@@ -10,6 +10,12 @@ warning: use of a deprecated field
 LL | blacklisted-names = [ "..", "wibble" ]
    | ^^^^^^^^^^^^^^^^^ help: use new name: `disallowed-names`
 
+warning: use of a deprecated field
+  --> $DIR/tests/ui-toml/conf_deprecated_key/clippy.toml:4:1
+   |
+LL | lint-inconsistent-struct-field-initializers = true
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use new name: `check-inconsistent-struct-field-initializers`
+
 error: the function has a cognitive complexity of (3/2)
   --> tests/ui-toml/conf_deprecated_key/conf_deprecated_key.rs:8:4
    |
@@ -20,5 +26,5 @@ LL | fn cognitive_complexity() {
    = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::cognitive_complexity)]`
 
-error: aborting due to 1 previous error; 2 warnings emitted
+error: aborting due to 1 previous error; 3 warnings emitted
 

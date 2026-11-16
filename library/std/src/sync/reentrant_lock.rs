@@ -78,7 +78,7 @@ use crate::thread::{ThreadId, current_id};
 // we don't need to further synchronize the TID accesses, so they can be regular 64-bit
 // non-atomic accesses.
 #[unstable(feature = "reentrant_lock", issue = "121440")]
-pub struct ReentrantLock<T: ?Sized> {
+pub struct ReentrantLock<#[rustc_assert_variance(covariant)] T: ?Sized> {
     mutex: sys::Mutex,
     owner: Tid,
     lock_count: UnsafeCell<u32>,
@@ -204,7 +204,10 @@ impl<T: RefUnwindSafe + ?Sized> RefUnwindSafe for ReentrantLock<T> {}
 /// the guarded data.
 #[must_use = "if unused the ReentrantLock will immediately unlock"]
 #[unstable(feature = "reentrant_lock", issue = "121440")]
-pub struct ReentrantLockGuard<'a, T: ?Sized + 'a> {
+pub struct ReentrantLockGuard<
+    #[rustc_assert_variance(covariant)] 'a,
+    #[rustc_assert_variance(covariant)] T: ?Sized + 'a,
+> {
     lock: &'a ReentrantLock<T>,
 }
 

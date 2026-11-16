@@ -6,7 +6,7 @@ use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::ErrorGuaranteed;
 use rustc_lint::LintStore;
 use rustc_lint_defs::{Level, LintId};
 use rustc_middle::ty;
@@ -16,7 +16,7 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::Recovery;
 use rustc_query_impl::print_query_stack;
-use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
+use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, JobsMode, OutFileName};
 use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, EarlySession, Session};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
@@ -135,7 +135,7 @@ pub(crate) fn parse_check_cfg(sess: &Session, specs: Vec<String>) -> CheckCfg {
                     sess.dcx().struct_fatal(format!("invalid `--check-cfg` argument: `{s}`"));
                 diag.note($reason);
                 diag.note(VISIT);
-                diag.emit()
+                diag.emit_fatal()
             }};
             (in $arg:expr, $reason:expr) => {{
                 let mut diag =
@@ -154,7 +154,7 @@ pub(crate) fn parse_check_cfg(sess: &Session, specs: Vec<String>) -> CheckCfg {
 
                 diag.note($reason);
                 diag.note(VISIT);
-                diag.emit()
+                diag.emit_fatal()
             }};
         }
 
@@ -380,12 +380,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     trace!("run_compiler");
 
     // Set parallel mode before thread pool creation, which will create `Lock`s.
-    rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.jobs.frontend.is_some());
+    rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.jobs.frontend.is_parallel());
 
     // Initialize jobserver as early as possible.
     let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
     let jobs = config.opts.jobs;
-    if let Some(limit) = jobs.frontend.max(jobs.backend).max(jobs.linker.limit()) {
+    if let JobsMode::Parallel(limit) = jobs.frontend.max(jobs.backend).max(jobs.linker.mode()) {
         jobserver::initialize(limit.get(), |err| {
             let note = "the build environment is likely misconfigured";
             early_dcx.early_struct_warn(err).with_note(note).emit()
@@ -450,6 +450,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.using_internal_features,
             );
 
+            // STACK_SIZE is setup in run_in_thread_pool_with_globals, before arriving here.
+            sess.opts.recommended_stack_size = *util::STACK_SIZE.get().unwrap();
+
             let target_config = codegen_backend.target_config(&sess);
 
             // Store all of the target features in the session.
@@ -466,6 +469,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 &sess.early_sess.target,
                 is_nightly_build,
                 is_crt_static,
+            );
+            util::add_target_modifiers(
+                &mut sess.early_sess.opts.target_modifiers,
+                &target_config,
+                &sess.early_sess.target,
+                &*codegen_backend,
             );
 
             sess.check_config = parse_check_cfg(&sess, config.crate_check_cfg);
@@ -536,11 +545,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     )
 }
 
-pub fn try_print_query_stack(
-    dcx: DiagCtxtHandle<'_>,
-    limit_frames: Option<usize>,
-    file: Option<std::fs::File>,
-) {
+pub fn try_print_query_stack(limit_frames: Option<usize>, file: Option<std::fs::File>) {
     eprintln!("query stack during panic:");
 
     // Be careful relying on global state here: this code is called from
@@ -548,13 +553,7 @@ pub fn try_print_query_stack(
     // state if it was responsible for triggering the panic.
     let all_frames = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            ty::print::with_no_queries!(print_query_stack(
-                icx.tcx,
-                icx.query,
-                dcx,
-                limit_frames,
-                file,
-            ))
+            ty::print::with_no_queries!(print_query_stack(icx.tcx, icx.query, limit_frames, file))
         } else {
             0
         }

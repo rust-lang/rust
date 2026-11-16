@@ -244,6 +244,18 @@ macro_rules! create_config {
                 CliConfigWasSet(self)
             }
 
+            #[allow(unreachable_pub)]
+            pub fn was_option_set(&self, key: &str) -> bool {
+                match key {
+                    $(
+                        stringify!($i) => {
+                            ConfigWasSet(self).$i()
+                        }
+                    )+
+                    _ => false
+                }
+            }
+
             fn fill_from_parsed_config(mut self, parsed: PartialConfig, dir: &Path) -> Config {
             $(
                 if let Some(option_value) = parsed.$i {

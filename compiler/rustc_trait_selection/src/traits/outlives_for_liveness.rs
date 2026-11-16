@@ -1,16 +1,44 @@
+use std::debug_assert_matches;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
+use rustc_infer::infer::{SubregionOrigin, TypeOutlivesConstraint};
 use rustc_middle::ty::{
-    self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, CallerBoundsIterator, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::bug;
+use rustc_span::{DUMMY_SP, bug};
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::regions::{region_known_to_outlive, ty_known_to_outlive};
+use crate::regions::{region_known_to_outlive, test_region_obligations};
+
+/// Given a known `param_env` and a set of well formed types, can we prove that
+/// `ty` outlives `region`.
+///
+/// Copied from `ty_known_to_outlive` without normalization for `ty` because we
+/// don't want trait solving in liveness queries.
+fn param_known_to_outlive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: LocalDefId,
+    param_env: ty::ParamEnv<'tcx>,
+    wf_tys: &FxIndexSet<Ty<'tcx>>,
+    ty: Ty<'tcx>,
+    region: ty::Region<'tcx>,
+) -> bool {
+    debug_assert_matches!(ty.kind(), ty::Param(_));
+
+    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
+        infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
+            sub_region: region,
+            sup_type: ty,
+            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
+        });
+        Ok(())
+    })
+}
 
 /// For a given alias type, this returns the set of indices into the identity generic args that
 /// are relevant for liveness, that can be inferred from outlives bounds on the
@@ -222,14 +250,14 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     for (parent_outlived_region, opaque_outlived_arg_idx) in parent_outlives_regions.iter() {
         let mut opaque_outlives_args = DenseBitSet::new_empty(self_identity_args.len());
         for (parent_outlived_arg_idx, parent_outlives_arg) in
-            self_identity_args[..generics.parent_count].iter().enumerate()
+            self_identity_args.as_slice()[..generics.parent_count].iter().enumerate()
         {
             let type_outlives = match parent_outlives_arg.kind() {
                 // Consts don't have any non-static regions
                 ty::GenericArgKind::Const(_) => continue,
                 // Lifetimes should be captured
                 ty::GenericArgKind::Lifetime(_) => continue,
-                ty::GenericArgKind::Type(t) => ty_known_to_outlive(
+                ty::GenericArgKind::Type(t) => param_known_to_outlive(
                     tcx,
                     def_id,
                     parent_param_env,
@@ -290,7 +318,7 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
                     region_known_to_outlive(tcx, def_id, param_env, &wf_tys, r, outlived_region)
                 }
                 ty::GenericArgKind::Type(t) => {
-                    ty_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
+                    param_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
                 }
                 ty::GenericArgKind::Const(_) => false,
             };
@@ -526,7 +554,7 @@ where
                 };
                 let mut capturable = tcx.live_args_for_alias_from_outlives_bounds(kind).clone();
 
-                for clause in param_env.caller_bounds() {
+                for clause in param_env.caller_bounds().non_trait_clauses().iter() {
                     let Some(outlives) = clause.as_type_outlives_clause() else {
                         continue;
                     };

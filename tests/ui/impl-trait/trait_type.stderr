@@ -1,6 +1,7 @@
 error[E0053]: method `fmt` has an incompatible type for trait
   --> $DIR/trait_type.rs:7:21
    |
+LL | impl std::fmt::Display for MyType {
 LL |    fn fmt(&self, x: &str) -> () { }
    |                     ^^^^ types differ in mutability
    |
@@ -9,7 +10,7 @@ LL |    fn fmt(&self, x: &str) -> () { }
 help: change the parameter type to match the trait
    |
 LL -    fn fmt(&self, x: &str) -> () { }
-LL +    fn fmt(&self, x: &mut Formatter<'_>) -> () { }
+LL +    fn fmt(&self, x: &mut std::fmt::Formatter<'_>) -> () { }
    |
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2

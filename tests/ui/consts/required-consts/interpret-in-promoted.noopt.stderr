@@ -1,6 +1,8 @@
 error[E0080]: entering unreachable code
   --> $DIR/interpret-in-promoted.rs:15:28
    |
+LL | pub const FOO: () = unsafe {
+...
 LL |     let _x: &'static () = &ub();
    |                            ^^^^ evaluation of `FOO` failed inside this call
    |

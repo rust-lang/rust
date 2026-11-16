@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use super::*;
 
 // The tests below compare the computed hashes to particular expected values
@@ -27,6 +29,19 @@ fn hash<T: StableHash>(t: &T) -> Hash128 {
     let hcx = &mut ();
     t.stable_hash(hcx, &mut h);
     h.finish()
+}
+
+/// Computes the stable hash of two values in sequence.
+///
+/// This is similar to computing the stable hash of `(a, b)`, except that it
+/// avoids relying on the actual impl of StableHash for tuples.
+fn hash_two(a: &impl StableHash, b: &impl StableHash) -> Hash128 {
+    let hcx = &mut DummyStableHashCtxt;
+    let mut hasher = StableHasher::new();
+
+    a.stable_hash(hcx, &mut hasher);
+    b.stable_hash(hcx, &mut hasher);
+    hasher.finish()
 }
 
 // Check that bit set hash includes the domain size.
@@ -114,4 +129,23 @@ fn test_isize_compression() {
     check_hash(0xAAAAAA, 0xAAAAAAAA);
     check_hash(0xFF, 0xFFFFFFFFFFFFFFFF);
     check_hash(u64::MAX /* -1 */, 1);
+}
+
+#[test]
+fn path_component_rebracketing() {
+    let hash_a = hash_two(&Path::new("alfa/bravo"), &Path::new("charlie"));
+    let hash_b = hash_two(&Path::new("alfa"), &Path::new("bravo/charlie"));
+
+    assert_ne!(hash_a, hash_b);
+}
+
+#[test]
+fn empty_path_rebracketing() {
+    let nonempty_path = &Path::new("foo");
+    let empty_path = &Path::new("");
+
+    let hash_a = hash_two(nonempty_path, empty_path);
+    let hash_b = hash_two(empty_path, nonempty_path);
+
+    assert_ne!(hash_a, hash_b);
 }

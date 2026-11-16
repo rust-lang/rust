@@ -1,5 +1,5 @@
-// rustfmt-normalize_comments: true
-// rustfmt-wrap_comments: true
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-wrap_comments: true
 // Struct literal expressions.
 
 fn main() {

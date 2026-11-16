@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 
 use std::collections::HashMap;
 
@@ -7,11 +7,11 @@ use run_make_support::{rfs, rustc, wasmparser};
 fn main() {
     rustc()
         .input("main.rs")
-        .target("wasm32-wasip1")
         .arg("-Coverflow-checks")
         .arg("-Cpanic=abort")
         .arg("-Clto")
         .arg("-Copt-level=z")
+        .emit_wasm_core_module()
         .run();
 
     let file = rfs::read("main.wasm");
@@ -22,6 +22,10 @@ fn main() {
         if let wasmparser::Payload::ImportSection(s) = payload {
             for i in s.into_imports() {
                 let i = i.unwrap();
+                // ignore intrinsics like `__wasm_{get,set}_stack_pointer`
+                if i.name.starts_with("__wasm_") {
+                    continue;
+                }
                 imports.entry(i.module).or_insert(Vec::new()).push((i.name, i.ty));
             }
         }

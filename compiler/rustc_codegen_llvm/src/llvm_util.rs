@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::ffi::{CStr, CString};
 use std::fmt::Write;
@@ -6,6 +7,7 @@ use std::sync::Once;
 use std::{ptr, slice, str};
 
 use libc::c_int;
+use rustc_abi::Endian;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::target_features::internal_target_features;
@@ -15,7 +17,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
 use rustc_session::{EarlySession, Session};
-use rustc_span::bug;
+use rustc_span::{bug, sym};
 use rustc_target::spec::{
     Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport, Target,
 };
@@ -93,7 +95,7 @@ unsafe fn configure_llvm(sess: &EarlySession) {
     let sess_args = tg_opts.chain(cg_opts);
 
     let user_specified_args: FxHashSet<_> =
-        sess_args.clone().map(|s| llvm_arg_to_arg_name(s)).filter(|s| !s.is_empty()).collect();
+        sess_args.clone().map(llvm_arg_to_arg_name).filter(|s| !s.is_empty()).collect();
 
     {
         // This adds the given argument to LLVM. Unless `force` is true
@@ -119,14 +121,14 @@ unsafe fn configure_llvm(sess: &EarlySession) {
             add("-generate-arange-section", false);
         }
 
-        match sess.opts.unstable_opts.merge_functions.unwrap_or(sess.target.merge_functions) {
+        match sess.merge_functions() {
             MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
             MergeFunctions::Aliases => {
                 add("-mergefunc-use-aliases", false);
             }
         }
 
-        if wants_wasm_eh(&sess.target) {
+        if get_version() < (24, 0, 0) && wants_wasm_eh(&sess.target) {
             add("-wasm-enable-eh", false);
         }
 
@@ -142,20 +144,17 @@ unsafe fn configure_llvm(sess: &EarlySession) {
         }
 
         for arg in sess_args {
-            add(&(*arg), true);
+            add(arg, true);
         }
 
-        match (
-            sess.opts.unstable_opts.small_data_threshold,
-            sess.target.small_data_threshold_support(),
-        ) {
-            // Set up the small-data optimization limit for architectures that use
-            // an LLVM argument to control this.
-            (Some(threshold), SmallDataThresholdSupport::LlvmArg(arg)) => {
-                add(&format!("--{arg}={threshold}"), false)
-            }
-            _ => (),
-        };
+        // Set up the small-data optimization limit for architectures that use
+        // an LLVM argument to control this.
+        if let Some(threshold) = sess.opts.unstable_opts.small_data_threshold
+            && let SmallDataThresholdSupport::LlvmArg(arg) =
+                sess.target.small_data_threshold_support()
+        {
+            add(&format!("--{arg}={threshold}"), false);
+        }
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
@@ -261,16 +260,12 @@ pub(crate) fn to_llvm_features<'a>(target: &Target, s: &'a str) -> Option<LLVMFe
                 // Filter out features that are not supported by the current LLVM version
                 "fpmr" => None, // only existed in 18
                 // Withdrawn by ARM; removed from LLVM in 22
-                "tme" if major >= 22 => None,
+                "tme" => None,
                 s => Some(LLVMFeature::new(s)),
             }
         }
         Arch::Arm => match s {
             "fp16" => Some(LLVMFeature::new("fullfp16")),
-            s => Some(LLVMFeature::new(s)),
-        },
-        Arch::Bpf => match s {
-            "allows-misaligned-mem-access" if major < 22 => None,
             s => Some(LLVMFeature::new(s)),
         },
         Arch::Nvptx64 => match s {
@@ -293,43 +288,30 @@ pub(crate) fn to_llvm_features<'a>(target: &Target, s: &'a str) -> Option<LLVMFe
             "leoncasa" => Some(LLVMFeature::new("hasleoncasa")),
             s => Some(LLVMFeature::new(s)),
         },
-        Arch::Wasm32 | Arch::Wasm64 => match s {
-            "gc" if major < 22 => None,
+        Arch::X86 | Arch::X86_64 => match s {
+            "sse4.2" => Some(LLVMFeature::with_dependencies(
+                "sse4.2",
+                smallvec![TargetFeatureFoldStrength::EnableOnly("crc32")],
+            )),
+            "pclmulqdq" => Some(LLVMFeature::new("pclmul")),
+            "rdrand" => Some(LLVMFeature::new("rdrnd")),
+            "bmi1" => Some(LLVMFeature::new("bmi")),
+            "cmpxchg16b" => Some(LLVMFeature::new("cx16")),
+            "lahfsahf" => Some(LLVMFeature::new("sahf")),
+            "apxf" => Some(LLVMFeature::with_dependencies(
+                "egpr",
+                smallvec![
+                    TargetFeatureFoldStrength::Both("push2pop2"),
+                    TargetFeatureFoldStrength::Both("ppx"),
+                    TargetFeatureFoldStrength::Both("ndd"),
+                    TargetFeatureFoldStrength::Both("ccmp"),
+                    TargetFeatureFoldStrength::Both("cf"),
+                    TargetFeatureFoldStrength::Both("nf"),
+                    TargetFeatureFoldStrength::Both("zu"),
+                ],
+            )),
             s => Some(LLVMFeature::new(s)),
         },
-        Arch::X86 | Arch::X86_64 => {
-            match s {
-                "sse4.2" => Some(LLVMFeature::with_dependencies(
-                    "sse4.2",
-                    smallvec![TargetFeatureFoldStrength::EnableOnly("crc32")],
-                )),
-                "pclmulqdq" => Some(LLVMFeature::new("pclmul")),
-                "rdrand" => Some(LLVMFeature::new("rdrnd")),
-                "bmi1" => Some(LLVMFeature::new("bmi")),
-                "cmpxchg16b" => Some(LLVMFeature::new("cx16")),
-                "lahfsahf" => Some(LLVMFeature::new("sahf")),
-                // Enable the evex512 target feature if an avx512 target feature is enabled.
-                s if s.starts_with("avx512") && major < 22 => Some(LLVMFeature::with_dependencies(
-                    s,
-                    smallvec![TargetFeatureFoldStrength::EnableOnly("evex512")],
-                )),
-                "avx10.1" if major < 22 => Some(LLVMFeature::new("avx10.1-512")),
-                "avx10.2" if major < 22 => Some(LLVMFeature::new("avx10.2-512")),
-                "apxf" => Some(LLVMFeature::with_dependencies(
-                    "egpr",
-                    smallvec![
-                        TargetFeatureFoldStrength::Both("push2pop2"),
-                        TargetFeatureFoldStrength::Both("ppx"),
-                        TargetFeatureFoldStrength::Both("ndd"),
-                        TargetFeatureFoldStrength::Both("ccmp"),
-                        TargetFeatureFoldStrength::Both("cf"),
-                        TargetFeatureFoldStrength::Both("nf"),
-                        TargetFeatureFoldStrength::Both("zu"),
-                    ],
-                )),
-                s => Some(LLVMFeature::new(s)),
-            }
-        }
         _ => Some(LLVMFeature::new(s)),
     }
 }
@@ -342,7 +324,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
     require_inited();
     let target_features = global_llvm_features(sess, /* for_cfg */ true);
 
-    let triple = SmallCStr::new(&versioned_llvm_target(sess));
+    let triple = SmallCStr::new(&llvm_target(sess));
     let cpu = SmallCStr::new(target_cpu(sess));
     let features = CString::new(target_features.join(",")).unwrap();
     let mc_subtarget_info = OwnedMCSubtargetInfo::new(&triple, &cpu, &features)
@@ -352,7 +334,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
         sess,
         |feature| {
             to_llvm_features(&sess.target, feature)
-                .map(|f| SmallVec::<[&str; 2]>::from_iter(f.into_iter()))
+                .map(SmallVec::<[&str; 2]>::from_iter)
                 .unwrap_or_default()
         },
         |feature| {
@@ -360,21 +342,8 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
             // do *not* consider the `-Ctarget-feature`s here (that's why we passed `for_cfg: true`
             // to `global_llvm_features` above) because that will be handled later in
             // `internal_target_features`.
-            if let Some(feat) = to_llvm_features(&sess.target, feature) {
-                // All the LLVM features this expands to must be enabled.
-                for llvm_feature in feat {
-                    let cstr = SmallCStr::new(llvm_feature);
-                    // `has_feature` is moderately expensive. On targets with many
-                    // features (e.g. x86) these calls take a non-trivial fraction of runtime
-                    // when compiling very small programs.
-                    if !mc_subtarget_info.has_feature(&cstr) {
-                        return false;
-                    }
-                }
-                true
-            } else {
-                false
-            }
+            to_llvm_features(&sess.target, feature)
+                .is_some_and(|feat| mc_subtarget_info.has_features(feat))
         },
     );
 
@@ -382,6 +351,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
         internal_target_features,
         has_reliable_f16: true,
         has_reliable_f16_math: true,
+        has_reliable_f16b: true,
         has_reliable_f128: true,
         has_reliable_f128_math: true,
     };
@@ -394,6 +364,7 @@ pub(crate) fn target_config(sess: &EarlySession) -> TargetConfig {
 fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
     let target_arch = &target.arch;
     let target_os = &target.options.os;
+    let target_endian = &target.options.endian;
     let target_env = &target.options.env;
     let target_abi = &target.options.cfg_abi;
     let target_pointer_width = target.pointer_width;
@@ -401,22 +372,33 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
     let (major, _, _) = version;
 
     cfg.has_reliable_f16 = match (target_arch, target_os) {
-        // Unsupported <https://github.com/llvm/llvm-project/issues/94434> (fixed in llvm22)
-        (Arch::Arm64EC, _) if major < 22 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054> resolved in GCC 16
         // but our toolchain hasn't been updated.
         (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm => {
             false
         }
-        // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
-        (Arch::CSky, _) if major < 22 => false, // (fixed in llvm22)
-        (Arch::PowerPC | Arch::PowerPC64, _) if major < 22 => false, // (fixed in llvm22)
-        (Arch::Sparc | Arch::Sparc64, _) if major < 22 => false, // (fixed in llvm22)
-        (Arch::Wasm32 | Arch::Wasm64, _) if major < 22 => false, // (fixed in llvm22)
         // `f16` support only requires that symbols converting to and from `f32` are available. We
         // provide these in `compiler-builtins`, so `f16` should be available on all platforms that
         // do not have other ABI issues or LLVM crashes.
         _ => true,
+    };
+
+    // The heuristic for evaluating to true is twofold, namely;
+    //
+    // 1. Can LLVM compile an IR snippet containing `fpext bfloat %<var> to float`
+    // 2. Does the documentation indicate `bf16` support, can be seen in the
+    //    tracking issue; <https://github.com/rust-lang/rust/issues/160630>
+    cfg.has_reliable_f16b = match (target_arch, target_os) {
+        // This is similar to <https://github.com/llvm/llvm-project/issues/94434>, however
+        // does not work until LLVM 23 on Windows.
+        (Arch::Arm64EC, _) => major >= 23,
+        (Arch::AArch64 | Arch::Arm, _) => true,
+        // FIXME(f16b) until <https://github.com/llvm/llvm-project/issues/97896>
+        // is resolved the below do not have a reliable `f16b`, on a widening
+        // path a call to `__truncsfbf2` is emitted. Or when using architectural
+        // extensions a non-portable narrowing instruction is emitted.
+        (Arch::X86_64 | Arch::RiscV64 | Arch::LoongArch64, _) => false,
+        _ => false,
     };
 
     cfg.has_reliable_f128 = match (target_arch, target_os) {
@@ -426,11 +408,14 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
         // but basic math still does not work.
         (Arch::Nvptx64, _) => false,
-        // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
-        // list at <https://github.com/rust-lang/rust/issues/116909>)
-        (Arch::PowerPC | Arch::PowerPC64, _) => false,
-        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838> (fixed in llvm22)
-        (Arch::Sparc, _) if major < 22 => false,
+        // ABI/LLVM bugs:
+        // - with +vsx <https://github.com/llvm/llvm-project/pull/216613>
+        // - without +vsx <https://github.com/rust-lang/rust/issues/125109>
+        (Arch::PowerPC, _) => false,
+        // AIX does not support f128.
+        (Arch::PowerPC64, Os::Aix) => false,
+        // ABI bugs on BE without +vsx <https://github.com/rust-lang/rust/issues/125109>.
+        (Arch::PowerPC64, _) => cfg.internal_target_features.contains(&sym::vsx),
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054> (fixed in llvm23)
         (Arch::X86_64, Os::Windows)
             if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm && major < 23 =>
@@ -452,15 +437,18 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // `long double` is not IEEE binary128. See
         // <https://github.com/llvm/llvm-project/issues/44744>.
         //
-        // This rules out anything that doesn't have `long double` = `binary128`; <= 32 bits
-        // (ld is `f64`), anything other than Linux (Windows and MacOS use `f64`), and `x86`
-        // (ld is 80-bit extended precision).
-        //
-        // musl does not implement the symbols required for f128 math at all.
-        _ if *target_env == Env::Musl => false,
-        (Arch::X86_64, _) => false,
-        (_, Os::Linux) if target_pointer_width == 64 => true,
-        _ => false,
+        // This rules out anything that doesn't have `long double` = `binary128`: <= 32 bits
+        // (`long double` is `f64`) and anything other than Linux (Windows and MacOS use `f64`).
+        // x86-64 would also be a problem, except there's a special fix for linux-gnu.
+        // We have to reject musl anyway because it doesn't have the symbols for f128 math.
+        _ if target_pointer_width <= 32 => false,
+        _ if *target_os != Os::Linux => false,
+        _ if *target_env != Env::Gnu => false,
+        // On big-endian powerpc the symbol selection is correct, despite __ibmf128 being
+        // long double on the target, but the f128 symbols are not defined.
+        (Arch::PowerPC | Arch::PowerPC64, _) if *target_endian == Endian::Big => false,
+        // After applying all these exceptions, the rest should work.
+        _ => true,
     } && cfg.has_reliable_f128;
 }
 
@@ -476,6 +464,18 @@ pub(crate) fn get_version() -> (u32, u32, u32) {
     let mut llvm_patch = 0;
     llvm::LLVMGetVersion(&mut llvm_major, &mut llvm_minor, &mut llvm_patch);
     (llvm_major, llvm_minor, llvm_patch)
+}
+
+/// The LLVM target triple to use for the session's target.
+///
+/// The UEFI targets are lowered through LLVM's `*-unknown-uefi` targets with
+/// LLVM 24 or later, and through the Windows targets with older LLVMs.
+pub(crate) fn llvm_target(sess: &EarlySession) -> Cow<'_, str> {
+    let triple = versioned_llvm_target(sess);
+    if sess.target.os == Os::Uefi && get_version() < (24, 0, 0) {
+        return triple.replace("-unknown-uefi", "-unknown-windows").into();
+    }
+    triple
 }
 
 pub(crate) fn print_passes() {
@@ -520,7 +520,7 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
 
 fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String) {
     let cpu_names = llvm::build_string(|s| unsafe {
-        llvm::LLVMRustPrintTargetCPUs(&tm, s);
+        llvm::LLVMRustPrintTargetCPUs(tm, s);
     })
     .unwrap();
 
@@ -586,7 +586,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
             }
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these
             // strings.
-            let llvm_feature = to_llvm_features(&sess.target, *feature)?.llvm_feature_name;
+            let llvm_feature = to_llvm_features(&sess.target, feature)?.llvm_feature_name;
             let desc =
                 match llvm_target_features.binary_search_by_key(&llvm_feature, |(f, _d)| f).ok() {
                     Some(index) => {
@@ -781,7 +781,7 @@ pub(crate) fn global_llvm_features(sess: &EarlySession, for_cfg: bool) -> Vec<St
     // asm logic uses that to check which registers may be used).
     llvm_features_by_flags(sess, &mut features);
 
-    // `-Zllvm-target-features`, all the way at the end to overwrite everything.
+    // `-Zllvm-target-feature`, all the way at the end to overwrite everything.
     // Should be picked up by `cfg` (e.g. if someone enables AVX this way).
     for feature in sess.opts.unstable_opts.llvm_target_feature.split(',') {
         if feature.is_empty() {

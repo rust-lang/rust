@@ -1,3 +1,15 @@
+error: attribute value must be a literal
+  --> $DIR/unused-doc-comments-for-macros.rs:19:13
+   |
+LL |       #[doc = {
+   |  _____________^
+LL | |         let a = 1;
+LL | |         let b = 1;
+LL | |         let sum = a + b;
+LL | |         assert_eq!(sum, 2);
+LL | |     }]
+   | |_____^
+
 error: unused doc comment
   --> $DIR/unused-doc-comments-for-macros.rs:7:5
    |
@@ -40,5 +52,5 @@ LL | |     }]
    |
    = help: to document an item produced by a macro, the macro must produce the documentation as part of its expansion
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

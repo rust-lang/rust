@@ -9,13 +9,9 @@ fn option_traits(_1: Option<u32>) -> Option<u32> {
     let mut _5: u32;
     scope 1 {
         debug residual => const Option::<!>::None;
-        scope 2 {
-        }
     }
-    scope 3 {
+    scope 2 {
         debug val => _4;
-        scope 4 {
-        }
     }
 
     bb0: {

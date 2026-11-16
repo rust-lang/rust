@@ -1,7 +1,7 @@
 error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
-  --> $DIR/type_const-not-constparamty.rs:8:13
+  --> $DIR/type_const-not-constparamty.rs:10:13
    |
-LL | const FREE: S = core::direct_const_arg!(const { S });
+LL | const FREE: S = gca!(const { S });
    |             ^
    |
 help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
@@ -11,9 +11,9 @@ LL | struct S;
    |
 
 error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
-  --> $DIR/type_const-not-constparamty.rs:20:14
+  --> $DIR/type_const-not-constparamty.rs:22:14
    |
-LL |     const N: S = core::direct_const_arg!(const { S });
+LL |     const N: S = gca!(const { S });
    |              ^
    |
 help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
@@ -23,7 +23,7 @@ LL | struct S;
    |
 
 error[E0741]: `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
-  --> $DIR/type_const-not-constparamty.rs:13:14
+  --> $DIR/type_const-not-constparamty.rs:15:14
    |
 LL |     const N: S;
    |              ^

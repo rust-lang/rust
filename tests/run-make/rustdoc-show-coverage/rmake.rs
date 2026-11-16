@@ -1,4 +1,4 @@
-// This test ensures that `-o` option works as expected with `--show-coverage`.
+// This test ensures that `-o` option works as expected with `--coverage`.
 // Regression test for <https://github.com/rust-lang/rust/issues/158929>.
 
 //@ needs-target-std
@@ -12,7 +12,7 @@ fn run_rustdoc(extra_args: &[&str]) -> String {
     rustdoc()
         .input("foo.rs")
         .arg("-Zunstable-options")
-        .arg("--show-coverage")
+        .arg("--coverage")
         .args(extra_args)
         .run()
         .stdout_utf8()

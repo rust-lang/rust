@@ -1,8 +1,10 @@
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
-use crate::shims::unix::env::EvalContextExt;
+use crate::shims::unix::env::EvalContextExt as _;
+use crate::shims::unix::fs::EvalContextExt as _;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::sync::futex;
 use crate::shims::unix::socket::EvalContextExt as _;
@@ -25,12 +27,21 @@ pub fn syscall<'tcx>(
     // have the right type.
 
     let sys_getrandom = ecx.eval_libc("SYS_getrandom").to_target_usize(ecx)?;
-    let sys_futex = ecx.eval_libc("SYS_futex").to_target_usize(ecx)?;
+    // riscv32 only has `SYS_futex_time64`. `libc::timespec` already uses 64-bit time there, so it
+    // behaves exactly like `SYS_futex` on other targets.
+    let sys_futex = if ecx.tcx.sess.target.arch == Arch::RiscV32 {
+        ecx.eval_libc("SYS_futex_time64")
+    } else {
+        ecx.eval_libc("SYS_futex")
+    }
+    .to_target_usize(ecx)?;
     let sys_eventfd2 = ecx.eval_libc("SYS_eventfd2").to_target_usize(ecx)?;
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
+    let sys_copy_file_range = ecx.eval_libc("SYS_copy_file_range").to_target_usize(ecx)?;
 
-    match ecx.read_target_usize(op)? {
+    // FIXME: Do these all have direct tests (#3179)?
+    match ecx.read_target_usize(&op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
         // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
         num if num == sys_getrandom => {
@@ -42,12 +53,12 @@ pub fn syscall<'tcx>(
                 "syscall(SYS_getrandom, ...)",
             )?;
 
-            let ptr = ecx.read_pointer(ptr)?;
-            let len = ecx.read_target_usize(len)?;
+            let ptr = ecx.read_pointer(&ptr)?;
+            let len = ecx.read_target_usize(&len)?;
             // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
             // neither of which have any effect on our current PRNG.
             // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-            let _flags = ecx.read_scalar(flags)?.to_i32()?;
+            let _flags = ecx.read_scalar(&flags)?.to_i32()?;
 
             ecx.gen_random(ptr, len)?;
             ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
@@ -60,7 +71,7 @@ pub fn syscall<'tcx>(
             let ([initval, flags], _) =
                 ecx.check_varargs(shim_varargs![u32, i32], varargs, "syscall(SYS_evetfd2, ...)")?;
 
-            let result = ecx.eventfd(initval, flags)?;
+            let result = ecx.eventfd(&initval, &flags)?;
             ecx.write_int(result.to_i32()?, dest)?;
         }
         num if num == sys_gettid => {
@@ -74,10 +85,20 @@ pub fn syscall<'tcx>(
                 varargs,
                 "syscall(SYS_accept4, ...)",
             )?;
-            ecx.accept4(socket, address, address_len, Some(flags), dest)?;
+            ecx.accept4(&socket, &address, &address_len, Some(&flags), dest)?;
         }
-        num => {
-            throw_unsup_format!("syscall: unsupported syscall number {num}");
+        num if num == sys_copy_file_range => {
+            let ([fd_in, off_in, fd_out, off_out, len, flags], _) = &ecx.check_varargs(
+                shim_varargs![i32, *libc::off_t, i32, *libc::off_t, libc::size_t, u32],
+                varargs,
+                "syscall(SYS_copy_file_range, ...)",
+            )?;
+            ecx.linux_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags, dest)?;
+        }
+        _ => {
+            // ENOSYS for unknown syscalls. That matches us returning null for all
+            // unknown weak symbols.
+            ecx.set_errno_and_return_neg1(LibcError("ENOSYS"), dest)?;
         }
     };
 

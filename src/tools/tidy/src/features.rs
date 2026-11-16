@@ -125,7 +125,7 @@ pub fn check(
             let filename_gate = test_filen_gate(&filen_underscore, &mut features);
 
             for (i, line) in contents.lines().enumerate() {
-                let mut err = |msg: &str| {
+                let err = |msg: &str| {
                     check.error(format!("{}:{}: {}", file.display(), i + 1, msg));
                 };
 
@@ -449,7 +449,7 @@ fn get_and_check_lib_features(
     let mut lib_features = Features::new();
     map_lib_features(base_src_path, &mut |res, file, line| match res {
         Ok((name, f)) => {
-            let mut check_features = |f: &Feature, list: &Features, display: &str| {
+            let check_features = |f: &Feature, list: &Features, display: &str| {
                 if let Some(s) = list.get(name)
                     && f.tracking_issue != s.tracking_issue
                     && f.level != Status::Accepted

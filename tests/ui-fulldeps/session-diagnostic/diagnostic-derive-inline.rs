@@ -130,6 +130,9 @@ struct MessageWrongType {
     #[primary_span]
     //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     foo: String,
+    #[context]
+    //~^ ERROR `#[context]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+    bar: String,
 }
 
 #[derive(Diagnostic)]

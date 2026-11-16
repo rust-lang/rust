@@ -1,4 +1,4 @@
-// rustfmt-group_imports: StdExternalCrate
+//@ rustfmt-group_imports: StdExternalCrate
 mod test {
     use std::path;
 

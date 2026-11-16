@@ -1,4 +1,4 @@
-// rustfmt-brace_style: PreferSameLine
+//@ rustfmt-brace_style: PreferSameLine
 
 mod M {
     enum A {

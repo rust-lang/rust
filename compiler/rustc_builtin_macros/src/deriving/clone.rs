@@ -1,14 +1,13 @@
 use rustc_ast::{self as ast, Generics, ItemKind, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_clone(
+pub(crate) fn expand_derive_clone(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
@@ -29,7 +28,7 @@ pub(crate) fn expand_deriving_clone(
     //   enough. Whether Clone is implemented for fields is irrelevant so we
     //   don't assert it.)
     let bounds;
-    let substructure;
+    let body: MethodBodyFunc<'_>;
     let is_simple;
     match &item.kind {
         ItemKind::Struct(_, Generics { params, .. }, _)
@@ -43,16 +42,16 @@ pub(crate) fn expand_deriving_clone(
                     .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
             {
                 is_simple = true;
-                substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, false));
+                body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, false));
             } else {
                 is_simple = false;
-                substructure = combine_substructure(cs_clone);
+                body = Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap()));
             }
         }
         ItemKind::Union(..) => {
-            bounds = smallvec![Path(path_std!(marker::Copy))];
+            bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
-            substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, true));
+            body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, true));
         }
         _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
@@ -62,18 +61,17 @@ pub(crate) fn expand_deriving_clone(
     if is_simple {
         let trivial_def = TraitDef {
             span,
-            path: path_std!(clone::TrivialClone),
-            skip_path_as_bound: false,
+            path: path_std!(cx, span, clone::TrivialClone),
             needs_copy_as_bound_if_packed: true,
             additional_bounds: bounds.clone(),
             supports_unions: true,
             methods: SmallVec::new(),
-            associated_types: SmallVec::new(),
             is_const,
             safety: Safety::Unsafe(DUMMY_SP),
             // `TrivialClone` is not part of an API guarantee, so it shouldn't
             // appear in rustdoc output.
             document: false,
+            ..
         };
 
         trivial_def.expand(cx, item, push);
@@ -81,8 +79,7 @@ pub(crate) fn expand_deriving_clone(
 
     let trait_def = TraitDef {
         span,
-        path: path_std!(clone::Clone),
-        skip_path_as_bound: false,
+        path: path_std!(cx, span, clone::Clone),
         needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
         supports_unions: true,
@@ -91,21 +88,23 @@ pub(crate) fn expand_deriving_clone(
             generics: cx.empty_generics(span),
             explicit_self: true,
             nonself_args: SmallVec::new(),
-            ret_ty: Self_,
-            attributes: thin_vec![cx.attr_word(sym::inline, span)],
+            has_other_selflike_arg: false,
+            ret_ty: cx.ty_self(span),
+            attributes: thin_vec![
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads)
+            ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: substructure,
+            body,
         }],
-        associated_types: SmallVec::new(),
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     trait_def.expand_ext(cx, item, push, is_simple)
 }
 
-fn cs_clone_simple(
+fn clone_simple_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: Substructure<'_>,
@@ -140,7 +139,7 @@ fn cs_clone_simple(
     if is_union {
         // Just a single assertion for unions, that the union impls `Copy`.
         // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
+        let self_ty = cx.ty_self(DUMMY_SP);
         super::assert_ty_bounds(
             cx,
             &mut stmts,
@@ -149,7 +148,7 @@ fn cs_clone_simple(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match substr.fields {
+        match substr {
             StaticStruct(vdata, ..) => {
                 process_variant(vdata);
             }
@@ -164,24 +163,34 @@ fn cs_clone_simple(
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
+fn clone_body(
+    cx: &ExtCtxt<'_>,
+    trait_span: Span,
+    substr: Substructure<'_>,
+    type_ident: Ident,
+) -> BlockOrExpr {
     let subcall = |field: FieldInfo| {
         let args = thin_vec![field.self_expr];
-        cx.expr_call_global(field.span, fn_path.clone(), args)
+        cx.expr_call_global(
+            field.span,
+            cx.std_path(field.span, &[sym::clone, sym::Clone, sym::clone]),
+            args,
+        )
     };
 
     let ctor_path;
     let all_fields;
     let vdata;
-    match substr.fields {
+    // We need to use `type_ident` instead of `Self` here,
+    // see https://github.com/rust-lang/rust/issues/163800
+    match substr {
         Struct(vdata_, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident]);
+            ctor_path = cx.path(trait_span, &[type_ident]);
             all_fields = af;
             vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
+            ctor_path = cx.path(trait_span, &[type_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;
         }

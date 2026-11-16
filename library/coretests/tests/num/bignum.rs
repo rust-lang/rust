@@ -1,4 +1,4 @@
-use core::num::imp::bignum::Big32x40;
+use core::num::imp::bignum::Big as BigFull;
 use core::num::imp::bignum::tests::Big8x3 as Big;
 
 #[test]
@@ -216,27 +216,27 @@ fn test_bit_length() {
 }
 
 #[test]
-fn test_bit_length_32x40() {
+fn test_bit_length_big() {
     for i in 0..32 * 40 {
         // 010000...000
-        assert_eq!(Big32x40::from_small(1).mul_pow2(i).bit_length(), i + 1);
+        assert_eq!(BigFull::from_small(1).mul_pow2(i).bit_length(), i + 1);
     }
     for i in 1..32 * 40 - 1 {
         // 010000...001
         assert_eq!(
-            Big32x40::from_small(1).mul_pow2(i).add(&Big32x40::from_small(1)).bit_length(),
+            BigFull::from_small(1).mul_pow2(i).add(&BigFull::from_small(1)).bit_length(),
             i + 1
         );
         // 110000...000
-        assert_eq!(Big32x40::from_small(3).mul_pow2(i).bit_length(), i + 2);
+        assert_eq!(BigFull::from_small(3).mul_pow2(i).bit_length(), i + 2);
     }
-    assert_eq!(Big32x40::from_small(0).bit_length(), 0);
-    assert_eq!(Big32x40::from_small(1).bit_length(), 1);
-    assert_eq!(Big32x40::from_small(5).bit_length(), 3);
-    assert_eq!(Big32x40::from_small(0x18).bit_length(), 5);
-    assert_eq!(Big32x40::from_u64(0x4073).bit_length(), 15);
-    assert_eq!(Big32x40::from_u64(0xffffff).bit_length(), 24);
-    assert_eq!(Big32x40::from_u64(0xffffffffffffffff).bit_length(), 64);
+    assert_eq!(BigFull::from_small(0).bit_length(), 0);
+    assert_eq!(BigFull::from_small(1).bit_length(), 1);
+    assert_eq!(BigFull::from_small(5).bit_length(), 3);
+    assert_eq!(BigFull::from_small(0x18).bit_length(), 5);
+    assert_eq!(BigFull::from_u64(0x4073).bit_length(), 15);
+    assert_eq!(BigFull::from_u64(0xffffff).bit_length(), 24);
+    assert_eq!(BigFull::from_u64(0xffffffffffffffff).bit_length(), 64);
 }
 
 #[test]

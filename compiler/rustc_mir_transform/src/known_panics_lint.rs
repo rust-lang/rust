@@ -5,11 +5,12 @@
 use std::fmt::Debug;
 
 use rustc_abi::{BackendRepr, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
+use rustc_attr_ir::find_attr;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{ImmTy, InterpCx, InterpResult, Projectable, Scalar, interp_ok};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
-use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_lint_defs::builtin::UNCONDITIONAL_PANIC;
@@ -180,9 +181,7 @@ impl<'tcx> ty::layout::HasTypingEnv<'tcx> for ConstPropagator<'_, 'tcx> {
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(body: &'mir Body<'tcx>, tcx: TyCtxt<'tcx>) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
-        // FIXME(#132279): This is used during the phase transition from analysis
-        // to runtime, so we have to manually specify the correct typing mode.
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         let can_const_prop = CanConstProp::check(tcx, typing_env, body);
         let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env, DummyMachine);
 

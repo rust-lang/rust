@@ -1,5 +1,5 @@
 error[E0599]: no method named `my_debug` found for reference `&_` in the current scope
-  --> $DIR/call_method_on_inherent_impl_on_rigid_type.rs:16:11
+  --> $DIR/call_method_on_inherent_impl_on_rigid_type.rs:17:11
    |
 LL |         x.my_debug();
    |           ^^^^^^^^ method not found in `&_`
@@ -7,7 +7,7 @@ LL |         x.my_debug();
    = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `MyDebug` which provides `my_debug` is implemented but not in scope; perhaps you want to import it
    |
-LL + use MyDebug;
+LL + use crate::MyDebug;
    |
 
 error: aborting due to 1 previous error

@@ -13,6 +13,8 @@ note: `Foo` defines an item `foo_one`, perhaps you need to implement it
    |
 LL | trait Foo {
    | ^^^^^^^^^
+LL |     fn foo_one(&self) -> &'static str;
+   |
 
 error: aborting due to 1 previous error
 

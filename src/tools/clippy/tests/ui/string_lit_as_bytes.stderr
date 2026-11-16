@@ -28,13 +28,13 @@ LL |     let bs = "lit to owned".to_owned().into_bytes();
 error: calling `as_bytes()` on a string literal
   --> tests/ui/string_lit_as_bytes.rs:11:26
    |
+LL | macro_rules! b {
+LL |     ($b:literal) => {
 LL |         const B: &[u8] = $b.as_bytes();
    |                          ^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"warning"`
 ...
 LL |     b!("warning");
    |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: calling `as_bytes()` on `include_str!(..)`
   --> tests/ui/string_lit_as_bytes.rs:43:22

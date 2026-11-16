@@ -57,7 +57,7 @@ fn lower_slice_len_call<'tcx>(block: &mut BasicBlockData<'tcx>, slice_len_fn_ite
         let add_statement = Statement::new(terminator.source_info, len_statement_kind);
 
         // modify terminator into simple Goto
-        let new_terminator_kind = TerminatorKind::Goto { target: *bb };
+        let new_terminator_kind = TerminatorKind::goto(*bb);
 
         block.statements.push(add_statement);
         block.terminator_mut().kind = new_terminator_kind;

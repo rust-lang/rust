@@ -1,4 +1,4 @@
-// rustfmt-overflow_delimited_expr: true
+//@ rustfmt-overflow_delimited_expr: true
 
 fn combine_blocklike() {
     do_thing(

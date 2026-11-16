@@ -29,3 +29,5 @@ fn main() {
 
 trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
 impl<T> Fake for T { }
+
+//@ reference: items.union.ref.borrow

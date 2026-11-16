@@ -18,3 +18,7 @@ itertools = "0.15"
 
 # Make sure we are not part of the rustc workspace.
 [workspace]
+
+[lints.cargo]
+# Not all tests use all of the above dependencies
+unused_dependencies = "allow"

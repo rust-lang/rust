@@ -1,6 +1,7 @@
 # Release a new Clippy Version
 
-> _NOTE:_ This document is probably only relevant to you, if you're a member of
+> [!NOTE]
+> This document is probably only relevant to you, if you're a member of
 > the Clippy team.
 
 Clippy is released together with stable Rust releases. The dates for these
@@ -51,15 +52,14 @@ git commit -m "Bump Clippy version -> 0.1.XY" **/*Cargo.toml
 For both updating the `beta` and the `stable` branch, the first step is to find
 the Clippy commit of the last Clippy sync done in the respective Rust branch.
 
-Running the following commands _in the Rust repo_ will get the commit for the
-specified `<branch>`:
+Running the following command will get the commit for the specified branch:
 
 ```bash
-git switch <branch>
-SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
+SHA=$(cargo dev release commit /path/to/rust <branch>)
 ```
 
-Where `<branch>` is one of `stable`, `beta`, or `master`.
+Where the `/path/to/rust` is a relative path to a Rust clone and the `<branch>`
+is one of `stable`, `beta`, or `main`.
 
 ## Update the `beta` branch
 
@@ -88,9 +88,13 @@ git push upstream stable
 After updating the `stable` branch, tag the HEAD commit and push it to the
 Clippy repo.
 
+<!-- TODO: Add a `cargo dev release push-tag` command to simplify this step. -->
+> Note: Only push the tag, once the Deploy GitHub action of the `beta` branch is
+> finished. Otherwise the deploy for the tag might fail.
+
 ```bash
-git tag rust-1.XX.0               # XX should be exchanged with the corresponding version
-git push upstream rust-1.XX.0     # `upstream` is the `rust-lang/rust-clippy` remote
+git tag rust-1.XY.0               # XY should be exchanged with the corresponding version
+git push upstream rust-1.XY.0     # `upstream` is the `rust-lang/rust-clippy` remote
 ```
 
 After this, the release should be available on the Clippy [tags page].
@@ -101,13 +105,14 @@ After this, the release should be available on the Clippy [tags page].
 
 The `clippy_utils` crate is published to `crates.io` without any stability
 guarantees. To do this, after the [sync] and the release is done, switch back to
-the `upstream/master` branch and publish `clippy_utils`:
+the `upstream/main` branch and publish `clippy_utils`:
 
-> Note: The Rustup PR bumping the nightly and Clippy version **must** be merged
+> [!NOTE]
+> The Rustup PR bumping the nightly and Clippy version **must** be merged
 > before doing this.
 
 ```bash
-git switch master && git pull upstream master
+git switch main && git pull upstream main
 cargo publish --manifest-path clippy_utils/Cargo.toml
 ```
 

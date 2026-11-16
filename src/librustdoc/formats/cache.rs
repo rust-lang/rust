@@ -1,7 +1,7 @@
 use std::mem;
 
+use rustc_attr_ir::StabilityLevel;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, TyCtxt};
@@ -9,7 +9,7 @@ use rustc_span::Symbol;
 use tracing::debug;
 
 use crate::clean::types::ExternalLocation;
-use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::clean::{self, ExternalCrate, ItemId, ItemKind, PrimitiveType};
 use crate::config::RenderOptions;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
@@ -17,6 +17,46 @@ use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::render::{IndexItem, IndexItemInfo};
 use crate::visit_lib::RustdocEffectiveVisibilities;
+
+#[derive(Debug)]
+pub(crate) struct PathInfo {
+    /// Parts of the fully qualified path. So in `foo::bar::bib`, it will
+    /// be `["foo", "bar", "bib"]`.
+    pub(crate) parts: Vec<Symbol>,
+    pub(crate) ty: ItemType,
+    /// When a reexport inline an item, we can end up with the same `DefId` with multiple local
+    /// targets. So in case like:
+    ///
+    /// ```
+    /// /// Link to [`a2`].
+    /// pub use std::ffi::os_str::OsString as a1;
+    /// /// Link to [`a1`].
+    /// pub use std::ffi::os_str::OsString as a2;
+    /// /// Link to [`a2`].
+    /// pub use std::ffi::os_str::OsString as a3;
+    /// ```
+    ///
+    /// To ensure that `a1` and `a2` links to `a1` and `a2` which have the same `DefId`, we need
+    /// to store both `a1` and `a2` paths.
+    ///
+    /// The path stored in `parts` is not present in `alternatives`.
+    pub(crate) alternatives: Vec<Vec<Symbol>>,
+}
+
+impl PathInfo {
+    pub(crate) fn get_preferred_path(&self, preferred_name: Option<&str>) -> &[Symbol] {
+        if let Some(preferred_name) = preferred_name
+            && let Some(alternative_path) = self
+                .alternatives
+                .iter()
+                .find(|path| path.last().is_some_and(|last| last.as_str() == preferred_name))
+        {
+            alternative_path
+        } else {
+            &self.parts
+        }
+    }
+}
 
 /// This cache is used to store information about the [`clean::Crate`] being
 /// rendered in order to provide more useful documentation. This contains
@@ -42,7 +82,7 @@ pub(crate) struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub(crate) paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) paths: FxIndexMap<DefId, PathInfo>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
@@ -272,7 +312,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // If this is a stripped module,
         // we don't want it or its children in the search index.
         let orig_stripped_mod = match item.kind {
-            clean::StrippedItem(clean::ModuleItem(..)) => {
+            ItemKind::Stripped(ItemKind::Module(..)) => {
                 mem::replace(&mut self.cache.stripped_mod, true)
             }
             _ => self.cache.stripped_mod,
@@ -287,7 +327,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // If the impl is from a masked crate or references something from a
         // masked crate then remove it completely.
-        if let clean::ImplItem(ref i) = item.kind
+        if let ItemKind::Impl(ref i) = item.kind
             && (self.cache.masked_crates.contains(&item.item_id.krate())
                 || i.trait_
                     .as_ref()
@@ -301,9 +341,9 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // Propagate a trait method's documentation to all implementors of the
         // trait.
-        if let clean::TraitItem(ref t) = item.kind {
+        if let ItemKind::Trait(ref t) = item.kind {
             self.cache.traits.entry(item.item_id.expect_def_id()).or_insert_with(|| (**t).clone());
-        } else if let clean::ImplItem(ref i) = item.kind
+        } else if let ItemKind::Impl(ref i) = item.kind
             && let Some(trait_) = &i.trait_
             && !i.kind.is_blanket()
         {
@@ -318,7 +358,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // Index this method for searching later on.
         let search_name = if !item.is_stripped() {
             item.name.or_else(|| {
-                if let clean::ImportItem(ref i) = item.kind
+                if let ItemKind::Import(ref i) = item.kind
                     && let clean::ImportKind::Simple(s) = i.kind
                 {
                     Some(s)
@@ -343,22 +383,23 @@ impl DocFolder for CacheBuilder<'_, '_> {
         };
 
         match item.kind {
-            clean::StructItem(..)
-            | clean::EnumItem(..)
-            | clean::TypeAliasItem(..)
-            | clean::TraitItem(..)
-            | clean::TraitAliasItem(..)
-            | clean::FunctionItem(..)
-            | clean::ModuleItem(..)
-            | clean::ForeignFunctionItem(..)
-            | clean::ForeignStaticItem(..)
-            | clean::ConstantItem(..)
-            | clean::StaticItem(..)
-            | clean::UnionItem(..)
-            | clean::ForeignTypeItem
-            | clean::MacroItem(..)
-            | clean::ProcMacroItem(..)
-            | clean::VariantItem(..) => {
+            ItemKind::Struct(..)
+            | ItemKind::Enum(..)
+            | ItemKind::TypeAlias(..)
+            | ItemKind::Trait(..)
+            | ItemKind::TraitAlias(..)
+            | ItemKind::Function(..)
+            | ItemKind::Module(..)
+            | ItemKind::ForeignFunction(..)
+            | ItemKind::ForeignStatic(..)
+            | ItemKind::Constant(..)
+            | ItemKind::Static(..)
+            | ItemKind::Union(..)
+            | ItemKind::ForeignType
+            | ItemKind::DeclMacro(..)
+            | ItemKind::ProcMacro(..)
+            | ItemKind::Variant(..)
+            | ItemKind::PrimitiveType(..) => {
                 use rustc_data_structures::fx::IndexEntry as Entry;
 
                 let skip_because_unstable = matches!(
@@ -376,55 +417,61 @@ impl DocFolder for CacheBuilder<'_, '_> {
                     let item_def_id = item.item_id.expect_def_id();
                     match self.cache.paths.entry(item_def_id) {
                         Entry::Vacant(entry) => {
-                            entry.insert((self.cache.stack.clone(), item.type_()));
+                            entry.insert(PathInfo {
+                                parts: self.cache.stack.clone(),
+                                ty: item.type_(),
+                                alternatives: Vec::new(),
+                            });
                         }
                         Entry::Occupied(mut entry) => {
-                            if entry.get().0.len() > self.cache.stack.len() {
-                                entry.insert((self.cache.stack.clone(), item.type_()));
+                            // Shorter paths are preferred by default.
+                            if entry.get().parts.len() > self.cache.stack.len() {
+                                let old_parts = std::mem::replace(
+                                    &mut entry.get_mut().parts,
+                                    self.cache.stack.clone(),
+                                );
+                                // We only keep the old path if it's a different (final) name.
+                                if old_parts.last() != self.cache.stack.last() {
+                                    entry.get_mut().alternatives.push(old_parts);
+                                }
+                            }
+                            if !entry.get().alternatives.contains(&self.cache.stack) {
+                                entry.get_mut().alternatives.push(self.cache.stack.clone());
                             }
                         }
                     }
                 }
             }
-            clean::PrimitiveItem(..) => {
-                self.cache
-                    .paths
-                    .insert(item.item_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
-            }
 
-            clean::ExternCrateItem { .. }
-            | clean::ImportItem(..)
-            | clean::ImplItem(..)
-            | clean::RequiredMethodItem(..)
-            | clean::MethodItem(..)
-            | clean::StructFieldItem(..)
-            | clean::RequiredAssocConstItem(..)
-            | clean::ProvidedAssocConstItem(..)
-            | clean::ImplAssocConstItem(..)
-            | clean::RequiredAssocTypeItem(..)
-            | clean::AssocTypeItem(..)
-            | clean::StrippedItem(..)
-            | clean::KeywordItem
-            | clean::AttributeItem => {
+            ItemKind::ExternCrate { .. }
+            | ItemKind::Import(..)
+            | ItemKind::Impl(..)
+            | ItemKind::AssocFunction(..)
+            | ItemKind::StructField(..)
+            | ItemKind::AssocConstant(..)
+            | ItemKind::AssocType(..)
+            | ItemKind::Stripped(..)
+            | ItemKind::Keyword
+            | ItemKind::Attribute => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
                 // as at least the list is better than `_ => {}`.
             }
 
-            clean::PlaceholderImplItem => return None,
+            ItemKind::PlaceholderImpl => return None,
         }
 
         // Maintain the parent stack.
         let (item, parent_pushed) = match item.kind {
-            clean::TraitItem(..)
-            | clean::EnumItem(..)
-            | clean::ForeignTypeItem
-            | clean::StructItem(..)
-            | clean::UnionItem(..)
-            | clean::VariantItem(..)
-            | clean::TypeAliasItem(..)
-            | clean::ImplItem(..) => {
+            ItemKind::Trait(..)
+            | ItemKind::Enum(..)
+            | ItemKind::ForeignType
+            | ItemKind::Struct(..)
+            | ItemKind::Union(..)
+            | ItemKind::Variant(..)
+            | ItemKind::TypeAlias(..)
+            | ItemKind::Impl(..) => {
                 self.cache.parent_stack.push(ParentStackItem::new(&item));
                 (self.fold_item_recur(item), true)
             }
@@ -434,7 +481,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
         let ret =
-            if let clean::Item { inner: clean::ItemInner { kind: clean::ImplItem(ref i), .. } } =
+            if let clean::Item { inner: clean::ItemInner { kind: ItemKind::Impl(ref i), .. } } =
                 item
             {
                 // Figure out the id of this impl. This may map to a
@@ -499,20 +546,19 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // Item has a name, so it must also have a DefId (can't be an impl, let alone a blanket or auto impl).
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
-        clean::StrippedItem(..) => return,
-        clean::ProvidedAssocConstItem(..)
-        | clean::ImplAssocConstItem(..)
-        | clean::AssocTypeItem(..)
+        ItemKind::Stripped(..) => return,
+        ItemKind::AssocConstant(clean::AssocConstant { body: Some(_), .. })
+        | ItemKind::AssocType(clean::AssocType { type_: Some(_), .. })
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
-            // skip associated items in trait impls
+            // Skip associated consts & types in trait impls.
             return;
         }
-        clean::RequiredMethodItem(..)
-        | clean::RequiredAssocConstItem(..)
-        | clean::RequiredAssocTypeItem(..)
-        | clean::StructFieldItem(..)
-        | clean::VariantItem(..) => {
+        ItemKind::AssocFunction(clean::AssocFunction { body: None, .. })
+        | ItemKind::AssocConstant(clean::AssocConstant { body: None, .. })
+        | ItemKind::AssocType(clean::AssocType { type_: None, .. })
+        | ItemKind::StructField(..)
+        | ItemKind::Variant(..) => {
             // Don't index if containing module is stripped (i.e., private),
             // or if item is tuple struct/variant field (name is a number -> not useful for search).
             if cache.stripped_mod
@@ -526,10 +572,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             let parent_path = &cache.stack[..cache.stack.len() - 1];
             (Some(parent_did), parent_path)
         }
-        clean::MethodItem(..)
-        | clean::ProvidedAssocConstItem(..)
-        | clean::ImplAssocConstItem(..)
-        | clean::AssocTypeItem(..) => {
+        ItemKind::AssocFunction(..) | ItemKind::AssocConstant(..) | ItemKind::AssocType(..) => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
             let parent_did = match last {
                 // impl Trait for &T { fn method(self); }
@@ -570,7 +613,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             // in a field of the cache whose elements are added to the search index later,
             // after cache building is complete (see `handle_orphan_impl_child`).
             match cache.paths.get(&parent_did) {
-                Some((fqp, _)) => (Some(parent_did), &fqp[..fqp.len() - 1]),
+                Some(info) => (Some(parent_did), &info.parts[..info.parts.len() - 1]),
                 None => {
                     handle_orphan_impl_child(cache, item, parent_did);
                     return;
@@ -595,7 +638,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // - It's got the same name
     // - Both of them have the same exact path
     let defid = match &item.kind {
-        clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
+        ItemKind::Import(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
     let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
@@ -672,7 +715,7 @@ enum ParentStackItem {
 impl ParentStackItem {
     fn new(item: &clean::Item) -> Self {
         match &item.kind {
-            clean::ItemKind::ImplItem(clean::Impl { for_, trait_, generics, kind, .. }) => {
+            ItemKind::Impl(clean::Impl { for_, trait_, generics, kind, .. }) => {
                 ParentStackItem::Impl {
                     for_: for_.clone(),
                     trait_: trait_.clone(),

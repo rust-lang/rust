@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+use rustc_ast::{GenericParamKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::GenericParamKind;
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{
-    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
-    RustcMirKind,
+    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcAssertVarianceKind, RustcCleanAttribute,
+    RustcCleanQueries, RustcMirKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
@@ -89,30 +89,12 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
     }
 }
 
-pub(crate) struct RustcNeverReturnsNullPtrParser;
-
-impl NoArgsAttributeParser for RustcNeverReturnsNullPtrParser {
-    const PATH: &[Symbol] = &[sym::rustc_never_returns_null_ptr];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-    ]);
-    const STABILITY: AttributeStability = unstable!(rustc_attrs);
-
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNeverReturnsNullPtr;
-}
-
 pub(crate) struct RustcPanicsWhenZeroParser;
 
 impl NoArgsAttributeParser for RustcPanicsWhenZeroParser {
     const PATH: &[Symbol] = &[sym::rustc_panics_when_zero];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: true }),
-        Allow(Target::GenericParam { kind: GenericParamKind::Const, has_default: false }),
-    ]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::ConstParam)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
 
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPanicsWhenZero;
@@ -171,6 +153,43 @@ impl SingleAttributeParser for RustcLegacyConstGenericsParser {
             fn_indexes: parsed_indexes,
             attr_span: cx.attr_span,
         })
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let AstTarget::Fn(function) = cx.ast_target else {
+            return;
+        };
+        let index_list = rustc_attr_ir::find_attr!(cx.parsed_attrs, RustcLegacyConstGenerics { fn_indexes, .. } => fn_indexes)
+            .expect("missing parsed RustcLegacyConstGenerics attribute in finalize_check");
+        let generics = &function.generics;
+
+        for param in &generics.params {
+            if !matches!(param.kind, GenericParamKind::Const { .. }) {
+                cx.emit_err(diagnostics::RustcLegacyConstGenericsOnly {
+                    attr_span,
+                    param_span: param.span(),
+                });
+                return;
+            }
+        }
+
+        if index_list.len() != generics.params.len() {
+            cx.emit_err(diagnostics::RustcLegacyConstGenericsIndex {
+                attr_span,
+                generics_span: generics.span,
+            });
+            return;
+        }
+
+        let arg_count = function.sig.decl.inputs.len() + generics.params.len();
+        for (index, span) in index_list {
+            if *index >= arg_count {
+                cx.emit_err(diagnostics::RustcLegacyConstGenericsIndexExceed {
+                    span: *span,
+                    arg_count,
+                });
+            }
+        }
     }
 }
 
@@ -401,9 +420,13 @@ pub(crate) struct RustcTrivialFieldReadsParser;
 
 impl NoArgsAttributeParser for RustcTrivialFieldReadsParser {
     const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Fn),
+    ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcTrivialFieldReads;
 }
 
 pub(crate) struct RustcNoMirInlineParser;
@@ -629,6 +652,18 @@ impl CombineAttributeParser for RustcMirParser {
             .filter_map(|mi| {
                 if let Some(ident) = mi.ident() {
                     match ident.name {
+                        sym::rustc_pretty_live_locals => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyLiveLocals)
+                        }
+                        sym::rustc_pretty_precise_liveness => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyPreciseLiveness)
+                        }
+                        sym::rustc_pretty_transitive_live_locals => {
+                            cx.expect_no_args(mi.args())?;
+                            Some(RustcMirKind::PrettyTransitiveLiveLocals)
+                        }
                         sym::rustc_peek_maybe_init => Some(RustcMirKind::PeekMaybeInit),
                         sym::rustc_peek_maybe_uninit => Some(RustcMirKind::PeekMaybeUninit),
                         sym::rustc_peek_liveness => Some(RustcMirKind::PeekLiveness),
@@ -1116,4 +1151,55 @@ impl NoArgsAttributeParser for RustcCanonicalSymbolParser {
         lints"
     );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCanonicalSymbol;
+}
+
+pub(crate) struct RustcAssertVarianceParser;
+
+impl SingleAttributeParser for RustcAssertVarianceParser {
+    const PATH: &[Symbol] = &[sym::rustc_assert_variance];
+
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::TypeParam),
+        Allow(Target::LifetimeParam),
+        Allow(Target::ConstParam),
+    ]);
+
+    const TEMPLATE: AttributeTemplate =
+        template!(OneOf: &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let arg = cx.expect_single_element_list(args, cx.attr_span)?;
+
+        let mut fail_arg = |span| {
+            cx.adcx().expected_specific_argument(
+                span,
+                &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant],
+            )
+        };
+
+        let Some(arg) = arg.meta_item_no_args() else {
+            fail_arg(arg.span());
+            return None;
+        };
+
+        let Some(arg) = arg.ident() else {
+            fail_arg(arg.span());
+            return None;
+        };
+
+        let kind = match arg.name {
+            sym::covariant => RustcAssertVarianceKind::Covariant,
+            sym::invariant => RustcAssertVarianceKind::Invariant,
+            sym::contravariant => RustcAssertVarianceKind::Contravariant,
+            sym::bivariant => RustcAssertVarianceKind::Bivariant,
+            _ => {
+                fail_arg(arg.span);
+                return None;
+            }
+        };
+
+        Some(AttributeKind::RustcAssertVariance { span: cx.attr_span, kind })
+    }
 }

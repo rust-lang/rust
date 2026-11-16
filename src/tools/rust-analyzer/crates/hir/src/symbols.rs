@@ -16,7 +16,7 @@ use hir_def::{
     visibility::{Visibility, VisibilityExplicitness},
 };
 use hir_expand::{HirFileId, name::Name};
-use hir_ty::{
+use hir_ide::{
     db::HirDatabase,
     display::{HirDisplay, hir_display_with_store},
 };

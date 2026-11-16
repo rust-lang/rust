@@ -6,7 +6,6 @@ use std::{iter, mem};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_errors::DiagCtxtHandle;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::{
     ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryKey, QueryLatch,
@@ -453,7 +452,6 @@ pub fn break_query_cycle<'tcx>(job_map: QueryJobMap<'tcx>, registry: &rustc_thre
 pub fn print_query_stack<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut current_query: Option<QueryJobId>,
-    dcx: DiagCtxtHandle<'_>,
     limit_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {
@@ -476,12 +474,10 @@ pub fn print_query_stack<'tcx>(
         let description = query_info.tagged_key.description(tcx);
         if Some(count_printed) < limit_frames || limit_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
-            dcx.struct_failure_note(format!(
+            eprintln!(
                 "#{count_printed} [{query_name}] {description}",
                 query_name = query_info.tagged_key.query_name(),
-            ))
-            .with_span(query_info.job.span)
-            .emit();
+            );
             count_printed += 1;
         }
 

@@ -15,7 +15,6 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
     {
         // check for `rustfmt`
         if feature_item.has_name(sym::rustfmt)
-            && msrv.meets(msrvs::TOOL_ATTRIBUTES)
             // check for `rustfmt_skip` and `rustfmt::skip`
             && let Some(skip_item) = &items[1].meta_item()
             && (skip_item.has_name(sym::rustfmt_skip)
@@ -30,6 +29,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
             // Only lint outer attributes, because custom inner attributes are unstable
             // Tracking issue: https://github.com/rust-lang/rust/issues/54726
             && attr.style == AttrStyle::Outer
+            && msrv.meets(msrvs::TOOL_ATTRIBUTES)
         {
             span_lint_and_sugg(
                 cx,

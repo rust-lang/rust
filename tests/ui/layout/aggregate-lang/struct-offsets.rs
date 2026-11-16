@@ -1,5 +1,4 @@
 //@ run-pass
-//@ reference: layout.aggregate.struct-offsets
 //@ edition: 2018
 
 #[repr(align(64))]

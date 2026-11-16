@@ -37,7 +37,7 @@ LL |     let mut ay = &y;
    |         ------ `ay` declared here, outside of the closure body
 ...
 LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
-   |                                                           - `z` is a reference that is only valid in the closure body
+   |                                                           - `z` is only valid in the closure body
 ...
 LL |         ay = z;
    |         ^^^^^^ `z` escapes the closure body here

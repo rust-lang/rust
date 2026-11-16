@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-max_width: 79
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 79
 
 //! CMSIS: Cortex Microcontroller Software Interface Standard
 //!

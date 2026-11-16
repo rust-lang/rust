@@ -56,6 +56,78 @@ macro_rules! int_impl {
         #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = <$UnsignedT>::BITS;
 
+        /// Tests the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than or equal to [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let n = 0b111_1001", stringify!($SelfT), ";")]
+        ///
+        /// assert!(n.bit(0));
+        /// assert!(!n.bit(1));
+        /// assert!(!n.bit(2));
+        /// assert!(n.bit(3));
+        /// assert!(n.bit(4));
+        /// assert!(n.bit(5));
+        /// assert!(n.bit(6));
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn bit(self, index: u32) -> bool {
+            self.cast_unsigned().bit(index)
+        }
+
+        /// Sets the value of a specific bit.
+        ///
+        /// # Panics
+        ///
+        /// If overflow checks are enabled, this method will panic if the provided index is
+        /// greater than or equal to [`BITS`].
+        ///
+        /// [`BITS`]: Self::BITS
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(get_set_bit)]
+        ///
+        #[doc = concat!("let mut n = 0b101_0101", stringify!($SelfT), ";")]
+        ///
+        /// n = n.set_bit(0, false);
+        /// n = n.set_bit(1, true);
+        /// n = n.set_bit(2, false);
+        /// n = n.set_bit(3, true);
+        /// n = n.set_bit(4, false);
+        /// n = n.set_bit(5, true);
+        /// n = n.set_bit(6, false);
+        ///
+        /// assert_eq!(n, 0b010_1010);
+        /// ```
+        #[unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_const_unstable(feature = "get_set_bit", issue = "147702")]
+        #[rustc_inherit_overflow_checks]
+        #[inline]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[track_caller]
+        pub const fn set_bit(self, index: u32, value: bool) -> Self {
+            self.cast_unsigned().set_bit(index, value).cast_signed()
+        }
+
         /// Returns the number of ones in the binary representation of `self`.
         ///
         /// # Examples
@@ -435,7 +507,7 @@ macro_rules! int_impl {
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
-        ///                 second least-significant bit becomes second most-significant bit, etc.
+        /// second least-significant bit becomes second most-significant bit, etc.
         ///
         /// # Examples
         ///
@@ -638,9 +710,8 @@ macro_rules! int_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_add`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_add`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
@@ -778,9 +849,8 @@ macro_rules! int_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self - rhs > ", stringify!($SelfT), "::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_sub`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_sub`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
@@ -918,9 +988,8 @@ macro_rules! int_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_mul`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_mul`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
@@ -1323,6 +1392,49 @@ macro_rules! int_impl {
         pub const fn strict_rem_euclid(self, rhs: Self) -> Self {
             let (a, b) = self.overflowing_rem_euclid(rhs);
             if b { imp::overflow_panic::rem() } else { a }
+        }
+
+        /// Disjoint, bitwise or. Computes `self | rhs`, assuming no overlapping one bits.
+        ///
+        /// Practically, this requires that `self | rhs`, `self ^ rhs`, and `self + rhs` all
+        /// yield the same result, allowing for any of the three to be emitted in codegen --
+        /// depending on whichever is cheapest.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(disjoint_bitor)]
+        ///
+        /// assert_eq!(
+        ///     // SAFETY: `1` and `-2` have no ones in common.
+        #[doc = concat!("    unsafe { 1_", stringify!($SelfT), ".unchecked_disjoint_bitor(-2) },")]
+        ///     -1,
+        /// );
+        /// ```
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behaviour if `self` and `rhs` have any overlapping one
+        /// bits, i.e. `lhs & rhs` must be zero.
+        ///
+        /// Notably, this prevents both values from being negative.
+        #[unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_disjoint_bitor cannot bitor overlapping ones"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs,
+                ) => (lhs & rhs) == 0,
+            );
+
+            // SAFETY: Same precondition.
+            unsafe { intrinsics::disjoint_bitor(self, rhs) }
         }
 
         /// Checked negation. Computes `-self`, returning `None` if `self == MIN`.
@@ -2485,7 +2597,6 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[allow(unused_attributes)]
         #[inline]
         pub const fn wrapping_abs(self) -> Self {
              if self.is_negative() {
@@ -2930,7 +3041,6 @@ macro_rules! int_impl {
             }
         }
 
-
         /// Overflowing Euclidean remainder. Calculates `self.rem_euclid(rhs)`.
         ///
         /// Returns a tuple of the remainder after dividing along with a boolean indicating whether an
@@ -2960,7 +3070,6 @@ macro_rules! int_impl {
             }
         }
 
-
         /// Negates self, overflowing if this is equal to the minimum value.
         ///
         /// Returns a tuple of the negated version of self along with a boolean indicating whether an overflow
@@ -2978,7 +3087,6 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[allow(unused_attributes)]
         pub const fn overflowing_neg(self) -> (Self, bool) {
             if intrinsics::unlikely(self == Self::MIN) {
                 (Self::MIN, true)
@@ -3218,7 +3326,6 @@ macro_rules! int_impl {
             }
             q
         }
-
 
         /// Calculates the least nonnegative remainder of `self` when
         /// divided by `rhs`.
@@ -3630,7 +3737,6 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-        #[allow(unused_attributes)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3964,14 +4070,15 @@ macro_rules! int_impl {
         /// ```
         /// #![feature(clamp_magnitude)]
         #[doc = concat!("assert_eq!(120", stringify!($SelfT), ".clamp_magnitude(100), 100);")]
-        #[doc = concat!("assert_eq!(-120", stringify!($SelfT), ".clamp_magnitude(100), -100);")]
+        #[doc = concat!("assert_eq!((-120", stringify!($SelfT), ").clamp_magnitude(100), -100);")]
         #[doc = concat!("assert_eq!(80", stringify!($SelfT), ".clamp_magnitude(100), 80);")]
-        #[doc = concat!("assert_eq!(-80", stringify!($SelfT), ".clamp_magnitude(100), -80);")]
+        #[doc = concat!("assert_eq!((-80", stringify!($SelfT), ").clamp_magnitude(100), -80);")]
         /// ```
-        #[must_use = "this returns the clamped value and does not modify the original"]
-        #[unstable(feature = "clamp_magnitude", issue = "148519")]
         #[inline]
-        pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
+        #[must_use = "method returns a new number and does not mutate the original value"]
+        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        pub const fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
             if let Ok(limit) = core::convert::TryInto::<$SelfT>::try_into(limit) {
                 self.clamp(-limit, limit)
             } else {
@@ -4062,7 +4169,6 @@ macro_rules! int_impl {
         {
             traits::WidenTarget::internal_widen(self)
         }
-
 
         /// Converts `self` to the target integer type, saturating at the numeric
         /// bounds instead of overflowing.

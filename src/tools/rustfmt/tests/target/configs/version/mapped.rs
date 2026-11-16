@@ -1,4 +1,4 @@
-// rustfmt-version: Two
+//@ rustfmt-version: Two
 fn main() {
     let [
         aaaaaaaaaaaaaaaaaaaaaaaaaa,

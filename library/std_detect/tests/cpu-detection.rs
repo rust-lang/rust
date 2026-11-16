@@ -318,23 +318,15 @@ fn riscv_linux() {
 }
 
 #[test]
-#[cfg(all(target_arch = "powerpc", target_os = "linux"))]
-fn powerpc_linux() {
+#[cfg(all(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+))]
+fn powerpc_linux_or_bsd() {
     println!("altivec: {}", is_powerpc_feature_detected!("altivec"));
     println!("vsx: {}", is_powerpc_feature_detected!("vsx"));
     println!("power8: {}", is_powerpc_feature_detected!("power8"));
-}
-
-#[test]
-#[cfg(all(
-    target_arch = "powerpc64",
-    any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
-))]
-fn powerpc64_linux_or_bsd() {
-    println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
-    println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
-    println!("power8: {}", is_powerpc64_feature_detected!("power8"));
-    println!("power9: {}", is_powerpc64_feature_detected!("power9"));
+    println!("power9: {}", is_powerpc_feature_detected!("power9"));
 }
 
 #[test]

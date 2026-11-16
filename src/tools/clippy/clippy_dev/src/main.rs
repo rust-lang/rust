@@ -4,7 +4,7 @@
 
 use clap::{Args, Parser, Subcommand};
 use clippy_dev::{
-    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, lint, new_lint, new_parse_cx, release, serve, setup, sync,
+    ClippyInfo, UpdateMode, dogfood, edit_lints, fmt, lint, new_lint, new_parse_cx, release, remark, serve, setup, sync,
 };
 use std::env;
 
@@ -26,6 +26,7 @@ fn main() {
             allow_no_vcs,
         } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check } => fmt::run(UpdateMode::from_check(check)),
+        DevCommand::Remark => remark::run(),
         DevCommand::UpdateLints { check } => new_parse_cx(|cx| {
             let data = cx.parse_lint_decls();
             cx.dcx.exit_on_err();
@@ -95,6 +96,7 @@ fn main() {
         },
         DevCommand::Release(ReleaseCommand { subcommand }) => match subcommand {
             ReleaseSubcommand::BumpVersion => release::bump_version(clippy.version),
+            ReleaseSubcommand::Commit { repo_path, branch } => release::rustc_clippy_commit(repo_path, branch),
         },
     }
 }
@@ -145,6 +147,8 @@ enum DevCommand {
         /// Use the rustfmt --check option
         check: bool,
     },
+    /// Lint all Markdown files with remark
+    Remark,
     #[command(name = "update_lints")]
     /// Updates lint registration and information from the source code
     ///
@@ -371,4 +375,11 @@ enum ReleaseSubcommand {
     #[command(name = "bump_version")]
     /// Bump the version in the Cargo.toml files
     BumpVersion,
+    /// Print the Clippy commit in the rustc repo for the specified branch
+    Commit {
+        /// The path to a rustc repo to look for the commit
+        repo_path: String,
+        /// For which branch to print the commit
+        branch: release::Branch,
+    },
 }

@@ -1,5 +1,6 @@
+use rustc_attr_ir::find_attr;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, ItemKind, Node, find_attr};
+use rustc_hir::{Expr, ExprKind, ItemKind, Node};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty::adjustment::Adjust;
 
@@ -89,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for InteriorMutableConsts {
             // Let's do the attribute check after the other checks for perf reasons
             && find_attr!(
                 cx.tcx, method_did,
-                RustcShouldNotBeCalledOnConstItems
+                LintShouldNotBeCalledOnConstItems
             )
             && let Some(method_name) = cx.tcx.opt_item_ident(method_did)
             && let Some(const_name) = cx.tcx.opt_item_ident(const_did)

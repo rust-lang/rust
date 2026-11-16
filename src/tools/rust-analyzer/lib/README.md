@@ -12,3 +12,8 @@ To release new versions of these packages, change their version in Cargo.toml. O
 
 While prototyping, the local versions can be used by uncommenting the relevant lines in the
 `[patch.'crates-io']` section in Cargo.toml
+
+## Publishing of the crates
+
+The crates are published using [Trusted publishing](https://crates.io/docs/trusted-publishing). If a new lib crate is added
+in this directory, it also has to be recorded in the [team database](https://github.com/rust-lang/team/blob/main/repos/rust-lang/rust-analyzer.toml).

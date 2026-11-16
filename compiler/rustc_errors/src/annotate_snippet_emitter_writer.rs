@@ -45,6 +45,7 @@ pub struct AnnotateSnippetEmitter {
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
     theme: OutputTheme,
+    no_graphics: bool,
 }
 
 impl Debug for AnnotateSnippetEmitter {
@@ -60,6 +61,7 @@ impl Debug for AnnotateSnippetEmitter {
             track_diagnostics,
             terminal_url,
             theme,
+            no_graphics,
         } = self;
 
         f.debug_struct("AnnotateSnippetEmitter")
@@ -73,6 +75,7 @@ impl Debug for AnnotateSnippetEmitter {
             .field("track_diagnostics", track_diagnostics)
             .field("terminal_url", terminal_url)
             .field("theme", theme)
+            .field("no_graphics", no_graphics)
             .finish()
     }
 }
@@ -124,12 +127,10 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::level::Level<'
             annotate_snippets::Level::ERROR.with_name("error: internal compiler error")
         }
         Level::Fatal | Level::Error => annotate_snippets::level::ERROR,
-        Level::ForceWarning | Level::Warning => annotate_snippets::Level::WARNING,
+        Level::Warning(_) => annotate_snippets::Level::WARNING,
         Level::Note => annotate_snippets::Level::NOTE,
         Level::Help => annotate_snippets::Level::HELP,
         Level::FailureNote => annotate_snippets::Level::NOTE.no_name(),
-        Level::Allow => panic!("Should not call with Allow"),
-        Level::Expect => panic!("Should not call with Expect"),
     }
 }
 
@@ -155,6 +156,7 @@ impl AnnotateSnippetEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
             theme: OutputTheme::Ascii,
+            no_graphics: false,
         }
     }
 
@@ -542,9 +544,10 @@ impl AnnotateSnippetEmitter {
             ColorChoice::Never => Renderer::plain(),
         }
         .term_width(width)
-        .anonymized_line_numbers(self.ui_testing)
+        .anonymized_snippet_line_numbers(self.ui_testing)
         .decor_style(decor_style)
         .short_message(self.short_message)
+        .no_graphics(self.no_graphics)
     }
 
     fn pre_style_msgs(&self, msgs: &[(DiagMessage, Style)], args: &DiagArgMap) -> String {

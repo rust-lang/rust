@@ -8,7 +8,7 @@ use rustc_type_ir_macros::{
 };
 
 use crate::inherent::*;
-use crate::{self as ty, AliasTerm, Interner};
+use crate::{self as ty, AliasTerm, Const, Interner};
 
 #[derive_where(Clone, Copy, PartialEq, Debug; I: Interner)]
 #[derive(GenericTypeVisitable)]
@@ -18,7 +18,7 @@ use crate::{self as ty, AliasTerm, Interner};
 )]
 pub enum TermKind<I: Interner> {
     Ty(I::Ty),
-    Const(I::Const),
+    Const(Const<I>),
 }
 
 impl<I: Interner> Eq for TermKind<I> {}
@@ -213,7 +213,7 @@ impl<I: Interner> AliasTerm<I> {
                 .into()
         };
         let alias_const = |kind| {
-            I::Const::new_alias(interner, is_rigid, ty::AliasConst::new(interner, kind, self.args))
+            Const::new_alias(interner, is_rigid, ty::AliasConst::new(interner, kind, self.args))
                 .into()
         };
         match self.kind {
@@ -299,8 +299,14 @@ impl<I: Interner> AliasTerm<I> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: StreamingIterator` trait reference and
     /// `['a]` as the own args.
-    pub fn trait_ref_and_own_args(self, interner: I) -> (ty::TraitRef<I>, I::GenericArgsSlice) {
-        interner.trait_ref_and_own_args_for_alias(self.expect_projection_def_id(), self.args)
+    pub fn trait_ref_and_own_args<'a>(
+        &'a self,
+        interner: I,
+    ) -> (ty::TraitRef<I>, I::GenericArgsSlice<'a>)
+    where
+        I: 'a,
+    {
+        interner.trait_ref_and_own_args_for_alias(self.expect_projection_def_id(), &self.args)
     }
 
     /// Extracts the underlying trait reference from this projection.
@@ -317,7 +323,7 @@ impl<I: Interner> AliasTerm<I> {
     /// Extract the own args from this projection.
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return the slice `['a]` as the own args.
-    pub fn own_args(self, interner: I) -> I::GenericArgsSlice {
+    pub fn own_args<'a>(&'a self, interner: I) -> I::GenericArgsSlice<'a> {
         self.trait_ref_and_own_args(interner).1
     }
 }

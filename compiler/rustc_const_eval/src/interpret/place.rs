@@ -121,7 +121,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     #[inline]
     pub fn fake_alloc_zst(layout: TyAndLayout<'tcx>) -> Self {
         assert!(layout.is_zst());
-        let align = layout.align.abi;
+        let align = layout.align;
         let ptr = Pointer::without_provenance(align.bytes()); // no provenance, absolute address
         MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::None, misaligned: None }, layout }
     }
@@ -396,8 +396,7 @@ where
         layout: TyAndLayout<'tcx>,
         unaligned: bool,
     ) -> MPlaceTy<'tcx, M::Provenance> {
-        let misaligned =
-            if unaligned { None } else { self.is_ptr_misaligned(ptr, layout.align.abi) };
+        let misaligned = if unaligned { None } else { self.is_ptr_misaligned(ptr, layout.align) };
         MPlaceTy { mplace: MemPlace { ptr, meta, misaligned }, layout }
     }
 
@@ -505,7 +504,7 @@ where
                 // Dereferencability and alignment check. This also implicitly checks metadata validity.
                 let (size, align) = self
                     .size_and_align_of_val(&mplace)?
-                    .unwrap_or_else(|| (mplace.layout.size, mplace.layout.align.abi));
+                    .unwrap_or_else(|| (mplace.layout.size, mplace.layout.align));
                 self.check_ptr_access(mplace.ptr(), size, CheckInAllocMsg::Dereferenceable(kind))?;
                 self.check_ptr_align(mplace.ptr(), align).map_err_kind(|err| {
                 let err_ub!(AlignmentCheckFailed(Misalignment { required, has }, _msg)) = err else { bug!() };
@@ -546,7 +545,7 @@ where
     {
         let (size, _align) = self
             .size_and_align_of_val(mplace)?
-            .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
+            .unwrap_or((mplace.layout.size, mplace.layout.align));
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
         let a = self.get_ptr_alloc(mplace.ptr(), size)?;
@@ -562,7 +561,7 @@ where
     {
         let (size, _align) = self
             .size_and_align_of_val(mplace)?
-            .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
+            .unwrap_or((mplace.layout.size, mplace.layout.align));
         // We check alignment separately, and raise that error *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
         // However we have to call `check_misalign` first to make the borrow checker happy.

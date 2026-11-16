@@ -6,60 +6,18 @@ use std::path::{Path, PathBuf};
 
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
+    create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, rustc_version_info,
+    walk_dir,
 };
 
-#[derive(Default)]
-struct BuildArg {
-    flags: Vec<String>,
-    config_info: ConfigInfo,
-    build_sysroot: bool,
-}
-
-impl BuildArg {
-    /// Creates a new `BuildArg` instance by parsing command-line arguments.
-    fn new() -> Result<Option<Self>, String> {
-        let mut build_arg = Self::default();
-        // Skip binary name and the `build` command.
-        let mut args = std::env::args().skip(2);
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "--sysroot" => {
-                    build_arg.build_sysroot = true;
-                }
-                "--help" => {
-                    Self::usage();
-                    return Ok(None);
-                }
-                arg => {
-                    if !build_arg.config_info.parse_argument(arg, &mut args)? {
-                        return Err(format!("Unknown argument `{arg}`"));
-                    }
-                }
-            }
-        }
-        Ok(Some(build_arg))
-    }
-
-    fn usage() {
-        println!(
-            r#"
-`build` command help:
-    --sysroot              : When used on its own, build backend in dev mode with optimized dependencies
-                             and sysroot in dev mode (unoptimized)
-                             When used together with --release, build backend in release mode with optimized dependencies
-                             When used together with --release-sysroot,
-                             build the sysroot in release mode with optimized dependencies instead of in dev mode
-    --release-sysroot      : When combined with --sysroot, additionally
-                             build the sysroot in release mode with optimized dependencies.
-                             It has no effect if `--sysroot` is not specified.
-                             It should not be used on its own.
-    --sysroot-panic-abort  : Build the sysroot without unwinding support"#
-        );
-        ConfigInfo::show_usage();
-        println!("    --help                 : Show this help");
-    }
+sub_command_decl! {
+    BuildArg => "build",
+    build_sysroot: bool = "--sysroot" => "When used on its own, build backend in dev mode with \
+optimized dependencies and sysroot in dev mode (unoptimized). When used together with \
+`--release`, build backend in release mode with optimized dependencies. When used together with \
+`--release-sysroot`, build the sysroot in release mode with optimized dependencies instead of \
+in dev mode",
+    + config_info: ConfigInfo
 }
 
 fn cleanup_sysroot_previous_build(library_dir: &Path) {
@@ -107,6 +65,10 @@ fn cleanup_sysroot_previous_build(library_dir: &Path) {
 }
 
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
+    if let Some(sysroot_path) = &config.prebuilt_sysroot_path {
+        println!("Not building the sysroot since `{sysroot_path}` is used");
+        return Ok(());
+    }
     let start_dir = get_sysroot_dir();
 
     // Symlink libgccjit.so to sysroot.
@@ -132,6 +94,23 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+
+    // Remap both source spans and embedded panic locations to the standard virtual path.
+    let sysroot_source_dir = start_dir.join("sysroot_src");
+    let rustc_commit = rustc_version_info(env.get("RUSTC").map(String::as_str))?
+        .commit_hash
+        .ok_or_else(|| "Couldn't retrieve rustc commit hash".to_string())?;
+    // Cargo passes workspace-relative filenames, including those used by panic locations.
+    // Also: the `==` is intentional! The first `=` is "FROM" and the second `=` is for "TO".
+    rustflags.push_str(&format!(" --remap-path-prefix==/rustc/{rustc_commit}/library"));
+    rustflags.push_str(&format!(
+        " --remap-path-prefix={sysroot_source_dir}=/rustc/{rustc_commit}",
+        sysroot_source_dir = std::path::absolute(&sysroot_source_dir)
+            .map_err(|error| format!(
+                "Failed to get the absolute path of the sysroot sources: {error:?}"
+            ))?
+            .display(),
+    ));
     if config.sysroot_panic_abort {
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
@@ -188,12 +167,33 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         // FIXME: should not use shell command!
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
     };
-    walk_dir(
-        library_dir.join(format!("target/{}/{}/deps", config.target_triple, channel)),
-        &mut copier.clone(),
-        &mut copier,
-        false,
-    )?;
+    let target_dir = library_dir.join(format!("target/{}/{}", config.target_triple, channel));
+    let deps_dir = target_dir.join("deps");
+    if deps_dir.is_dir() {
+        // Keep copying in the old directory just in case.
+        walk_dir(&deps_dir, &mut copier.clone(), &mut copier, false)?;
+    } else {
+        let build_dir = target_dir.join("build");
+        walk_dir(
+            &build_dir,
+            &mut |package_dir: &Path| {
+                walk_dir(
+                    package_dir,
+                    &mut |unit_dir: &Path| {
+                        let out_dir = unit_dir.join("out");
+                        if out_dir.is_dir() {
+                            walk_dir(&out_dir, &mut copier.clone(), &mut copier.clone(), false)?;
+                        }
+                        Ok(())
+                    },
+                    &mut |_| Ok(()),
+                    false,
+                )
+            },
+            &mut |_| Ok(()),
+            false,
+        )?;
+    }
 
     // Copy the source files to the sysroot (Rust for Linux needs this).
     let sysroot_src_path = start_dir.join("sysroot/lib/rustlib/src/rust");
@@ -221,13 +221,11 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     if args.config_info.no_default_features {
         command.push(&"--no-default-features");
     }
-    let flags = args.flags.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-    for flag in &flags {
-        command.push(flag);
+    if args.config_info.prebuilt_backend_path.is_none() {
+        run_command_with_output_and_env(&command, None, Some(&env))?;
     }
-    run_command_with_output_and_env(&command, None, Some(&env))?;
 
-    args.config_info.setup(&mut env, false)?;
+    args.config_info.setup(&mut env, false, true)?;
 
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");

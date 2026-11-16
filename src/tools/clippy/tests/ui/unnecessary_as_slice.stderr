@@ -1,0 +1,59 @@
+error: this `as_slice` is unnecessary because the following method (`len`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:16:17
+   |
+LL |     let _ = vals.as_slice().len();
+   |                 ^^^^^^^^^^^ help: remove `as_slice`
+   |
+   = note: `-D clippy::unnecessary-as-slice` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_as_slice)]`
+
+error: this `as_slice` is unnecessary because the following method (`is_empty`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:18:17
+   |
+LL |     let _ = vals.as_slice().is_empty();
+   |                 ^^^^^^^^^^^ help: remove `as_slice`
+
+error: this `as_slice` is unnecessary because the following method (`iter`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:20:17
+   |
+LL |     let _ = vals.as_slice().iter();
+   |                 ^^^^^^^^^^^ help: remove `as_slice`
+
+error: this `as_slice` is unnecessary because the following method (`first`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:22:17
+   |
+LL |     let _ = vals.as_slice().first();
+   |                 ^^^^^^^^^^^ help: remove `as_slice`
+
+error: this `as_mut_slice` is unnecessary because the following method (`len`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:25:17
+   |
+LL |     let _ = vals.as_mut_slice().len();
+   |                 ^^^^^^^^^^^^^^^ help: remove `as_mut_slice`
+
+error: this `as_mut_slice` is unnecessary because the following method (`is_empty`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:27:17
+   |
+LL |     let _ = vals.as_mut_slice().is_empty();
+   |                 ^^^^^^^^^^^^^^^ help: remove `as_mut_slice`
+
+error: this `as_mut_slice` is unnecessary because the following method (`iter_mut`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:29:17
+   |
+LL |     let _ = vals.as_mut_slice().iter_mut();
+   |                 ^^^^^^^^^^^^^^^ help: remove `as_mut_slice`
+
+error: this `as_slice` is unnecessary because the following method (`len`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:34:17
+   |
+LL |     let _ = vals.as_slice().len();
+   |                 ^^^^^^^^^^^ help: remove `as_slice`
+
+error: this `as_mut_slice` is unnecessary because the following method (`len`) can be called on `Vec` directly
+  --> tests/ui/unnecessary_as_slice.rs:36:17
+   |
+LL |     let _ = vals.as_mut_slice().len();
+   |                 ^^^^^^^^^^^^^^^ help: remove `as_mut_slice`
+
+error: aborting due to 9 previous errors
+

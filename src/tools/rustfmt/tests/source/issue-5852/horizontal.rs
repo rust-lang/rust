@@ -1,4 +1,4 @@
-// rustfmt-imports_layout: Horizontal
+//@ rustfmt-imports_layout: Horizontal
 
 use std::{
     fs,

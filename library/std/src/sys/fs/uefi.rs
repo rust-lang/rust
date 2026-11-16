@@ -6,7 +6,7 @@ use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
-pub use crate::sys::fs::common::{Dir, copy, remove_dir_all};
+pub use crate::sys::fs::common::{Dir, ExtraHomeDirs, ExtraMediaDirs, copy, remove_dir_all};
 use crate::sys::pal::{helpers, unsupported};
 use crate::sys::time::SystemTime;
 
@@ -144,6 +144,14 @@ impl FileType {
 
     const fn from_attr(attr: u64) -> Self {
         Self(attr & r_efi::protocols::file::DIRECTORY != 0)
+    }
+}
+
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(&self.0.path(), &options)
     }
 }
 
@@ -472,6 +480,10 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let new_info = file_info.with_file_name(new_relative.as_os_str())?;
 
     f.set_file_info(new_info)
+}
+
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {

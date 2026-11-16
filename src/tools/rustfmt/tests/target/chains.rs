@@ -1,4 +1,4 @@
-// rustfmt-use_small_heuristics: Off
+//@ rustfmt-use_small_heuristics: Off
 // Test chain formatting.
 
 fn main() {

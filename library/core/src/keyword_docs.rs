@@ -1295,7 +1295,7 @@ const _: () = ();
 ///
 /// Example of using `become` to implement functional-style `fold`:
 ///
-/// ```ignore-wasm (tail-call target feature not enabled by default on wasm)
+/// ```ignore-wasm,ignore-powerpc,ignore-powerpc64 (tail-call target feature not enabled by default on wasm, PowerPC tail calls are not implemented in LLVM)
 /// #![feature(explicit_tail_calls)]
 /// #![expect(incomplete_features)]
 ///
@@ -1350,7 +1350,7 @@ const _: () = ();
 ///
 /// It is possible to tail-call a function pointer:
 ///
-/// ```ignore-wasm (tail-call target feature not enabled by default on wasm)
+/// ```ignore-wasm,ignore-powerpc,ignore-powerpc64 (tail-call target feature not enabled by default on wasm, PowerPC tail calls are not implemented in LLVM)
 /// #![feature(explicit_tail_calls)]
 /// #![expect(incomplete_features)]
 ///

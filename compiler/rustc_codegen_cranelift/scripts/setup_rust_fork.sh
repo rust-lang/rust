@@ -23,7 +23,7 @@ git -c user.name=Dummy -c user.email=dummy@example.com -c commit.gpgSign=false \
     am ../patches/*-stdlib-*.patch
 
 cat > config.toml <<EOF
-change-id = 999999
+change-id = "ignore"
 
 [llvm]
 download-ci-llvm = true

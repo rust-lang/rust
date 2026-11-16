@@ -1,4 +1,7 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/25746>
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 //@ build-pass
 #![allow(unnecessary_transmutes)]
 use std::mem::transmute;

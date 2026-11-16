@@ -1,6 +1,7 @@
 error: no rules expected `item` metavariable
   --> $DIR/nonterminal-matching.rs:19:10
    |
+LL | macro complex_nonterminal($nt_item: item) {
 LL |     macro n(a $nt_item b) {
    |     --------------------- when calling this macro
 ...
@@ -21,11 +22,12 @@ LL | complex_nonterminal!(enum E {});
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
    = help: try using `:tt` instead in the macro definition
-   = note: this error originates in the macro `complex_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: no rules expected `expr` metavariable
   --> $DIR/nonterminal-matching.rs:32:35
    |
+LL | macro_rules! foo {
+...
 LL |     (expr $x:expr) => { bar!(expr $x); };
    |                                   ^^ no rules expected this token in macro call
 ...
@@ -43,11 +45,12 @@ LL |     (expr 3) => {};
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
    = help: try using `:tt` instead in the macro definition
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: no rules expected `literal` metavariable
   --> $DIR/nonterminal-matching.rs:33:44
    |
+LL | macro_rules! foo {
+...
 LL |     (literal $x:literal) => { bar!(literal $x); };
    |                                            ^^ no rules expected this token in macro call
 ...
@@ -65,11 +68,12 @@ LL |     (literal 4) => {};
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
    = help: try using `:tt` instead in the macro definition
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: no rules expected `path` metavariable
   --> $DIR/nonterminal-matching.rs:34:35
    |
+LL | macro_rules! foo {
+...
 LL |     (path $x:path) => { bar!(path $x); };
    |                                   ^^ no rules expected this token in macro call
 ...
@@ -87,11 +91,12 @@ LL |     (path a::b::c) => {};
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
    = help: try using `:tt` instead in the macro definition
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: no rules expected `stmt` metavariable
   --> $DIR/nonterminal-matching.rs:35:35
    |
+LL | macro_rules! foo {
+...
 LL |     (stmt $x:stmt) => { bar!(stmt $x); };
    |                                   ^^ no rules expected this token in macro call
 ...
@@ -109,7 +114,6 @@ LL |     (stmt let abc = 0) => {};
    = note: captured metavariables except for `:tt`, `:ident` and `:lifetime` cannot be compared to other tokens
    = note: see <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment> for more information
    = help: try using `:tt` instead in the macro definition
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

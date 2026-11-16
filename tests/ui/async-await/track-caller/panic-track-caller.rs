@@ -1,13 +1,13 @@
 // This test is duplicated (with changes) at
 // src/tools/miri/tests/pass/async-panic-track-caller.rs
 
-// FIXME: catch_unwind is broken in gcc. Will be fixed in the next rustc_codegen_gcc sync.
-//@ ignore-backends: gcc
 //@ run-pass
 //@ edition:2021
 //@ revisions: afn cls afn_cls nofeat
 //@ needs-unwind
 // gate-test-async_fn_track_caller
+//
+// Padding comment so that the line numbers are the same as async-panic-track-caller.rs
 #![feature(stmt_expr_attributes)]
 #![cfg_attr(any(afn, afn_cls), feature(async_fn_track_caller))]
 #![cfg_attr(any(cls, afn_cls), feature(closure_track_caller))]

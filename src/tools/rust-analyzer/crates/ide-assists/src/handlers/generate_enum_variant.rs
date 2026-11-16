@@ -47,10 +47,13 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_, '
         return None;
     }
 
-    let Some(hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e)))) =
-        ctx.sema.resolve_path(&path.qualifier()?)
-    else {
-        return None;
+    let e = match ctx.sema.resolve_path(&path.qualifier()?)? {
+        hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => e,
+        hir::PathResolution::SelfType(impl_) => {
+            let hir::Adt::Enum(e) = impl_.self_ty(ctx.db()).as_adt()? else { return None };
+            e
+        }
+        _ => return None,
     };
 
     let target = path.syntax().text_range();
@@ -526,6 +529,31 @@ enum Foo {
 fn foo(x: Foo) {
     match x {
         Foo::Bar =>
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn generate_variant_for_self_in_impl() {
+        check_assist(
+            generate_enum_variant,
+            r"
+enum Foo {}
+impl Foo {
+    fn bar() {
+      Self::Baz$0
+    }
+}
+",
+            r"
+enum Foo {
+    Baz,
+}
+impl Foo {
+    fn bar() {
+      Self::Baz
     }
 }
 ",

@@ -16,9 +16,10 @@ use tracing::*;
 use crate::common::{
     CompareMode, Config, Debugger, ForcePassMode, PassFailMode, RunResult, TestMode, TestPaths,
     TestSuite, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
-    UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
+    expected_output_path, incremental_dir, output_base_dir, output_base_name,
 };
 use crate::directives::{AuxCrate, TestProps};
+use crate::edition::Edition;
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::executor::TestVariant;
 use crate::output_capture::ConsoleOut;
@@ -224,6 +225,14 @@ struct TestCx<'test> {
     variant: &'test TestVariant,
 }
 
+impl TestCx<'_> {
+    fn edition(self) -> Edition {
+        // We're always explicitly defaulting to rustc's default to suppress the
+        // warning that rustc emits when no edition gets specified.
+        self.props.edition.or(self.config.edition).unwrap_or(Edition::RUSTC_DEFAULT)
+    }
+}
+
 enum ReadFrom {
     Path,
     Stdin(String),
@@ -259,6 +268,28 @@ enum CompilerKind {
     Rustc,
     Rustdoc,
 }
+
+/// Unstable compiler flags that compiletest passes to UI tests on its own, i.e. without specific
+/// tests opting into them explicitly.
+/// This should include both flags that are always passed unconditionally (e.g. `-Zui-testing`) and
+/// flags that are enabled across the whole test suite when compiletest is configured in a
+/// certain way (e.g. a specific `-Zcodegen-backend` being used for all tests).
+///
+/// Note: try to keep this up-to-date with [`TestCx::make_compile_args`].
+pub(crate) const COMPILETEST_UI_SUITE_UNSTABLE_FLAGS: &[&str] = &[
+    "simulate-remapped-rust-src-base",
+    "translate-remapped-path-to-local-path",
+    "ignore-directory-in-diagnostics-source-blocks",
+    "deduplicate-diagnostics",
+    "write-long-types-to-disk",
+    "codegen-backend",
+    "next-solver",
+    "polonius",
+    "wasm-proc-macros",
+    "threads",
+    "ui-testing",
+    "unstable-options",
+];
 
 impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
@@ -434,6 +465,7 @@ impl<'test> TestCx<'test> {
             .arg(&aux_dir)
             .arg("-A")
             .arg("internal_features")
+            .arg(self.edition().to_flag())
             .args(&self.props.compile_flags)
             .envs(self.props.rustc_env.clone());
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
@@ -548,6 +580,7 @@ impl<'test> TestCx<'test> {
             .arg("internal_features");
         self.set_revision_flags(&mut rustc);
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
+        rustc.arg(self.edition().to_flag());
         rustc.args(&self.props.compile_flags);
 
         self.compose_and_run_compiler(rustc, Some(src))
@@ -960,6 +993,7 @@ impl<'test> TestCx<'test> {
             emit,
             allow_unused,
             LinkToAux::Yes,
+            self.edition(),
             passes,
         );
 
@@ -1043,6 +1077,7 @@ impl<'test> TestCx<'test> {
             // FIXME(#160895): While the new solver is enabled by default on nightly,
             // we don't want to use it in our tests for now.
             .arg("-Znext-solver=coherence")
+            .arg(self.edition().to_flag())
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
@@ -1083,6 +1118,7 @@ impl<'test> TestCx<'test> {
             rustdoc_merge
                 .arg("-o")
                 .arg(out_dir.as_ref())
+                .arg(self.edition().to_flag())
                 .args(&self.props.compile_flags)
                 .args(&self.props.doc_flags)
                 .arg("--read-doc-meta-dir")
@@ -1361,6 +1397,9 @@ impl<'test> TestCx<'test> {
     /// directory.
     fn build_minicore(&self) -> Utf8PathBuf {
         let output_file_path = self.output_base_dir().join("libminicore.rlib");
+
+        // We want to inherit *all* `TestProps` from the test that added minicore *except*
+        // for the edition which we want to keep fixed to the latest stable one.
         let mut rustc = self.make_compile_args(
             CompilerKind::Rustc,
             &self.config.minicore_path,
@@ -1368,11 +1407,13 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::Yes,
             LinkToAux::No,
+            Edition::LATEST_STABLE,
             vec![],
         );
 
         rustc.args(&["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
+        rustc.arg("--check-cfg=cfg(target_has_reliable_f16b)");
         rustc.args(self.props.minicore_compile_flags.clone());
 
         let res =
@@ -1448,6 +1489,7 @@ impl<'test> TestCx<'test> {
             Emit::None,
             AllowUnused::No,
             LinkToAux::No,
+            aux_cx.edition(),
             Vec::new(),
         );
         aux_cx.build_all_auxiliary(&aux_dir, &mut aux_rustc);
@@ -1604,7 +1646,8 @@ impl<'test> TestCx<'test> {
             // Exhaustively match all other suites.
             // Note that some suites never actually use this method, so the
             // return value for those suites is not necessarily meaningful.
-            TestSuite::AssemblyLlvm
+            TestSuite::AssemblyGcc
+            | TestSuite::AssemblyLlvm
             | TestSuite::BuildStd
             | TestSuite::CodegenLlvm
             | TestSuite::CodegenUnits
@@ -1633,6 +1676,7 @@ impl<'test> TestCx<'test> {
         emit: Emit,
         allow_unused: AllowUnused,
         link_to_aux: LinkToAux,
+        edition: Edition,
         passes: Vec<String>, // Vec of passes under mir-opt test to be dumped
     ) -> Command {
         // FIXME(Zalathar): We should have a cleaner distinction between
@@ -1658,6 +1702,9 @@ impl<'test> TestCx<'test> {
         {
             compiler.arg("-Zunstable-options").arg("--disable-minification");
         }
+
+        // Note: when adding new unstable compile flags here, also update
+        // `COMPILETEST_UI_SUITE_UNSTABLE_FLAGS`
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.
@@ -1770,6 +1817,26 @@ impl<'test> TestCx<'test> {
             debug!("dir_opt: {:?}", dir_opt);
             rustc.arg(dir_opt);
         };
+
+        if !self.config.parallel_frontend_enabled() {
+            // If the parallel frontend thread count was not specified, we override
+            // it to 1, because the tested toolchain might have a different default
+            // value for the frontend thread count, but we want to run tests in
+            // compiletest with the sequential frontend for now, until we prepare the testing
+            // infrastructure of all test suites to support potentially non-deterministic order of
+            // diagnostics.
+
+            // We can't set this option if the test already specifies the frontend thread count
+            // though.
+            if !self
+                .props
+                .compile_flags
+                .iter()
+                .any(|flag| flag.contains("-Zthreads") || flag.contains("--jobs-frontend"))
+            {
+                compiler.arg("-Zthreads=1");
+            }
+        }
 
         match self.config.mode {
             TestMode::Incremental => {
@@ -1942,9 +2009,6 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::NextSolver) => {
                 compiler.args(&["-Znext-solver"]);
             }
-            Some(CompareMode::NextSolverCoherence) => {
-                compiler.args(&["-Znext-solver=coherence"]);
-            }
             Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 compiler.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }
@@ -2017,6 +2081,7 @@ impl<'test> TestCx<'test> {
             compiler.arg("-Cforce-unwind-tables=yes");
         }
 
+        compiler.arg(edition.to_flag());
         compiler.args(&self.props.compile_flags);
 
         compiler
@@ -2243,6 +2308,7 @@ impl<'test> TestCx<'test> {
             Emit::LlvmIr,
             AllowUnused::No,
             LinkToAux::Yes,
+            self.edition(),
             Vec::new(),
         );
 
@@ -2419,13 +2485,7 @@ impl<'test> TestCx<'test> {
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
                 if self.force_color_svg() {
-                    if self.config.target.contains("windows") {
-                        // We single out Windows here because some of the CLI coloring is
-                        // specifically changed for Windows.
-                        UI_WINDOWS_SVG
-                    } else {
-                        UI_SVG
-                    }
+                    UI_SVG
                 } else if self.props.stderr_per_bitwidth {
                     &stderr_bits
                 } else {

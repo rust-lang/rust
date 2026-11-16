@@ -1,4 +1,4 @@
-// rustfmt-trailing_comma: Never
+//@ rustfmt-trailing_comma: Never
 
 enum X {
     A,

@@ -3,8 +3,8 @@ use core::ops::ControlFlow;
 use either::Either;
 use hir::{ExprKind, Param};
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Expr, Node};
@@ -927,8 +927,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 if let Node::TraitItem(ti) = self.infcx.tcx.hir_node_by_def_id(f_in_trait)
                     && let hir::TraitItemKind::Fn(sig, _) = ti.kind
                     && let Some(ty) = sig.decl.inputs.get(local.index() - 1)
-                    && let hir::TyKind::Ref(_, mut_ty) = ty.kind
-                    && let hir::Mutability::Not = mut_ty.mutbl
+                    && let hir::TyKind::Ref(_, _, hir::Mutability::Not) = ty.kind
                     && sig.decl.implicit_self().has_implicit_self()
                 {
                     Some(ty.span)
@@ -1226,7 +1225,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         err.span_label(closure_span, "in this closure");
         let closure_arg_has_fn_trait_bound =
-            |callee_def_id, input_index, generic_args: ty::GenericArgsRef<'tcx>| {
+            |callee_def_id, input_index, generic_args: ty::GenericArgs<'tcx>| {
                 let sig = tcx.fn_sig(callee_def_id).instantiate(tcx, generic_args).skip_binder();
                 let Some(input_ty): Option<Ty<'tcx>> = sig.inputs().get(input_index).copied()
                 else {
@@ -1248,40 +1247,39 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         // If the HIR node is a function or method call, get the DefId
         // of the callee function or method, the span, and argument info for the call expr.
-        let get_call_details =
-            || -> Option<(DefId, Span, usize, usize, ty::GenericArgsRef<'tcx>)> {
-                let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
-                    return None;
-                };
-
-                let typeck_results = tcx.typeck(def_id);
-
-                match kind {
-                    hir::ExprKind::Call(expr, args) => {
-                        if let Some(ty::FnDef(def_id, generic_args)) =
-                            typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
-                        {
-                            let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                            Some((
-                                *def_id,
-                                expr.span,
-                                arg_pos,
-                                arg_pos,
-                                generic_args.no_bound_vars().unwrap(),
-                            ))
-                        } else {
-                            None
-                        }
-                    }
-                    hir::ExprKind::MethodCall(_, _, args, span) => {
-                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                        let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
-                        let generic_args = typeck_results.node_args_opt(*hir_id)?;
-                        Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
-                    }
-                    _ => None,
-                }
+        let get_call_details = || -> Option<(DefId, Span, usize, usize, ty::GenericArgs<'tcx>)> {
+            let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
+                return None;
             };
+
+            let typeck_results = tcx.typeck(def_id);
+
+            match kind {
+                hir::ExprKind::Call(expr, args) => {
+                    if let Some(ty::FnDef(def_id, generic_args)) =
+                        typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
+                    {
+                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                        Some((
+                            *def_id,
+                            expr.span,
+                            arg_pos,
+                            arg_pos,
+                            generic_args.no_bound_vars().unwrap(),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                hir::ExprKind::MethodCall(_, _, args, span) => {
+                    let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                    let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
+                    let generic_args = typeck_results.node_args_opt(*hir_id)?;
+                    Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
+                }
+                _ => None,
+            }
+        };
 
         // If we can detect the expression to be a function or method call where the closure was
         // an argument, we point at the function or method definition argument...
@@ -2020,7 +2018,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         // Now we're dealing with the actual struct that we're going to suggest a change to,
         // we can expect a field that is an immutable reference to a type.
         && let hir::Node::Field(field) = tcx.hir_node_by_def_id(field.did.as_local()?)
-        && let hir::TyKind::Ref(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+        && let hir::TyKind::Ref(lt, ty, hir::Mutability::Not) = field.ty.kind
     {
         return Some(lt.ident.span.between(ty.span));
     }

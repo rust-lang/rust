@@ -1,5 +1,6 @@
-use crate::bstr::ByteStr;
+use crate::byte_str::ByteStr;
 use crate::ffi::OsStr;
+use crate::macros::rustdoc_skip_body;
 #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "cygwin"))]
 use crate::os::net::linux_ext;
 use crate::os::unix::ffi::OsStrExt;
@@ -22,6 +23,7 @@ mod libc {
 
 const SUN_PATH_OFFSET: usize = mem::offset_of!(libc::sockaddr_un, sun_path);
 
+#[rustdoc_skip_body]
 pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
     // SAFETY: All zeros is a valid representation for `sockaddr_un`.
     let mut addr: libc::sockaddr_un = unsafe { mem::zeroed() };
@@ -87,7 +89,7 @@ enum AddressKind<'a> {
 ///         return
 ///     }
 /// };
-/// let addr = socket.local_addr().expect("Couldn't get local address");
+/// let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
 /// ```
 #[derive(Clone)]
 #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -109,6 +111,7 @@ impl SocketAddr {
         }
     }
 
+    #[rustdoc_skip_body]
     pub(super) fn from_parts(
         addr: libc::sockaddr_un,
         mut len: libc::socklen_t,
@@ -122,6 +125,8 @@ impl SocketAddr {
             len = core::slice::memchr::memchr(0, sun_path)
                 .map_or(len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
         }
+
+        len = len.min(size_of::<libc::sockaddr_un>() as libc::socklen_t);
 
         if len == 0 {
             // When there is a datagram from unnamed unix socket
@@ -186,7 +191,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixListener::bind("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.is_unnamed(), false);
     ///     Ok(())
     /// }
@@ -200,7 +205,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixDatagram::unbound()?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.is_unnamed(), true);
     ///     Ok(())
     /// }
@@ -224,7 +229,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixListener::bind("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
     ///     Ok(())
     /// }
@@ -238,7 +243,7 @@ impl SocketAddr {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixDatagram::unbound()?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     assert_eq!(addr.as_pathname(), None);
     ///     Ok(())
     /// }
@@ -249,6 +254,7 @@ impl SocketAddr {
         if let AddressKind::Pathname(path) = self.address() { Some(path) } else { None }
     }
 
+    #[rustdoc_skip_body]
     fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - SUN_PATH_OFFSET;
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
@@ -279,6 +285,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
         if let AddressKind::Abstract(name) = self.address() { Some(name.as_bytes()) } else { None }
     }
 
+    #[rustdoc_skip_body]
     fn from_abstract_name<N>(name: N) -> io::Result<Self>
     where
         N: AsRef<[u8]>,

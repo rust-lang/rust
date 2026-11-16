@@ -87,10 +87,8 @@ pub(crate) struct TestProps {
     // Regexes that should be expected, in order, on standard out
     pub(crate) regex_error_patterns: Vec<String>,
     /// Edition selected by an `//@ edition` directive, if any.
-    ///
-    /// Automatically added to `compile_flags` during directive processing.
     pub(crate) edition: Option<Edition>,
-    // Extra flags to pass to the compiler
+    // Extra flags to pass to the compiler.
     pub(crate) compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
     pub(crate) run_flags: Vec<String>,
@@ -222,6 +220,7 @@ pub(crate) struct TestProps {
 }
 
 mod directives {
+    pub(crate) const ACT_AS_STABLE: &str = "act-as-stable";
     pub(crate) const ERROR_PATTERN: &str = "error-pattern";
     pub(crate) const REGEX_ERROR_PATTERN: &str = "regex-error-pattern";
     pub(crate) const COMPILE_FLAGS: &str = "compile-flags";
@@ -404,12 +403,6 @@ impl TestProps {
                 }
             }
         }
-
-        if let Some(edition) = self.edition.or(config.edition) {
-            // The edition is added at the start, since flags from //@compile-flags must be passed
-            // to rustc last.
-            self.compile_flags.insert(0, format!("--edition={edition}"));
-        }
     }
 
     fn update_pass_fail_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
@@ -555,9 +548,12 @@ fn iter_directives(
     };
 
     for directive_str in extra_directives {
-        let directive_line = line_directive(testfile, LineNumber::ZERO, directive_str)
-            .unwrap_or_else(|| panic!("bad extra-directive line: {directive_str:?}"));
-        it(&directive_line);
+        if let Some(Ok(directive_line)) = line_directive(testfile, LineNumber::ZERO, directive_str)
+        {
+            it(&directive_line);
+        } else {
+            panic!("bad extra-directive line: {directive_str:?}")
+        }
     }
 
     for directive_line in &file_directives.lines {

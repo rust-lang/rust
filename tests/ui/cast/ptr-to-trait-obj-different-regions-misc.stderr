@@ -231,7 +231,7 @@ LL | fn extend_to_static<'a>(ptr: *const dyn Trait<'a>) {
    |                     --  ---
    |                     |   |
    |                     |   `ptr` declared here, outside of the function body
-   |                     |   `ptr` is a reference that is only valid in the function body
+   |                     |   `ptr` is only valid in the function body
    |                     lifetime `'a` defined here
 LL |     require_static(ptr as _)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

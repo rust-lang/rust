@@ -1,4 +1,9 @@
-// Minimized test for <https://github.com/rust-lang/rust/issues/123461>.
+//! Minimized test for <https://github.com/rust-lang/rust/issues/123461>.
+
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
+//@ check-fail
 
 struct Unconstrained<T>(T);
 

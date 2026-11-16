@@ -41,19 +41,19 @@ pub(super) fn check<'tcx>(
         // The `U` in `pointer::cast` have to be `Sized`
         // as explained here: https://github.com/rust-lang/rust/issues/60602.
         && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
-        && !is_from_proc_macro(cx, expr)
         && msrv.meets(cx, msrvs::POINTER_CAST)
+        && !is_from_proc_macro(cx, expr)
     {
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir.kind {
             TyKind::Infer(()) => String::new(),
-            TyKind::Ptr(mut_ty) => {
-                if matches!(mut_ty.ty.kind, TyKind::Infer(())) {
+            TyKind::Ptr(inner_ty, _) => {
+                if matches!(inner_ty.kind, TyKind::Infer(())) {
                     String::new()
                 } else {
                     format!(
                         "::<{}>",
-                        snippet_with_applicability(cx, mut_ty.ty.span, "/* type */", &mut app)
+                        snippet_with_applicability(cx, inner_ty.span, "/* type */", &mut app)
                     )
                 }
             },

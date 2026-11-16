@@ -19,6 +19,8 @@ note: `Foo` defines an item `test`, perhaps you need to implement it
    |
 LL | pub trait Foo {
    | ^^^^^^^^^^^^^
+LL |     fn test(&self);
+   |
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/trivial-bounds-leak.rs:25:15

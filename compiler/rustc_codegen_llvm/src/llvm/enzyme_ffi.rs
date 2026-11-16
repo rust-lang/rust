@@ -1,10 +1,10 @@
 #![expect(dead_code)]
 
-use libc::{c_char, c_uint};
+use libc::{c_char, c_uchar, c_uint};
 
 use super::MetadataKindId;
-use super::ffi::{AttributeKind, BasicBlock, Context, Metadata, Module, Type, Value};
-use crate::llvm::{Bool, Builder};
+use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
+use crate::llvm::{Bool, Builder, Context};
 
 // TypeTree types
 pub(crate) type CTypeTreeRef = *mut EnzymeTypeTree;
@@ -36,46 +36,60 @@ pub(crate) struct TypeTree {
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     // Enzyme
-    pub(crate) safe fn LLVMRustHasMetadata(I: &Value, KindID: MetadataKindId) -> bool;
-    pub(crate) fn LLVMRustEraseInstUntilInclusive(BB: &BasicBlock, I: &Value);
-    pub(crate) fn LLVMRustGetLastInstruction<'a>(BB: &BasicBlock) -> Option<&'a Value>;
-    pub(crate) fn LLVMRustDIGetInstMetadata(I: &Value) -> Option<&Metadata>;
-    pub(crate) fn LLVMRustEraseInstFromParent(V: &Value);
-    pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
-    pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
-    pub(crate) fn LLVMRustHasAttributeAtIndex(V: &Value, i: c_uint, Kind: AttributeKind) -> bool;
-    pub(crate) fn LLVMRustGetArrayNumElements(Ty: &Type) -> u64;
-    pub(crate) fn LLVMRustHasFnAttribute(
-        F: &Value,
-        Name: *const c_char,
+    pub(crate) safe fn LLVMRustHasMetadata<'ll>(I: Value<'ll>, KindID: MetadataKindId) -> bool;
+    pub(crate) fn LLVMRustEraseInstUntilInclusive<'ll>(BB: &'ll BasicBlock, I: Value<'ll>);
+    pub(crate) fn LLVMRustGetLastInstruction<'ll>(BB: &'ll BasicBlock) -> Option<Value<'ll>>;
+    pub(crate) fn LLVMRustDIGetInstMetadata<'ll>(I: Value<'ll>) -> Option<&'ll Metadata>;
+    pub(crate) fn LLVMRustEraseInstFromParent<'ll>(V: Value<'ll>);
+    pub(crate) fn LLVMRustGetTerminator<'ll>(B: &'ll BasicBlock) -> Value<'ll>;
+    pub(crate) fn LLVMRustVerifyFunction<'ll>(
+        V: Value<'ll>,
+        action: LLVMRustVerifierFailureAction,
+    ) -> Bool;
+    pub(crate) fn LLVMRustHasAttributeAtIndex<'ll>(
+        V: Value<'ll>,
+        i: c_uint,
+        Kind: AttributeKind,
+    ) -> bool;
+    pub(crate) fn LLVMRustGetArrayNumElements<'ll>(Ty: Type<'ll>) -> u64;
+    pub(crate) fn LLVMRustHasFnAttribute<'ll>(
+        F: Value<'ll>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: libc::size_t,
     ) -> bool;
-    pub(crate) fn LLVMRustRemoveFnAttribute(F: &Value, Name: *const c_char, NameLen: libc::size_t);
-    pub(crate) fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
-    pub(crate) fn LLVMGetNextFunction(Fn: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMRustRemoveEnumAttributeAtIndex(
-        Fn: &Value,
+    pub(crate) fn LLVMRustRemoveFnAttribute<'ll>(
+        F: Value<'ll>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: libc::size_t,
+    );
+    pub(crate) fn LLVMGetFirstFunction<'ll>(M: Module<'ll>) -> Option<Value<'ll>>;
+    pub(crate) fn LLVMGetNextFunction<'ll>(Fn: Value<'ll>) -> Option<Value<'ll>>;
+    pub(crate) fn LLVMRustRemoveEnumAttributeAtIndex<'ll>(
+        Fn: Value<'ll>,
         index: c_uint,
         kind: AttributeKind,
     );
-    pub(crate) fn LLVMRustPositionBefore<'a>(B: &'a Builder<'_>, I: &'a Value);
-    pub(crate) fn LLVMRustPositionAfter<'a>(B: &'a Builder<'_>, I: &'a Value);
-    pub(crate) fn LLVMRustGetFunctionCall(
-        F: &Value,
+    pub(crate) fn LLVMRustPositionBefore<'ll>(B: &Builder<'ll>, I: Value<'ll>);
+    pub(crate) fn LLVMRustPositionAfter<'ll>(B: &Builder<'ll>, I: Value<'ll>);
+    pub(crate) fn LLVMRustGetFunctionCall<'ll>(
+        F: Value<'ll>,
         name: *const c_char,
         NameLen: libc::size_t,
-    ) -> Option<&Value>;
+    ) -> Option<Value<'ll>>;
 
-    pub(crate) safe fn LLVMRustIsCall(V: &Value) -> bool;
+    pub(crate) safe fn LLVMRustIsCall<'ll>(V: Value<'ll>) -> bool;
 }
 
 unsafe extern "C" {
     // Enzyme
-    pub(crate) fn LLVMDumpModule(M: &Module);
-    pub(crate) fn LLVMDumpValue(V: &Value);
-    pub(crate) fn LLVMGetFunctionCallConv(F: &Value) -> c_uint;
-    pub(crate) fn LLVMGetParams(Fnc: &Value, params: *mut &Value);
-    pub(crate) fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
+    pub(crate) fn LLVMDumpModule<'ll>(M: Module<'ll>);
+    pub(crate) fn LLVMDumpValue<'ll>(V: Value<'ll>);
+    pub(crate) fn LLVMGetFunctionCallConv<'ll>(F: Value<'ll>) -> c_uint;
+    pub(crate) fn LLVMGetParams<'ll>(Fnc: Value<'ll>, params: *mut Value<'ll>);
+    pub(crate) fn LLVMGetNamedFunction<'ll>(
+        M: Module<'ll>,
+        Name: *const c_char,
+    ) -> Option<Value<'ll>>;
 }
 
 #[repr(C)]
@@ -90,6 +104,7 @@ pub(crate) use self::Enzyme_AD::*;
 
 pub(crate) mod Enzyme_AD {
     use std::ffi::{c_char, c_void};
+    use std::path::PathBuf;
     use std::sync::{Mutex, MutexGuard, OnceLock};
 
     use rustc_session::config::{Sysroot, host_tuple};
@@ -103,7 +118,8 @@ pub(crate) mod Enzyme_AD {
     type EnzymeSetCLStringFn = unsafe extern "C" fn(*mut c_void, *const c_char);
 
     type EnzymeNewTypeTreeFn = unsafe extern "C" fn() -> CTypeTreeRef;
-    type EnzymeNewTypeTreeCTFn = unsafe extern "C" fn(CConcreteType, &Context) -> CTypeTreeRef;
+    type EnzymeNewTypeTreeCTFn =
+        for<'ll> unsafe extern "C" fn(CConcreteType, Context<'ll>) -> CTypeTreeRef;
     type EnzymeNewTypeTreeTRFn = unsafe extern "C" fn(CTypeTreeRef) -> CTypeTreeRef;
     type EnzymeFreeTypeTreeFn = unsafe extern "C" fn(CTypeTreeRef);
     type EnzymeMergeTypeTreeFn = unsafe extern "C" fn(CTypeTreeRef, CTypeTreeRef) -> bool;
@@ -112,7 +128,7 @@ pub(crate) mod Enzyme_AD {
     type EnzymeTypeTreeShiftIndiciesEqFn =
         unsafe extern "C" fn(CTypeTreeRef, *const c_char, i64, i64, u64);
     type EnzymeTypeTreeInsertEqFn =
-        unsafe extern "C" fn(CTypeTreeRef, *const i64, usize, CConcreteType, &Context);
+        for<'ll> unsafe extern "C" fn(CTypeTreeRef, *const i64, usize, CConcreteType, Context<'ll>);
     type EnzymeTypeTreeToStringFn = unsafe extern "C" fn(CTypeTreeRef) -> *const c_char;
     type EnzymeTypeTreeToStringFreeFn = unsafe extern "C" fn(*const c_char);
 
@@ -231,10 +247,10 @@ pub(crate) mod Enzyme_AD {
             unsafe { (self.EnzymeNewTypeTree)() }
         }
 
-        pub(crate) fn new_type_tree_ct(
+        pub(crate) fn new_type_tree_ct<'ll>(
             &self,
             t: CConcreteType,
-            ctx: &Context,
+            ctx: Context<'ll>,
         ) -> *mut EnzymeTypeTree {
             unsafe { (self.EnzymeNewTypeTreeCT)(t, ctx) }
         }
@@ -278,13 +294,13 @@ pub(crate) mod Enzyme_AD {
             }
         }
 
-        pub(crate) fn tree_insert_eq(
+        pub(crate) fn tree_insert_eq<'ll>(
             &self,
             tree: CTypeTreeRef,
             indices: *const i64,
             len: usize,
             ct: CConcreteType,
-            ctx: &Context,
+            ctx: Context<'ll>,
         ) {
             unsafe { (self.EnzymeTypeTreeInsertEq)(tree, indices, len, ct, ctx) }
         }
@@ -328,10 +344,7 @@ pub(crate) mod Enzyme_AD {
             let c_fun_name = std::ffi::CString::new(fun_name)
                 .unwrap_or_else(|err| bug!("failed to set_print_type_fun: {err}"));
             unsafe {
-                (self.EnzymeSetCLString)(
-                    self.EnzymeFunctionToAnalyze,
-                    c_fun_name.as_ptr() as *const c_char,
-                );
+                (self.EnzymeSetCLString)(self.EnzymeFunctionToAnalyze, c_fun_name.as_ptr());
             }
         }
 
@@ -433,38 +446,36 @@ pub(crate) mod Enzyme_AD {
             })
         }
 
-        fn get_enzyme_path(sysroot: &Sysroot) -> Result<String, EnzymeLibraryError> {
+        fn get_enzyme_path(sysroot: &Sysroot) -> Result<PathBuf, EnzymeLibraryError> {
             let llvm_version_major = llvm::LLVMRustVersionMajor();
+            let mut searched = Vec::new();
 
-            let path_buf = sysroot
-                .all_paths()
-                .map(|sysroot_path| {
-                    filesearch::make_target_lib_path(sysroot_path, host_tuple())
-                        .join("lib")
-                        .with_file_name(format!("libEnzyme-{llvm_version_major}"))
-                        .with_extension(std::env::consts::DLL_EXTENSION)
-                })
-                .find(|f| f.exists())
-                .ok_or_else(|| {
-                    let candidates = sysroot
-                        .all_paths()
-                        .map(|p| p.join("lib").display().to_string())
-                        .collect::<Vec<String>>()
-                        .join("\n* ");
-                    EnzymeLibraryError::NotFound {
-                        err: format!(
-                            "failed to find a `libEnzyme-{llvm_version_major}` folder \
-                    in the sysroot candidates:\n* {candidates}"
-                        ),
-                    }
-                })?;
+            for p in sysroot.all_paths() {
+                let libdir = filesearch::make_target_lib_path(p, host_tuple());
 
-            Ok(path_buf
-                .to_str()
-                .ok_or_else(|| EnzymeLibraryError::LoadFailed {
-                    err: format!("invalid UTF-8 in path: {}", path_buf.display()),
-                })?
-                .to_string())
+                let enzyme_path = libdir
+                    .join(format!("libEnzyme-{llvm_version_major}"))
+                    .with_extension(std::env::consts::DLL_EXTENSION);
+
+                if enzyme_path.exists() {
+                    return Ok(enzyme_path);
+                }
+
+                searched.push(libdir);
+            }
+
+            Err(EnzymeLibraryError::NotFound {
+                err: format!(
+                    "failed to find a `libEnzyme-{llvm_version_major}.{}` \
+                    in the sysroot candidates:\n* {}",
+                    std::env::consts::DLL_EXTENSION,
+                    searched
+                        .iter()
+                        .map(|p| p.display().to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n* ")
+                ),
+            })
         }
     }
 }
@@ -476,7 +487,7 @@ impl TypeTree {
         TypeTree { inner }
     }
 
-    pub(crate) fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+    pub(crate) fn from_type<'ll>(t: CConcreteType, ctx: Context<'ll>) -> TypeTree {
         let wrapper = EnzymeWrapper::get_instance();
         let inner = wrapper.new_type_tree_ct(t, ctx);
         TypeTree { inner }
@@ -510,7 +521,7 @@ impl TypeTree {
         self
     }
 
-    pub(crate) fn insert(&mut self, indices: &[i64], ct: CConcreteType, ctx: &Context) {
+    pub(crate) fn insert<'ll>(&mut self, indices: &[i64], ct: CConcreteType, ctx: Context<'ll>) {
         let wrapper = EnzymeWrapper::get_instance();
         wrapper.tree_insert_eq(self.inner, indices.as_ptr(), indices.len(), ct, ctx);
     }

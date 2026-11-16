@@ -1,0 +1,26 @@
+// Regression test for issue #105227.
+
+//@ run-rustfix
+
+#![allow(unused)]
+
+fn chars0<'a, 'b>(v :(&'a  str, &'b str)) -> impl Iterator<Item = char> + use<'a, 'b> {
+    //~^ HELP add `use<...>` bound and name the elided lifetimes to explicitly capture them
+    v.0.chars().chain(v.1.chars())
+    //~^ ERROR hidden type for `impl Iterator<Item = char>` captures lifetime that does not appear in bounds
+}
+
+fn chars1<'a, 'b>(v0 : &'a  str, v1 : &'b str) -> impl Iterator<Item = char> + use<'a, 'b> {
+    //~^ HELP add `use<...>` bound and name the elided lifetimes to explicitly capture them
+    v0.chars().chain(v1.chars())
+    //~^ ERROR hidden type for `impl Iterator<Item = char>` captures lifetime that does not appear in bound
+}
+
+fn chars2<'a, 'c, 'b>(v0 : &'a str, v1 : &'c str, v2 : &'b str) -> (impl Iterator<Item = char> + use<'a, 'c>, &'b str) {
+    //~^ HELP add `use<...>` bound and name the elided lifetimes to explicitly capture them
+    (v0.chars().chain(v1.chars()), v2)
+    //~^ ERROR hidden type for `impl Iterator<Item = char>` captures lifetime that does not appear in bound
+}
+
+fn main() {
+}

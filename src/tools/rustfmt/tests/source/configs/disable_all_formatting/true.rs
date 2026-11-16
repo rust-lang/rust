@@ -1,4 +1,4 @@
-// rustfmt-disable_all_formatting: true
+//@ rustfmt-disable_all_formatting: true
 // Disable all formatting
 
 fn main() {

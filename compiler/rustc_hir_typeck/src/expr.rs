@@ -5,9 +5,13 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
+use std::borrow::Cow;
+
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::find_attr;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
@@ -17,17 +21,17 @@ use rustc_errors::{
     struct_span_code_err,
 };
 use rustc_hir as hir;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
+use rustc_infer::infer::{self, RegionVariableOrigin};
+use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, AdtKind, ConstKind, GenericArgs, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
@@ -41,10 +45,11 @@ use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
-    BaseExpressionDoubleDotRemove, CantDereference, ExprParenthesesNeeded,
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
-    NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody,
-    StructExprNonExhaustive, TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    BaseExpressionDoubleDotRemove, CantDereference, DelegationInvalidAdtForReturnWrapping,
+    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind,
+    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
+    YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -55,7 +60,10 @@ use crate::{
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
         let has_attr = |id: HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(hir::Attribute::is_prefix_attr_for_suggestions)
+            self.tcx
+                .hir_attrs(id)
+                .iter()
+                .any(rustc_attr_ir::Attribute::is_prefix_attr_for_suggestions)
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,
@@ -278,7 +286,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ExprKind::If(..)
             | ExprKind::Let(..)
             | ExprKind::Loop(..)
-            | ExprKind::Match(..) => {}
+            | ExprKind::Match(..)
+            | ExprKind::Become(..) => {}
             // Do not warn on `as` casts from never to any,
             // they are sometimes required to appeal typeck.
             ExprKind::Cast(_, _) => {}
@@ -420,33 +429,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        // Resolve what we can for `Not` and `Neg`, but allow later constraints
+        // to determine an unresolved operand type,
+        // so we call `deeply_resolve_ignoring_regions_with_obligations` for them.
         match unop {
-            hir::UnOp::Deref => self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
-                let mut err =
-                    self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
-                let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
-                if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
-                    err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
-                }
-                // The operand may be an uncalled function, in which case it is its return type
-                // the user meant to dereference. Only suggest the call when that return type is
-                // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
-                self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
-                    output.builtin_deref(true).is_some()
-                        || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
-                            self.type_implements_trait(deref_trait, [output], self.param_env)
-                                .may_apply()
-                        })
-                });
-                Ty::new_error(tcx, err.emit())
-            }),
+            hir::UnOp::Deref => {
+                // Dereferencing must distinguish builtin pointers from
+                // overloaded `Deref`, so it still requires a structurally resolved type.
+                //
+                // This is necessary as raw pointers do not implement `Deref`.
+                let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+                self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
+                    let mut err =
+                        self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
+                    let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
+                    if let Some(sp) =
+                        tcx.sess.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp)
+                    {
+                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                    }
+                    // The operand may be an uncalled function, in which case it is its return type
+                    // the user meant to dereference. Only suggest the call when that return type is
+                    // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
+                    self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
+                        output.builtin_deref(true).is_some()
+                            || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
+                                self.type_implements_trait(deref_trait, [output], self.param_env)
+                                    .may_apply()
+                            })
+                    });
+                    Ty::new_error(tcx, err.emit_err())
+                })
+            }
             hir::UnOp::Not => {
+                let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
+                let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_numeric() { oprnd_t } else { result }
@@ -617,6 +639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                     expr.span,
                     expr.hir_id,
+                    call_expr_and_args.map(|(_, args)| args),
                 )
                 .0
             }
@@ -691,14 +714,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.require_type_is_sized_deferred(
                 output,
                 call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
-                ObligationCauseCode::SizedCallReturnType,
+                ObligationCauseCode::SizedCallReturnType(expr.hir_id),
             );
         }
 
         // We always require that the type provided as the value for
         // a type parameter outlives the moment of instantiation.
         let args = self.typeck_results.borrow().node_args(expr.hir_id);
-        self.add_wf_bounds(args, expr.span);
+        self.add_wf_bounds(args, expr.span, expr.hir_id);
 
         ty
     }
@@ -1398,7 +1421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the assignment expression itself is ill-formed, don't
         // bother emitting another error
-        err.emit_unless_delay(lhs_ty.references_error() || rhs_ty.references_error())
+        err.emit_err_unless_delay(lhs_ty.references_error() || rhs_ty.references_error())
     }
 
     pub(super) fn check_expr_let(
@@ -1487,14 +1510,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Handle splatted method arguments
                 // self is already handled as `rcvr`, so it's never splatted here
-                let method_inputs = &method.sig.inputs()[1..];
+                let mut method_inputs = Cow::Borrowed(&method.sig.inputs()[1..]);
+                for (param, pos) in self.tcx.generics_of(method.def_id).own_arg_pos_consts() {
+                    let ty = self
+                        .tcx
+                        .type_of(param.def_id)
+                        .instantiate(self.tcx, method.args)
+                        .skip_norm_wip();
+
+                    // Insert function argument const param types back into the inputs.
+                    // We use pos - 1 since method_inputs skips self, but arg_pos counts it.
+                    method_inputs.to_mut().insert(
+                        pos.checked_sub(1).expect("pos should always be greater than 0") as usize,
+                        ty,
+                    );
+                }
+
                 let method_tuple_args_flag =
                     TupleArgumentsFlag::with_fn_sig_kind(method.sig.fn_sig_kind, true);
 
                 self.check_argument_types(
                     segment.ident.span,
                     expr,
-                    method_inputs,
+                    &method_inputs,
                     method.sig.output(),
                     expected,
                     args,
@@ -1524,7 +1562,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false,
                     TupleArgumentsFlag::DontTupleArguments,
                     SplatLoweringInfo::Error(guar),
-                    Some(GenericArgsRef::default()),
+                    Some(GenericArgs::default()),
                 );
 
                 err_ty
@@ -1618,7 +1656,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ),
                             )
                             .with_note("unsafe binders are the only valid output of wrap")
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 };
@@ -1656,7 +1694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ),
                             )
                             .with_note("only an unsafe binder type can be unwrapped")
-                            .emit();
+                            .emit_err();
                         Ty::new_error(self.tcx, guar)
                     }
                 }
@@ -1700,32 +1738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.next_ty_var(expr.span)
         };
         let array_len = args.len() as u64;
-        self.suggest_array_len(expr, array_len);
         Ty::new_array(self.tcx, element_ty, array_len)
-    }
-
-    fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
-        let parent_node = self.tcx.hir_parent_iter(expr.hir_id).find(|(_, node)| {
-            !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
-        });
-        let Some((_, hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }))) = parent_node else {
-            return;
-        };
-        if let hir::TyKind::Array(_, ct) = ty.peel_refs().kind {
-            let span = ct.span;
-            self.dcx().try_steal_modify_and_emit_err(
-                span,
-                StashKey::UnderscoreForArrayLengths,
-                |err| {
-                    err.span_suggestion(
-                        span,
-                        "consider specifying the array length",
-                        array_len,
-                        Applicability::MaybeIncorrect,
-                    );
-                },
-            );
-        }
     }
 
     pub(super) fn check_expr_const_block(
@@ -1762,14 +1775,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
         );
 
-        if let Some(count) = count.try_to_target_usize(tcx) {
-            self.suggest_array_len(expr, count);
-        }
-
         let uty = match expected {
             ExpectHasType(uty) => uty.builtin_index(),
             _ => None,
         };
+
+        let old_diverges = self.diverges.get();
 
         let (element_ty, t) = match uty {
             Some(uty) => {
@@ -1783,6 +1794,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
+        // FIXME: remove this workaround for an unsoundness (#165323) once it's no longer needed.
+        //
+        // MIR building lowers `[CONST; 0]` to `[]`, making `CONST` not evaluated.
+        //
+        // This is a problem, because it means if `CONST` is `const { panic!() }`, the side effect
+        // of panic / failing compilation never happens. In such cases we need to ignore divergence
+        // from the `CONST`, as otherwise we can end up executing code that was assumed unreachable.
+        let count_is_zero = match count.kind() {
+            // This is the exact check that mir building does
+            ConstKind::Value(v) => v.try_to_target_usize(tcx) == Some(0),
+
+            // An infer const can get inferred to 0.
+            //
+            // We could check the expectation here to do ad-hoc inference, but that feels quite
+            // error prone and annoying.
+            ConstKind::Infer(_) => true,
+
+            // While const generic params can be substituted with 0, mir building specifically
+            // checks for value 0 before monomorphization, so they (alongside aliases, etc) cannot
+            // trigger the bug.
+            ConstKind::Param(_)
+            | ConstKind::Placeholder(_)
+            | ConstKind::Alias(..)
+            | ConstKind::Error(_)
+            | ConstKind::Expr(_) => false,
+
+            ConstKind::Bound(..) => bug!(),
+        };
+
+        if count_is_zero && element.is_constant_for_zero_repeat() {
+            self.diverges.set(old_diverges);
+        }
+
         if let Err(guar) = element_ty.error_reported() {
             return Ty::new_error(tcx, guar);
         }
@@ -1793,7 +1837,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
-        self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
+        self.register_wf_obligation(
+            ty.into(),
+            expr.span,
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(expr.hir_id)),
+        );
         ty
     }
 
@@ -1903,10 +1951,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let adt_kind = adt.adt_kind();
 
+        let get_field_ident = |field: &ty::FieldDef| field.ident(tcx).normalize_to_macros_2_0();
         let mut remaining_fields = variant
             .fields
             .iter_enumerated()
-            .map(|(i, field)| (field.ident(tcx).normalize_to_macros_2_0(), (i, field)))
+            .map(|(i, field)| (get_field_ident(field), (i, field)))
             .collect::<UnordMap<_, _>>();
 
         let mut seen_fields = FxHashMap::default();
@@ -1924,40 +1973,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check each field.
         for (idx, field) in hir_fields.iter().enumerate() {
-            let ident = tcx.adjust_ident(field.ident, variant.def_id);
-            let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
-                seen_fields.insert(ident, field.span);
-                self.write_field_index(field.hir_id, i);
-
-                // We don't look at stability attributes on
-                // struct-like enums (yet...), but it's definitely not
-                // a bug to have constructed one.
-                if adt_kind != AdtKind::Enum {
-                    tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
-                }
-
-                self.field_ty(field.span, v_field, args)
-            } else {
-                error_happened = true;
-                let guar = if let Some(prev_span) = seen_fields.get(&ident) {
-                    self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
-                        span: field.ident.span,
-                        prev_span: *prev_span,
-                        ident,
-                    })
+            let ident = if field.ident.name == kw::Underscore {
+                // We are processing delegation `Self` mapping field, we expect that it is a struct
+                // with one field, so if it is not true we emit an error as we can't infer
+                // what field to use to initialize the struct.
+                // The `_` is a keyword so if user uses it during struct initialization as a field name
+                // it will be error anyway.
+                if let [v_field] = &variant.fields[..] {
+                    Ok(get_field_ident(v_field))
                 } else {
-                    self.report_unknown_field(
-                        adt_ty,
-                        variant,
-                        expr,
-                        field,
-                        hir_fields,
-                        adt.variant_descr(),
-                    )
-                };
-
-                Ty::new_error(tcx, guar)
+                    Err(tcx.dcx().emit_err(DelegationInvalidAdtForReturnWrapping {
+                        span: tcx.def_span(self.body_def_id),
+                        adt_name: tcx.def_path_str(adt.did()),
+                    }))
+                }
+            } else {
+                Ok(tcx.adjust_ident(field.ident, variant.def_id))
             };
+
+            let field_type = ident
+                .and_then(|ident| {
+                    if let Some((i, v_field)) = remaining_fields.remove(&ident) {
+                        seen_fields.insert(ident, field.span);
+                        self.write_field_index(field.hir_id, i);
+
+                        // We don't look at stability attributes on
+                        // struct-like enums (yet...), but it's definitely not
+                        // a bug to have constructed one.
+                        if adt_kind != AdtKind::Enum {
+                            tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
+                        }
+
+                        Ok(self.field_ty(field.span, v_field, *args))
+                    } else {
+                        error_happened = true;
+                        let guar = if let Some(prev_span) = seen_fields.get(&ident) {
+                            self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
+                                span: field.ident.span,
+                                prev_span: *prev_span,
+                                ident,
+                            })
+                        } else {
+                            self.report_unknown_field(
+                                adt_ty,
+                                variant,
+                                expr,
+                                field,
+                                hir_fields,
+                                adt.variant_descr(),
+                            )
+                        };
+
+                        Err(guar)
+                    }
+                })
+                .unwrap_or_else(|err| Ty::new_error(tcx, err));
 
             // Check that the expected field type is WF. Otherwise, we emit no use-site error
             // in the case of coercions for non-WF fields, which leads to incorrect error
@@ -1965,7 +2035,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 field_type.into(),
                 field.expr.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(field.expr.hir_id)),
             );
 
             // Make sure to give a type to the field even if there's
@@ -1976,7 +2046,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Err(diag) = diag {
                 if idx == hir_fields.len() - 1 {
                     if remaining_fields.is_empty() {
-                        self.suggest_fru_from_range_and_emit(field, variant, args, diag);
+                        self.suggest_fru_from_range_and_emit(field, variant, *args, diag);
                     } else {
                         diag.stash(field.span, StashKey::MaybeFruTypo);
                     }
@@ -2021,7 +2091,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                if !self.tcx.features().default_field_values() {
+                if !self.tcx.features().default_field_values()
+                    && !span.allows_unstable(sym::default_field_values)
+                {
                     let sugg = self.tcx.crate_level_attribute_injection_span();
                     self.dcx().emit_err(BaseExpressionDoubleDot {
                         span: span.shrink_to_hi(),
@@ -2082,12 +2154,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Adt(adt, args) if adt.is_struct() => variant
                         .fields
                         .iter()
-                        .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                        .map(|f| self.normalize(span, f.ty(self.tcx, *args)))
                         .collect(),
                     ty::Adt(adt, args) if adt.is_enum() => variant
                         .fields
                         .iter()
-                        .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                        .map(|f| self.normalize(span, f.ty(self.tcx, *args)))
                         .collect(),
                     _ => {
                         self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct { span });
@@ -2122,29 +2194,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let ident =
                                     self.tcx.adjust_ident(f.ident(self.tcx), variant.def_id);
                                 if let Some(_) = remaining_fields.remove(&ident) {
-                                    let target_ty = self.field_ty(base_expr.span, f, args);
+                                    let target_ty = self.field_ty(base_expr.span, f, *args);
                                     let cause = self.misc(base_expr.span);
-                                    match self.at(&cause, self.param_env).sup(
-                                        // We're already using inference variables for any params,
-                                        // and don't allow converting between different structs,
-                                        // so there is no way this ever actually defines an opaque
-                                        // type. Thus choosing `Yes` is fine.
-                                        DefineOpaqueTypes::Yes,
-                                        target_ty,
-                                        fru_ty,
-                                    ) {
-                                        Ok(InferOk { obligations, value: () }) => {
-                                            self.register_predicates(obligations)
-                                        }
-                                        Err(_) => {
-                                            span_bug!(
-                                                cause.span,
-                                                "subtyping remaining fields of type changing FRU \
-                                                failed: {target_ty} != {fru_ty}: {}::{}",
-                                                variant.name,
-                                                ident.name,
-                                            );
-                                        }
+                                    if let Err(diag) =
+                                        self.demand_suptype_diag(cause.span, target_ty, fru_ty)
+                                    {
+                                        diag.delay_as_bug();
                                     }
                                 }
                                 self.deeply_resolve_ignoring_regions(fru_ty)
@@ -2202,7 +2257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::Adt(adt, args) if adt.is_struct() => variant
                             .fields
                             .iter()
-                            .map(|f| self.normalize(expr.span, f.ty(self.tcx, args)))
+                            .map(|f| self.normalize(expr.span, f.ty(self.tcx, *args)))
                             .collect(),
                         _ => {
                             self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct {
@@ -2240,9 +2295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let private_fields: Vec<&ty::FieldDef> = variant
                         .fields
                         .iter()
-                        .filter(|field| {
-                            !field.vis.is_accessible_from(tcx.parent_module(expr.hir_id), tcx)
-                        })
+                        .filter(|field| !field.vis.is_accessible_from(self.mod_id, tcx))
                         .collect();
 
                     if !private_fields.is_empty() {
@@ -2261,7 +2314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             remaining_fields,
                             variant,
                             hir_fields,
-                            args,
+                            *args,
                         );
                     }
                 }
@@ -2301,7 +2354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         remaining_fields: UnordMap<Ident, (FieldIdx, &ty::FieldDef)>,
         variant: &'tcx ty::VariantDef,
         hir_fields: &'tcx [hir::ExprField<'tcx>],
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) {
         let len = remaining_fields.len();
 
@@ -2378,7 +2431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         last_expr_field: &hir::ExprField<'tcx>,
         variant: &ty::VariantDef,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         mut err: Diag<'_>,
     ) {
         if is_range_literal(last_expr_field.expr)
@@ -2606,6 +2659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match variant.ctor {
             Some((CtorKind::Fn, def_id)) => match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => {
+                    err.span_context(self.tcx.def_span(adt.did()).shrink_to_lo());
                     err.span_label(
                         variant_ident_span,
                         format!(
@@ -2700,7 +2754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn available_field_names(
@@ -2714,7 +2768,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .filter(|field| {
                 skip_fields.iter().all(|&skip| skip.ident.name != field.name)
-                    && self.is_field_suggestable(field, expr.hir_id, expr.span)
+                    && self.is_field_suggestable(field, expr.span)
             })
             .map(|field| field.name)
             .collect()
@@ -2790,11 +2844,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Ty::new_error(self.tcx(), guar);
                     }
 
-                    let (ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
-                        field,
-                        base_def.did(),
-                        self.body_def_id,
-                    );
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
 
                     if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
                         self.write_field_index(expr.hir_id, idx);
@@ -2805,7 +2856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.register_predicates(autoderef.into_obligations());
 
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                            return self.field_ty(expr.span, field, args);
+                            return self.field_ty(expr.span, field, *args);
                         }
 
                         // The field is not accessible, fall through to error reporting.
@@ -2933,7 +2984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
             }
-            err.emit()
+            err.emit_err()
         };
 
         Ty::new_error(self.tcx(), guar)
@@ -3044,7 +3095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             HelpUseLatestEdition::new().add_to_diag(&mut err);
         }
 
-        err.emit()
+        err.emit_err()
     }
 
     fn ban_private_field_access(
@@ -3070,7 +3121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None,
             );
         }
-        err.emit()
+        err.emit_err()
     }
 
     fn ban_take_value_of_method(
@@ -3251,7 +3302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
 
                         let ty_str = match base_ty.peel_refs().kind() {
-                            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
+                            ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), *args),
                             _ => base_ty.peel_refs().to_string(),
                         };
                         err.multipart_suggestion(
@@ -3269,7 +3320,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
-        let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
         let (ty, unwrap) = if let ty::Adt(def, args) = base_ty.kind()
             && (self.tcx.is_diagnostic_item(sym::Result, def.did())
                 || self.tcx.is_diagnostic_item(sym::Option, def.did()))
@@ -3280,9 +3330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             (base_ty, "")
         };
-        for found_fields in
-            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, expr.hir_id)
-        {
+        for found_fields in self.get_field_candidates_considering_privacy_for_diag(span, ty) {
             let field_names = found_fields.iter().map(|field| field.0.name).collect::<Vec<_>>();
             let mut candidate_fields: Vec<_> = found_fields
                 .into_iter()
@@ -3292,8 +3340,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &|candidate_field, _| candidate_field == field,
                         candidate_field,
                         vec![],
-                        mod_id,
-                        expr.hir_id,
                     )
                 })
                 .map(|mut field_path| {
@@ -3306,7 +3352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let len = candidate_fields.len();
             // Don't suggest `.field` if the base expr is from a different
             // syntax context than the field.
-            if len > 0 && expr.span.eq_ctxt(field.span) {
+            if len > 0 && expr.span.ctxt() == field.span.ctxt() {
                 err.span_suggestions(
                     field.span.shrink_to_lo(),
                     format!(
@@ -3354,8 +3400,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
-        mod_id: DefId,
-        hir_id: HirId,
     ) -> Vec<Vec<(Ident, Ty<'tcx>)>> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
@@ -3379,22 +3423,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Some struct, e.g. some that impl `Deref`, have all private fields
                         // because you're expected to deref them to access the _real_ fields.
                         // This, for example, will help us suggest accessing a field through a `Box<T>`.
-                        if fields.iter().all(|field| !field.vis.is_accessible_from(mod_id, tcx)) {
+                        if fields
+                            .iter()
+                            .all(|field| !field.vis.is_accessible_from(self.mod_id, tcx))
+                        {
                             return None;
                         }
                         return Some(
                             fields
                                 .iter()
                                 .filter(move |field| {
-                                    field.vis.is_accessible_from(mod_id, tcx)
-                                        && self.is_field_suggestable(field, hir_id, span)
+                                    field.vis.is_accessible_from(self.mod_id, tcx)
+                                        && self.is_field_suggestable(field, span)
                                 })
                                 // For compile-time reasons put a limit on number of fields we search
                                 .take(100)
                                 .map(|field_def| {
                                     (
                                         field_def.ident(self.tcx).normalize_to_macros_2_0(),
-                                        field_def.ty(self.tcx, args).skip_norm_wip(),
+                                        field_def.ty(self.tcx, *args).skip_norm_wip(),
                                     )
                                 })
                                 .collect::<Vec<_>>(),
@@ -3419,15 +3466,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This method is called after we have encountered a missing field error to recursively
     /// search for the field
-    #[instrument(skip(self, matches, mod_id, hir_id), level = "debug")]
+    #[instrument(skip(self, matches), level = "debug")]
     pub(crate) fn check_for_nested_field_satisfying_condition_for_diag(
         &self,
         span: Span,
         matches: &impl Fn(Ident, Ty<'tcx>) -> bool,
         (candidate_name, candidate_ty): (Ident, Ty<'tcx>),
         mut field_path: Vec<Ident>,
-        mod_id: DefId,
-        hir_id: HirId,
     ) -> Option<Vec<Ident>> {
         if field_path.len() > 3 {
             // For compile-time reasons and to avoid infinite recursion we only check for fields
@@ -3438,12 +3483,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if matches(candidate_name, candidate_ty) {
             return Some(field_path);
         }
-        for nested_fields in self.get_field_candidates_considering_privacy_for_diag(
-            span,
-            candidate_ty,
-            mod_id,
-            hir_id,
-        ) {
+        for nested_fields in
+            self.get_field_candidates_considering_privacy_for_diag(span, candidate_ty)
+        {
             // recursively search fields of `candidate_field` if it's a ty::Adt
             for field in nested_fields {
                 if let Some(field_path) = self.check_for_nested_field_satisfying_condition_for_diag(
@@ -3451,8 +3493,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     matches,
                     field,
                     field_path.clone(),
-                    mod_id,
-                    hir_id,
                 ) {
                     return Some(field_path);
                 }
@@ -3538,8 +3578,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
 
-                    let reported = err.emit();
-                    Ty::new_error(self.tcx, reported)
+                    let guar = err.emit_err();
+                    Ty::new_error(self.tcx, guar)
                 }
             }
         }
@@ -3849,7 +3889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.dcx()
                             .create_err(NoVariantNamed { span: ident.span, ident, ty: container })
                             .with_span_label(field.span, "variant not found")
-                            .emit_unless_delay(container.references_error());
+                            .emit_err_unless_delay(container.references_error());
                         break;
                     };
                     let Some(&subfield) = fields.next() else {
@@ -3864,11 +3904,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .emit();
                         break;
                     };
-                    let (subident, sub_def_scope) = self.tcx.adjust_ident_and_get_scope(
-                        subfield,
-                        variant.def_id,
-                        self.body_def_id,
-                    );
+                    let (subident, sub_def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, self.mod_id);
 
                     let Some((subindex, field)) = variant
                         .fields
@@ -3884,11 +3921,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 enum_span: field.span,
                                 field_span: subident.span,
                             })
-                            .emit_unless_delay(container.references_error());
+                            .emit_err_unless_delay(container.references_error());
                         break;
                     };
 
-                    let field_ty = self.field_ty(expr.span, field, args);
+                    let field_ty = self.field_ty(expr.span, field, *args);
 
                     // Enums are anyway always sized. But just to safeguard against future
                     // language extensions, let's double-check.
@@ -3919,7 +3956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                         field,
                         container_def.did(),
-                        self.body_def_id,
+                        self.mod_id,
                     );
 
                     let fields = &container_def.non_enum_variant().fields;
@@ -3927,7 +3964,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     {
-                        let field_ty = self.field_ty(expr.span, field, args);
+                        let field_ty = self.field_ty(expr.span, field, *args);
 
                         if self.tcx.features().offset_of_slice() {
                             self.require_type_has_static_alignment(field_ty, expr.span);
@@ -3935,7 +3972,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.require_type_is_sized(
                                 field_ty,
                                 expr.span,
-                                ObligationCauseCode::Misc,
+                                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(expr.hir_id)),
                             );
                         }
 
@@ -3964,7 +4001,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 self.require_type_is_sized(
                                     field_ty,
                                     expr.span,
-                                    ObligationCauseCode::Misc,
+                                    ObligationCauseCode::WellFormed(WellFormedLoc::HirId(
+                                        expr.hir_id,
+                                    )),
                                 );
                             }
 

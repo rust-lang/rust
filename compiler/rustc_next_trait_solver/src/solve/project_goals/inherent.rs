@@ -45,7 +45,7 @@ where
         let normalized: I::Term = match inherent_kind {
             ty::AliasTermKind::InherentTy { def_id } => {
                 let inherent = cx.type_of(def_id.into()).instantiate(cx, inherent_args);
-                let inherent = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
+                let inherent = self.normalize(goal.param_env, inherent)?;
                 inherent.into()
             }
             ty::AliasTermKind::InherentConstImpl { def_id }
@@ -53,7 +53,7 @@ where
                     cx.const_of_item(ty::AliasConstKind::InherentImpl { def_id }) =>
             {
                 let inherent = inherent.instantiate(cx, inherent_args);
-                let normalized_ct = self.normalize(GoalSource::Misc, goal.param_env, inherent)?;
+                let normalized_ct = self.normalize(goal.param_env, inherent)?;
                 let normalized = normalized_ct.into();
                 let term = ty::AliasTerm::new_from_args(cx, inherent_kind, inherent_args);
                 self.push_const_arg_has_type_goal(goal.param_env, term, normalized)?;
@@ -64,7 +64,7 @@ where
                 // NOTE: we intentionally pass in the `InherentConstImpl` form as the term to
                 // instantiate to upon too-generic CTFE failure, as we ought to consistently compare
                 // identities via `InherentConstImpl` rather than `InherentConstSelf`.
-                return self.evaluate_const_and_instantiate_projection_term(
+                return self.evaluate_const(
                     goal.param_env,
                     term,
                     goal.predicate.term,

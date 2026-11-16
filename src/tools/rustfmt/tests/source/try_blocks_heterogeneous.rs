@@ -1,4 +1,4 @@
-// rustfmt-edition: 2018
+//@ rustfmt-edition: 2018
 #![feature(try_blocks_heterogeneous)]
 
 fn main() -> Result<(), !> {

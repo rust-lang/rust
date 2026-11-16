@@ -19,6 +19,8 @@ declare_clippy_lint! {
     /// This lint intentionally does not handle numbers greater than `i128::MAX` for `u128` literals
     /// in order to support negative numbers.
     ///
+    /// For char and byte literal, only `a-zA-Z0-9` is linted, as ranges like `'<'..='>'` is not intuitive.
+    ///
     /// ### Example
     /// ```no_run
     /// let x = 6;
@@ -38,11 +40,20 @@ declare_clippy_lint! {
 declare_lint_pass!(ManualRangePatterns => [MANUAL_RANGE_PATTERNS]);
 
 fn expr_as_i128(expr: &PatExpr<'_>) -> Option<i128> {
-    if let PatExprKind::Lit { lit, negated } = expr.kind
-        && let LitKind::Int(num, _) = lit.node
-    {
-        // Intentionally not handling numbers greater than i128::MAX (for u128 literals) for now.
-        let n = i128::try_from(num.get()).ok()?;
+    if let PatExprKind::Lit { lit, negated } = expr.kind {
+        let readable_in_range = |ch: char| {
+            // Reject non intuitive like `'<'..='>'`
+            matches!(ch, '0'..='9' | 'a'..='z' | 'A'..='Z')
+        };
+        let n = match lit.node {
+            LitKind::Int(num, _) => {
+                // Intentionally not handling numbers greater than i128::MAX (for u128 literals) for now.
+                i128::try_from(num.get()).ok()?
+            },
+            LitKind::Char(ch) if readable_in_range(ch) => ch as i128,
+            LitKind::Byte(it) if readable_in_range(it.into()) => i128::from(it),
+            _ => return None,
+        };
         Some(if negated { -n } else { n })
     } else {
         None

@@ -60,7 +60,8 @@ where
         | ty::Placeholder(..)
         | ty::Alias(ty::IsRigid::No, _)
         | ty::Bound(..)
-        | ty::Infer(_) => {
+        | ty::Infer(_)
+        | ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
             panic!("unexpected type `{ty:?}`")
         }
 
@@ -107,14 +108,8 @@ where
                 .collect(),
         )),
 
-        ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-            // We can resolve the `impl Trait` to its concrete type,
-            // which enforces a DAG between the functions requiring
-            // the auto trait bounds in question.
-            Ok(ty::Binder::dummy(vec![
-                cx.type_of(def_id.into()).instantiate(cx, args).skip_norm_wip(),
-            ]))
-        }
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -194,6 +189,9 @@ where
                 Ok(ty::Binder::dummy(vec![]))
             }
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -278,6 +276,9 @@ where
         | ty::Bound(..) => {
             panic!("unexpected type `{ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -418,6 +419,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Bound(..) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -448,6 +452,10 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
 ) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
     match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
+            if !cx.coroutine_is_async(cx.coroutine_for_closure(def_id)) {
+                return Err(NoSolution);
+            }
+
             let args = args.as_coroutine_closure();
             let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();
@@ -594,6 +602,9 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Bound(..) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -765,6 +776,9 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Bound(..) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -851,6 +865,9 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
             panic!("unexpected type `{self_ty:?}`")
         }
+
+        // FIXME(scrabsha)
+        ty::View(..) => unimplemented!(),
     }
 }
 
@@ -893,7 +910,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     param_env: I::ParamEnv,
     trait_ref: ty::TraitRef<I>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Result<Vec<Goal<I, I::Predicate>>, AmbiguousOrRerunNonErased>
+) -> Result<Vec<Goal<I, I::Predicate>>, NoUniqueSolutionOrRerunNonErased>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -939,7 +956,8 @@ where
             // show up in the bounds, but just ones that come from substituting
             // `Self` with the dyn type.
             let proj = proj.with_self_ty(cx, trait_ref.self_ty());
-            replace_projection_with.entry(proj.def_id()).or_default().push(bound.rebind(proj));
+            let bound = ecx.normalize(param_env, Unnormalized::new_wip(bound.rebind(proj)))?;
+            replace_projection_with.entry(proj.def_id()).or_default().push(bound);
         }
     }
 
@@ -996,13 +1014,14 @@ where
 
     /// Try to replace an alias with the term present in the projection bounds of the self type.
     /// Returns `Ok<None>` if this alias is not eligible to be replaced, or bail with
+    /// `Err(NoSolution)` if the alias is ill-formed or cannot be normalized, or bail with
     /// `Err(Ambiguous)` if it's uncertain which projection bound to replace the term with due
     /// to multiple bounds applying, or with `Err(RerunNonErased)` if we have to rerun the
     /// goal in original `TypingMode`.
     fn try_eagerly_replace_alias(
         &mut self,
         alias_term: ty::AliasTerm<I>,
-    ) -> Result<Option<I::Term>, AmbiguousOrRerunNonErased> {
+    ) -> Result<Option<I::Term>, NoUniqueSolutionOrRerunNonErased> {
         if alias_term.self_ty() != self.self_ty {
             return Ok(None);
         }
@@ -1010,6 +1029,12 @@ where
         let Some(replacements) = self.mapping.get(&alias_term.expect_projection_def_id()) else {
             return Ok(None);
         };
+
+        // We don't normalize this inside `predicates_for_object_candidates` but here
+        // because we structurally match the projection here with the bounds so we
+        // don't want the projection itself is replaced by infer var but only its
+        // args.
+        let alias_term = self.ecx.normalize(self.param_env, Unnormalized::new_wip(alias_term))?;
 
         // This is quite similar to the `projection_may_match` we use in unsizing,
         // but here we want to unify a projection predicate against an alias term
@@ -1022,7 +1047,7 @@ where
                     // If there's more than one projection that we can unify here, then we
                     // need to stall until inference constrains things so that there's only
                     // one choice.
-                    return Err(AmbiguousOrRerunNonErased::Ambiguous);
+                    return Err(NoUniqueSolutionOrRerunNonErased::Ambiguous);
                 }
                 matching_projection = Some(source_projection)
             }
@@ -1044,15 +1069,29 @@ where
     }
 }
 
-pub(crate) enum AmbiguousOrRerunNonErased {
+pub(crate) enum NoUniqueSolutionOrRerunNonErased {
     /// Marker for bailing with ambiguity.
     Ambiguous,
+    NoSolution(NoSolution),
     RerunNonErased(RerunNonErased),
 }
 
-impl From<RerunNonErased> for AmbiguousOrRerunNonErased {
+impl From<RerunNonErased> for NoUniqueSolutionOrRerunNonErased {
     fn from(rerun: RerunNonErased) -> Self {
-        AmbiguousOrRerunNonErased::RerunNonErased(rerun)
+        NoUniqueSolutionOrRerunNonErased::RerunNonErased(rerun)
+    }
+}
+
+impl From<NoSolutionOrRerunNonErased> for NoUniqueSolutionOrRerunNonErased {
+    fn from(value: NoSolutionOrRerunNonErased) -> Self {
+        match value {
+            NoSolutionOrRerunNonErased::NoSolution(no_solution) => {
+                NoUniqueSolutionOrRerunNonErased::NoSolution(no_solution)
+            }
+            NoSolutionOrRerunNonErased::RerunNonErased(rerun) => {
+                NoUniqueSolutionOrRerunNonErased::RerunNonErased(rerun)
+            }
+        }
     }
 }
 
@@ -1061,7 +1100,7 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    type Error = AmbiguousOrRerunNonErased;
+    type Error = NoUniqueSolutionOrRerunNonErased;
 
     fn cx(&self) -> I {
         self.ecx.cx()

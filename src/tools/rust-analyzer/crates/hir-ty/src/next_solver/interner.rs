@@ -12,8 +12,8 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, CallableDefId, EnumId, GenericParamId, HasModule, ItemContainerId, StructId, TraitId,
-    TypeAliasId, UnionId, VariantId,
+    AdtId, CallableDefId, EnumId, GenericDefId, GenericParamId, HasModule, ItemContainerId,
+    StructId, UnionId, VariantId,
     attrs::AttrFlags,
     expr_store::{ExpressionStore, StoreVisitor},
     hir::{ClosureKind as HirClosureKind, CoroutineKind as HirCoroutineKind, ExprId, PatId},
@@ -24,13 +24,11 @@ use hir_def::{
     },
 };
 use rustc_abi::ExternAbi;
-use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTy, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
     FnSigKind, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeFlags, TypeVisitableExt, Upcast, Variance, VisitorResult,
-    elaborate::elaborate,
+    TypeFlags, TypeVisitableExt, Variance, VisitorResult,
     error::TypeError,
     fast_reject,
     inherent::{self, Const as _, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
@@ -52,8 +50,8 @@ use crate::{
         ImplOrTraitAssocTyId, InherentAssocConstId, InherentAssocTermId, InherentAssocTyId,
         LateParamRegion, OpaqueTyIdWrapper, OpaqueTypeKey, RegionAssumptions, ScalarInt,
         SimplifiedType, SolverContext, SolverDefIds, TermId, TraitAssocConstId, TraitAssocTermId,
-        TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, Unnormalized,
-        util::{explicit_item_bounds, explicit_item_self_bounds},
+        TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst,
+        util::{ItemBounds, impl_super_outlives},
     },
 };
 
@@ -96,12 +94,24 @@ macro_rules! interned_slice {
 
             #[inline]
             pub fn new_from_slice(slice: &[$ty_db]) -> Self {
+                if slice.is_empty() {
+                    // Common case: avoid looking up the empty slice.
+                    Self::empty()
+                } else {
+                    Self::new_from_slice_no_empty_check(slice)
+                }
+            }
+
+            /// Same as [`Self::new_from_slice()`] but won't use the global empty slice `slice.is_empty()`, because someone
+            /// needs to intern the global slice as well.
+            #[inline]
+            pub(crate) fn new_from_slice_no_empty_check(slice: &[$ty_db]) -> Self {
                 let slice = unsafe { ::std::mem::transmute::<&[$ty_db], &[$ty_static]>(slice) };
                 Self { interned: ::intern::InternedSlice::from_header_and_slice((), slice) }
             }
 
             #[inline]
-            pub fn new_from_iter<I, T>(_interner: DbInterner<'db>, args: I) -> T::Output
+            pub fn new_from_iter<I, T>(args: I) -> T::Output
             where
                 I: IntoIterator<Item = T>,
                 T: ::rustc_type_ir::CollectAndApply<$ty_db, Self>,
@@ -247,13 +257,13 @@ macro_rules! impl_foldable_for_interned_slice {
                 self,
                 folder: &mut F,
             ) -> Result<Self, F::Error> {
-                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.try_fold_with(folder)))
+                Self::new_from_iter(self.iter().map(|it| it.try_fold_with(folder)))
             }
             fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
                 self,
                 folder: &mut F,
             ) -> Self {
-                Self::new_from_iter(folder.cx(), self.iter().map(|it| it.fold_with(folder)))
+                Self::new_from_iter(self.iter().map(|it| it.fold_with(folder)))
             }
         }
     };
@@ -340,7 +350,7 @@ pub trait WorldExposer {
 
 #[derive(Debug, Copy, Clone)]
 pub struct DbInterner<'db> {
-    pub(crate) db: &'db dyn HirDatabase,
+    pub db: &'db dyn HirDatabase,
     krate: Option<Crate>,
     lang_items: Option<&'db LangItems>,
 }
@@ -847,7 +857,6 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
                     return Err(TypeError::Mismatch);
                 }
                 let pats = PatList::new_from_iter(
-                    relation.cx(),
                     std::iter::zip(a.iter(), b.iter()).map(|(a, b)| relation.relate(a, b)),
                 )?;
                 Ok(Pattern::new(tcx, PatternKind::Or(pats)))
@@ -862,40 +871,6 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
 
 interned_slice!(PatListStorage, PatList, StoredPatList, pat_list, Pattern<'db>, Pattern<'static>);
 impl_foldable_for_interned_slice!(PatList);
-
-macro_rules! as_lang_item {
-    (
-        $solver_enum:ident, $self:ident, $def_id:expr, $id_ty:ty;
-
-        $( $variant:ident ),* $(,)?
-    ) => {{
-        let lang_items = $self.lang_items();
-        // Ensure exhaustiveness.
-        if let Some(it) = None::<$solver_enum> {
-            match it {
-                $( $solver_enum::$variant => {} )*
-            }
-        }
-        match $def_id {
-            $( def_id if let Some(it) = lang_items.$variant && <$id_ty>::from(it) == def_id => Some($solver_enum::$variant), )*
-            _ => None
-        }
-    }};
-}
-
-macro_rules! is_lang_item {
-    (
-        $solver_enum:ident, $self:ident, $def_id:expr, $expected_variant:ident;
-
-        $( $variant:ident ),* $(,)?
-    ) => {{
-        let lang_items = $self.lang_items();
-        let def_id = $def_id;
-        match $expected_variant {
-            $( $solver_enum::$variant => lang_items.$variant.is_some_and(|it| it == def_id), )*
-        }
-    }};
-}
 
 impl<'db> Interner for DbInterner<'db> {
     type DefId = SolverDefId<'db>;
@@ -1014,7 +989,7 @@ impl<'db> Interner for DbInterner<'db> {
         I: Iterator<Item = T>,
         T: rustc_type_ir::CollectAndApply<Self::GenericArg, Self::GenericArgs>,
     {
-        GenericArgs::new_from_iter(self, args)
+        GenericArgs::new_from_iter(args)
     }
 
     type UnsizingParams = UnsizingParams;
@@ -1053,7 +1028,8 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn assert_evaluation_is_concurrent(&self) {
-        panic!("evaluation shouldn't be concurrent yet")
+        // Turns out, the assumption for this function isn't perfect.
+        // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/234
     }
 
     fn expand_abstract_consts<T: rustc_type_ir::TypeFoldable<Self>>(self, _: T) -> T {
@@ -1075,7 +1051,6 @@ impl<'db> Interner for DbInterner<'db> {
                 // We compute them based on the only `Ty` level info in rustc,
                 // move `variances_of_opaque` into `rustc_next_trait_solver` for reuse.
                 return VariancesOf::new_from_iter(
-                    self,
                     (0..self.generics_of(def_id).count()).map(|_| Variance::Invariant),
                 );
             }
@@ -1161,12 +1136,9 @@ impl<'db> Interner for DbInterner<'db> {
         def_id: Self::TraitAssocTermId,
         args: Self::GenericArgs,
     ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
-        let trait_def_id = self.projection_parent(def_id).0;
-        let trait_generics = crate::generics::generics(self.db, trait_def_id.into());
-        let trait_generics_len = trait_generics.len(true);
-        let trait_args = GenericArgs::new_from_slice(&args.as_slice()[..trait_generics_len]);
-        let alias_args = &args.as_slice()[trait_generics_len..];
-        (TraitRef::new_from_args(self, trait_def_id.into(), trait_args), alias_args)
+        let trait_def_id = self.projection_parent(def_id);
+        let trait_ref = TraitRef::from_assoc(self, trait_def_id, args);
+        (trait_ref, &args.as_slice()[trait_ref.args.len()..])
     }
 
     fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool {
@@ -1196,7 +1168,7 @@ impl<'db> Interner for DbInterner<'db> {
         I: Iterator<Item = T>,
         T: rustc_type_ir::CollectAndApply<Self::Ty, Self::Tys>,
     {
-        Tys::new_from_iter(self, args)
+        Tys::new_from_iter(args)
     }
 
     fn projection_parent(self, def_id: Self::TraitAssocTermId) -> Self::TraitId {
@@ -1291,33 +1263,10 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool {
-        let sized_trait = self.lang_items().Sized;
-        let Some(sized_id) = sized_trait else {
-            return false; /* No Sized trait, can't require it! */
-        };
-        let sized_def_id = sized_id.into();
-
-        // Search for a predicate like `Self : Sized` amongst the trait bounds.
-        let predicates = self.predicates_of(def_id);
-        elaborate(self, predicates.iter_identity().map(Unnormalized::skip_norm_wip)).any(|pred| {
-            match pred.kind().skip_binder() {
-                ClauseKind::Trait(ref trait_pred) => {
-                    trait_pred.def_id() == sized_def_id
-                        && matches!(
-                            trait_pred.self_ty().kind(),
-                            TyKind::Param(ParamTy { index: 0, .. })
-                        )
-                }
-                ClauseKind::RegionOutlives(_)
-                | ClauseKind::TypeOutlives(_)
-                | ClauseKind::Projection(_)
-                | ClauseKind::ConstArgHasType(_, _)
-                | ClauseKind::WellFormed(_)
-                | ClauseKind::ConstEvaluatable(_)
-                | ClauseKind::HostEffect(..)
-                | ClauseKind::UnstableFeature(_) => false,
-            }
-        })
+        match GenericDefId::try_from(def_id) {
+            Ok(def_id) => crate::dyn_compatibility::generics_require_sized_self(self.db, def_id),
+            Err(_) => false,
+        }
     }
 
     #[tracing::instrument(skip(self))]
@@ -1325,7 +1274,7 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        explicit_item_bounds(self, def_id).map_bound(|bounds| elaborate(self, bounds))
+        ItemBounds::of_solver_def(self.db, def_id).all_bounds()
     }
 
     #[tracing::instrument(skip(self))]
@@ -1333,25 +1282,14 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        explicit_item_self_bounds(self, def_id)
-            .map_bound(|bounds| elaborate(self, bounds).filter_only_self())
+        ItemBounds::of_solver_def(self.db, def_id).self_bounds()
     }
 
     fn item_non_self_bounds(
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let all_bounds: FxHashSet<_> = self.item_bounds(def_id).skip_binder().into_iter().collect();
-        let own_bounds: FxHashSet<_> =
-            self.item_self_bounds(def_id).skip_binder().into_iter().collect();
-        if all_bounds.len() == own_bounds.len() {
-            EarlyBinder::bind(Clauses::empty())
-        } else {
-            EarlyBinder::bind(Clauses::new_from_iter(
-                self,
-                all_bounds.difference(&own_bounds).cloned(),
-            ))
-        }
+        ItemBounds::of_solver_def(self.db, def_id).non_self_bounds()
     }
 
     fn predicates_of(
@@ -1411,16 +1349,15 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let trait_ref = self.impl_trait_ref(impl_id);
-        trait_ref.map_bound(|trait_ref| {
-            let clause: Clause<'_> = trait_ref.upcast(self);
-            elaborate(self, [clause]).filter(|clause| {
-                matches!(
-                    clause.kind().skip_binder(),
-                    ClauseKind::TypeOutlives(_) | ClauseKind::RegionOutlives(_)
-                )
-            })
-        })
+        let bounds = match impl_id {
+            AnyImplId::ImplId(id) => {
+                impl_super_outlives(self.db, id).get().map_bound(|it| it.as_slice())
+            }
+            AnyImplId::BuiltinDeriveImplId(id) => {
+                crate::builtin_derive::impl_super_outlives(self, id)
+            }
+        };
+        bounds.map_bound(|it| it.iter().copied())
     }
 
     #[expect(unreachable_code)]
@@ -1442,66 +1379,24 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         lang_item: SolverProjectionLangItem,
     ) -> Self::TraitAssocTyId {
-        let lang_items = self.lang_items();
-        let lang_item = match lang_item {
-            SolverProjectionLangItem::AsyncFnKindUpvars => lang_items.AsyncFnKindUpvars,
-            SolverProjectionLangItem::AsyncFnOnceOutput => lang_items.AsyncFnOnceOutput,
-            SolverProjectionLangItem::CallOnceFuture => lang_items.CallOnceFuture,
-            SolverProjectionLangItem::CallRefFuture => lang_items.CallRefFuture,
-            SolverProjectionLangItem::CoroutineReturn => lang_items.CoroutineReturn,
-            SolverProjectionLangItem::CoroutineYield => lang_items.CoroutineYield,
-            SolverProjectionLangItem::FutureOutput => lang_items.FutureOutput,
-            SolverProjectionLangItem::Metadata => lang_items.Metadata,
-            SolverProjectionLangItem::FieldBase => lang_items.FieldBase,
-            SolverProjectionLangItem::FieldType => lang_items.FieldType,
-        };
-        lang_item.expect("Lang item required but not found.").into()
+        self.lang_items()
+            .get_solver_projection(lang_item)
+            .expect("Lang item required but not found.")
+            .into()
     }
 
     fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> TraitIdWrapper {
-        let lang_items = self.lang_items();
-        let lang_item = match lang_item {
-            SolverTraitLangItem::AsyncFn => lang_items.AsyncFn,
-            SolverTraitLangItem::AsyncFnKindHelper => lang_items.AsyncFnKindHelper,
-            SolverTraitLangItem::AsyncFnMut => lang_items.AsyncFnMut,
-            SolverTraitLangItem::AsyncFnOnce => lang_items.AsyncFnOnce,
-            SolverTraitLangItem::AsyncIterator => lang_items.AsyncIterator,
-            SolverTraitLangItem::Clone => lang_items.Clone,
-            SolverTraitLangItem::Copy => lang_items.Copy,
-            SolverTraitLangItem::Coroutine => lang_items.Coroutine,
-            SolverTraitLangItem::Destruct => lang_items.Destruct,
-            SolverTraitLangItem::DiscriminantKind => lang_items.DiscriminantKind,
-            SolverTraitLangItem::Drop => lang_items.Drop,
-            SolverTraitLangItem::Fn => lang_items.Fn,
-            SolverTraitLangItem::FnMut => lang_items.FnMut,
-            SolverTraitLangItem::FnOnce => lang_items.FnOnce,
-            SolverTraitLangItem::FnPtrTrait => lang_items.FnPtrTrait,
-            SolverTraitLangItem::FusedIterator => lang_items.FusedIterator,
-            SolverTraitLangItem::Future => lang_items.Future,
-            SolverTraitLangItem::Iterator => lang_items.Iterator,
-            SolverTraitLangItem::PointeeTrait => lang_items.PointeeTrait,
-            SolverTraitLangItem::Sized => lang_items.Sized,
-            SolverTraitLangItem::MetaSized => lang_items.MetaSized,
-            SolverTraitLangItem::PointeeSized => lang_items.PointeeSized,
-            SolverTraitLangItem::TransmuteTrait => lang_items.TransmuteTrait,
-            SolverTraitLangItem::Tuple => lang_items.Tuple,
-            SolverTraitLangItem::Unpin => lang_items.Unpin,
-            SolverTraitLangItem::Unsize => lang_items.Unsize,
-            SolverTraitLangItem::BikeshedGuaranteedNoDrop => lang_items.BikeshedGuaranteedNoDrop,
-            SolverTraitLangItem::TrivialClone => lang_items.TrivialClone,
-            SolverTraitLangItem::Field => lang_items.Field,
-        };
-        lang_item.expect("Lang item required but not found.").into()
+        self.lang_items()
+            .get_solver_trait(lang_item)
+            .expect("Lang item required but not found.")
+            .into()
     }
 
     fn require_adt_lang_item(self, lang_item: SolverAdtLangItem) -> AdtIdWrapper {
-        let lang_items = self.lang_items();
-        let lang_item = match lang_item {
-            SolverAdtLangItem::Option => lang_items.Option.map(Into::into),
-            SolverAdtLangItem::Poll => lang_items.Poll.map(Into::into),
-            SolverAdtLangItem::DynMetadata => lang_items.DynMetadata.map(Into::into),
-        };
-        AdtIdWrapper(lang_item.expect("Lang item required but not found."))
+        self.lang_items()
+            .get_solver_adt(lang_item)
+            .expect("Lang item required but not found.")
+            .into()
     }
 
     fn is_projection_lang_item(
@@ -1509,116 +1404,30 @@ impl<'db> Interner for DbInterner<'db> {
         def_id: Self::TraitAssocTyId,
         lang_item: SolverProjectionLangItem,
     ) -> bool {
-        self.as_projection_lang_item(def_id)
-            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+        self.lang_items().get_solver_projection(lang_item) == Some(def_id.0)
     }
 
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool {
-        is_lang_item!(
-            SolverTraitLangItem, self, def_id.0, lang_item;
-
-            Sized,
-            MetaSized,
-            PointeeSized,
-            Unsize,
-            Copy,
-            Clone,
-            DiscriminantKind,
-            PointeeTrait,
-            FnPtrTrait,
-            Drop,
-            Destruct,
-            TransmuteTrait,
-            Fn,
-            FnMut,
-            FnOnce,
-            Future,
-            Coroutine,
-            Unpin,
-            Tuple,
-            Iterator,
-            AsyncFn,
-            AsyncFnMut,
-            AsyncFnOnce,
-            TrivialClone,
-            AsyncFnKindHelper,
-            AsyncIterator,
-            BikeshedGuaranteedNoDrop,
-            FusedIterator,
-            Field,
-        )
+        self.lang_items().get_solver_trait(lang_item) == Some(def_id.0)
     }
 
     fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool {
-        // FIXME: derive PartialEq on SolverTraitLangItem
-        self.as_adt_lang_item(def_id)
-            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+        self.lang_items().get_solver_adt(lang_item) == Some(def_id.0)
     }
 
     fn as_projection_lang_item(
         self,
         def_id: Self::TraitAssocTyId,
     ) -> Option<SolverProjectionLangItem> {
-        as_lang_item!(
-            SolverProjectionLangItem, self, def_id.0, TypeAliasId;
-
-            Metadata,
-            CoroutineReturn,
-            CoroutineYield,
-            FutureOutput,
-            CallRefFuture,
-            CallOnceFuture,
-            AsyncFnOnceOutput,
-            AsyncFnKindUpvars,
-            FieldBase,
-            FieldType,
-        )
+        self.lang_items().get_reverse_solver_projection(def_id.0)
     }
 
     fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem> {
-        as_lang_item!(
-            SolverTraitLangItem, self, def_id.0, TraitId;
-
-            Sized,
-            MetaSized,
-            PointeeSized,
-            Unsize,
-            Copy,
-            Clone,
-            DiscriminantKind,
-            PointeeTrait,
-            FnPtrTrait,
-            Drop,
-            Destruct,
-            TransmuteTrait,
-            Fn,
-            FnMut,
-            FnOnce,
-            Future,
-            Coroutine,
-            Unpin,
-            Tuple,
-            Iterator,
-            AsyncFn,
-            AsyncFnMut,
-            AsyncFnOnce,
-            TrivialClone,
-            AsyncFnKindHelper,
-            AsyncIterator,
-            BikeshedGuaranteedNoDrop,
-            FusedIterator,
-            Field,
-        )
+        self.lang_items().get_reverse_solver_trait(def_id.0)
     }
 
     fn as_adt_lang_item(self, def_id: Self::AdtId) -> Option<SolverAdtLangItem> {
-        as_lang_item!(
-            SolverAdtLangItem, self, def_id.0, AdtId;
-
-            Option,
-            Poll,
-            DynMetadata,
-        )
+        self.lang_items().get_reverse_solver_adt(def_id.0)
     }
 
     fn associated_type_def_ids(
@@ -1978,7 +1787,7 @@ impl<'db> Interner for DbInterner<'db> {
         let mut map = Default::default();
         let delegate = Anonymize { interner: self, map: &mut map };
         let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = BoundVarKinds::new_from_iter(self, map.into_values());
+        let bound_vars = BoundVarKinds::new_from_iter(map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 
@@ -2292,7 +2101,6 @@ impl<'db> DbInterner<'db> {
     {
         FnSig {
             inputs_and_output: Tys::new_from_iter(
-                self,
                 inputs.into_iter().chain(std::iter::once(output)),
             ),
             fn_sig_kind: FnSigKind::new(abi, safety, c_variadic),
@@ -2484,7 +2292,7 @@ mod tls_db {
 
         #[inline]
         fn with<R>(&self, op: impl FnOnce(&dyn HirDatabase) -> R) -> R {
-            let db = self.database.get().expect("Try to use attached db, but not db is attached");
+            let db = self.database.get().expect("Tried to use attached db, but no db is attached");
 
             // SAFETY: The db is attached, so it must be valid.
             op(unsafe { db.as_ref() })

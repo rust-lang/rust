@@ -1,4 +1,5 @@
 //@ revisions: old-solver next-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next-solver] compile-flags: -Znext-solver
 //@ run-pass
 //@ run-rustfix

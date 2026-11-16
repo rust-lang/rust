@@ -43,8 +43,10 @@ mod int_macros; // import int_impl!
 #[macro_use]
 mod uint_macros; // import uint_impl!
 
+mod bfloat;
 mod complex;
 mod error;
+pub(crate) mod float_macros;
 #[cfg(not(no_fp_fmt_parse))]
 mod float_parse;
 mod nonzero;
@@ -56,6 +58,8 @@ mod wrapping;
 #[doc(hidden)]
 pub mod niche_types;
 
+#[unstable(feature = "f16b", issue = "160630")]
+pub use bfloat::f16b;
 #[unstable(feature = "complex_numbers", issue = "154023")]
 pub use complex::Complex;
 #[stable(feature = "int_error_matching", since = "1.55.0")]
@@ -64,6 +68,9 @@ pub use error::IntErrorKind;
 pub use error::ParseIntError;
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
+#[unstable(feature = "extended_float_error_kind", issue = "164793")]
+#[cfg(not(no_fp_fmt_parse))]
+pub use float_parse::FloatErrorKind;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use float_parse::ParseFloatError;
@@ -1573,6 +1580,16 @@ pub enum FpCategory {
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
+    // Assume that `digits` represents a whole number N in base `radix`.
+    // Then in infinite precision arithmetic (on whole numbers), we have:
+    //
+    // |N| <= pow(radix, digits.len()) - 1
+    //     <= pow(16, 2 * size_of::<T>() - is_signed) - 1
+    //     == pow(2, 8 * size_of::<T>() - 4 * is_signed) - 1
+    //     <= pow(2, 8 * size_of::<T>() - is_signed) - 1
+    //     == T::MAX
+    //
+    // Therefore this condition is sufficient for having no overflow.
     radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
 }
 
@@ -1703,17 +1720,13 @@ macro_rules! from_str_int_impl {
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_from_ascii)]
-            ///
             #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii_bytes(b\"+10\"), Ok(10));")]
             /// ```
             /// Trailing space returns error:
             /// ```
-            /// # #![feature(int_from_ascii)]
-            /// #
             #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_bytes(b\"1 \").is_err());")]
             /// ```
-            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[stable(feature = "int_from_ascii", since = "CURRENT_RUSTC_VERSION")]
             #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
             pub const fn from_ascii_bytes<T>(src: T) -> Result<$int_ty, ParseIntError>
@@ -1751,17 +1764,13 @@ macro_rules! from_str_int_impl {
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_from_ascii)]
-            ///
             #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii_bytes_radix(b\"A\", 16), Ok(10));")]
             /// ```
             /// Trailing space returns error:
             /// ```
-            /// # #![feature(int_from_ascii)]
-            /// #
             #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_bytes_radix(b\"1 \", 10).is_err());")]
             /// ```
-            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[stable(feature = "int_from_ascii", since = "CURRENT_RUSTC_VERSION")]
             #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             #[inline]
             pub const fn from_ascii_bytes_radix<T>(src: T, radix: u32) -> Result<$int_ty, ParseIntError>
@@ -1816,20 +1825,23 @@ macro_rules! from_str_int_impl {
                     // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
                     // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
                     // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
-                    macro_rules! run_unchecked_loop {
-                        ($unchecked_additive_op:tt) => {{
+                    //
+                    // NOTE: We could use unchecked arithmetic here, but we don't, based on the observation
+                    // that it produces the same assembly as wrapping ones. See #163099.
+                    macro_rules! run_no_check_loop {
+                        ($additive_op:ident) => {{
                             while let [c, rest @ ..] = digits {
-                                result = result * (radix as $int_ty);
+                                result = <$int_ty>::wrapping_mul(result, radix as _);
                                 let x = unwrap_or_PIE!((*c as char).to_digit(radix), InvalidDigit);
-                                result = result $unchecked_additive_op (x as $int_ty);
+                                result = result.$additive_op(x as $int_ty);
                                 digits = rest;
                             }
                         }};
                     }
                     if is_positive {
-                        run_unchecked_loop!(+)
+                        run_no_check_loop!(wrapping_add)
                     } else {
-                        run_unchecked_loop!(-)
+                        run_no_check_loop!(wrapping_sub)
                     };
                 } else {
                     macro_rules! run_checked_loop {

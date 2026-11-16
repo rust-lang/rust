@@ -829,6 +829,23 @@ struct DropInfo {
     has_dtor: Option<bool>,
 }
 
+pub(super) fn cfg_predicate(
+    sema: &Semantics<'_, RootDatabase>,
+    predicate: ast::CfgPredicate,
+) -> Option<Markup> {
+    let krate = sema.scope(predicate.syntax())?.krate();
+    let cfg = cfg::CfgExpr::parse_from_ast(predicate.clone());
+    let evaluated = krate.cfg(sema.db).check(&cfg);
+
+    let output = match evaluated {
+        Some(true) => "true",
+        Some(false) => "false",
+        None => "unknown",
+    };
+    let s = format!("cfg predicate evaluated: `{output}` (`{predicate}`)");
+    Some(s.into())
+}
+
 pub(super) fn literal(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,

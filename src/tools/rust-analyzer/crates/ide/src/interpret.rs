@@ -1,4 +1,4 @@
-use hir::{ConstEvalError, DefWithBody, DisplayTarget, Semantics};
+use hir::{ConstEvalError, ConstEvalErrorPretty as _, DefWithBody, DisplayTarget, Semantics};
 use ide_db::{FilePosition, RootDatabase, base_db::SourceDatabase, line_index};
 use std::time::{Duration, Instant};
 use stdx::format_to;

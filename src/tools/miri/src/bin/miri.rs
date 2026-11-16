@@ -81,8 +81,11 @@ fn run_many_seeds(
     let exit_code =
         sync::IntoDynSyncSend(AtomicU32::new(rustc_driver::EXIT_SUCCESS.cast_unsigned()));
     let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
-    sync::par_for_each_in(many_seeds.seeds.clone(), |&seed| {
-        if let Err(return_code) = eval_entry_once(seed.into()) {
+
+    let range = &many_seeds.seeds;
+    let range = range.start as usize..range.end as usize;
+    sync::par_range(range, |seed| {
+        if let Err(return_code) = eval_entry_once(seed as u64) {
             eprintln!("FAILING SEED: {seed}");
             if !many_seeds.keep_going {
                 // `abort_if_errors` would unwind but would not actually stop miri, since
@@ -159,7 +162,10 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         // Obtain and complete the Miri configuration.
         let mut config = self.miri_config.take().expect("after_analysis must only be called once");
         // Add filename to `miri` arguments.
-        config.args.insert(0, tcx.sess.io.input.filestem().to_string());
+        let file_name = tcx.sess.io.input.file_name(tcx.sess);
+        config.args.insert(0, file_name.prefer_local_unconditionally().to_string());
+        // And configure the executable.
+        config.current_exe = file_name.into_local_path().and_then(|p| p.canonicalize().ok());
 
         // Adjust working directory for interpretation.
         if let Some(cwd) = env::var_os("MIRI_CWD") {
@@ -221,6 +227,7 @@ impl CodegenBackend for MiriCodegenBackend {
             internal_target_features: native_target_config.internal_target_features,
 
             // The basic types and ABI always work.
+            has_reliable_f16b: true,
             has_reliable_f16: true,
             has_reliable_f128: true,
             // We always provide the f16 intrinsics, but some are provided via the host,
@@ -364,8 +371,9 @@ fn run_compiler_and_exit(
     rustc_driver::install_ctrlc_handler();
 
     // Invoke compiler, catch any unwinding panics and handle return code.
-    let exit_code =
-        rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
+    let exit_code = rustc_driver::catch_with_exit_code(move || {
+        rustc_driver::compiler_entrypoint(args, callbacks)
+    });
     exit(if exit_code == ExitCode::SUCCESS {
         rustc_driver::EXIT_SUCCESS
     } else {

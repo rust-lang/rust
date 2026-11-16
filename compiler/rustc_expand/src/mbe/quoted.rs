@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, IdentKind, NonterminalKind, Token};
 use rustc_ast::tokenstream::TokenStreamIter;
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
@@ -7,7 +7,7 @@ use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 
 use crate::diagnostics;
 use crate::mbe::macro_parser::count_metavar_decls;
@@ -204,9 +204,14 @@ fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, sp
     }
 }
 
-fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Session, span: Span) {
+fn maybe_emit_macro_metavar_expr_concat_feature(
+    features: &Features,
+    sess: &Session,
+    span: Span,
+    what: Symbol,
+) {
     if !features.macro_metavar_expr_concat() {
-        let msg = "the `concat` meta-variable expression is unstable";
+        let msg = format!("the `{what}` meta-variable expression is unstable");
         feature_err(sess, sym::macro_metavar_expr_concat, span, msg).emit();
     }
 }
@@ -278,11 +283,19 @@ fn parse_tree<'a>(
                                         return TokenTree::token(token::Dollar, dollar_span);
                                     }
                                     Ok(elem) => {
-                                        if let MetaVarExpr::Concat(_) = elem {
+                                        if matches!(elem, MetaVarExpr::ConcatIdent(_)) {
                                             maybe_emit_macro_metavar_expr_concat_feature(
                                                 features,
                                                 sess,
                                                 delim_span.entire(),
+                                                sym::concat,
+                                            );
+                                        } else if matches!(elem, MetaVarExpr::ConcatStr(_)) {
+                                            maybe_emit_macro_metavar_expr_concat_feature(
+                                                features,
+                                                sess,
+                                                delim_span.entire(),
+                                                sym::concat_str,
                                             );
                                         } else {
                                             maybe_emit_macro_metavar_expr_feature(
@@ -324,11 +337,14 @@ fn parse_tree<'a>(
 
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
                 // special metavariable that names the crate of the invocation.
-                Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
-                    let (ident, is_raw) = token.ident().unwrap();
+                Some(tokenstream::TokenTree::Token(token, _))
+                    if let Some((ident, kind)) = token.ident() =>
+                {
                     let span = ident.span.with_lo(dollar_span.lo());
-                    if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
-                        TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
+                    if let kw::Crate = ident.name
+                        && let IdentKind::Normal | IdentKind::ForcedKeyword = kind
+                    {
+                        TokenTree::token(token::Ident(kw::DollarCrate, kind), span)
                     } else {
                         TokenTree::MetaVar(span, ident)
                     }

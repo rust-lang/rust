@@ -1,6 +1,8 @@
 error[E0080]: unable to read parts of a pointer from memory at ALLOC$ID
   --> $DIR/ptr_fragments_mixed.rs:19:9
    |
+LL | const APTR: *const u8 = {
+...
 LL |         y
    |         ^ evaluation of `APTR` failed here
    |
@@ -10,6 +12,8 @@ LL |         y
 error[E0080]: unable to read parts of a pointer from memory at ALLOC$ID
   --> $DIR/ptr_fragments_mixed.rs:33:9
    |
+LL | const BPTR: *const u8 = {
+...
 LL |         y
    |         ^ evaluation of `BPTR` failed here
    |

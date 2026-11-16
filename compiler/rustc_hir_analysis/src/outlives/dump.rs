@@ -1,4 +1,4 @@
-use rustc_hir::find_attr;
+use rustc_attr_ir::find_attr;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{bug, sym};
 

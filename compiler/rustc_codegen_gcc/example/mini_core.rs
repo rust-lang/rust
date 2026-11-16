@@ -6,11 +6,13 @@
     extern_types,
     decl_macro,
     rustc_attrs,
+    allow_internal_unstable,
+    forced_keywords,
     transparent_unions,
     auto_traits,
     freeze_impls,
-    pattern_types,
-    thread_local
+    thread_local,
+    rustc_private
 )]
 #![no_core]
 #![allow(dead_code, internal_features, ambiguous_wide_pointer_comparisons)]
@@ -39,9 +41,9 @@ unsafe extern "C" {
     type VTable;
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 unsafe extern "C" fn _Unwind_Resume() {
-    intrinsics::unreachable();
+    unsafe { intrinsics::unreachable(); }
 }
 
 #[lang = "pointee_sized"]
@@ -509,7 +511,7 @@ pub trait FnMut<Args: Tuple>: FnOnce<Args> {
 pub fn panic(_msg: &'static str) -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const u8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -546,7 +548,7 @@ panic_const! {
 fn panic_cannot_unwind() -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const u8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -555,7 +557,7 @@ fn panic_cannot_unwind() -> ! {
 fn panic_in_cleanup() -> ! {
     unsafe {
         libc::printf("panic in a destructor during cleanup\n\0" as *const str as *const i8);
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -568,7 +570,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
             len,
             index,
         );
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 }
 
@@ -606,12 +608,9 @@ impl Allocator for Global {}
 #[rustc_nonnull_optimization_guaranteed]
 pub struct NonNull<T: PointeeSized>(pub pattern_type!(*const T is !null));
 
-#[rustc_builtin_macro(pattern_type)]
-#[macro_export]
-macro_rules! pattern_type {
-    ($($arg:tt)*) => {
-        /* compiler built-in */
-    };
+#[allow_internal_unstable(internal_syntax)]
+pub macro pattern_type($($arg:tt)*) {
+    k#pattern_type($($arg)*)
 }
 
 impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<pattern_type!(*const U is !null)> for pattern_type!(*const T is !null) where
@@ -698,15 +697,15 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub const fn black_box<T>(_dummy: T) -> T;
     #[rustc_intrinsic]
-    pub fn abort() -> !;
+    pub fn abort_immediate() -> !;
     #[rustc_intrinsic]
     pub const fn size_of<T>() -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
+    pub unsafe fn size_of_val<T: ?crate::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
     pub const fn align_of<T>() -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn align_of_val<T: ?::Sized>(val: *const T) -> usize;
+    pub unsafe fn align_of_val<T: ?crate::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
     pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
     #[rustc_intrinsic]
@@ -714,7 +713,7 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub unsafe fn ctlz_nonzero<T>(x: T) -> u32;
     #[rustc_intrinsic]
-    pub const fn needs_drop<T: ?::Sized>() -> bool;
+    pub const fn needs_drop<T: ?crate::Sized>() -> bool;
     #[rustc_intrinsic]
     pub fn bitreverse<T>(x: T) -> T;
     #[rustc_intrinsic]
@@ -727,7 +726,7 @@ pub mod intrinsics {
 
 pub mod libc {
     #[link(name = "c")]
-    extern "C" {
+    unsafe extern "C" {
         pub fn puts(s: *const u8) -> i32;
         pub fn printf(format: *const i8, ...) -> i32;
         pub fn malloc(size: usize) -> *mut u8;
@@ -782,7 +781,7 @@ impl<T> Index<usize> for [T] {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     type VaListImpl;
 }
 
@@ -823,7 +822,7 @@ struct PanicLocation {
     column: u32,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn get_tls() -> u8 {
     #[thread_local]
     static A: u8 = 42;

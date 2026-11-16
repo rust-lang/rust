@@ -42,11 +42,10 @@ impl Arena {
         // arenas that are used for 100s of MiBs. Note also that the chosen sizes match
         // the usual sizes of pages and huge pages on Linux.
         const PAGE: usize = 4096;
-        const HUGE_PAGE: usize =
-            cfg_select! {
-                any(target_pointer_width = "64", target_pointer_width = "32") => 2 * 1024 * 1024,
-                _ => 8192, // just make it compile for -Zbuild-std
-            };
+        const HUGE_PAGE: usize = cfg_select! {
+            any(target_pointer_width = "64", target_pointer_width = "32") => 2 * 1024 * 1024,
+            _ => 8192, // just make it compile for -Zbuild-std
+        };
 
         let mut chunks = self.chunks.borrow_mut();
         let mut new_cap;

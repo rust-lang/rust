@@ -1,6 +1,7 @@
 // WF check for impl Trait in associated type position.
 //
 //@ revisions: pass pass_next fail
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ [pass] check-pass
 //@ [pass_next] compile-flags: -Znext-solver
 //@ [pass_next] check-pass

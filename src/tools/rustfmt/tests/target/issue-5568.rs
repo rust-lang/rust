@@ -1,5 +1,5 @@
-// rustfmt-max_width: 119
-// rustfmt-format_code_in_doc_comments: true
+//@ rustfmt-max_width: 119
+//@ rustfmt-format_code_in_doc_comments: true
 
 mod libs {
     fn mrbgems_sources() {

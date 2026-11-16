@@ -145,7 +145,13 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
         // Create a correctly aligned pointer offset from the start of the allocated block,
         // and write a header before it.
 
-        let offset = layout.align() - (ptr.addr() & (layout.align() - 1));
+        // SAFETY: Guaranteed by Layout::align.
+        // This hint is technically redundant, but currently LLVM needs this explicit hint to
+        // optimize out a panic path inside align_offset.
+        unsafe {
+            core::hint::assert_unchecked(layout.align().is_power_of_two());
+        }
+        let offset = ptr.wrapping_add(1).align_offset(layout.align()) + 1;
         // SAFETY: `MIN_ALIGN` <= `offset` <= `layout.align()` and the size of the allocated
         // block is `layout.align() + layout.size()`. `aligned` will thus be a correctly aligned
         // pointer inside the allocated block with at least `layout.size()` bytes after it and at

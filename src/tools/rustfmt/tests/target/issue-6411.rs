@@ -1,4 +1,4 @@
-// rustfmt-edition: 2021
+//@ rustfmt-edition: 2021
 
 fn test_break() {
     'r#if: {

@@ -49,7 +49,7 @@ const TEST_REPOS: &[Test] = &[
         name: "xsv",
         repo: "https://github.com/BurntSushi/xsv",
         sha: "3de6c04269a7d315f7e9864b9013451cd9580a08",
-        lock: None,
+        lock: Some(include_str!("lockfiles/xsv.lock")),
         packages: &[],
         features: None,
         manifest_path: None,

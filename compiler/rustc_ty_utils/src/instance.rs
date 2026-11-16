@@ -1,12 +1,12 @@
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::{
-    self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    self, ClosureKind, GenericArgs, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
     Unnormalized,
 };
 use rustc_span::{bug, sym};
@@ -16,7 +16,7 @@ use traits::translate_args;
 
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>,
+    key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgs<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let PseudoCanonicalInput { typing_env, value: (def_id, args) } = key;
 
@@ -111,7 +111,7 @@ fn resolve_associated_item<'tcx>(
     trait_item_id: DefId,
     typing_env: ty::TypingEnv<'tcx>,
     trait_id: DefId,
-    rcvr_args: GenericArgsRef<'tcx>,
+    rcvr_args: GenericArgs<'tcx>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     debug!(?trait_item_id, ?typing_env, ?trait_id, ?rcvr_args, "resolve_associated_item");
 
@@ -163,7 +163,7 @@ fn resolve_associated_item<'tcx>(
                 match typing_env.typing_mode().assert_not_erased() {
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Typeck { .. }
-                    | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                     | ty::TypingMode::Reflection
                     | ty::TypingMode::PostBorrowck { .. } => false,
                     ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {
@@ -175,7 +175,8 @@ fn resolve_associated_item<'tcx>(
                 return Ok(None);
             }
 
-            let typing_env = typing_env.with_post_analysis_normalized(tcx);
+            let PseudoCanonicalInput { typing_env, value: rcvr_args } =
+                typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(tcx, rcvr_args);
             let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
             let args = rcvr_args.rebase_onto(tcx, trait_def_id, impl_data.args);
             let args = translate_args(
@@ -254,68 +255,79 @@ fn resolve_associated_item<'tcx>(
                 // We only resolve totally substituted vtable entries.
                 None
             } else {
-                let vtable_base = tcx.first_method_vtable_slot(trait_ref);
-                let offset = tcx
-                    .own_existential_vtable_entries(trait_id)
-                    .iter()
-                    .copied()
-                    .position(|def_id| def_id == trait_item_id);
-                offset.map(|offset| Instance {
-                    def: ty::InstanceKind::Virtual(trait_item_id, vtable_base + offset),
-                    args: rcvr_args,
+                tcx.first_method_vtable_slot(trait_ref).and_then(|vtable_base| {
+                    let offset = tcx
+                        .own_existential_vtable_entries(trait_id)
+                        .iter()
+                        .copied()
+                        .position(|def_id| def_id == trait_item_id);
+
+                    offset.map(|offset| Instance {
+                        def: ty::InstanceKind::Virtual(trait_item_id, vtable_base + offset),
+                        args: rcvr_args,
+                    })
                 })
             }
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, _) => {
             if tcx.is_lang_item(trait_ref.def_id, LangItem::Clone) {
-                // FIXME(eddyb) use lang items for methods instead of names.
-                let name = tcx.item_name(trait_item_id);
-                if name == sym::clone {
-                    let self_ty = trait_ref.self_ty();
-                    match self_ty.kind() {
-                        ty::FnDef(..) | ty::FnPtr(..) => (),
-                        ty::Coroutine(..)
-                        | ty::CoroutineWitness(..)
-                        | ty::Closure(..)
-                        | ty::CoroutineClosure(..)
-                        | ty::Tuple(..) => {}
-                        _ => return Ok(None),
-                    };
+                let self_ty = trait_ref.self_ty();
+                match self_ty.kind() {
+                    ty::FnDef(..)
+                    | ty::FnPtr(..)
+                    | ty::Coroutine(..)
+                    | ty::CoroutineWitness(..)
+                    | ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Tuple(..) => {}
+                    _ => return Ok(None),
+                };
 
-                    Some(Instance {
+                match tcx.as_lang_item(trait_item_id) {
+                    Some(LangItem::CloneFn) => Some(Instance {
                         def: ty::InstanceKind::Shim(ty::ShimKind::Clone(trait_item_id, self_ty)),
                         args: rcvr_args,
-                    })
-                } else {
-                    assert_eq!(name, sym::clone_from);
-
-                    // Use the default `fn clone_from` from `trait Clone`.
-                    let args = tcx.erase_and_anonymize_regions(rcvr_args);
-                    Some(ty::Instance::new_raw(trait_item_id, args))
+                    }),
+                    Some(LangItem::CloneFromFn) => {
+                        // Use the default `fn clone_from` from `trait Clone`.
+                        let args = tcx.erase_and_anonymize_regions(rcvr_args);
+                        Some(ty::Instance::new_raw(trait_item_id, args))
+                    }
+                    _ => bug!("unknown `Clone` item"),
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
                 let self_ty = trait_ref.self_ty();
                 if !matches!(self_ty.kind(), ty::FnPtr(..)) {
                     return Ok(None);
                 }
-                if tcx.is_lang_item(trait_item_id, LangItem::FnPtrAsPtr) {
-                    Some(Instance {
-                        def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrAsPtr(
-                            trait_item_id,
-                            self_ty,
-                        )),
-                        args: rcvr_args,
-                    })
-                } else if tcx.is_lang_item(trait_item_id, LangItem::FnPtrFromPtr) {
-                    Some(Instance {
+                match tcx.as_lang_item(trait_item_id) {
+                    Some(LangItem::FnPtrFromPtr) => Some(Instance {
                         def: ty::InstanceKind::Shim(ty::ShimKind::FnPtrFromPtr(
                             trait_item_id,
                             self_ty,
                         )),
                         args: rcvr_args,
-                    })
-                } else {
-                    Some(Instance { def: ty::InstanceKind::Item(trait_item_id), args: rcvr_args })
+                    }),
+                    _ => bug!("Unknown item for FnPtr: {:?}", trait_item_id),
+                }
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnAddrTrait) {
+                let self_ty = trait_ref.self_ty();
+                if !matches!(self_ty.kind(), ty::FnPtr(..) | ty::FnDef(..)) {
+                    return Ok(None);
+                }
+                match tcx.as_lang_item(trait_item_id) {
+                    Some(LangItem::FnAddrAsPtr) => Some(Instance {
+                        def: ty::InstanceKind::Shim(ty::ShimKind::FnAddrAsPtr(
+                            trait_item_id,
+                            self_ty,
+                        )),
+                        args: rcvr_args,
+                    }),
+                    Some(LangItem::FnAddrAddrFn) => Some(Instance {
+                        def: ty::InstanceKind::Item(trait_item_id),
+                        args: rcvr_args,
+                    }),
+                    _ => bug!("Unknown item for FnAddr: {:?}", trait_item_id),
                 }
             } else if let Some(target_kind) = tcx.fn_trait_kind_from_def_id(trait_ref.def_id) {
                 // FIXME: This doesn't check for malformed libcore that defines, e.g.,

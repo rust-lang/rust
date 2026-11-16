@@ -16,6 +16,7 @@ use run_make_support::{build_native_static_lib, cc, is_windows_msvc, llvm_ar, ru
 fn main() {
     build_native_static_lib("test");
     rustc()
+        .edition("2015")
         .arg("-Cunsafe-allow-abi-mismatch=branch-protection")
         .arg("-Zbranch-protection=bti,gcs,pac-ret,leaf")
         .input("test.rs")
@@ -30,6 +31,7 @@ fn main() {
     let obj_file = if is_windows_msvc() { "test.obj" } else { "test" };
     llvm_ar().obj_to_ar().output_input("libtest.a", &obj_file).run();
     rustc()
+        .edition("2015")
         .arg("-Cunsafe-allow-abi-mismatch=branch-protection")
         .arg("-Zbranch-protection=bti,gcs,pac-ret,leaf")
         .input("test.rs")
@@ -46,6 +48,7 @@ fn main() {
     // let obj_file = if is_windows_msvc() { "test.obj" } else { "test" };
     // llvm_ar().obj_to_ar().output_input("libtest.a", &obj_file).run();
     // rustc()
+    //     .edition("2015")
     //     .arg("-Cunsafe-allow-abi-mismatch=branch-protection")
     //     .arg("-Zbranch-protection=bti,pac-ret,pc,leaf")
     //     .input("test.rs")

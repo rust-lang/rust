@@ -25,6 +25,8 @@ LL |     LendingIterator::for_each(&(), f);
 note: method defined here
   --> $DIR/hr_alias_normalization_leaking_vars.rs:28:8
    |
+LL | trait LendingIterator {
+LL |     type Item<'q>;
 LL |     fn for_each(&self, _f: Box<fn(Self::Item<'_>)>) {}
    |        ^^^^^^^^        ---------------------------
 

@@ -83,7 +83,7 @@
 +     }
 + 
 +     bb13: {
-+         _10 = copy ((_2.0: std::ptr::Unique<std::string::String>).0: std::ptr::NonNull<std::string::String>) as *const std::string::String (Transmute);
++         _10 = copy ((_2.0: std::boxed::BoxRaw<std::string::String>).0: std::ptr::NonNull<std::string::String>) as *const std::string::String (Transmute);
 +         goto -> bb10;
       }
   }

@@ -36,9 +36,9 @@ pub struct HasU64 {
     pub a: u64,
 }
 
-// linux:   define void @test_has_u64(i64 %0)
-// eabi:    define dso_local void @test_has_u64(i64 %0)
-// watchos: define void @test_has_u64(i64 %0)
+// linux:   define void @test_has_u64([1 x i64] %0)
+// eabi:    define dso_local void @test_has_u64([1 x i64] %0)
+// watchos: define void @test_has_u64([1 x i64] %0)
 #[unsafe(no_mangle)]
 pub extern "C" fn test_has_u64(a: HasU64) {
     hint::black_box(a);
@@ -62,7 +62,7 @@ pub struct Transparent8 {
 //
 // linux:   define void @test_8([2 x i32] %0, [2 x i32] %1)
 // eabi:    define dso_local void @test_8([2 x i32] %0, [2 x i32] %1)
-// watchos: define void @test_8(i64 %0, i64 %1)
+// watchos: define void @test_8([1 x i64] %0, [1 x i64] %1)
 #[unsafe(no_mangle)]
 pub extern "C" fn test_8(a: Align8, b: Transparent8) {
     hint::black_box(a);

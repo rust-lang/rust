@@ -26,6 +26,8 @@ note: `ProviderExt` defines an item `request`, perhaps you need to implement it
    |
 LL | pub trait ProviderExt {
    | ^^^^^^^^^^^^^^^^^^^^^
+LL |     fn request<R>(&self) {
+   |
 
 error: aborting due to 1 previous error
 

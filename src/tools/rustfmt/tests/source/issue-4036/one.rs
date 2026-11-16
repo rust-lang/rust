@@ -1,4 +1,4 @@
-// rustfmt-format_strings: true
+//@ rustfmt-format_strings: true
 
 macro_rules! test {
     () => {

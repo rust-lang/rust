@@ -2,10 +2,10 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::{get_parent_expr, is_expr_temporary_value, is_from_proc_macro, is_lint_allowed, msrvs, std_or_core};
+use clippy_utils::{get_parent_expr, is_expr_temporary_value, is_from_proc_macro, is_lint_allowed, msrvs};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Ty, TyKind};
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, std_or_core};
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow};
 use rustc_span::BytePos;
 
@@ -18,8 +18,8 @@ pub(super) fn check<'tcx>(
     cast_to: &'tcx Ty<'_>,
     msrv: Msrv,
 ) -> bool {
-    if let TyKind::Ptr(target) = cast_to.kind
-        && !matches!(target.ty.kind, TyKind::TraitObject(..))
+    if let TyKind::Ptr(target, _) = cast_to.kind
+        && !matches!(target.kind, TyKind::TraitObject(..))
         && let ExprKind::AddrOf(BorrowKind::Ref, mutability, e) = cast_expr.kind
         && !is_lint_allowed(cx, BORROW_AS_PTR, expr.hir_id)
         // Fix #9884

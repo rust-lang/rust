@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2015
+//@ rustfmt-style_edition: 2015
 
 // ascii-betically sorted
 pub use print0msg;

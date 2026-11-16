@@ -1,5 +1,5 @@
+use rustc_attr_ir::{AttributeKind, InlineAttr};
 use rustc_hir as hir;
-use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
@@ -7,33 +7,37 @@ use crate::LoweringContext;
 use crate::delegation::DelegationResolution;
 
 struct AdditionInfo {
-    pub equals: fn(&hir::Attribute) -> bool,
+    pub equals: fn(&rustc_attr_ir::Attribute) -> bool,
     pub kind: AdditionKind,
 }
 
 enum AdditionKind {
-    Default { factory: fn(Span) -> hir::Attribute },
-    Inherit { factory: fn(Span, &hir::Attribute) -> hir::Attribute },
+    Default { factory: fn(Span) -> rustc_attr_ir::Attribute },
+    Inherit { factory: fn(Span, &rustc_attr_ir::Attribute) -> rustc_attr_ir::Attribute },
 }
 
 static ADDITIONS: &[AdditionInfo] = &[
     AdditionInfo {
-        equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::MustUse { .. })),
+        equals: |a| matches!(a, rustc_attr_ir::Attribute::Parsed(AttributeKind::MustUse { .. })),
         kind: AdditionKind::Inherit {
             factory: |span, original_attr| {
                 let reason = match original_attr {
-                    hir::Attribute::Parsed(AttributeKind::MustUse { reason, .. }) => *reason,
+                    rustc_attr_ir::Attribute::Parsed(AttributeKind::MustUse { reason, .. }) => {
+                        *reason
+                    }
                     _ => None,
                 };
 
-                hir::Attribute::Parsed(AttributeKind::MustUse { span, reason })
+                rustc_attr_ir::Attribute::Parsed(AttributeKind::MustUse { span, reason })
             },
         },
     },
     AdditionInfo {
-        equals: |a| matches!(a, hir::Attribute::Parsed(AttributeKind::Inline(..))),
+        equals: |a| matches!(a, rustc_attr_ir::Attribute::Parsed(AttributeKind::Inline(..))),
         kind: AdditionKind::Default {
-            factory: |span| hir::Attribute::Parsed(AttributeKind::Inline(InlineAttr::Hint, span)),
+            factory: |span| {
+                rustc_attr_ir::Attribute::Parsed(AttributeKind::Inline(InlineAttr::Hint, span))
+            },
         },
     },
 ];
@@ -61,8 +65,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &self,
         span: Span,
         sig_id: DefId,
-        existing: Option<&&[hir::Attribute]>,
-    ) -> Vec<hir::Attribute> {
+        existing: Option<&&[rustc_attr_ir::Attribute]>,
+    ) -> Vec<rustc_attr_ir::Attribute> {
         ADDITIONS
             .iter()
             .filter_map(|addition| {

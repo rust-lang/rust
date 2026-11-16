@@ -1,5 +1,5 @@
-// rustfmt-style_edition: 2024
-// rustfmt-format_macro_matchers: true
+//@ rustfmt-style_edition: 2024
+//@ rustfmt-format_macro_matchers: true
 
 // From original issue example - Line length 101
 macro_rules! test {

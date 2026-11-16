@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: false
+//@ rustfmt-normalize_comments: false
 // Normalize comments
 
 // Lorem ipsum:

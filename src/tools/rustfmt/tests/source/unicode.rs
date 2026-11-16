@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 fn foo() {
     let s = "this line goes to 100: ͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶͶ";

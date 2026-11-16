@@ -5,9 +5,9 @@
 //! [`rustdoc_json_types::Item`] doesn't correspond exactly to what
 //! other phases think of as an "item".
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::find_attr;
 use rustc_span::Symbol;
 use rustdoc_json_types as types;
 
@@ -107,7 +107,7 @@ impl JsonRenderer<'_> {
 
     pub(crate) fn id_from_item(&self, item: &clean::Item) -> types::Id {
         match item.kind {
-            clean::ItemKind::ImportItem(ref import) => {
+            clean::ItemKind::Import(ref import) => {
                 let imported_id = import.source.did;
                 self.id_from_item_inner(item.item_id, item.name, imported_id)
             }

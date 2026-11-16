@@ -14,9 +14,9 @@ To run a specific CI job locally, you can use the `citool` Rust crate:
 cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
 ```
 
-For example, to run the `x86_64-gnu-llvm-21-1` job:
+For example, to run the `x86_64-gnu-llvm-22-1` job:
 ```
-cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-llvm-21-1
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-llvm-22-1
 ```
 
 The job will output artifacts in an `obj/<image-name>` dir at the root of a repository. Note
@@ -27,10 +27,10 @@ Docker image executed in the given CI job.
 while locally, to the `obj/<image-name>` directory. This is primarily to prevent
 strange linker errors when using multiple Docker images.
 
-For some Linux workflows (for example `x86_64-gnu-llvm-21-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-21-3` workflow, you can run the following script:
+For some Linux workflows (for example `x86_64-gnu-llvm-22-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-22-3` workflow, you can run the following script:
 
 ```
-DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-21
+DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-22
 ```
 
 ## Local Development
@@ -263,7 +263,7 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Operating System > Linux kernel version = 5.19.16
 - Binary utilities > Version of binutils = 2.46.1
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 16.1.0
+- C compiler > gcc version = 16.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `loongarch64-unknown-linux-musl.defconfig`
@@ -278,8 +278,8 @@ For targets: `loongarch64-unknown-linux-musl`
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 5.19.16
 - Binary utilities > Version of binutils = 2.46.1
-- C-library > musl version = 1.2.5
-- C compiler > gcc version = 16.1.0
+- C-library > musl version = 1.2.6
+- C compiler > gcc version = 16.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`
@@ -408,8 +408,8 @@ For targets: `powerpc64-unknown-linux-musl`
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 4.19
 - Binary utilities > Version of binutils = 2.42
-- C-library > musl version = 1.2.5
-- C compiler > gcc version = 14.2.0
+- C-library > musl version = 1.2.6
+- C compiler > gcc version = 14.4.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `powerpc64le-unknown-linux-gnu.defconfig`
@@ -426,7 +426,7 @@ For targets: `powerpc64le-unknown-linux-gnu`
 - Operating System > Linux kernel version = 3.10
 - Binary utilities > Version of binutils = 2.42
 - C-library > glibc version = 2.17
-- C compiler > gcc version = 14.2.0
+- C compiler > gcc version = 14.4.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `powerpc64le-unknown-linux-musl.defconfig`
@@ -442,8 +442,8 @@ For targets: `powerpc64le-unknown-linux-musl`
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 4.19
 - Binary utilities > Version of binutils = 2.42
-- C-library > musl version = 1.2.5
-- C compiler > gcc version = 14.2.0
+- C-library > musl version = 1.2.6
+- C compiler > gcc version = 14.4.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `riscv64-unknown-linux-gnu.defconfig`
@@ -474,7 +474,7 @@ For targets: `riscv64-unknown-linux-musl`
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 4.20.17
 - Binary utilities > Version of binutils = 2.40
-- C-library > musl version = 1.2.5
+- C-library > musl version = 1.2.6
 - C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 

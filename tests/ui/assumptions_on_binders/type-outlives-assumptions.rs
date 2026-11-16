@@ -1,5 +1,5 @@
 //@ check-pass
-//@ compile-flags: -Zassumptions-on-binders
+//@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 
 // Regression test for rust-lang/project-assumptions-on-binders#19, based on the `syn` failure.
 // The receiver gives us an implied `I: 'b` bound and `'b: 'a` lets that satisfy the object

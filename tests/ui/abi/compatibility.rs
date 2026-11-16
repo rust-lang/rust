@@ -85,11 +85,10 @@
 //@ revisions: nvptx64
 //@[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
 //@[nvptx64] needs-llvm-components: nvptx
-//@ ignore-backends: gcc
 #![feature(no_core, rustc_attrs, lang_items)]
 #![feature(unsized_fn_params, transparent_unions)]
 #![no_core]
-#![allow(unused, improper_ctypes_definitions, internal_features)]
+#![expect(unused, improper_ctypes_definitions, internal_features)]
 
 // FIXME: some targets are broken in various ways.
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.
@@ -165,6 +164,18 @@ macro_rules! test_abi_compatible {
             type TestRust = (fn($t1) -> $t1, fn($t2) -> $t2);
             #[rustc_abi(assert_eq)]
             type TestC = (extern "C" fn($t1) -> $t1, extern "C" fn($t2) -> $t2);
+        }
+    };
+    ($name:ident, $t1:ty, $t2:ty, unsized) => {
+        mod $name {
+            use super::*;
+            // Declaring a `type` doesn't even check well-formedness, so we also declare a function.
+            fn check_wf(_x: $t1, _y: $t2) {}
+            // Test argument only in case of unsized types, `Rust` and `C` ABIs.
+            #[rustc_abi(assert_eq)]
+            type TestRust = (fn($t1), fn($t2));
+            #[rustc_abi(assert_eq)]
+            type TestC = (extern "C" fn($t1), extern "C" fn($t2));
         }
     };
 }
@@ -296,8 +307,8 @@ macro_rules! test_transparent_unsized {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            test_abi_compatible!(wrap1, $t, TransparentWrapper1<$t>);
-            test_abi_compatible!(wrap2, $t, TransparentWrapper2<$t>);
+            test_abi_compatible!(wrap1, $t, TransparentWrapper1<$t>, unsized);
+            test_abi_compatible!(wrap2, $t, TransparentWrapper2<$t>, unsized);
         }
     };
 }

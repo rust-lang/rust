@@ -10,7 +10,7 @@ use crate::inherent::*;
 use crate::relate::VarianceDiagInfo;
 use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, InferCtxtLike, Interner, TypingMode, Upcast};
+use crate::{self as ty, Const, InferCtxtLike, Interner, TypingMode, Upcast};
 
 pub trait PredicateEmittingRelation<Infcx, I = <Infcx as InferCtxtLike>::Interner>:
     TypeRelation<I>
@@ -129,7 +129,7 @@ where
                 }
                 TypingMode::Typeck { .. }
                 | TypingMode::Reflection
-                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostTypeckThroughBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen => structurally_relate_tys(relation, a, b),
@@ -143,9 +143,9 @@ where
 pub fn super_combine_consts<Infcx, I, R>(
     infcx: &Infcx,
     relation: &mut R,
-    a: I::Const,
-    b: I::Const,
-) -> RelateResult<I, I::Const>
+    a: Const<I>,
+    b: Const<I>,
+) -> RelateResult<I, Const<I>>
 where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,

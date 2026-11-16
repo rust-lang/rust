@@ -1,4 +1,4 @@
-// rustfmt-force_multiline_blocks: false
+//@ rustfmt-force_multiline_blocks: false
 // Option forces multiline match arm and closure bodies to be wrapped in a block
 
 fn main() {

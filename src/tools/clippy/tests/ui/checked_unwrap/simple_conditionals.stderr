@@ -59,6 +59,8 @@ LL |         x.unwrap();
 error: called `unwrap` on `x` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:13:13
    |
+LL | macro_rules! m {
+LL |     ($a:expr) => {
 LL |         if $a.is_some() {
    |         --------------- help: try: `if let Some(<item>) = x`
 LL |             $a.unwrap();
@@ -66,8 +68,6 @@ LL |             $a.unwrap();
 ...
 LL |     m!(x);
    |     ----- in this macro invocation
-   |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: called `unwrap` on `x` after checking its variant with `is_ok`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:71:9

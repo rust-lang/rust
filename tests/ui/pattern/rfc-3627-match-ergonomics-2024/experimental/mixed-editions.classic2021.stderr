@@ -21,7 +21,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let &match_ctor!(y) = &mut &mut [0];
    |         -            ^
    |         |
-   |         help: replace this `&` with `&mut`: `&mut`
+   |         help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/mixed-editions.rs:84:17
@@ -29,7 +29,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let &[bind!(z)] = &mut &mut [0];
    |         -       ^
    |         |
-   |         help: replace this `&` with `&mut`: `&mut`
+   |         help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/mixed-editions.rs:110:28
@@ -43,7 +43,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let &bind_ref_mut!(x) = &mut 0;
    |         -              ^
    |         |
-   |         help: replace this `&` with `&mut`: `&mut`
+   |         help: replace this `&` with `&mut`
 
 error[E0596]: cannot borrow as mutable inside an `&` pattern
   --> $DIR/mixed-editions.rs:116:29
@@ -57,7 +57,7 @@ error[E0596]: cannot borrow as mutable inside an `&` pattern
 LL |     let [&bind_ref_mut!(x)] = &mut [0];
    |          -              ^
    |          |
-   |          help: replace this `&` with `&mut`: `&mut`
+   |          help: replace this `&` with `&mut`
 
 error: cannot explicitly borrow within an implicitly-borrowing pattern
   --> $DIR/mixed-editions.rs:30:10

@@ -22,6 +22,21 @@ pub unsafe fn apocalypse(universe: &mut ()) {
     unimplemented!();
 }
 
+/// This one is attributed with a target_feature, so doesn't need a safety comment
+// We don't test UNNECESSARY_SAFETY_DOC here as it triggering would be platform specific...
+#[cfg(target_arch = "x86")]
+#[target_feature(enable = "sse4.2")]
+pub fn target_feature_x86(universe: &mut ()) {
+    unimplemented!();
+}
+
+/// This one is attributed with a target_feature, so doesn't need a safety comment
+#[cfg(target_arch = "aarch64")]
+#[target_feature(enable = "neon")]
+pub fn target_feature_aarch64(universe: &mut ()) {
+    unimplemented!();
+}
+
 /// This is a private function, so docs aren't necessary
 unsafe fn you_dont_see_me() {
     unimplemented!();
@@ -182,4 +197,22 @@ pub mod __macro {
 /// # Implementation safety
 pub unsafe trait DocumentedUnsafeTraitWithImplementationHeader {
     fn method();
+}
+
+pub mod issue_16317 {
+    use super::external;
+
+    external! {
+        #[doc = $("# Safety")]
+        $(
+            pub unsafe fn expanded_unsafe_fn_with_safety() {}
+        )
+    }
+    external! {
+        #[doc = $("No safety comment")]
+        $(
+            pub unsafe fn expanded_unsafe_fn_without_safety() {}
+            //~^ missing_safety_doc
+        )
+    }
 }

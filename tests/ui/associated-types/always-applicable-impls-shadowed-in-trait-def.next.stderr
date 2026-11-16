@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `Self: Eq<<Self as Trait>::Assoc>` is not satisfied
-  --> $DIR/always-applicable-impls-shadowed-in-trait-def.rs:13:17
+  --> $DIR/always-applicable-impls-shadowed-in-trait-def.rs:14:17
    |
 LL |     fn foo() -> IsEqual<Self, Self::Assoc> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Eq<<Self as Trait>::Assoc>` is not implemented for `Self`
    |
 note: required by a bound in `IsEqual`
-  --> $DIR/always-applicable-impls-shadowed-in-trait-def.rs:9:19
+  --> $DIR/always-applicable-impls-shadowed-in-trait-def.rs:10:19
    |
 LL | struct IsEqual<T: Eq<U>, U>(T, U);
    |                   ^^^^^ required by this bound in `IsEqual`

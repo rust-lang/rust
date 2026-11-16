@@ -1,4 +1,4 @@
-// rustfmt-binop_separator: Back
+//@ rustfmt-binop_separator: Back
 
 fn main() {
     let value = abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ..

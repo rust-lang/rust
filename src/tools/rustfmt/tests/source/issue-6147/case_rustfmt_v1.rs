@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2015
+//@ rustfmt-style_edition: 2015
 
 pub fn main() {
 let a = Some(12);

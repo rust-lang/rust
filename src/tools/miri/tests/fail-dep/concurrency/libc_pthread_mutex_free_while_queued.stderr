@@ -1,4 +1,4 @@
-error: Undefined Behavior: deallocation of `pthread_mutex_t` is forbidden while the queue is non-empty
+error: Undefined Behavior: accessing the memory backing a `pthread_mutex_t` is forbidden while the queue is non-empty
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
 LL |                 self.1.deallocate(From::from(ptr.cast()), layout);

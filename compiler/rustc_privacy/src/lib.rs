@@ -16,6 +16,7 @@ use diagnostics::{
     UnnamedItemIsPrivate,
 };
 use rustc_ast::visit::{VisitorResult, try_visit};
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexmap::IndexSet;
 use rustc_data_structures::intern::Interned;
@@ -23,7 +24,7 @@ use rustc_errors::{MultiSpan, listify};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
-use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind, find_attr};
+use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind};
 use rustc_lint_defs::builtin::{
     EXPORTED_PRIVATE_DEPENDENCIES, PRIVATE_BOUNDS, PRIVATE_INTERFACES, UNNAMEABLE_TYPES,
 };
@@ -34,7 +35,7 @@ use rustc_middle::ty::{
     self, AssocContainer, Const, GenericParamDefKind, PredicateProxy, TraitRef, Ty, TyCtxt,
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_span::{Ident, Span, Symbol, bug, span_bug, sym};
+use rustc_span::{Ident, Span, Symbol, bug, kw, span_bug, sym};
 use tracing::debug;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,6 +183,7 @@ where
         let ty_kind = *ty.kind();
         match ty_kind {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
+            | ty::View(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
@@ -517,8 +519,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         max_vis: Option<ty::Visibility>,
         level: Level,
     ) -> bool {
-        let private_vis =
-            ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id).into());
+        let private_vis = ty::Visibility::Restricted(self.tcx.parent_module_from_def_id(def_id));
         if max_vis != Some(private_vis) {
             return self.effective_visibilities.update(
                 def_id,
@@ -922,6 +923,7 @@ impl<'a, 'tcx> TestReachabilityVisitor<'a, 'tcx> {
 /// This pass performs remaining checks for fields in struct expressions and patterns.
 struct NamePrivacyVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+    mod_id: LocalModId,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
 }
 
@@ -938,7 +940,6 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn check_field(
         &self,
-        hir_id: hir::HirId,    // ID of the field use
         use_ctxt: Span,        // syntax context of the field name at the use site
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
         field: &'tcx ty::FieldDef,
@@ -949,8 +950,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
         // definition of the field
         let ident = Ident::new(sym::dummy, use_ctxt);
-        let (_, def_id) =
-            self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id.owner.def_id);
+        let (_, def_id) = self.tcx.adjust_ident_and_get_scope(ident, def.did(), self.mod_id);
         !field.vis.is_accessible_from(def_id, self.tcx)
     }
 
@@ -1023,7 +1023,6 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         adt: ty::AdtDef<'tcx>,
         variant: &'tcx ty::VariantDef,
         fields: &[hir::ExprField<'tcx>],
-        hir_id: hir::HirId,
         span: Span,
         struct_span: Span,
     ) {
@@ -1031,11 +1030,11 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         for (vf_index, variant_field) in variant.fields.iter_enumerated() {
             let field =
                 fields.iter().find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
-            let (hir_id, use_ctxt, span) = match field {
-                Some(field) => (field.hir_id, field.ident.span, field.span),
-                None => (hir_id, span, span),
+            let (use_ctxt, span) = match field {
+                Some(field) => (field.ident.span, field.span),
+                None => (span, span),
             };
-            if self.check_field(hir_id, use_ctxt, adt, variant_field) {
+            if self.check_field(use_ctxt, adt, variant_field) {
                 let name = match field {
                     Some(field) => field.ident.name,
                     None => variant_field.name,
@@ -1069,32 +1068,24 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                     // If the expression uses FRU we need to make sure all the unmentioned fields
                     // are checked for privacy (RFC 736). Rather than computing the set of
                     // unmentioned fields, just check them all.
-                    self.check_expanded_fields(
-                        adt,
-                        variant,
-                        fields,
-                        base.hir_id,
-                        base.span,
-                        qpath.span(),
-                    );
+                    self.check_expanded_fields(adt, variant, fields, base.span, qpath.span());
                 }
                 hir::StructTailExpr::DefaultFields(span) => {
-                    self.check_expanded_fields(
-                        adt,
-                        variant,
-                        fields,
-                        expr.hir_id,
-                        span,
-                        qpath.span(),
-                    );
+                    self.check_expanded_fields(adt, variant, fields, span, qpath.span());
                 }
                 hir::StructTailExpr::None | hir::StructTailExpr::NoneWithError(_) => {
                     let mut failed_fields = vec![];
                     for field in fields {
-                        let (hir_id, use_ctxt) = (field.hir_id, field.ident.span);
                         let index = self.typeck_results().field_index(field.hir_id);
-                        if self.check_field(hir_id, use_ctxt, adt, &variant.fields[index]) {
-                            failed_fields.push((field.ident.name, field.ident.span, true));
+                        if self.check_field(field.ident.span, adt, &variant.fields[index]) {
+                            // kw::Underscore is a `Self` mapping delegation field which is
+                            // generated by compiler, see delegation AST -> HIR lowering code
+                            // and `check_expr_struct_fields` for details.
+                            let name = match field.ident.name {
+                                kw::Underscore => variant.fields[index].name,
+                                name => name,
+                            };
+                            failed_fields.push((name, field.ident.span, true));
                         }
                     }
                     self.emit_unreachable_field_error(failed_fields, adt, None, qpath.span());
@@ -1112,9 +1103,8 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             let variant = adt.variant_of_res(res);
             let mut failed_fields = vec![];
             for field in fields {
-                let (hir_id, use_ctxt) = (field.hir_id, field.ident.span);
                 let index = self.typeck_results().field_index(field.hir_id);
-                if self.check_field(hir_id, use_ctxt, adt, &variant.fields[index]) {
+                if self.check_field(field.ident.span, adt, &variant.fields[index]) {
                     failed_fields.push((field.ident.name, field.ident.span, true));
                 }
             }
@@ -1753,7 +1743,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn check_mod_privacy(tcx: TyCtxt<'_>, mod_id: LocalModId) {
     // Check privacy of names not checked in previous compilation stages.
-    let mut visitor = NamePrivacyVisitor { tcx, maybe_typeck_results: None };
+    let mut visitor = NamePrivacyVisitor { tcx, mod_id, maybe_typeck_results: None };
     tcx.hir_visit_item_likes_in_module(mod_id, &mut visitor);
 
     // Check privacy of explicitly written types and traits as well as

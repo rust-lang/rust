@@ -1,20 +1,13 @@
 error: symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo17heb0a993da0d0e50cE)
   --> $DIR/issue-60925.rs:21:9
    |
-LL |         #[rustc_dump_symbol_name]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo::heb0a993da0d0e50c)
-  --> $DIR/issue-60925.rs:21:9
+LL | /         #[rustc_dump_symbol_name]
+...  |
+LL | |         pub(crate) fn foo() {
+   | |___________________________^
    |
-LL |         #[rustc_dump_symbol_name]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo::heb0a993da0d0e50c)
+   = note: demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)
 
-error: demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)
-  --> $DIR/issue-60925.rs:21:9
-   |
-LL |         #[rustc_dump_symbol_name]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 

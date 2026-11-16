@@ -1,4 +1,4 @@
-// rustfmt-merge_derives: true
+//@ rustfmt-merge_derives: true
 // Merge multiple derives to a single one.
 
 #[bar]

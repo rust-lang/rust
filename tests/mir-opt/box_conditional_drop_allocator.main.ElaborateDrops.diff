@@ -149,7 +149,7 @@
 +     }
 + 
 +     bb22: {
-+         _14 = copy ((_1.0: std::ptr::Unique<HasDrop>).0: std::ptr::NonNull<HasDrop>) as *const HasDrop (Transmute);
++         _14 = copy ((_1.0: std::boxed::BoxRaw<HasDrop>).0: std::ptr::NonNull<HasDrop>) as *const HasDrop (Transmute);
 +         goto -> bb21;
 +     }
 + 
@@ -175,7 +175,7 @@
 +     }
 + 
 +     bb28 (cleanup): {
-+         _17 = copy ((_1.0: std::ptr::Unique<HasDrop>).0: std::ptr::NonNull<HasDrop>) as *const HasDrop (Transmute);
++         _17 = copy ((_1.0: std::boxed::BoxRaw<HasDrop>).0: std::ptr::NonNull<HasDrop>) as *const HasDrop (Transmute);
 +         goto -> bb27;
 +     }
 + 

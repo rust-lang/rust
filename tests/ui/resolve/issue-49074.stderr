@@ -4,7 +4,16 @@ error: cannot find macro `bar` in this scope
 LL |    bar!();
    |    ^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/issue-49074.rs:6:5
+   |
+LL | /  mod foo {
+LL | |/     macro_rules! bar {
+LL | ||         () => ();
+LL | ||     }
+   | ||_____^ a macro with the same name is defined here
+LL | |  }
+   | |__- consider annotating this `mod` with `#[macro_use]`
 
 error: cannot find attribute `marco_use` in this scope
   --> $DIR/issue-49074.rs:3:3

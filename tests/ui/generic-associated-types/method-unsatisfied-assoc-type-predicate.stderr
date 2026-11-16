@@ -20,6 +20,8 @@ note: `M` defines an item `f`, perhaps you need to implement it
    |
 LL | trait M {
    | ^^^^^^^
+LL |     fn f(&self) {}
+   |
 
 error: aborting due to 1 previous error
 

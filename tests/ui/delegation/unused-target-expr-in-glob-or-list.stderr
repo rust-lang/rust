@@ -7,24 +7,24 @@ LL |     reuse UnresolvedTrait::* { self.0 }
 error: delegation's target expression is specified for function with no params
   --> $DIR/unused-target-expr-in-glob-or-list.rs:107:49
    |
+LL |     macro_rules! delegation {
+...
 LL |                 reuse <F as Trait>::static_self { self.0 }
    |                                                 ^^^^^^^^^^
 ...
 LL |     delegation!();
    |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: delegation's target expression is specified for function with no params
   --> $DIR/unused-target-expr-in-glob-or-list.rs:127:45
    |
+LL |     macro_rules! delegation2 {
+LL |         () => {
 LL |             reuse <F as Trait>::static_self { self.0 }
    |                                             ^^^^^^^^^^
 ...
 LL |         delegation2!();
    |         -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: delegation's target expression is specified for function with no params
   --> $DIR/unused-target-expr-in-glob-or-list.rs:154:45
@@ -163,6 +163,9 @@ LL |         reuse to_reuse::{value, mut_ref, r#ref} { () }
 error[E0053]: method `static_self` has an incompatible type for trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
    |
+LL |     macro_rules! delegation {
+LL |         () => {
+LL |             impl Trait for S {
 LL |                 reuse <F as Trait>::static_self { self.0 }
    |                                     ^^^^^^^^^^^ expected `F`, found `()`
 ...
@@ -172,11 +175,11 @@ LL |     delegation!();
 note: type in trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`
               found signature `fn() -> ()`
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: change the output type to match the trait
    |
 LL -                 reuse <F as Trait>::static_self { self.0 }
@@ -186,20 +189,23 @@ LL +                 reuse <F as Trait>:: -> F { self.0 }
 error[E0053]: method `static_self` has an incompatible type for trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33
    |
+LL |     macro_rules! delegation2 {
+LL |         () => {
 LL |             reuse <F as Trait>::static_self { self.0 }
    |                                 ^^^^^^^^^^^ expected `F`, found `()`
 ...
+LL |     impl Trait for S1 {
 LL |         delegation2!();
    |         -------------- in this macro invocation
    |
 note: type in trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`
               found signature `fn() -> ()`
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: change the output type to match the trait
    |
 LL -             reuse <F as Trait>::static_self { self.0 }
@@ -209,6 +215,8 @@ LL +             reuse <F as Trait>:: -> F { self.0 }
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
    |
+LL |     macro_rules! delegation {
+...
 LL |                 reuse <F as Trait>::static_self { self.0 }
    |                                     ^^^^^^^^^^^ ---------- unexpected argument
 ...
@@ -218,13 +226,20 @@ LL |     delegation!();
 note: associated function defined here
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:8
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |        ^^^^^^^^^^^
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
+note: associated function provided through this `impl`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:14:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
    |
+LL |     macro_rules! delegation {
+...
 LL |                 reuse <F as Trait>::static_self { self.0 }
    |                                     ^^^^^^^^^^^- help: consider using a semicolon here: `;`
    |                                     |
@@ -233,45 +248,45 @@ LL |                 reuse <F as Trait>::static_self { self.0 }
 ...
 LL |     delegation!();
    |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `0` on type `F`
   --> $DIR/unused-target-expr-in-glob-or-list.rs:112:57
    |
+LL |     macro_rules! delegation {
+...
 LL |                 reuse <F as Trait>::static_value { self.0 }
    |                                                         ^ unknown field
 ...
 LL |     delegation!();
    |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `0` on type `&mut F`
   --> $DIR/unused-target-expr-in-glob-or-list.rs:114:59
    |
+LL |     macro_rules! delegation {
+...
 LL |                 reuse <F as Trait>::static_mut_ref { self.0 }
    |                                                           ^ unknown field
 ...
 LL |     delegation!();
    |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `0` on type `&F`
   --> $DIR/unused-target-expr-in-glob-or-list.rs:116:55
    |
+LL |     macro_rules! delegation {
+...
 LL |                 reuse <F as Trait>::static_ref { self.0 }
    |                                                       ^ unknown field
 ...
 LL |     delegation!();
    |     ------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33
    |
+LL |     macro_rules! delegation2 {
+LL |         () => {
 LL |             reuse <F as Trait>::static_self { self.0 }
    |                                 ^^^^^^^^^^^ ---------- unexpected argument
 ...
@@ -281,13 +296,20 @@ LL |         delegation2!();
 note: associated function defined here
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:8
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |        ^^^^^^^^^^^
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
+note: associated function provided through this `impl`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:14:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33
    |
+LL |     macro_rules! delegation2 {
+LL |         () => {
 LL |             reuse <F as Trait>::static_self { self.0 }
    |                                 ^^^^^^^^^^^- help: consider using a semicolon here: `;`
    |                                 |
@@ -296,41 +318,39 @@ LL |             reuse <F as Trait>::static_self { self.0 }
 ...
 LL |         delegation2!();
    |         -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `0` on type `F`
   --> $DIR/unused-target-expr-in-glob-or-list.rs:132:53
    |
+LL |     macro_rules! delegation2 {
+...
 LL |             reuse <F as Trait>::static_value { self.0 }
    |                                                     ^ unknown field
 ...
 LL |         delegation2!();
    |         -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `0` on type `&mut F`
   --> $DIR/unused-target-expr-in-glob-or-list.rs:134:55
    |
+LL |     macro_rules! delegation2 {
+...
 LL |             reuse <F as Trait>::static_mut_ref { self.0 }
    |                                                       ^ unknown field
 ...
 LL |         delegation2!();
    |         -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0609]: no field `0` on type `&F`
   --> $DIR/unused-target-expr-in-glob-or-list.rs:136:51
    |
+LL |     macro_rules! delegation2 {
+...
 LL |             reuse <F as Trait>::static_ref { self.0 }
    |                                                   ^ unknown field
 ...
 LL |         delegation2!();
    |         -------------- in this macro invocation
-   |
-   = note: this error originates in the macro `delegation2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/unused-target-expr-in-glob-or-list.rs:154:22

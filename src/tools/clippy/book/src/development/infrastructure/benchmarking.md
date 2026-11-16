@@ -24,7 +24,7 @@ Having a benchmarking tool directly implemented into lintcheck gives us the
 ability to benchmark any given PR just by making a before and after 
 
 Here's the way you can get into any PR, benchmark it, and then benchmark
-`master`.
+`main`.
 
 The first `perf.data` will not have any numbers appended, but any subsequent
 benchmark will be written to `perf.data.number` with a number growing for 0.
@@ -38,10 +38,10 @@ git switch BRANCHNAME
 cargo lintcheck --perf
 
 # Get last common commit, checkout that
-LAST_COMMIT=$(git log BRANCHNAME..master --oneline | tail -1 | cut -c 1-11)
+LAST_COMMIT=$(git log BRANCHNAME..main --oneline | tail -1 | cut -c 1-11)
 git switch -c temporary $LAST_COMMIT
 
-# We're now on master
+# We're now on main
 
 # Bench
 cargo lintcheck --perf

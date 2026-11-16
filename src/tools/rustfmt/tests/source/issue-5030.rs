@@ -1,5 +1,5 @@
-// rustfmt-imports_granularity: Item
-// rustfmt-group_imports: One
+//@ rustfmt-imports_granularity: Item
+//@ rustfmt-group_imports: One
 
 // Confirm that attributes are duplicated to all items in the use statement
 #[cfg(feature = "foo")]

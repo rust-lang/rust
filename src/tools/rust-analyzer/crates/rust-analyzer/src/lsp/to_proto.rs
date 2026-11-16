@@ -17,7 +17,8 @@ use ide::{
     UpdateTest,
 };
 use ide_db::{
-    FxHasher, MiniCore, assists, rust_doc::format_docs, source_change::ChangeAnnotationId,
+    FxHasher, MiniCore, assists, base_db::TargetKind, rust_doc::format_docs,
+    source_change::ChangeAnnotationId,
 };
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
@@ -1929,14 +1930,14 @@ pub(crate) fn test_item(
         kind: match test_item.kind {
             ide::TestItemKind::Crate(id) => match snap.target_spec_for_crate(id) {
                 Some(target_spec) => match target_spec.target_kind() {
-                    project_model::TargetKind::Bin
-                    | project_model::TargetKind::Lib { .. }
-                    | project_model::TargetKind::Example
-                    | project_model::TargetKind::BuildScript
-                    | project_model::TargetKind::Other => lsp_ext::TestItemKind::Package,
-                    project_model::TargetKind::Test => lsp_ext::TestItemKind::Test,
+                    TargetKind::Bin
+                    | TargetKind::Lib { .. }
+                    | TargetKind::Example
+                    | TargetKind::BuildScript
+                    | TargetKind::Other => lsp_ext::TestItemKind::Package,
+                    TargetKind::Test => lsp_ext::TestItemKind::Test,
                     // benches are not tests needed to be shown in the test explorer
-                    project_model::TargetKind::Bench => return None,
+                    TargetKind::Bench => return None,
                 },
                 None => lsp_ext::TestItemKind::Package,
             },

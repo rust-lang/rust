@@ -5,7 +5,7 @@ use rustc_abi as abi;
 use rustc_abi::{
     Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
 };
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_attr_ir::lang_items::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
@@ -217,7 +217,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         offset: Size,
     ) -> Self {
         let alloc_align = alloc.inner().align;
-        assert!(alloc_align >= layout.align.abi, "{alloc_align:?} < {:?}", layout.align.abi);
+        assert!(alloc_align >= layout.align, "{alloc_align:?} < {:?}", layout.align);
 
         let read_scalar = |start, size, s: abi::Scalar, ty| {
             match alloc.0.read_scalar(
@@ -307,7 +307,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self));
 
         let layout = cx.layout_of(projected_ty);
-        self.val.deref(layout.align.abi).with_type(layout)
+        self.val.deref(layout.align).with_type(layout)
     }
 
     /// Store this operand into a place, applying move/copy annotation if present.
@@ -472,7 +472,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             return bx.cx().const_poison(cast_to);
         }
 
-        let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
+        let (tag_scalar, tag_encoding, tag_field, variants) = match self.layout.variants {
             Variants::Empty => unreachable!("we already handled uninhabited types"),
             Variants::Single { index } => {
                 let discr_val =
@@ -488,8 +488,8 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     };
                 return bx.cx().const_uint_big(cast_to, discr_val);
             }
-            Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
-                (tag, tag_encoding, tag_field)
+            Variants::Multiple { tag, ref tag_encoding, tag_field, ref variants } => {
+                (tag, tag_encoding, tag_field, variants)
             }
         };
 
@@ -517,6 +517,24 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     Primitive::Int(_, signed) => !tag_scalar.is_bool() && signed,
                     _ => false,
                 };
+                if bx.cx().sess().opts.optimize != OptLevel::No {
+                    let vals: Vec<u128> = variants
+                        .iter_enumerated()
+                        .filter_map(|(idx, layout)| {
+                            (!layout.is_uninhabited()).then(|| {
+                                self.layout.ty.discriminant_for_variant(bx.tcx(), idx).unwrap().val
+                            })
+                        })
+                        .collect();
+                    // Recording all possible discriminant values using `assume(v == c1 || v == c2 || v == c3)` may introduce
+                    // additional compile-time overhead, but we can use `assume(ctpop(v) == 1)` when all possible values are known to be powers of two.
+                    if vals.iter().all(|val| val.is_power_of_two()) {
+                        let one = bx.cx().const_i32(1);
+                        let ctpop = bx.ctpop(tag_imm);
+                        let is_one = bx.icmp(IntPredicate::IntEQ, ctpop, one);
+                        bx.assume(is_one);
+                    }
+                }
                 bx.intcast(tag_imm, cast_to, signed)
             }
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
@@ -978,7 +996,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             }
             BackendRepr::Memory { .. } => {
                 let ptr = bx.cx().type_ptr();
-                OperandValue::Ref(PlaceValue::new_sized(bx.const_poison(ptr), layout.align.abi))
+                OperandValue::Ref(PlaceValue::new_sized(bx.const_poison(ptr), layout.align))
             }
         }
     }

@@ -7,8 +7,7 @@ struct Wrapper<C: Context + 'static> {
 fn foobar(_: Wrapper<()>) { //~ ERROR the trait bound `(): Context` is not satisfied
     foobar(Wrapper { /* missing */ })
 //~^ ERROR the trait bound `(): Context` is not satisfied
-//~^^ ERROR missing field `container` in initializer of `Wrapper<_>`
-//~^^^ ERROR the trait bound `(): Context` is not satisfied
+//~| ERROR missing field `container` in initializer of `Wrapper<_>`
 }
 
 fn main() {}

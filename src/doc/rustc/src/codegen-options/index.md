@@ -152,6 +152,14 @@ at start-up, because the combination is invalid.
 > reason for that is that it's how it was for rustc 1.44 and prior. In 1.45 this
 > option was added to turn off what had always been the default.
 
+## embed-metadata
+
+This option instructs `rustc` to include the full metadata in `rlib` and `dylib`
+crate types. The default value is `yes` (enabled). If disabled (`no`), only stub
+metadata will be stored in these files, to reduce their size on disk. When using
+`-Cembed-metadata=no`, you will probably want to use `--emit=metadata` to produce
+the full metadata into a separate `.rmeta` file.
+
 ## extra-filename
 
 This option allows you to put extra data in each output filename. It takes a

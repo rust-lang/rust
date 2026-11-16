@@ -2,18 +2,25 @@
 use gccjit::FnAttribute;
 use gccjit::Function;
 #[cfg(feature = "master")]
-use rustc_hir::attrs::InlineAttr;
-use rustc_hir::attrs::InstructionSetAttr;
+use rustc_abi::{CanonAbi, InterruptKind};
+#[cfg(feature = "master")]
+use rustc_attr_ir::InlineAttr;
+use rustc_attr_ir::InstructionSetAttr;
 #[cfg(feature = "master")]
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 #[cfg(feature = "master")]
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty;
+use rustc_target::callconv::FnAbi;
 #[cfg(feature = "master")]
 use rustc_target::spec::Arch;
 
+#[cfg(feature = "master")]
+use crate::base;
 use crate::context::CodegenCx;
-use crate::gcc_util::to_gcc_features;
+#[cfg(feature = "master")]
+use crate::gcc_util::to_gcc_aarch64_extension;
+use crate::gcc_util::{to_gcc_features, to_gcc_target_attribute_feature};
 
 /// Checks if the function `instance` is recursively inline.
 /// Returns `false` if a functions is guaranteed to be non-recursive, and `true` if it *might* be recursive.
@@ -82,12 +89,23 @@ fn inline_attr<'gcc, 'tcx>(
     }
 }
 
+#[cfg(feature = "master")]
+fn is_x86_interrupt<'tcx>(fn_abi: Option<&FnAbi<'tcx, ty::Ty<'tcx>>>) -> bool {
+    matches!(
+        fn_abi,
+        Some(fn_abi) if matches!(fn_abi.conv, CanonAbi::Interrupt(InterruptKind::X86))
+    )
+}
+
 /// Composite function which sets GCC attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub fn from_fn_attrs<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     #[cfg_attr(not(feature = "master"), expect(unused_variables))] func: Function<'gcc>,
     instance: ty::Instance<'tcx>,
+    #[cfg_attr(not(feature = "master"), expect(unused_variables))] fn_abi: Option<
+        &FnAbi<'tcx, ty::Ty<'tcx>>,
+    >,
 ) {
     let codegen_fn_attrs = cx.tcx.codegen_instance_attrs(instance.def);
 
@@ -101,6 +119,16 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
             InlineAttr::Hint
         } else {
             codegen_fn_attrs.inline
+        };
+        // GCC drops `weak` from a function that is also `inline`, leaving the symbol strong, and
+        // the linkage is what has to survive. `inline(never)` does not conflict.
+        let inline = match inline {
+            InlineAttr::Always | InlineAttr::Hint | InlineAttr::Force { .. }
+                if codegen_fn_attrs.linkage.is_some_and(base::linkage_needs_weak_attribute) =>
+            {
+                InlineAttr::None
+            }
+            inline => inline,
         };
         if let Some(attr) = inline_attr(cx, inline, instance) {
             if let FnAttribute::AlwaysInline = attr {
@@ -120,6 +148,26 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         }
     }
 
+    #[cfg(feature = "master")]
+    if cx.sess().target.arch == Arch::AArch64 {
+        let extensions = codegen_fn_attrs
+            .target_features
+            .iter()
+            .filter_map(|feature| to_gcc_aarch64_extension(feature.name.as_str()))
+            .map(|extension| format!("+{extension}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        if !extensions.is_empty() {
+            func.add_attribute(FnAttribute::Target(&extensions));
+        }
+        return;
+    }
+
+    #[cfg(feature = "master")]
+    let x86_interrupt = is_x86_interrupt(fn_abi);
+    #[cfg(not(feature = "master"))]
+    let x86_interrupt = false;
+
     let mut function_features = codegen_fn_attrs
         .target_features
         .iter()
@@ -135,22 +183,16 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     // Check if GCC requires the same.
     let mut global_features = cx.tcx.sess.global_backend_features.iter().map(|s| s.as_str());
     function_features.extend(&mut global_features);
+    if x86_interrupt {
+        // GCC does not preserve SSE, MMX, or x87 state in interrupt handlers and rejects
+        // them whenever those instruction sets are enabled, even if the handler does not
+        // emit such instructions. Restrict the function to general registers so the
+        // interrupt attribute works with the default x86_64 target features.
+        function_features.push("general-regs-only");
+    }
     let target_features = function_features
         .iter()
-        .filter_map(|feature| {
-            // FIXME(antoyo): support soft-float.
-            if feature.contains("soft-float") {
-                return None;
-            }
-
-            if feature.starts_with('-') {
-                Some(format!("no{}", feature))
-            } else if let Some(stripped) = feature.strip_prefix('+') {
-                Some(stripped.to_string())
-            } else {
-                Some(feature.to_string())
-            }
-        })
+        .filter_map(|feature| to_gcc_target_attribute_feature(feature))
         .collect::<Vec<_>>()
         .join(",");
     if !target_features.is_empty() {
@@ -159,7 +201,8 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
             Arch::X86 | Arch::X86_64 | Arch::PowerPC => {
                 func.add_attribute(FnAttribute::Target(&target_features))
             }
-            // The target attribute is not supported on other targets in GCC.
+            // FIXME: GCC also supports the target attribute on other targets, with their own
+            // spellings.
             _ => (),
         }
     }

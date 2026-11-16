@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ normalize-stderr: "(abi|pref|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
+//@ normalize-stderr: "(align|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ normalize-stderr: "(size): Size\([48] bytes\)" -> "$1: $$SOME_SIZE"
 //@ normalize-stderr: "(can_unwind): (true|false)" -> "$1: $$SOME_BOOL"
@@ -16,7 +16,7 @@
 //@ [generic] ignore-riscv64
 //@ [generic] ignore-loongarch64
 //@ ignore-backends: gcc
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, unsized_fn_params)]
 #![crate_type = "lib"]
 #![feature(no_core)]
 #![no_std]
@@ -29,6 +29,12 @@ struct S(u16);
 
 #[rustc_abi(debug)]
 fn test(_x: u8) -> bool {
+    //~^ ERROR: fn_abi
+    true
+}
+
+#[rustc_abi(debug)]
+fn test_unsized(_x: [u8]) -> bool {
     //~^ ERROR: fn_abi
     true
 }

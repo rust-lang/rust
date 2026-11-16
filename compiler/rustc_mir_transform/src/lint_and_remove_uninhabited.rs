@@ -126,7 +126,7 @@ fn find_unreachable_code_from<'tcx>(
     match term.kind {
         // The user does not care for `goto` and compiler-generated drops. If the target block is
         // only reachable through those terminators, continue searching there.
-        TerminatorKind::Goto { target } | TerminatorKind::Drop { target, .. } => {
+        TerminatorKind::Goto { target, .. } | TerminatorKind::Drop { target, .. } => {
             if &body.basic_blocks.predecessors()[target][..] == &[bb] {
                 find_unreachable_code_from(target, body)
             } else {

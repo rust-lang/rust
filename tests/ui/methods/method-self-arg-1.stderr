@@ -9,6 +9,7 @@ LL |     Foo::bar(x);
 note: method defined here
   --> $DIR/method-self-arg-1.rs:8:8
    |
+LL | impl Foo {
 LL |     fn bar(&self) {}
    |        ^^^ -----
 help: consider borrowing here
@@ -29,6 +30,7 @@ LL |     Foo::bar(&42);
 note: method defined here
   --> $DIR/method-self-arg-1.rs:8:8
    |
+LL | impl Foo {
 LL |     fn bar(&self) {}
    |        ^^^ -----
 

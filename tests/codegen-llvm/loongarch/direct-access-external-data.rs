@@ -15,20 +15,11 @@ unsafe extern "C" {
     // PIE-NOT: dso_local
     // DIRECT-SAME: dso_local
     // INDIRECT-NOT: dso_local
-    // CHECK-SAME: global i32
+    // CHECK-SAME: global [4 x i8]
     safe static VAR: i32;
 
     // When "linkage" is used, we generate an indirection global.
     // Check dso_local is still applied to the actual global.
-    // CHECK: @EXTERNAL = external
-    // DEFAULT-NOT: dso_local
-    // PIE-NOT: dso_local
-    // DIRECT-SAME: dso_local
-    // INDIRECT-NOT: dso_local
-    // CHECK-SAME: global i8
-    #[linkage = "external"]
-    safe static EXTERNAL: *const u32;
-
     // CHECK: @WEAK = extern_weak
     // DEFAULT-NOT: dso_local
     // PIE-NOT: dso_local
@@ -42,6 +33,5 @@ unsafe extern "C" {
 #[no_mangle]
 pub fn refer() {
     core::hint::black_box(VAR);
-    core::hint::black_box(EXTERNAL);
     core::hint::black_box(WEAK);
 }

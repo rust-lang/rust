@@ -1,6 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
@@ -165,10 +163,15 @@ fn typeck_with_inspect<'tcx>(
 
         fn_sig.inputs_and_output = tcx.mk_type_list_from_iter(
             fn_sig
-                .inputs_and_output
+                .inputs()
                 .iter()
                 .enumerate()
-                .map(|(idx, ty)| fcx.normalize(arg_span(idx), Unnormalized::new_wip(ty))),
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), Unnormalized::new_wip(*ty)))
+                .chain([fcx.normalize_with_cause(
+                    decl.output.span(),
+                    Unnormalized::new_wip(fn_sig.output()),
+                    ObligationCauseCode::ReturnType,
+                )]),
         );
 
         if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
@@ -193,9 +196,13 @@ fn typeck_with_inspect<'tcx>(
 
         loops::check(tcx, def_id, body);
 
-        let expected_type = fcx.normalize(body.value.span, Unnormalized::new_wip(expected_type));
+        let expected_type = fcx.normalize_with_cause(
+            body.value.span,
+            Unnormalized::new_wip(expected_type),
+            ObligationCauseCode::BlockTailExpression(body.value.hir_id, hir::MatchSource::Normal),
+        );
 
-        let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
+        let wf_code = ObligationCauseCode::WellFormed(WellFormedLoc::Ty(def_id));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
         if let hir::Node::AnonConst(_) = node {
@@ -607,7 +614,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => err.with_span_label(span, format!("not a {expected}")),
         }
-        .emit()
+        .emit_err()
     }
 }
 
@@ -714,7 +721,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
             diag.note("some of the compiler flags provided by cargo are hidden");
         }
     }
-    diag.emit()
+    diag.emit_bug()
 }
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]

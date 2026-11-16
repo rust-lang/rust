@@ -337,7 +337,13 @@ fn get_status_code(status: &ExitStatus) -> (u8, i32) {
     }
 }
 
-#[cfg(any(windows, target_os = "motor", target_os = "uefi"))]
+#[cfg(target_os = "uefi")]
+fn get_status_code(status: &ExitStatus) -> (u8, i32) {
+    let status = status.code().unwrap();
+    if (status & i32::MIN) != 0 { (1, status & !i32::MIN) } else { (0, status) }
+}
+
+#[cfg(any(windows, target_os = "motor"))]
 fn get_status_code(status: &ExitStatus) -> (u8, i32) {
     (0, status.code().unwrap())
 }

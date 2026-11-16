@@ -16,7 +16,8 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{
-    self as ty, DebruijnIndex, Interner, PredicateProxy, Region, UniverseIndex, Unnormalized,
+    self as ty, CallerBoundsIterator, Const, DebruijnIndex, Interner, PredicateProxy, Region,
+    UniverseIndex, Unnormalized,
 };
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
@@ -136,6 +137,7 @@ impl<I: Interner, T> Binder<I, T> {
         self.as_ref().map_bound(f)
     }
 
+    #[inline]
     pub fn map_bound<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
@@ -146,6 +148,19 @@ impl<I: Interner, T> Binder<I, T> {
             let mut validator = ValidateBoundVars::new(bound_vars);
             let _ = value.visit_with(&mut validator);
         }
+        Binder { value, bound_vars }
+    }
+
+    /// There are some uses of `map_bound` which are incredibly hot and trivially
+    /// correct. Only use this if this significantly improves the performance of
+    /// builds with debug assertions.
+    #[inline]
+    pub fn map_bound_no_validate_bound_vars<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let Binder { value, bound_vars } = self;
+        let value = f(value);
         Binder { value, bound_vars }
     }
 
@@ -241,20 +256,20 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 
     fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
-        if t.outer_exclusive_binder() < self.binder_index
+        if t.outer_exclusive_binder() <= self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
-            return ControlFlow::Break(());
+            return ControlFlow::Continue(());
         }
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
                 if debruijn == self.binder_index =>
             {
                 let idx = bound_ty.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
-                }
-                bound_ty.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_ty.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -262,19 +277,19 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         t.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: I::Const) -> Self::Result {
-        if c.outer_exclusive_binder() < self.binder_index {
-            return ControlFlow::Break(());
+    fn visit_const(&mut self, c: Const<I>) -> Self::Result {
+        if c.outer_exclusive_binder() <= self.binder_index {
+            return ControlFlow::Continue(());
         }
         match c.kind() {
             ty::ConstKind::Bound(debruijn, bound_const)
                 if debruijn == ty::BoundVarIndexKind::Bound(self.binder_index) =>
             {
                 let idx = bound_const.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", c, self.bound_vars);
-                }
-                bound_const.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_const.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -286,10 +301,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         match r.kind() {
             ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
                 let idx = br.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", r, self.bound_vars);
-                }
-                br.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                br.assert_eq(bound_var);
             }
 
             _ => (),
@@ -494,7 +509,7 @@ where
 {
 }
 
-impl<'s, I: Interner, Iter: IntoIterator> EarlyBinder<I, Iter>
+impl<I: Interner, Iter: IntoIterator> EarlyBinder<I, Iter>
 where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy + TypeFoldable<I>,
@@ -502,8 +517,8 @@ where
     pub fn iter_instantiated_copied(
         self,
         cx: I,
-        args: &'s [I::GenericArg],
-    ) -> IterInstantiatedCopied<'s, I, Iter> {
+        args: I::GenericArgs,
+    ) -> IterInstantiatedCopied<I, Iter> {
         IterInstantiatedCopied { it: self.value.into_iter(), cx, args }
     }
 
@@ -514,21 +529,19 @@ where
     }
 }
 
-pub struct IterInstantiatedCopied<'a, I: Interner, Iter: IntoIterator> {
+pub struct IterInstantiatedCopied<I: Interner, Iter: IntoIterator> {
     it: Iter::IntoIter,
     cx: I,
-    args: &'a [I::GenericArg],
+    args: I::GenericArgs,
 }
 
-impl<'a, I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone
-    for IterInstantiatedCopied<'a, I, Iter>
-{
-    fn clone(&self) -> IterInstantiatedCopied<'a, I, Iter> {
+impl<I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone for IterInstantiatedCopied<I, Iter> {
+    fn clone(&self) -> IterInstantiatedCopied<I, Iter> {
         IterInstantiatedCopied { it: self.it.clone(), cx: self.cx, args: self.args }
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy + TypeFoldable<I>,
@@ -546,7 +559,7 @@ where
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> DoubleEndedIterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> DoubleEndedIterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::IntoIter: DoubleEndedIterator,
     Iter::Item: Deref,
@@ -559,7 +572,7 @@ where
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> ExactSizeIterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> ExactSizeIterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::IntoIter: ExactSizeIterator,
     Iter::Item: Deref,
@@ -741,7 +754,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         }
     }
 
-    fn fold_const(&mut self, c: I::Const) -> I::Const {
+    fn fold_const(&mut self, c: Const<I>) -> Const<I> {
         if let ty::ConstKind::Param(p) = c.kind() {
             self.const_for_param(p, c)
         } else {
@@ -796,7 +809,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         )
     }
 
-    fn const_for_param(&self, p: I::ParamConst, source_ct: I::Const) -> I::Const {
+    fn const_for_param(&self, p: I::ParamConst, source_ct: Const<I>) -> Const<I> {
         // Look up the const in the args. It really should be in there.
         let opt_ct = self.args.get(p.index() as usize).map(|arg| arg.kind());
         let ct = match opt_ct {
@@ -813,7 +826,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     fn const_param_expected(
         &self,
         p: I::ParamConst,
-        ct: I::Const,
+        ct: Const<I>,
         kind: ty::GenericArgKind<I>,
     ) -> ! {
         panic!(
@@ -828,7 +841,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn const_param_out_of_range(&self, p: I::ParamConst, ct: I::Const) -> ! {
+    fn const_param_out_of_range(&self, p: I::ParamConst, ct: Const<I>) -> ! {
         panic!(
             "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             p,
@@ -1260,7 +1273,7 @@ impl<I: Interner> PlaceholderConst<I> {
     }
 
     pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {
-        let mut candidates = env.caller_bounds().filter_map(|clause| {
+        let mut candidates = env.caller_bounds().non_trait_clauses().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
             match clause.kind().skip_binder() {
                 ty::ClauseKind::ConstArgHasType(placeholder_ct, ty) => {

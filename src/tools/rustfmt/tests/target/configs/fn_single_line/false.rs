@@ -1,4 +1,4 @@
-// rustfmt-fn_single_line: false
+//@ rustfmt-fn_single_line: false
 // Single-expression function on single line
 
 fn lorem() -> usize {

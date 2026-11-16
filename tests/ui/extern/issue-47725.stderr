@@ -15,6 +15,8 @@ warning: the `link_name` attribute cannot be used on structs
    |
 LL | #[link_name = "foo"]
    |   ^^^^^^^^^
+...
+LL | struct Foo;
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -29,6 +31,8 @@ warning: the `link_name` attribute cannot be used on foreign modules
    |
 LL | #[link_name = "foobar"]
    |   ^^^^^^^^^
+...
+LL | extern "C" {
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -38,6 +42,8 @@ warning: the `link_name` attribute cannot be used on foreign modules
    |
 LL | #[link_name]
    |   ^^^^^^^^^
+...
+LL | extern "C" {
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

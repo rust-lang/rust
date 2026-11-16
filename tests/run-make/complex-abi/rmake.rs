@@ -3,12 +3,18 @@
 //@ ignore-android: FIXME(#142855)
 //@ ignore-sgx: (x86 machine code cannot be directly executed)
 //@ ignore-pauthtest: (it requires non-trivial compilation of c sources, and only supports dynamic
+// The GCC backend does not implement x87_f80 yet.
+//@ ignore-backends: gcc
 //  linking, ignore the test).
 
-use run_make_support::{bin_name, build_native_static_lib, env_var, run, rustc};
+use run_make_support::{bin_name, build_native_static_lib, env_var, run, rustc, target};
 
 fn main() {
     build_native_static_lib("test");
-    rustc().linker(&env_var("CC")).input("main.rs").run();
+    let mut cmd = rustc();
+    if !target().contains("wasm") {
+        cmd.linker(&env_var("CC"));
+    }
+    cmd.input("main.rs").run();
     run(&bin_name("main"));
 }

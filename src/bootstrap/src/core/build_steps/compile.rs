@@ -353,7 +353,7 @@ fn copy_third_party_objects(
         target_deps.extend(
             copy_sanitizers(builder, compiler, target)
                 .into_iter()
-                .map(|d| (d, DependencyType::Target)),
+                .map(|d| (d, DependencyType::Target { proc_macro: false })),
         );
     }
 
@@ -366,7 +366,7 @@ fn copy_third_party_objects(
     {
         let libunwind_path =
             copy_llvm_libunwind(builder, target, &builder.sysroot_target_libdir(*compiler, target));
-        target_deps.push((libunwind_path, DependencyType::Target));
+        target_deps.push((libunwind_path, DependencyType::Target { proc_macro: false }));
     }
 
     target_deps
@@ -946,7 +946,7 @@ impl CommandLineStep for StartupObjects {
 
             let obj = sysroot_dir.join((*file).to_string() + ".o");
             builder.copy_link(dst_file, &obj, FileType::NativeLibrary);
-            target_deps.push((obj, DependencyType::Target));
+            target_deps.push((obj, DependencyType::Target { proc_macro: false }));
         }
 
         target_deps
@@ -1251,31 +1251,7 @@ pub fn rustc_cargo(
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 
-    if is_lto_stage(build_compiler) {
-        match builder.config.rust_lto {
-            RustcLto::Thin | RustcLto::Fat => {
-                // Since using LTO for optimizing dylibs is currently experimental,
-                // we need to pass -Zdylib-lto.
-                cargo.rustflag("-Zdylib-lto");
-                // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
-                // compiling dylibs (and their dependencies), even when LTO is enabled for the
-                // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
-                let lto_type = match builder.config.rust_lto {
-                    RustcLto::Thin => "thin",
-                    RustcLto::Fat => "fat",
-                    _ => unreachable!(),
-                };
-                cargo.rustflag(&format!("-Clto={lto_type}"));
-                cargo.rustflag("-Cembed-bitcode=yes");
-            }
-            RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
-            RustcLto::Off => {
-                cargo.rustflag("-Clto=off");
-            }
-        }
-    } else if builder.config.rust_lto == RustcLto::Off {
-        cargo.rustflag("-Clto=off");
-    }
+    apply_dylib_lto(builder, build_compiler, cargo);
 
     // With LLD, we can use ICF (identical code folding) to reduce the executable size
     // of librustc_driver/rustc and to improve i-cache utilization.
@@ -1306,6 +1282,34 @@ pub fn rustc_cargo(
     }
 
     rustc_cargo_env(builder, cargo, target);
+}
+
+fn apply_dylib_lto(builder: &Builder<'_>, build_compiler: &Compiler, cargo: &mut Cargo) {
+    if is_lto_stage(build_compiler) {
+        match builder.config.rust_lto {
+            RustcLto::Thin | RustcLto::Fat => {
+                // Since using LTO for optimizing dylibs is currently experimental,
+                // we need to pass -Zdylib-lto.
+                cargo.rustflag("-Zdylib-lto");
+                // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                let lto_type = match builder.config.rust_lto {
+                    RustcLto::Thin => "thin",
+                    RustcLto::Fat => "fat",
+                    _ => unreachable!(),
+                };
+                cargo.rustflag(&format!("-Clto={lto_type}"));
+                cargo.rustflag("-Cembed-bitcode=yes");
+            }
+            RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            RustcLto::Off => {
+                cargo.rustflag("-Clto=off");
+            }
+        }
+    } else if builder.config.rust_lto == RustcLto::Off {
+        cargo.rustflag("-Clto=off");
+    }
 }
 
 fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
@@ -1370,6 +1374,8 @@ fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         // We want to enable Polonius Alpha and Next Trait Solver by default on nighty
         cargo.env("CFG_DEFAULT_POLONIUS_NEXT", "1");
         cargo.env("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY", "1");
+        // Enable 2 threads for the parallel frontend by default on nightly
+        cargo.env("CFG_DEFAULT_FRONTEND_JOBS", "2");
     }
 
     // These conditionals represent a tension between three forces:
@@ -1416,6 +1422,12 @@ fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         else if target.starts_with("loongarch") {
             cargo.env("JEMALLOC_SYS_WITH_LG_PAGE", "14");
         }
+    }
+
+    // Plumb the `rust.wasm-panic-unwind-default` configuration option into the
+    // `rustc_target` crate.
+    if builder.config.wasm_panic_unwind_default {
+        cargo.env("CFG_WASM_PANIC_UNWIND_DEFAULT", "1");
     }
 }
 
@@ -1720,6 +1732,7 @@ impl CommandLineStep for GccCodegenBackend {
             Kind::Build,
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
+        apply_dylib_lto(builder, &build_compiler, &mut cargo);
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
@@ -1790,6 +1803,8 @@ impl CommandLineStep for CraneliftCodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
+        apply_dylib_lto(builder, &build_compiler, &mut cargo);
+        apply_pgo(builder, &mut cargo, build_compiler, &builder.config.cranelift_pgo);
 
         let _guard = builder.msg(
             Kind::Build,
@@ -2348,12 +2363,12 @@ impl CommandLineStep for Assemble {
         let proc_macros = builder
             .read_stamp_file(&stamp)
             .into_iter()
-            .filter_map(|(path, dependency_type)| {
-                if dependency_type == DependencyType::Host {
+            .filter_map(|(path, dependency_type)| match dependency_type {
+                DependencyType::HostProcMacro | DependencyType::Target { proc_macro: true } => {
                     Some(path.file_name().unwrap().to_owned().into_string().unwrap())
-                } else {
-                    None
                 }
+                DependencyType::Target { proc_macro: false }
+                | DependencyType::TargetSelfContained => None,
             })
             .collect::<HashSet<_>>();
 
@@ -2538,6 +2553,26 @@ impl CommandLineStep for Assemble {
 
         maybe_install_llvm_bitcode_linker();
 
+        if builder.config.llvm_tpde {
+            debug!("`llvm_tpde` requested");
+            // The rustc TPDE integration is Linux-only for now
+            if !host.contains("linux") {
+                builder.info(&format!("host target `{host}` not supported by tpde. skipping"));
+            } else {
+                // Put TPDE next to librustc_driver.so
+                let tpde_output = builder.ensure(llvm::Tpde { target: host });
+                let target_libdir =
+                    builder.sysroot_target_libdir(target_compiler, target_compiler.host);
+                let target_dst_lib =
+                    target_libdir.join(tpde_output.plugin_path().file_name().unwrap());
+                builder.copy_link(
+                    tpde_output.plugin_path(),
+                    &target_dst_lib,
+                    FileType::NativeLibrary,
+                );
+            }
+        }
+
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.
         debug!(
@@ -2581,7 +2616,7 @@ pub fn add_to_sysroot(
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         let filename = path.file_name().unwrap().to_str().unwrap();
         let dst = match dependency_type {
-            DependencyType::Host => {
+            DependencyType::HostProcMacro => {
                 if sysroot_dst == sysroot_host_dst {
                     // Only insert the part before the . to deduplicate different files for the same crate.
                     // For example foo-1234.dll and foo-1234.dll.lib.
@@ -2590,7 +2625,7 @@ pub fn add_to_sysroot(
 
                 sysroot_host_dst
             }
-            DependencyType::Target => {
+            DependencyType::Target { .. } => {
                 // Only insert the part before the . to deduplicate different files for the same crate.
                 // For example foo-1234.dll and foo-1234.dll.lib.
                 crates.insert(filename.split_once('.').unwrap().0.to_owned(), path.clone());
@@ -2669,7 +2704,7 @@ pub fn run_cargo(
         let (filenames_vec, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
-                target: CargoTarget { crate_types },
+                target: CargoTarget { crate_types, .. },
                 ..
             } => {
                 let mut f: Vec<String> = filenames.into_iter().map(|s| s.into_owned()).collect();
@@ -2704,17 +2739,19 @@ pub fn run_cargo(
 
             let filename = Path::new(&*filename);
 
+            let is_proc_macro = crate_types.iter().any(|t| t == "proc-macro");
+
             // If this was an output file in the "host dir" we don't actually
             // worry about it, it's not relevant for us
             if filename.starts_with(&host_root_dir) {
                 // Unless it's a proc macro used in the compiler
-                if crate_types.iter().any(|t| t == "proc-macro") {
+                if is_proc_macro {
                     // Cargo will compile proc-macros that are part of the rustc workspace twice.
                     // Once as libmacro-hash.so as build dependency and once as libmacro.so as
                     // output artifact. Only keep the former to avoid ambiguity when trying to use
                     // the proc macro from the sysroot.
                     if filename.file_name().unwrap().to_str().unwrap().contains("-") {
-                        deps.push((filename.to_path_buf(), DependencyType::Host));
+                        deps.push((filename.to_path_buf(), DependencyType::HostProcMacro));
                     }
                 }
                 continue;
@@ -2723,7 +2760,10 @@ pub fn run_cargo(
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
             if filename.starts_with(&target_build_dir) {
-                deps.push((filename.to_path_buf(), DependencyType::Target));
+                deps.push((
+                    filename.to_path_buf(),
+                    DependencyType::Target { proc_macro: is_proc_macro },
+                ));
                 continue;
             }
 
@@ -2743,7 +2783,7 @@ pub fn run_cargo(
             let file_stem = parts.next().unwrap().to_owned();
             let extension = parts.next().unwrap().to_owned();
 
-            toplevel.push((file_stem, extension, expected_len));
+            toplevel.push((file_stem, extension, expected_len, is_proc_macro));
         }
     });
 
@@ -2771,7 +2811,7 @@ pub fn run_cargo(
         .flat_map(|e| read_dir(&e.path()))
         .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
         .collect::<Vec<_>>();
-    for (prefix, extension, expected_len) in toplevel {
+    for (prefix, extension, expected_len, is_proc_macro) in toplevel {
         let candidates = contents.iter().filter(|&(_, filename, meta)| {
             meta.len() == expected_len
                 && filename
@@ -2790,10 +2830,10 @@ pub fn run_cargo(
             let candidate = format!("{path_to_add}.lib");
             let candidate = PathBuf::from(candidate);
             if candidate.exists() {
-                deps.push((candidate, DependencyType::Target));
+                deps.push((candidate, DependencyType::Target { proc_macro: is_proc_macro }));
             }
         }
-        deps.push((path_to_add.into(), DependencyType::Target));
+        deps.push((path_to_add.into(), DependencyType::Target { proc_macro: is_proc_macro }));
     }
 
     deps.extend(additional_target_deps);
@@ -2801,8 +2841,9 @@ pub fn run_cargo(
     let mut new_contents = Vec::new();
     for (dep, dependency_type) in deps.iter() {
         new_contents.extend(match *dependency_type {
-            DependencyType::Host => b"h",
-            DependencyType::Target => b"t",
+            DependencyType::HostProcMacro => b"h",
+            DependencyType::Target { proc_macro: false } => b"t",
+            DependencyType::Target { proc_macro: true } => b"p",
             DependencyType::TargetSelfContained => b"s",
         });
         new_contents.extend(dep.to_str().unwrap().as_bytes());
@@ -2876,12 +2917,14 @@ pub fn stream_cargo(
     status.success()
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct CargoTarget<'a> {
-    crate_types: Vec<Cow<'a, str>>,
+    pub crate_types: Vec<Cow<'a, str>>,
+    #[serde(default)]
+    pub doc: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "reason", rename_all = "kebab-case")]
 pub enum CargoMessage<'a> {
     CompilerArtifact { filenames: Vec<Cow<'a, str>>, target: CargoTarget<'a> },

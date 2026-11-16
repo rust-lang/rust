@@ -222,6 +222,14 @@ fn builtin_pat(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         pattern(p);
         p.expect(T![')']);
         Some(m.complete(p, DEREF_PAT))
+    } else if p.eat_contextual_kw(T![cfg]) {
+        // test cfg_pred_pat
+        // fn foo() { let builtin # cfg(any(true, x = "y")) = true; }
+        p.expect(T!['(']);
+        attributes::cfg_predicate(p);
+        p.eat(T![,]);
+        p.expect(T![')']);
+        Some(m.complete(p, CFG_PRED_PAT))
     } else {
         m.abandon(p);
         None

@@ -1,7 +1,8 @@
+use rustc_attr_ir::find_attr;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{
     Constness, ExprKind, ForeignItemKind, ImplItem, ImplItemImplKind, ImplItemKind, Item, ItemKind,
-    Node, TraitItem, TraitItemKind, VariantData, find_attr,
+    Node, TraitItem, TraitItemKind, VariantData,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;

@@ -1,5 +1,5 @@
-// rustfmt-comment_width: 80
-// rustfmt-wrap_comments: true
+//@ rustfmt-comment_width: 80
+//@ rustfmt-wrap_comments: true
 // Comment width
 
 fn main() {

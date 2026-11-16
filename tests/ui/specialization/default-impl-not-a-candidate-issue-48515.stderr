@@ -56,6 +56,8 @@ note: `Set` defines an item `contains`, perhaps you need to implement it
    |
 LL | trait Set<T> {
    | ^^^^^^^^^^^^
+LL |     fn contains(&self, bit: T);
+   |
 
 error: aborting due to 4 previous errors
 

@@ -1,5 +1,6 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@only-target: linux # We only support tokio on Linux
+//@run-native
 
 use std::fs::remove_file;
 
@@ -16,7 +17,7 @@ async fn main() {
 }
 
 async fn test_create_and_write() -> io::Result<()> {
-    let path = utils::prepare("foo.txt");
+    let path = utils::prepare("miri_tokio_test_create_and_write.txt");
     let mut file = File::create(&path).await?;
 
     // Write 10 bytes to the file.
@@ -33,7 +34,7 @@ async fn test_create_and_write() -> io::Result<()> {
 
 async fn test_create_and_read() -> io::Result<()> {
     let bytes = b"more bytes";
-    let path = utils::prepare_with_content("foo.txt", bytes);
+    let path = utils::prepare_with_content("miri_tokio_test_create_and_read.txt", bytes);
     let mut file = OpenOptions::new().read(true).open(&path).await.unwrap();
     let mut buffer = vec![];
 

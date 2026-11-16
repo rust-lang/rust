@@ -47,3 +47,5 @@ pub fn main() {
     }
     let Foo { bar: _ } = foo;
 }
+
+//@ reference: items.union.pattern.safety

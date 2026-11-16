@@ -3,8 +3,9 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs::{self, read_dir};
-use std::io;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::{io, thread};
 
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
@@ -95,13 +96,32 @@ pub(crate) struct WorkspaceInfo<'a> {
     pub(crate) path: &'a str,
     /// The list of license exceptions.
     pub(crate) exceptions: ExceptionList,
-    /// Optionally:
-    /// * A list of crates for which dependencies need to be explicitly allowed.
-    /// * The list of allowed dependencies.
-    /// * The source code location of the allowed dependencies list
-    crates_and_deps: Option<(&'a [&'a str], &'a [&'a str], ListLocation)>,
+    /// The list of dependencies that are allowed. If None, any crate with an
+    /// acceptable license is allowed.
+    allowed_deps: Option<PermittedDeps<'a>>,
     /// Submodules required for the workspace
     pub(crate) submodules: &'a [&'a str],
+}
+
+#[derive(Clone, Copy)]
+struct PermittedDeps<'a> {
+    /// A list of crates for which dependencies need to be explicitly allowed
+    /// or None to check the entire workspace.
+    roots: Option<&'a [&'a str]>,
+    /// The list of allowed dependencies.
+    deps: &'a [&'a str],
+    /// The source code location of the allowed dependencies list.
+    deps_loc: ListLocation,
+}
+
+impl<'a> PermittedDeps<'a> {
+    const fn new(
+        roots: Option<&'a [&'a str]>,
+        deps: &'a [&'a str],
+        deps_loc: ListLocation,
+    ) -> Self {
+        Self { roots, deps, deps_loc }
+    }
 }
 
 const WORKSPACE_LOCATION: ListLocation = location!(+4);
@@ -113,8 +133,8 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: ".",
         exceptions: EXCEPTIONS,
-        crates_and_deps: Some((
-            &["rustc-main"],
+        allowed_deps: Some(PermittedDeps::new(
+            Some(&["rustc-main"]),
             PERMITTED_RUSTC_DEPENDENCIES,
             PERMITTED_RUSTC_DEPS_LOCATION,
         )),
@@ -123,8 +143,8 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "library",
         exceptions: EXCEPTIONS_STDLIB,
-        crates_and_deps: Some((
-            &["sysroot"],
+        allowed_deps: Some(PermittedDeps::new(
+            None,
             PERMITTED_STDLIB_DEPENDENCIES,
             PERMITTED_STDLIB_DEPS_LOCATION,
         )),
@@ -133,14 +153,14 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "library/stdarch",
         exceptions: EXCEPTIONS_STDARCH,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "compiler/rustc_codegen_cranelift",
         exceptions: EXCEPTIONS_CRANELIFT,
-        crates_and_deps: Some((
-            &["rustc_codegen_cranelift"],
+        allowed_deps: Some(PermittedDeps::new(
+            None,
             PERMITTED_CRANELIFT_DEPENDENCIES,
             PERMITTED_CRANELIFT_DEPS_LOCATION,
         )),
@@ -149,19 +169,19 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "compiler/rustc_codegen_gcc",
         exceptions: EXCEPTIONS_GCC,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "src/bootstrap",
         exceptions: EXCEPTIONS_BOOTSTRAP,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "src/tools/cargo",
         exceptions: EXCEPTIONS_CARGO,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &["src/tools/cargo"],
     },
     // FIXME uncomment once all deps are vendored
@@ -178,25 +198,25 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     WorkspaceInfo {
         path: "src/tools/rust-analyzer",
         exceptions: EXCEPTIONS_RUST_ANALYZER,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
     WorkspaceInfo {
         path: "src/tools/rustbook",
         exceptions: EXCEPTIONS_RUSTBOOK,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &["src/doc/book", "src/doc/reference"],
     },
     WorkspaceInfo {
         path: "src/tools/rustc-perf",
         exceptions: EXCEPTIONS_RUSTC_PERF,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &["src/tools/rustc-perf"],
     },
     WorkspaceInfo {
         path: "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
         exceptions: EXCEPTIONS_UEFI_QEMU_TEST,
-        crates_and_deps: None,
+        allowed_deps: None,
         submodules: &[],
     },
 ];
@@ -630,62 +650,78 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
-pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
+pub fn check(root: &Path, cargo: &Path, sem: &'_ crate::Semaphore, tidy_ctx: TidyCtx) {
     let mut check = tidy_ctx.start_check("deps");
     let bless = tidy_ctx.is_bless_enabled();
+    let is_ci = tidy_ctx.is_running_on_ci();
 
-    let mut checked_runtime_licenses = false;
+    let checked_runtime_licenses = AtomicBool::new(false);
 
     check_proc_macro_dep_list(root, cargo, bless, &mut check);
 
-    for &WorkspaceInfo { path, exceptions, crates_and_deps, submodules } in WORKSPACES {
-        if has_missing_submodule(root, submodules, tidy_ctx.is_running_on_ci()) {
-            continue;
-        }
+    thread::scope(|s| {
+        for (i, WorkspaceInfo { path, exceptions, allowed_deps: crates_and_deps, submodules }) in
+            WORKSPACES.iter().enumerate()
+        {
+            let check = &check;
+            let checked_runtime_licenses = &checked_runtime_licenses;
+            // starting deps::check already consumed one semaphore permit, with concurrency == 1
+            // this would deadlock if we tried to get one here for the first thread, so
+            // we only do it for additional threads beyond the first one.
+            let guard = if i > 0 { Some(sem.acquire()) } else { None };
+            s.spawn(move || {
+                if has_missing_submodule(root, submodules, is_ci) {
+                    return;
+                }
 
-        if !root.join(path).join("Cargo.lock").exists() {
-            check.error(format!("the `{path}` workspace doesn't have a Cargo.lock"));
-            continue;
-        }
+                if !root.join(path).join("Cargo.lock").exists() {
+                    check.error(format!("the `{path}` workspace doesn't have a Cargo.lock"));
+                    return;
+                }
 
-        let mut cmd = cargo_metadata::MetadataCommand::new();
-        cmd.cargo_path(cargo)
-            .manifest_path(root.join(path).join("Cargo.toml"))
-            .features(cargo_metadata::CargoOpt::AllFeatures)
-            .other_options(vec!["--locked".to_owned()]);
-        let metadata = t!(cmd.exec());
+                let mut cmd = cargo_metadata::MetadataCommand::new();
+                cmd.cargo_path(cargo)
+                    .manifest_path(root.join(path).join("Cargo.toml"))
+                    .features(cargo_metadata::CargoOpt::AllFeatures)
+                    .other_options(vec!["--locked".to_owned()]);
+                let metadata = t!(cmd.exec());
 
-        // Check for packages which have been moved into a different workspace and not updated
-        let absolute_root =
-            if path == "." { root.to_path_buf() } else { t!(std::path::absolute(root.join(path))) };
-        let absolute_root_real = t!(std::path::absolute(&metadata.workspace_root));
-        if absolute_root_real != absolute_root {
-            check.error(format!("{path} is part of another workspace ({} != {}), remove from `WORKSPACES` ({WORKSPACE_LOCATION})", absolute_root.display(), absolute_root_real.display()));
-        }
-        check_license_exceptions(&metadata, path, exceptions, &mut check);
-        if let Some((crates, permitted_deps, location)) = crates_and_deps {
-            let descr = crates.get(0).unwrap_or(&path);
-            check_permitted_dependencies(
-                &metadata,
-                descr,
-                permitted_deps,
-                crates,
-                location,
-                &mut check,
-            );
-        }
+                // Check for packages which have been moved into a different workspace and not updated
+                let absolute_root =
+                    if *path == "." { root.to_path_buf() } else { t!(std::path::absolute(root.join(path))) };
+                let absolute_root_real = t!(std::path::absolute(&metadata.workspace_root));
+                if absolute_root_real != absolute_root {
+                    check.error(format!("{path} is part of another workspace ({} != {}), remove from `WORKSPACES` ({WORKSPACE_LOCATION})", absolute_root.display(), absolute_root_real.display()));
+                }
+                check_license_exceptions(&metadata, path, exceptions, &check);
+                if let Some(PermittedDeps { roots, deps: permitted_deps, deps_loc }) = crates_and_deps {
+                    let descr = roots.map_or(path, |roots| roots.get(0).unwrap_or(&path));
+                    check_permitted_dependencies(
+                        &metadata,
+                        descr,
+                        permitted_deps,
+                        *roots,
+                        *deps_loc,
+                        &check,
+                    );
+                }
 
-        if path == "library" {
-            check_runtime_license_exceptions(&metadata, &mut check);
-            check_runtime_no_duplicate_dependencies(&metadata, &mut check);
-            check_runtime_no_proc_macros(&metadata, &mut check);
-            checked_runtime_licenses = true;
+
+                if *path == "library" {
+                    check_runtime_license_exceptions(&metadata, &check);
+                    check_runtime_no_duplicate_dependencies(&metadata, &check);
+                    check_runtime_no_proc_macros(&metadata, &check);
+                    checked_runtime_licenses.store(true, Ordering::Relaxed);
+                }
+
+                let _guard = guard;
+            });
         }
-    }
+    });
 
     // Sanity check to ensure we don't accidentally remove the workspace containing the runtime
     // crates.
-    assert!(checked_runtime_licenses);
+    assert!(checked_runtime_licenses.load(Ordering::Relaxed));
 }
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
@@ -788,7 +824,7 @@ pub fn has_missing_submodule(root: &Path, submodules: &[&str], is_ci: bool) -> b
 ///
 /// Unlike for tools we don't allow exceptions to the `LICENSES` list for the runtime with the sole
 /// exception of `fortanix-sgx-abi` which is only used on x86_64-fortanix-unknown-sgx.
-fn check_runtime_license_exceptions(metadata: &Metadata, check: &mut RunningCheck) {
+fn check_runtime_license_exceptions(metadata: &Metadata, check: &RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
             // No need to check local packages.
@@ -823,7 +859,7 @@ fn check_license_exceptions(
     metadata: &Metadata,
     workspace: &str,
     exceptions: &[(&str, &str)],
-    check: &mut RunningCheck,
+    check: &RunningCheck,
 ) {
     // Validate the EXCEPTIONS list hasn't changed.
     for (name, license) in exceptions {
@@ -890,7 +926,7 @@ fn check_license_exceptions(
     }
 }
 
-fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &mut RunningCheck) {
+fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &RunningCheck) {
     let mut seen_pkgs = HashSet::new();
     for pkg in &metadata.packages {
         if pkg.source.is_none() {
@@ -906,7 +942,7 @@ fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, check: &mut Runn
     }
 }
 
-fn check_runtime_no_proc_macros(metadata: &Metadata, check: &mut RunningCheck) {
+fn check_runtime_no_proc_macros(metadata: &Metadata, check: &RunningCheck) {
     for pkg in &metadata.packages {
         if pkg.targets.iter().any(|target| target.is_proc_macro()) {
             check.error(format!(
@@ -927,15 +963,21 @@ fn check_permitted_dependencies(
     metadata: &Metadata,
     descr: &str,
     permitted_dependencies: &[&'static str],
-    restricted_dependency_crates: &[&'static str],
+    restricted_dependency_crates: Option<&[&'static str]>,
     permitted_location: ListLocation,
-    check: &mut RunningCheck,
+    check: &RunningCheck,
 ) {
     let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
-    for to_check in restricted_dependency_crates {
-        let to_check = pkg_from_name(metadata, to_check);
-        deps_of(metadata, &to_check.id, &mut deps);
+    if let Some(restricted_dependency_crates) = restricted_dependency_crates {
+        for to_check in restricted_dependency_crates {
+            let to_check = pkg_from_name(metadata, to_check);
+            deps_of(metadata, &to_check.id, &mut deps);
+        }
+    } else {
+        for to_check in &metadata.packages {
+            deps_of(metadata, &to_check.id, &mut deps);
+        }
     }
 
     // Check that the PERMITTED_DEPENDENCIES does not have unused entries.

@@ -79,11 +79,11 @@ note: required by a bound in `req_fn`
 LL | fn req_fn(_: impl Fn(&'static str) -> String) {}
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `req_fn`
 
-error[E0277]: expected an `Fn(&'static str)` closure, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:45:28: 45:45}`
+error[E0277]: expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:45:28: 45:45}`
   --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:46:12
    |
 LL |     req_fn(&mut pure_closure);
-   |     ------ ^^^^^^^^^^^^^^^^^ expected an `Fn(&'static str)` closure, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:45:28: 45:45}`
+   |     ------ ^^^^^^^^^^^^^^^^^ expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:45:28: 45:45}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -99,11 +99,11 @@ LL -     req_fn(&mut pure_closure);
 LL +     req_fn(pure_closure);
    |
 
-error[E0277]: expected an `Fn(&'static str)` closure, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:53:21: 53:25}`
+error[E0277]: expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:53:21: 53:25}`
   --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:59:12
    |
 LL |     req_fn(&mut outer);
-   |     ------ ^^^^^^^^^^ expected an `Fn(&'static str)` closure, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:53:21: 53:25}`
+   |     ------ ^^^^^^^^^^ expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:53:21: 53:25}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -119,11 +119,11 @@ LL -     req_fn(&mut outer);
 LL +     req_fn(outer);
    |
 
-error[E0277]: expected an `Fn(&'static str)` closure, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:65:17: 65:21}`
+error[E0277]: expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:65:17: 65:21}`
   --> $DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:69:12
    |
 LL |     req_fn(&mut c);
-   |     ------ ^^^^^^ expected an `Fn(&'static str)` closure, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:65:17: 65:21}`
+   |     ------ ^^^^^^ expected `Fn(&'static str)` signature, found `&mut {closure@$DIR/closure-ref-fn-kind-mismatch-issue-161327.rs:65:17: 65:21}`
    |     |
    |     required by a bound introduced by this call
    |
