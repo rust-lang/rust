@@ -29,7 +29,13 @@ impl<'ll> fmt::Debug for Type<'ll> {
 
 impl<'ll> CodegenCx<'ll, '_> {}
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
-    pub(crate) fn type_named_struct(&self, name: &str) -> Type<'ll> {
+    pub(crate) fn type_named_struct(&self, name: &str, els: &[Type<'ll>]) -> Type<'ll> {
+        let res = self.type_named_struct_deferred(name);
+        self.set_struct_body(res, els);
+        res
+    }
+
+    pub(crate) fn type_named_struct_deferred(&self, name: &str) -> Type<'ll> {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMStructCreateNamed(self.llcx(), name.as_ptr()) }
     }

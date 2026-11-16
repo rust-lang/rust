@@ -728,9 +728,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         //     struct class_ro_t* ro;
         // }
 
-        let class_t = self.type_named_struct("struct._class_t");
-        let els = [self.type_ptr(); 5];
-        self.set_struct_body(class_t, &els);
+        let class_t = self.type_named_struct("struct._class_t", &[self.type_ptr(); 5]);
 
         self.objc_class_t.set(Some(class_t));
         class_t
@@ -879,10 +877,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         //     struct _objc_symtab* symtab; // Null without class or category definitions.
         //  }
 
-        let llty = self.type_named_struct("struct._objc_module");
         let i32_llty = self.type_i32();
         let ptr_llty = self.type_ptr();
-        self.set_struct_body(llty, &[i32_llty, i32_llty, ptr_llty, ptr_llty]);
+        let llty = self
+            .type_named_struct("struct._objc_module", &[i32_llty, i32_llty, ptr_llty, ptr_llty]);
 
         let version = self.const_uint(i32_llty, 7);
         let size = self.const_uint(i32_llty, 16);
