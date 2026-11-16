@@ -5,7 +5,7 @@ we may come across a constraint that we can't prove yet if we are in a closure b
 However, the necessary constraints may actually hold (we just don't know it yet).
 Thus, if we are inside a closure,
 we just collect all the constraints we can't prove yet and return them.
-Later, when we are borrow check the MIR node that created the closure,
+Later, when we borrow check the MIR node that created the closure,
 we can also check that these constraints hold.
 At that time, if we can't prove they hold, we report an error.
 
@@ -32,15 +32,15 @@ This happens after computing the outlives graph, which is now immutable.
 For all type tests we fail to prove via `fn eval_verify_bound` inside of the closure we call `try_promote_type_test`.
 A `TypeTest` represents a type-outlives bound `generic_kind: lower_bound` together with a `verify_bound`.
 If the `VerifyBound` holds for the `lower_bound`, the constraint is satisfied.
-`try_promote_type_test`  does not care about the ` verify_bound`.
+`try_promote_type_test` does not care about the ` verify_bound`.
 
 It starts by calling `fn try_promote_type_test_subject`.
-This function takes the `GenericKind` and tries to transform it to a `ClosureOutlivesSubject`  which is no longer references anything local to the closure.
-This is done by replacing all free regions in that type with either `'static`  or region parameters which are equal to that free region.
+This function takes the `GenericKind` and tries to transform it to a `ClosureOutlivesSubject` which is no longer references anything local to the closure.
+This is done by replacing all free regions in that type with either `'static` or region parameters which are equal to that free region.
 This operation fails if the `generic_kind` contains a region which cannot be replaced.
 
 We then promote the `lower_bound` into the context of the caller.
-If the lower bound is equal to a placeholder, we replace it with `'static`
+If the lower bound is equal to a placeholder, we replace it with `'static`.
 
 We then look at all universal regions `uv` which are required to be outlived by `lower_bound`, i.e. for which borrow checking added region constraints. For each of these we then emit a `ClosureOutlivesRequirement` for all non-local universal regions which are known to outlive `uv`.
 
