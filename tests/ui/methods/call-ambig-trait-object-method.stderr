@@ -19,6 +19,11 @@ help: disambiguate the method for candidate #1
 LL -     x.foo();
 LL +     T::foo(&x);
    |
+help: disambiguate the method for candidate #2
+   |
+LL -     x.foo();
+LL +     <dyn T as T>::foo(&x);
+   |
 
 error: aborting due to 1 previous error
 

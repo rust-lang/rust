@@ -2537,6 +2537,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         suggs.push(sugg);
                     }
+                    if let Some(sugg_span) = sugg_span
+                        && self.tcx.impl_opt_trait_ref(impl_did).is_none()
+                        && let ty::Dynamic(tr, _) = rcvr_ty.peel_refs().kind()
+                        && let Some(tr) = tr.principal()
+                    {
+                        // Given an `impl dyn Trait { ... }`, make a trait_ref and suggest
+                        // `<dyn Trait as Trait>::method`.
+                        let principal_trait_ref =
+                            tr.with_self_ty(self.tcx, rcvr_ty.peel_refs()).skip_binder();
+                        if let Some(sugg) = print_disambiguation_help(
+                            self.tcx,
+                            err,
+                            self_source,
+                            args,
+                            principal_trait_ref,
+                            idx,
+                            sugg_span,
+                            item,
+                        ) {
+                            suggs.push(sugg);
+                        }
+                    }
                 }
                 CandidateSource::Trait(trait_did) => {
                     let Some(item) = self.associated_value(trait_did, item_name) else { continue };
@@ -5001,7 +5023,7 @@ fn print_disambiguation_help<'tcx>(
     item: ty::AssocItem,
 ) -> Option<String> {
     let trait_impl_type = trait_ref.self_ty().peel_refs();
-    let trait_ref = if item.is_method() {
+    let trait_ref = if item.is_method() && item.container != ty::AssocContainer::InherentImpl {
         trait_ref.print_only_trait_name().to_string()
     } else {
         format!("<{} as {}>", trait_ref.args[0], trait_ref.print_only_trait_name())
