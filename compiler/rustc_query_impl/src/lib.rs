@@ -13,8 +13,7 @@ use rustc_middle::query::QuerySystem;
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 
 pub use crate::job::{
-    CollectActiveJobsKind, QueryJobMap, break_query_cycle, collect_active_query_jobs,
-    print_query_stack,
+    CollectActiveJobsKind, break_query_cycle, collect_active_query_jobs, print_query_stack,
 };
 
 mod dep_kind_vtables;
