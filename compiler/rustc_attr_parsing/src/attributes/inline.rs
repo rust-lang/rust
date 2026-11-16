@@ -70,11 +70,7 @@ impl AttributeParser for InlineParser {
                         cx.emit_err(InlineForceInlineConflict { inline_span, force_inline_span });
                     }
                     Some((_, first_inline_span)) => {
-                        cx.warn_unused_duplicate_future_error(
-                            first_inline_span,
-                            inline_span,
-                            sym::inline,
-                        );
+                        cx.warn_unused_duplicate(first_inline_span, inline_span, sym::inline, true);
                     }
                 }
             },
