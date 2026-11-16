@@ -965,7 +965,10 @@ impl UnixDatagram {
     ///
     /// The function must be called with valid byte array `buf` of sufficient size to
     /// hold the message bytes. If a message is too long to fit in the supplied buffer,
-    /// excess bytes may be discarded.
+    /// only the bytes that fit are copied into `buf`; the excess bytes are not returned
+    /// by this call. The datagram itself is left in the queue in full, so a later call
+    /// to [`UnixDatagram::recv_from`] with a large enough buffer still receives the
+    /// whole message.
     ///
     /// Successive calls return the same data. This is accomplished by passing
     /// `MSG_PEEK` as a flag to the underlying `recvfrom` system call.

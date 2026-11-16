@@ -197,6 +197,38 @@ fn after_unsafe_token() {
 }
 
 #[test]
+fn after_const_token() {
+    check_with_base_items(
+        r#"const $0"#,
+        expect![[r#"
+            kw fn
+            kw unsafe
+        "#]],
+    );
+    check_with_base_items(
+        r#"const f$0"#,
+        expect![[r#"
+            kw fn
+            kw unsafe
+        "#]],
+    );
+    check_with_base_items(
+        r#"const $0fn f() {}"#,
+        expect![[r#"
+            kw fn
+            kw unsafe
+        "#]],
+    );
+    check_with_base_items(
+        r#"fn main(){ const $0 }"#,
+        expect![[r#"
+            kw fn
+            kw unsafe
+        "#]],
+    );
+}
+
+#[test]
 fn after_async_token() {
     check_with_base_items(
         r#"async $0"#,

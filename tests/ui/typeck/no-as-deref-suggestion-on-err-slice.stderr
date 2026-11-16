@@ -1,0 +1,38 @@
+error[E0529]: expected an array or slice, found `Vec<E>`
+  --> $DIR/no-as-deref-suggestion-on-err-slice.rs:11:13
+   |
+LL |         Err([E::A { .. }]) => {}
+   |             ^^^^^^^^^^^^^ pattern cannot match with input type `Vec<E>`
+
+error[E0529]: expected an array or slice, found `Vec<u8>`
+  --> $DIR/no-as-deref-suggestion-on-err-slice.rs:19:13
+   |
+LL |         Err([1]) => {}
+   |             ^^^ pattern cannot match with input type `Vec<u8>`
+
+error[E0529]: expected an array or slice, found `Vec<E>`
+  --> $DIR/no-as-deref-suggestion-on-err-slice.rs:27:13
+   |
+LL |         Err([]) => {}
+   |             ^^ pattern cannot match with input type `Vec<E>`
+
+error[E0529]: expected an array or slice, found `Vec<E>`
+  --> $DIR/no-as-deref-suggestion-on-err-slice.rs:36:12
+   |
+LL |         Ok([]) => {}
+   |            ^^ pattern cannot match with input type `Vec<E>`
+   |
+help: consider using `as_deref` here
+   |
+LL |     match err.as_deref() {
+   |              +++++++++++
+
+error[E0529]: expected an array or slice, found `Contrived<'_>`
+  --> $DIR/no-as-deref-suggestion-on-err-slice.rs:59:31
+   |
+LL |         Some(Contrived::Layer([])) => {}
+   |                               ^^ pattern cannot match with input type `Contrived<'_>`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0529`.

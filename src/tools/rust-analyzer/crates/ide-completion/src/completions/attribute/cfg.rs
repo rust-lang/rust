@@ -117,9 +117,13 @@ const KNOWN_ARCH: [&str; 20] = [
     "x86_64",
 ];
 
-const KNOWN_ENV: [&str; 7] = ["eabihf", "gnu", "gnueabihf", "msvc", "relibc", "sgx", "uclibc"];
+// https://github.com/rust-lang/rust/blob/fb5f32bdbe75e9114c62589cb86ace65f14a5b78/compiler/rustc_target/src/spec/mod.rs#L1911
+const KNOWN_ENV: [&str; 8] =
+    ["eabihf", "gnu", "gnueabihf", "msvc", "musl", "relibc", "sgx", "uclibc"];
 
-const KNOWN_OS: [&str; 22] = [
+// https://github.com/rust-lang/rust/blob/fb5f32bdbe75e9114c62589cb86ace65f14a5b78/compiler/rustc_target/src/spec/mod.rs#L1847
+const KNOWN_OS: [&str; 25] = [
+    "android",
     "cuda",
     "dragonfly",
     "emscripten",
@@ -129,8 +133,10 @@ const KNOWN_OS: [&str; 22] = [
     "hermit",
     "hyperlight",
     "illumos",
+    "ios",
     "l4re",
     "linux",
+    "macos",
     "netbsd",
     "none",
     "openbsd",

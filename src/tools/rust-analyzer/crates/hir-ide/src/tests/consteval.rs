@@ -294,6 +294,22 @@ fn floating_point_casts() {
 }
 
 #[test]
+fn u128_to_float_casts() {
+    check_number(
+        r#"
+const GOAL: bool = ((1u128 << 127) as f32) == 170141183460469231731687303715884105728.0f32;
+"#,
+        1,
+    );
+    check_number(
+        r#"
+const GOAL: bool = ((1u128 << 127) as f64) == 170141183460469231731687303715884105728.0f64;
+"#,
+        1,
+    );
+}
+
+#[test]
 fn raw_pointer_equality() {
     check_number(
         r#"
