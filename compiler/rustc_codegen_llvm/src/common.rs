@@ -168,8 +168,12 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMConstNull(t) }
     }
 
-    pub(crate) fn const_struct(&self, elts: &[Value<'ll>], packed: bool) -> Value<'ll> {
-        struct_in_context(self.llcx(), elts, packed)
+    pub(crate) fn const_struct(&self, elts: &[Value<'ll>]) -> Value<'ll> {
+        struct_in_context(self.llcx(), elts, false)
+    }
+
+    pub(crate) fn const_packed_struct(&self, elts: &[Value<'ll>]) -> Value<'ll> {
+        struct_in_context(self.llcx(), elts, true)
     }
 }
 
