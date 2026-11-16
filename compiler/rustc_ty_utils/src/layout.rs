@@ -650,16 +650,29 @@ fn layout_of_uncached<'tcx>(
             // * #[repr(simd)] struct S([T; 4])
             //
             // where T is a primitive scalar (integer/float/pointer).
-            let Some(ty::Array(e_ty, e_len)) = def
+            let field_ty = def
                 .is_struct()
                 .then(|| &def.variant(FIRST_VARIANT).fields)
                 .filter(|fields| fields.len() == 1)
-                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip().kind())
-            else {
+                .map(|fields| {
+                    // The fields type is not part of ty, so the normalization of ty in
+                    // layout_of has not covered it.
+                    let field_ty = fields[FieldIdx::ZERO].ty(tcx, args);
+                    tcx.try_normalize_erasing_regions(cx.typing_env, field_ty).map_err(|err| {
+                        let field_ty = field_ty.skip_normalization();
+                        error(cx, LayoutError::NormalizationFailure(field_ty, err))
+                    })
+                })
+                .transpose()?;
+            let Some(&ty::Array(e_ty, e_len)) = field_ty.map(|field_ty| field_ty.kind()) else {
                 // Invalid SIMD types should have been caught by typeck by now.
                 let guar = tcx.dcx().delayed_bug("#[repr(simd)] was applied to an invalid ADT");
                 return Err(error(cx, LayoutError::ReferencesError(guar)));
             };
+
+            if let Err(guar) = e_len.error_reported() {
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
+            }
 
             let e_len = extract_const_value(cx, ty, e_len)?
                 .try_to_target_usize(tcx)
