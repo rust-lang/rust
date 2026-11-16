@@ -51174,14 +51174,14 @@
       "svfloat16x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svfloat16_t"
     },
     "Architectures": [
       "A64"
@@ -51194,14 +51194,14 @@
       "svfloat32x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svfloat32_t"
     },
     "Architectures": [
       "A64"
@@ -51214,14 +51214,14 @@
       "svfloat64x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svfloat64_t"
     },
     "Architectures": [
       "A64"
@@ -51234,14 +51234,14 @@
       "svint16x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint16_t"
     },
     "Architectures": [
       "A64"
@@ -51254,14 +51254,14 @@
       "svint32x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint32_t"
     },
     "Architectures": [
       "A64"
@@ -51274,14 +51274,14 @@
       "svint64x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint64_t"
     },
     "Architectures": [
       "A64"
@@ -51294,14 +51294,14 @@
       "svint8x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint8_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint8_t"
     },
     "Architectures": [
       "A64"
@@ -51314,14 +51314,14 @@
       "svuint16x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint16_t"
     },
     "Architectures": [
       "A64"
@@ -51334,14 +51334,14 @@
       "svuint32x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint32_t"
     },
     "Architectures": [
       "A64"
@@ -51354,14 +51354,14 @@
       "svuint64x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint64_t"
     },
     "Architectures": [
       "A64"
@@ -51374,14 +51374,14 @@
       "svuint8x2_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint8_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint8_t"
     },
     "Architectures": [
       "A64"
@@ -51394,14 +51394,14 @@
       "svfloat16x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svfloat16_t"
     },
     "Architectures": [
       "A64"
@@ -51414,14 +51414,14 @@
       "svfloat32x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svfloat32_t"
     },
     "Architectures": [
       "A64"
@@ -51434,14 +51434,14 @@
       "svfloat64x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svfloat64_t"
     },
     "Architectures": [
       "A64"
@@ -51454,14 +51454,14 @@
       "svint16x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint16_t"
     },
     "Architectures": [
       "A64"
@@ -51474,14 +51474,14 @@
       "svint32x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint32_t"
     },
     "Architectures": [
       "A64"
@@ -51494,14 +51494,14 @@
       "svint64x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint64_t"
     },
     "Architectures": [
       "A64"
@@ -51514,14 +51514,14 @@
       "svint8x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint8_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint8_t"
     },
     "Architectures": [
       "A64"
@@ -51534,14 +51534,14 @@
       "svuint16x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint16_t"
     },
     "Architectures": [
       "A64"
@@ -51554,14 +51554,14 @@
       "svuint32x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint32_t"
     },
     "Architectures": [
       "A64"
@@ -51574,14 +51574,14 @@
       "svuint64x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint64_t"
     },
     "Architectures": [
       "A64"
@@ -51594,14 +51594,14 @@
       "svuint8x3_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint8_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint8_t"
     },
     "Architectures": [
       "A64"
@@ -51614,14 +51614,14 @@
       "svfloat16x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svfloat16_t"
     },
     "Architectures": [
       "A64"
@@ -51634,14 +51634,14 @@
       "svfloat32x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svfloat32_t"
     },
     "Architectures": [
       "A64"
@@ -51654,14 +51654,14 @@
       "svfloat64x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svfloat64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svfloat64_t"
     },
     "Architectures": [
       "A64"
@@ -51674,14 +51674,14 @@
       "svint16x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint16_t"
     },
     "Architectures": [
       "A64"
@@ -51694,14 +51694,14 @@
       "svint32x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint32_t"
     },
     "Architectures": [
       "A64"
@@ -51714,14 +51714,14 @@
       "svint64x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint64_t"
     },
     "Architectures": [
       "A64"
@@ -51734,14 +51734,14 @@
       "svint8x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svint8_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint8_t"
     },
     "Architectures": [
       "A64"
@@ -51754,14 +51754,14 @@
       "svuint16x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint16_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint16_t"
     },
     "Architectures": [
       "A64"
@@ -51774,14 +51774,14 @@
       "svuint32x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint32_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint32_t"
     },
     "Architectures": [
       "A64"
@@ -51794,14 +51794,14 @@
       "svuint64x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint64_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint64_t"
     },
     "Architectures": [
       "A64"
@@ -51814,14 +51814,14 @@
       "svuint8x4_t tuple",
       "uint64_t imm_index"
     ],
+    "return_type": {
+      "value": "svuint8_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint8_t"
     },
     "Architectures": [
       "A64"
@@ -163197,14 +163197,14 @@
       "uint64_t imm_index",
       "svfloat16_t x"
     ],
+    "return_type": {
+      "value": "svfloat16x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svfloat16x2_t"
     },
     "Architectures": [
       "A64"
@@ -163218,14 +163218,14 @@
       "uint64_t imm_index",
       "svfloat32_t x"
     ],
+    "return_type": {
+      "value": "svfloat32x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svfloat32x2_t"
     },
     "Architectures": [
       "A64"
@@ -163239,14 +163239,14 @@
       "uint64_t imm_index",
       "svfloat64_t x"
     ],
+    "return_type": {
+      "value": "svfloat64x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svfloat64x2_t"
     },
     "Architectures": [
       "A64"
@@ -163260,14 +163260,14 @@
       "uint64_t imm_index",
       "svint16_t x"
     ],
+    "return_type": {
+      "value": "svint16x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint16x2_t"
     },
     "Architectures": [
       "A64"
@@ -163281,14 +163281,14 @@
       "uint64_t imm_index",
       "svint32_t x"
     ],
+    "return_type": {
+      "value": "svint32x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint32x2_t"
     },
     "Architectures": [
       "A64"
@@ -163302,14 +163302,14 @@
       "uint64_t imm_index",
       "svint64_t x"
     ],
+    "return_type": {
+      "value": "svint64x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint64x2_t"
     },
     "Architectures": [
       "A64"
@@ -163323,14 +163323,14 @@
       "uint64_t imm_index",
       "svint8_t x"
     ],
+    "return_type": {
+      "value": "svint8x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svint8x2_t"
     },
     "Architectures": [
       "A64"
@@ -163344,14 +163344,14 @@
       "uint64_t imm_index",
       "svuint16_t x"
     ],
+    "return_type": {
+      "value": "svuint16x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint16x2_t"
     },
     "Architectures": [
       "A64"
@@ -163365,14 +163365,14 @@
       "uint64_t imm_index",
       "svuint32_t x"
     ],
+    "return_type": {
+      "value": "svuint32x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint32x2_t"
     },
     "Architectures": [
       "A64"
@@ -163386,14 +163386,14 @@
       "uint64_t imm_index",
       "svuint64_t x"
     ],
+    "return_type": {
+      "value": "svuint64x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint64x2_t"
     },
     "Architectures": [
       "A64"
@@ -163407,14 +163407,14 @@
       "uint64_t imm_index",
       "svuint8_t x"
     ],
+    "return_type": {
+      "value": "svuint8x2_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 1
       }
-    },
-    "return_type": {
-      "value": "svuint8x2_t"
     },
     "Architectures": [
       "A64"
@@ -163428,14 +163428,14 @@
       "uint64_t imm_index",
       "svfloat16_t x"
     ],
+    "return_type": {
+      "value": "svfloat16x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svfloat16x3_t"
     },
     "Architectures": [
       "A64"
@@ -163449,14 +163449,14 @@
       "uint64_t imm_index",
       "svfloat32_t x"
     ],
+    "return_type": {
+      "value": "svfloat32x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svfloat32x3_t"
     },
     "Architectures": [
       "A64"
@@ -163470,14 +163470,14 @@
       "uint64_t imm_index",
       "svfloat64_t x"
     ],
+    "return_type": {
+      "value": "svfloat64x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svfloat64x3_t"
     },
     "Architectures": [
       "A64"
@@ -163491,14 +163491,14 @@
       "uint64_t imm_index",
       "svint16_t x"
     ],
+    "return_type": {
+      "value": "svint16x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint16x3_t"
     },
     "Architectures": [
       "A64"
@@ -163512,14 +163512,14 @@
       "uint64_t imm_index",
       "svint32_t x"
     ],
+    "return_type": {
+      "value": "svint32x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint32x3_t"
     },
     "Architectures": [
       "A64"
@@ -163533,14 +163533,14 @@
       "uint64_t imm_index",
       "svint64_t x"
     ],
+    "return_type": {
+      "value": "svint64x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint64x3_t"
     },
     "Architectures": [
       "A64"
@@ -163554,14 +163554,14 @@
       "uint64_t imm_index",
       "svint8_t x"
     ],
+    "return_type": {
+      "value": "svint8x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svint8x3_t"
     },
     "Architectures": [
       "A64"
@@ -163575,14 +163575,14 @@
       "uint64_t imm_index",
       "svuint16_t x"
     ],
+    "return_type": {
+      "value": "svuint16x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint16x3_t"
     },
     "Architectures": [
       "A64"
@@ -163596,14 +163596,14 @@
       "uint64_t imm_index",
       "svuint32_t x"
     ],
+    "return_type": {
+      "value": "svuint32x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint32x3_t"
     },
     "Architectures": [
       "A64"
@@ -163617,14 +163617,14 @@
       "uint64_t imm_index",
       "svuint64_t x"
     ],
+    "return_type": {
+      "value": "svuint64x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint64x3_t"
     },
     "Architectures": [
       "A64"
@@ -163638,14 +163638,14 @@
       "uint64_t imm_index",
       "svuint8_t x"
     ],
+    "return_type": {
+      "value": "svuint8x3_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 2
       }
-    },
-    "return_type": {
-      "value": "svuint8x3_t"
     },
     "Architectures": [
       "A64"
@@ -163659,14 +163659,14 @@
       "uint64_t imm_index",
       "svfloat16_t x"
     ],
+    "return_type": {
+      "value": "svfloat16x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svfloat16x4_t"
     },
     "Architectures": [
       "A64"
@@ -163680,14 +163680,14 @@
       "uint64_t imm_index",
       "svfloat32_t x"
     ],
+    "return_type": {
+      "value": "svfloat32x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svfloat32x4_t"
     },
     "Architectures": [
       "A64"
@@ -163701,14 +163701,14 @@
       "uint64_t imm_index",
       "svfloat64_t x"
     ],
+    "return_type": {
+      "value": "svfloat64x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svfloat64x4_t"
     },
     "Architectures": [
       "A64"
@@ -163722,14 +163722,14 @@
       "uint64_t imm_index",
       "svint16_t x"
     ],
+    "return_type": {
+      "value": "svint16x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint16x4_t"
     },
     "Architectures": [
       "A64"
@@ -163743,14 +163743,14 @@
       "uint64_t imm_index",
       "svint32_t x"
     ],
+    "return_type": {
+      "value": "svint32x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint32x4_t"
     },
     "Architectures": [
       "A64"
@@ -163764,14 +163764,14 @@
       "uint64_t imm_index",
       "svint64_t x"
     ],
+    "return_type": {
+      "value": "svint64x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint64x4_t"
     },
     "Architectures": [
       "A64"
@@ -163785,14 +163785,14 @@
       "uint64_t imm_index",
       "svint8_t x"
     ],
+    "return_type": {
+      "value": "svint8x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svint8x4_t"
     },
     "Architectures": [
       "A64"
@@ -163806,14 +163806,14 @@
       "uint64_t imm_index",
       "svuint16_t x"
     ],
+    "return_type": {
+      "value": "svuint16x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint16x4_t"
     },
     "Architectures": [
       "A64"
@@ -163827,14 +163827,14 @@
       "uint64_t imm_index",
       "svuint32_t x"
     ],
+    "return_type": {
+      "value": "svuint32x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint32x4_t"
     },
     "Architectures": [
       "A64"
@@ -163848,14 +163848,14 @@
       "uint64_t imm_index",
       "svuint64_t x"
     ],
+    "return_type": {
+      "value": "svuint64x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint64x4_t"
     },
     "Architectures": [
       "A64"
@@ -163869,14 +163869,14 @@
       "uint64_t imm_index",
       "svuint8_t x"
     ],
+    "return_type": {
+      "value": "svuint8x4_t"
+    },
     "Arguments_Preparation": {
       "imm_index": {
         "minimum": 0,
         "maximum": 3
       }
-    },
-    "return_type": {
-      "value": "svuint8x4_t"
     },
     "Architectures": [
       "A64"
@@ -201119,6 +201119,462 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vbfdot_f32",
+    "arguments": [
+      "float32x2_t r",
+      "bfloat16x4_t a",
+      "bfloat16x4_t b"
+    ],
+    "return_type": {
+      "value": "float32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4H"
+      },
+      "b": {
+        "register": "Vm.4H"
+      },
+      "r": {
+        "register": "Vd.2S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFDOT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfdot_lane_f32",
+    "arguments": [
+      "float32x2_t r",
+      "bfloat16x4_t a",
+      "bfloat16x4_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4H"
+      },
+      "b": {
+        "register": "Vm.4H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.2S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFDOT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfdot_laneq_f32",
+    "arguments": [
+      "float32x2_t r",
+      "bfloat16x4_t a",
+      "bfloat16x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.2S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFDOT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfdotq_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x8_t b"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFDOT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfdotq_lane_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x4_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.4H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFDOT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfdotq_laneq_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFDOT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfmlalbq_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x8_t b"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFMLALB"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfmlalbq_lane_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x4_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.4H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFMLALB"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfmlalbq_laneq_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFMLALB"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfmlaltq_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x8_t b"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFMLALT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfmlaltq_lane_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x4_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.4H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFMLALT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfmlaltq_laneq_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFMLALT"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vbfmmlaq_f32",
+    "arguments": [
+      "float32x4_t r",
+      "bfloat16x8_t a",
+      "bfloat16x8_t b"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm.8H"
+      },
+      "r": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFMMLA"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vbic_s16",
     "arguments": [
       "int16x4_t a",
@@ -212639,6 +213095,35 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vcombine_bf16",
+    "arguments": [
+      "bfloat16x4_t low",
+      "bfloat16x4_t high"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "high": {
+        "register": "Vm.4H"
+      },
+      "low": {
+        "register": "Vn.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP",
+        "INS"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vcombine_f16",
     "arguments": [
       "float16x4_t low",
@@ -213050,6 +213535,43 @@
     "instructions": [
       [
         "DUP",
+        "INS"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcopy_lane_bf16",
+    "arguments": [
+      "bfloat16x4_t a",
+      "const int lane1",
+      "bfloat16x4_t b",
+      "const int lane2"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      },
+      "b": {
+        "register": "Vn.4H"
+      },
+      "lane1": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "lane2": {
+        "minimum": 0,
+        "maximum": 3
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
         "INS"
       ]
     ]
@@ -213521,6 +214043,43 @@
       "lane1": {
         "minimum": 0,
         "maximum": 7
+      },
+      "lane2": {
+        "minimum": 0,
+        "maximum": 7
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "INS"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcopy_laneq_bf16",
+    "arguments": [
+      "bfloat16x4_t a",
+      "const int lane1",
+      "bfloat16x8_t b",
+      "const int lane2"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      },
+      "b": {
+        "register": "Vn.8H"
+      },
+      "lane1": {
+        "minimum": 0,
+        "maximum": 3
       },
       "lane2": {
         "minimum": 0,
@@ -214020,6 +214579,43 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vcopyq_lane_bf16",
+    "arguments": [
+      "bfloat16x8_t a",
+      "const int lane1",
+      "bfloat16x4_t b",
+      "const int lane2"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      },
+      "b": {
+        "register": "Vn.4H"
+      },
+      "lane1": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "lane2": {
+        "minimum": 0,
+        "maximum": 3
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "INS"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vcopyq_lane_f32",
     "arguments": [
       "float32x4_t a",
@@ -214485,6 +215081,43 @@
       "lane1": {
         "minimum": 0,
         "maximum": 15
+      },
+      "lane2": {
+        "minimum": 0,
+        "maximum": 7
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "INS"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcopyq_laneq_bf16",
+    "arguments": [
+      "bfloat16x8_t a",
+      "const int lane1",
+      "bfloat16x8_t b",
+      "const int lane2"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      },
+      "b": {
+        "register": "Vn.8H"
+      },
+      "lane1": {
+        "minimum": 0,
+        "maximum": 7
       },
       "lane2": {
         "minimum": 0,
@@ -214984,6 +215617,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vcreate_bf16",
+    "arguments": [
+      "uint64_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "INS"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vcreate_f16",
     "arguments": [
       "uint64_t a"
@@ -215331,6 +215988,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vcvt_bf16_f32",
+    "arguments": [
+      "float32x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFCVTN"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vcvt_f16_f32",
     "arguments": [
       "float32x4_t a"
@@ -215399,6 +216080,30 @@
     "instructions": [
       [
         "UCVTF"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcvt_f32_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "SHLL"
       ]
     ]
   },
@@ -216397,6 +217102,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vcvtah_f32_bf16",
+    "arguments": [
+      "bfloat16_t a"
+    ],
+    "return_type": {
+      "value": "float32_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Hn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "SHL"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vcvtah_s16_f16",
     "arguments": [
       "float16_t a"
@@ -217014,6 +217743,30 @@
     "instructions": [
       [
         "FCVTZU"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcvth_bf16_f32",
+    "arguments": [
+      "float32_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Sn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFCVT"
       ]
     ]
   },
@@ -219599,6 +220352,106 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vcvtq_high_bf16_f32",
+    "arguments": [
+      "bfloat16x8_t inactive",
+      "float32x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4S"
+      },
+      "inactive": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFCVTN2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcvtq_high_f32_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "SHLL2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcvtq_low_bf16_f32",
+    "arguments": [
+      "float32x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "BFCVTN"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vcvtq_low_f32_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "SHLL"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vcvtq_n_f16_s16",
     "arguments": [
       "int16x8_t a",
@@ -221028,6 +221881,35 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vdup_lane_bf16",
+    "arguments": [
+      "bfloat16x4_t vec",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "vec": {
+        "register": "Vn.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vdup_lane_f16",
     "arguments": [
       "float16x4_t vec",
@@ -221445,6 +222327,35 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vdup_laneq_bf16",
+    "arguments": [
+      "bfloat16x8_t vec",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "vec": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vdup_laneq_f16",
     "arguments": [
       "float16x8_t vec",
@@ -221827,6 +222738,30 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vdup_n_bf16",
+    "arguments": [
+      "bfloat16_t value"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "value": {
+        "register": "rn"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -222520,6 +223455,35 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vduph_lane_bf16",
+    "arguments": [
+      "bfloat16x4_t vec",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "vec": {
+        "register": "Vn.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vduph_lane_f16",
     "arguments": [
       "float16x4_t vec",
@@ -222632,6 +223596,35 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vduph_laneq_bf16",
+    "arguments": [
+      "bfloat16x8_t vec",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "vec": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vduph_laneq_f16",
     "arguments": [
       "float16x8_t vec",
@@ -222734,6 +223727,35 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vdupq_lane_bf16",
+    "arguments": [
+      "bfloat16x4_t vec",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "vec": {
+        "register": "Vn.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -223161,6 +224183,35 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vdupq_laneq_bf16",
+    "arguments": [
+      "bfloat16x8_t vec",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "vec": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vdupq_laneq_f16",
     "arguments": [
       "float16x8_t vec",
@@ -223543,6 +224594,30 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vdupq_n_bf16",
+    "arguments": [
+      "bfloat16_t value"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "value": {
+        "register": "rn"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -228694,6 +229769,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vget_high_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vget_high_f16",
     "arguments": [
       "float16x8_t a"
@@ -229030,6 +230129,35 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vget_lane_bf16",
+    "arguments": [
+      "bfloat16x4_t v",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "v": {
+        "register": "Vn.4H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -229458,6 +230586,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vget_low_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vget_low_f16",
     "arguments": [
       "float16x8_t a"
@@ -229794,6 +230946,35 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "DUP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vgetq_lane_bf16",
+    "arguments": [
+      "bfloat16x8_t v",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "v": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -230918,6 +232099,127 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld1_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1_bf16_x2",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x2_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1_bf16_x3",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x3_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1_bf16_x4",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld1_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -231547,6 +232849,39 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x4_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src": {
+        "register": "Vt.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -233126,6 +234461,127 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld1q_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1q_bf16_x2",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x2_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1q_bf16_x3",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x3_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1q_bf16_x4",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1q_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld1q_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -233755,6 +235211,39 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld1q_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x8_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src": {
+        "register": "Vt.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -235334,6 +236823,54 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld2_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x2_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld2_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x2_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD2R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld2_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -235749,6 +237286,42 @@
     "instructions": [
       [
         "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld2_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x4x2_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x2_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src.val[0]": {
+        "register": "Vt.4H"
+      },
+      "src.val[1]": {
+        "register": "Vt2.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD2"
       ]
     ]
   },
@@ -236538,6 +238111,54 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld2q_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x2_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld2q_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x2_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD2R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld2q_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -236943,6 +238564,42 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld2q_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x8x2_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x2_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src.val[0]": {
+        "register": "Vt.8H"
+      },
+      "src.val[1]": {
+        "register": "Vt2.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -237726,6 +239383,54 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld3_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x3_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD3"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld3_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x3_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD3R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld3_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -238141,6 +239846,45 @@
     "instructions": [
       [
         "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld3_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x4x3_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x3_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src.val[0]": {
+        "register": "Vt.4H"
+      },
+      "src.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "src.val[2]": {
+        "register": "Vt3.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD3"
       ]
     ]
   },
@@ -238972,6 +240716,54 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld3q_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x3_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD3"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld3q_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x3_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD3R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld3q_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -239377,6 +241169,45 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD3"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld3q_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x8x3_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x3_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src.val[0]": {
+        "register": "Vt.8H"
+      },
+      "src.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "src.val[2]": {
+        "register": "Vt3.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -240202,6 +242033,54 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld4_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld4_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD4R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld4_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -240617,6 +242496,48 @@
     "instructions": [
       [
         "LD1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld4_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x4x4_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x4x4_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src.val[0]": {
+        "register": "Vt.4H"
+      },
+      "src.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "src.val[2]": {
+        "register": "Vt3.4H"
+      },
+      "src.val[3]": {
+        "register": "Vt4.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD4"
       ]
     ]
   },
@@ -241490,6 +243411,54 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vld4q_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld4q_dup_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x4_t"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD4R"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vld4q_dup_f16",
     "arguments": [
       "float16_t const * ptr"
@@ -241895,6 +243864,48 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LD4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vld4q_lane_bf16",
+    "arguments": [
+      "bfloat16_t const * ptr",
+      "bfloat16x8x4_t src",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x8x4_t"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "src.val[0]": {
+        "register": "Vt.8H"
+      },
+      "src.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "src.val[2]": {
+        "register": "Vt3.8H"
+      },
+      "src.val[3]": {
+        "register": "Vt4.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -243042,6 +245053,38 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vluti2_lane_bf16",
+    "arguments": [
+      "bfloat16x4_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "index": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "vn": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vluti2_lane_f16",
     "arguments": [
       "float16x4_t vn",
@@ -243253,6 +245296,38 @@
       },
       "vn": {
         "register": "Vn.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2_laneq_bf16",
+    "arguments": [
+      "bfloat16x4_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "index": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "vn": {
+        "register": "Vn.8H"
       }
     },
     "Architectures": [
@@ -243490,6 +245565,38 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vluti2q_lane_bf16",
+    "arguments": [
+      "bfloat16x8_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "index": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "vn": {
+        "register": "Vn.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vluti2q_lane_f16",
     "arguments": [
       "float16x8_t vn",
@@ -243701,6 +245808,38 @@
       },
       "vn": {
         "register": "Vn.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2q_laneq_bf16",
+    "arguments": [
+      "bfloat16x8_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "index": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "vn": {
+        "register": "Vn.8H"
       }
     },
     "Architectures": [
@@ -243938,6 +246077,41 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_bf16_x2",
+    "arguments": [
+      "bfloat16x8x2_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "vn.val[0]": {
+        "register": "Vn1.8H"
+      },
+      "vn.val[1]": {
+        "register": "Vn2.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vluti4q_lane_f16_x2",
     "arguments": [
       "float16x8x2_t vn",
@@ -244161,6 +246335,41 @@
       },
       "vn": {
         "register": "Vn.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_bf16_x2",
+    "arguments": [
+      "bfloat16x8x2_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "index": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "vn.val[0]": {
+        "register": "Vn1.8H"
+      },
+      "vn.val[1]": {
+        "register": "Vn2.8H"
       }
     },
     "Architectures": [
@@ -276421,6 +278630,317 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_f32",
+    "arguments": [
+      "float32x2_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.2S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_f64",
+    "arguments": [
+      "float64x1_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.1D"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_p16",
+    "arguments": [
+      "poly16x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_p64",
+    "arguments": [
+      "poly64x1_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.1D"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_p8",
+    "arguments": [
+      "poly8x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_s16",
+    "arguments": [
+      "int16x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_s32",
+    "arguments": [
+      "int32x2_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.2S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_s64",
+    "arguments": [
+      "int64x1_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.1D"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_s8",
+    "arguments": [
+      "int8x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_u16",
+    "arguments": [
+      "uint16x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_u32",
+    "arguments": [
+      "uint32x2_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.2S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_u64",
+    "arguments": [
+      "uint64x1_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.1D"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_bf16_u8",
+    "arguments": [
+      "uint8x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_f16_f32",
     "arguments": [
       "float32x2_t a"
@@ -276743,6 +279263,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_f32_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "float32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_f32_f16",
     "arguments": [
       "float16x4_t a"
@@ -277031,6 +279575,29 @@
     "Architectures": [
       "v7",
       "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_f64_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "float64x1_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
       "A64"
     ],
     "instructions": [
@@ -277330,6 +279897,30 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_p16_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "poly16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -277662,6 +280253,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_p64_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "poly64x1_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_p64_f16",
     "arguments": [
       "float16x4_t a"
@@ -277935,6 +280550,30 @@
     "Arguments_Preparation": {
       "a": {
         "register": "Vd.8B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_p8_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "poly8x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
       }
     },
     "Architectures": [
@@ -278271,6 +280910,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_s16_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "int16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_s16_f16",
     "arguments": [
       "float16x4_t a"
@@ -278582,6 +281245,30 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_s32_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "int32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -278915,6 +281602,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_s64_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "int64x1_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_s64_f16",
     "arguments": [
       "float16x4_t a"
@@ -279226,6 +281937,30 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_s8_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "int8x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -279559,6 +282294,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_u16_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "uint16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_u16_f16",
     "arguments": [
       "float16x4_t a"
@@ -279870,6 +282629,30 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpret_u32_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "uint32x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -280203,6 +282986,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_u64_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "uint64x1_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_u64_f16",
     "arguments": [
       "float16x4_t a"
@@ -280525,6 +283332,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpret_u8_bf16",
+    "arguments": [
+      "bfloat16x4_t a"
+    ],
+    "return_type": {
+      "value": "uint8x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpret_u8_f16",
     "arguments": [
       "float16x4_t a"
@@ -280836,6 +283667,341 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_f32",
+    "arguments": [
+      "float32x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_f64",
+    "arguments": [
+      "float64x2_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.2D"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_p128",
+    "arguments": [
+      "poly128_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.1Q"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_p16",
+    "arguments": [
+      "poly16x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_p64",
+    "arguments": [
+      "poly64x2_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.2D"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_p8",
+    "arguments": [
+      "poly8x16_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_s16",
+    "arguments": [
+      "int16x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_s32",
+    "arguments": [
+      "int32x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_s64",
+    "arguments": [
+      "int64x2_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.2D"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_s8",
+    "arguments": [
+      "int8x16_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_u16",
+    "arguments": [
+      "uint16x8_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_u32",
+    "arguments": [
+      "uint32x4_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.4S"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_u64",
+    "arguments": [
+      "uint64x2_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.2D"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_bf16_u8",
+    "arguments": [
+      "uint8x16_t a"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -281193,6 +284359,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_f32_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "float32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpretq_f32_f16",
     "arguments": [
       "float16x8_t a"
@@ -281481,6 +284671,29 @@
     "Architectures": [
       "v7",
       "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_f64_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "float64x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
       "A64"
     ],
     "instructions": [
@@ -281815,6 +285028,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_p128_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "poly128_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpretq_p128_f16",
     "arguments": [
       "float16x8_t a"
@@ -282112,6 +285349,30 @@
     "Arguments_Preparation": {
       "a": {
         "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_p16_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "poly16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
       }
     },
     "Architectures": [
@@ -282472,6 +285733,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_p64_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "poly64x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpretq_p64_f16",
     "arguments": [
       "float16x8_t a"
@@ -282769,6 +286054,30 @@
     "Arguments_Preparation": {
       "a": {
         "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_p8_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "poly8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
       }
     },
     "Architectures": [
@@ -283129,6 +286438,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_s16_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "int16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpretq_s16_f16",
     "arguments": [
       "float16x8_t a"
@@ -283464,6 +286797,30 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_s32_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "int32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -283821,6 +287178,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_s64_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "int64x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpretq_s64_f16",
     "arguments": [
       "float16x8_t a"
@@ -284156,6 +287537,30 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_s8_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "int8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -284513,6 +287918,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_u16_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "uint16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpretq_u16_f16",
     "arguments": [
       "float16x8_t a"
@@ -284848,6 +288277,30 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_u32_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "uint32x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -285205,6 +288658,30 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_u64_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "uint64x2_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vreinterpretq_u64_f16",
     "arguments": [
       "float16x8_t a"
@@ -285540,6 +289017,30 @@
     },
     "Architectures": [
       "v7",
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "NOP"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vreinterpretq_u8_bf16",
+    "arguments": [
+      "bfloat16x8_t a"
+    ],
+    "return_type": {
+      "value": "uint8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
       "A32",
       "A64"
     ],
@@ -291790,6 +295291,39 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vset_lane_bf16",
+    "arguments": [
+      "bfloat16_t a",
+      "bfloat16x4_t v",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x4_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "VnH"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "v": {
+        "register": "Vd.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "INS"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vset_lane_f16",
     "arguments": [
       "float16_t a",
@@ -292258,6 +295792,39 @@
     "instructions": [
       [
         "MOV"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vsetq_lane_bf16",
+    "arguments": [
+      "bfloat16_t a",
+      "bfloat16x8_t v",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "bfloat16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "VnH"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "v": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "INS"
       ]
     ]
   },
@@ -298475,6 +302042,136 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst1_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val": {
+        "register": "Vt.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1_bf16_x2",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x2_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1_bf16_x3",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x3_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1_bf16_x4",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x4_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.4H"
+      },
+      "val.val[3]": {
+        "register": "Vt4.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst1_f16",
     "arguments": [
       "float16_t * ptr",
@@ -298859,6 +302556,39 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val": {
+        "register": "Vt.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -300848,6 +304578,136 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst1q_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val": {
+        "register": "Vt.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1q_bf16_x2",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x2_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1q_bf16_x3",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x3_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1q_bf16_x4",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x4_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.8H"
+      },
+      "val.val[3]": {
+        "register": "Vt4.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst1q_f16",
     "arguments": [
       "float16_t * ptr",
@@ -301232,6 +305092,39 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst1q_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val": {
+        "register": "Vt.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -303222,6 +307115,37 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst2_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x2_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst2_f16",
     "arguments": [
       "float16_t * ptr",
@@ -303311,6 +307235,42 @@
     "instructions": [
       [
         "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst2_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x2_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST2"
       ]
     ]
   },
@@ -304177,6 +308137,37 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst2q_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x2_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst2q_f16",
     "arguments": [
       "float16_t * ptr",
@@ -304261,6 +308252,42 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst2q_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x2_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -305121,6 +309148,40 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst3_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x3_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST3"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst3_f16",
     "arguments": [
       "float16_t * ptr",
@@ -305219,6 +309280,45 @@
     "instructions": [
       [
         "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst3_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x3_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST3"
       ]
     ]
   },
@@ -306160,6 +310260,40 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst3q_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x3_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST3"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst3q_f16",
     "arguments": [
       "float16_t * ptr",
@@ -306253,6 +310387,45 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST3"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst3q_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x3_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
@@ -307194,6 +311367,43 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst4_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x4_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.4H"
+      },
+      "val.val[3]": {
+        "register": "Vt4.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst4_f16",
     "arguments": [
       "float16_t * ptr",
@@ -307301,6 +311511,48 @@
     "instructions": [
       [
         "ST1"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst4_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x4x4_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.4H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.4H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.4H"
+      },
+      "val.val[3]": {
+        "register": "Vt4.4H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST4"
       ]
     ]
   },
@@ -308317,6 +312569,43 @@
   },
   {
     "SIMD_ISA": "Neon",
+    "name": "vst4q_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x4_t val"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.8H"
+      },
+      "val.val[3]": {
+        "register": "Vt4.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
     "name": "vst4q_f16",
     "arguments": [
       "float16_t * ptr",
@@ -308419,6 +312708,48 @@
       }
     },
     "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "ST4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vst4q_lane_bf16",
+    "arguments": [
+      "bfloat16_t * ptr",
+      "bfloat16x8x4_t val",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "void"
+    },
+    "Arguments_Preparation": {
+      "lane": {
+        "minimum": 0,
+        "maximum": 7
+      },
+      "ptr": {
+        "register": "Xn"
+      },
+      "val.val[0]": {
+        "register": "Vt.8H"
+      },
+      "val.val[1]": {
+        "register": "Vt2.8H"
+      },
+      "val.val[2]": {
+        "register": "Vt3.8H"
+      },
+      "val.val[3]": {
+        "register": "Vt4.8H"
+      }
+    },
+    "Architectures": [
+      "A32",
       "A64"
     ],
     "instructions": [
