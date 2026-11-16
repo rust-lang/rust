@@ -24,6 +24,8 @@ pub use core::num::Wrapping;
     issue = "none"
 )]
 pub use core::num::ZeroablePrimitive;
+#[unstable(feature = "f16b", issue = "160630")]
+pub use core::num::f16b;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::{FpCategory, ParseFloatError, ParseIntError, TryFromIntError};
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
