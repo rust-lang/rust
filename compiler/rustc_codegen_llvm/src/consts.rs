@@ -151,7 +151,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
     // is a valid C string. LLVM only considers bare arrays for this optimization,
     // not arrays wrapped in a struct. LLVM handles this at:
     // https://github.com/rust-lang/llvm-project/blob/acaea3d2bb8f351b740db7ebce7d7a40b9e21488/llvm/lib/Target/TargetLoweringObjectFile.cpp#L249-L280
-    if let &[data] = &*llvals { data } else { cx.const_struct(&llvals, true) }
+    if let &[data] = &*llvals { data } else { cx.const_packed_struct(&llvals) }
 }
 
 fn codegen_static_initializer<'ll, 'tcx>(
