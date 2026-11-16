@@ -168,3 +168,18 @@ pub unsafe trait Field: Send + Sync + Copy {
     #[lang = "field_offset"]
     const OFFSET: usize = crate::intrinsics::field_offset::<Self>();
 }
+
+// TODO: make a supertrait of `Field`
+pub unsafe trait Subplace {
+    type Source;
+
+    type Target;
+
+    const OFFSET: usize;
+}
+
+unsafe impl<F: Field> Subplace for F {
+    type Source = F::Base;
+    type Target = F::Type;
+    const OFFSET: usize = F::OFFSET;
+}
