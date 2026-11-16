@@ -19,7 +19,6 @@ LL |     let _ = MyIterator::next;
    |             ^^^^^^^^^^
    |
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: `Item` defined here
 help: specify the associated type

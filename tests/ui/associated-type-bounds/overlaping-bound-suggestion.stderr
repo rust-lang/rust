@@ -5,7 +5,6 @@ LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-  ::: $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
    = note: `Item` defined here
   ::: $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL

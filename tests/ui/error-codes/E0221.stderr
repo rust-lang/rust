@@ -34,7 +34,6 @@ LL |         let _: Self::Err;
    |                ^^^^^^^^^ ambiguous associated type `Err`
    |
   --> $SRC_DIR/core/src/str/traits.rs:LL:COL
-  ::: $SRC_DIR/core/src/str/traits.rs:LL:COL
    |
    = note: ambiguous `Err` from `FromStr`
 help: use fully-qualified syntax to disambiguate

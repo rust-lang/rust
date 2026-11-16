@@ -259,7 +259,6 @@ LL |     fn f(_: impl B<Output = ()>) {}
    |                    ^^^^^^^^^^^ ambiguous associated type `Output`
    |
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
-  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
    = note: ambiguous `Output` from `FnOnce()`
 help: consider being explicit about the bounds

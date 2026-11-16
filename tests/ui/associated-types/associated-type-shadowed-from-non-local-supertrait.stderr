@@ -8,7 +8,6 @@ LL | impl<T> Clone for Box<dyn NewIter<Item = T>> {
    |                           ^^^^^^^^^^^^^^^^^ associated type `Item` must be specified
    |
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: `Iterator::Item` defined here, consider renaming it
 

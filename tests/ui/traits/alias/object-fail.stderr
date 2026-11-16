@@ -22,7 +22,6 @@ LL |     let _: &dyn IteratorAlias = &vec![123].into_iter();
    |                 ^^^^^^^^^^^^^
    |
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: `Item` defined here
 help: specify the associated type

@@ -49,7 +49,6 @@ LL | type Bal<Rhs> = dyn X<Rhs>;
    |                     ^^^^^^ associated types `Output` (from trait `Div<Rhs>`), `Output` (from trait `Mul<Rhs>`) must be specified
    |
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
    = note: `Mul::Output` defined here
   ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
