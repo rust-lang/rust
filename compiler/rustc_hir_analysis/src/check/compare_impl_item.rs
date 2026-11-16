@@ -2302,34 +2302,9 @@ pub(super) fn compare_const_directness<'tcx>(
             // When `#![feature(gca_macroless_items)]` is enabled,
             // expressions that are allowed in `gca!` are considered to be direct.
             // We are here because the expression is not allowed in `gca!`.
-            let local_def_id = impl_const_item.def_id.expect_local();
-            let const_rhs = match tcx.hir_node_by_def_id(local_def_id) {
-                hir::Node::ImplItem(item) => item.expect_const().1,
-                hir::Node::TraitItem(item) => {
-                    let rhs = item.expect_const().1;
-                    if let Some(rhs) = rhs {
-                        rhs
-                    } else {
-                        span_bug!(
-                            tcx.def_span(local_def_id),
-                            "cannot call `compare_const_directness` on trait item without default value"
-                        )
-                    }
-                }
-                _ => span_bug!(
-                    tcx.def_span(local_def_id),
-                    "impl_const_item should be impl item or trait item with default value"
-                ),
-            };
-
-            if let hir::ConstItemRhs::Body(body_id) = const_rhs
-                && let hir::ExprKind::Err(guar) = tcx.hir_body(body_id).value.kind
-            {
-                return Err(guar);
-            }
-
             tcx.dcx()
-                .struct_span_err(const_rhs.span(tcx), "this expression cannot be marked as direct")
+                .struct_span_err(tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_const_item.def_id.expect_local())),
+                "the expression of this associated constant cannot be marked as direct")
                 .with_note("`#![feature(gca_macroless_items)]` only supports expressions that are allowed in `gca!`")
         } else {
             tcx.dcx().struct_span_err(

@@ -7,13 +7,7 @@ trait Trait {
 
 impl<const N: usize> Trait for [u8; N] {
     const ASSOC: usize = N + 1;
-    //~^ ERROR this expression cannot be marked as direct
-}
-
-// "this expression cannot be marked as direct" error not shown when rhs does not exist
-impl<const N: usize> Trait for [u16; N] {
-    const ASSOC: usize;
-    //~^ ERROR associated constant in `impl` without body
+    //~^ ERROR the expression of this associated constant cannot be marked as direct
 }
 
 fn main() {}
