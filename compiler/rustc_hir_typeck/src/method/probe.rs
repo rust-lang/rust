@@ -529,32 +529,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let guar = match *ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
-                        // We want to get the variable name that the method
-                        // is being called on. If it is a method call.
-                        let err_span = match (mode, self.tcx.hir_node(scope_expr_id)) {
+                        // Keep the method receiver so its span remains available when the
+                        // index-specific diagnostic does not apply.
+                        let receiver = match (mode, self.tcx.hir_node(scope_expr_id)) {
                             (
                                 Mode::MethodCall,
                                 Node::Expr(hir::Expr {
                                     kind: ExprKind::MethodCall(_, recv, ..),
                                     ..
                                 }),
-                            ) => recv.span,
-                            _ => span,
+                            ) => Some(recv),
+                            _ => None,
+                        };
+
+                        // A known index can still yield an unknown element type. Only redirect
+                        // the diagnostic when both the indexing result and the index are unknown.
+                        let (err_span, diagnostic_ty) = if let Some(recv) = receiver
+                            && let ExprKind::Index(_, idx, _) = recv.kind
+                            && self.shallow_resolve(self.node_ty(recv.hir_id)).is_ty_var()
+                            && let index_ty = self.shallow_resolve(self.node_ty(idx.hir_id))
+                            && index_ty.is_ty_var()
+                        {
+                            (idx.span, index_ty)
+                        } else {
+                            (receiver.map_or(span, |recv| recv.span), ty)
                         };
 
                         let raw_ptr_call = bad_ty.reached_raw_pointer
                             && !self.tcx.features().arbitrary_self_types();
 
+                        // Suppress the generic secondary label when the pointer-specific label
+                        // below will explain the failure.
                         let mut err = self.err_ctxt().emit_inference_failure_err(
                             self.body_def_id,
                             err_span,
-                            ty.into(),
+                            diagnostic_ty.into(),
                             TypeAnnotationNeeded::E0282,
                             !raw_ptr_call,
                         );
+
                         if raw_ptr_call {
-                            err.span_label(span, "cannot call a method on a raw pointer with an unknown pointee type");
+                            err.span_label(
+                                span,
+                                "cannot call a method on a raw pointer with an unknown pointee type",
+                            );
                         }
+
                         err.emit_err()
                     }
                     ty::Error(guar) => guar,
