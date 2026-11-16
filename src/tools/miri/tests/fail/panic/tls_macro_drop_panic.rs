@@ -17,5 +17,7 @@ thread_local! {
 }
 
 fn main() {
-    NOISY.with(|_| ());
+    std::thread::spawn(|| {
+        NOISY.with(|_| ());
+    });
 }

@@ -22,8 +22,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::{
-    self, AssocContainer, AssocItem, GenericArgs, GenericArgsRef, GenericParamDefKind, ParamEnvAnd,
-    Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
+    self, AssocContainer, AssocItem, CallerBoundsIterator, GenericArgs, GenericParamDefKind,
+    ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
@@ -954,6 +954,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Pat(..)
             | ty::Placeholder(..)
             | ty::UnsafeBinder(..) => {}
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 
@@ -1042,22 +1045,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().filter_map(|clause| {
-            let bound_clause = clause.kind();
-            match bound_clause.skip_binder() {
-                ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
-                    .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
-                    .then(|| bound_clause.rebind(trait_predicate.trait_ref)),
-                ty::ClauseKind::RegionOutlives(_)
-                | ty::ClauseKind::TypeOutlives(_)
-                | ty::ClauseKind::Projection(_)
-                | ty::ClauseKind::ConstArgHasType(_, _)
-                | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_)
-                | ty::ClauseKind::UnstableFeature(_)
-                | ty::ClauseKind::HostEffect(..) => None,
-            }
-        });
+        let bounds = self.param_env.caller_bounds().trait_clauses(tcx).iter().filter_map(
+            |bound_trait_clause| {
+                let trait_clause = bound_trait_clause.skip_binder();
+                DeepRejectCtxt::relate_rigid_rigid(tcx)
+                    .types_may_unify(param_ty, trait_clause.trait_ref.self_ty())
+                    .then(|| bound_trait_clause.rebind(trait_clause.trait_ref))
+            },
+        );
 
         self.assemble_candidates_for_bounds(bounds, |this, poly_trait_ref, item| {
             this.push_candidate(
@@ -1902,7 +1897,10 @@ impl<'tcx> Pick<'tcx> {
                             tcx.def_path_str(this.item.def_id),
                         ));
                     }
-                    (ty::AssocKind::Const { name, .. }, ty::AssocContainer::Trait) => {
+                    (
+                        ty::AssocKind::Const { data: ty::AssocConstData::Named(name) },
+                        ty::AssocContainer::Trait,
+                    ) => {
                         let def_id = this.item.container_id(tcx);
                         lint.span_suggestion(
                             span,
@@ -2592,7 +2590,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         item: ty::AssocItem,
         impl_ty: Ty<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
         if item.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, args);
@@ -2603,7 +2601,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn xform_method_sig(&self, method: DefId, args: GenericArgsRef<'tcx>) -> ty::FnSig<'tcx> {
+    fn xform_method_sig(&self, method: DefId, args: GenericArgs<'tcx>) -> ty::FnSig<'tcx> {
         let fn_sig = self.tcx.fn_sig(method);
         debug!(?fn_sig);
 
@@ -2670,7 +2668,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         {
             return true;
         }
-
         false
     }
 
@@ -2684,7 +2681,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx
                     .associated_items(def_id)
-                    .in_definition_order()
+                    .named_items_in_definition_order()
                     .filter(|x| {
                         if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;

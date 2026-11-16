@@ -11,6 +11,8 @@ warning: the `link_name` attribute cannot be used on statics
    |
 LL | #[link_name = "VALUE"]
    |   ^^^^^^^^^
+...
+LL | static VALUE_DEFINITION: u8 = 0;
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -26,6 +28,8 @@ warning: the `link_name` attribute cannot be used on statics
    |
 LL | #[unsafe(link_name = "UNSAFE_VALUE")]
    |          ^^^^^^^^^
+...
+LL | static UNSAFE_VALUE_DEFINITION: u8 = 0;
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

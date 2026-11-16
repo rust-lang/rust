@@ -21,6 +21,7 @@ use hir_def::{
         assoc::{ImplItems, TraitItems},
         diagnostics::{DefDiagnosticKind, DefDiagnostics},
     },
+    resolver::ValueNs,
     signatures::{
         ConstSignature, FunctionSignature, ImplFlags, ImplSignature, TraitFlags, TraitSignature,
         TypeAliasSignature,
@@ -154,6 +155,7 @@ diagnostics![AnyDiagnostic<'db> ->
     InvalidDeriveTarget,
     InvalidLhsOfAssignment,
     InvalidRangePatType,
+    InvalidPatPathRes,
     MacroDefError,
     MacroError,
     MacroExpansionParseError,
@@ -208,6 +210,8 @@ diagnostics![AnyDiagnostic<'db> ->
     UnimplementedTrait<'db>,
     YieldOutsideCoroutine,
     ReturnOutsideFunction,
+    MatchInheritedImmRefWithMutRefPat,
+    UnresolvedAssociatedType,
 ];
 
 #[derive(Debug)]
@@ -714,6 +718,31 @@ pub struct YieldOutsideCoroutine {
 pub struct ReturnOutsideFunction {
     pub expr: InFile<ExprOrPatPtr>,
     pub kind: ReturnKind,
+}
+
+#[derive(Debug)]
+pub struct MatchInheritedImmRefWithMutRefPat {
+    pub pat: InFile<ExprOrPatPtr>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidPatPathResKind {
+    Function,
+    GenericParam,
+    ImplSelf,
+    LocalBinding,
+    Static,
+}
+
+#[derive(Debug)]
+pub struct InvalidPatPathRes {
+    pub pat: InFile<ExprOrPatPtr>,
+    pub kind: InvalidPatPathResKind,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedAssociatedType {
+    pub segment: InFile<AstPtr<ast::PathSegment>>,
 }
 
 pub(crate) struct DiagnosticsCollector<'a, 'db> {
@@ -1915,6 +1944,24 @@ impl<'db> AnyDiagnostic<'db> {
                     _ => return None,
                 }
             }
+            InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                MatchInheritedImmRefWithMutRefPat { pat }.into()
+            }
+            InferenceDiagnostic::InvalidPatPathRes { pat, res } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                let kind = match res {
+                    ValueNs::FunctionId(_) => InvalidPatPathResKind::Function,
+                    ValueNs::GenericParam(_) => InvalidPatPathResKind::GenericParam,
+                    ValueNs::ImplSelf(_) => InvalidPatPathResKind::ImplSelf,
+                    ValueNs::LocalBinding(_) => InvalidPatPathResKind::LocalBinding,
+                    ValueNs::StaticId(_) => InvalidPatPathResKind::Static,
+                    ValueNs::ConstId(_) | ValueNs::EnumVariantId(_) | ValueNs::StructId(_) => {
+                        return None;
+                    }
+                };
+                InvalidPatPathRes { pat, kind }.into()
+            }
         })
     }
 
@@ -2040,6 +2087,11 @@ impl<'db> AnyDiagnostic<'db> {
                 let segment = hir_segment_to_ast_segment(&path.value, segment)?;
                 let segment = path.with_value(AstPtr::new(&segment));
                 GenericDefaultRefersToSelf { segment }.into()
+            }
+            PathLoweringDiagnostic::UnresolvedAssociatedType { segment } => {
+                let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+                let segment = path.with_value(AstPtr::new(&segment));
+                UnresolvedAssociatedType { segment }.into()
             }
         })
     }

@@ -6,6 +6,9 @@ use crate::cell::Cell;
     // the main thread, but they are forbidden from accessing sync primitives (the same as UNIX
     // signal handlers).
     not(target_os = "vexos"),
+    // Trusty is "target_has_threads" because it needs atomics for shared-memory IPC, but processes
+    // can't spawn threads.
+    not(target_os = "trusty"),
 ))]
 compile_error!("Using no_threads implementation on a target with threads");
 

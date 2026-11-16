@@ -73,6 +73,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         StorageDead(_8);
         StorageDead(_7);
         StorageDead(_6);
+        _0 = const ();
         StorageDead(_12);
         drop(_4) -> [return: bb5, unwind continue];
     }

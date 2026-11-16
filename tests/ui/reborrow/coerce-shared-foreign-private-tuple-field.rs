@@ -18,7 +18,7 @@ struct LocalPtrMut<'a>(*const i32, PhantomData<&'a ()>);
 
 impl<'a> Reborrow for LocalPtrMut<'a> {}
 
-impl<'a> CoerceShared<ForeignPtrRef<'a>> for LocalPtrMut<'a> {}
+impl<'a: 'b, 'b> CoerceShared<ForeignPtrRef<'b>> for LocalPtrMut<'a> {}
 //~^ ERROR
 
 fn main() {}

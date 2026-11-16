@@ -33,6 +33,7 @@ use crate::{
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct HumanReadableErrorType {
+    pub no_graphics: bool,
     pub short: bool,
     pub unicode: bool,
 }
@@ -365,7 +366,7 @@ pub trait Emitter {
         let Some(source_map) = self.source_map() else { return };
         let should_hide = |span| {
             source_map.is_imported(span) || {
-                let expn = span.data().ctxt.outer_expn_data();
+                let expn = span.ctxt().outer_expn_data();
                 expn.diagnostic_opaque && matches!(expn.kind, ExpnKind::Macro(MacroKind::Bang, _))
             }
         };
@@ -589,7 +590,7 @@ impl Style {
     pub(crate) fn anstyle(&self) -> anstyle::Style {
         match self {
             Style::NoStyle => anstyle::Style::new(),
-            Style::Highlight => AnsiColor::Magenta.on_default().effects(Effects::BOLD),
+            Style::Highlight => AnsiColor::BrightCyan.on_default().effects(Effects::BOLD),
         }
     }
 }

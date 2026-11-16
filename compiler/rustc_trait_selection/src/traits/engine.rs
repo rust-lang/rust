@@ -255,8 +255,7 @@ where
         actual: T,
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
-            .at(cause, param_env)
-            .sub(DefineOpaqueTypes::Yes, expected, actual)
+            .sub_raw(cause, param_env, DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
@@ -401,10 +400,14 @@ impl<'tcx> ObligationCtxt<'_, 'tcx, ScrubbedTraitError<'tcx>> {
     }
 }
 
-impl<'tcx, E> ObligationCtxt<'_, 'tcx, E>
+impl<'a, 'tcx, E> ObligationCtxt<'a, 'tcx, E>
 where
     E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
+    pub fn new_raw(infcx: &'a InferCtxt<'tcx>) -> Self {
+        Self { infcx, engine: RefCell::new(FulfillmentEngine::new(infcx)) }
+    }
+
     pub fn assumed_wf_types(
         &self,
         param_env: ty::ParamEnv<'tcx>,

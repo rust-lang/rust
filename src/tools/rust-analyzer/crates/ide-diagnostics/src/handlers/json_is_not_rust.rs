@@ -121,6 +121,7 @@ pub(crate) fn json_in_items(
         if node.kind() == SyntaxKind::ERROR
             && node.first_token().map(|x| x.kind()) == Some(SyntaxKind::L_CURLY)
             && node.last_token().map(|x| x.kind()) == Some(SyntaxKind::R_CURLY)
+            && node.children_with_tokens().filter(|x| !x.kind().is_trivia()).count() > 2
         {
             let node_string = node.to_string();
             if let Ok(serde_json::Value::Object(it)) = serde_json::from_str(&node_string) {
@@ -398,6 +399,15 @@ mod tests {
                     }
                 };
             }
+            "#,
+        );
+    }
+
+    #[test]
+    fn no_emit_empty_object() {
+        check_no_fix(
+            r#"
+            {$0}
             "#,
         );
     }

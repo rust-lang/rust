@@ -1,8 +1,5 @@
 #![feature(pattern_types, rustc_attrs, const_trait_impl, pattern_type_range_trait)]
-#![feature(pattern_type_macro)]
-#![allow(incomplete_features)]
 
-//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 
 use std::pat::pattern_type;

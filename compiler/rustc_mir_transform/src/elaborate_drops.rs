@@ -52,9 +52,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
-        // FIXME(#132279): This is used during the phase transition from analysis
-        // to runtime, so we have to manually specify the correct typing mode.
-        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let typing_env = body.typing_env(tcx);
         // For types that do not need dropping, the behaviour is trivial. So we only need to track
         // init/uninit for types that do need dropping.
         let move_data = MoveData::gather_moves(body, tcx, |ty| ty.needs_drop(tcx, typing_env));

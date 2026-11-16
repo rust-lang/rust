@@ -23,8 +23,9 @@ macro_rules! tests {
                 fn isqrt() {
                     isqrt_consistency_check(<$T>::MIN);
 
-                    for n in (0..=127)
-                        .chain(<$T>::MAX - 127..=<$T>::MAX)
+                    let exhaustive_cap = if cfg!(miri) { 31 } else { 127 };
+                    for n in (0..=exhaustive_cap)
+                        .chain(<$T>::MAX - exhaustive_cap..=<$T>::MAX)
                         .chain((0..<$T>::MAX.count_ones()).map(|exponent| (1 << exponent) - 1))
                         .chain((0..<$T>::MAX.count_ones()).map(|exponent| 1 << exponent))
                     {

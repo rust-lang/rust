@@ -1,4 +1,4 @@
-error: extern location for foo is not a file: .
+error: extern location for `foo` is not a file: `.`
   --> $DIR/issue-104621-extern-not-file.rs:3:1
    |
 LL | extern crate foo;

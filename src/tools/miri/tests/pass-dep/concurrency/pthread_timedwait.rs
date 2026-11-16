@@ -33,8 +33,10 @@ fn test_pthread_cond_timedwait(clock_id: libc::clockid_t) {
         // Waiting for 10ms.
         let new_nsec = now.tv_nsec + 10 * 1000 * 1000;
         let nanos = 1_000_000_000;
-        let timeout =
-            libc::timespec { tv_sec: now.tv_sec + new_nsec / nanos, tv_nsec: new_nsec % nanos };
+        let timeout = libc::timespec {
+            tv_sec: now.tv_sec + libc::time_t::from(new_nsec / nanos),
+            tv_nsec: new_nsec % nanos,
+        };
 
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
         assert_eq!(
@@ -93,8 +95,10 @@ fn test_sem_timedwait() {
         // Wait 10ms.
         let new_nsec = now.tv_nsec + 10 * 1000 * 1000;
         let nanos = 1_000_000_000;
-        let timeout =
-            libc::timespec { tv_sec: now.tv_sec + new_nsec / nanos, tv_nsec: new_nsec % nanos };
+        let timeout = libc::timespec {
+            tv_sec: now.tv_sec + libc::time_t::from(new_nsec / nanos),
+            tv_nsec: new_nsec % nanos,
+        };
 
         // First wait decrements value to 1 immediately, 2nd wait blocks for a bit.
         errno_result(libc::sem_timedwait(&raw mut sem, &raw const timeout)).unwrap();

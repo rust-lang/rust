@@ -3,7 +3,6 @@
 // https://github.com/rust-lang/miri/issues/3687
 
 #![feature(rustc_attrs)]
-#![feature(ptr_alignment_type)]
 
 extern "Rust" {
     #[rustc_std_internal_symbol]

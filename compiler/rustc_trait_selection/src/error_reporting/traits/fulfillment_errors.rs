@@ -32,8 +32,8 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::transmute::{Answer, Reason};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    self, ConstKind, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, bug, span_bug, sym};
@@ -47,7 +47,8 @@ use crate::diagnostics::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
-use crate::error_reporting::traits::report_dyn_incompatibility;
+use crate::error_reporting::traits::suggestions::ReturnsVisitor;
+use crate::error_reporting::traits::{FindExprBySpan, report_dyn_incompatibility};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
@@ -134,10 +135,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .emit_err();
                 }
 
-                // Report a const-param specific error
-                if let ObligationCauseCode::ConstParam(ty) = *obligation.cause.code().peel_derives()
-                {
-                    return self.report_const_param_not_wf(ty, &obligation).emit_err();
+                // Report a `ConstParamTy`-specific error
+                match *obligation.cause.code().peel_derives() {
+                    ObligationCauseCode::ConstParam(ty) => {
+                        return self
+                            .report_const_param_ty_error(
+                                ty,
+                                self.tcx.ty_span(obligation.cause.body_def_id),
+                                &obligation,
+                            )
+                            .emit_err();
+                    }
+                    ObligationCauseCode::ConstItemTy(ty) => {
+                        return self
+                            .report_const_param_ty_error(ty, obligation.cause.span, &obligation)
+                            .emit_err();
+                    }
+                    _ => {}
                 }
 
                 let bound_predicate = obligation.predicate.kind();
@@ -181,6 +195,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             // talking about `&mut T: Trait` and instead remain talking about
                             // `T: Trait` instead
                             && leaf_trait_predicate.def_id() != root_pred.def_id()
+                            // The root trait is not CoerceUnsized, because it's not something the user
+                            // will be concerned about since it's the predicate is generated internally in the new solver.
+                            && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::CoerceUnsized)
                             // The root trait is not `Unsize`, as to avoid talking about it in
                             // `tests/ui/coercion/coerce-issue-49593-box-never.rs`.
                             && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::Unsize)
@@ -854,21 +871,67 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             SelectionError::ConstArgHasWrongType { ct, ct_ty, expected_ty } => {
                 let expected_ty_str = self.tcx.short_string(expected_ty, &mut long_ty_file);
                 let ct_str = self.tcx.short_string(ct, &mut long_ty_file);
+                let mut diag_span = span;
+                let mut is_array_len = false;
+                if let ObligationCauseCode::ArrayLen(_, span) = obligation.cause.code() {
+                    let mut finder = FindExprBySpan::new(*span, self.tcx);
+                    match self.infcx.tcx.hir_node_by_def_id(obligation.cause.body_def_id) {
+                        hir::Node::Item(item) => finder.visit_item(item),
+                        hir::Node::ImplItem(item) => finder.visit_impl_item(item),
+                        hir::Node::TraitItem(item) => finder.visit_trait_item(item),
+                        _ => {}
+                    }
+                    if let Some(arr_ty) = finder.ty_result
+                        && let hir::TyKind::Array(_, len) = arr_ty.kind
+                    {
+                        diag_span = len.span;
+                        is_array_len = true;
+                    } else if let Some(arr) = finder.result
+                        && let hir::ExprKind::Repeat(_, len) = arr.kind
+                    {
+                        diag_span = len.span;
+                        is_array_len = true;
+                    }
+                }
                 let mut diag = self.dcx().struct_span_err(
-                    span,
+                    diag_span,
                     format!("the constant `{ct_str}` is not of type `{expected_ty_str}`"),
                 );
                 diag.long_ty_path = long_ty_file;
+                if let ConstKind::Param(param_const) = ct.kind() {
+                    for param in self
+                        .tcx
+                        .generics_of(obligation.cause.body_def_id.to_def_id())
+                        .own_params
+                        .iter()
+                    {
+                        if let GenericParamDefKind::Const { .. } = param.kind
+                            && param.index == param_const.index
+                            && param.name == param_const.name
+                        {
+                            let span = self.tcx.def_span(param.def_id);
+                            diag.span_label(span, format!("`{}` defined here", param.name));
+                        }
+                    }
+                }
 
-                self.note_type_err(
-                    &mut diag,
-                    &obligation.cause,
-                    None,
-                    None,
-                    TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
-                    false,
-                    None,
-                );
+                if is_array_len {
+                    let ty = self.tcx.short_string(ct_ty, &mut diag.long_ty_path);
+                    diag.span_label(
+                        diag_span,
+                        format!("array length expected `{expected_ty_str}`, found `{ty}`"),
+                    );
+                } else {
+                    self.note_type_err(
+                        &mut diag,
+                        &obligation.cause,
+                        None,
+                        None,
+                        TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
+                        false,
+                        None,
+                    );
+                }
                 diag
             }
         };
@@ -894,7 +957,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Keep more precise spans that still point within the parent obligation,
                     // but do not let hidden impl details move the span outside of it.
                     if code == *root_obligation.cause.code()
-                        && root_obligation.cause.span.eq_ctxt(obligation.cause.span)
+                        && root_obligation.cause.span.ctxt() == obligation.cause.span.ctxt()
                         && !root_obligation.cause.span.contains(obligation.cause.span)
                     {
                         obligation.cause.span = root_obligation.cause.span;
@@ -1465,14 +1528,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         true
     }
 
-    fn report_const_param_not_wf(
+    fn report_const_param_ty_error(
         &self,
         ty: Ty<'tcx>,
+        span: Span,
         obligation: &PredicateObligation<'tcx>,
     ) -> Diag<'a> {
-        let def_id = obligation.cause.body_def_id;
-        let span = self.tcx.ty_span(def_id);
-
         let mut file = None;
         let ty_str = self.tcx.short_string(ty, &mut file);
         let mut diag = match ty.kind() {
@@ -1919,7 +1980,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             ..
                         }),
                     ) => Some((
-                        ty.span,
+                        ty.span.into(),
                         with_forced_trimmed_paths!(Cow::from(format!(
                             "type mismatch resolving `{}`",
                             self.tcx.short_string(
@@ -1932,6 +1993,52 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     _ => None,
                 }
             });
+
+            // Account for errors caused on a return type.
+            if let ObligationCauseCode::ReturnType = obligation.cause.code() {
+                let body = self.tcx.hir_body_owned_by(obligation.cause.body_def_id);
+                let mut visitor = ReturnsVisitor::default();
+                visitor.visit_body(&body);
+                if visitor.returns.is_empty()
+                    && let hir::ExprKind::Block(block, _) = body.value.kind
+                {
+                    // We likely have an attempt to unify `<Something as Trait>Assoc == ()`, but we
+                    // have no returned expression.
+                    let span = match block.stmts {
+                        [] => body.value.span,
+                        [.., stmt] => stmt.span,
+                    };
+                    if let Some(clause) = predicate.as_clause()
+                        && let ty::ClauseKind::Projection(projection) = clause.kind().skip_binder()
+                        && let Some(ty) = projection.term.as_type()
+                        && ty == self.tcx.types.unit
+                    {
+                        diag.span_label(span, "`()` returned here");
+                    }
+                } else if let Some(typeck) = &self.typeck_results {
+                    for expr in visitor.returns {
+                        let span = match expr.kind {
+                            hir::ExprKind::Closure(closure) => closure.fn_decl_span,
+                            _ => expr.span,
+                        };
+                        let msg = match typeck.expr_ty_adjusted_opt(expr) {
+                            Some(ty) => {
+                                let ty = self.tcx.short_string(ty, diag.long_ty_path());
+                                format!("`{ty}` returned here")
+                            }
+                            None => "value returned here".to_string(),
+                        };
+                        diag.span_label(span, msg);
+                        self.point_at_chain_in_return_position(
+                            obligation.cause.body_def_id,
+                            expr,
+                            typeck,
+                            obligation.param_env,
+                            &mut diag,
+                        );
+                    }
+                }
+            }
 
             self.note_type_err(
                 &mut diag,
@@ -2072,6 +2179,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Pat(..) => Some(22),
                 ty::UnsafeBinder(..) => Some(23),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
+
+                // FIXME(scrabsha)
+                ty::View(..) => unimplemented!(),
             }
         }
 
@@ -2357,9 +2467,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     let traits = self.cmp_traits(
                         obligation_trait_ref.def_id(),
-                        &obligation_trait_ref.trait_ref.args[1..],
+                        &obligation_trait_ref.trait_ref.args.as_slice()[1..],
                         impl_trait_ref.def_id,
-                        &impl_trait_ref.args[1..],
+                        &impl_trait_ref.args.as_slice()[1..],
                     );
                     let traits_content = (traits.0.content(), traits.1.content());
                     let types = self.cmp(obligation_trait_ref.self_ty(), impl_trait_ref.self_ty());
@@ -3235,7 +3345,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return true;
             }
             if let ty::Adt(def, args) = self_ty.kind()
-                && let [arg] = &args[..]
+                && let [arg] = &args.as_slice()
                 && let ty::GenericArgKind::Type(ty) = arg.kind()
                 && let ty::Adt(inner_def, _) = ty.kind()
                 && inner_def == def

@@ -2,7 +2,6 @@
 //! Exceptions are `Clone` and `Copy`, which have bultin impls for pattern types.
 
 #![feature(pattern_types)]
-#![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;
 
@@ -16,7 +15,7 @@ struct Nanoseconds(NanoI32);
 //~| ERROR: the trait bound `pattern_type!(i32 is 0..=999999999): Default` is not satisfied
 //~| ERROR: `==` cannot be applied
 
-type NanoI32 = crate::pattern_type!(i32 is 0..=999_999_999);
+type NanoI32 = pattern_type!(i32 is 0..=999_999_999);
 
 fn main() {
     let x = Nanoseconds(unsafe { std::mem::transmute(42) });

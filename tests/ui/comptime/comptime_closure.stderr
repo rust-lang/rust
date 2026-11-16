@@ -3,6 +3,8 @@ error: the `rustc_comptime` attribute cannot be used on closures
    |
 LL |     let f = #[rustc_comptime]
    |               ^^^^^^^^^^^^^^
+LL |
+LL |     || ();
    |
    = help: the `rustc_comptime` attribute can be applied to functions, inherent impl blocks, and inherent methods
 

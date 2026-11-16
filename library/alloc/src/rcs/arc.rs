@@ -1727,7 +1727,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "rc_raw", since = "1.17.0")]
-    #[rustc_never_returns_null_ptr]
+    #[lint::never_returns_null_ptr]
     pub fn into_raw(this: Self) -> *const T {
         let this = ManuallyDrop::new(this);
         Self::as_ptr(&*this)
@@ -1924,7 +1924,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// ```
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
-    #[rustc_never_returns_null_ptr]
+    #[lint::never_returns_null_ptr]
     pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
 
@@ -2868,14 +2868,16 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// Returns `true` if there are no other `Arc` or [`Weak`] pointers to the same allocation;
     /// returns `false` otherwise.
     ///
-    /// If this function returns `true`, then is guaranteed to be safe to call [`get_mut_unchecked`]
-    /// on this `Arc`, so long as no clones occur in between.
+    /// If this function returns `true`, then it is guaranteed to be safe to call [`get_mut_unchecked`]
+    /// on this `Arc`, as long as no clones occur in between.
+    ///
+    /// The result can become stale if another thread can call `clone` or
+    /// `downgrade` through a shared reference. Make sure you have exclusive
+    /// access to the `Arc`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_is_unique)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
@@ -2895,11 +2897,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// This function will always return the same value as `Arc::get_mut(arc).is_some()`. However,
     /// unlike that operation it does not produce any mutable references to the underlying data,
     /// meaning no pointers to the data inside the `Arc` are invalidated by the call. Thus, the
-    /// following code is valid, even though it would be UB if it used `Arc::get_mut`:
+    /// following code is valid:
     ///
     /// ```
-    /// #![feature(arc_is_unique)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let arc = Arc::new(5);
@@ -2907,6 +2907,12 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// assert!(Arc::is_unique(&arc));
     /// assert_eq!(unsafe { *pointer }, 5);
     /// ```
+    ///
+    /// The following changes would make the example unsound:
+    ///
+    /// - Using `Arc::get_mut` to create a mutable reference while also accessing the value
+    ///   through `pointer`.
+    /// - Dropping `arc` before dereferencing `pointer`, leaving it dangling.
     ///
     /// # Atomic orderings
     ///
@@ -2919,7 +2925,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    #[unstable(feature = "arc_is_unique", issue = "138938")]
+    #[stable(feature = "arc_is_unique", since = "1.101.0")]
     pub fn is_unique(this: &Self) -> bool {
         // lock the weak pointer count if we appear to be the sole weak pointer
         // holder.
@@ -5203,6 +5209,8 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+/// This trait impl is unstable and only usable on nightly with `feature(allocator_ext)`.
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 #[unstable_feature_bound(allocator_ext)]
 impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Arc<T, A> {}

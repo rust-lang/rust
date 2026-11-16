@@ -60,7 +60,7 @@ git switch <branch>
 SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
 ```
 
-Where `<branch>` is one of `stable`, `beta`, or `master`.
+Where `<branch>` is one of `stable`, `beta`, or `main`.
 
 ## Update the `beta` branch
 
@@ -100,16 +100,16 @@ After this, the release should be available on the Clippy [tags page].
 
 ## Publish `clippy_utils`
 
-The `clippy_utils` crate is published to `crates.io` without any stability
-guarantees. To do this, after the [sync] and the release is done, switch back to
-the `upstream/master` branch and publish `clippy_utils`:
+The `clippy_utils` crate is published to `crates.io` without any stability guarantees.
+To do this, after the [sync] and the release is done, switch back to the `upstream/main`
+branch and publish `clippy_utils`:
 
 > [!NOTE]
 > The Rustup PR bumping the nightly and Clippy version **must** be merged
 > before doing this.
 
 ```bash
-git switch master && git pull upstream master
+git switch main && git pull upstream main
 cargo publish --manifest-path clippy_utils/Cargo.toml
 ```
 

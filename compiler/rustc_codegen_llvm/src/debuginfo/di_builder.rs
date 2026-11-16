@@ -14,7 +14,7 @@ pub(crate) struct DIBuilderBox<'ll> {
 }
 
 impl<'ll> DIBuilderBox<'ll> {
-    pub(crate) fn new(llmod: &'ll Module) -> Self {
+    pub(crate) fn new(llmod: Module<'ll>) -> Self {
         let raw = unsafe { llvm::LLVMCreateDIBuilder(llmod) };
         let raw = ptr::NonNull::new(raw).unwrap();
         Self { raw }
@@ -52,7 +52,7 @@ pub(crate) trait DIBuilderExt<'ll> {
         line_number: c_uint,
         ty: &'ll llvm::Metadata,
         is_local_to_unit: bool,
-        val: &'ll llvm::Value,
+        val: llvm::Value<'ll>,
         decl: Option<&'ll llvm::Metadata>,
         align: Option<Align>,
     ) -> &'ll llvm::Metadata {

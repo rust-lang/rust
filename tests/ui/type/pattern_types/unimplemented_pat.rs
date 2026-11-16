@@ -1,7 +1,7 @@
 //! This test ensures we do not ICE for unimplemented
 //! patterns even if the feature gate is enabled.
 
-#![feature(pattern_type_macro, pattern_types)]
+#![feature(pattern_types)]
 
 use std::pat::pattern_type;
 

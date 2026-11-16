@@ -14,7 +14,6 @@
 //@ aux-build:target_cpu_non_default.rs
 //@ compile-flags: --target nvptx64-nvidia-cuda
 //@ needs-llvm-components: nvptx
-//@ ignore-backends: gcc
 
 //@ revisions: implicit_default explicit_default implicit_mismatch explicit_mismatch
 //@[implicit_default] check-pass

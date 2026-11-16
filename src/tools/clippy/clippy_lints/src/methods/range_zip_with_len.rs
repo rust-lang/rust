@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
                 // to the diagnostic to underline the swapping of the index and the content.
                 let pat = methods_pattern(cx, expr).or_else(|| for_loop_pattern(cx, expr));
                 let invert_bindings = if let Some(pat) = pat
-                    && pat.span.eq_ctxt(expr.span)
+                    && pat.span.ctxt() == expr.span.ctxt()
                     && let PatKind::Tuple([first, second], _) = pat.kind
                 {
                     Some((first.span, second.span))

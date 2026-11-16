@@ -1,0 +1,4 @@
+error: too-many-reserved-regs.rs:17:5: ran out of registers during register allocation in function 'store_val'
+
+error: aborting due to 1 previous error
+

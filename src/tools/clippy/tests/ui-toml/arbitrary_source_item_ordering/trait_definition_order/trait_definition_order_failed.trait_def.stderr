@@ -75,5 +75,29 @@ note: should be placed before `C`
 LL |     const C: bool = true;
    |     ^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: incorrect ordering of impl items (should follow the trait definition order)
+  --> tests/ui-toml/arbitrary_source_item_ordering/trait_definition_order/trait_definition_order_failed.rs:119:5
+   |
+LL |     fn c() -> impl Sized {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: should be placed before `b`
+  --> tests/ui-toml/arbitrary_source_item_ordering/trait_definition_order/trait_definition_order_failed.rs:118:5
+   |
+LL |     fn b() {}
+   |     ^^^^^^
+
+error: incorrect ordering of impl items (should follow the trait definition order)
+  --> tests/ui-toml/arbitrary_source_item_ordering/trait_definition_order/trait_definition_order_failed.rs:134:5
+   |
+LL |     fn b() {}
+   |     ^^^^^^
+   |
+note: should be placed before `c`
+  --> tests/ui-toml/arbitrary_source_item_ordering/trait_definition_order/trait_definition_order_failed.rs:133:5
+   |
+LL |     fn c() -> impl Sized {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 

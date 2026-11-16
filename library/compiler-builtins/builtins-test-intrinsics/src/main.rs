@@ -675,23 +675,5 @@ pub fn __aeabi_unwind_cpp_pr0() {}
 #[unsafe(no_mangle)]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
-#[cfg(not(any(windows, target_os = "cygwin")))]
-#[allow(non_snake_case)]
-#[unsafe(no_mangle)]
-pub fn _Unwind_Resume() {}
-
-#[cfg(not(any(windows, target_os = "cygwin")))]
 #[lang = "eh_personality"]
 pub extern "C" fn eh_personality() {}
-
-#[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
-mod mingw_unwinding {
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_personality() {}
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_unwind_resume() {}
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_register_frames() {}
-    #[unsafe(no_mangle)]
-    pub fn rust_eh_unregister_frames() {}
-}

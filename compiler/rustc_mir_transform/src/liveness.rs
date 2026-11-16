@@ -97,7 +97,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
 
         let (capture_kind, args) = match self_ty.kind() {
             ty::Closure(_, args) => {
-                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(args))
+                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(*args))
             }
             &ty::Coroutine(_, args) => (CaptureKind::Coroutine, ty::UpvarArgs::Coroutine(args)),
             &ty::CoroutineClosure(_, args) => {
@@ -1030,7 +1030,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             // #117284, when `ident_span` and `def_span` have different contexts
             // we can't provide a good suggestion, instead we pointed out the spans from macro
             let from_macro = def_span.from_expansion()
-                && introductions.iter().any(|intro| intro.span.eq_ctxt(def_span));
+                && introductions.iter().any(|intro| intro.span.ctxt() == def_span.ctxt());
 
             let maybe_suggest_typo = || {
                 if let LocalKind::Arg = self.body.local_kind(local) {

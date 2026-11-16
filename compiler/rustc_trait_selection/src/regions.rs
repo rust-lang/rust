@@ -6,7 +6,9 @@ use rustc_infer::infer::{
 };
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized, elaborate};
+use rustc_middle::ty::{
+    self, CallerBoundsIterator, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized, elaborate,
+};
 use rustc_span::DUMMY_SP;
 
 use crate::traits::ScrubbedTraitError;
@@ -32,7 +34,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
     ) -> Self {
         let mut bounds = vec![];
 
-        for bound in param_env.caller_bounds() {
+        for bound in param_env.caller_bounds().non_trait_clauses().iter() {
             if let Some(type_outlives) = bound.as_type_outlives_clause() {
                 debug_assert!(!infcx.next_trait_solver() || !type_outlives.has_non_rigid_aliases());
                 bounds.push(type_outlives);

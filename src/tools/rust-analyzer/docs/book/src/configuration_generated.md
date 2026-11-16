@@ -402,6 +402,13 @@ Show method calls and field accesses completions with `await` prefixed to them w
 completing on a future.
 
 
+## rust-analyzer.completion.autoDyn.enable {#completion.autoDyn.enable}
+
+Default: `true`
+
+Complete traits with `dyn` prefixed to them when completing in a type position.
+
+
 ## rust-analyzer.completion.autoIter.enable {#completion.autoIter.enable}
 
 Default: `true`
@@ -1069,7 +1076,7 @@ Show generic type parameter name inlay hints.
 
 ## rust-analyzer.inlayHints.implicitDrops.enable {#inlayHints.implicitDrops.enable}
 
-Default: `false`
+Default: `"never"`
 
 Show implicit drop hints.
 

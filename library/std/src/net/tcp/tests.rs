@@ -1,3 +1,5 @@
+#![cfg(not(all(windows, skip_unsupported_miri_tests)))] // Miri has no net support on Windows
+
 use rand::Rng;
 
 use crate::io::prelude::*;
@@ -60,8 +62,9 @@ fn connect_timeout_error() {
     let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port));
 
     // Ensure we error immediately rather than timing out.
-    let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
-    assert!(!matches!(result, Err(e) if e.kind() == ErrorKind::TimedOut));
+    let err = TcpStream::connect_timeout(&socket_addr, Duration::MAX)
+        .expect_err("connected to a port with no listener");
+    assert_ne!(err.kind(), ErrorKind::TimedOut, "unexpected error: {err}");
 
     let _listener = TcpListener::bind(&socket_addr).unwrap();
     assert!(TcpStream::connect_timeout(&socket_addr, Duration::MAX).is_ok());
@@ -896,7 +899,8 @@ fn ttl() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
-#[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+#[cfg(any(target_family = "unix", target_os = "windows"))]
+#[cfg(not(skip_unsupported_miri_tests))] // socket flag not supported by Miri
 fn hop_limit() {
     let hlim = 100;
 
@@ -978,6 +982,7 @@ fn connect_timeout_valid() {
 // macOS with `EINVAL`; `write_all` should now transfer it via short sends.
 #[test]
 #[cfg(all(target_pointer_width = "64", unix))]
+#[cfg(not(skip_unsupported_miri_tests))] // read-only mmap not supported by Miri
 fn write_buffer_larger_than_c_int_max() {
     const LEN: usize = crate::ffi::c_int::MAX as usize + 1;
 

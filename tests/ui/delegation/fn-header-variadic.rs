@@ -1,5 +1,4 @@
 //@ aux-crate:fn_header_aux=fn-header-aux.rs
-//@ ignore-backends: gcc
 
 #![feature(fn_delegation)]
 

@@ -143,6 +143,9 @@ pub enum TokenKind {
 
     /// A lifetime, e.g. `'a`.
     Lifetime {
+        // FIXME: this should be renamed to `invalid` as it also signals when
+        // there are emoji in the lifetime name, but avoid changing the name so
+        // we don't introduce incompatibilities with rust-analyzer.
         starts_with_number: bool,
     },
 
@@ -591,7 +594,7 @@ impl<'a> Cursor<'a> {
                     let kind = RawStr { n_hashes: res.ok() };
                     Literal { kind, suffix_start }
                 }
-                _ => self.ident_or_unknown_prefix(),
+                _ => self.ident_or_unknown_prefix(false),
             },
 
             // Forced keyword identifier or identifier.
@@ -601,7 +604,7 @@ impl<'a> Cursor<'a> {
                     self.eat_identifier();
                     ForcedKeywordIdent
                 }
-                _ => self.ident_or_unknown_prefix(),
+                _ => self.ident_or_unknown_prefix(false),
             },
 
             // Byte literal, byte string literal, raw byte string literal or identifier.
@@ -620,7 +623,7 @@ impl<'a> Cursor<'a> {
 
             // Identifier (this should be checked after other variant that can
             // start as identifier).
-            c if is_id_start(c) => self.ident_or_unknown_prefix(),
+            c if is_id_start(c) => self.ident_or_unknown_prefix(false),
 
             // Numeric literal.
             c @ '0'..='9' => {
@@ -678,7 +681,7 @@ impl<'a> Cursor<'a> {
                 Literal { kind, suffix_start }
             }
             // Identifier starting with an emoji. Only lexed for graceful error recovery.
-            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
+            c if is_emoji(c) => self.invalid_ident(),
             _ => Unknown,
         };
         if matches!(self.frontmatter_allowed, FrontmatterAllowed::Yes)
@@ -840,25 +843,22 @@ impl<'a> Cursor<'a> {
         Whitespace
     }
 
-    fn ident_or_unknown_prefix(&mut self) -> TokenKind {
-        debug_assert!(is_id_start(self.prev()));
+    fn ident_or_unknown_prefix(&mut self, already_invalid: bool) -> TokenKind {
+        debug_assert!(is_id_start(self.prev()) || already_invalid);
         // Start is already eaten, eat the rest of identifier.
         self.eat_while(is_id_continue);
         // Known prefixes must have been handled earlier. So if
         // we see a prefix here, it is definitely an unknown prefix.
         match self.first() {
             '#' | '"' | '\'' => UnknownPrefix,
-            c if !c.is_ascii() && c.is_emoji_char() => self.invalid_ident(),
+            c if is_emoji(c) => self.invalid_ident(),
             _ => Ident,
         }
     }
 
     fn invalid_ident(&mut self) -> TokenKind {
         // Start is already eaten, eat the rest of identifier.
-        self.eat_while(|c| {
-            const ZERO_WIDTH_JOINER: char = '\u{200d}';
-            is_id_continue(c) || (!c.is_ascii() && c.is_emoji_char()) || c == ZERO_WIDTH_JOINER
-        });
+        self.eat_while(|c| is_id_continue(c) || is_emoji(c));
         // An invalid identifier followed by '#' or '"' or '\'' could be
         // interpreted as an invalid literal prefix. We don't bother doing that
         // because the treatment of invalid identifiers and invalid prefixes
@@ -903,7 +903,7 @@ impl<'a> Cursor<'a> {
                 let kind = mk_kind_raw(res.ok());
                 Literal { kind, suffix_start }
             }
-            _ => self.ident_or_unknown_prefix(),
+            _ => self.ident_or_unknown_prefix(false),
         }
     }
 
@@ -983,6 +983,7 @@ impl<'a> Cursor<'a> {
     fn lifetime_or_char(&mut self) -> TokenKind {
         debug_assert!(self.prev() == '\'');
 
+        let mut invalid = false;
         let can_be_a_lifetime = if self.second() == '\'' {
             // It's surely not a lifetime.
             false
@@ -990,7 +991,10 @@ impl<'a> Cursor<'a> {
             // If the first symbol is valid for identifier, it can be a lifetime.
             // Also check if it's a number for a better error reporting (so '0 will
             // be reported as invalid lifetime and not as unterminated char literal).
-            is_id_start(self.first()) || self.first().is_ascii_digit()
+            let c = self.first();
+            invalid |= c.is_ascii_digit();
+            invalid |= is_emoji(c);
+            is_id_start(c) || invalid
         };
 
         if !can_be_a_lifetime {
@@ -1020,7 +1024,7 @@ impl<'a> Cursor<'a> {
         // First symbol can be a number (which isn't a valid identifier start),
         // so skip it without any checks.
         self.bump();
-        self.eat_while(is_id_continue);
+        invalid |= matches!(self.ident_or_unknown_prefix(invalid), InvalidIdent);
 
         match self.first() {
             // Check if after skipping literal contents we've met a closing
@@ -1032,7 +1036,7 @@ impl<'a> Cursor<'a> {
                 Literal { kind, suffix_start: self.pos_within_token() }
             }
             '#' if !starts_with_number => UnknownPrefixLifetime,
-            _ => Lifetime { starts_with_number },
+            _ => Lifetime { starts_with_number: invalid },
         }
     }
 
@@ -1284,4 +1288,8 @@ impl<'a> Cursor<'a> {
 
         self.eat_while(is_id_continue);
     }
+}
+
+fn is_emoji(c: char) -> bool {
+    !c.is_ascii() && c.is_emoji_char()
 }

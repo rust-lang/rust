@@ -294,8 +294,9 @@ impl Bootstrap {
 
     pub fn run(self, timer: &mut TimerSection) -> anyhow::Result<()> {
         self.cmd.run()?;
-        let metrics = load_metrics(&self.metrics_path)?;
-        record_metrics(&metrics, timer);
+        if let Ok(metrics) = load_metrics(&self.metrics_path) {
+            record_metrics(&metrics, timer);
+        }
         Ok(())
     }
 }

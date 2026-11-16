@@ -1,7 +1,9 @@
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
+use rustc_structures::LintName;
 
 use crate::{HashIgnoredAttrId, PrintAttribute};
+
 #[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum LintCheckKind {
     Allow,
@@ -43,21 +45,7 @@ impl LintCheckKind {
 /// ```
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct LintCheck {
-    /// The lint's tool name, if present.
-    pub tool: Option<Ident>,
-    /// The lint's name, minus the tool name if any.
-    ///
-    /// For example:
-    /// - `clippy::blah` -> `blah`
-    /// - `unstable_imports` -> `unstable_imports`
-    /// - `custom_tool::blah::bleh` -> `blah::bleh`
-    pub lint_name: Symbol,
-    /// The span of the lint name.
-    ///
-    /// For example `#[deny(foo, bar, reason = "reason")]`
-    /// produces multiple `LintCheck`s, one with a span pointing to `foo`
-    /// and another pointing to `bar`.
-    pub lint_span: Span,
+    pub lint_name: LintName,
     pub kind: LintCheckKind,
     pub reason: Option<Symbol>,
     /// Needed by `LintExpectationId` to track fulfilled expectations
@@ -68,4 +56,10 @@ pub struct LintCheck {
     /// inside one attribute are all smooshed and flattened together, so
     /// multiple `LintCheck`s can have the same `attr_span`.
     pub attr_span: Span,
+    /// The span of the entire lint name.
+    ///
+    /// #[deny(foo::bar::baz)]
+    ///        ^^^^^^^^^^^^^
+    pub lint_span: Span,
+    pub tool_span: Option<Span>,
 }

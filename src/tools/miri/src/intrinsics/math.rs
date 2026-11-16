@@ -8,18 +8,18 @@ use super::check_intrinsic_arg_count;
 use crate::*;
 
 fn sqrt<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let [f] = check_intrinsic_arg_count(args)?;
-    math::sqrt_op::<F>(this, f, dest)
+    math::sqrt_op::<F>(ecx, f, dest)
 }
 
 /// Determine which float operation on which type this is.
 fn is_host_unary_float_op(
     intrinsic_name: &str,
-    generic_args: ty::GenericArgsRef<'_>,
+    generic_args: ty::GenericArgs<'_>,
 ) -> Option<(FloatTy, HostUnaryFloatOp)> {
     let host_float_op = match intrinsic_name {
         "sin" => HostUnaryFloatOp::Sin,
@@ -39,7 +39,7 @@ fn is_host_unary_float_op(
 }
 
 fn pow_intrinsic<'tcx, S: Semantics>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
@@ -47,23 +47,23 @@ where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
 {
     let [f1, f2] = check_intrinsic_arg_count(args)?;
-    let f1: IeeeFloat<S> = this.read_scalar(f1)?.to_float()?;
-    let f2: IeeeFloat<S> = this.read_scalar(f2)?.to_float()?;
+    let f1: IeeeFloat<S> = ecx.read_scalar(f1)?.to_float()?;
+    let f2: IeeeFloat<S> = ecx.read_scalar(f2)?.to_float()?;
 
-    let res = math::fixed_float_value(this, "pow", &[f1, f2]).unwrap_or_else(|| {
+    let res = math::fixed_float_value(ecx, "pow", &[f1, f2]).unwrap_or_else(|| {
         // Using host floats (but it's fine, this operation does not have guaranteed precision).
         let res = f1.host_powf(f2);
 
         // Apply a relative error of 4ULP to introduce some non-determinism
         // simulating imprecise implementations and optimizations.
-        math::apply_random_float_error_ulp(this, res, 4)
+        math::apply_random_float_error_ulp(ecx, res, 4)
     });
-    let res = this.adjust_nan(res, &[f1, f2]);
-    this.write_scalar(res, dest)?;
+    let res = ecx.adjust_nan(res, &[f1, f2]);
+    ecx.write_scalar(res, dest)?;
     interp_ok(())
 }
 fn powi_intrinsic<'tcx, S: Semantics>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
@@ -71,19 +71,19 @@ where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
 {
     let [f, i] = check_intrinsic_arg_count(args)?;
-    let f: IeeeFloat<S> = this.read_scalar(f)?.to_float()?;
-    let i = this.read_scalar(i)?.to_i32()?;
+    let f: IeeeFloat<S> = ecx.read_scalar(f)?.to_float()?;
+    let i = ecx.read_scalar(i)?.to_i32()?;
 
-    let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
+    let res = math::fixed_powi_value(ecx, f, i).unwrap_or_else(|| {
         // Using host floats (but it's fine, this operation does not have guaranteed precision).
         let res = f.host_powi(i);
 
         // Apply a relative error of 4ULP to introduce some non-determinism
         // simulating imprecise implementations and optimizations.
-        math::apply_random_float_error_ulp(this, res, 4)
+        math::apply_random_float_error_ulp(ecx, res, 4)
     });
-    let res = this.adjust_nan(res, &[f]);
-    this.write_scalar(res, dest)?;
+    let res = ecx.adjust_nan(res, &[f]);
+    ecx.write_scalar(res, dest)?;
     interp_ok(())
 }
 
@@ -92,11 +92,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_math_intrinsic(
         &mut self,
         intrinsic_name: &str,
-        generic_args: ty::GenericArgsRef<'tcx>,
+        generic_args: ty::GenericArgs<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         match intrinsic_name {
             // Operations we can do with soft-floats.
@@ -105,10 +105,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     bug!("`sqrt` intrinsic called on non-float type");
                 };
                 match float_ty {
-                    FloatTy::F16 => sqrt::<rustc_apfloat::ieee::Half>(this, args, dest)?,
-                    FloatTy::F32 => sqrt::<rustc_apfloat::ieee::Single>(this, args, dest)?,
-                    FloatTy::F64 => sqrt::<rustc_apfloat::ieee::Double>(this, args, dest)?,
-                    FloatTy::F128 => sqrt::<rustc_apfloat::ieee::Quad>(this, args, dest)?,
+                    FloatTy::F16 => sqrt::<rustc_apfloat::ieee::Half>(ecx, args, dest)?,
+                    FloatTy::F32 => sqrt::<rustc_apfloat::ieee::Single>(ecx, args, dest)?,
+                    FloatTy::F64 => sqrt::<rustc_apfloat::ieee::Double>(ecx, args, dest)?,
+                    FloatTy::F128 => sqrt::<rustc_apfloat::ieee::Quad>(ecx, args, dest)?,
                 }
             }
 
@@ -120,8 +120,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "frem_fast"
             => {
                 let [a, b] = check_intrinsic_arg_count(args)?;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
+                let a = ecx.read_immediate(a)?;
+                let b = ecx.read_immediate(b)?;
                 let op = match intrinsic_name {
                     "fadd_fast" => mir::BinOp::Add,
                     "fsub_fast" => mir::BinOp::Sub,
@@ -153,7 +153,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     ),
                     _ => {}
                 }
-                let res = this.binary_op(op, &a, &b)?;
+                let res = ecx.binary_op(op, &a, &b)?;
                 // This cannot be a NaN so we also don't have to apply any non-determinism.
                 // (Also, `binary_op` already called `generate_nan` if needed.)
                 if !float_finite(&res)? {
@@ -161,15 +161,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 // Apply a relative error of 4ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = math::apply_random_float_error_to_imm(this, res, 4)?;
-                this.write_immediate(*res, dest)?;
+                let res = math::apply_random_float_error_to_imm(ecx, res, 4)?;
+                ecx.write_immediate(*res, dest)?;
             }
 
             "float_to_int_unchecked" => {
                 let [val] = check_intrinsic_arg_count(args)?;
-                let val = this.read_immediate(val)?;
+                let val = ecx.read_immediate(val)?;
 
-                let res = this
+                let res = ecx
                     .float_to_int_checked(&val, dest.layout, Round::TowardZero)?
                     .ok_or_else(|| {
                         err_ub_format!(
@@ -178,7 +178,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         )
                     })?;
 
-                this.write_immediate(*res, dest)?;
+                ecx.write_immediate(*res, dest)?;
             }
 
             // Operations that need host floats.
@@ -187,9 +187,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             {
                 let [f] = check_intrinsic_arg_count(args)?;
                 match float_ty {
-                    FloatTy::F16 => host_unary_float_op::<HalfS>(this, f, op, dest)?,
-                    FloatTy::F32 => host_unary_float_op::<SingleS>(this, f, op, dest)?,
-                    FloatTy::F64 => host_unary_float_op::<DoubleS>(this, f, op, dest)?,
+                    FloatTy::F16 => host_unary_float_op::<HalfS>(ecx, f, op, dest)?,
+                    FloatTy::F32 => host_unary_float_op::<SingleS>(ecx, f, op, dest)?,
+                    FloatTy::F64 => host_unary_float_op::<DoubleS>(ecx, f, op, dest)?,
                     FloatTy::F128 => todo!("f128"), // FIXME(f128)
                 };
             }
@@ -199,9 +199,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     bug!("`powf` intrinsic called on non-float type");
                 };
                 match float_ty {
-                    FloatTy::F16 => pow_intrinsic::<HalfS>(this, args, dest)?,
-                    FloatTy::F32 => pow_intrinsic::<SingleS>(this, args, dest)?,
-                    FloatTy::F64 => pow_intrinsic::<DoubleS>(this, args, dest)?,
+                    FloatTy::F16 => pow_intrinsic::<HalfS>(ecx, args, dest)?,
+                    FloatTy::F32 => pow_intrinsic::<SingleS>(ecx, args, dest)?,
+                    FloatTy::F64 => pow_intrinsic::<DoubleS>(ecx, args, dest)?,
                     FloatTy::F128 => todo!("f128"), // FIXME(f128)
                 }
             }
@@ -211,9 +211,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     bug!("`powf` intrinsic called on non-float type");
                 };
                 match float_ty {
-                    FloatTy::F16 => powi_intrinsic::<HalfS>(this, args, dest)?,
-                    FloatTy::F32 => powi_intrinsic::<SingleS>(this, args, dest)?,
-                    FloatTy::F64 => powi_intrinsic::<DoubleS>(this, args, dest)?,
+                    FloatTy::F16 => powi_intrinsic::<HalfS>(ecx, args, dest)?,
+                    FloatTy::F32 => powi_intrinsic::<SingleS>(ecx, args, dest)?,
+                    FloatTy::F64 => powi_intrinsic::<DoubleS>(ecx, args, dest)?,
                     FloatTy::F128 => todo!("f128"), // FIXME(f128)
                 }
             }

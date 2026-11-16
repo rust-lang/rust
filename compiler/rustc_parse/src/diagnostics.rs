@@ -2070,14 +2070,6 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 }
 
 #[derive(Diagnostic)]
-#[diag("`Trait(...)` syntax does not support c_variadic parameters")]
-pub(crate) struct PathFoundCVariadicParams {
-    #[primary_span]
-    #[suggestion("remove the `...`", applicability = "machine-applicable", code = "")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("path separator must be a double colon")]
 pub(crate) struct PathSingleColon {
     #[primary_span]
@@ -4085,21 +4077,6 @@ impl IntoDiagArg for Case {
         }
         .into_diag_arg(path)
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown `builtin #` construct `{$name}`")]
-pub(crate) struct UnknownBuiltinConstruct {
-    #[primary_span]
-    pub span: Span,
-    pub name: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag("expected identifier after `builtin #`")]
-pub(crate) struct ExpectedBuiltinIdent {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

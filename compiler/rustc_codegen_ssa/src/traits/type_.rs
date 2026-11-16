@@ -6,7 +6,6 @@ use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
 
 use super::BackendTypes;
 use super::misc::MiscCodegenMethods;
-use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 
 pub trait BaseTypeCodegenMethods: BackendTypes {
@@ -23,21 +22,30 @@ pub trait BaseTypeCodegenMethods: BackendTypes {
     fn type_f64(&self) -> Self::Type;
     fn type_f128(&self) -> Self::Type;
     fn type_ppcf128(&self) -> Self::Type;
+    fn type_x87_f80(&self) -> Self::Type;
 
-    fn type_array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::FunctionSignature;
-    fn type_kind(&self, ty: Self::Type) -> TypeKind;
     fn type_ptr(&self) -> Self::Type;
     fn type_ptr_ext(&self, address_space: AddressSpace) -> Self::Type;
-    fn element_type(&self, ty: Self::Type) -> Self::Type;
 
-    /// Returns the number of elements in `self` if it is an LLVM vector type.
-    fn vector_length(&self, ty: Self::Type) -> usize;
+    /// Returns the element type of `ty` if it is a vector type, otherwise returns `None`.
+    fn vector_element_type(&self, ty: Self::Type) -> Option<Self::Type> {
+        self.vector_element_type_and_length(ty).map(|(elem, _)| elem)
+    }
+    /// Returns the number of elements in `ty` if it is a vector type, otherwise returns `None`.
+    fn vector_length(&self, ty: Self::Type) -> Option<u64> {
+        self.vector_element_type_and_length(ty).map(|(_, len)| len)
+    }
+    /// Returns the tuple (element_type, length) of `ty` if it is a vector type, otherwise returns
+    /// `None`.
+    fn vector_element_type_and_length(&self, ty: Self::Type) -> Option<(Self::Type, u64)>;
 
-    fn float_width(&self, ty: Self::Type) -> usize;
+    /// Retrieves the scalar float type of `ty`. Returns `None` is `ty` is not a float.
+    fn float_type(&self, ty: Self::Type) -> Option<Float>;
 
-    /// Retrieves the bit width of the integer type `self`.
-    fn int_width(&self, ty: Self::Type) -> u64;
+    /// Retrieves the bit width of the scalar integer type `ty`. Returns `None` is `ty` is not an
+    /// integer.
+    fn int_width(&self, ty: Self::Type) -> Option<u64>;
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
 }
@@ -72,6 +80,7 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
             F16B => self.type_f16b(),
             F32 => self.type_f32(),
             F64 => self.type_f64(),
+            X87F80 => self.type_x87_f80(),
             F128 => self.type_f128(),
             PpcF128 => self.type_ppcf128(),
         }
@@ -114,8 +123,12 @@ impl<'tcx, T> DerivedTypeCodegenMethods<'tcx> for T where
 }
 
 pub trait LayoutTypeCodegenMethods<'tcx>: BackendTypes {
-    /// The backend type used for a rust type when it's in memory,
-    /// such as when it's stack-allocated or when it's being loaded or stored.
+    /// The backend type used for a Rust type when it is being loaded from or
+    /// stored to memory.
+    ///
+    /// Note that this type may be different from the type used for allocas.
+    /// For instance for x87_f80 the store size and allocation size is different,
+    /// so different types are used to represent it in memory versus on the stack.
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
     fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::FunctionSignature;

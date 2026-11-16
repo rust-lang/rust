@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eq_expr_value;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::has_enclosing_paren;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -59,6 +60,12 @@ pub(super) fn check(cx: &LateContext<'_>, op: BinOpKind, lhs: &Expr<'_>, rhs: &E
         let lhs_str = snippet_with_applicability(cx, llhs.span, "", &mut applicability);
         let rhs_str = snippet_with_applicability(cx, lrhs.span, "", &mut applicability);
         let sugg = format!("{lhs_str} {op} {rhs_str}");
+        let span_snippet = snippet_with_applicability(cx, span, "", &mut applicability);
+        let sugg = if has_enclosing_paren(&span_snippet) {
+            format!("({sugg})")
+        } else {
+            sugg
+        };
         span_lint_and_sugg(
             cx,
             DOUBLE_COMPARISONS,

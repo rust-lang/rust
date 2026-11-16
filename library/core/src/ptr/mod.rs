@@ -434,11 +434,6 @@ use crate::num::NonZero;
 use crate::ops::FnPtr;
 use crate::{fmt, hash, intrinsics, ub_checks};
 
-#[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[deprecated(since = "1.96.0", note = "moved from `ptr` to `mem`")]
-/// Deprecated re-export of [mem::Alignment].
-pub type Alignment = mem::Alignment;
-
 mod metadata;
 #[unstable(feature = "ptr_metadata", issue = "81513")]
 pub use metadata::{DynMetadata, Pointee, Thin, from_raw_parts, from_raw_parts_mut, metadata};
@@ -1116,7 +1111,7 @@ pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_never_returns_null_ptr]
+#[lint::never_returns_null_ptr]
 #[rustc_diagnostic_item = "ptr_from_ref"]
 pub const fn from_ref<T: PointeeSized>(r: &T) -> *const T {
     r
@@ -1167,7 +1162,7 @@ pub const fn from_ref<T: PointeeSized>(r: &T) -> *const T {
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
-#[rustc_never_returns_null_ptr]
+#[lint::never_returns_null_ptr]
 pub const fn from_mut<T: PointeeSized>(r: &mut T) -> *mut T {
     r
 }

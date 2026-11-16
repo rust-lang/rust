@@ -228,6 +228,9 @@ impl<'tcx> Ty<'tcx> {
             ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => "opaque type".into(),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         }
     }
 }

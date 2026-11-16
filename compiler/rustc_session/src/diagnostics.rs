@@ -363,7 +363,7 @@ pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 pub(crate) struct SplitLtoUnitRequiresLto;
 
 #[derive(Diagnostic)]
-#[diag("`-Zvirtual-function-elimination` requires `-Clto`")]
+#[diag("`-Zvirtual-function-elimination` requires `-Clto=fat`")]
 pub(crate) struct UnstableVirtualFunctionElimination;
 
 #[derive(Diagnostic)]

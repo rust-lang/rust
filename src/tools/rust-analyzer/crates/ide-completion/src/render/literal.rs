@@ -22,37 +22,30 @@ use crate::{
 pub(crate) fn render_variant_lit(
     ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
-    local_name: Option<hir::Name>,
     variant: hir::EnumVariant,
-    path: Option<hir::ModPath>,
+    path: hir::ModPath,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_variant_lit").entered();
-    let db = ctx.db();
 
-    let name = local_name.unwrap_or_else(|| variant.name(db));
-    render(ctx, path_ctx, Variant::EnumVariant(variant), name, path)
+    render(ctx, path_ctx, Variant::EnumVariant(variant), path)
 }
 
 pub(crate) fn render_struct_literal(
     ctx: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     strukt: hir::Struct,
-    path: Option<hir::ModPath>,
-    local_name: Option<hir::Name>,
+    path: hir::ModPath,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_struct_literal").entered();
-    let db = ctx.db();
 
-    let name = local_name.unwrap_or_else(|| strukt.name(db));
-    render(ctx, path_ctx, Variant::Struct(strukt), name, path)
+    render(ctx, path_ctx, Variant::Struct(strukt), path)
 }
 
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     thing: Variant,
-    name: hir::Name,
-    path: Option<hir::ModPath>,
+    path: hir::ModPath,
 ) -> Option<Builder> {
     let db = completion.db;
     let mut kind = thing.kind(db);
@@ -63,19 +56,18 @@ fn render(
     );
 
     let fields = thing.fields(completion)?;
-    let (qualified_name, short_qualified_name, qualified) = match path {
-        Some(path) => {
-            let short = hir::ModPath::from_segments(
-                hir::PathKind::Plain,
-                path.segments().iter().skip(path.segments().len().saturating_sub(2)).cloned(),
-            );
-            (path, short, true)
-        }
-        None => (name.clone().into(), name.into(), false),
+    let short_len = match thing {
+        Variant::Struct(_) => 1,
+        Variant::EnumVariant(_) => 2,
     };
+    let short_qualified_name = hir::ModPath::from_segments(
+        hir::PathKind::Plain,
+        path.segments().iter().skip(path.segments().len().saturating_sub(short_len)).cloned(),
+    );
+    let qualified = path.len() > 1;
     let (qualified_name, escaped_qualified_name) = (
-        qualified_name.display_verbatim(ctx.db()).to_string(),
-        qualified_name.display(ctx.db(), completion.edition).to_string(),
+        path.display_verbatim(ctx.db()).to_string(),
+        path.display(ctx.db(), completion.edition).to_string(),
     );
     let snippet_cap = ctx.snippet_cap();
 

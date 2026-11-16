@@ -228,7 +228,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn field_representing_type_info(
         self,
         tcx: TyCtxt<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Option<FieldInfo<TyCtxt<'tcx>>> {
         if !self.is_field_representing_type() {
             return None;
@@ -246,7 +246,7 @@ impl<'tcx> AdtDef<'tcx> {
             ty::Adt(base_def, base_args) => {
                 let variant = base_def.variant(variant_idx);
                 let field = &variant.fields[field_idx];
-                let ty = field.ty(tcx, base_args).skip_norm_wip();
+                let ty = field.ty(tcx, *base_args).skip_norm_wip();
                 (ty, base_def.is_enum().then_some(variant.name), field.name)
             }
             ty::Tuple(tys) => {
@@ -300,7 +300,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     fn field_representing_type_info(
         self,
         tcx: TyCtxt<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Option<FieldInfo<TyCtxt<'tcx>>> {
         self.field_representing_type_info(tcx, args)
     }

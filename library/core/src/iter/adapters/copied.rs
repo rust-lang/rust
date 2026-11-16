@@ -65,6 +65,7 @@ where
         self.it.size_hint()
     }
 
+    #[inline]
     fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -74,6 +75,7 @@ where
         self.it.try_fold(init, copy_try_fold(f))
     }
 
+    #[inline]
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
@@ -118,6 +120,7 @@ where
         self.it.next_back().copied()
     }
 
+    #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
@@ -127,6 +130,7 @@ where
         self.it.try_rfold(init, copy_try_fold(f))
     }
 
+    #[inline]
     fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,

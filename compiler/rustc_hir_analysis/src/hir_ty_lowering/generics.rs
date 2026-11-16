@@ -9,7 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
 use rustc_lint_defs::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_middle::ty::{
-    self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
+    self, GenericArgs, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
 use rustc_span::kw;
 use rustc_trait_selection::traits;
@@ -195,7 +195,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
     self_ty: Option<Ty<'tcx>>,
     arg_count: &GenericArgCountResult,
     ctx: &mut impl GenericArgsLowerer<'a, 'tcx>,
-) -> GenericArgsRef<'tcx> {
+) -> GenericArgs<'tcx> {
     let tcx = cx.tcx();
     // Collect the segments of the path; we need to instantiate arguments
     // for parameters throughout the entire path (wherever there are

@@ -331,6 +331,7 @@ impl<'a, K: Ord, V, A: AllocatorClone> Entry<'a, K, V, A> {
     /// let entry = map.entry("poneyland").insert_entry("hoho".to_string());
     ///
     /// assert_eq!(entry.key(), &"poneyland");
+    /// assert_eq!(entry.get(), &"hoho");
     /// ```
     #[inline]
     #[stable(feature = "btree_entry_insert", since = "1.92.0")]

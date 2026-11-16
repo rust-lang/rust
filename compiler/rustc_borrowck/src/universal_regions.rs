@@ -26,8 +26,8 @@ use rustc_macros::extension;
 use rustc_middle::mir::RETURN_PLACE;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, BoundVariableKind, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts,
-    List, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+    self, BoundVariableKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, List, RegionVid,
+    Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_span::{ErrorGuaranteed, bug, kw, span_bug, sym};
 use tracing::{debug, instrument};
@@ -99,32 +99,32 @@ pub(crate) struct UniversalRegions<'tcx> {
 pub(crate) enum DefiningTy<'tcx> {
     /// The MIR is a closure. The signature is found via
     /// `ClosureArgs::closure_sig_ty`.
-    Closure(DefId, GenericArgsRef<'tcx>),
+    Closure(DefId, GenericArgs<'tcx>),
 
     /// The MIR is a coroutine. The signature is that coroutines take
     /// no parameters and return the result of
     /// `ClosureArgs::coroutine_return_ty`.
-    Coroutine(DefId, GenericArgsRef<'tcx>),
+    Coroutine(DefId, GenericArgs<'tcx>),
 
     /// The MIR is a special kind of closure that returns coroutines.
     ///
     /// See the documentation on `CoroutineClosureSignature` for details
     /// on how to construct the callable signature of the coroutine from
     /// its args.
-    CoroutineClosure(DefId, GenericArgsRef<'tcx>),
+    CoroutineClosure(DefId, GenericArgs<'tcx>),
 
     /// The MIR is a fn item with the given `DefId` and args. The signature
     /// of the function can be bound then with the `fn_sig` query.
-    FnDef(DefId, GenericArgsRef<'tcx>),
+    FnDef(DefId, GenericArgs<'tcx>),
 
     /// The MIR represents some form of constant. The signature then
     /// is that it has no inputs and a single return value, which is
     /// the value of the constant.
-    Const(DefId, GenericArgsRef<'tcx>),
+    Const(DefId, GenericArgs<'tcx>),
 
     /// The MIR represents an inline const. The signature has no inputs and a
     /// single return value found via `InlineConstArgs::ty`.
-    InlineConst(DefId, GenericArgsRef<'tcx>),
+    InlineConst(DefId, GenericArgs<'tcx>),
 
     // Fake body for a global asm. Not particularly useful or interesting,
     // but we need it so we can properly store the typeck results of the asm
@@ -179,7 +179,11 @@ impl<'tcx> DefiningTy<'tcx> {
                 let ty = body.local_decls[RETURN_PLACE].ty;
                 let typeck_root_def_id = tcx.typeck_root_def_id(body_def_id.to_def_id());
                 let parent_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-                let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
+                let args = InlineConstArgs::new(
+                    tcx,
+                    InlineConstArgsParts { parent_args: parent_args.as_slice(), ty },
+                )
+                .args;
                 DefiningTy::InlineConst(body_def_id.to_def_id(), args)
             }
 
@@ -424,7 +428,7 @@ impl<'tcx> DefiningTy<'tcx> {
 
     /// Returns the args of the `DefiningTy`. These are equivalent to the identity
     /// substs of the body, but replaced with region vids.
-    pub(crate) fn args(&self) -> ty::GenericArgsRef<'tcx> {
+    pub(crate) fn args(&self) -> ty::GenericArgs<'tcx> {
         match *self {
             DefiningTy::Closure(_, args)
             | DefiningTy::Coroutine(_, args)
@@ -432,7 +436,7 @@ impl<'tcx> DefiningTy<'tcx> {
             | DefiningTy::FnDef(_, args)
             | DefiningTy::Const(_, args)
             | DefiningTy::InlineConst(_, args) => args,
-            DefiningTy::GlobalAsm(_) => ty::List::empty(),
+            DefiningTy::GlobalAsm(_) => ty::GenericArgs::empty(),
         }
     }
 }
@@ -524,7 +528,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// `V[1]: V[2]`.
     pub(crate) fn closure_mapping(
         tcx: TyCtxt<'tcx>,
-        closure_args: GenericArgsRef<'tcx>,
+        closure_args: GenericArgs<'tcx>,
         expected_num_vars: usize,
         closure_def_id: LocalDefId,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
@@ -618,7 +622,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         match self.defining_ty {
             DefiningTy::Closure(def_id, args) => {
                 let v = with_no_trimmed_paths!(
-                    args[tcx.generics_of(def_id).parent_count..]
+                    args.as_slice()[tcx.generics_of(def_id).parent_count..]
                         .iter()
                         .map(|arg| arg.to_string())
                         .collect::<Vec<_>>()
@@ -643,7 +647,7 @@ impl<'tcx> UniversalRegions<'tcx> {
             }
             DefiningTy::Coroutine(def_id, args) => {
                 let v = with_no_trimmed_paths!(
-                    args[tcx.generics_of(def_id).parent_count..]
+                    args.as_slice()[tcx.generics_of(def_id).parent_count..]
                         .iter()
                         .map(|arg| arg.to_string())
                         .collect::<Vec<_>>()

@@ -54,6 +54,8 @@ error: the `coverage` attribute cannot be used on structs
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^
+...
+LL | struct MyStruct;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -96,6 +98,8 @@ error: the `coverage` attribute cannot be used on associated consts
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
+...
+LL |     const X: u32 = 7;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -121,6 +125,8 @@ error: the `coverage` attribute cannot be used on traits
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^
+...
+LL | trait MyTrait {
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -146,6 +152,8 @@ error: the `coverage` attribute cannot be used on associated consts
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
+...
+LL |     const X: u32;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -171,6 +179,8 @@ error: the `coverage` attribute cannot be used on associated types
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
+...
+LL |     type T;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -213,6 +223,8 @@ error: the `coverage` attribute cannot be used on associated consts
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
+...
+LL |     const X: u32 = 8;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -238,6 +250,8 @@ error: the `coverage` attribute cannot be used on associated types
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
+...
+LL |     type T = ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 

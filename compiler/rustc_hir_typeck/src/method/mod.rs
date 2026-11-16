@@ -15,7 +15,7 @@ use rustc_infer::infer::{BoundRegionConversionTime, InferOk};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt, Unnormalized,
+    self, GenericArgs, GenericParamDefKind, Ty, TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, bug, span_bug};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -31,7 +31,7 @@ use crate::method::probe::UnsatisfiedPredicates;
 pub(crate) struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
 
     /// Instantiated method signature, i.e., it has been
     /// instantiated, normalized, and has had late-bound

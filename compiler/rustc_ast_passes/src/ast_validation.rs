@@ -25,7 +25,6 @@ use rustc_abi::{CVariadicStatus, CanonAbi, ExternAbi, InterruptKind};
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
-use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
 use rustc_feature::Features;
@@ -519,32 +518,13 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_decl_attrs(&self, fn_inputs: &[Param]) {
-        use SyntheticAttr::*;
-        fn_inputs
-            .iter()
-            .flat_map(|i| i.attrs.as_ref())
-            .filter(|attr| match &attr.kind {
-                AttrKind::Normal(normal) => {
-                    let arr = [
-                        sym::allow,
-                        sym::deny,
-                        sym::expect,
-                        sym::forbid,
-                        sym::rustc_splat,
-                        sym::warn,
-                    ];
-                    !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
-                }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
-                AttrKind::DocComment(..) => true,
-            })
-            .for_each(|attr| {
+        for param in fn_inputs {
+            for attr in &param.attrs {
                 if attr.is_doc_comment() {
                     self.dcx().emit_err(diagnostics::FnParamDocComment { span: attr.span });
-                } else {
-                    self.dcx().emit_err(diagnostics::FnParamForbiddenAttr { span: attr.span });
                 }
-            });
+            }
+        }
     }
 
     fn check_decl_self_param(&self, fn_inputs: &[Param], self_semantic: SelfSemantic) {
@@ -1090,11 +1070,19 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_item_named(&self, ident: Ident, kind: &str) {
+    fn check_item_named(&self, ident: Ident, kind: &str, ctxt: AssocCtxt) {
         if ident.name != kw::Underscore {
             return;
         }
-        self.dcx().emit_err(diagnostics::ItemUnderscore { span: ident.span, kind });
+
+        if !self.features.associated_const_underscore()
+            && matches!(ctxt, AssocCtxt::Impl { of_trait: false })
+        {
+            let msg = format!("naming associated constants with `_` is unstable");
+            feature_err(&self.sess, sym::associated_const_underscore, ident.span, msg).emit();
+        } else if !matches!(ctxt, AssocCtxt::Impl { of_trait: false }) {
+            self.dcx().emit_err(diagnostics::ItemUnderscore { span: ident.span, kind });
+        }
     }
 
     fn check_nomangle_item_asciionly(&self, ident: Ident, item_span: Span) {
@@ -1421,10 +1409,6 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 }
 
 impl Visitor<'_> for AstValidator<'_> {
-    fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.sess.psess, attr);
-    }
-
     fn visit_ty(&mut self, ty: &Ty) {
         self.visit_ty_common(ty);
         self.walk_ty(ty)
@@ -1701,7 +1685,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
                 if ident.name == kw::Underscore
                     && !matches!(item.vis.kind, VisibilityKind::Inherited)
-                    && ident.span.eq_ctxt(item.vis.span)
+                    && ident.span.ctxt() == item.vis.span.ctxt()
                 {
                     self.lint_buffer.buffer_lint(
                         UNUSED_VISIBILITIES,
@@ -2181,7 +2165,7 @@ impl Visitor<'_> for AstValidator<'_> {
         }
 
         if let AssocItemKind::Const(ci) = &item.kind {
-            self.check_item_named(ci.ident, "const");
+            self.check_item_named(ci.ident, "const", ctxt);
         }
 
         let parent_is_const =
@@ -2233,6 +2217,19 @@ impl Visitor<'_> for AstValidator<'_> {
             Self::check_decl_no_pat(&args.inputs, |span, _, _| {
                 self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
             });
+
+            let mut args = args.inputs.iter().peekable();
+            while let Some(arg) = args.next() {
+                if matches!(arg.ty.kind, TyKind::CVarArgs) {
+                    let sugg_span = arg
+                        .span
+                        .until(args.peek().map(|a| a.span).unwrap_or(arg.span.shrink_to_hi()));
+                    self.dcx().emit_err(diagnostics::PathFoundCVariadicParams {
+                        span: arg.ty.span,
+                        sugg_span,
+                    });
+                }
+            }
         }
         visit::walk_path_segment(self, seg);
     }

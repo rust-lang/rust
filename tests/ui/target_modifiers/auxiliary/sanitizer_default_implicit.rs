@@ -4,7 +4,6 @@
 //@ no-prefer-dynamic
 //@ compile-flags: --target riscv64gc-unknown-fuchsia
 //@ needs-llvm-components: riscv
-//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

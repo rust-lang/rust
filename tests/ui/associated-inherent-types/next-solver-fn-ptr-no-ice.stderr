@@ -1,0 +1,27 @@
+error[E0271]: type mismatch resolving `Type<fn(())>::Assoc == _`
+  --> $DIR/next-solver-fn-ptr-no-ice.rs:15:11
+   |
+LL | fn bar(_: for<'a> fn(Type<fn(Type<fn(&'a ())>::Assoc)>::Assoc)) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `Type<fn(&())>::Assoc == &()`
+  --> $DIR/next-solver-fn-ptr-no-ice.rs:15:11
+   |
+LL | fn bar(_: for<'a> fn(Type<fn(Type<fn(&'a ())>::Assoc)>::Assoc)) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&()`, found `()`
+
+error[E0271]: type mismatch resolving `Type<fn(())>::Assoc == _`
+  --> $DIR/next-solver-fn-ptr-no-ice.rs:15:8
+   |
+LL | fn bar(_: for<'a> fn(Type<fn(Type<fn(&'a ())>::Assoc)>::Assoc)) {}
+   |        ^ types differ
+
+error[E0271]: type mismatch resolving `Type<fn(())>::Assoc == _`
+  --> $DIR/next-solver-fn-ptr-no-ice.rs:15:1
+   |
+LL | fn bar(_: for<'a> fn(Type<fn(Type<fn(&'a ())>::Assoc)>::Assoc)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

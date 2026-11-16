@@ -40,6 +40,7 @@ impl FileDescription for EventFd {
 
     fn metadata<'tcx>(
         &self,
+        _communicate_allowed: bool,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         // On Linux, eventfd is an "anonymous inode" reported as S_IFREG.
         interp_ok(Either::Right("S_IFREG"))
@@ -50,14 +51,14 @@ impl FileDescription for EventFd {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         // We're treating the buffer as a `u64`.
         let ty = ecx.machine.layouts.u64;
         // Check the size of slice, and return error only if the size of the slice < 8.
-        if len < ty.size.bytes_usize() {
+        if len < ty.size.bytes() {
             return finish.call(ecx, Err(ErrorKind::InvalidInput.into()));
         }
 
@@ -83,15 +84,15 @@ impl FileDescription for EventFd {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         // We're treating the buffer as a `u64`.
         let ty = ecx.machine.layouts.u64;
         // Check the size of slice, and return error if the size is wrong. The docs say we only
         // error when the size is too small, but Linux seems to also error when the size is too big.
-        if len != ty.layout.size.bytes_usize() {
+        if len != ty.layout.size.bytes() {
             return finish.call(ecx, Err(ErrorKind::InvalidInput.into()));
         }
 
@@ -142,14 +143,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// <https://linux.die.net/man/2/eventfd>
     fn eventfd(&mut self, val: &OpTy<'tcx>, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let val = this.read_scalar(val)?.to_u32()?;
-        let mut flags = this.read_scalar(flags)?.to_i32()?;
+        let val = ecx.read_scalar(val)?.to_u32()?;
+        let mut flags = ecx.read_scalar(flags)?.to_i32()?;
 
-        let efd_cloexec = this.eval_libc_i32("EFD_CLOEXEC");
-        let efd_nonblock = this.eval_libc_i32("EFD_NONBLOCK");
-        let efd_semaphore = this.eval_libc_i32("EFD_SEMAPHORE");
+        let efd_cloexec = ecx.eval_libc_i32("EFD_CLOEXEC");
+        let efd_nonblock = ecx.eval_libc_i32("EFD_NONBLOCK");
+        let efd_semaphore = ecx.eval_libc_i32("EFD_SEMAPHORE");
 
         if flags & efd_semaphore == efd_semaphore {
             throw_unsup_format!("eventfd: EFD_SEMAPHORE is unsupported");
@@ -170,16 +171,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("eventfd: encountered unknown unsupported flags {:#x}", flags);
         }
 
-        let fds = &mut this.machine.fds;
+        let fds = &mut ecx.machine.fds;
 
-        let fd_value = fds.insert_new(EventFd {
+        let Some(fd_value) = fds.insert_new(EventFd {
             counter: Cell::new(val.into()),
             is_nonblock,
             clock: RefCell::new(VClock::default()),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
             watched: ReadinessWatched::default(),
-        });
+        }) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
 
         interp_ok(Scalar::from_i32(fd_value))
     }
@@ -191,7 +194,7 @@ fn eventfd_write<'tcx>(
     buf_place: MPlaceTy<'tcx>,
     eventfd: FileDescriptionRef<EventFd>,
     ecx: &mut MiriInterpCx<'tcx>,
-    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
 ) -> InterpResult<'tcx> {
     // Figure out which value we should add.
     let num = ecx.read_scalar(&buf_place)?.to_u64()?;
@@ -228,7 +231,7 @@ fn eventfd_write<'tcx>(
             ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
             // Return how many bytes we consumed from the user-provided buffer.
-            return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
+            return finish.call(ecx, Ok(buf_place.layout.size.bytes()));
         }
         None | Some(u64::MAX) => {
             // We can't update the state, so we have to block.
@@ -245,12 +248,12 @@ fn eventfd_write<'tcx>(
                     @capture<'tcx> {
                         num: u64,
                         buf_place: MPlaceTy<'tcx>,
-                        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                         eventfd: FileDescriptionRef<EventFd>,
                     }
-                    |this, unblock: UnblockKind| {
+                    |ecx, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
-                        eventfd_write(buf_place, eventfd, this, finish)
+                        eventfd_write(buf_place, eventfd, ecx, finish)
                     }
                 ),
             );
@@ -265,7 +268,7 @@ fn eventfd_read<'tcx>(
     buf_place: MPlaceTy<'tcx>,
     eventfd: FileDescriptionRef<EventFd>,
     ecx: &mut MiriInterpCx<'tcx>,
-    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
 ) -> InterpResult<'tcx> {
     // Set counter to 0, get old value.
     let counter = eventfd.counter.replace(0);
@@ -284,12 +287,12 @@ fn eventfd_read<'tcx>(
             callback!(
                 @capture<'tcx> {
                     buf_place: MPlaceTy<'tcx>,
-                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                     eventfd: FileDescriptionRef<EventFd>,
                 }
-                |this, unblock: UnblockKind| {
+                |ecx, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    eventfd_read(buf_place, eventfd, this, finish)
+                    eventfd_read(buf_place, eventfd, ecx, finish)
                 }
             ),
         );
@@ -316,7 +319,7 @@ fn eventfd_read<'tcx>(
         ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
         // Tell userspace how many bytes we put into the buffer.
-        return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
+        return finish.call(ecx, Ok(buf_place.layout.size.bytes()));
     }
     interp_ok(())
 }

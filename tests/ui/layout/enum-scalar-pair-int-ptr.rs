@@ -1,4 +1,3 @@
-//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
 //@ normalize-stderr: "u[0-9]+ is" -> "u?? is"
 //@ normalize-stderr: "pointer is 0..=[0-9]+" -> "pointer is $$VALID_RANGE"
 //@ normalize-stderr: "b_offset: Size\([0-9]+ bytes\)" -> "b_offset: Size(? bytes)"

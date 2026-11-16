@@ -29,7 +29,7 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```ignore
-    /// Regex::new("\(")
+    /// Regex::new(r"\(")
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub INVALID_REGEX,

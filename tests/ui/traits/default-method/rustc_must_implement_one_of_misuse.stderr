@@ -61,6 +61,8 @@ error: the `rustc_must_implement_one_of` attribute cannot be used on functions
    |
 LL | #[rustc_must_implement_one_of(abc, abc)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn function() {}
    |
    = help: the `rustc_must_implement_one_of` attribute can only be applied to traits
 
@@ -69,6 +71,8 @@ error: the `rustc_must_implement_one_of` attribute cannot be used on structs
    |
 LL | #[rustc_must_implement_one_of(abc, xyz)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Struct {}
    |
    = help: the `rustc_must_implement_one_of` attribute can only be applied to traits
 

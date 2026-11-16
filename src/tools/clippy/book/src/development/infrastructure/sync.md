@@ -106,9 +106,9 @@ to be run inside the `rust` directory):
 All the following commands have to be run inside the `rust` directory.
 
 1. Make sure you have checked out the latest `main` of `rust-lang/rust`.
-2. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
+2. Sync the `rust-lang/rust-clippy` main to the rust-copy of Clippy:
     ```bash
     git switch -c clippy-subtree-update
-    git subtree pull -P src/tools/clippy clippy-upstream master
+    git subtree pull -P src/tools/clippy clippy-upstream main
     ```
 3. Open a PR to [`rust-lang/rust`]

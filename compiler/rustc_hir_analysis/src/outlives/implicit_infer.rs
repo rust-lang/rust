@@ -147,7 +147,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                 check_explicit_clauses(
                     tcx,
                     def.did(),
-                    args,
+                    args.as_slice(),
                     required_clauses,
                     explicit_map,
                     IgnoreClausesReferencingSelf::No,
@@ -168,7 +168,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                 check_explicit_clauses(
                     tcx,
                     def_id,
-                    args,
+                    args.as_slice(),
                     required_clauses,
                     explicit_map,
                     IgnoreClausesReferencingSelf::No,
@@ -196,7 +196,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                     check_explicit_clauses(
                         tcx,
                         trait_ref.def_id(),
-                        args,
+                        args.as_slice(),
                         required_clauses,
                         explicit_map,
                         IgnoreClausesReferencingSelf::Yes,
@@ -212,7 +212,7 @@ fn insert_required_clauses_to_be_wf<'tcx>(
                 check_explicit_clauses(
                     tcx,
                     tcx.parent(def_id),
-                    args,
+                    args.as_slice(),
                     required_clauses,
                     explicit_map,
                     IgnoreClausesReferencingSelf::No,
@@ -301,7 +301,7 @@ enum IgnoreClausesReferencingSelf {
 fn check_inferred_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
     global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredClauses<'tcx>>>,
     required_clauses: &mut RequiredClauses<'tcx>,
 ) {

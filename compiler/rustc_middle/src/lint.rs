@@ -10,7 +10,8 @@ use rustc_lint_defs::{
 };
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, ExpnKind, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, ExpnKind, Span, Symbol, kw, sym};
+use rustc_structures::LintName;
 use tracing::instrument;
 
 use crate::ty::TyCtxt;
@@ -23,7 +24,7 @@ pub enum LintLevelSource {
 
     /// Lint level was set by an attribute.
     Node {
-        name: Symbol,
+        name: LintName,
         span: Span,
         /// RFC 2383 reason
         reason: Option<Symbol>,
@@ -32,20 +33,20 @@ pub enum LintLevelSource {
     /// Lint level was set by a command-line flag.
     /// The provided `Level` is the level specified on the command line.
     /// (The actual level may be lower due to `--cap-lints`.)
-    CommandLine(Symbol, Level),
+    CommandLine(LintName, Level),
 }
 
 impl LintLevelSource {
-    pub fn name(&self) -> Symbol {
-        match *self {
-            LintLevelSource::Default => kw::Default,
+    pub fn name(self) -> LintName {
+        match self {
+            LintLevelSource::Default => LintName { tool: None, name: kw::Default },
             LintLevelSource::Node { name, .. } => name,
             LintLevelSource::CommandLine(name, _) => name,
         }
     }
 
-    pub fn span(&self) -> Span {
-        match *self {
+    pub fn span(self) -> Span {
+        match self {
             LintLevelSource::Default => DUMMY_SP,
             LintLevelSource::Node { span, .. } => span,
             LintLevelSource::CommandLine(_, _) => DUMMY_SP,
@@ -167,10 +168,7 @@ pub fn reveal_actual_level_spec<Id: Copy>(
                 // See tests/ui/lint/rfc-2383-lint-reason/expect_warnings.rs.
                 Level::Expect => true,
                 Level::ForceWarn => {
-                    sess.dcx().span_delayed_bug(
-                        configured_level_spec.src.span(),
-                        "cannot --force-warn the `warnings` lint group",
-                    );
+                    sess.dcx().delayed_bug("cannot --force-warn the `warnings` lint group");
                     false
                 }
             };
@@ -303,7 +301,7 @@ fn explain_lint_level_source(
             })
             .map(|lint_group| lint_group.name)
     };
-    let name = lint.name_lower();
+    let name = LintName::from_str(&lint.name_lower());
     if let Level::Allow = level {
         // Do not point at `#[allow(compat_lint)]` as the reason for a compatibility lint
         // triggering. (#121009)
@@ -323,18 +321,18 @@ fn explain_lint_level_source(
         }
         LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
             let flag = orig_level.to_cmd_flag();
-            let hyphen_case_lint_name = name.replace('_', "-");
-            if lint_flag_val.as_str() == name {
+            let hyphen_case_lint_name = name.to_string().replace('_', "-");
+            if lint_flag_val == name {
                 err.note_once(format!(
                     "requested on the command line with `{flag} {hyphen_case_lint_name}`"
                 ));
             } else {
-                let hyphen_case_flag_val = lint_flag_val.as_str().replace('_', "-");
+                let hyphen_case_flag_val = lint_flag_val.to_string().replace('_', "-");
                 err.note_once(format!(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
                 if matches!(orig_level, Level::Warn | Level::Deny) {
-                    let help = if name == "dead_code" {
+                    let help = if name.is(sym::dead_code) {
                         format!(
                             "to override `{flag} {hyphen_case_flag_val}` add `#[expect({name})]` or `#[allow({name})]`"
                         )
@@ -352,7 +350,7 @@ fn explain_lint_level_source(
                 err.note(rationale.to_string());
             }
             err.span_note_once(span, "the lint level is defined here");
-            if lint_attr_name.as_str() != name {
+            if lint_attr_name != name {
                 let level_str = level.as_str();
                 err.note_once(format!(
                     "`#[{level_str}({name})]` implied by `#[{level_str}({lint_attr_name})]`"

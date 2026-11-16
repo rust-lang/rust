@@ -56,7 +56,7 @@ impl RustcInternal for DefId {
 }
 
 impl RustcInternal for GenericArgs {
-    type T<'tcx> = rustc_ty::GenericArgsRef<'tcx>;
+    type T<'tcx> = rustc_ty::GenericArgs<'tcx>;
     fn internal<'tcx>(
         &self,
         tables: &mut Tables<'_, BridgeTys>,

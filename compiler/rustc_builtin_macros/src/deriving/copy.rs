@@ -4,7 +4,7 @@ use rustc_span::Span;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_copy(
+pub(crate) fn expand_derive_copy(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

@@ -1,6 +1,4 @@
 #![feature(pattern_types, rustc_attrs)]
-#![feature(pattern_type_macro)]
-#![allow(incomplete_features)]
 
 //! check that pattern types can have traits implemented for them if
 //! their base type is a local type.

@@ -2,7 +2,6 @@ use core::any::Any;
 use core::error::Error;
 #[cfg(not(no_global_oom_handling))]
 use core::fmt;
-use core::mem;
 use core::pin::Pin;
 
 use crate::alloc::{Allocator, StaticAllocator};
@@ -250,10 +249,8 @@ unsafe fn boxed_slice_as_array_unchecked<T, A: Allocator, const N: usize>(
 ) -> Box<[T; N], A> {
     debug_assert_eq!(boxed_slice.len(), N);
 
-    let (ptr, alloc) = Box::into_raw_with_allocator(boxed_slice);
-    // SAFETY: Pointer and allocator came from an existing box,
-    // and our safety condition requires that the length is exactly `N`
-    unsafe { Box::from_raw_in(ptr as *mut [T; N], alloc) }
+    // SAFETY: Caller ensures that the length is correct.
+    unsafe { Box::cast_unchecked(boxed_slice) }
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
@@ -313,6 +310,28 @@ impl<T, const N: usize, A: Allocator> TryFrom<Vec<T, A>> for Box<[T; N], A> {
     }
 }
 
+impl<T: ?Sized + 'static, A: Allocator> Box<T, A> {
+    fn downcast_any<Dst: 'static>(this: Self) -> Result<Box<Dst, A>, Self> {
+        if T::type_id(&this) == core::any::TypeId::of::<Dst>() {
+            // SAFETY: The type is correct
+            Ok(unsafe { Self::cast_unchecked(this) })
+        } else {
+            Err(this)
+        }
+    }
+}
+impl<T: ?Sized, A: Allocator> Box<T, A> {
+    /// Casts a box by converting to a raw pointer and back, whatever that means
+    /// in the given context.
+    unsafe fn cast_unchecked<Dst>(this: Self) -> Box<Dst, A> {
+        // SAFETY: Caller ensures the cast is correct
+        unsafe {
+            let (raw, alloc) = Box::into_raw_with_allocator(this);
+            Box::from_raw_in(raw.cast(), alloc)
+        }
+    }
+}
+
 impl<A: Allocator> Box<dyn Any, A> {
     /// Attempts to downcast the box to a concrete type.
     ///
@@ -334,8 +353,7 @@ impl<A: Allocator> Box<dyn Any, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
-        // SAFETY: Check ensures the type is correct.
-        if self.is::<T>() { unsafe { Ok(self.downcast_unchecked::<T>()) } } else { Err(self) }
+        Self::downcast_any(self)
     }
 
     /// Downcasts the box to a concrete type.
@@ -367,10 +385,7 @@ impl<A: Allocator> Box<dyn Any, A> {
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
         debug_assert!(self.is::<T>());
         // SAFETY: Caller ensures the type is correct.
-        unsafe {
-            let (raw, alloc): (*mut dyn Any, _) = Box::into_raw_with_allocator(self);
-            Box::from_raw_in(raw as *mut T, alloc)
-        }
+        unsafe { Self::cast_unchecked(self) }
     }
 }
 
@@ -395,8 +410,7 @@ impl<A: Allocator> Box<dyn Any + Send, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
-        // SAFETY: Check ensures the type is correct.
-        if self.is::<T>() { unsafe { Ok(self.downcast_unchecked::<T>()) } } else { Err(self) }
+        Self::downcast_any(self)
     }
 
     /// Downcasts the box to a concrete type.
@@ -428,10 +442,7 @@ impl<A: Allocator> Box<dyn Any + Send, A> {
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
         debug_assert!(self.is::<T>());
         // SAFETY: Caller ensures the type is correct.
-        unsafe {
-            let (raw, alloc): (*mut (dyn Any + Send), _) = Box::into_raw_with_allocator(self);
-            Box::from_raw_in(raw as *mut T, alloc)
-        }
+        unsafe { Self::cast_unchecked(self) }
     }
 }
 
@@ -456,8 +467,7 @@ impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
     #[inline]
     #[stable(feature = "box_send_sync_any_downcast", since = "1.51.0")]
     pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
-        // SAFETY: Check ensures the type is correct.
-        if self.is::<T>() { unsafe { Ok(self.downcast_unchecked::<T>()) } } else { Err(self) }
+        Self::downcast_any(self)
     }
 
     /// Downcasts the box to a concrete type.
@@ -489,11 +499,7 @@ impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
         debug_assert!(self.is::<T>());
         // SAFETY: Caller ensures the type is correct.
-        unsafe {
-            let (raw, alloc): (*mut (dyn Any + Send + Sync), _) =
-                Box::into_raw_with_allocator(self);
-            Box::from_raw_in(raw as *mut T, alloc)
-        }
+        unsafe { Self::cast_unchecked(self) }
     }
 }
 
@@ -711,21 +717,24 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + 'a> {
     }
 }
 
+impl<T: Error + ?Sized + 'static, A: Allocator> Box<T, A> {
+    fn downcast_error<Dst: 'static>(this: Self) -> Result<Box<Dst, A>, Self> {
+        if core::error::error_type_id::<T>(&this) == core::any::TypeId::of::<Dst>() {
+            // SAFETY: The type is correct
+            Ok(unsafe { Self::cast_unchecked(this) })
+        } else {
+            Err(this)
+        }
+    }
+}
+
 impl dyn Error {
     /// Attempts to downcast the box to a concrete type.
     #[inline]
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[rustc_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error>> {
-        if self.is::<T>() {
-            // SAFETY: Check ensures the type is correct.
-            unsafe {
-                let raw: *mut dyn Error = Box::into_raw(self);
-                Ok(Box::from_raw(raw as *mut T))
-            }
-        } else {
-            Err(self)
-        }
+        Box::downcast_error(self)
     }
 }
 
@@ -735,10 +744,7 @@ impl dyn Error + Send {
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[rustc_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<dyn Error + Send>> {
-        let err: Box<dyn Error> = self;
-        <dyn Error>::downcast(err)
-            // SAFETY: Reapplying the `Send` marker we already know to hold.
-            .map_err(|s| unsafe { mem::transmute::<Box<dyn Error>, Box<dyn Error + Send>>(s) })
+        Box::downcast_error(self)
     }
 }
 
@@ -748,10 +754,6 @@ impl dyn Error + Send + Sync {
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[rustc_allow_incoherent_impl]
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Self>> {
-        let err: Box<dyn Error> = self;
-        // SAFETY: Reapplying the `Send` and `Sync` markers we already know to hold.
-        <dyn Error>::downcast(err).map_err(|s| unsafe {
-            mem::transmute::<Box<dyn Error>, Box<dyn Error + Send + Sync>>(s)
-        })
+        Box::downcast_error(self)
     }
 }

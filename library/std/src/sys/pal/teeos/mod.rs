@@ -31,7 +31,7 @@ pub fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {}
 // SAFETY: must be called only once during runtime cleanup.
 // this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
-    unimplemented!()
+    rtabort!("TA should not call `exit`");
     // We do NOT have stack overflow handler, because TEE OS will kill TA when it happens.
     // So cleanup is commented
     // stack_overflow::cleanup();

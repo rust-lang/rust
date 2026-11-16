@@ -447,6 +447,9 @@ where
             | ty::CoroutineWitness(..) => {
                 unreachable!("unnameable type in coherence: {ty:?}");
             }
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.

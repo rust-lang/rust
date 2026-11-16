@@ -291,9 +291,13 @@ impl Position {
     pub(crate) fn place(&self) -> (SyntaxNode, usize) {
         match &self.repr {
             PositionRepr::FirstChild(parent) => (parent.clone(), 0),
-            PositionRepr::After(child) => (child.parent().unwrap(), child.index() + 1),
+            PositionRepr::After(child) => (child.parent().unwrap(), index_no_trivia(child) + 1),
         }
     }
+}
+
+pub fn index_no_trivia(element: &SyntaxElement) -> usize {
+    element.index().expect("the parser emits trivia as standalone tokens")
 }
 
 #[derive(Debug)]

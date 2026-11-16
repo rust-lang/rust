@@ -3,6 +3,7 @@ error: the `inline` attribute cannot be used on associated types
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |     type T;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -11,6 +12,7 @@ error: the `inline` attribute cannot be used on associated types
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |     type T = Self;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -19,6 +21,7 @@ error: the `inline` attribute cannot be used on associated types
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |     type U = impl Trait;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -27,6 +30,7 @@ error: the `inline` attribute cannot be used on foreign statics
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |     static X: u32;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -35,6 +39,7 @@ error: the `inline` attribute cannot be used on foreign types
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |     type T;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -43,6 +48,8 @@ warning: the `inline` attribute cannot be used on associated consts
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |
+LL |     const X: u32;
    |
    = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -57,6 +64,8 @@ warning: the `inline` attribute cannot be used on associated consts
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |
+LL |     const X: u32 = 0;
    |
    = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

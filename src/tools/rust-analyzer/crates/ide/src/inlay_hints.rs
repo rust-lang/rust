@@ -330,7 +330,7 @@ pub struct InlayHintsConfig<'a> {
     pub closure_return_type_hints: ClosureReturnTypeHints,
     pub closure_capture_hints: bool,
     pub binding_mode_hints: bool,
-    pub implicit_drop_hints: bool,
+    pub implicit_drop_hints: ImplicitDropHints,
     pub implied_dyn_trait_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
@@ -452,6 +452,13 @@ pub struct GenericParameterHints {
 pub enum LifetimeElisionHints {
     Always,
     SkipTrivial,
+    Never,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ImplicitDropHints {
+    Always,
+    WithDropGlue,
     Never,
 }
 
@@ -929,7 +936,8 @@ mod tests {
     use crate::{LifetimeElisionHints, fixture, inlay_hints::InlayHintsConfig};
 
     use super::{
-        ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve, TypeHintsPlacement,
+        ClosureReturnTypeHints, GenericParameterHints, ImplicitDropHints, InlayFieldsToResolve,
+        TypeHintsPlacement,
     };
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
@@ -963,7 +971,7 @@ mod tests {
         max_length: None,
         closing_brace_hints_min_lines: None,
         fields_to_resolve: InlayFieldsToResolve::empty(),
-        implicit_drop_hints: false,
+        implicit_drop_hints: ImplicitDropHints::Never,
         implied_dyn_trait_hints: false,
         range_exclusive_hints: false,
         ra_fixture: RaFixtureConfig::default(),

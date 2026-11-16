@@ -205,10 +205,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let wider_candidate_names: Vec<_> = visible_traits
             .iter()
-            .flat_map(|trait_def_id| tcx.associated_items(*trait_def_id).in_definition_order())
-            .filter_map(|item| {
-                (!item.is_impl_trait_in_trait() && item.tag() == assoc_tag).then(|| item.name())
+            .flat_map(|trait_def_id| {
+                tcx.associated_items(*trait_def_id).named_items_in_definition_order()
             })
+            .filter_map(|item| (item.tag() == assoc_tag).then(|| item.name()))
             .collect();
 
         if let Some(suggested_name) =
@@ -265,7 +265,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         return self.dcx().emit_err(err);
                     }
 
-                    let trait_args = &ty::GenericArgs::identity_for_item(tcx, best_trait)[1..];
+                    let trait_args = ty::GenericArgs::identity_for_item(tcx, best_trait);
+                    let trait_args = &trait_args.as_slice()[1..];
                     let mut trait_ref = trait_name.clone();
                     let applicability = if let [arg, args @ ..] = trait_args {
                         use std::fmt::Write;

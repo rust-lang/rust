@@ -1,0 +1,18 @@
+//@ run-rustfix
+// https://github.com/rust-lang/rust/issues/164044
+macro_rules! generated {
+    () => {
+        drop(vec![3_u8]); //~ ERROR explicit use of destructor method
+        //~| HELP consider using `drop` function
+    };
+}
+
+fn main() {
+    drop(vec![1_u8]); //~ ERROR explicit use of destructor method
+    //~| HELP consider using `drop` function
+
+    drop(vec![2_u8]); //~ ERROR explicit use of destructor method
+    //~| HELP consider using `drop` function
+
+    generated!();
+}

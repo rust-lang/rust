@@ -245,31 +245,29 @@ pub(crate) fn complete_expr_path<'db>(
         Qualified::No => {
             acc.add_nameref_keywords_with_colon(ctx);
             if let Some(adt) =
-                ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
+                ctx.expected.ty.as_ref().and_then(|ty| ty.strip_references().as_adt())
             {
                 let self_ty = (|| ctx.sema.to_def(impl_.as_ref()?)?.self_ty(ctx.db).as_adt())();
                 let complete_self = self_ty == Some(adt);
 
                 match adt {
                     hir::Adt::Struct(strukt) => {
-                        let path = ctx
-                            .module
-                            .find_path(
-                                ctx.db,
-                                hir::ModuleDef::from(strukt),
-                                ctx.config.find_path_config(ctx.is_nightly),
-                            )
-                            .filter(|it| it.len() > 1);
+                        let path = ctx.module.find_path(
+                            ctx.db,
+                            hir::ModuleDef::from(strukt),
+                            ctx.config.find_path_config(ctx.is_nightly),
+                        );
 
-                        acc.add_struct_literal(ctx, path_ctx, strukt, path, None);
+                        if let Some(path) = path {
+                            acc.add_struct_literal(ctx, path_ctx, strukt, path);
+                        }
 
                         if complete_self {
                             acc.add_struct_literal(
                                 ctx,
                                 path_ctx,
                                 strukt,
-                                None,
-                                Some(Name::new_symbol_root(sym::Self_)),
+                                Name::new_symbol_root(sym::Self_).into(),
                             );
                         }
                     }
@@ -475,7 +473,7 @@ pub(crate) fn complete_expr(
         return;
     }
 
-    if let Some(ty) = &ctx.expected_type {
+    if let Some(ty) = &ctx.expected.ty {
         // Ignore unit types as they are not very interesting
         if ty.is_unit() || ty.is_unknown() {
             return;

@@ -1,0 +1,24 @@
+error[E0220]: associated type `Output` not found for `TransmuteFrom`
+  --> $DIR/impl-transmute-from-returning-box.rs:9:40
+   |
+LL | pub fn box_factory() -> impl std::mem::TransmuteFrom() {
+   |                                        ^^^^^^^^^^^^^^^ associated type `Output` not found
+
+error[E0220]: associated type `Output` not found for `TransmuteFrom`
+  --> $DIR/impl-transmute-from-returning-box.rs:9:40
+   |
+LL | pub fn box_factory() -> impl std::mem::TransmuteFrom() {
+   |                                        ^^^^^^^^^^^^^^^ associated type `Output` not found
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: `()` cannot be safely transmuted into `Box<()>`
+  --> $DIR/impl-transmute-from-returning-box.rs:9:25
+   |
+LL | pub fn box_factory() -> impl std::mem::TransmuteFrom() {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ analyzing the transmutability of `Box<()>` is not yet supported
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0220, E0277.
+For more information about an error, try `rustc --explain E0220`.

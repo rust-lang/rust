@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 //@ compile-flags: --cfg minisimd_const
 
 #![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]

@@ -19,6 +19,8 @@ error: the `loop_match` attribute cannot be used on foreign functions
    |
 LL |     #[loop_match]
    |       ^^^^^^^^^^
+LL |     #[const_continue]
+LL |     fn f();
    |
    = help: the `loop_match` attribute can only be applied to loops
 
@@ -27,6 +29,7 @@ error: the `const_continue` attribute cannot be used on foreign functions
    |
 LL |     #[const_continue]
    |       ^^^^^^^^^^^^^^
+LL |     fn f();
    |
    = help: the `const_continue` attribute can only be applied to break expressions
 
@@ -35,6 +38,8 @@ error: the `loop_match` attribute cannot be used on structs
    |
 LL | #[loop_match]
    |   ^^^^^^^^^^
+...
+LL | struct S {
    |
    = help: the `loop_match` attribute can only be applied to loops
 
@@ -43,6 +48,8 @@ error: the `const_continue` attribute cannot be used on structs
    |
 LL | #[const_continue]
    |   ^^^^^^^^^^^^^^
+LL | #[repr(C)]
+LL | struct S {
    |
    = help: the `const_continue` attribute can only be applied to break expressions
 
@@ -51,6 +58,8 @@ error: the `loop_match` attribute cannot be used on required trait methods
    |
 LL |     #[loop_match]
    |       ^^^^^^^^^^
+LL |     #[const_continue]
+LL |     extern "C" fn invoke(&self);
    |
    = help: the `loop_match` attribute can only be applied to loops
 
@@ -59,6 +68,7 @@ error: the `const_continue` attribute cannot be used on required trait methods
    |
 LL |     #[const_continue]
    |       ^^^^^^^^^^^^^^
+LL |     extern "C" fn invoke(&self);
    |
    = help: the `const_continue` attribute can only be applied to break expressions
 
@@ -67,6 +77,8 @@ error: the `loop_match` attribute cannot be used on functions
    |
 LL | #[loop_match]
    |   ^^^^^^^^^^
+LL | #[const_continue]
+LL | extern "C" fn ok() {}
    |
    = help: the `loop_match` attribute can only be applied to loops
 
@@ -75,6 +87,7 @@ error: the `const_continue` attribute cannot be used on functions
    |
 LL | #[const_continue]
    |   ^^^^^^^^^^^^^^
+LL | extern "C" fn ok() {}
    |
    = help: the `const_continue` attribute can only be applied to break expressions
 
@@ -83,6 +96,8 @@ error: the `loop_match` attribute cannot be used on closures
    |
 LL |     #[loop_match]
    |       ^^^^^^^^^^
+LL |     #[const_continue]
+LL |     || {};
    |
    = help: the `loop_match` attribute can only be applied to loops
 
@@ -91,6 +106,7 @@ error: the `const_continue` attribute cannot be used on closures
    |
 LL |     #[const_continue]
    |       ^^^^^^^^^^^^^^
+LL |     || {};
    |
    = help: the `const_continue` attribute can only be applied to break expressions
 
@@ -99,6 +115,8 @@ error: the `loop_match` attribute cannot be used on expressions
    |
 LL |         #[loop_match]
    |           ^^^^^^^^^^
+...
+LL |         5
    |
    = help: the `loop_match` attribute can only be applied to loops
 
@@ -107,6 +125,8 @@ error: the `const_continue` attribute cannot be used on expressions
    |
 LL |         #[const_continue]
    |           ^^^^^^^^^^^^^^
+LL |
+LL |         5
    |
    = help: the `const_continue` attribute can only be applied to break expressions
 

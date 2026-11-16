@@ -6,13 +6,13 @@ use crate::attributes;
 use crate::context::FullCx;
 use crate::llvm::{self, EnzymeWrapper, Value};
 
-fn to_enzyme_typetree(
+fn to_enzyme_typetree<'ll>(
     rust_typetree: &RustTypeTree,
     _data_layout: &str,
-    llcx: &llvm::Context,
+    llcx: llvm::Context<'ll>,
 ) -> (llvm::TypeTree, Vec<llvm::TypeTree>) {
     let mut enzyme_tt = llvm::TypeTree::new();
-    let extra_ints = process_typetree_recursive(&mut enzyme_tt, &rust_typetree, &[], llcx);
+    let extra_ints = process_typetree_recursive(&mut enzyme_tt, rust_typetree, &[], llcx);
 
     let mut int_vec = vec![];
     for _ in 0..extra_ints {
@@ -24,11 +24,11 @@ fn to_enzyme_typetree(
     (enzyme_tt, int_vec)
 }
 
-fn process_typetree_recursive(
+fn process_typetree_recursive<'ll>(
     enzyme_tt: &mut llvm::TypeTree,
     rust_typetree: &RustTypeTree,
     parent_indices: &[i64],
-    llcx: &llvm::Context,
+    llcx: llvm::Context<'ll>,
 ) -> u32 {
     let mut extra_ints = 0;
     for rust_type in &rust_typetree.0 {
@@ -75,7 +75,7 @@ enum TTLocation {
     Callsite,
 }
 
-pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: FncTree) {
+pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: Value<'ll>, tt: FncTree) {
     // TypeTree processing uses functions from Enzyme. This feature is not strictly necessary,
     // but skipping this function increases the chance that Enzyme fails to compile some code.
 
@@ -92,7 +92,7 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
     let inputs = tt.args;
     let ret_tt: RustTypeTree = tt.ret;
 
-    let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(llmod) };
     let llvm_data_layout =
         std::str::from_utf8(unsafe { std::ffi::CStr::from_ptr(llvm_data_layout) }.to_bytes())
             .expect("got a non-UTF8 data-layout from LLVM");
@@ -105,7 +105,7 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
 
     let mut offset = 0;
     for (i, input) in inputs.iter().enumerate() {
-        let (enzyme_tt, extra_ints) = to_enzyme_typetree(&input, llvm_data_layout, llcx);
+        let (enzyme_tt, extra_ints) = to_enzyme_typetree(input, llvm_data_layout, llcx);
 
         // This scope is just a visual reminder that we *must* drop the enzyme_wrapper before
         // we drop any typetrees (mainly enzyme_tt and extra_ints). Drop calls can not accept
@@ -116,7 +116,7 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
             let enzyme_wrapper = EnzymeWrapper::get_instance();
             let c_str = enzyme_wrapper.tree_to_cstr(enzyme_tt.inner);
 
-            let attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, &c_str);
+            let attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, c_str);
             let arg_pos = llvm::AttributePlace::Argument(i as u32 + offset);
             // FIXME(autodiff): We currently know that this is correct for all the cases in which we
             // call this function. But we should make it more robust for the future.
@@ -132,7 +132,7 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
             for v in &extra_ints {
                 offset += 1;
                 let c_str = enzyme_wrapper.tree_to_cstr(v.inner);
-                let int_attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, &c_str);
+                let int_attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, c_str);
                 let arg_pos = llvm::AttributePlace::Argument(i as u32 + offset);
                 match tt_location {
                     TTLocation::Definition => {
@@ -165,7 +165,7 @@ pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: 
     if ret_tt != RustTypeTree::new() {
         let enzyme_wrapper = EnzymeWrapper::get_instance();
         let c_str = enzyme_wrapper.tree_to_cstr(enzyme_tt.inner);
-        let ret_attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, &c_str);
+        let ret_attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, c_str);
         let arg_pos = llvm::AttributePlace::ReturnValue;
         match tt_location {
             TTLocation::Definition => {

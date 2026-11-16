@@ -3,6 +3,8 @@ error: the `linkage` attribute cannot be used on required trait methods
    |
 LL |     #[linkage = "weak"]
    |       ^^^^^^^
+LL |
+LL |     fn method3(&self);
    |
    = help: the `linkage` attribute can be applied to foreign functions, foreign statics, functions with a body, and statics
 
@@ -11,6 +13,8 @@ error: the `cold` attribute cannot be used on required trait methods
    |
 LL |     #[cold]
    |       ^^^^
+...
+LL |     fn method1(&self);
    |
    = help: the `cold` attribute can be applied to foreign functions and functions with a body
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -25,6 +29,8 @@ error: the `link_section` attribute cannot be used on required trait methods
    |
 LL |     #[link_section = "__TEXT,__text"]
    |       ^^^^^^^^^^^^
+...
+LL |     fn method2(&self);
    |
    = help: the `link_section` attribute can be applied to functions with a body and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

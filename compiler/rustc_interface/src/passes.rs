@@ -36,7 +36,7 @@ use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
-use rustc_session::config::{Input, OutFileName, OutputFilenames, OutputType};
+use rustc_session::config::{Input, Offload, OutFileName, OutputFilenames, OutputType};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::search_paths::PathKind;
@@ -224,9 +224,14 @@ fn configure_and_expand(
 
         // The rest is error reporting and stats
 
-        sess.psess.buffered_lints.with_lock(|buffered_lints: &mut Vec<BufferedEarlyLint>| {
-            buffered_lints.append(&mut ecx.buffered_early_lint);
-        });
+        sess.psess.buffered_lints.with_lock(
+            |buffered_lints: &mut Option<Vec<BufferedEarlyLint>>| {
+                buffered_lints
+                    .as_mut()
+                    .expect("Buffered lints are not stolen yet")
+                    .append(&mut ecx.buffered_early_lint);
+            },
+        );
 
         sess.time("check_unused_macros", || {
             ecx.check_unused_macros();
@@ -430,8 +435,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.psess.buffered_lints.with_lock(|buffered_lints| {
+        let buffered_lints = buffered_lints.take().expect("Buffered lints are not stolen yet");
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for early_lint in buffered_lints.drain(..) {
+        for early_lint in buffered_lints {
             lint_buffer.add_early_lint(early_lint);
         }
     });
@@ -900,6 +906,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.queries.analysis = analysis;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
+    providers.queries.get_lang_items = |tcx, ()| &tcx.resolutions(()).lang_items;
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).2;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
@@ -1143,13 +1150,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
             },
-            &mut || {
-                // We force these queries to run,
-                // since they might not otherwise get called.
-                // This marks the corresponding crate-level attributes
-                // as used, and ensures that their values are valid.
-                tcx.ensure_ok().limits(());
-            },
         ]);
     });
 
@@ -1165,7 +1165,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // This improves performance by allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
 
-    sess.time("MIR_borrow_checking", || {
+    sess.time("MIR_checking", || {
         tcx.par_hir_body_owners(|def_id| {
             let not_typeck_child = !tcx.is_typeck_child(def_id.to_def_id());
             if not_typeck_child {
@@ -1488,6 +1488,16 @@ pub fn collect_crate_types(
         } else {
             base.sort();
             base.dedup();
+        }
+    }
+
+    // GPU code is never run as a binary; the offload runtime looks up kernels by
+    // name, and only cdylibs export their symbols.
+    if session.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_))) {
+        for crate_type in &mut base {
+            if *crate_type == CrateType::Executable {
+                *crate_type = CrateType::Cdylib;
+            }
         }
     }
 

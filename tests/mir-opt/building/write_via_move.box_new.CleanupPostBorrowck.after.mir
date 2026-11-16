@@ -44,6 +44,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
         _8 = copy _1;
         (*_7) = [move _8; 1024];
         StorageDead(_8);
+        _6 = const ();
         StorageDead(_7);
         StorageDead(_6);
         StorageLive(_9);

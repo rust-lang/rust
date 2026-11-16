@@ -26,10 +26,10 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
+    self, CallerBoundsIterator, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_mir_dataflow::move_paths::{Init, InitKind, InitLocation, MoveOutIndex, MovePathIndex};
+use rustc_mir_dataflow::move_paths::{Init, InitLocation, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, ExpnKind, Ident, MacroKind, Span, Symbol, bug, kw, sym};
@@ -285,7 +285,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             let place = &self.move_data.move_paths[mpi].place;
             let ty = place.ty(self.body, self.infcx.tcx).ty;
 
-            if self.infcx.param_env.caller_bounds().any(|c| {
+            if self.infcx.param_env.caller_bounds().all_clauses(self.infcx.tcx).iter().any(|c| {
                 c.as_trait_clause().is_some_and(|pred| {
                     pred.skip_binder().self_ty() == ty && self.infcx.tcx.is_fn_trait(pred.def_id())
                 })
@@ -1295,7 +1295,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             // In practice unless there are more than one field with the same type, we'll be
             // suggesting a single field at a type, because we don't aggregate multiple borrow
             // checker errors involving the functional record update syntax into a single one.
-            let field_ty = field.ty(self.infcx.tcx, args).skip_norm_wip();
+            let field_ty = field.ty(self.infcx.tcx, *args).skip_norm_wip();
             let ident = field.ident(self.infcx.tcx);
             if field_ty == ty && fields.iter().all(|field| field.ident.name != ident.name) {
                 // Suggest adding field and cloning it.
@@ -1371,7 +1371,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             && let Some(local_did) = def.did().as_local()
             && def.variants().iter().all(|variant| {
                 variant.fields.iter().all(|field| {
-                    self.implements_clone(field.ty(self.infcx.tcx, args).skip_norm_wip())
+                    self.implements_clone(field.ty(self.infcx.tcx, *args).skip_norm_wip())
                 })
             })
         {
@@ -3946,25 +3946,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
 
             // check for inits
-            let mut any_match = false;
             for ii in &self.move_data.init_loc_map[location] {
                 let init = self.move_data.inits[*ii];
-                match init.kind {
-                    InitKind::Deep | InitKind::NonPanicPathOnly => {
-                        if mpis.contains(&init.path) {
-                            any_match = true;
-                        }
-                    }
-                    InitKind::Shallow => {
-                        if mpi == init.path {
-                            any_match = true;
-                        }
-                    }
+                if mpis.contains(&init.path) {
+                    reinits.push(location);
+                    return true;
                 }
-            }
-            if any_match {
-                reinits.push(location);
-                return true;
             }
             false
         };

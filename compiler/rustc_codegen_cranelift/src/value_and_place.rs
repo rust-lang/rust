@@ -96,7 +96,7 @@ impl<'tcx> CValue<'tcx> {
     /// The ZST is represented by a dangling pointer of suitable alignment.
     pub(crate) fn zst(layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         assert!(layout.is_zst());
-        CValue::by_ref(crate::Pointer::dangling(layout.align.abi), layout)
+        CValue::by_ref(crate::Pointer::dangling(layout.align), layout)
     }
 
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
@@ -372,7 +372,7 @@ impl<'tcx> CPlace<'tcx> {
         assert!(layout.is_sized());
         if layout.size.bytes() == 0 {
             return CPlace {
-                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.abi), None),
+                inner: CPlaceInner::Addr(Pointer::dangling(layout.align), None),
                 layout,
             };
         }

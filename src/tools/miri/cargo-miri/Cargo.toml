@@ -9,7 +9,7 @@ edition = "2024"
 [[bin]]
 name = "cargo-miri"
 path = "src/main.rs"
-test = false # we have no unit tests
+test = true
 doctest = false # and no doc tests
 
 [dependencies]

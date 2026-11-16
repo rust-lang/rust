@@ -18,6 +18,8 @@ error: the `diagnostic::on_const` attribute cannot be used on structs
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    |   ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | pub struct Foo;
    |
    = help: the `diagnostic::on_const` attribute can only be applied to trait impl blocks
 
@@ -26,6 +28,8 @@ error: the `diagnostic::on_const` attribute cannot be used on inherent impl bloc
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
    |   ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Foo {
    |
    = help: the `diagnostic::on_const` attribute can only be applied to trait impl blocks
 
@@ -34,6 +38,8 @@ error: the `diagnostic::on_const` attribute cannot be used on trait methods in i
    |
 LL |     #[diagnostic::on_const(message = "tadaa", note = "boing")]
    |       ^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     fn partial_cmp(&self, other: &Foo) -> Option<std::cmp::Ordering> {
    |
    = help: the `diagnostic::on_const` attribute can only be applied to trait impl blocks
 

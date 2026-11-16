@@ -93,6 +93,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::io::{self, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, Write};
+use crate::macros::rustdoc_skip_body;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::os::fd::*;
 #[allow(unused_imports)] // not used on all targets
@@ -209,6 +210,7 @@ fn null_fd() -> io::Result<OwnedFd> {
 
 /// Replaces the underlying file descriptor with the one from `other`.
 /// Does not set CLOEXEC.
+#[rustdoc_skip_body]
 fn replace_stdio_fd(this: BorrowedFd<'_>, other: OwnedFd) -> io::Result<()> {
     cfg_select! {
         all(target_os = "wasi", target_env = "p1") => {

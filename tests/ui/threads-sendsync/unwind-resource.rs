@@ -3,7 +3,6 @@
 
 #![allow(non_camel_case_types)]
 //@ needs-threads
-//@ ignore-backends: gcc
 
 use std::sync::mpsc::{channel, Sender};
 use std::thread;

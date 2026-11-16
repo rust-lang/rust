@@ -4,17 +4,18 @@
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
-use std::io::{self, ErrorKind, Read};
+use std::io::{self, ErrorKind, Read, Write};
+use std::net::SocketAddr;
 use std::rc::Rc;
 
 use rustc_target::spec::Os;
 
+use super::fd::EvalContextExt as _;
 use crate::concurrency::VClock;
+use crate::concurrency::scheduler::DelayedCallbacks;
 use crate::shims::files::{
     EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
-use crate::shims::readiness::DelayedReadinessUpdates;
-use crate::shims::sig::Varargs;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
@@ -22,7 +23,7 @@ use crate::*;
 /// The maximum capacity of the socketpair buffer in bytes.
 /// This number is arbitrary as the value can always
 /// be configured in the real system.
-const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 0x34000;
+const MAX_SOCKETPAIR_BUFFER_CAPACITY: u64 = 0x34000;
 
 #[derive(Debug, PartialEq)]
 enum VirtualSocketType {
@@ -58,9 +59,8 @@ struct VirtualSocket {
     is_nonblock: Cell<bool>,
     /// Differentiate between different virtual socket fd types.
     fd_type: VirtualSocketType,
-    /// We need to update the peer_fd readiness when we get dropped, so we keep a reference
-    /// to the readiness update queue
-    delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    /// We need to unblock threads and update the peer_fd readiness when we get dropped.
+    delayed_callbacks: Rc<DelayedCallbacks>,
     /// State for being watched by epoll.
     watched: ReadinessWatched,
 }
@@ -85,16 +85,32 @@ impl VirtualSocket {
 
 impl Drop for VirtualSocket {
     fn drop(&mut self) {
+        // Blocked threads hold a reference, so when we get closed there cannot be blocked threads.
+        assert!(self.blocked_read_tid.get_mut().is_empty());
+        assert!(self.blocked_write_tid.get_mut().is_empty());
+
         if let Some(peer_fd) = self.peer_fd().upgrade() {
             // If the current readbuf is non-empty when the file description is closed,
-            // notify the peer that data lost has happened in current file description.
+            // notify the peer that data loss has happened in current file description.
             if let Some(readbuf) = &self.readbuf {
                 if !readbuf.borrow().buf.is_empty() {
                     peer_fd.peer_lost_data.set(true);
                 }
             }
-            // Notify peer fd that close has happened, since that can unblock reads and writes.
-            self.delayed_readiness_updates.add(peer_fd);
+            // At the next opportunity, update our readiness and unblock the threads of our peer FD.
+            self.delayed_callbacks.add(Box::new(move |ecx| {
+                // Unblock all threads that are currently blocked on peer_fd (reads AND writes).
+                let waiting_readers = std::mem::take(&mut *peer_fd.blocked_read_tid.borrow_mut());
+                let waiting_writers = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
+                // FIXME: We can randomize the order of unblocking.
+                for thread_id in waiting_readers.into_iter().chain(waiting_writers) {
+                    ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
+                }
+
+                ecx.update_fd_readiness(peer_fd, ReadinessUpdateFlags::DEFAULT)?;
+
+                interp_ok(())
+            }));
         }
     }
 }
@@ -109,6 +125,7 @@ impl FileDescription for VirtualSocket {
 
     fn metadata<'tcx>(
         &self,
+        _communicate_allowed: bool,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         let mode_name = match self.fd_type {
             VirtualSocketType::Socketpair => "S_IFSOCK",
@@ -121,9 +138,9 @@ impl FileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         ecx.virtual_socket_read(self, ptr, len, /* is_non_block */ false, finish)
     }
@@ -132,9 +149,9 @@ impl FileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         ecx.virtual_socket_write(self, ptr, len, /* is_non_block */ false, finish)
     }
@@ -174,7 +191,7 @@ impl FileDescription for VirtualSocket {
         // Check if is writable.
         if let Some(peer_fd) = self.peer_fd().upgrade() {
             if let Some(writebuf) = &peer_fd.readbuf {
-                let data_size = writebuf.borrow().buf.len();
+                let data_size = writebuf.borrow().buf.len().to_u64();
                 let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
                 if available_space != 0 {
                     readiness.writable = true;
@@ -255,49 +272,6 @@ impl UnixFileDescription for VirtualSocket {
         interp_ok(Scalar::from_i32(0))
     }
 
-    fn ioctl<'tcx>(
-        &self,
-        op: Scalar,
-        args: Varargs<'tcx, '_>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
-        match self.fd_type {
-            VirtualSocketType::Socketpair => { /* fall-through to below */ }
-            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => {
-                // The standard library only uses ioctl for changing the blocking mode
-                // of Unix sockets. Thus, since using ioctl isn't the preferred way of
-                // changing the blocking mode, we don't support it on pipes.
-                throw_unsup_format!("cannot use ioctl on pipe");
-            }
-        }
-
-        let fionbio = ecx.eval_libc("FIONBIO");
-
-        if op == fionbio {
-            // On these OSes, Rust uses the ioctl, so we trust that it is reasonable and controls
-            // the same internal flag as fcntl.
-            if !matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
-            {
-                // FIONBIO cannot be used to change the blocking mode of a socket on solarish targets:
-                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
-                // Since there might be more targets which do weird things with this option, we use
-                // an allowlist instead of just denying solarish targets.
-                throw_unsup_format!(
-                    "ioctl: setting FIONBIO on sockets is unsupported on target {}",
-                    ecx.tcx.sess.target.os
-                );
-            }
-
-            let ([value_ptr], _) = ecx.check_varargs(shim_varargs![*i32], args, "ioctl")?;
-            let value = ecx.deref_pointer_as(&value_ptr, ecx.machine.layouts.i32)?;
-            let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
-            self.is_nonblock.set(non_block);
-            return interp_ok(0);
-        }
-
-        throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
-    }
-
     fn as_socket(
         self: FileDescriptionRef<Self>,
     ) -> Option<FileDescriptionRef<dyn UnixSocketFileDescription>> {
@@ -313,10 +287,13 @@ impl UnixSocketFileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_non_block: bool,
+        // For stream-based sockets `send` and `sendto` are equivalent and
+        // we can thus ignore the destination address.
+        _dest_addr: Option<SocketAddr>,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         ecx.virtual_socket_write(self, ptr, len, is_non_block, finish)
     }
@@ -325,16 +302,24 @@ impl UnixSocketFileDescription for VirtualSocket {
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_peek: bool,
         is_non_block: bool,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         if is_peek {
             throw_unsup_format!("socketpair: virtual sockets don't support peeking")
         }
 
+        let finish = callback!(
+            @capture<'tcx> {
+                finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
+            } |this, result: Result<u64, IoError>| {
+                // The source address of the data isn't available for stream-based sockets.
+                finish.call(this, result.map(|bytes| (bytes, None)))
+            }
+        );
         ecx.virtual_socket_read(self, ptr, len, is_non_block, finish)
     }
 }
@@ -350,9 +335,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_non_block: bool,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -376,7 +361,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Let's see if we can write.
         let available_space =
-            MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len());
+            MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(writebuf.borrow().buf.len().to_u64());
         if available_space == 0 {
             if socket.is_nonblock.get() || is_non_block {
                 // Non-blocking socketpair with a full buffer.
@@ -390,13 +375,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         @capture<'tcx> {
                             socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
-                            len: usize,
+                            len: u64,
                             is_non_block: bool,
-                            finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                            finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                         }
-                        |this, unblock: UnblockKind| {
+                        |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            this.virtual_socket_write(socket, ptr, len, is_non_block, finish)
+                            ecx.virtual_socket_write(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );
@@ -411,7 +396,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Do full write / partial write based on the space available.
             let write_size = len.min(available_space);
             let actual_write_size =
-                this.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
+                this.write_to_host(ptr, write_size, |buf| writebuf.buf.write(buf))?.unwrap();
             assert_eq!(actual_write_size, write_size);
 
             // Need to stop accessing peer_fd so that it can be notified.
@@ -443,9 +428,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         socket: FileDescriptionRef<VirtualSocket>,
         ptr: Pointer,
-        len: usize,
+        len: u64,
         is_non_block: bool,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -481,13 +466,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         @capture<'tcx> {
                             socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
-                            len: usize,
+                            len: u64,
                             is_non_block: bool,
-                            finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+                            finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
                         }
-                        |this, unblock: UnblockKind| {
+                        |ecx, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            this.virtual_socket_read(socket, ptr, len, is_non_block, finish)
+                            ecx.virtual_socket_read(socket, ptr, len, is_non_block, finish)
                         }
                     ),
                 );
@@ -502,7 +487,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Do full read / partial read based on the space available.
             // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-            let read_size = this.read_from_host(|buf| readbuf.buf.read(buf), len, ptr)?.unwrap();
+            let read_size = this.read_from_host(ptr, len, |buf| readbuf.buf.read(buf))?.unwrap();
             let readbuf_now_empty = readbuf.buf.is_empty();
 
             // Need to drop before others can access the readbuf again.
@@ -561,7 +546,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut flags = this.read_scalar(type_)?.to_i32()?;
         let protocol = this.read_scalar(protocol)?.to_i32()?;
         // This is really a pointer to `[i32; 2]` but we use a ptr-to-first-element representation.
-        let sv = this.deref_pointer_as(sv, this.machine.layouts.i32)?;
+        let sv = this.deref_pointer(sv)?;
 
         let mut is_sock_nonblock = false;
 
@@ -616,7 +601,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
@@ -627,7 +612,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
 
@@ -636,14 +621,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd1.peer_fd.set(FileDescriptionRef::downgrade(&fd0)).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
-        let sv0 = fds.insert(fd0);
-        let sv1 = fds.insert(fd1);
+        let Some(sv0) = fds.insert(fd0) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        let Some(sv1) = fds.insert(fd1) else {
+            this.close(sv0)?; // don't leak the first FD
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
 
         // Return socketpair file descriptors to the caller.
         let sv0 = Scalar::from_int(sv0, sv.layout.size);
         let sv1 = Scalar::from_int(sv1, sv.layout.size);
         this.write_scalar(sv0, &sv)?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
+        this.write_scalar(sv1, &this.project_c_array_field(&sv, 1)?)?;
 
         interp_ok(Scalar::from_i32(0))
     }
@@ -655,7 +645,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let pipefd = this.deref_pointer_as(pipefd, this.machine.layouts.i32)?;
+        let pipefd = this.deref_pointer(pipefd)?;
         let mut flags = match flags {
             Some(flags) => this.read_scalar(flags)?.to_i32()?,
             None => 0,
@@ -690,7 +680,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeRead,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
@@ -701,7 +691,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeWrite,
-            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            delayed_callbacks: Rc::clone(&this.machine.delayed_callbacks),
             watched: ReadinessWatched::default(),
         });
 
@@ -710,14 +700,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd1.peer_fd.set(FileDescriptionRef::downgrade(&fd0)).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
-        let pipefd0 = fds.insert(fd0);
-        let pipefd1 = fds.insert(fd1);
+        let Some(pipefd0) = fds.insert(fd0) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        let Some(pipefd1) = fds.insert(fd1) else {
+            this.close(pipefd0)?; // don't leak the first FD
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
 
         // Return file descriptors to the caller.
         let pipefd0 = Scalar::from_int(pipefd0, pipefd.layout.size);
         let pipefd1 = Scalar::from_int(pipefd1, pipefd.layout.size);
         this.write_scalar(pipefd0, &pipefd)?;
-        this.write_scalar(pipefd1, &pipefd.offset(pipefd.layout.size, pipefd.layout, this)?)?;
+        this.write_scalar(pipefd1, &this.project_c_array_field(&pipefd, 1)?)?;
 
         interp_ok(Scalar::from_i32(0))
     }

@@ -3,6 +3,8 @@ warning: the `diagnostic::on_move` attribute cannot be used on traits
    |
 LL | #[diagnostic::on_move(
    |   ^^^^^^^^^^^^^^^^^^^
+...
+LL | trait MyTrait {}
    |
    = help: the `diagnostic::on_move` attribute can only be applied to data types
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default

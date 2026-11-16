@@ -42,10 +42,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(no_global_oom_handling))]
+use core::ascii;
 use core::error::Error;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
+#[cfg(not(no_global_oom_handling))]
+use core::mem::MaybeUninit;
 #[cfg(not(no_global_oom_handling))]
 use core::num::Saturating;
 #[cfg(not(no_global_oom_handling))]
@@ -1488,8 +1492,8 @@ impl String {
 
     /// Shortens this `String` to the specified length.
     ///
-    /// If `new_len` is greater than or equal to the string's current length, this has no
-    /// effect.
+    /// If `new_len` is greater than or equal to the string's current length,
+    /// this has no effect.
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the string
@@ -1511,10 +1515,11 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     pub fn truncate(&mut self, new_len: usize) {
-        if new_len <= self.len() {
-            assert!(self.is_char_boundary(new_len));
-            self.vec.truncate(new_len)
+        if new_len >= self.len() {
+            return;
         }
+        assert!(self.is_char_boundary(new_len));
+        self.vec.truncate(new_len)
     }
 
     /// Removes the last character from the string buffer and returns it.
@@ -1725,9 +1730,18 @@ impl String {
         // Slow path: at least one character is going to be removed.
         let mut g = PanicGuard { s: self, write };
         while read < len {
-            // SAFETY: `read` is within bound because `read` < `len`, so taking
-            // a slice with `len` is safe.
-            let ch = unsafe { g.s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
+            // SAFETY: Use `vec`: `String`'s deref includes `write..read`,
+            // which may be invalid UTF-8. The vector's length is still `len`;
+            // `read < len`, so `read..len` is in bounds and non-empty.
+            // At least one character was removed, so `write < read`.
+            // Copies end before the next `read`, preserving unread bytes.
+            // `read` starts after a `char_indices` character and advances by whole
+            // characters, so it stays on a char boundary. The original string was valid UTF-8,
+            // so the unchanged, non-empty tail is valid UTF-8 and `chars().next()` returns `Some`.
+            let ch = unsafe {
+                let tail = str::from_utf8_unchecked(g.s.vec.get_unchecked(read..len));
+                tail.chars().next().unwrap_unchecked()
+            };
             let ch_len = ch.len_utf8();
             if f(ch) {
                 // SAFETY: `read` is on a char boundary, as guaranteed above; `g.write` is
@@ -2062,8 +2076,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let word = String::from("goodbye");
     ///
     /// let mut chars = word.into_chars();
@@ -2082,8 +2094,6 @@ impl String {
     /// Remember, [`char`]s might not match your intuition about characters:
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let y = String::from("y̆");
     ///
     /// let mut chars = y.into_chars();
@@ -2097,7 +2107,7 @@ impl String {
     /// [`char`]: prim@char
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     pub fn into_chars(self) -> IntoChars {
         IntoChars { bytes: self.into_bytes().into_iter() }
     }
@@ -2448,9 +2458,32 @@ impl Clone for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
     fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
+        FromCharIterSpec::to_string_spec(iter.into_iter())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait FromCharIterSpec: Iterator<Item = char> {
+    fn to_string_spec(self) -> String;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T> FromCharIterSpec for T
+where
+    T: Iterator<Item = char>,
+{
+    default fn to_string_spec(self) -> String {
+        let mut buf = String::with_capacity(self.size_hint().0);
+        buf.extend(self);
         buf
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl FromCharIterSpec for core::str::EscapeDefault<'_> {
+    fn to_string_spec(self) -> String {
+        // go through the ToString specialization
+        self.to_string()
     }
 }
 
@@ -2549,10 +2582,7 @@ impl<'a> FromIterator<&'a core::ascii::Char> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
-        let iterator = iter.into_iter();
-        let (lower_bound, _) = iterator.size_hint();
-        self.reserve(lower_bound);
-        iterator.for_each(move |c| self.push(c));
+        SpecExtendChars::spec_extend_into(iter, self);
     }
 
     #[inline]
@@ -2563,6 +2593,28 @@ impl Extend<char> for String {
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait SpecExtendChars {
+    fn spec_extend_into(self, s: &mut String);
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: IntoIterator<Item = char>> SpecExtendChars for T {
+    default fn spec_extend_into(self, target: &mut String) {
+        let iterator = self.into_iter();
+        let (lower_bound, _) = iterator.size_hint();
+        target.reserve(lower_bound);
+        iterator.for_each(move |c| target.push(c));
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl SpecExtendChars for core::str::EscapeDefault<'_> {
+    fn spec_extend_into(self, target: &mut String) {
+        target.extend_from_escape_default(self);
     }
 }
 
@@ -2697,7 +2749,7 @@ impl<'a> Extend<&'a core::ascii::Char> for String {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'b> Pattern for &'b String {
+unsafe impl<'b> Pattern for &'b String {
     type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
 
     fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {
@@ -3160,6 +3212,126 @@ impl SpecToString for fmt::Arguments<'_> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+impl SpecToString for core::str::EscapeDefault<'_> {
+    fn spec_to_string(&self) -> String {
+        let mut s = String::new();
+        s.extend_from_escape_default(self.clone());
+        s
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl String {
+    #[inline]
+    fn extend_from_escape_default(&mut self, escaper: core::str::EscapeDefault<'_>) {
+        let (front, middle, tail) = escaper.into_parts();
+        let lengths = front.as_ref().map_or_default(|f| f.size_hint().0)
+            + middle.as_ref().map_or_default(|m| m.size_hint().0)
+            + tail.as_ref().map_or_default(|t| t.size_hint().0);
+        self.reserve(lengths);
+
+        if let Some(front) = front {
+            self.extend(front);
+        }
+        if let Some(middle) = middle {
+            /// Ensures a spare capacity of N bytes and then passes that as MaybeUninit
+            /// slice to a closure that returns the bytes written, then
+            /// updates the length.
+            ///
+            /// # Safety:
+            ///
+            /// The caller must initialize the number of bytes returned by the closure.
+            #[inline]
+            unsafe fn with_spare<const N: usize, T>(
+                bytes: &mut Vec<u8>,
+                then: impl FnOnce(&mut [MaybeUninit<T>; N]) -> usize,
+            ) {
+                const {
+                    assert!(core::mem::size_of::<T>() == 1);
+                }
+                bytes.reserve(N);
+                let old_len = bytes.len();
+                // SAFETY: We reserved enough space for the requested number of bytes.
+                unsafe {
+                    let spare: &mut [MaybeUninit<T>; N] = bytes
+                        .spare_capacity_mut()
+                        .as_mut_ptr()
+                        .cast::<T>()
+                        .cast_uninit()
+                        .cast_array::<N>()
+                        .as_mut_unchecked();
+                    let written = then(spare);
+                    bytes.set_len(old_len + written);
+                }
+            }
+
+            for c in middle {
+                match c {
+                    '\'' | '\"' | '\\' => {
+                        self.push('\\');
+                        self.push(c);
+                    }
+                    '\x20'..='\x7e' => self.push(c),
+                    '\t' => {
+                        self.push('\\');
+                        self.push('t');
+                    }
+                    '\r' => {
+                        self.push('\\');
+                        self.push('r');
+                    }
+                    '\n' => {
+                        self.push('\\');
+                        self.push('n');
+                    }
+                    c => {
+                        // SAFETY: We only let the function write ascii chars, so it remains valid utf8.
+                        // and it returns the number of bytes written, so so with_spare ensures the rest for us.
+                        unsafe {
+                            with_spare::<10, ascii::Char>(self.as_mut_vec(), |spare| {
+                                escape_unicode_into(spare, c)
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(tail) = tail {
+            self.extend(tail);
+        }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[inline]
+// adapted from core::escape::escape_unicode, but it's left-aligned instead of right-aligned.
+fn escape_unicode_into(output: &mut [MaybeUninit<ascii::Char>; 10], c: char) -> usize {
+    const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
+
+    let c = c as u32;
+    // OR-ing `1` ensures that for `c == 0` the code computes that
+    // one digit should be printed.
+    let prefix_skip = (c | 1).leading_zeros() as usize / 4 - 2;
+
+    // Always write all digits, but for shorter representations the unused
+    // digits get overwritten by later writes.
+    output[3usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 20) & 15) as usize]);
+    output[4usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 16) & 15) as usize]);
+    output[5usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 12) & 15) as usize]);
+    output[6usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 8) & 15) as usize]);
+    output[7usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 4) & 15) as usize]);
+    output[8usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[(c & 15) as usize]);
+
+    output[0].write(ascii::Char::ReverseSolidus);
+    output[1].write(ascii::Char::SmallU);
+    output[2].write(ascii::Char::LeftCurlyBracket);
+    output[9 - prefix_skip].write(ascii::Char::RightCurlyBracket);
+
+    10 - prefix_skip
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for String {
     #[inline]
@@ -3447,12 +3619,12 @@ impl fmt::Write for String {
 /// [`into_chars`]: String::into_chars
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 pub struct IntoChars {
     bytes: vec::IntoIter<u8>,
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl fmt::Debug for IntoChars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoChars").field(&self.as_str()).finish()
@@ -3465,8 +3637,6 @@ impl IntoChars {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let mut chars = String::from("abc").into_chars();
     ///
     /// assert_eq!(chars.as_str(), "abc");
@@ -3476,7 +3646,7 @@ impl IntoChars {
     /// chars.next();
     /// assert_eq!(chars.as_str(), "");
     /// ```
-    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -3489,8 +3659,6 @@ impl IntoChars {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let chars = String::from("abc").into_chars();
     /// assert_eq!(chars.into_string(), "abc");
     ///
@@ -3499,7 +3667,7 @@ impl IntoChars {
     /// assert_eq!(chars.into_string(), "ef");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[stable(feature = "string_into_chars", since = "1.101.0")]
     #[inline]
     pub fn into_string(self) -> String {
         // SAFETY: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
@@ -3512,7 +3680,7 @@ impl IntoChars {
     }
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl Iterator for IntoChars {
     type Item = char;
 
@@ -3546,7 +3714,7 @@ impl Iterator for IntoChars {
     }
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl DoubleEndedIterator for IntoChars {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -3563,7 +3731,7 @@ impl DoubleEndedIterator for IntoChars {
     }
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "1.101.0")]
 impl FusedIterator for IntoChars {}
 
 /// A draining iterator for `String`.

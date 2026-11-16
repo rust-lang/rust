@@ -1,4 +1,6 @@
 //@only-target: windows # this directly tests windows-only functions
+//@run-native
+
 use core::ffi::c_void;
 use core::mem::size_of_val;
 use core::ptr::null_mut;

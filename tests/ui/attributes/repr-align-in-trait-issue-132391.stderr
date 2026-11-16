@@ -3,6 +3,8 @@ error: the `repr(align(...))` attribute cannot be used on required trait methods
    |
 LL |     #[repr(align)]
    |       ^^^^^^^^^^^
+...
+LL |     fn myfun();
    |
    = help: the `repr(align(...))` attribute can only be applied to data types
 

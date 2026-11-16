@@ -10,16 +10,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.").unwrap();
 
-        this.expect_target_feature_for_intrinsic(link_name, "gfni")?;
+        ecx.expect_target_feature_for_intrinsic(link_name, "gfni")?;
         if unprefixed_name.ends_with(".256") {
-            this.expect_target_feature_for_intrinsic(link_name, "avx")?;
+            ecx.expect_target_feature_for_intrinsic(link_name, "avx")?;
         } else if unprefixed_name.ends_with(".512") {
-            this.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
+            ecx.expect_target_feature_for_intrinsic(link_name, "avx512f")?;
         }
 
         match unprefixed_name {
@@ -27,15 +27,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // See `affine_transform` for details.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8affine_
             "vgf2p8affineqb.128" | "vgf2p8affineqb.256" | "vgf2p8affineqb.512" => {
-                let [left, right, imm8] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                affine_transform(this, left, right, imm8, dest, /* inverse */ false)?;
+                let [left, right, imm8] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                affine_transform(ecx, left, right, imm8, dest, /* inverse */ false)?;
             }
             // Used to implement the `_mm{, 256, 512}_gf2p8affineinv_epi64_epi8` functions.
             // See `affine_transform` for details.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8affineinv
             "vgf2p8affineinvqb.128" | "vgf2p8affineinvqb.256" | "vgf2p8affineinvqb.512" => {
-                let [left, right, imm8] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                affine_transform(this, left, right, imm8, dest, /* inverse */ true)?;
+                let [left, right, imm8] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                affine_transform(ecx, left, right, imm8, dest, /* inverse */ true)?;
             }
             // Used to implement the `_mm{, 256, 512}_gf2p8mul_epi8` functions.
             // Multiplies packed 8-bit integers in `left` and `right` in the finite field GF(2^8)
@@ -43,19 +43,19 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // polynomial representation with the reduction polynomial x^8 + x^4 + x^3 + x + 1.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=gf2p8mul
             "vgf2p8mulb.128" | "vgf2p8mulb.256" | "vgf2p8mulb.512" => {
-                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let [left, right] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let (left, left_len) = ecx.project_to_simd(left)?;
+                let (right, right_len) = ecx.project_to_simd(right)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(dest_len, right_len);
 
                 for i in 0..dest_len {
-                    let left = this.read_scalar(&this.project_index(&left, i)?)?.to_u8()?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u8()?;
-                    let dest = this.project_index(&dest, i)?;
-                    this.write_scalar(Scalar::from_u8(gf2p8_mul(left, right)), &dest)?;
+                    let left = ecx.read_scalar(&ecx.project_index(&left, i)?)?.to_u8()?;
+                    let right = ecx.read_scalar(&ecx.project_index(&right, i)?)?.to_u8()?;
+                    let dest = ecx.project_index(&dest, i)?;
+                    ecx.write_scalar(Scalar::from_u8(gf2p8_mul(left, right)), &dest)?;
                 }
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),

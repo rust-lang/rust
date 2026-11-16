@@ -16,6 +16,7 @@ error: the `inline` attribute cannot be used on expressions
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |     _x
    |
    = help: the `inline` attribute can only be applied to functions
 

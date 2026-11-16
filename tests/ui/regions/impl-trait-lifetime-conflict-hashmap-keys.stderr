@@ -1,4 +1,4 @@
-error[E0803]: cannot infer an appropriate lifetime for lifetime parameter '_ in generic type due to conflicting requirements
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'_` in generic type due to conflicting requirements
   --> $DIR/impl-trait-lifetime-conflict-hashmap-keys.rs:13:5
    |
 LL |     fn key_set(&self) -> Subject<'static, Keys<K, V>, (), R> {

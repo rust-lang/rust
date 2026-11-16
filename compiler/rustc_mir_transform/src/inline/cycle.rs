@@ -2,7 +2,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgs, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_structures::Limit;
 use tracing::{instrument, trace};
@@ -36,7 +36,7 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         | InstanceKind::Shim(ShimKind::Clone(..)) => {}
 
         // This shim does not call any other functions, thus there can be no recursion.
-        InstanceKind::Shim(ShimKind::FnPtrAsPtr(..) | ShimKind::FnPtrFromPtr(..)) => return false,
+        InstanceKind::Shim(ShimKind::FnAddrAsPtr(..) | ShimKind::FnPtrFromPtr(..)) => return false,
 
         // FIXME: A not fully instantiated drop shim can cause ICEs if one attempts to
         // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
@@ -192,7 +192,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
 pub(crate) fn mir_inliner_callees<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceKind<'tcx>,
-) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
+) -> &'tcx [(DefId, GenericArgs<'tcx>)] {
     let steal;
     let guard;
     let body = match (instance, instance.def_id().as_local()) {

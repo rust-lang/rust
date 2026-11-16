@@ -94,8 +94,7 @@ fn execute(cmd: &mut Command) -> Output {
     let output = match cmd.output() {
         Ok(status) => status,
         Err(e) => {
-            println!("\n\nfailed to execute command: {cmd:?}\nerror: {e}\n\n");
-            std::process::exit(1);
+            panic!("failed to execute command: {cmd:?}\nerror: {e}");
         }
     };
     if !output.status.success() {

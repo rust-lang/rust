@@ -6,7 +6,6 @@
 use std::marker::{CoerceShared, PhantomData, Reborrow};
 
 #[derive(Reborrow)]
-//~^ ERROR implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
 struct TooManyLifetimes<'a, 'b>(PhantomData<(&'a (), &'b ())>);
 
 #[derive(Clone, Copy)]

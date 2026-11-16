@@ -1,0 +1,8 @@
+warning: mixing target features will cause an ABI mismatch in crate `abi_relevant_target_modifier`
+   |
+   = help: some target features modify the ABI so Rust crates compiled with different values for these target features cannot be used together safely
+   = help: the target feature atomics-32 is enabled in `using_atomics_32` but disabled in this crate
+   = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=target-feature` to silence this warning
+
+warning: 1 warning emitted
+

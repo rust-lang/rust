@@ -1,0 +1,19 @@
+warning: identifier contains an uncommon character: '\u{200c}'
+  --> $DIR/zero-width-in-ident.rs:7:4
+   |
+LL | fn zero‌nonjoiner() {}
+   |    ^^^^^^^^^^^^^
+   |
+   = note: this character is included in the Unicode general security profile
+   = note: `#[warn(uncommon_codepoints)]` on by default
+
+warning: identifier contains an uncommon character: '\u{200d}'
+  --> $DIR/zero-width-in-ident.rs:10:4
+   |
+LL | fn zerojoiner() {}
+   |    ^^^^^^^^^^
+   |
+   = note: this character is included in the Unicode general security profile
+
+warning: 2 warnings emitted
+

@@ -14,6 +14,7 @@ error: the `cfi_encoding` attribute cannot be used on traits
    |
 LL | #[cfi_encoding = "Foo"]
    |   ^^^^^^^^^^^^
+LL | pub trait X {}
    |
    = help: the `cfi_encoding` attribute can only be applied to data types
 
@@ -22,6 +23,7 @@ error: the `cfi_encoding` attribute cannot be used on type aliases
    |
 LL | #[cfi_encoding = "Bar"]
    |   ^^^^^^^^^^^^
+LL | pub type Y = Type1;
    |
    = help: the `cfi_encoding` attribute can only be applied to data types
 

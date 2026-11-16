@@ -1,12 +1,14 @@
 error[E0053]: method `owo` has an incompatible type for trait
   --> $DIR/method-signature-matches.rs:11:15
    |
+LL | impl Uwu for () {
 LL |     fn owo(_: u8) {}
    |               ^^ expected `()`, found `u8`
    |
 note: type in trait
   --> $DIR/method-signature-matches.rs:6:15
    |
+LL | trait Uwu {
 LL |     fn owo(x: ()) -> impl Sized;
    |               ^^
    = note: expected signature `fn(())`

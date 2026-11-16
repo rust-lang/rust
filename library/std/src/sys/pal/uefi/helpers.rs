@@ -81,7 +81,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<crate::ff
         Ok(()) => {
             // This is safe because the call will succeed only if buf_len >= required length.
             // Also, on success, the `buf_len` is updated with the size of bufferv (in bytes) written
-            unsafe { buf.set_len(num_of_handles) };
+            unsafe { buf.set_len(buf_len / size_of::<r_efi::efi::Handle>()) };
             Ok(buf.into_iter().filter_map(|x| NonNull::new(x)).collect())
         }
         Err(e) => Err(e),

@@ -26,6 +26,11 @@ LL | pub trait Trait: Sized {
 ...
 LL |     fn static_value(_: Self) -> i32 { 1 }
    |        ^^^^^^^^^^^^ -------
+note: associated function provided through this `impl`
+  --> $DIR/self-coercion-static-free.rs:17:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:22:40
@@ -45,6 +50,11 @@ LL | pub trait Trait: Sized {
 ...
 LL |     fn static_mut_ref(_: &mut Self) -> i32 { 2 }
    |        ^^^^^^^^^^^^^^ ------------
+note: associated function provided through this `impl`
+  --> $DIR/self-coercion-static-free.rs:17:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:22:56
@@ -64,6 +74,11 @@ LL | pub trait Trait: Sized {
 ...
 LL |     fn static_ref(_: &Self) -> i32 { 3 }
    |        ^^^^^^^^^^ --------
+note: associated function provided through this `impl`
+  --> $DIR/self-coercion-static-free.rs:17:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:35:26
@@ -81,6 +96,11 @@ LL | pub trait Trait: Sized {
 ...
 LL |     fn static_value(_: Self) -> i32 { 1 }
    |        ^^^^^^^^^^^^ -------
+note: associated function provided through this `impl`
+  --> $DIR/self-coercion-static-free.rs:17:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:35:40
@@ -100,6 +120,11 @@ LL | pub trait Trait: Sized {
 ...
 LL |     fn static_mut_ref(_: &mut Self) -> i32 { 2 }
    |        ^^^^^^^^^^^^^^ ------------
+note: associated function provided through this `impl`
+  --> $DIR/self-coercion-static-free.rs:17:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:35:56
@@ -119,6 +144,11 @@ LL | pub trait Trait: Sized {
 ...
 LL |     fn static_ref(_: &Self) -> i32 { 3 }
    |        ^^^^^^^^^^ --------
+note: associated function provided through this `impl`
+  --> $DIR/self-coercion-static-free.rs:17:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-coercion-static-free.rs:52:43

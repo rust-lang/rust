@@ -250,6 +250,9 @@ pub(crate) fn orphan_check_impl(
             }
 
             ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::Allow),
+
+            // FIXME(scrabsha)
+            ty::View(..) => unimplemented!(),
         };
 
         if trait_def_id.is_local() {

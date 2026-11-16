@@ -1026,7 +1026,19 @@ impl Builder<'_> {
         //
         // Only clear out the directory if we're running Cargo on std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
-        if !self.config.dry_run() && mode == Mode::Std {
+        //
+        // When --keep-stage[-std] is passed, two things can happen:
+        // - Either this function is not invoked on `std` at all, because the corresponding Std step
+        //   checks the flag and doesn't invoke Cargo for std at all.
+        // - This function is invoked, in which case it will (most likely) do a no-op stdlib
+        //   rebuild.
+        //
+        // In the second situation, we must ensure that we will not clear the standard library
+        // output directory, otherwise --keep-stage[-std] will of course break.
+        // Note that the compiler stage corresponds to the standard library stage.
+        let keep_previously_built_std = self.config.keep_stage.contains(&compiler.stage)
+            || self.config.keep_stage_std.contains(&compiler.stage);
+        if !self.config.dry_run() && mode == Mode::Std && !keep_previously_built_std {
             build_stamp::clear_if_dirty(self, &out_dir, &self.rustc(compiler));
         }
 
@@ -1493,18 +1505,14 @@ impl Builder<'_> {
             .unwrap_or(&self.config.rust_rustflags)
             .clone();
 
-        let profile =
-            if matches!(cmd_kind, Kind::Bench | Kind::Miri | Kind::MiriSetup | Kind::MiriTest) {
-                // Use the default profile for bench/miri
-                None
-            } else {
-                match (mode, self.config.rust_optimize.is_release()) {
-                    // Some std configuration exists in its own profile
-                    (Mode::Std, _) => Some("dist"),
-                    (_, true) => Some("release"),
-                    (_, false) => Some("dev"),
-                }
-            };
+        let profile = match (cmd_kind, mode) {
+            // Use the default profile for miri
+            (Kind::Miri | Kind::MiriSetup | Kind::MiriTest, _) => None,
+            // Some std configuration exists in its own profile
+            (_, Mode::Std) => Some("dist"),
+            _ if self.config.rust_optimize.is_release() => Some("release"),
+            _ => Some("dev"),
+        };
 
         Cargo {
             command: cargo,

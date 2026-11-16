@@ -1,7 +1,7 @@
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, StableHash, TyDecodable, TyEncodable};
 
-use crate::ty::{self, GenericArgsRef, Ty, TyCtxt};
+use crate::ty::{self, GenericArgs, Ty, TyCtxt};
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
 /// the symbol will be exported. `C` symbols will be exported from any
@@ -48,7 +48,7 @@ pub struct SymbolExportInfo {
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, StableHash)]
 pub enum ExportedSymbol<'tcx> {
     NonGeneric(DefId),
-    Generic(DefId, GenericArgsRef<'tcx>),
+    Generic(DefId, GenericArgs<'tcx>),
     DropGlue(Ty<'tcx>),
     AsyncDropGlueCtorShim(Ty<'tcx>),
     AsyncDropGlue(DefId, Ty<'tcx>),

@@ -19,7 +19,6 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{InFile, MacroCallId, mod_path::ModPath, name::Name};
 use la_arena::{Arena, ArenaMap};
-use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
@@ -27,7 +26,7 @@ use thin_vec::ThinVec;
 use tt::TextRange;
 
 use crate::{
-    AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
+    AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax, ThinFxHashMap,
     expr_store::path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked,
@@ -119,7 +118,7 @@ struct ExpressionOnlyStore {
     labels: Arena<Label>,
     /// Id of the closure/coroutine/anon const that owns the corresponding binding. If a binding is owned by the
     /// top level expression, it will not be listed in here.
-    binding_owners: FxHashMap<BindingId, ExprId>,
+    binding_owners: ThinFxHashMap<BindingId, ExprId>,
     /// Block expressions in this store that may contain inner items.
     block_scopes: Box<[BlockId]>,
 
@@ -127,7 +126,7 @@ struct ExpressionOnlyStore {
     ///
     /// Expressions (and destructuring patterns) that can be recorded here are single segment path, although not all single segments path refer
     /// to variables and have hygiene (some refer to items, we don't know at this stage).
-    ident_hygiene: FxHashMap<ExprOrPatIdPacked, HygieneId>,
+    ident_hygiene: ThinFxHashMap<ExprOrPatIdPacked, HygieneId>,
 
     /// Maps expression roots to their origin.
     ///
@@ -168,13 +167,13 @@ pub struct ExpressionStore {
 struct ExpressionOnlySourceMap {
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
-    expr_map: FxHashMap<ExprSource, ExprOrPatIdPacked>,
+    expr_map: ThinFxHashMap<ExprSource, ExprOrPatIdPacked>,
     expr_map_back: ArenaMap<ExprId, ExprOrPatSource>,
 
-    pat_map: FxHashMap<PatSource, ExprOrPatIdPacked>,
+    pat_map: ThinFxHashMap<PatSource, ExprOrPatIdPacked>,
     pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
-    label_map: FxHashMap<LabelSource, LabelId>,
+    label_map: ThinFxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
 
     binding_definitions:
@@ -182,12 +181,12 @@ struct ExpressionOnlySourceMap {
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
-    field_map_back: FxHashMap<ExprId, FieldSource>,
-    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
+    field_map_back: ThinFxHashMap<ExprId, FieldSource>,
+    pat_field_map_back: ThinFxHashMap<PatId, PatFieldSource>,
 
     template_map: Option<Box<FormatTemplate>>,
 
-    expansions: FxHashMap<InFile<MacroCallPtr>, MacroCallId>,
+    expansions: ThinFxHashMap<InFile<MacroCallPtr>, MacroCallId>,
 
     /// Diagnostics accumulated during lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
@@ -233,14 +232,14 @@ pub struct ExpressionStoreSourceMap {
     expr_only: Option<Box<ExpressionOnlySourceMap>>,
 
     types_map_back: ArenaMap<TypeRefId, TypeSource>,
-    types_map: FxHashMap<TypeSource, TypeRefId>,
+    types_map: ThinFxHashMap<TypeSource, TypeRefId>,
 
     lifetime_map_back: ArenaMap<LifetimeRefId, LifetimeSource>,
     #[expect(
         unused,
         reason = "this is here for completeness, and maybe we'll need it in the future"
     )]
-    lifetime_map: FxHashMap<LifetimeSource, LifetimeRefId>,
+    lifetime_map: ThinFxHashMap<LifetimeSource, LifetimeRefId>,
 }
 
 impl PartialEq for ExpressionStoreSourceMap {
@@ -264,40 +263,40 @@ pub struct ExpressionStoreBuilder {
     pub bindings: Arena<Binding>,
     pub labels: Arena<Label>,
     pub lifetimes: Arena<LifetimeRef>,
-    pub binding_owners: FxHashMap<BindingId, ExprId>,
+    pub binding_owners: ThinFxHashMap<BindingId, ExprId>,
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
-    ident_hygiene: FxHashMap<ExprOrPatIdPacked, HygieneId>,
+    ident_hygiene: ThinFxHashMap<ExprOrPatIdPacked, HygieneId>,
     inference_roots: Option<SmallVec<[ExprRoot; 1]>>,
 
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
-    expr_map: FxHashMap<ExprSource, ExprOrPatIdPacked>,
+    expr_map: ThinFxHashMap<ExprSource, ExprOrPatIdPacked>,
     expr_map_back: ArenaMap<ExprId, ExprOrPatSource>,
 
-    pat_map: FxHashMap<PatSource, ExprOrPatIdPacked>,
+    pat_map: ThinFxHashMap<PatSource, ExprOrPatIdPacked>,
     pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
-    label_map: FxHashMap<LabelSource, LabelId>,
+    label_map: ThinFxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
 
     types_map_back: ArenaMap<TypeRefId, TypeSource>,
-    types_map: FxHashMap<TypeSource, TypeRefId>,
+    types_map: ThinFxHashMap<TypeSource, TypeRefId>,
 
     lifetime_map_back: ArenaMap<LifetimeRefId, LifetimeSource>,
-    lifetime_map: FxHashMap<LifetimeSource, LifetimeRefId>,
+    lifetime_map: ThinFxHashMap<LifetimeSource, LifetimeRefId>,
 
     binding_definitions:
         ArenaMap<BindingId, SmallVec<[PatId; 2 * size_of::<usize>() / size_of::<PatId>()]>>,
 
     /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
     /// Instead, we use id of expression (`92`) to identify the field.
-    field_map_back: FxHashMap<ExprId, FieldSource>,
-    pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
+    field_map_back: ThinFxHashMap<ExprId, FieldSource>,
+    pat_field_map_back: ThinFxHashMap<PatId, PatFieldSource>,
 
     template_map: Option<Box<FormatTemplate>>,
 
-    expansions: FxHashMap<InFile<MacroCallPtr>, MacroCallId>,
+    expansions: ThinFxHashMap<InFile<MacroCallPtr>, MacroCallId>,
 
     /// Diagnostics accumulated during lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
@@ -310,15 +309,15 @@ pub struct ExpressionStoreBuilder {
 #[derive(Default, Debug, Eq, PartialEq)]
 struct FormatTemplate {
     /// A map from `format_args!()` expressions to their captures.
-    format_args_to_captures: FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
+    format_args_to_captures: ThinFxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
     /// A map from `asm!()` expressions to their captures.
-    asm_to_captures: FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
+    asm_to_captures: ThinFxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
     /// A map from desugared expressions of implicit captures to their source.
     ///
     /// The value stored for each capture is its template literal and offset inside it. The template literal
     /// is from the `format_args[_nl]!()` macro and so needs to be mapped up once to go to the user-written
     /// template.
-    implicit_capture_to_source: FxHashMap<ExprId, InFile<(ExprPtr, TextRange)>>,
+    implicit_capture_to_source: ThinFxHashMap<ExprId, InFile<(ExprPtr, TextRange)>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
