@@ -10,7 +10,7 @@ use rustc_middle::ty::{GenericArg, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
+use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor, on_all_children_bits};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -715,20 +715,21 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
         let flow_inits = self.flow_inits.get_or_insert_with(|| {
             let tcx = self.infcx.tcx;
             let body = self.body;
-            // FIXME: reduce the `MaybeInitializedPlaces` domain to the useful `MovePath`s.
-            //
-            // This dataflow analysis computes maybe-initializedness of all move paths, which
-            // explains why it can be expensive on big functions. But this data is only used in
-            // drop-liveness. Therefore, most of the move paths computed here are ultimately unused,
-            // even if the results are computed lazily and "no relevant live locals with drop
-            // points" is the common case.
-            //
-            // So we only need the ones for 1) relevant live locals 2) that have drop points. That's
-            // a much, much smaller domain: in our benchmarks, when it's not zero (the most likely
-            // case), there are a few dozens compared to e.g. thousands or tens of thousands of
-            // locals and move paths.
+            // Drop-liveness reads only the move paths of locals that have drop points. Track only
+            // these move paths, because a large function can have thousands of move paths.
+            let mut selected = DenseBitSet::new_empty(self.move_data.move_paths.len());
+            for local in body.local_decls.indices() {
+                if self.local_use_map.drops(local).next().is_some()
+                    && let Some(root) = self.move_data.rev_lookup.find_local(local)
+                {
+                    on_all_children_bits(self.move_data, root, |path| {
+                        selected.insert(path);
+                    });
+                }
+            }
             let _timer = tcx.prof.generic_activity("borrowck_dataflow_maybe_inits");
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, self.move_data)
+                .restrict_to_move_paths(&selected)
                 .iterate_to_fixpoint(tcx, body, Some("borrowck"))
                 .into_results_cursor(body);
             flow_inits
@@ -747,12 +748,15 @@ impl<'a, 'tcx> LivenessComputation<'a, 'tcx> {
             }
             flow_inits.get().clone()
         });
-        if state.contains(mpi) {
+        let analysis = flow_inits.analysis();
+        if analysis.contains_move_path(state, mpi) {
             return true;
         }
 
-        let move_paths = &flow_inits.analysis().move_data().move_paths;
-        move_paths[mpi].find_descendant(move_paths, |mpi| state.contains(mpi)).is_some()
+        let move_paths = &analysis.move_data().move_paths;
+        move_paths[mpi]
+            .find_descendant(move_paths, |mpi| analysis.contains_move_path(state, mpi))
+            .is_some()
     }
 
     /// Returns `true` if the local variable (or some part of it) is initialized in
