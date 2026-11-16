@@ -1414,7 +1414,6 @@ where
                 match chr {
                     '"' => {
                         if sharps == 0 {
-                            char_kind = FullCodeCharKind::Normal;
                             CharClassesStatus::Normal
                         } else if is_raw_string_suffix(&mut self.base, sharps) {
                             CharClassesStatus::RawStringSuffix(sharps)
@@ -1911,6 +1910,20 @@ mod test {
         assert_eq!((FullCodeCharKind::InComment, '/'), iter.next().unwrap());
         assert_eq!((FullCodeCharKind::EndComment, '\n'), iter.next().unwrap());
         assert_eq!((FullCodeCharKind::Normal, '\n'), iter.next().unwrap());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn char_classes_hashless_raw_string() {
+        let mut iter = CharClasses::new("r\"a\nb\",".chars());
+
+        assert_eq!((FullCodeCharKind::InString, 'r'), iter.next().unwrap());
+        assert_eq!((FullCodeCharKind::InString, '"'), iter.next().unwrap());
+        assert_eq!((FullCodeCharKind::InString, 'a'), iter.next().unwrap());
+        assert_eq!((FullCodeCharKind::InString, '\n'), iter.next().unwrap());
+        assert_eq!((FullCodeCharKind::InString, 'b'), iter.next().unwrap());
+        assert_eq!((FullCodeCharKind::InString, '"'), iter.next().unwrap());
+        assert_eq!((FullCodeCharKind::Normal, ','), iter.next().unwrap());
         assert_eq!(None, iter.next());
     }
 
