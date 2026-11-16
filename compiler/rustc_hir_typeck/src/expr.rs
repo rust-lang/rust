@@ -3467,6 +3467,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expr: &hir::Expr<'tcx>,
         finder: impl Fn(Ty<'tcx>) -> bool,
     ) {
+        if let hir::ExprKind::Unary(hir::UnOp::Deref, e) = expr.kind {
+            // If we have `*foo`, we want `foo`, which will subsequently be resolved to the earlier
+            // binding.
+            expr = e;
+        }
         if let hir::ExprKind::Path(hir::QPath::Resolved(
             None,
             hir::Path { res: Res::Local(hir_id), .. },
@@ -3478,7 +3483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Get and point at the binding's prior method call, if it is one:
             // ```
             // let foo = bar.borrow();
-            // foo.qux(); 
+            // foo.qux();
             // ```
             // Where `qux` is present in the return type of `<Bar as RefCell>::borrow`, but not
             // `<Bar as Borrow>::borrow`.
