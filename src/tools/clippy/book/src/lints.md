@@ -118,4 +118,4 @@ functionality and marking them as deprecated, which may cause further warnings b
 cause a compiler error.
 
 [Clippy lint documentation]: https://rust-lang.github.io/rust-clippy/
-[Clippy 1.0 RFC]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
+[Clippy 1.0 RFC]: https://github.com/rust-lang/rfcs/blob/main/text/2476-clippy-uno.md#lint-audit-and-categories
