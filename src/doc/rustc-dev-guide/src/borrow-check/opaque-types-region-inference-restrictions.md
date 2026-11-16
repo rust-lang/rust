@@ -1,6 +1,6 @@
 # Opaque types region inference restrictions
 
-In this chapter we discuss the various restrictions we impose on the generic arguments of
+In this chapter, we discuss the various restrictions we impose on the generic arguments of
 opaque types when defining their hidden types `Opaque<'a, 'b, .., A, B, ..> := SomeHiddenType`.
 
 These restrictions are implemented in borrow checking ([Source][source-borrowck-opaque])
@@ -110,8 +110,8 @@ impl<'a> Type<'a> {
 ```
 
 **Why this is correct:** for such a defining use like `Opaque<'a, 'a> := &'a str`,
-it can be interpreted in either way—either as `Opaque<'x, 'y> := &'x str` or as `Opaque<'x,
-'y> := &'y str` and it wouldn't matter because every use of `Opaque`
+it can be interpreted either as `Opaque<'x, 'y> := &'x str` or as `Opaque<'x, 'y> := &'y str`,
+and it wouldn't matter because every use of `Opaque`
 will guarantee that both parameters are equal as per the well-formedness rules.
 
 ## Universal lifetimes restriction
@@ -136,8 +136,8 @@ as the [member constraints] algorithm faces a fundamental limitation:
 When encountering an opaque type definition `Opaque<'?1> := &'?2 u8`,
 a member constraint `'?2 member-of ['static, '?1]` is registered.
 In order for the algorithm to pick the right choice,
-the *complete* set of "outlives" relationships between the choice regions `['static,
-'?1]` must already be known *before* doing the region inference.
+the *complete* set of "outlives" relationships between the choice regions `['static, '?1]`
+must already be known *before* doing the region inference.
 This can be satisfied only if each choice region is either:
 1. a universal region, i.e. `RegionKind::Re{EarlyParam,LateParam,Placeholder,Static}`,
 because the relations between universal regions are completely known, prior to region inference,
