@@ -29,6 +29,7 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Support/CBindingWrapping.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Program.h"
 #include "llvm/Support/TimeProfiler.h"
@@ -62,7 +63,9 @@
 
 using namespace llvm;
 
+#if LLVM_VERSION_LT(24, 0)
 static codegen::RegisterCodeGenFlags CGF;
+#endif
 
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
@@ -453,6 +456,8 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
     return;
   Initialized = true;
 #if LLVM_VERSION_GE(24, 0)
+  for (const cl::LibraryOptions *L : codegen::getToolOptions())
+    cl::addLibraryOptions(*L);
   char *Err;
   if (LLVMParseCommandLineOptionsWithError(Argc, Argv, "", &Err)) {
     // FIXME: Report the error via Rust's diagnostics infrastructure.
