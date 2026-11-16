@@ -89,8 +89,9 @@ and keep a Rust-side bug open to track backports or mitigations in rustc.
 This was when bug reports for miscompilations were rare, mostly "organic" instead of fuzzed,
 and it was not always clear we were using LLVM correctly instead of generating malformed LLVMIR.
 
-We have been tracking LLVM more closely since 2022. Updates to our LLVM fork are more frequent and
-almost always backports or new LLVM releases, since we work more closely with LLVM.
+We have been tracking LLVM more closely since 2022.
+Updates to our LLVM fork are more frequent and almost always backports or new LLVM releases,
+since we work more closely with LLVM.
 If you trace a miscompilation to LLVM, it is most important the bug is fixed upstream,
 so please try to make sure the bug reaches [llvm-project/issues] first.
 
