@@ -10,6 +10,7 @@ use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_hir::intravisit;
 use rustc_hir_pretty as pprust_hir;
 use rustc_hir_pretty::PpAnn;
+use rustc_middle::mir::pretty::write_mir_pretty_for_emit;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_build::thir::print::{thir_flat, thir_tree};
@@ -350,11 +351,11 @@ pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {
     match tcx.output_filenames(()).path(OutputType::Mir) {
         OutFileName::Stdout => {
             let mut f = io::stdout();
-            write_mir_pretty(tcx, &mut f)?;
+            write_mir_pretty_for_emit(tcx, &mut f)?;
         }
         OutFileName::Real(path) => {
             let mut f = File::create_buffered(&path)?;
-            write_mir_pretty(tcx, &mut f)?;
+            write_mir_pretty_for_emit(tcx, &mut f)?;
             if tcx.sess.opts.json_artifact_notifications {
                 tcx.dcx().emit_artifact_notification(&path, "mir");
             }

@@ -116,6 +116,24 @@ const SHARED_REF_MASK: u64 = 1 << 62;
 const ALLOC_ID_MASK: u64 = u64::MAX & !IMMUTABLE_MASK & !SHARED_REF_MASK;
 
 impl CtfeProvenance {
+    pub(crate) fn fmt_pointer_with_alloc_id(
+        ptr: &Pointer<Self>,
+        f: &mut fmt::Formatter<'_>,
+        alloc_id_repr: impl fmt::Debug,
+    ) -> fmt::Result {
+        // Print AllocId.
+        fmt::Debug::fmt(&alloc_id_repr, f)?; // propagates `alternate` flag
+        // Print offset only if it is non-zero.
+        if ptr.offset.bytes() > 0 {
+            write!(f, "+{:#x}", ptr.offset.bytes())?;
+        }
+        // Print immutable status.
+        if ptr.provenance.immutable() {
+            write!(f, "<imm>")?;
+        }
+        Ok(())
+    }
+
     /// Returns the `AllocId` of this provenance.
     #[inline(always)]
     pub fn alloc_id(self) -> AllocId {
@@ -172,17 +190,7 @@ impl Provenance for CtfeProvenance {
     const WILDCARD: Option<Self> = None;
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Print AllocId.
-        fmt::Debug::fmt(&ptr.provenance.alloc_id(), f)?; // propagates `alternate` flag
-        // Print offset only if it is non-zero.
-        if ptr.offset.bytes() > 0 {
-            write!(f, "+{:#x}", ptr.offset.bytes())?;
-        }
-        // Print immutable status.
-        if ptr.provenance.immutable() {
-            write!(f, "<imm>")?;
-        }
-        Ok(())
+        Self::fmt_pointer_with_alloc_id(ptr, f, ptr.provenance.alloc_id())
     }
 
     fn get_alloc_id(self) -> Option<AllocId> {

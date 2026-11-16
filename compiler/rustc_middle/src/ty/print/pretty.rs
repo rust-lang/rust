@@ -1750,6 +1750,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         ptr: Pointer,
         ty: Ty<'tcx>,
     ) -> Result<(), PrintError> {
+        self.pretty_print_const_scalar_ptr_with_pointer_formatter(
+            ptr,
+            ty,
+            Self::pretty_print_const_pointer,
+        )
+    }
+
+    fn pretty_print_const_scalar_ptr_with_pointer_formatter(
+        &mut self,
+        ptr: Pointer,
+        ty: Ty<'tcx>,
+        print_pointer: impl FnOnce(&mut Self, Pointer, Ty<'tcx>) -> Result<(), PrintError>,
+    ) -> Result<(), PrintError> {
         let (prov, offset) = ptr.prov_and_relative_offset();
         match ty.kind() {
             // Byte strings (&[u8; N])
@@ -1798,7 +1811,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             _ => {}
         }
         // Any pointer values not covered by a branch above
-        self.pretty_print_const_pointer(ptr, ty)?;
+        print_pointer(self, ptr, ty)?;
         Ok(())
     }
 
