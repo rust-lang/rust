@@ -751,25 +751,16 @@ fn build_module_items(
         if !module_def_id.is_local() && !module_def_id.is_crate_root() {
             segments.push(clean::PathSegment {
                 name: tcx.crate_name(module_def_id.krate),
-                args: clean::GenericArgs::AngleBracketed {
-                    args: Default::default(),
-                    constraints: ThinVec::new(),
-                },
+                args: clean::GenericArgs::empty_angle_bracketed(),
             });
         }
         segments.push(clean::PathSegment {
             name: module_name,
-            args: clean::GenericArgs::AngleBracketed {
-                args: Default::default(),
-                constraints: ThinVec::new(),
-            },
+            args: clean::GenericArgs::empty_angle_bracketed(),
         });
         segments.push(clean::PathSegment {
             name: def_id.map(|def_id| tcx.item_name(def_id)).unwrap_or(item.ident.name),
-            args: clean::GenericArgs::AngleBracketed {
-                args: Default::default(),
-                constraints: ThinVec::new(),
-            },
+            args: clean::GenericArgs::empty_angle_bracketed(),
         });
         let item = Item::from_def_id_and_parts(
             module_def_id,
