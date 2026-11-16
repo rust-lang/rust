@@ -102,9 +102,8 @@ fn bar<'a, T>(t: &'a T) {
 ```
 
 Here, the name `'b` is not part of the root universe.
-Instead, when we
-"enter" into this `for<'b>` (e.g., by replacing it with a placeholder), we will create
-a child universe of the root, let's call it U1:
+Instead, when we "enter" into this `for<'b>` (e.g., by replacing it with a placeholder),
+we will create a child universe of the root, let's call it U1:
 
 ```text
 U0 (root universe)
@@ -142,14 +141,16 @@ we can use it to extend our type-checker and things to prevent illegal names fro
 The idea is that we give each inference (existential) variable – whether it be a type or
 a lifetime – a universe.
 That variable's value can then only reference names visible from that universe.
-So for example if a lifetime variable is created in U0, then it cannot be assigned a value
-of `!1` or `!2`, because those names are not visible from the universe U0.
+So, for example,
+if a lifetime variable is created in U0, then it cannot be assigned a value of `!1` or `!2`,
+because those names are not visible from the universe U0.
 
 **Representing universes with just a counter.** You might be surprised
 to see that the compiler doesn't keep track of a full tree of universes.
 Instead, it just keeps a counter – and, to determine if one universe can see another one,
 it just checks if the index is greater.
-For example, U2 can see U0 because 2 >= 0. But U0 cannot see U2, because 0 >= 2 is false.
+For example, U2 can see U0 because 2 >= 0.
+But U0 cannot see U2, because 0 >= 2 is false.
 
 How can we get away with this?
 Doesn't this mean that we would allow U2 to also see U1?
@@ -158,8 +159,8 @@ But because of the structure of our type checker etc, there is no way for that t
 In order for something happening in the universe U1 to "communicate" with something
 happening in U2, they would have to have a shared inference variable X in common.
 And because everything in U1 is scoped to just U1 and its children,
-that inference variable X would have to be in U0. And since X is in U0,
-it cannot name anything from U1 (or U2).
+that inference variable X would have to be in U0.
+And since X is in U0, it cannot name anything from U1 (or U2).
 This is perhaps easiest to see by using a kind of generic "logic" example:
 
 ```text
@@ -186,7 +187,8 @@ The value of `!n` is `{placeholder(n)}`.
 
 At the same time,
 we also give each existential variable a **universe** (also taken from the `InferCtxt`).
-This universe determines which placeholder elements may appear in its value: For example,
+This universe determines which placeholder elements may appear in its value.
+For example,
 a variable in universe U3 may name `placeholder(1)`, `placeholder(2)`, and `placeholder(3)`,
 but not `placeholder(4)`.
 Note that the universe of an inference
@@ -219,9 +221,8 @@ should be able to just assume that is true, we don't have to check it).
 We have to ensure that `value(V1)` outlives each of those placeholder elements.
 
 Now there are two ways that could happen.
-First, if `U(V1)` can see
-the universe `x` (i.e., `x <= U(V1)`), then we can just add `placeholder(x)`
-to `value(V1)` and be done.
+First, if `U(V1)` can see the universe `x` (i.e., `x <= U(V1)`),
+then we can just add `placeholder(x)` to `value(V1)` and be done.
 But if not,
 then we have to approximate: we may not know what set of elements `placeholder(x)` represents,
 but we should be able to compute some sort of **upper bound** B for it –
@@ -229,8 +230,9 @@ some region B that outlives `placeholder(x)`.
 For now, we'll just use `'static` for that (since it outlives everything) – in the future, we
 can sometimes be smarter here (and in fact we have code for doing this already in other contexts).
 Moreover, since `'static` is in the root universe U0,
-we know that all variables can see it – so basically if
-we find that `value(V2)` contains `placeholder(x)` for some universe `x` that `V1` can't see,
+we know that all variables can see it.
+So, basically,
+if we find that `value(V2)` contains `placeholder(x)` for some universe `x` that `V1` can't see,
 then we force `V1` to `'static`.
 
 ## Extending the "universal regions" check
@@ -273,7 +275,8 @@ The region inference engine will create a region element domain like this:
 
 It will always create two universal variables,
 one representing `'static` and one representing `'!1`.
-Let's call them Vs and V1. They will have initial values like so:
+Let's call them Vs and V1.
+They will have initial values like so:
 
 ```text
 Vs = { CFG; end('static) } // it is in U0, so can't name anything else
@@ -426,7 +429,7 @@ indeed it is visible from `V3`), so we get:
 V3 in U2 = {placeholder(1)}
 ```
 
-then we have this constraint `V2: V3`,
+Then we have this constraint `V2: V3`,
 so we wind up having to enlarge `V2` to include `placeholder(1)` (which it can also see):
 
 ```text
