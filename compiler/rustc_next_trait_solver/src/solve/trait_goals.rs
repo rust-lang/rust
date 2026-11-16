@@ -205,8 +205,7 @@ where
         //
         // This will trivially make the addition of
         // `Move` backward compatible with trait bounds
-        if cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move)
-        {
+        if cx.is_trait_lang_item(goal.predicate.def_id(), SolverTraitLangItem::Move) {
             return ecx
                 .probe_builtin_trait_candidate(BuiltinImplSource::Trivial)
                 .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes));

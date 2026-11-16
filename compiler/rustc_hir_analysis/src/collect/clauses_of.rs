@@ -7,8 +7,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, ExcludeImplicitBounds, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt,
-    TypeVisitable, TypeVisitor, Upcast,
+    self, ExcludeImplicitBounds, GenericClauses, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitable,
+    TypeVisitor, Upcast,
 };
 use rustc_span::{DUMMY_SP, Ident, Span, bug, span_bug};
 use tracing::{debug, instrument, trace};
