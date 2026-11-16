@@ -293,7 +293,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 });
             });
         });
-        if suggestions.len() > 0 {
+
+        if !suggestions.is_empty() {
             suggestions.dedup();
             diag.multipart_suggestion(
                 msg!("consider restricting the type parameter to the `'static` lifetime"),
@@ -471,7 +472,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         let parent = tcx.parent(def_id);
         if let Some(rcvr) =
-            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().get(0)
+            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().first()
         {
             // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
             // ```
@@ -489,7 +490,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 if let Some(def_id) = def_id.as_local()
                     && let owner = tcx.expect_hir_owner_node(def_id)
                     && let Some(decl) = owner.fn_decl()
-                    && let Some(ty) = decl.inputs.get(0)
+                    && let Some(ty) = decl.inputs.first()
                 {
                     // Point at the `&'static self` receiver.
                     bounds.push(ty.span);
@@ -735,14 +736,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             {
                 diag.span_note(
                     constraint.span,
-                    format!("raw pointer casts of trait objects cannot extend lifetimes"),
+                    "raw pointer casts of trait objects cannot extend lifetimes",
                 );
-                diag.note(format!(
-                    "this was previously accepted by the compiler but was changed recently"
-                ));
-                diag.help(format!(
-                    "see <https://github.com/rust-lang/rust/issues/141402> for more information"
-                ));
+                diag.note("this was previously accepted by the compiler but was changed recently");
+                diag.help(
+                    "see <https://github.com/rust-lang/rust/issues/141402> for more information",
+                );
             }
         }
 
@@ -844,15 +843,15 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names(),
-            &self.upvars,
+            self.local_names(),
+            self.upvars,
             errci.fr,
         );
         let outlived_fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names(),
-            &self.upvars,
+            self.local_names(),
+            self.upvars,
             errci.outlived_fr,
         );
 
@@ -904,29 +903,26 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         // Only show an extra note if we can find an 'error region' for both of the region
         // variables. This avoids showing a noisy note that just mentions 'synthetic' regions
         // that don't help the user understand the error.
-        match (
+        if let (Some(f), Some(o)) = (
             self.regioncx.to_error_region(errci.fr),
             self.regioncx.to_error_region(errci.outlived_fr),
         ) {
-            (Some(f), Some(o)) => {
-                self.maybe_suggest_constrain_dyn_trait_impl(&mut diag, f, o, category);
+            self.maybe_suggest_constrain_dyn_trait_impl(&mut diag, f, o, category);
 
-                let fr_region_name = self.give_region_a_name(errci.fr).unwrap();
-                fr_region_name.highlight_region_name(&mut diag);
-                let outlived_fr_region_name = self.give_region_a_name(errci.outlived_fr).unwrap();
-                outlived_fr_region_name.highlight_region_name(&mut diag);
+            let fr_region_name = self.give_region_a_name(errci.fr).unwrap();
+            fr_region_name.highlight_region_name(&mut diag);
+            let outlived_fr_region_name = self.give_region_a_name(errci.outlived_fr).unwrap();
+            outlived_fr_region_name.highlight_region_name(&mut diag);
 
-                diag.span_label(
-                    *span,
-                    format!(
-                        "{}requires that `{}` must outlive `{}`",
-                        category.description(),
-                        fr_region_name,
-                        outlived_fr_region_name,
-                    ),
-                );
-            }
-            _ => {}
+            diag.span_label(
+                *span,
+                format!(
+                    "{}requires that `{}` must outlive `{}`",
+                    category.description(),
+                    fr_region_name,
+                    outlived_fr_region_name,
+                ),
+            );
         }
 
         diag
@@ -1013,7 +1009,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             return;
         };
         let mut visitor = ReturnsVisitor::default();
-        visitor.visit_body(&self.infcx.tcx.hir_body(body_id));
+        visitor.visit_body(self.infcx.tcx.hir_body(body_id));
         if visitor.returns.is_empty() {
             return;
         }
@@ -1496,7 +1492,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         let clauses = tcx.clauses_of(method_def_id).instantiate(tcx, args);
 
-        let ocx = ObligationCtxt::new(&self.infcx);
+        let ocx = ObligationCtxt::new(self.infcx);
         ocx.register_obligations(clauses.iter().map(|(clause, span)| {
             trace!(?clause);
             Obligation::misc(
