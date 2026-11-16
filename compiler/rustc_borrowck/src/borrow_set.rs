@@ -474,6 +474,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
 
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         } else if let &mir::Rvalue::Reborrow(target, mutability, source_place) = rvalue {
+            if source_place.ignore_borrow(self.tcx, self.body, &self.locals_state_at_exit) {
+                debug!("ignoring_reborrow of {:?}", source_place);
+                return;
+            }
+
             let source_ty = source_place.ty(self.body, self.tcx).ty;
             let &ty::Adt(source_adt, source_args) = source_ty.kind() else { unreachable!() };
             let &ty::Adt(target_adt, target_args) = target.kind() else { unreachable!() };
