@@ -15,9 +15,8 @@ fn main() {
     }
     match Some(false) {
         Some(_),
-        //~^ ERROR unexpected `,` in pattern
-        //~| HELP try adding parentheses to match on a tuple
-        //~| HELP or a vertical bar to match on alternative
+        //~^ ERROR unexpected `,` in pattern, missing arm?
+        //~| HELP try adding an arm
     }
     match Some(false) {
         Some(_),
@@ -26,6 +25,7 @@ fn main() {
         //~| HELP or a vertical bar to match on alternative
         _ => {}
     }
+
     match Some(false) {
         Some(_) if true
         //~^ ERROR `match` arm with no body

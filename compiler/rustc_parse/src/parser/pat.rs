@@ -73,6 +73,7 @@ pub enum RecoverColon {
 pub enum CommaRecoveryMode {
     LikelyTuple,
     EitherTupleOrPipe,
+    MatchArm,
 }
 
 /// The result of `eat_or_separator`. We want to distinguish which case we are in to avoid

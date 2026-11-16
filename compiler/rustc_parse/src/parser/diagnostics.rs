@@ -2891,6 +2891,20 @@ impl<'a> Parser<'a> {
         // user (perhaps more accustomed to some other language) forgot the
         // parentheses in what should have been a tuple pattern; return a
         // suggestion-enhanced error here rather than choking on the comma later.
+        if let CommaRecoveryMode::MatchArm = rt
+            && self.look_ahead(1, |token| *token == token::CloseBrace)
+        {
+            let comma_span = self.token.span;
+            let mut err =
+                self.dcx().struct_span_err(comma_span, "unexpected `,` in pattern, missing arm?");
+            err.span_suggestion_verbose(
+                comma_span.shrink_to_lo(),
+                "try adding an arm",
+                " => {}",
+                Applicability::MachineApplicable,
+            );
+            return Err(err);
+        }
         let comma_span = self.token.span;
         self.bump();
         if let Err(err) = self.skip_pat_list() {
@@ -2911,7 +2925,7 @@ impl<'a> Parser<'a> {
             ],
             Applicability::MachineApplicable,
         );
-        if let CommaRecoveryMode::EitherTupleOrPipe = rt {
+        if matches!(rt, CommaRecoveryMode::EitherTupleOrPipe | CommaRecoveryMode::MatchArm) {
             err.span_suggestion_verbose(
                 comma_span,
                 "...or a vertical bar to match on alternatives",

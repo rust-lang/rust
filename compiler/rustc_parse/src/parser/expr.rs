@@ -3570,7 +3570,7 @@ impl<'a> Parser<'a> {
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
+                CommaRecoveryMode::MatchArm,
             )?;
             if let ast::PatKind::Paren(subpat) = &pat.kind
                 && let ast::PatKind::Guard(..) = &subpat.kind
@@ -3603,7 +3603,7 @@ impl<'a> Parser<'a> {
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
+                CommaRecoveryMode::MatchArm,
             )?;
             Ok((pat, self.parse_match_arm_guard()?))
         }

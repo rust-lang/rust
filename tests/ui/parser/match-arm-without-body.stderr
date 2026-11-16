@@ -6,24 +6,19 @@ LL |         Some(_)
 LL |         _ => {}
    |         ^ unexpected token
 
-error: unexpected `,` in pattern
+error: unexpected `,` in pattern, missing arm?
   --> $DIR/match-arm-without-body.rs:17:16
    |
 LL |         Some(_),
    |                ^
    |
-help: try adding parentheses to match on a tuple...
+help: try adding an arm
    |
-LL |         (Some(_),)
-   |         +        +
-help: ...or a vertical bar to match on alternatives
-   |
-LL -         Some(_),
-LL +         Some(_) |
-   |
+LL |         Some(_) => {},
+   |                 +++++
 
 error: unexpected `,` in pattern
-  --> $DIR/match-arm-without-body.rs:23:16
+  --> $DIR/match-arm-without-body.rs:22:16
    |
 LL |         Some(_),
    |                ^
