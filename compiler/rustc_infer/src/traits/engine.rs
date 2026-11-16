@@ -34,6 +34,14 @@ impl<'tcx> ScrubbedTraitError<'tcx> {
     }
 }
 
+impl<'tcx> EngineError<'tcx> for ScrubbedTraitError<'tcx> {
+    fn try_report_errors(_infcx: &InferCtxt<'tcx>, _errors: ThinVec<Self>) {
+        // Since `ScrubbedtraitError`s don't actually care about *what* error occurred,
+        // there's nothing to report. This function is used in the results of fallible
+        // queries to the trait solver such as `impl EngineError for FulfillmentError {}`
+    }
+}
+
 #[derive(Debug, Clone)]
 #[must_use]
 pub enum TraitErrors<E> {
@@ -228,6 +236,10 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     ) -> PredicateObligations<'tcx>;
 }
 
-pub trait FromSolverError<'tcx, E>: Debug + 'tcx {
+pub trait EngineError<'tcx>: Sized + 'tcx {
+    fn try_report_errors(infcx: &InferCtxt<'tcx>, errors: ThinVec<Self>);
+}
+
+pub trait FromSolverError<'tcx, E>: EngineError<'tcx> + Debug {
     fn from_solver_error(infcx: &InferCtxt<'tcx>, error: E) -> Self;
 }

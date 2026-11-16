@@ -12,6 +12,9 @@ use crate::ptr;
     // Since there is only one context that's allowed to access thread locals, it's sound to use the
     // no_threads implementation.
     not(target_os = "vexos"),
+    // Trusty is "target_has_threads" because it needs atomics for shared-memory IPC, but processes
+    // can't spawn threads.
+    not(target_os = "trusty"),
 ))]
 compile_error!("Using no_threads implementation on a target with threads");
 

@@ -15,6 +15,7 @@ fn forget_at_home(_1: String) -> () {
     }
 
     bb0: {
+        _0 = const ();
         return;
     }
 }

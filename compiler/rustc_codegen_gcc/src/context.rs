@@ -97,11 +97,11 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Cache of the anonymous struct types.
     pub struct_types: RefCell<FxHashMap<StructTypeKey<'gcc>, Type<'gcc>>>,
 
-    /// Cache of the array types used for runs of constant bytes, keyed by element type and count.
+    /// Cache of the array types used for runs of constant bytes, keyed by length.
     ///
     /// libgccjit mints a fresh type on every `new_array_type`, and struct types are keyed on their
     /// field types, so without this two equal byte runs would yield two distinct anonymous structs.
-    pub byte_array_types: RefCell<FxHashMap<(Type<'gcc>, u64), Type<'gcc>>>,
+    pub byte_array_types: RefCell<FxHashMap<usize, Type<'gcc>>>,
 
     /// Cache of the return types of the pairs returned in two registers, keyed by the types of the
     /// two scalars.
@@ -126,8 +126,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Local holding the return value of the defined functions returning it in memory.
     pub functions_with_indirect_return: RefCell<FxHashMap<Function<'gcc>, LValue<'gcc>>>,
 
-    /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
+    /// Cache of emitted const globals (value -> global and its alignment)
+    pub const_globals: RefCell<FxHashMap<RValue<'gcc>, (RValue<'gcc>, Align)>>,
 
     /// Map from the address of a global variable (rvalue) to the global variable itself (lvalue).
     /// FIXME(antoyo): remove when the rustc API is fixed.
@@ -264,8 +264,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             int128_align: tcx
                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.i128))
                 .expect("Can't get the layout of `i128`")
-                .align
-                .abi,
+                .align,
             const_cache: Default::default(),
             codegen_unit,
             context,
@@ -507,7 +506,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     tcx,
                     self.typing_env(),
                     def_id,
-                    ty::List::empty(),
+                    ty::GenericArgs::empty(),
                     DUMMY_SP,
                 );
 

@@ -1,6 +1,7 @@
 #![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
 use crate::byte_str::ByteStr;
 use crate::ffi::OsStr;
+use crate::macros::rustdoc_skip_body;
 use crate::path::Path;
 #[cfg(not(doc))]
 use crate::sys::c::{AF_UNIX, SOCKADDR, SOCKADDR_UN};
@@ -127,12 +128,15 @@ impl SocketAddr {
     ///
     /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
     /// ```
+    #[rustdoc_skip_body]
     pub fn from_pathname<P>(path: P) -> io::Result<SocketAddr>
     where
         P: AsRef<Path>,
     {
         sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len: len as _ })
     }
+
+    #[rustdoc_skip_body]
     fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - SUN_PATH_OFFSET;
         let path = unsafe { mem::transmute::<&[i8], &[u8]>(&self.addr.sun_path) };

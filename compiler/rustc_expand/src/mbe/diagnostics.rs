@@ -408,18 +408,22 @@ pub(super) fn emit_frag_parse_err(
             Err(err) => err.cancel(),
             Ok(_) => {
                 e.note(
-                    "the macro call doesn't expand to an expression, but it can expand to a statement",
+                    "the macro call doesn't expand to an expression, but it can expand to a \
+                     statement",
                 );
 
-                if parser.token == token::Semi {
-                    if let Ok(snippet) = parser.psess.source_map().span_to_snippet(site_span) {
-                        e.span_suggestion_verbose(
-                            site_span,
-                            "surround the macro invocation with `{}` to interpret the expansion as a statement",
-                            format!("{{ {snippet}; }}"),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                if parser.token == token::Semi
+                    || matches!(parser.token.kind, token::TokenKind::OpenInvisible(_))
+                {
+                    e.multipart_suggestion(
+                        "invoke the macro in a new block with a single statement to interpret the \
+                         expansion as a statement",
+                        vec![
+                            (site_span.shrink_to_lo(), "{ ".to_string()),
+                            (site_span.shrink_to_hi(), "; }".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
                 } else {
                     e.span_suggestion_verbose(
                         site_span.shrink_to_hi(),
@@ -430,8 +434,8 @@ pub(super) fn emit_frag_parse_err(
                 }
             }
         },
-        _ => annotate_err_with_kind(&mut e, kind, site_span),
-    };
+        _ => {}
+    }
 
     if parser.token.kind == token::Dollar {
         let dollar_span = parser.token.span;
@@ -498,18 +502,6 @@ pub(super) fn emit_frag_parse_err(
         }
     }
     e.emit_err()
-}
-
-pub(crate) fn annotate_err_with_kind(err: &mut Diag<'_>, kind: AstFragmentKind, span: Span) {
-    match kind {
-        AstFragmentKind::Ty => {
-            err.span_label(span, "this macro call doesn't expand to a type");
-        }
-        AstFragmentKind::Pat => {
-            err.span_label(span, "this macro call doesn't expand to a pattern");
-        }
-        _ => {}
-    };
 }
 
 #[derive(Subdiagnostic)]

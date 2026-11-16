@@ -3,7 +3,6 @@
 //@[edition2018] edition:2018
 //@ proc-macro: test-macros.rs
 //@ proc-macro: derive-helper-shadowing.rs
-//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate test_macros;

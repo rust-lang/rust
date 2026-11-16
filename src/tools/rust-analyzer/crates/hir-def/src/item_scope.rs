@@ -6,19 +6,19 @@ use std::{fmt, sync::LazyLock};
 use base_db::{Crate, SourceDatabase};
 use either::Either;
 use hir_expand::{AstId, MacroCallId, attrs::AttrId, name::Name};
-use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::Edition;
-use stdx::{format_to, impl_from};
+use stdx::{format_to, impl_from, thin_map::Entry};
 use syntax::ast;
 use thin_vec::ThinVec;
 
 use crate::{
     AdtId, BuiltinDeriveImplId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap,
-    HasModule, ImplId, Lookup, MacroCallStyles, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
+    HasModule, ImplId, Lookup, MacroCallStyles, MacroId, ModuleDefId, ModuleId, ThinFxHashMap,
+    ThinFxHashSet, TraitId, UseId,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::Visibility,
 };
@@ -126,10 +126,10 @@ pub struct ItemScope {
     /// Defs visible in this scope. This includes `declarations`, but also
     /// imports. The imports belong to this module and can be resolved by using them on
     /// the `use_imports_*` fields.
-    types: FxIndexMap<Name, TypesItem>,
-    values: FxIndexMap<Name, ValuesItem>,
-    macros: FxIndexMap<Name, MacrosItem>,
-    unresolved: FxHashSet<Name>,
+    types: ThinFxHashMap<Name, TypesItem>,
+    values: ThinFxHashMap<Name, ValuesItem>,
+    macros: ThinFxHashMap<Name, MacrosItem>,
+    unresolved: ThinFxHashSet<Name>,
 
     /// The defs declared in this scope. Each def has a single scope where it is
     /// declared.
@@ -143,9 +143,9 @@ pub struct ItemScope {
     unnamed_trait_imports: ThinVec<(TraitId, Item<()>)>,
 
     // the resolutions of the imports of this scope
-    use_imports_types: FxHashMap<ImportOrExternCrate, ImportOrDef>,
-    use_imports_values: FxHashMap<ImportOrGlob, ImportOrDef>,
-    use_imports_macros: FxHashMap<ImportOrExternCrate, ImportOrDef>,
+    use_imports_types: ThinFxHashMap<ImportOrExternCrate, ImportOrDef>,
+    use_imports_values: ThinFxHashMap<ImportOrGlob, ImportOrDef>,
+    use_imports_macros: ThinFxHashMap<ImportOrExternCrate, ImportOrDef>,
 
     use_decls: ThinVec<UseId>,
     extern_crate_decls: ThinVec<ExternCrateId>,
@@ -161,14 +161,14 @@ pub struct ItemScope {
     /// Module scoped macros will be inserted into `items` instead of here.
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
-    legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 1]>>,
+    legacy_macros: ThinFxHashMap<Name, SmallVec<[MacroId; 1]>>,
     /// The attribute macro invocations in this scope.
-    attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
+    attr_macros: ThinFxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The macro invocations in this scope.
-    macro_invocations: FxHashMap<AstId<ast::MacroCall>, MacroCallId>,
+    macro_invocations: ThinFxHashMap<AstId<ast::MacroCall>, MacroCallId>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
-    derive_macros: FxHashMap<AstId<ast::Adt>, SmallVec<[DeriveMacroInvocation; 1]>>,
+    derive_macros: ThinFxHashMap<AstId<ast::Adt>, SmallVec<[DeriveMacroInvocation; 1]>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -461,9 +461,9 @@ impl ItemScope {
 
     pub(crate) fn remove_from_value_ns(&mut self, name: &Name, def: ModuleDefId) {
         // predicate needed since a different item with the same name may be registered instead,
-        // leading to `shift_remove` removing the wrong item.
+        // leading to `remove` removing the wrong item.
         if self.values.get(name).is_some_and(|entry| entry.def == def) {
-            let _ = self.values.shift_remove(name);
+            let _ = self.values.remove(name);
         }
     }
 

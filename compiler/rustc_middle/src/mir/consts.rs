@@ -11,7 +11,7 @@ use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, AllocRange, ErrorHandled, GlobalAlloc, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
-use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
+use crate::ty::{self, ConstKind, GenericArgs, ScalarInt, Ty, TyCtxt};
 
 ///////////////////////////////////////////////////////////////////////////
 /// Evaluated Constants
@@ -465,7 +465,7 @@ impl<'tcx> Const<'tcx> {
 #[derive(Hash, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub promoted: Option<Promoted>,
 }
 
@@ -493,7 +493,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 
 impl<'tcx> UnevaluatedConst<'tcx> {
     #[inline]
-    pub fn new(def: DefId, args: GenericArgsRef<'tcx>) -> UnevaluatedConst<'tcx> {
+    pub fn new(def: DefId, args: GenericArgs<'tcx>) -> UnevaluatedConst<'tcx> {
         UnevaluatedConst { def, args, promoted: Default::default() }
     }
 

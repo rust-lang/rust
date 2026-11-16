@@ -17,8 +17,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
-        let this = self.eval_context_mut();
-        this.expect_target_feature_for_intrinsic(link_name, "sha")?;
+        let ecx = self.eval_context_mut();
+        ecx.expect_target_feature_for_intrinsic(link_name, "sha")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sha").unwrap();
 
@@ -50,60 +50,60 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match unprefixed_name {
             // Used to implement the _mm_sha256rnds2_epu32 function.
             "256rnds2" => {
-                let [a, b, k] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b, k] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (a, a_len) = this.project_to_simd(a)?;
-                let (b, b_len) = this.project_to_simd(b)?;
-                let (k, k_len) = this.project_to_simd(k)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (a, a_len) = ecx.project_to_simd(a)?;
+                let (b, b_len) = ecx.project_to_simd(b)?;
+                let (k, k_len) = ecx.project_to_simd(k)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);
                 assert_eq!(k_len, 4);
                 assert_eq!(dest_len, 4);
 
-                let a = read(this, &a)?;
-                let b = read(this, &b)?;
-                let k = read(this, &k)?;
+                let a = read(ecx, &a)?;
+                let b = read(ecx, &b)?;
+                let k = read(ecx, &k)?;
 
                 let result = sha256_digest_round_x2(a, b, k);
-                write(this, &dest, result)?;
+                write(ecx, &dest, result)?;
             }
             // Used to implement the _mm_sha256msg1_epu32 function.
             "256msg1" => {
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (a, a_len) = this.project_to_simd(a)?;
-                let (b, b_len) = this.project_to_simd(b)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (a, a_len) = ecx.project_to_simd(a)?;
+                let (b, b_len) = ecx.project_to_simd(b)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);
                 assert_eq!(dest_len, 4);
 
-                let a = read(this, &a)?;
-                let b = read(this, &b)?;
+                let a = read(ecx, &a)?;
+                let b = read(ecx, &b)?;
 
                 let result = sha256msg1(a, b);
-                write(this, &dest, result)?;
+                write(ecx, &dest, result)?;
             }
             // Used to implement the _mm_sha256msg2_epu32 function.
             "256msg2" => {
-                let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                let [a, b] = ecx.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
-                let (a, a_len) = this.project_to_simd(a)?;
-                let (b, b_len) = this.project_to_simd(b)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
+                let (a, a_len) = ecx.project_to_simd(a)?;
+                let (b, b_len) = ecx.project_to_simd(b)?;
+                let (dest, dest_len) = ecx.project_to_simd(dest)?;
 
                 assert_eq!(a_len, 4);
                 assert_eq!(b_len, 4);
                 assert_eq!(dest_len, 4);
 
-                let a = read(this, &a)?;
-                let b = read(this, &b)?;
+                let a = read(ecx, &a)?;
+                let b = read(ecx, &b)?;
 
                 let result = sha256msg2(a, b);
-                write(this, &dest, result)?;
+                write(ecx, &dest, result)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

@@ -4,7 +4,7 @@ const EXPECTED = [
     {
         'query': 'Subscriber',
         'others': [
-            { 'path': 'foo', 'name': 'Subscriber' },
+            { 'path': 'foo::fmt', 'name': 'Subscriber' },
         ],
     },
     {

@@ -19,12 +19,12 @@ use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 pub(crate) fn expand(
     ecx: &mut ExtCtxt<'_>,
-    _span: Span,
+    span: Span,
     meta_item: &ast::MetaItem,
     annotatable: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
-    warn_on_duplicate_attribute(ecx, &annotatable, sym::cfg_eval);
+    warn_on_duplicate_attribute(ecx, &annotatable, span, sym::cfg_eval);
     vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable, ecx.current_expansion.lint_node_id)]
 }
 
@@ -100,10 +100,9 @@ impl CfgEval<'_> {
         let orig_tokens = annotatable.to_tokens();
 
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
-        // to the captured `AttrTokenStream` (specifically, we capture
-        // `AttrTokenTree::AttrsTarget` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
+        // for all occurrences of `#[cfg]` and `#[cfg_attr]`.
         //
-        // After that we have our re-parsed `AttrTokenStream`, recursively configuring
+        // After that we have our re-parsed AST nodes, recursively configuring
         // our attribute target will correctly configure the tokens as well.
         let mut parser = Parser::new(&self.0.sess.psess, orig_tokens, None);
         parser.capture_cfg = true;

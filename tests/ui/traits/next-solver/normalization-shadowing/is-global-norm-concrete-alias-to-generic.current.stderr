@@ -13,6 +13,10 @@ LL |     x
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
    = note: the associated type `<(*const T,) as Id>::This` is defined as `(*const T,)` in the implementation, but the where-bound `(*const T,)` shadows this definition
            see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information
+help: use a trailing comma to create a tuple with one element
+   |
+LL |     (x,)
+   |     + ++
 
 error: aborting due to 1 previous error
 

@@ -15,7 +15,7 @@ unsafe extern "C" {
     // PIE-NOT: dso_local
     // DIRECT-SAME: dso_local
     // INDIRECT-NOT: dso_local
-    // CHECK-SAME: global i32
+    // CHECK-SAME: global [4 x i8]
     safe static VAR: i32;
 
     // When "linkage" is used, we generate an indirection global.

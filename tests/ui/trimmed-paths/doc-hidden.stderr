@@ -31,7 +31,7 @@ LL | |     ) = 3u32;
    | |_____|
    |       expected due to this
    |
-   = note: expected tuple `(doc_hidden_helper::ActuallyPub, doc_hidden_helper::DocHidden, doc_hidden_helper::pub_mod::ActuallyPubInPubMod, doc_hidden_helper::pub_mod::DocHiddenInPubMod, doc_hidden_helper::hidden_mod::ActuallyPubInHiddenMod, doc_hidden_helper::hidden_mod::DocHiddenInHiddenMod)`
+   = note: expected tuple `(helper::ActuallyPub, helper::DocHidden, helper::pub_mod::ActuallyPubInPubMod, helper::pub_mod::DocHiddenInPubMod, helper::hidden_mod::ActuallyPubInHiddenMod, helper::hidden_mod::DocHiddenInHiddenMod)`
                found type `u32`
 
 error: aborting due to 2 previous errors

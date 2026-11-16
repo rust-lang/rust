@@ -30,14 +30,14 @@ case $1 in
         merge=sync-from-rust-$today
 
         pushd $2
-        git checkout master
+        git checkout main
         git pull
         popd
 
         library/portable-simd/git-subtree.sh push -P library/portable-simd $2 $upstream
 
         pushd $2
-        git checkout -B $merge origin/master
+        git checkout -B $merge origin/main
         git merge $upstream
         popd
         echo "Branch \`$merge\` created in \`$2\`. You may need to resolve merge conflicts."
@@ -47,6 +47,6 @@ case $1 in
 
         git checkout -B $branch
         echo "Creating branch \`$branch\`... You may need to resolve merge conflicts."
-        library/portable-simd/git-subtree.sh pull -P library/portable-simd $2 origin/master
+        library/portable-simd/git-subtree.sh pull -P library/portable-simd $2 origin/main
         ;;
 esac

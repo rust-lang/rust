@@ -1,5 +1,4 @@
 #![feature(rustc_attrs)]
-#![feature(ptr_alignment_type)]
 
 extern "Rust" {
     #[rustc_std_internal_symbol]
@@ -9,6 +8,6 @@ extern "Rust" {
 fn main() {
     let bytes = isize::MAX as usize + 1;
     unsafe {
-        __rust_alloc(bytes, 1usize.try_into().unwrap()); //~ERROR: larger than half the address space
+        __rust_alloc(bytes, core::mem::Alignment::MIN); //~ERROR: larger than half the address space
     }
 }

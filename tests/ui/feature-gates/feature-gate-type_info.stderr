@@ -1,0 +1,9 @@
+error[E0433]: cannot find module or crate `reflection_placeholder` in this scope
+  --> $DIR/feature-gate-type_info.rs:1:3
+   |
+LL | #[reflection_placeholder::a]
+   |   ^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `reflection_placeholder`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

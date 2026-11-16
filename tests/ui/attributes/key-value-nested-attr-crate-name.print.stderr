@@ -1,0 +1,8 @@
+error: this attribute is not allowed in this context
+  --> $DIR/key-value-nested-attr-crate-name.rs:17:17
+   |
+LL | #![crate_name = #[replace::with("alias")] "name"]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

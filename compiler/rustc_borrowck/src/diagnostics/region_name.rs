@@ -6,7 +6,7 @@ use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty, Unnormalized};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgs, RegionVid, Ty, Unnormalized};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, span_bug, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
@@ -669,7 +669,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         _ => {
                             if let Some(last_segment) = path.segments.last()
                                 && let Some(highlight) = self.match_adt_and_segment(
-                                    args,
+                                    *args,
                                     needle_fr,
                                     last_segment,
                                     search_stack,
@@ -713,7 +713,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// types+hir to search through).
     fn match_adt_and_segment<'hir>(
         &self,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         needle_fr: RegionVid,
         last_segment: &'hir hir::PathSegment<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
@@ -736,7 +736,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// `search_stack` the types+hir to search through.
     fn try_match_adt_and_generic_args<'hir>(
         &self,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         needle_fr: RegionVid,
         hir_args: &'hir hir::GenericArgs<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,

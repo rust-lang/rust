@@ -12,6 +12,7 @@ yields ()
     }
 
     bb1: {
+        _0 = const ();
         return;
     }
 }

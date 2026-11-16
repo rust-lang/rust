@@ -27,6 +27,7 @@ LL |     b.a::<'_, T>();
 note: method defined here, with 0 generic parameters
   --> $DIR/late-bound-lifetime-parameters-60622.rs:7:8
    |
+LL | impl Borked {
 LL |     fn a(&self) {}
    |        ^
 

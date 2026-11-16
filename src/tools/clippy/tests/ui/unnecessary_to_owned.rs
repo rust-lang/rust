@@ -4,10 +4,12 @@
     clippy::needless_borrow,
     clippy::needless_borrows_for_generic_args,
     clippy::owned_cow,
-    clippy::ptr_arg
+    clippy::ptr_arg,
+    clippy::useless_vec
 )]
 
 use std::borrow::Cow;
+use std::collections::{HashSet, VecDeque};
 use std::ffi::{CStr, CString, OsStr, OsString};
 use std::ops::Deref;
 
@@ -244,6 +246,8 @@ fn main() {
     }
     let _ref_str: &str = &String::from_utf8(arg_from_macro!()).unwrap();
     let _ref_str: &str = string_from_utf8_from_macro!();
+
+    vec_contains_cloned();
 }
 
 fn require_c_str(_: &CStr) {}
@@ -675,5 +679,23 @@ fn issue16351() {
 
     let dot = ".";
     take(format!("ouch{dot}").to_string());
+    //~^ unnecessary_to_owned
+}
+
+fn vec_contains_cloned() {
+    let _ = ["X0".to_string()].contains(&"X1".to_string());
+    //~^ unnecessary_to_owned
+
+    let _ = vec!["X0".to_string(), "X1".to_string()].contains(&"X2".to_string());
+    //~^ unnecessary_to_owned
+
+    let _ = VecDeque::<String>::new().contains(&"X".to_string());
+    //~^ unnecessary_to_owned
+
+    // don't lint, key is originally a number, not a ``&str``
+    let _ = Vec::<String>::new().contains(&1.to_string());
+
+    // Beware of type inference issues:
+    let _ = Vec::new().contains(&"str".to_string());
     //~^ unnecessary_to_owned
 }

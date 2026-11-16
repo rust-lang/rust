@@ -1,5 +1,6 @@
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, msg, struct_span_code_err};
@@ -729,7 +730,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             let variant_inhabited = adt
                 .variant(*variant_index)
                 .inhabited_predicate(self.tcx)
-                .instantiate(self.tcx, args);
+                .instantiate(self.tcx, *args);
             variant_inhabited.apply(self.tcx, cx.typing_env, cx.module)
                 && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env)
         } else {
@@ -982,6 +983,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
         inaccessible_constant: None,
         pattern_let_binding: None,
         suggest_remove: None,
+        non_exhaustive_attr: None,
     };
     let mut covered_by_many_n_more_count = None;
     match explanation.covered_by.as_slice() {
@@ -1031,6 +1033,16 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.covered_by_many = Some(multispan);
         }
     }
+
+    if let Constructor::Wildcard = pat.ctor()
+        && let ty::Adt(adt, _) = pat.ty().peel_refs().kind()
+        && adt.is_enum()
+        && let Some(did) = adt.did().as_local()
+        && let Some(span) = find_attr!(cx.tcx, did, NonExhaustive(span) => span)
+    {
+        lint.non_exhaustive_attr = Some(*span);
+    }
+
     cx.tcx.emit_node_span_lint(
         UNREACHABLE_PATTERNS,
         hir_id,
@@ -1408,7 +1420,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             let only_body = &thir[only.body];
             let comma = if matches!(only_body.kind, ExprKind::Block { .. })
-                && only.span.eq_ctxt(only_body.span)
+                && only.span.ctxt() == only_body.span.ctxt()
                 && is_multiline
             {
                 ""
@@ -1423,10 +1435,10 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         [.., prev, last] => {
             let prev = &thir[*prev];
             let last = &thir[*last];
-            if prev.span.eq_ctxt(last.span) {
+            if prev.span.ctxt() == last.span.ctxt() {
                 let last_body = &thir[last.body];
                 let comma = if matches!(last_body.kind, ExprKind::Block { .. })
-                    && last.span.eq_ctxt(last_body.span)
+                    && last.span.ctxt() == last_body.span.ctxt()
                 {
                     ""
                 } else {

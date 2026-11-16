@@ -51,6 +51,7 @@ LL | /// bar [BarA] bar
    |          ^^^^ no item named `BarA` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[BarA]: https://...`
 
 warning: unresolved link to `BarB`
   --> $DIR/warning.rs:27:9
@@ -59,6 +60,7 @@ LL |  * bar [BarB] bar
    |         ^^^^ no item named `BarB` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[BarB]: https://...`
 
 warning: unresolved link to `BarC`
   --> $DIR/warning.rs:34:6
@@ -67,6 +69,7 @@ LL | bar [BarC] bar
    |      ^^^^ no item named `BarC` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[BarC]: https://...`
 
 warning: unresolved link to `BarD`
   --> $DIR/warning.rs:45:20
@@ -75,6 +78,7 @@ LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
    |                    ^^^^ no item named `BarD` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[BarD]: https://...`
 
 warning: unresolved link to `BarF`
   --> $DIR/warning.rs:54:15
@@ -83,6 +87,7 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
    |               ^^^^ no item named `BarF` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[BarF]: https://...`
    = note: this warning originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: unresolved link to `error`
@@ -92,6 +97,7 @@ LL |  * time to introduce a link [error]*/
    |                              ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
 
 warning: unresolved link to `error`
   --> $DIR/warning.rs:64:30
@@ -100,6 +106,7 @@ LL |  * time to introduce a link [error]
    |                              ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
 
 warning: unresolved link to `error`
   --> $DIR/warning.rs:68:23
@@ -108,6 +115,7 @@ LL | #[doc = "single line [error]"]
    |                       ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
 
 warning: unresolved link to `error`
   --> $DIR/warning.rs:71:41
@@ -116,6 +124,7 @@ LL | #[doc = "single line with \"escaping\" [error]"]
    |                                         ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
 
 warning: unresolved link to `error`
   --> $DIR/warning.rs:76:6
@@ -124,6 +133,7 @@ LL | /// [error]
    |      ^^^^^ no item named `error` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error]: https://...`
 
 warning: unresolved link to `error1`
   --> $DIR/warning.rs:81:11
@@ -132,6 +142,7 @@ LL | /// docs [error1]
    |           ^^^^^^ no item named `error1` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error1]: https://...`
 
 warning: unresolved link to `error2`
   --> $DIR/warning.rs:83:11
@@ -140,6 +151,7 @@ LL | /// docs [error2]
    |           ^^^^^^ no item named `error2` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: if you intended to link to external documentation, add a link reference definition: `[error2]: https://...`
 
 warning: 19 warnings emitted
 

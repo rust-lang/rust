@@ -106,19 +106,19 @@ pub(crate) unsafe fn codegen(
     }
 }
 
-fn create_wrapper_function(
+fn create_wrapper_function<'ll>(
     tcx: TyCtxt<'_>,
-    cx: &SimpleCx<'_>,
+    cx: &SimpleCx<'ll>,
     from_name: &str,
     to_name: Option<&str>,
-    args: &[&Type],
-    output: Option<&Type>,
+    args: &[Type<'ll>],
+    output: Option<Type<'ll>>,
     no_return: bool,
     attrs: &CodegenFnAttrs,
 ) {
     let ty = cx.type_func(args, output.unwrap_or_else(|| cx.type_void()));
     let llfn = declare_simple_fn(
-        &cx,
+        cx,
         from_name,
         llvm::CallConv::CCallConv,
         llvm::UnnamedAddr::Global,
@@ -149,11 +149,11 @@ fn create_wrapper_function(
     }
 
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
-    let mut bx = SBuilder::build(&cx, llbb);
+    let mut bx = SBuilder::build(cx, llbb);
 
     if let Some(to_name) = to_name {
         let callee = declare_simple_fn(
-            &cx,
+            cx,
             to_name,
             llvm::CallConv::CCallConv,
             llvm::UnnamedAddr::Global,

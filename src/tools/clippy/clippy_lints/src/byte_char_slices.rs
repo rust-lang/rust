@@ -93,7 +93,7 @@ fn is_byte_char_slices<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> 
             .try_fold(Vec::new(), |mut acc, member| {
                 if let ExprKind::Lit(lit) = member.kind
                     && let LitKind::Byte(_) = lit.node
-                    && expr.span.eq_ctxt(member.span)
+                    && expr.span.ctxt() == member.span.ctxt()
                 {
                     acc.push(lit.span);
                     return Some(acc);

@@ -5,9 +5,7 @@ error: fn_abi_of(i8) = FnAbi {
                        ty: i8,
                        layout: Layout {
                            size: Size(1 bytes),
-                           align: AbiAlign {
-                               abi: Align(1 bytes),
-                           },
+                           align: Align(1 bytes),
                            backend_repr: Scalar(
                                i8 is ..,
                            ),
@@ -38,9 +36,7 @@ error: fn_abi_of(i8) = FnAbi {
                    ty: i8,
                    layout: Layout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
+                       align: Align(1 bytes),
                        backend_repr: Scalar(
                            i8 is ..,
                        ),
@@ -84,9 +80,7 @@ error: fn_abi_of(u8) = FnAbi {
                        ty: u8,
                        layout: Layout {
                            size: Size(1 bytes),
-                           align: AbiAlign {
-                               abi: Align(1 bytes),
-                           },
+                           align: Align(1 bytes),
                            backend_repr: Scalar(
                                u8 is ..,
                            ),
@@ -117,9 +111,7 @@ error: fn_abi_of(u8) = FnAbi {
                    ty: u8,
                    layout: Layout {
                        size: Size(1 bytes),
-                       align: AbiAlign {
-                           abi: Align(1 bytes),
-                       },
+                       align: Align(1 bytes),
                        backend_repr: Scalar(
                            u8 is ..,
                        ),
@@ -163,9 +155,7 @@ error: fn_abi_of(i16) = FnAbi {
                        ty: i16,
                        layout: Layout {
                            size: Size(2 bytes),
-                           align: AbiAlign {
-                               abi: Align(2 bytes),
-                           },
+                           align: Align(2 bytes),
                            backend_repr: Scalar(
                                i16 is ..,
                            ),
@@ -196,9 +186,7 @@ error: fn_abi_of(i16) = FnAbi {
                    ty: i16,
                    layout: Layout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
+                       align: Align(2 bytes),
                        backend_repr: Scalar(
                            i16 is ..,
                        ),
@@ -242,9 +230,7 @@ error: fn_abi_of(u16) = FnAbi {
                        ty: u16,
                        layout: Layout {
                            size: Size(2 bytes),
-                           align: AbiAlign {
-                               abi: Align(2 bytes),
-                           },
+                           align: Align(2 bytes),
                            backend_repr: Scalar(
                                u16 is ..,
                            ),
@@ -275,9 +261,7 @@ error: fn_abi_of(u16) = FnAbi {
                    ty: u16,
                    layout: Layout {
                        size: Size(2 bytes),
-                       align: AbiAlign {
-                           abi: Align(2 bytes),
-                       },
+                       align: Align(2 bytes),
                        backend_repr: Scalar(
                            u16 is ..,
                        ),
@@ -321,9 +305,7 @@ error: fn_abi_of(i32) = FnAbi {
                        ty: i32,
                        layout: Layout {
                            size: Size(4 bytes),
-                           align: AbiAlign {
-                               abi: Align(4 bytes),
-                           },
+                           align: Align(4 bytes),
                            backend_repr: Scalar(
                                i32 is ..,
                            ),
@@ -354,9 +336,7 @@ error: fn_abi_of(i32) = FnAbi {
                    ty: i32,
                    layout: Layout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
+                       align: Align(4 bytes),
                        backend_repr: Scalar(
                            i32 is ..,
                        ),
@@ -400,9 +380,7 @@ error: fn_abi_of(u32) = FnAbi {
                        ty: u32,
                        layout: Layout {
                            size: Size(4 bytes),
-                           align: AbiAlign {
-                               abi: Align(4 bytes),
-                           },
+                           align: Align(4 bytes),
                            backend_repr: Scalar(
                                u32 is ..,
                            ),
@@ -433,9 +411,7 @@ error: fn_abi_of(u32) = FnAbi {
                    ty: u32,
                    layout: Layout {
                        size: Size(4 bytes),
-                       align: AbiAlign {
-                           abi: Align(4 bytes),
-                       },
+                       align: Align(4 bytes),
                        backend_repr: Scalar(
                            u32 is ..,
                        ),

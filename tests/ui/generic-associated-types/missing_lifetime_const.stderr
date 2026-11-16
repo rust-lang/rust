@@ -7,6 +7,7 @@ LL |     let _: <T as Foo>::Assoc<3>;
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/missing_lifetime_const.rs:2:10
    |
+LL | trait Foo {
 LL |     type Assoc<'a, const N: usize>;
    |          ^^^^^ --
 help: add missing lifetime argument

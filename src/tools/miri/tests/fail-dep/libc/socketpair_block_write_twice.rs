@@ -1,7 +1,6 @@
 //@ignore-target: windows # No libc socketpair on Windows
 //@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
-//@require-annotations-for-level: error
 
 use std::thread;
 

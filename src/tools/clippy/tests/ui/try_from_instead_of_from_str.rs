@@ -159,4 +159,28 @@ with_span! {
     }
 }
 
+mod issue17877 {
+    use std::convert::TryFrom;
+
+    struct NotValue;
+    impl TryFrom<&str> for NotValue {
+        //~^ try_from_instead_of_from_str
+        type Error = std::io::Error;
+        fn try_from(some_other_name: &str) -> Result<Self, Self::Error> {
+            let _ = some_other_name;
+            Ok(Self)
+        }
+    }
+
+    struct NotValue2;
+    impl TryFrom<&str> for NotValue2 {
+        //~^ try_from_instead_of_from_str
+        type Error = ();
+        fn try_from(mut __value_value_value__: &str) -> Result<Self, Self::Error> {
+            __value_value_value__ = "something changed";
+            Ok(Self)
+        }
+    }
+}
+
 fn main() {}

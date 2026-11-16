@@ -6,7 +6,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::mir::interpret::{PointerArithmetic, Scalar as ConstScalar};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar as ConstScalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_session::Session;
@@ -166,7 +166,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     ConstScalar::Ptr(ptr, _) => {
                         let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                        let value = self.cx.alloc_to_backend(global_alloc, false, None).unwrap();
+                        let value = self.cx.alloc_to_backend(global_alloc, None).unwrap();
                         inputs.push(value);
                         op_idx.insert(idx, constraints.len());
                         constraints.push("s".to_string());
@@ -332,10 +332,10 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
         let volatile = !options.contains(InlineAsmOptions::PURE);
         let alignstack = !options.contains(InlineAsmOptions::NOSTACK);
-        let output_type = match &output_types[..] {
+        let output_type = match output_types[..] {
             [] => self.type_void(),
             [ty] => ty,
-            tys => self.type_struct(tys, false),
+            ref tys => self.type_struct(tys),
         };
         let dialect = match asm_arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64
@@ -456,14 +456,42 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                 ConstScalar::Ptr(ptr, _) => {
                                     let (prov, offset) = ptr.prov_and_relative_offset();
                                     let global_alloc = self.tcx.global_alloc(prov.alloc_id());
-                                    let llval =
-                                        self.alloc_to_backend(global_alloc, true, None).unwrap();
+
+                                    // These allocations would normally be anonymous, with a name that
+                                    // is unique to the module, but not globally unique. LTO can rename
+                                    // these symbols if there are conflicts.
+                                    //
+                                    // But the name is baked into the global assembly string and
+                                    // cannot be changed there. So, we must guarantee a globally
+                                    // unique name.
+                                    let needs_unique_name = match global_alloc {
+                                        GlobalAlloc::Memory(_) | GlobalAlloc::VTable(..) => true,
+                                        GlobalAlloc::Function { .. } | GlobalAlloc::Static(_) => {
+                                            // Function and static names are already mangled
+                                            // and therefore unique
+                                            false
+                                        }
+                                        GlobalAlloc::TypeId { .. } => {
+                                            bug!("can't pass a type id to assembly")
+                                        }
+                                    };
+
+                                    let llval = self.alloc_to_backend(global_alloc, None).unwrap();
+
+                                    if needs_unique_name {
+                                        // Make sure we don't rename the same llvalue twice.
+                                        let mut cache = self.global_asm_symbols.borrow_mut();
+                                        let name = cache
+                                            .entry(llval)
+                                            .or_insert_with(|| self.generate_global_symbol_name());
+
+                                        llvm::set_value_name(llval, name.as_bytes());
+                                        llvm::set_linkage(llval, llvm::Linkage::InternalLinkage);
+                                    }
 
                                     self.add_compiler_used_global(llval);
-                                    let symbol = llvm::build_string(|s| unsafe {
-                                        llvm::LLVMRustGetMangledName(llval, s);
-                                    })
-                                    .expect("symbol is not valid UTF-8");
+
+                                    let symbol = get_mangled_name(llval);
                                     template_str
                                         .push_str(&escape_symbol_name(self.tcx, &symbol, span));
 
@@ -483,10 +511,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                 .copied()
                                 .unwrap_or_else(|| self.get_static(def_id));
                             self.add_compiler_used_global(llval);
-                            let symbol = llvm::build_string(|s| unsafe {
-                                llvm::LLVMRustGetMangledName(llval, s);
-                            })
-                            .expect("symbol is not valid UTF-8");
+                            let symbol = get_mangled_name(llval);
                             template_str.push_str(&escape_symbol_name(self.tcx, &symbol, span));
                         }
                     }
@@ -526,19 +551,23 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
         let llval = self.get_fn(instance);
-        llvm::build_string(|s| unsafe {
-            llvm::LLVMRustGetMangledName(llval, s);
-        })
-        .expect("symbol is not valid UTF-8")
+        get_mangled_name(llval)
     }
+}
+
+fn get_mangled_name(llval: Value<'_>) -> String {
+    llvm::build_string(|s| unsafe {
+        llvm::LLVMRustGetMangledName(llval, s);
+    })
+    .expect("symbol is not valid UTF-8")
 }
 
 pub(crate) fn inline_asm_call<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
     asm: &str,
     cons: &str,
-    inputs: &[&'ll Value],
-    output: &'ll llvm::Type,
+    inputs: &[Value<'ll>],
+    output: llvm::Type<'ll>,
     labels: &[&'ll llvm::BasicBlock],
     volatile: bool,
     alignstack: bool,
@@ -547,7 +576,7 @@ pub(crate) fn inline_asm_call<'ll>(
     unwind: bool,
     dest: Option<&'ll llvm::BasicBlock>,
     catch_funclet: Option<(&'ll llvm::BasicBlock, Option<&Funclet<'ll>>)>,
-) -> Option<&'ll Value> {
+) -> Option<Value<'ll>> {
     let argtys = inputs
         .iter()
         .map(|v| {
@@ -1027,7 +1056,7 @@ fn modifier_to_llvm(
 
 /// Type to use for outputs that are discarded. It doesn't really matter what
 /// the type is, as long as it is valid for the constraint code.
-fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'ll Type {
+fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> Type<'ll> {
     use InlineAsmRegClass::*;
     match reg {
         AArch64(AArch64InlineAsmRegClass::reg) => cx.type_i32(),
@@ -1141,7 +1170,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
 
 /// Helper function to get the LLVM type for a Scalar. Pointers are returned as
 /// the equivalent integer type.
-fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> &'ll Type {
+fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> Type<'ll> {
     let dl = &cx.tcx.data_layout;
     match scalar.primitive() {
         Primitive::Int(Integer::I8, _) => cx.type_i8(),
@@ -1170,11 +1199,11 @@ fn any_target_feature_enabled(
 /// Fix up an input value to work around LLVM bugs.
 fn llvm_fixup_input<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    mut value: &'ll Value,
+    mut value: Value<'ll>,
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
     instance: Instance<'_>,
-) -> &'ll Value {
+) -> Value<'ll> {
     use InlineAsmRegClass::*;
     let dl = &bx.tcx.data_layout;
     match (reg, layout.backend_repr) {
@@ -1373,11 +1402,11 @@ fn llvm_fixup_input<'ll, 'tcx>(
 /// Fix up an output value to work around LLVM bugs.
 fn llvm_fixup_output<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
-    mut value: &'ll Value,
+    mut value: Value<'ll>,
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
     instance: Instance<'_>,
-) -> &'ll Value {
+) -> Value<'ll> {
     use InlineAsmRegClass::*;
     match (reg, layout.backend_repr) {
         (AArch64(AArch64InlineAsmRegClass::vreg), BackendRepr::Scalar(s)) => {
@@ -1560,7 +1589,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
     instance: Instance<'_>,
-) -> &'ll Type {
+) -> Type<'ll> {
     use InlineAsmRegClass::*;
     match (reg, layout.backend_repr) {
         (AArch64(AArch64InlineAsmRegClass::vreg), BackendRepr::Scalar(s)) => {

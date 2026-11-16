@@ -6,7 +6,7 @@ use hir::FnRetTy;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 use super::UNNECESSARY_LAZY_EVALUATIONS;
 
@@ -106,4 +106,71 @@ pub(super) fn check<'tcx>(
         }
     }
     false
+}
+
+/// lint use of `_.map_or_else(|| value, f)` for `Option`s and `Result`s that can be
+/// replaced with `_.map_or(value, f)`
+pub(super) fn check_map_or_else<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'_>,
+    recv: &'tcx hir::Expr<'_>,
+    def_arg: &'tcx hir::Expr<'_>,
+    map_arg: &'tcx hir::Expr<'_>,
+    call_span: Span,
+) {
+    let msg = match cx.typeck_results().expr_ty(recv).peel_refs().opt_diag_name(cx) {
+        Some(sym::Option) => "unnecessary closure used to substitute value for `Option::None`",
+        Some(sym::Result) => "unnecessary closure used to substitute value for `Result::Err`",
+        _ => return,
+    };
+
+    if let hir::ExprKind::Closure(&hir::Closure {
+        body,
+        fn_decl,
+        kind: hir::ClosureKind::Closure,
+        ..
+    }) = def_arg.kind
+        && let body = cx.tcx.hir_body(body)
+        && let body_expr = body.value
+        && !usage::BindingUsageFinder::are_params_used(cx, body)
+        && eager_or_lazy::switch_to_eager_eval(cx, body_expr)
+        && !is_from_proc_macro(cx, expr)
+        && !is_from_proc_macro(cx, map_arg)
+        && !is_from_proc_macro(cx, body_expr)
+    {
+        let mut applicability = if body
+            .params
+            .iter()
+            .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
+            && matches!(
+                fn_decl.output,
+                FnRetTy::DefaultReturn(_)
+                    | FnRetTy::Return(hir::Ty {
+                        kind: hir::TyKind::Infer(()),
+                        ..
+                    })
+            )
+            && fn_decl
+                .inputs
+                .iter()
+                .all(|ty| matches!(ty.kind, hir::TyKind::Infer(())))
+        {
+            Applicability::MachineApplicable
+        } else {
+            Applicability::MaybeIncorrect
+        };
+
+        span_lint_and_then(cx, UNNECESSARY_LAZY_EVALUATIONS, expr.span, msg, |diag| {
+            diag.span_suggestion_verbose(
+                call_span,
+                "use `map_or` instead",
+                format!(
+                    "map_or({}, {})",
+                    snippet_with_applicability(cx, body_expr.span, "..", &mut applicability),
+                    snippet_with_applicability(cx, map_arg.span, "..", &mut applicability),
+                ),
+                applicability,
+            );
+        });
+    }
 }

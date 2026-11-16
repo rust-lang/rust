@@ -98,7 +98,7 @@ cfg_select! {
 
 #[test]
 fn auxv_dump_procfs() {
-    if let Ok(auxvec) = auxv_from_file("/proc/self/auxv") {
+    if let Ok(auxvec) = auxv_from_file(c"/proc/self/auxv") {
         println!("{:?}", auxvec);
     } else {
         println!("reading /proc/self/auxv failed!");
@@ -114,7 +114,7 @@ fn auxv_dump_procfs() {
 ))]
 #[test]
 fn auxv_crate_procfs() {
-    if let Ok(procfs_auxv) = auxv_from_file("/proc/self/auxv") {
+    if let Ok(procfs_auxv) = auxv_from_file(c"/proc/self/auxv") {
         assert_eq!(auxv().unwrap(), procfs_auxv);
     }
 }

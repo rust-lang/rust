@@ -7,6 +7,7 @@ LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-85347.rs:3:10
    |
+LL | trait Foo {
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |          ^^^ --
 help: add missing lifetime argument
@@ -35,6 +36,7 @@ LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-85347.rs:3:10
    |
+LL | trait Foo {
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;
    |          ^^^ --
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`

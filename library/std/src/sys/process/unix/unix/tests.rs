@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // process spawning is not supported in Miri
+
 use crate::os::unix::process::{CommandExt, ExitStatusExt};
 use crate::panic::catch_unwind;
 use crate::process::Command;

@@ -1,4 +1,5 @@
 #![warn(clippy::result_map_or_into_option)]
+#![allow(clippy::unnecessary_lazy_evaluations)]
 
 fn main() {
     let opt: Result<u32, &str> = Ok(1);

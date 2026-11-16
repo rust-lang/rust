@@ -4,7 +4,6 @@
 
 //@ needs-subprocess
 //@ ignore-fuchsia must translate zircon signal to SIGILL, FIXME (#58590)
-//@ ignore-backends: gcc
 
 #![feature(repr_simd)]
 

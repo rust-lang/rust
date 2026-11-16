@@ -31,3 +31,12 @@ impl NoArgsAttributeParser for AlwaysGcaParser {
     const STABILITY: AttributeStability = unstable!(gca_min_const_items);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::AlwaysGca;
 }
+
+pub(crate) struct UncheckedTypeAliasParser;
+impl NoArgsAttributeParser for UncheckedTypeAliasParser {
+    const PATH: &[Symbol] = &[sym::rustc_unchecked_type_alias];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::TyAlias)]);
+    const STABILITY: AttributeStability = unstable!(marked_unchecked_type_aliases);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::UncheckedTypeAlias;
+}

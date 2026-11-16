@@ -9,7 +9,7 @@
 use std::marker::Reborrow;
 
 #[derive(Reborrow)]
-//~^ ERROR implementing `Reborrow` requires that a single lifetime parameter is passed between source and target
+//~^ ERROR implementing `Reborrow` requires at least one lifetime argument in the reborrowed type
 struct S<const X: u32>;
 
 fn main() {

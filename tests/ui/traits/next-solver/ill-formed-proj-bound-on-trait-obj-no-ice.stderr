@@ -1,0 +1,19 @@
+error[E0107]: missing generics for struct `Bar`
+  --> $DIR/ill-formed-proj-bound-on-trait-obj-no-ice.rs:13:6
+   |
+LL | impl Bar {
+   |      ^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/ill-formed-proj-bound-on-trait-obj-no-ice.rs:10:8
+   |
+LL | struct Bar<T: Foo> {
+   |        ^^^ -
+help: add missing generic argument
+   |
+LL | impl<T> Bar<T> {
+   |     +++    +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

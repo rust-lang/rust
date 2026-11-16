@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::macros::rustdoc_skip_body;
 #[cfg(doc)]
 use crate::os::windows::io::{AsHandle, AsSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
@@ -93,6 +94,7 @@ pub trait IntoRawHandle {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawHandle for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_handle(&self) -> RawHandle {
         self.as_inner().as_raw_handle() as RawHandle
     }
@@ -155,6 +157,7 @@ pub(super) fn stdio_handle(raw: RawHandle) -> RawHandle {
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawHandle for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
         unsafe {
             let handle = handle as sys::c::HANDLE;
@@ -168,6 +171,7 @@ impl FromRawHandle for fs::File {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_raw_handle() as *mut _
     }
@@ -237,6 +241,7 @@ pub trait IntoRawSocket {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawSocket for net::TcpStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_socket(&self) -> RawSocket {
         self.as_inner().socket().as_raw_socket()
     }
@@ -244,6 +249,7 @@ impl AsRawSocket for net::TcpStream {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawSocket for net::TcpListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_socket(&self) -> RawSocket {
         self.as_inner().socket().as_raw_socket()
     }
@@ -251,6 +257,7 @@ impl AsRawSocket for net::TcpListener {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawSocket for net::UdpSocket {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_socket(&self) -> RawSocket {
         self.as_inner().socket().as_raw_socket()
     }
@@ -259,6 +266,7 @@ impl AsRawSocket for net::UdpSocket {
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::TcpStream {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
@@ -269,6 +277,7 @@ impl FromRawSocket for net::TcpStream {
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::TcpListener {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
@@ -279,6 +288,7 @@ impl FromRawSocket for net::TcpListener {
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawSocket for net::UdpSocket {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
         unsafe {
             let sock = sys::net::Socket::from_inner(OwnedSocket::from_raw_socket(sock));
@@ -290,6 +300,7 @@ impl FromRawSocket for net::UdpSocket {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawSocket for net::TcpStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_socket(self) -> RawSocket {
         self.into_inner().into_socket().into_inner().into_raw_socket()
     }
@@ -298,6 +309,7 @@ impl IntoRawSocket for net::TcpStream {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawSocket for net::TcpListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_socket(self) -> RawSocket {
         self.into_inner().into_socket().into_inner().into_raw_socket()
     }
@@ -306,6 +318,7 @@ impl IntoRawSocket for net::TcpListener {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawSocket for net::UdpSocket {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_socket(self) -> RawSocket {
         self.into_inner().into_socket().into_inner().into_raw_socket()
     }
@@ -313,6 +326,7 @@ impl IntoRawSocket for net::UdpSocket {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsRawHandle for io::PipeReader {
+    #[rustdoc_skip_body]
     fn as_raw_handle(&self) -> RawHandle {
         self.0.as_raw_handle()
     }
@@ -320,6 +334,7 @@ impl AsRawHandle for io::PipeReader {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeReader {
+    #[rustdoc_skip_body]
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
         unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
     }
@@ -327,6 +342,7 @@ impl FromRawHandle for io::PipeReader {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl IntoRawHandle for io::PipeReader {
+    #[rustdoc_skip_body]
     fn into_raw_handle(self) -> RawHandle {
         self.0.into_raw_handle()
     }
@@ -334,6 +350,7 @@ impl IntoRawHandle for io::PipeReader {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl AsRawHandle for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn as_raw_handle(&self) -> RawHandle {
         self.0.as_raw_handle()
     }
@@ -341,6 +358,7 @@ impl AsRawHandle for io::PipeWriter {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl FromRawHandle for io::PipeWriter {
+    #[rustdoc_skip_body]
     unsafe fn from_raw_handle(raw_handle: RawHandle) -> Self {
         unsafe { Self::from_inner(FromRawHandle::from_raw_handle(raw_handle)) }
     }
@@ -348,6 +366,7 @@ impl FromRawHandle for io::PipeWriter {
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 impl IntoRawHandle for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn into_raw_handle(self) -> RawHandle {
         self.0.into_raw_handle()
     }

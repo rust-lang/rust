@@ -179,7 +179,7 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
 // These come from `core` & `alloc` and only in one flavor: no poisoning.
-#[stable(feature = "exclusive_wrapper", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "exclusive_wrapper", since = "1.101.0")]
 pub use core::sync::SyncView;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;

@@ -2398,7 +2398,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .rebase_onto(
                                     self.tcx,
                                     inherent_method.container_id(self.tcx),
-                                    adt_args,
+                                    *adt_args,
                                 );
                         let fn_sig = self
                             .tcx
@@ -2836,7 +2836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let variant = &def.non_enum_variant();
                     tcx.find_field_index(item_name, variant).map(|index| {
                         let field = &variant.fields[index];
-                        let field_ty = field.ty(tcx, args).skip_norm_wip();
+                        let field_ty = field.ty(tcx, *args).skip_norm_wip();
                         (field, field_ty)
                     })
                 }
@@ -3294,7 +3294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let [field] = &variant.fields.raw[..] else {
                             return None;
                         };
-                        let field_ty = field.ty(tcx, args).skip_norm_wip();
+                        let field_ty = field.ty(tcx, *args).skip_norm_wip();
 
                         // Skip `_`, since that'll just lead to ambiguity.
                         if self.deeply_resolve_ignoring_regions(field_ty).is_ty_var() {
@@ -3329,7 +3329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match &matching_variants[..] {
                     [(_, field, pick)] => {
-                        let self_ty = field.ty(tcx, args).skip_norm_wip();
+                        let self_ty = field.ty(tcx, *args).skip_norm_wip();
                         err.span_note(
                             tcx.def_span(pick.item.def_id),
                             format!("the method `{item_name}` exists on the type `{self_ty}`"),
@@ -3373,7 +3373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Target wrapper types - types that wrap or pretend to wrap another type,
             // perhaps this inner type is meant to be called?
             ty::AdtKind::Struct | ty::AdtKind::Union => {
-                let [first] = ***args else {
+                let [first] = *args.as_slice() else {
                     return;
                 };
                 let ty::GenericArgKind::Type(ty) = first.kind() else {
@@ -3858,7 +3858,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
-            ty::Adt(def, args) => self.tcx.value_path_str_with_args(def.did(), args),
+            ty::Adt(def, args) => self.tcx.value_path_str_with_args(def.did(), *args),
             _ => self.ty_to_string(ty),
         }
     }

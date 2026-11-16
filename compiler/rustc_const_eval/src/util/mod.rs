@@ -79,14 +79,16 @@ pub fn context_spans(tcx: TyCtxt<'_>, span: Span, def_id: DefId) -> Vec<Span> {
             | DefKind::Static { .. },
         )
         | (DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _)
-            if span.eq_ctxt(instance_span) && span.eq_ctxt(parent_span) =>
+            if span.ctxt() == instance_span.ctxt() && span.ctxt() == parent_span.ctxt() =>
         {
             vec![instance_span, parent_span]
         }
-        (_, DefKind::Variant) if span.eq_ctxt(instance_span) && span.eq_ctxt(parent_span) => {
+        (_, DefKind::Variant)
+            if span.ctxt() == instance_span.ctxt() && span.ctxt() == parent_span.ctxt() =>
+        {
             vec![instance_span, parent_span, tcx.def_span(tcx.parent(parent)).shrink_to_lo()]
         }
-        (DefKind::Const | DefKind::Static { .. }, _) if span.eq_ctxt(instance_span) => {
+        (DefKind::Const | DefKind::Static { .. }, _) if span.ctxt() == instance_span.ctxt() => {
             vec![instance_span]
         }
         _ => vec![],

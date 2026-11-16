@@ -486,8 +486,8 @@ impl CStr {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_str_as_ptr", since = "1.32.0")]
-    #[rustc_as_ptr]
-    #[rustc_never_returns_null_ptr]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     pub const fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
     }
@@ -653,7 +653,7 @@ impl CStr {
     /// let cstr = c"Hello, world!";
     /// println!("{}", cstr.display());
     /// ```
-    #[stable(feature = "cstr_display", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "cstr_display", since = "1.101.0")]
     #[must_use = "this does not display the `CStr`; \
                   it returns an object that can be displayed"]
     #[inline]
@@ -874,19 +874,19 @@ impl FusedIterator for Bytes<'_> {}
 ///
 /// [`Display`]: fmt::Display
 /// [`format!`]: ../../../std/macro.format.html
-#[stable(feature = "cstr_display", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cstr_display", since = "1.101.0")]
 pub struct Display<'a> {
     c_str: &'a CStr,
 }
 
-#[stable(feature = "cstr_display", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cstr_display", since = "1.101.0")]
 impl fmt::Debug for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.c_str, f)
     }
 }
 
-#[stable(feature = "cstr_display", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cstr_display", since = "1.101.0")]
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(crate::byte_str::ByteStr::from_bytes(self.c_str.to_bytes()), f)

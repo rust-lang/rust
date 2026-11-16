@@ -195,6 +195,12 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
+#[cfg(not(no_global_oom_handling))]
+use self::spec_extend_with::SpecExtendWith;
+
+#[cfg(not(no_global_oom_handling))]
+mod spec_extend_with;
+
 #[cfg(all(target_arch = "aarch64", target_feature = "sve"))]
 mod sve_retain;
 
@@ -1490,8 +1496,9 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Shrinks the capacity of the vector as much as possible.
     ///
-    /// The behavior of this method depends on the allocator, which may either shrink the vector
-    /// in-place or reallocate. The resulting vector might still have some excess capacity, just as
+    /// When `vec.len() == vec.capacity()` the allocation is unchanged. Otherwise, the behavior of
+    /// this method depends on the allocator, which may either shrink the vector in-place or
+    /// reallocate. The resulting vector might still have some excess capacity, just as
     /// is the case for [`with_capacity`]. See [`Allocator::shrink`] for more details.
     ///
     /// [`with_capacity`]: Vec::with_capacity
@@ -1610,12 +1617,16 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Converts the vector into [`Box<[T]>`][owned slice].
+    /// Converts the vector into a boxed slice.
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
+    /// This conversion is in-place if `vec.len() == vec.capacity()`.
     ///
-    /// [owned slice]: Box
-    /// [`shrink_to_fit`]: Vec::shrink_to_fit
+    /// Before doing the conversion, this method adjusts the vector's allocation as
+    /// needed so that, if a backing allocation is present, the layout of the returned
+    /// slice [*fits*] that allocation. Thus, the vector's former capacity is not needed
+    /// to determine a layout suitable for deallocation.
+    ///
+    /// [*fits*]: crate::alloc::Allocator#memory-fitting
     ///
     /// # Examples
     ///
@@ -1625,7 +1636,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let slice = v.into_boxed_slice();
     /// ```
     ///
-    /// Any excess capacity is removed:
+    /// The vector's spare capacity is not retained:
     ///
     /// ```
     /// let mut vec = Vec::with_capacity(10);
@@ -1649,7 +1660,7 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Converts the Vec into a boxed array. This conversion will discard any spare capacity,
-    /// if there is any, see [`Vec::shrink_to_fit`].
+    /// if there is any, see [`Vec::into_boxed_slice`].
     /// If you merely wish for a reference to an array, use [`as_array`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_array).
     ///
     /// # Errors
@@ -1875,9 +1886,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [didn't allocate]: self#memory-layout
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
     #[inline]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     pub const fn as_ptr(&self) -> *const T {
         // We shadow the slice method of the same name to avoid going through
         // `deref`, which creates an intermediate reference.
@@ -1960,8 +1971,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [didn't allocate]: self#memory-layout
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
-    #[rustc_never_returns_null_ptr]
-    #[rustc_as_ptr]
+    #[lint::as_ptr]
+    #[lint::never_returns_null_ptr]
     #[inline]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         // We shadow the slice method of the same name to avoid going through
@@ -2028,7 +2039,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [didn't allocate]: self#memory-layout
     #[unstable(feature = "vec_as_non_null", issue = "157843")]
     #[rustc_const_unstable(feature = "vec_as_non_null", issue = "157843")]
-    #[rustc_as_ptr]
+    #[lint::as_ptr]
     #[inline]
     pub const fn as_non_null(&mut self) -> NonNull<T> {
         self.buf.non_null()
@@ -2346,7 +2357,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v.try_remove(0), Some(1));
     /// assert_eq!(v.try_remove(2), None);
     /// ```
-    #[stable(feature = "vec_try_remove", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "vec_try_remove", since = "1.101.0")]
     #[rustc_confusables("delete", "take", "remove")]
     pub fn try_remove(&mut self, index: usize) -> Option<T> {
         let len = self.len();
@@ -2531,6 +2542,92 @@ impl<T, A: Allocator> Vec<T, A> {
         // SAFETY: `write` is always less than or equal to original_len.
         unsafe { g.v.set_len(g.write) };
         mem::forget(g);
+    }
+
+    /// Retains only the elements specified by the predicate, passing a mutable reference to it.
+    ///
+    /// In other words, remove all elements `e` such that `f(&mut e)` returns `false`.
+    /// This method does not maintain the relative order of the retained elements. If order matters,
+    /// consider using [`Vec::retain_mut`] instead. However, if no items are removed, then all items
+    /// are left in their original positions.
+    ///
+    /// Generally, this method is faster than [`Vec::retain_mut`] due to its weak ordering guarantees.
+    ///
+    /// [`Vec::retain_mut`]: crate::vec::Vec::retain_mut
+    ///
+    /// Time complexity: *O*(*n*)
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_unstable)]
+    /// let mut vec = vec![4, 3, 2, 1];
+    /// vec.retain_unstable(|x| if *x <= 3 {
+    ///     *x += 1;
+    ///     true
+    /// } else {
+    ///     false
+    /// });
+    ///
+    /// vec.sort(); // it might be in any order, so normalize before asserting
+    /// assert_eq!(vec, [2, 3, 4]);
+    /// ```
+    #[unstable(feature = "retain_unstable", issue = "164152")]
+    pub fn retain_unstable<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        // Currently this does the following:
+        // 1) Search backward until you find an element you want to remove
+        // 2) Swap this element with an element that was kept in the back
+        //    (or if there are no remaining elements, simply truncate the vec)
+        // 3) Repeat from 1) until there's no element to iterate through
+
+        let original_len = self.len();
+
+        if original_len == 0 {
+            // Empty case: explicit return allows better optimization, vs letting compiler infer it
+            return;
+        }
+
+        let mut read_back = original_len;
+        let mut hole = loop {
+            if read_back == 0 {
+                // All elements are kept
+                return;
+            }
+            // SAFETY: read_back - 1 < original_len
+            let cur = unsafe { &mut *self.as_mut_ptr().add(read_back - 1) };
+            if hint::unlikely(!f(cur)) {
+                break cur;
+            }
+            read_back -= 1;
+        };
+
+        if read_back < self.len {
+            let swap = self.pop().unwrap();
+            *hole = swap;
+        } else {
+            self.truncate(self.len - 1);
+        }
+        read_back -= 1;
+
+        while read_back > 0 {
+            // SAFETY: read_back - 1 is always less than current length of
+            // the vector and the loop condition, read_back > 0, prevents
+            // read_back from underflowing
+            hole = unsafe { &mut *self.as_mut_ptr().add(read_back - 1) };
+            if !f(hole) {
+                if read_back < self.len {
+                    let swap = self.pop().unwrap();
+                    *hole = swap;
+                } else {
+                    self.truncate(self.len - 1);
+                }
+            }
+            read_back -= 1;
+        }
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
@@ -3510,7 +3607,61 @@ where
 {
 }
 
+impl<T: Clone> Vec<T, Global> {
+    /// Create a new `Vec` that contains `elem` `n` times.
+    ///
+    /// This method requires `T` to implement [`Clone`],
+    /// in order to be able to clone the passed value.
+    ///
+    /// If `n` is zero, the vector will not allocate.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size_of::<T>() * n` exceeds `isize::MAX` bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_repeat)]
+    /// let vec = Vec::repeat(0, 3);
+    /// assert_eq!(vec, [0; 3]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "vec_repeat", issue = "164215")]
+    #[inline]
+    pub fn repeat(elem: T, n: usize) -> Self {
+        <T as SpecFromElem>::from_elem(elem, n, Global)
+    }
+}
+
 impl<T: Clone, A: Allocator> Vec<T, A> {
+    /// Create a new `Vec` with the provided allocator that contains `elem` `n` times.
+    ///
+    /// This method requires `T` to implement [`Clone`],
+    /// in order to be able to clone the passed value.
+    ///
+    /// If `n` is zero, the vector will not allocate.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size_of::<T>() * n` exceeds `isize::MAX` bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_repeat)]
+    /// use std::alloc::System;
+    ///
+    /// let vec = Vec::repeat_in(0, 3, System);
+    /// assert_eq!(vec, [0; 3]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "vec_repeat", issue = "164215")]
+    #[inline]
+    pub fn repeat_in(elem: T, n: usize, alloc: A) -> Self {
+        <T as SpecFromElem>::from_elem(elem, n, alloc)
+    }
+
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
@@ -3688,32 +3839,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` clones of value.
     fn extend_with(&mut self, n: usize, value: T) {
-        self.reserve(n);
-
-        // ignore-tidy-undocumented-unsafe
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.clone());
-                ptr = ptr.add(1);
-                // Increment the length in every step in case clone() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value);
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
+        self.spec_extend_with(n, value);
     }
 }
 
@@ -3770,32 +3896,24 @@ const fn dedup_simd_chunk_size<T>() -> Option<usize> {
             if size == 8 { None } else { Some(SIMD_WIDTH) }
         }
 
-        all(target_arch = "aarch64", target_feature = "neon") => {
+        all(target_arch = "aarch64", target_feature = "neon") => Some(SIMD_WIDTH),
+
+        all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse4.1") => {
             Some(SIMD_WIDTH)
         }
 
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "sse4.1"
-        ) => Some(SIMD_WIDTH),
-
-        all(
-            any(target_arch = "x86", target_arch = "x86_64"),
-            target_feature = "sse2"
-        ) => {
+        all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2") => {
             // Packed 64-bit integer lane equality is only available on sse4.1
             if size == 8 { None } else { Some(SIMD_WIDTH) }
         }
 
-        all(
-            any(target_arch = "riscv32", target_arch = "riscv64"),
-            target_feature = "v"
-        ) => Some(SIMD_WIDTH),
+        all(any(target_arch = "riscv32", target_arch = "riscv64"), target_feature = "v") => {
+            Some(SIMD_WIDTH)
+        }
 
-        all(
-            any(target_arch = "loongarch32", target_arch = "loongarch64"),
-            target_feature = "lsx"
-        ) => Some(SIMD_WIDTH),
+        all(any(target_arch = "loongarch32", target_arch = "loongarch64"), target_feature = "lsx") => {
+            Some(SIMD_WIDTH)
+        }
 
         _ => None,
     };
@@ -3877,19 +3995,29 @@ fn find_first_duplicate<T: PartialEq>(v: &[T], chunk_size: usize) -> Option<usiz
 // Internal methods and functions
 ////////////////////////////////////////////////////////////////////////////////
 
+// This function is no longer used internally (`from_elem_global` is used instead).
+// It is only kept so as not to break a few crates who mistakenly used it at a
+// time when we didn't have the ability to gate internal methods used by public macros.
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "vec_from_elem"]
+// NOTE: the real deprecation version is the same as the stabilization version.
+// I.e. it should never have been used even in version 1.0.
+#[deprecated(since = "1.101.0", note = "use the `vec!` macro instead")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    <T as SpecFromElem>::from_elem(elem, n, Global)
+    vec![elem; n]
 }
 
+// This function is required because it ensures the `vec_from_elem` diagnostic
+// item is emitted, which is consumed by Clippy to detect calls to
+// `vec![elem; n]`. We cannot add the item to `Vec::repeat` because then we
+// would end up confusing Clippy.
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
-    <T as SpecFromElem>::from_elem(elem, n, alloc)
+#[unstable(feature = "liballoc_internals", issue = "none")]
+#[rustc_diagnostic_item = "vec_from_elem"]
+pub fn from_elem_global<T: Clone>(elem: T, n: usize) -> Vec<T> {
+    Vec::repeat(elem, n)
 }
 
 #[cfg(not(no_global_oom_handling))]
@@ -4624,7 +4752,6 @@ where
     }
 }
 
-// note: test pulls in std, which causes errors here
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     /// Converts a boxed slice into a vector by transferring ownership of
@@ -4641,29 +4768,17 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     }
 }
 
-// note: test pulls in std, which causes errors here
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// Converts a vector into a boxed slice.
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`Vec::shrink_to_fit`].
-    ///
-    /// [owned slice]: Box
-    /// [`Vec::shrink_to_fit`]: Vec::shrink_to_fit
+    /// This is equivalent to [`Vec::into_boxed_slice`].
     ///
     /// # Examples
     ///
     /// ```
     /// assert_eq!(Box::from(vec![1, 2, 3]), vec![1, 2, 3].into_boxed_slice());
-    /// ```
-    ///
-    /// Any excess capacity is removed:
-    /// ```
-    /// let mut vec = Vec::with_capacity(10);
-    /// vec.extend([1, 2, 3]);
-    ///
-    /// assert_eq!(Box::from(vec), vec![1, 2, 3].into_boxed_slice());
     /// ```
     fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()

@@ -1,12 +1,14 @@
 error[E0053]: method `value` has an incompatible type for trait
   --> $DIR/eval-bad-signature.rs:16:19
    |
+LL | const impl Value for FortyTwo {
 LL |     fn value() -> i64 {
    |                   ^^^ expected `u32`, found `i64`
    |
 note: type in trait
   --> $DIR/eval-bad-signature.rs:6:19
    |
+LL | const trait Value {
 LL |     fn value() -> u32;
    |                   ^^^
    = note: expected signature `fn() -> u32`

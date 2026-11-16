@@ -10,6 +10,15 @@ pub(crate) enum Edition {
     Future,
 }
 
+impl Edition {
+    pub(crate) const RUSTC_DEFAULT: Self = Self::Year(2015);
+    pub(crate) const LATEST_STABLE: Self = Self::Year(2024);
+
+    pub(crate) fn to_flag(self) -> String {
+        format!("--edition={self}")
+    }
+}
+
 impl std::fmt::Display for Edition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

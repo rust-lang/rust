@@ -84,7 +84,7 @@ impl<'t> Bindings<'t> {
                         builder.push(tt::Leaf::Ident(tt::Ident {
                             sym: sym::missing,
                             span,
-                            is_raw: tt::IdentIsRaw::No,
+                            kind: tt::IdentKind::Normal,
                         }));
                     }
                     MetaVarKind::Lifetime => {
@@ -97,7 +97,7 @@ impl<'t> Bindings<'t> {
                             tt::Leaf::Ident(tt::Ident {
                                 sym: sym::missing,
                                 span,
-                                is_raw: tt::IdentIsRaw::No,
+                                kind: tt::IdentKind::Normal,
                             }),
                         ]);
                     }
@@ -105,7 +105,7 @@ impl<'t> Bindings<'t> {
                         builder.push(tt::Leaf::Ident(tt::Ident {
                             sym: sym::missing,
                             span,
-                            is_raw: tt::IdentIsRaw::No,
+                            kind: tt::IdentKind::Normal,
                         }));
                     }
                 }
@@ -365,9 +365,9 @@ fn expand_subtree(
 
                 let needs_raw =
                     parser::SyntaxKind::from_keyword(&concatenated, Edition::LATEST).is_some();
-                let is_raw = if needs_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No };
+                let kind = if needs_raw { tt::IdentKind::Raw } else { tt::IdentKind::Normal };
                 builder.push(tt::Leaf::Ident(tt::Ident {
-                    is_raw,
+                    kind,
                     span: result_span,
                     sym: Symbol::intern(&concatenated),
                 }));
@@ -452,7 +452,7 @@ fn expand_var(
             // We just treat it a normal tokens
             builder.extend([
                 tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, span: id }),
-                tt::Leaf::from(tt::Ident { sym: v.clone(), span: id, is_raw: tt::IdentIsRaw::No }),
+                tt::Leaf::from(tt::Ident { sym: v.clone(), span: id, kind: tt::IdentKind::Normal }),
             ]);
             ExpandResult::ok(())
         }

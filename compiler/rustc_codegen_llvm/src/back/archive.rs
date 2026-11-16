@@ -82,10 +82,10 @@ fn get_llvm_object_symbols(
 
     unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
         let error = unsafe { CStr::from_ptr(error) };
-        Box::into_raw(Box::new(io::Error::new(
-            io::ErrorKind::Other,
-            format!("LLVM error: {}", error.to_string_lossy()),
-        )) as Box<io::Error>) as *mut c_void
+        Box::into_raw(Box::new(io::Error::other(format!(
+            "LLVM error: {}",
+            error.to_string_lossy()
+        )))) as *mut c_void
     }
 }
 

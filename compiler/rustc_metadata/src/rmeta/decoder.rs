@@ -196,8 +196,14 @@ pub(super) trait LazyDecoder: BlobDecoder {
         self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
     }
 
-    fn read_lazy_table<Ie, Id, T>(&mut self, width: usize, len: usize) -> LazyTable<Ie, Id, T> {
-        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, width, len))
+    fn read_lazy_table<Ie, Id, T>(
+        &mut self,
+        width_and_sparse: usize,
+        len: usize,
+    ) -> LazyTable<Ie, Id, T> {
+        self.read_lazy_offset_then(|pos| {
+            LazyTable::from_position_and_encoded_size(pos, width_and_sparse, len)
+        })
     }
 
     #[inline]
@@ -695,9 +701,9 @@ impl<D: LazyDecoder, T> Decodable<D> for LazyArray<T> {
 
 impl<Ie: Idx, Id: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<Ie, Id, T> {
     fn decode(decoder: &mut D) -> Self {
-        let width = decoder.read_usize();
+        let width_and_sparse = decoder.read_usize();
         let len = decoder.read_usize();
-        decoder.read_lazy_table(width, len)
+        decoder.read_lazy_table(width_and_sparse, len)
     }
 }
 
@@ -1438,7 +1444,14 @@ impl CrateMetadata {
 
     fn get_associated_item(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(id) {
-            DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
+            DefKind::AssocConst => {
+                let data = if let Some(item_name) = self.root.tables.opt_item_name.get(self, id) {
+                    ty::AssocConstData::Named(item_name.decode((self, tcx)))
+                } else {
+                    ty::AssocConstData::Anonymous
+                };
+                ty::AssocKind::Const { data }
+            }
             DefKind::AssocFn => ty::AssocKind::Fn {
                 name: self.item_name(id),
                 has_self: self.get_fn_has_self_parameter(tcx, id),

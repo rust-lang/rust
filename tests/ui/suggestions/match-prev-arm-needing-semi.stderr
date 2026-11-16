@@ -52,12 +52,10 @@ help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy2().await,
    |                                ++++++
-help: consider removing this semicolon and boxing the expressions
+help: consider removing this semicolon
    |
-LL ~             Box::new(async_dummy())
-LL |
-LL |         }
-LL ~         false => Box::new(async_dummy2()),
+LL -             async_dummy();
+LL +             async_dummy()
    |
 
 error[E0308]: `match` arms have incompatible types

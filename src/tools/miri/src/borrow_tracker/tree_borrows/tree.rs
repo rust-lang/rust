@@ -793,16 +793,16 @@ impl Tree {
     /// should have no children, but this is not checked, so that nodes
     /// whose children were rotated somewhere else can be deleted without
     /// having to first modify them to clear that array.
-    fn remove_useless_node(&mut self, this: UniIndex) {
+    fn remove_useless_node(&mut self, idx: UniIndex) {
         // Due to the API of UniMap we must make sure to call
         // `UniValMap::remove` for the key of this node on *all* maps that used it
         // (which are `self.nodes` and every range of `self.rperms`)
         // before we can safely apply `UniKeyMap::remove` to truly remove
         // this tag from the `tag_mapping`.
-        let node = self.nodes.remove(this).unwrap();
+        let node = self.nodes.remove(idx).unwrap();
         for (_range, loc) in self.locations.iter_mut_all() {
-            loc.perms.remove(this);
-            loc.exposed_cache.remove(this);
+            loc.perms.remove(idx);
+            loc.exposed_cache.remove(idx);
         }
         self.tag_mapping.remove(&node.tag);
     }

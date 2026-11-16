@@ -1,5 +1,6 @@
 use super::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_in_const_context;
 use clippy_utils::sugg::Sugg;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
@@ -17,12 +18,14 @@ pub(super) fn check<'tcx>(
     from_ty_adjusted: bool,
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
-    const_context: bool,
 ) -> bool {
     use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
     let mut app = Applicability::MachineApplicable;
     let mut sugg = match check_cast(cx.tcx, cx.param_env, e, from_ty, to_ty) {
-        Some(FnPtrAddrCast | PtrAddrCast) if const_context => return false,
+        // Under constant evaluation, pointer -> integer casts are **undefined behavior**.
+        // The user opted into this by using transmute and removing it does not compile.
+        // <https://doc.rust-lang.org/std/mem/fn.transmute.html>
+        Some(FnPtrAddrCast | PtrAddrCast) if is_in_const_context(cx) => return false,
         Some(PtrPtrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast) => {
             Sugg::hir_with_context(cx, arg, e.span.ctxt(), "..", &mut app)
                 .as_ty(to_ty.to_string())

@@ -33,10 +33,8 @@ impl RustdocGuiTestProps {
 
         let props = TestProps::from_file(test_file_path, None, &config);
 
-        let TestProps { mut compile_flags, run_flags, .. } = props;
-        // We don't want to pass `--edition=2015` in, which is being set by default by
-        // `TestProps::from_file`.
-        compile_flags.remove(0);
+        // FIXME: Why do we need to ignore the edition?
+        let TestProps { edition: _, compile_flags, run_flags, .. } = props;
         Self { compile_flags, run_flags }
     }
 }
@@ -121,6 +119,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         rustfix_coverage: Default::default(),
         has_enzyme: Default::default(),
         has_offload: Default::default(),
+        has_tpde: Default::default(),
         channel: Default::default(),
         git_hash: Default::default(),
         cc: Default::default(),

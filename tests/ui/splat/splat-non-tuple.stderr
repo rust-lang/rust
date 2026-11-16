@@ -1,12 +1,14 @@
 error[E0053]: method `tuple_1` has an incompatible type for trait
   --> $DIR/splat-non-tuple.rs:39:5
    |
+LL | impl FooTrait for Foo {
 LL |     fn tuple_1(_: (u32,)) {}
    |     ^^^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
    |
 note: type in trait
   --> $DIR/splat-non-tuple.rs:17:5
    |
+LL | trait FooTrait {
 LL |     fn tuple_1(#[rustc_splat] _: (u32,));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature `fn(#[rustc_splat] (_,))`

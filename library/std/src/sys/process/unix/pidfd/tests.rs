@@ -1,3 +1,5 @@
+#![cfg(not(skip_unsupported_miri_tests))] // pidfd is not supported in Miri
+
 use super::PidFd as InternalPidFd;
 use crate::assert_matches;
 use crate::os::fd::AsRawFd;

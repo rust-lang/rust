@@ -350,7 +350,7 @@ declare_features! (
     /// Allows using multiple nested field accesses in offset_of!
     (accepted, offset_of_nested, "1.82.0", Some(120140)),
     /// Allows using `#[optimize(X)]`.
-    (accepted, optimize_attribute, "CURRENT_RUSTC_VERSION", Some(54882)),
+    (accepted, optimize_attribute, "1.101.0", Some(54882)),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883)),
     /// Allows using `+bundle,+whole-archive` link modifiers with native libs.

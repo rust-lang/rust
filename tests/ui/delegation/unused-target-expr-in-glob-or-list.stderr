@@ -164,7 +164,8 @@ error[E0053]: method `static_self` has an incompatible type for trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
    |
 LL |     macro_rules! delegation {
-...
+LL |         () => {
+LL |             impl Trait for S {
 LL |                 reuse <F as Trait>::static_self { self.0 }
    |                                     ^^^^^^^^^^^ expected `F`, found `()`
 ...
@@ -174,6 +175,7 @@ LL |     delegation!();
 note: type in trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`
@@ -192,12 +194,14 @@ LL |         () => {
 LL |             reuse <F as Trait>::static_self { self.0 }
    |                                 ^^^^^^^^^^^ expected `F`, found `()`
 ...
+LL |     impl Trait for S1 {
 LL |         delegation2!();
    |         -------------- in this macro invocation
    |
 note: type in trait
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:25
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |                         ^
    = note: expected signature `fn() -> F`

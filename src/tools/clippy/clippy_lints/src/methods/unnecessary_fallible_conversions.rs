@@ -80,7 +80,7 @@ impl FunctionKind {
 fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
-    node_args: ty::GenericArgsRef<'tcx>,
+    node_args: ty::GenericArgs<'tcx>,
     kind: FunctionKind,
     primary_span: Span,
 ) {

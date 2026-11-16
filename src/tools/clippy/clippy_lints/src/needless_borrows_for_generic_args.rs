@@ -14,7 +14,8 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::{
-    self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionClause, Ty, Unnormalized,
+    self, CallerBoundsIterator as _, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy,
+    ProjectionClause, Ty, Unnormalized,
 };
 use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -167,7 +168,7 @@ fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
     fn_id: DefId,
-    callee_args: ty::GenericArgsRef<'tcx>,
+    callee_args: ty::GenericArgs<'tcx>,
     arg_index: usize,
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,
@@ -189,6 +190,8 @@ fn needless_borrow_count<'tcx>(
         .tcx
         .param_env(fn_id)
         .caller_bounds()
+        .all_clauses(cx.tcx)
+        .iter()
         // TODO: remove filter once https://github.com/rust-lang/rust/issues/160895 is in stable
         //
         // This sends the old trait solver into unbounded recursion for `[const] Destruct` on self-recursive types
@@ -244,7 +247,7 @@ fn needless_borrow_count<'tcx>(
 
     // `args_with_referent_ty` can be constructed outside of `check_referent` because the same
     // elements are modified each time `check_referent` is called.
-    let mut args_with_referent_ty = callee_args.to_vec();
+    let mut args_with_referent_ty = callee_args.as_slice().to_vec();
 
     let mut check_reference_and_referent = |reference: &Expr<'tcx>, referent: &Expr<'tcx>| {
         if let ExprKind::Field(base, _) = &referent.kind

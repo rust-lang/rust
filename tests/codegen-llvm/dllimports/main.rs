@@ -10,10 +10,10 @@ extern crate wrapper;
 // Check that external symbols coming from foreign dylibs are adorned with 'dllimport',
 // whereas symbols coming from foreign staticlibs are not. (RFC-1717)
 
-// CHECK: @dylib_global1 = external dllimport local_unnamed_addr global i32
-// CHECK: @dylib_global2 = external dllimport local_unnamed_addr global i32
-// CHECK: @static_global1 = external local_unnamed_addr global i32
-// CHECK: @static_global2 = external local_unnamed_addr global i32
+// CHECK: @dylib_global1 = external dllimport local_unnamed_addr global [4 x i8]
+// CHECK: @dylib_global2 = external dllimport local_unnamed_addr global [4 x i8]
+// CHECK: @static_global1 = external local_unnamed_addr global [4 x i8]
+// CHECK: @static_global2 = external local_unnamed_addr global [4 x i8]
 
 // CHECK: declare dllimport noundef i32 @dylib_func1(i32 noundef)
 // CHECK: declare dllimport noundef i32 @dylib_func2(i32 noundef)

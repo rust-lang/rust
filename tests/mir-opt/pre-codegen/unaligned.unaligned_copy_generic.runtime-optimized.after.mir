@@ -51,6 +51,7 @@ fn unaligned_copy_generic(_1: *const T, _2: *mut T) -> () {
         (*_6) = copy _7;
         StorageDead(_7);
         StorageDead(_6);
+        _0 = const ();
         StorageDead(_5);
         return;
     }

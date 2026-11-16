@@ -83,6 +83,7 @@ pub mod hardwired {
             NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
             NON_CONTIGUOUS_RANGE_ENDPOINTS,
             NON_EXHAUSTIVE_OMITTED_PATTERNS,
+            NO_LINK_ATTRIBUTES,
             OUT_OF_SCOPE_MACRO_CALLS,
             OVERLAPPING_RANGE_ENDPOINTS,
             PARTIAL_STACK_PROTECTOR,
@@ -6018,4 +6019,36 @@ declare_lint! {
     Warn,
     r#"detects default field values on types that have const parameters"#,
     @feature_gate = default_field_values;
+}
+
+declare_lint! {
+    /// The `no_link_attributes` lint detects that you used `#[no_link]` on an
+    /// `extern crate` item.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #[no_link]
+    /// extern crate std;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This is a pre-1.0 attribute that accidentally got stabilized. It was only meant
+    /// for compiler plugins which we no longer support, not for regular crates. It is
+    /// rather fragile and can easily lead to linker errors depending on where rustc
+    /// decides to codegen functions and statics, which varies between rustc versions. It
+    /// might also be unsound if a crate for example expects a global constructor it
+    /// defined to run. Using it doesn't have an effect on the size of the produced
+    /// binaries except when it defines a `#[used]` static given that we remove all unused
+    /// functions and statics at link time already.
+    pub NO_LINK_ATTRIBUTES,
+    Deny,
+    "detects usage of `#[no_link]` on `extern crate` items",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #164032),
+        report_in_deps: true,
+    };
 }

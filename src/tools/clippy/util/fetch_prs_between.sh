@@ -34,7 +34,7 @@ done
 newest_merged_at="$(gh pr view -R rust-lang/rust-clippy --json mergedAt $newest_pr -q .mergedAt)"
 oldest_merged_at="$(gh pr view -R rust-lang/rust-clippy --json mergedAt $oldest_pr -q .mergedAt)"
 
-query="merged:$oldest_merged_at..$newest_merged_at base:master"
+query="merged:$oldest_merged_at..$newest_merged_at base:main"
 encoded_query="$(echo $query | sed 's/ /+/g; s/:/%3A/g')"
 
 pr_link="https://github.com/rust-lang/rust-clippy/pulls?q=$encoded_query"

@@ -36,7 +36,7 @@ fn symmetric_partial_eq<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, other: Ty<'t
 }
 
 fn check_op(cx: &LateContext<'_>, outer: &Expr<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {
-    if !outer.span.eq_ctxt(expr.span) {
+    if outer.span.ctxt() != expr.span.ctxt() {
         return;
     }
 

@@ -44,28 +44,26 @@ pub struct Lit {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
 // The discriminants are important for `storage.rs` decoding.
-pub enum IdentIsRaw {
-    No = 0,
-    Yes = 1,
+pub enum IdentKind {
+    Normal = 0,
+    Raw = 1,
+    ForcedKeyword = 2,
 }
-impl IdentIsRaw {
-    pub fn yes(self) -> bool {
-        matches!(self, IdentIsRaw::Yes)
-    }
-    pub fn no(&self) -> bool {
-        matches!(self, IdentIsRaw::No)
-    }
+
+impl IdentKind {
     pub fn as_str(self) -> &'static str {
         match self {
-            IdentIsRaw::No => "",
-            IdentIsRaw::Yes => "r#",
+            IdentKind::Normal => "",
+            IdentKind::Raw => "r#",
+            IdentKind::ForcedKeyword => "k#",
         }
     }
+
     pub fn split_from_symbol(sym: &str) -> (Self, &str) {
-        if let Some(sym) = sym.strip_prefix("r#") {
-            (IdentIsRaw::Yes, sym)
-        } else {
-            (IdentIsRaw::No, sym)
+        match sym.as_bytes() {
+            [b'r', b'#', ..] => (IdentKind::Raw, &sym["r#".len()..]),
+            [b'k', b'#', ..] => (IdentKind::ForcedKeyword, &sym["k#".len()..]),
+            _ => (IdentKind::Normal, sym),
         }
     }
 }
@@ -559,14 +557,13 @@ pub enum Spacing {
 pub struct Ident {
     pub sym: Symbol,
     pub span: Span,
-    pub is_raw: IdentIsRaw,
+    pub kind: IdentKind,
 }
 
 impl Ident {
     pub fn new(text: &str, span: Span) -> Self {
-        // let raw_stripped = IdentIsRaw::split_from_symbol(text.as_ref());
-        let (is_raw, text) = IdentIsRaw::split_from_symbol(text);
-        Ident { sym: Symbol::intern(text), span, is_raw }
+        let (kind, text) = IdentKind::split_from_symbol(text);
+        Ident { sym: Symbol::intern(text), span, kind }
     }
 }
 
@@ -622,7 +619,7 @@ fn print_debug_token(f: &mut fmt::Formatter<'_>, level: usize, tt: TtElement<'_>
                     f,
                     "{}IDENT   {}{} {:#?}",
                     align,
-                    ident.is_raw.as_str(),
+                    ident.kind.as_str(),
                     ident.sym,
                     ident.span
                 )?;
@@ -660,7 +657,7 @@ impl fmt::Display for Leaf {
 
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.is_raw.as_str(), f)?;
+        fmt::Display::fmt(&self.kind.as_str(), f)?;
         fmt::Display::fmt(&self.sym, f)
     }
 }

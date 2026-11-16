@@ -1,5 +1,16 @@
 #![crate_name = "foo"]
-#![feature(negative_impls, freeze_impls, freeze, unsafe_unpin)]
+
+// tidy-alphabetical-start
+#![feature(forget_trait)]
+#![feature(freeze)]
+#![feature(freeze_impls)]
+#![feature(min_specialization)]
+#![feature(move_trait)]
+#![feature(negative_impls)]
+#![feature(unsafe_unpin)]
+// tidy-alphabetical-end
+
+#![allow(incomplete_features)]
 
 pub struct Foo;
 
@@ -13,3 +24,5 @@ impl !std::marker::UnsafeUnpin for Foo {}
 impl !std::marker::Unpin for Foo {}
 impl !std::panic::RefUnwindSafe for Foo {}
 impl !std::panic::UnwindSafe for Foo {}
+impl !std::marker::Forget for Foo {}
+impl !std::marker::Move for Foo {}

@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 use rustc_attr_ir::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
+use rustc_middle::mir::{AnalysisPhase, Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::OptLevel;
@@ -143,9 +143,13 @@ impl<'sess> PassCtx<'sess> {
         } else {
             match tcx.codegen_fn_attrs(def_id).optimize {
                 OptimizeAttr::Default => tcx.sess.mir_opt_level(),
-                OptimizeAttr::DoNotOptimize => OptLevel::No.mir_opt_level(),
                 OptimizeAttr::Speed => OptLevel::Aggressive.mir_opt_level(),
-                OptimizeAttr::Size => OptLevel::Size.mir_opt_level(),
+                // `optimize(none)`/`optimize(size)` should not increase the MIR opt level.
+                // (This can be relevant when `-Zmir-opt-level=0` was manually set.)
+                OptimizeAttr::DoNotOptimize => {
+                    OptLevel::No.mir_opt_level().min(tcx.sess.mir_opt_level())
+                }
+                OptimizeAttr::Size => OptLevel::Size.mir_opt_level().min(tcx.sess.mir_opt_level()),
             }
         };
         Self { session: tcx.sess, body_mir_opt_level }
@@ -393,9 +397,13 @@ fn run_passes_inner<'tcx>(
 
         dump_mir_for_phase_change(tcx, body);
 
-        let validate =
-            (validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip())
-                || new_phase == MirPhase::Runtime(RuntimePhase::Optimized);
+        let validate = (validate_each
+            && tcx.sess.opts.unstable_opts.validate_mir
+            && !body.should_skip()
+            // Skip validating the body in `TypingMode::PostAnalysis` because we haven't
+            // revealed opaques yet.
+            && (new_phase != MirPhase::Analysis(AnalysisPhase::PostCleanup)))
+            || new_phase == MirPhase::Runtime(RuntimePhase::Optimized);
         let lint = tcx.sess.opts.unstable_opts.lint_mir & !body.should_skip();
         if validate {
             validate_body(tcx, body, format!("after phase change to {}", new_phase.name()));

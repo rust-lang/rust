@@ -1,0 +1,17 @@
+error: `if` expression that could be written as a logical && expression
+  --> tests/ui/ifs_as_logical_ops_unfixable.rs:4:5
+   |
+LL |     if x { if y { z } else { false } } else { false }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x && if y { z } else { false }`
+   |
+   = note: `-D clippy::ifs-as-logical-ops` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ifs_as_logical_ops)]`
+
+error: `if` expression that could be written as a logical && expression
+  --> tests/ui/ifs_as_logical_ops_unfixable.rs:4:12
+   |
+LL |     if x { if y { z } else { false } } else { false }
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `y && z`
+
+error: aborting due to 2 previous errors
+

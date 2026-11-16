@@ -83,7 +83,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
         }
     }
 
-    fn check_nested_id(&mut self, id: LocalDefId) {
+    fn check_nested_id(&self, id: LocalDefId) {
         let Some(owner) = self.owner else { return };
         let def_parent = self.tcx.local_parent(id);
         let def_parent_hir_id = self.tcx.local_def_id_to_hir_id(def_parent);

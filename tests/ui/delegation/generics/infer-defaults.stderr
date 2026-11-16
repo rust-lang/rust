@@ -20,6 +20,7 @@ LL |         W(S).foo::<1, 2, 3>(((), (), ()), &[1, 2]);
 note: method defined here, with 0 generic parameters
   --> $DIR/infer-defaults.rs:70:12
    |
+LL |     trait Trait<'a, X, Y, T = (), const N: usize = 2> {
 LL |         fn foo(&self, t: (T, T, T), slice: &[usize; N]) {}
    |            ^^^
 
@@ -50,6 +51,8 @@ LL |         W(S).bar::<((), ()), 0>(((), (), ()), &[1, 2]);
 note: method defined here, with 0 generic parameters
   --> $DIR/infer-defaults.rs:71:12
    |
+LL |     trait Trait<'a, X, Y, T = (), const N: usize = 2> {
+LL |         fn foo(&self, t: (T, T, T), slice: &[usize; N]) {}
 LL |         fn bar(&self, t: (T, T, T), slice: &[usize; N]) {}
    |            ^^^
 

@@ -6,7 +6,7 @@
 #![feature(rustc_attrs)]
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
-#![feature(freeze, pattern_type_range_trait, const_trait_impl, pattern_types, pattern_type_macro)]
+#![feature(freeze, pattern_type_range_trait, const_trait_impl, pattern_types)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(unconditional_panic)]
 #![allow(unnecessary_transmutes)]
@@ -853,15 +853,15 @@ fn array_len(x: &mut [i32; 42]) -> usize {
 fn dedup_multiple_bounds_checks_lengths(x: &[i32]) -> [i32; 3] {
     // CHECK-LABEL: fn dedup_multiple_bounds_checks_lengths
     // CHECK: [[LEN:_.+]] = PtrMetadata(copy _1);
-    // CHECK: Lt(const 42_usize, copy [[LEN]]);
+    // CHECK: Gt(copy [[LEN]], const 42_usize);
     // CHECK: assert{{.+}}copy [[LEN]]
     // CHECK: [[A:_.+]] = copy (*_1)[42 of 43];
     // CHECK-NOT: PtrMetadata
-    // CHECK: Lt(const 13_usize, copy [[LEN]]);
+    // CHECK: Gt(copy [[LEN]], const 13_usize);
     // CHECK: assert{{.+}}copy [[LEN]]
     // CHECK: [[B:_.+]] = copy (*_1)[13 of 14];
     // CHECK-NOT: PtrMetadata
-    // CHECK: Lt(const 7_usize, copy [[LEN]]);
+    // CHECK: Gt(copy [[LEN]], const 7_usize);
     // CHECK: assert{{.+}}copy [[LEN]]
     // CHECK: [[C:_.+]] = copy (*_1)[7 of 8];
     // CHECK: _0 = [move [[A]], move [[B]], move [[C]]]

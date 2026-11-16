@@ -72,7 +72,8 @@ pub(crate) struct BadPanicStrategy {
 
 #[derive(Diagnostic)]
 #[diag(
-    "the crate `{$crate_name}` requires panic strategy `{$found_strategy}` which is incompatible with this crate's strategy of `{$desired_strategy}`"
+    "the crate `{$crate_name}` requires panic strategy `{$found_strategy}` which is incompatible \
+     with this crate's strategy of `{$desired_strategy}`"
 )]
 pub(crate) struct RequiredPanicStrategy {
     pub crate_name: Symbol,
@@ -82,7 +83,8 @@ pub(crate) struct RequiredPanicStrategy {
 
 #[derive(Diagnostic)]
 #[diag(
-    "the crate `{$crate_name}` was compiled with a panic strategy which is incompatible with `immediate-abort`"
+    "the crate `{$crate_name}` was compiled with a panic strategy which is incompatible with \
+     `immediate-abort`"
 )]
 pub(crate) struct IncompatibleWithImmediateAbort {
     pub crate_name: Symbol,
@@ -90,13 +92,15 @@ pub(crate) struct IncompatibleWithImmediateAbort {
 
 #[derive(Diagnostic)]
 #[diag(
-    "the crate `core` was compiled with a panic strategy which is incompatible with `immediate-abort`"
+    "the crate `core` was compiled with a panic strategy which is incompatible with \
+     `immediate-abort`"
 )]
 pub(crate) struct IncompatibleWithImmediateAbortCore;
 
 #[derive(Diagnostic)]
 #[diag(
-    "the crate `{$crate_name}` is compiled with the panic-in-drop strategy `{$found_strategy}` which is incompatible with this crate's strategy of `{$desired_strategy}`"
+    "the crate `{$crate_name}` is compiled with the panic-in-drop strategy `{$found_strategy}` \
+     which is incompatible with this crate's strategy of `{$desired_strategy}`"
 )]
 pub(crate) struct IncompatiblePanicInDropStrategy {
     pub crate_name: Symbol,
@@ -123,7 +127,8 @@ pub(crate) struct EmptyRenamingTarget<'a> {
 
 #[derive(Diagnostic)]
 #[diag(
-    "renaming of the library `{$lib_name}` was specified, however this crate contains no `#[link(...)]` attributes referencing this library"
+    "renaming of the library `{$lib_name}` was specified, however this crate contains no \
+     `#[link(...)]` attributes referencing this library"
 )]
 pub(crate) struct RenamingNoLink<'a> {
     pub lib_name: &'a str,
@@ -211,16 +216,21 @@ pub(crate) struct NoMultipleAllocErrorHandler {
 
 #[derive(Diagnostic)]
 #[diag(
-    "the `#[global_allocator]` in {$other_crate_name} conflicts with global allocator in: {$crate_name}"
+    "the `#[global_allocator]` in {$this_crate ->
+        [true] this crate
+        *[false] `{$other_crate_name}`
+    } conflicts with global allocator in `{$crate_name}`"
 )]
 pub(crate) struct ConflictingGlobalAlloc {
     pub crate_name: Symbol,
     pub other_crate_name: Symbol,
+    pub this_crate: bool,
 }
 
 #[derive(Diagnostic)]
 #[diag(
-    "the `#[alloc_error_handler]` in {$other_crate_name} conflicts with allocation error handler in: {$crate_name}"
+    "the `#[alloc_error_handler]` in `{$other_crate_name}` conflicts with allocation error handler \
+     in `{$crate_name}`"
 )]
 pub(crate) struct ConflictingAllocErrorHandler {
     pub crate_name: Symbol,
@@ -228,20 +238,22 @@ pub(crate) struct ConflictingAllocErrorHandler {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait"
+#[diag("no global memory allocator found but one is required")]
+#[help(
+    "link to std or add `#[global_allocator]` to a static item that implements the `GlobalAlloc` \
+     trait"
 )]
 pub(crate) struct GlobalAllocRequired;
 
 #[derive(Diagnostic)]
-#[diag("failed to write {$filename}: {$err}")]
+#[diag("failed to write `{$filename}`: {$err}")]
 pub(crate) struct FailedWriteError {
     pub filename: PathBuf,
     pub err: Error,
 }
 
 #[derive(Diagnostic)]
-#[diag("failed to copy {$filename} to stdout: {$err}")]
+#[diag("failed to copy `{$filename}` to stdout: {$err}")]
 pub(crate) struct FailedCopyToStdout {
     pub filename: PathBuf,
     pub err: Error,
@@ -249,7 +261,8 @@ pub(crate) struct FailedCopyToStdout {
 
 #[derive(Diagnostic)]
 #[diag(
-    "option `-o` or `--emit` is used to write binary output type `metadata` to stdout, but stdout is a tty"
+    "option `-o` or `--emit` is used to write binary output type `metadata` to stdout, but stdout \
+     is a tty"
 )]
 pub(crate) struct BinaryOutputToTty;
 
@@ -260,7 +273,7 @@ pub(crate) struct FailedCreateTempdir {
 }
 
 #[derive(Diagnostic)]
-#[diag("failed to create the file {$filename}: {$err}")]
+#[diag("failed to create the file `{$filename}`: {$err}")]
 pub(crate) struct FailedCreateFile<'a> {
     pub filename: &'a Path,
     pub err: Error,
@@ -281,7 +294,7 @@ pub(crate) struct NonAsciiName {
 }
 
 #[derive(Diagnostic)]
-#[diag("extern location for {$crate_name} does not exist: {$location}")]
+#[diag("extern location for `{$crate_name}` does not exist at `{$location}`")]
 pub(crate) struct ExternLocationNotExist<'a> {
     #[primary_span]
     pub span: Span,
@@ -290,7 +303,7 @@ pub(crate) struct ExternLocationNotExist<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("extern location for {$crate_name} is not a file: {$location}")]
+#[diag("extern location for `{$crate_name}` is not a file: `{$location}`")]
 pub(crate) struct ExternLocationNotFile<'a> {
     #[primary_span]
     pub span: Span,
@@ -324,9 +337,8 @@ impl Diagnostic<'_> for MultipleCandidates {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "only metadata stub found for `{$flavor}` dependency `{$crate_name}`. Please provide path to the corresponding .rmeta file with full metadata"
-)]
+#[diag("only metadata stub found for `{$flavor}` dependency `{$crate_name}`")]
+#[help("provide path to the corresponding `.rmeta` file with full metadata")]
 pub(crate) struct FullMetadataNotFound {
     #[primary_span]
     pub span: Span,
@@ -335,7 +347,11 @@ pub(crate) struct FullMetadataNotFound {
 }
 
 #[derive(Diagnostic)]
-#[diag("the current crate is indistinguishable from one of its dependencies: it has the same crate-name `{$crate_name}` and was compiled with the same `-C metadata` arguments, so this will result in symbol conflicts between the two", code = E0519)]
+#[diag("the current crate is indistinguishable from one of its dependencies", code = E0519)]
+#[note(
+    "it has the same name `{$crate_name}` and was compiled with the same `-C metadata` arguments, \
+     so this will result in symbol conflicts between the two"
+)]
 pub(crate) struct SymbolConflictsCurrent {
     #[primary_span]
     pub span: Span,
@@ -343,7 +359,7 @@ pub(crate) struct SymbolConflictsCurrent {
 }
 
 #[derive(Diagnostic)]
-#[diag("found crates (`{$crate_name0}` and `{$crate_name1}`) with colliding StableCrateId values")]
+#[diag("found crates `{$crate_name0}` and `{$crate_name1}` with colliding `StableCrateId` values")]
 pub(crate) struct StableCrateIdCollision {
     #[primary_span]
     pub span: Span,
@@ -373,7 +389,10 @@ pub(crate) struct NewerCrateVersion {
 }
 
 #[derive(Diagnostic)]
-#[diag("couldn't find crate `{$crate_name}` with expected target triple {$locator_triple}{$add_info}", code = E0461)]
+#[diag(
+    "couldn't find crate `{$crate_name}` with expected target triple {$locator_triple}{$add_info}",
+    code = E0461
+)]
 #[note("the following crate versions were found:{$found_crates}")]
 pub(crate) struct NoCrateWithTriple<'a> {
     #[primary_span]
@@ -385,9 +404,9 @@ pub(crate) struct NoCrateWithTriple<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("found staticlib `{$crate_name}` instead of rlib or dylib{$add_info}", code = E0462)]
+#[diag("found staticlib `{$crate_name}` instead of `rlib` or `dylib`{$add_info}", code = E0462)]
 #[note("the following crate versions were found:{$found_crates}")]
-#[help("please recompile that crate using --crate-type lib")]
+#[help("please recompile that crate using `--crate-type lib`")]
 pub(crate) struct FoundStaticlib {
     #[primary_span]
     pub span: Span,
@@ -397,10 +416,14 @@ pub(crate) struct FoundStaticlib {
 }
 
 #[derive(Diagnostic)]
-#[diag("found crate `{$crate_name}` compiled by an incompatible version of rustc{$add_info}", code = E0514)]
+#[diag(
+    "found crate `{$crate_name}` compiled by an incompatible version of rustc{$add_info}",
+    code = E0514
+)]
 #[note("the following crate versions were found:{$found_crates}")]
 #[help(
-    "please recompile that crate using this compiler ({$rustc_version}) (consider running `cargo clean` first)"
+    "please recompile that crate using this compiler ({$rustc_version}) \
+     (consider running `cargo clean` first)"
 )]
 pub(crate) struct IncompatibleRustc {
     #[primary_span]
@@ -475,7 +498,10 @@ impl Diagnostic<'_> for CannotFindCrate {
             if self.missing_core {
                 if env!("CFG_RELEASE_CHANNEL") == "dev" && !self.is_ui_testing {
                     // Note: Emits the nicer suggestion only for the dev channel.
-                    diag.help(msg!("consider adding the standard library to the sysroot with `x build library --target {$locator_triple}`"));
+                    diag.help(msg!(
+                        "consider adding the standard library to the sysroot with \
+                         `x build library --target {$locator_triple}`"
+                    ));
                 } else if has_precompiled_std {
                     // NOTE: this suggests using rustup, even though the user may not have it installed.
                     // That's because they could choose to install it; or this may give them a hint which
@@ -491,17 +517,31 @@ impl Diagnostic<'_> for CannotFindCrate {
             // If it's not a dummy, that means someone added `extern crate std` explicitly and
             // `#![no_std]` won't help.
             if !self.missing_core && self.span.is_dummy() {
-                diag.note(msg!("`std` is required by `{$current_crate}` because it does not declare `#![no_std]`"));
+                diag.note(msg!(
+                    "`std` is required by `{$current_crate}` because it does not declare \
+                     `#![no_std]`"
+                ));
             }
             // Recommend -Zbuild-std even on stable builds for Tier 3 targets because
             // it's the recommended way to use the target, the user should switch to nightly.
             if self.is_nightly_build || !has_precompiled_std {
-                diag.help(msg!("consider building the standard library from source with `cargo build -Zbuild-std`"));
+                diag.help(msg!(
+                    "consider building the standard library from source with \
+                     `cargo build -Zbuild-std`"
+                ));
             }
         } else if self.crate_name == self.profiler_runtime {
             diag.note(msg!("the compiler may have been built without the profiler runtime"));
         } else if self.crate_name.as_str().starts_with("rustc_") {
-            diag.help(msg!("maybe you need to install the missing components with: `rustup component add rust-src rustc-dev llvm-tools-preview`"));
+            diag.help(msg!(
+                "maybe you need to install the missing components with: \
+                 `rustup component add rust-src rustc-dev llvm-tools-preview`"
+            ));
+        } else if rustc_session::utils::was_invoked_from_cargo() {
+            diag.note(msg!(
+                "check the `[dependencies]` section in `Cargo.toml` for the missing crate or use \
+                 `cargo add {$crate_name}` to add it to your `Cargo.toml`"
+            ));
         }
         diag.span_label(self.span, msg!("can't find crate"));
         diag
@@ -509,26 +549,21 @@ impl Diagnostic<'_> for CannotFindCrate {
 }
 
 #[derive(Diagnostic)]
-#[diag("extern location for {$crate_name} is of an unknown type: {$path}")]
+#[diag("extern location for `{$crate_name}` is of an unknown type at `{$path}`")]
+#[help("file name should be `lib*.rlib` or `{$dll_prefix}*{$dll_suffix}`")]
 pub(crate) struct CrateLocationUnknownType<'a> {
     #[primary_span]
     pub span: Span,
     pub path: &'a Path,
     pub crate_name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("file name should be lib*.rlib or {$dll_prefix}*{$dll_suffix}")]
-pub(crate) struct LibFilenameForm<'a> {
-    #[primary_span]
-    pub span: Span,
     pub dll_prefix: &'a str,
     pub dll_suffix: &'a str,
 }
 
 #[derive(Diagnostic)]
 #[diag(
-    "older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88"
+    "older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; \
+     please update to `wasm-bindgen` v0.2.88"
 )]
 pub(crate) struct WasmCAbi {
     #[primary_span]
@@ -538,16 +573,20 @@ pub(crate) struct WasmCAbi {
 #[derive(Diagnostic)]
 #[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
 #[help(
-    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different \
+     values of this flag cannot be used together safely"
 )]
 #[note(
-    "`{$flag_name_prefixed}={$local_value}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`"
+    "`{$flag_name_prefixed}={$local_value}` in this crate is incompatible with \
+     `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`"
 )]
 #[help(
-    "set `{$flag_name_prefixed}={$extern_value}` in this crate or `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`"
+    "set `{$flag_name_prefixed}={$extern_value}` in this crate or \
+     `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`"
 )]
 #[help(
-    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+    "if you are sure this will not cause problems, you may use \
+     `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiers {
     pub extern_crate: Symbol,
@@ -561,7 +600,8 @@ pub(crate) struct IncompatibleTargetModifiers {
 #[derive(Diagnostic)]
 #[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
 #[help(
-    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different \
+     values of this flag cannot be used together safely"
 )]
 #[note(
     "`{$flag_name_prefixed}` is unset in this crate which is incompatible with {$has_extern_value ->
@@ -576,7 +616,8 @@ pub(crate) struct IncompatibleTargetModifiers {
     } in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`"
 )]
 #[help(
-    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+    "if you are sure this will not cause problems, you may use \
+     `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiersLMissed {
     pub extern_crate: Symbol,
@@ -590,13 +631,15 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
 #[derive(Diagnostic)]
 #[diag("mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`")]
 #[help(
-    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
+    "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different \
+     values of this flag cannot be used together safely"
 )]
 #[note(
     "{$has_local_value ->
         [false]  `{$flag_name_prefixed}` being set
         *[other] `{$flag_name_prefixed}={$local_value}`
-    } in this crate is incompatible with `{$flag_name_prefixed}` being unset in dependency `{$extern_crate}`"
+    } in this crate is incompatible with `{$flag_name_prefixed}` being unset in dependency \
+     `{$extern_crate}`"
 )]
 #[help(
     "unset `{$flag_name_prefixed}` in this crate or set {$has_local_value ->
@@ -605,7 +648,8 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
     } in `{$extern_crate}`"
 )]
 #[help(
-    "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
+    "if you are sure this will not cause problems, you may use \
+     `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
 )]
 pub(crate) struct IncompatibleTargetModifiersRMissed {
     pub extern_crate: Symbol,
@@ -618,7 +662,8 @@ pub(crate) struct IncompatibleTargetModifiersRMissed {
 
 #[derive(Diagnostic)]
 #[diag(
-    "unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`"
+    "unknown target modifier `{$flag_name}`, requested by \
+     `-Cunsafe-allow-abi-mismatch={$flag_name}`"
 )]
 pub(crate) struct UnknownTargetModifierUnsafeAllowed {
     pub flag_name: String,
@@ -626,10 +671,12 @@ pub(crate) struct UnknownTargetModifierUnsafeAllowed {
 
 #[derive(Diagnostic)]
 #[diag(
-    "found async drop types in dependency `{$extern_crate}`, but async_drop feature is disabled for `{$local_crate}`"
+    "found async drop types in dependency `{$extern_crate}`, but `async_drop` feature is disabled \
+     for `{$local_crate}`"
 )]
 #[help(
-    "if async drop type will be dropped in a crate without `feature(async_drop)`, sync Drop will be used"
+    "if async drop type will be dropped in a crate without `feature(async_drop)`, sync `Drop` will \
+     be used"
 )]
 pub(crate) struct AsyncDropTypesInDependency {
     #[primary_span]
@@ -655,13 +702,17 @@ pub(crate) struct UnusedCrateDependency {
 
 #[derive(Diagnostic)]
 #[diag(
-    "your program uses the crate `{$extern_crate}`, that is not compiled with `{$mitigation_name}{$mitigation_level}` enabled"
+    "your program uses the crate `{$extern_crate}`, that is not compiled with \
+     `{$mitigation_name}{$mitigation_level}` enabled"
 )]
 #[note(
-    "recompile `{$extern_crate}` with `{$mitigation_name}{$mitigation_level}` enabled, or use `-Z allow-partial-mitigations={$mitigation_name}` to allow creating an artifact that has the mitigation partially enabled "
+    "recompile `{$extern_crate}` with `{$mitigation_name}{$mitigation_level}` enabled, or use \
+     `-Z allow-partial-mitigations={$mitigation_name}` to allow creating an artifact that has the \
+      mitigation partially enabled"
 )]
 #[help(
-    "it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via `-Z deny-partial-mitigations={$mitigation_name}`"
+    "it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via \
+     `-Z deny-partial-mitigations={$mitigation_name}`"
 )]
 pub(crate) struct MitigationLessStrictInDependency {
     pub mitigation_name: String,
@@ -671,15 +722,16 @@ pub(crate) struct MitigationLessStrictInDependency {
 
 #[derive(Diagnostic)]
 pub(crate) enum StaticLinkingNotSupported<'a> {
-    #[diag(
-        "static linking of `{$lib_name}` is not supported on `{$target}`; using dynamic linking instead"
-    )]
+    #[diag("static linking of `{$lib_name}` is not supported on `{$target}`")]
+    #[note("using dynamic linking instead")]
     #[help("remove `kind = \"static\"` and ensure a shared library is available")]
     UserRequested { lib_name: Symbol, target: &'a str },
 
     #[diag(
-        "library `{$lib_name}` is linked statically by a dependency, but `{$target}` requires dynamic linking; using dynamic linking instead"
+        "library `{$lib_name}` is linked statically by a dependency, but `{$target}` requires \
+         dynamic linking"
     )]
+    #[note("using dynamic linking instead")]
     #[help("ensure a shared library is available")]
     FromDependency { lib_name: Symbol, target: &'a str },
 }

@@ -1,6 +1,7 @@
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/impl-generic-mismatch-ab.rs:8:32
    |
+LL | impl Foo for () {
 LL |     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
    |            -                   ^^^^^^^^^^^ expected type parameter `B`, found type parameter `impl Debug`
    |            |
@@ -9,6 +10,7 @@ LL |     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
 note: type in trait
   --> $DIR/impl-generic-mismatch-ab.rs:4:32
    |
+LL | trait Foo {
 LL |     fn foo<A: Debug>(&self, a: &A, b: &impl Debug);
    |                                ^^
    = note: expected signature `fn(&(), &B, &impl Debug)`

@@ -1,3 +1,3 @@
 //! Helper module for exporting the `view_types` macro.
 
-pub use core::view_type;
+pub use core::view::view_type;

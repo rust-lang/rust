@@ -109,181 +109,181 @@ LL |     let _t = tup.0.clone();
    |              ^^^^^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:84:25
+  --> tests/ui/redundant_clone.rs:85:25
    |
 LL |     if b { (a.clone(), a.clone()) } else { (Alpha, a) }
    |                         ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:84:24
+  --> tests/ui/redundant_clone.rs:85:24
    |
 LL |     if b { (a.clone(), a.clone()) } else { (Alpha, a) }
    |                        ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:142:15
+  --> tests/ui/redundant_clone.rs:143:15
    |
 LL |     let _s = s.clone();
    |               ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:142:14
+  --> tests/ui/redundant_clone.rs:143:14
    |
 LL |     let _s = s.clone();
    |              ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:144:15
+  --> tests/ui/redundant_clone.rs:145:15
    |
 LL |     let _t = t.clone();
    |               ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:144:14
+  --> tests/ui/redundant_clone.rs:145:14
    |
 LL |     let _t = t.clone();
    |              ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:155:19
+  --> tests/ui/redundant_clone.rs:156:19
    |
 LL |         let _f = f.clone();
    |                   ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:155:18
+  --> tests/ui/redundant_clone.rs:156:18
    |
 LL |         let _f = f.clone();
    |                  ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:168:14
+  --> tests/ui/redundant_clone.rs:169:14
    |
 LL |     let y = x.clone().join("matthias");
    |              ^^^^^^^^ help: remove this
    |
 note: cloned value is neither consumed nor mutated
-  --> tests/ui/redundant_clone.rs:168:13
+  --> tests/ui/redundant_clone.rs:169:13
    |
 LL |     let y = x.clone().join("matthias");
    |             ^^^^^^^^^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:223:11
+  --> tests/ui/redundant_clone.rs:224:11
    |
 LL |     foo(&x.clone(), move || {
    |           ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:223:10
+  --> tests/ui/redundant_clone.rs:224:10
    |
 LL |     foo(&x.clone(), move || {
    |          ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:299:34
+  --> tests/ui/redundant_clone.rs:300:34
    |
 LL |             let _: String = value.clone();
    |                                  ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:299:29
+  --> tests/ui/redundant_clone.rs:300:29
    |
 LL |             let _: String = value.clone();
    |                             ^^^^^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:312:32
+  --> tests/ui/redundant_clone.rs:313:32
    |
 LL |         let _ = identity!(value.clone());
    |                                ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:312:27
+  --> tests/ui/redundant_clone.rs:313:27
    |
 LL |         let _ = identity!(value.clone());
    |                           ^^^^^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:322:23
+  --> tests/ui/redundant_clone.rs:323:23
    |
 LL |             out.push(s.clone());
    |                       ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:322:22
+  --> tests/ui/redundant_clone.rs:323:22
    |
 LL |             out.push(s.clone());
    |                      ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:331:22
+  --> tests/ui/redundant_clone.rs:332:22
    |
 LL |             let t = s.clone();
    |                      ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:331:21
+  --> tests/ui/redundant_clone.rs:332:21
    |
 LL |             let t = s.clone();
    |                     ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:343:22
+  --> tests/ui/redundant_clone.rs:344:22
    |
 LL |             let t = s.clone();
    |                      ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:343:21
+  --> tests/ui/redundant_clone.rs:344:21
    |
 LL |             let t = s.clone();
    |                     ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:356:27
+  --> tests/ui/redundant_clone.rs:357:27
    |
 LL |                 out.push(s.clone());
    |                           ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:356:26
+  --> tests/ui/redundant_clone.rs:357:26
    |
 LL |                 out.push(s.clone());
    |                          ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:361:27
+  --> tests/ui/redundant_clone.rs:362:27
    |
 LL |                 out.push(s.clone());
    |                           ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:361:26
+  --> tests/ui/redundant_clone.rs:362:26
    |
 LL |                 out.push(s.clone());
    |                          ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:374:18
+  --> tests/ui/redundant_clone.rs:375:18
    |
 LL |             t = s.clone();
    |                  ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:374:17
+  --> tests/ui/redundant_clone.rs:375:17
    |
 LL |             t = s.clone();
    |                 ^
 
 error: redundant clone
-  --> tests/ui/redundant_clone.rs:384:18
+  --> tests/ui/redundant_clone.rs:385:18
    |
 LL |         let t = s.clone();
    |                  ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> tests/ui/redundant_clone.rs:384:17
+  --> tests/ui/redundant_clone.rs:385:17
    |
 LL |         let t = s.clone();
    |                 ^

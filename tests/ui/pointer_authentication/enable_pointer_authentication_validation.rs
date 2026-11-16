@@ -1,4 +1,3 @@
-//@ ignore-backends: gcc
 //@ revisions: empty unprefixed all_unknown all_known mixed
 
 //@[empty] needs-llvm-components: aarch64

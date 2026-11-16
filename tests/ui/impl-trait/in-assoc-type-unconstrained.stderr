@@ -16,6 +16,7 @@ LL |         type Ty: IntoIterator<Item = ()>;
 error[E0053]: method `method` has an incompatible type for trait
   --> $DIR/in-assoc-type-unconstrained.rs:22:24
    |
+LL |     impl Trait for () {
 LL |         type Ty = impl Sized;
    |                   ---------- the expected opaque type
 LL |
@@ -25,6 +26,8 @@ LL |         fn method() -> () {}
 note: type in trait
   --> $DIR/in-assoc-type-unconstrained.rs:17:24
    |
+LL |     trait Trait {
+LL |         type Ty;
 LL |         fn method() -> Self::Ty;
    |                        ^^^^^^^^
    = note: expected signature `fn() -> <() as compare_method::Trait>::Ty`
