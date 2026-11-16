@@ -4,7 +4,7 @@
 #[must_use = "AAA"]
 //~^ NOTE also specified here
 #[must_use = "BBB"]
-//~^ ERROR unused attribute
+//~^ ERROR duplicate `must_use` attributes
 //~| WARN previously accepted
 //~| NOTE `#[deny(unused_attributes)]` implied by `#[deny(unused)]`
 fn must_use() -> usize {

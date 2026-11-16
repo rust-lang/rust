@@ -12,6 +12,7 @@ use rustc_span::{Span, Symbol, edition, kw, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
+use crate::DuplicateAttribute;
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
@@ -23,7 +24,7 @@ use crate::diagnostics::{
     DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
     DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight,
     DuplicateNotableTraitColor, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput,
-    InvalidNotableTraitAttr, InvalidNotableTraitColor, MalformedDoc, UnusedDuplicate,
+    InvalidNotableTraitAttr, InvalidNotableTraitColor, MalformedDoc,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -278,7 +279,12 @@ impl DocParser {
                     let unused_span = path.span();
                     cx.emit_lint(
                         INVALID_DOC_ATTRIBUTES,
-                        UnusedDuplicate { this: unused_span, other: used_span, warning: true },
+                        DuplicateAttribute {
+                            this: unused_span,
+                            other: used_span,
+                            name: sym::no_crate_inject,
+                            warning: true,
+                        },
                         unused_span,
                     );
                     return;

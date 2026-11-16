@@ -13,8 +13,8 @@ static mut USED_COMPILER_LINKER2: [usize; 1] = [0];
 
 #[used(compiler)]
 #[used(linker)]
-#[used(compiler)] //~ ERROR unused attribute
-#[used(linker)] //~ ERROR unused attribute
+#[used(compiler)] //~ ERROR duplicate `used` attributes
+#[used(linker)] //~ ERROR duplicate `used` attributes
 static mut USED_COMPILER_LINKER3: [usize; 1] = [0];
 
 #[used(compiler)]
@@ -22,7 +22,7 @@ static mut USED_COMPILER_LINKER3: [usize; 1] = [0];
 static mut USED_WITHOUT_ATTR1: [usize; 1] = [0];
 
 #[used(linker)]
-#[used] //~ ERROR unused attribute
+#[used] //~ ERROR duplicate `used` attributes
 static mut USED_WITHOUT_ATTR2: [usize; 1] = [0];
 
 fn main() {}
