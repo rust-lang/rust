@@ -6,6 +6,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -166,6 +167,16 @@ fn eii_(
         item_span,
         foreign_item_name,
     ) {
+        if !ecx.ecfg.features.extern_item_default_impls() {
+            feature_err(
+                ecx.sess,
+                sym::extern_item_default_impls,
+                eii_attr_span,
+                "eii with default impl is unstable",
+            )
+            .emit();
+        }
+
         module_items.push(default_impl);
     }
 
