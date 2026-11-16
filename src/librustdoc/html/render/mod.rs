@@ -103,6 +103,7 @@ enum AssocItemRender<'a> {
     DerefFor {
         trait_: &'a clean::Path,
         type_: &'a clean::Type,
+        resolved_type: &'a clean::Type,
         deref_mut_: bool,
         deref_impl_def_id: DefId,
     },
@@ -1505,7 +1506,7 @@ fn render_assoc_items_inner(
                 Either::Left(write_impl_section_heading("Implementations", "implementations")),
                 Cow::Borrowed("implementations-list"),
             ),
-            AssocItemRender::DerefFor { trait_, type_, .. } => {
+            AssocItemRender::DerefFor { trait_, type_, resolved_type, .. } => {
                 let id = cx.derive_id(small_url_encode(format!(
                     "deref-methods-{:#}",
                     print_type(type_, cx)
@@ -1518,7 +1519,7 @@ fn render_assoc_items_inner(
                 // this `retain` filters out any instances where
                 // the types do not line up perfectly.
                 inherent_impls
-                    .retain(|impl_| type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx));
+                    .retain(|impl_| resolved_type.is_doc_subtype_of(&impl_.inner_impl().for_, &cx));
                 let derived_id = cx.derive_id(&id);
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.borrow_mut().insert(def_id, id.clone());
@@ -1628,6 +1629,7 @@ fn render_deref_methods(
     let what = AssocItemRender::DerefFor {
         trait_: deref_type,
         type_: real_target,
+        resolved_type: target,
         deref_mut_: deref_mut,
         deref_impl_def_id: impl_.def_id(),
     };
