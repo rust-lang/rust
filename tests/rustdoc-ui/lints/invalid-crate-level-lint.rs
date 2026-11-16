@@ -6,7 +6,7 @@
 
 pub mod bar {
     #![doc(test(no_crate_inject))]
-    //~^ ERROR unused attribute
+    //~^ ERROR duplicate `no_crate_inject` attribute
     //~| WARN this was previously accepted by the compiler but is being phased out
 
     #[doc(test(no_crate_inject))]
