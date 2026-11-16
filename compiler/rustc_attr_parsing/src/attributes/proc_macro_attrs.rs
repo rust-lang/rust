@@ -1,10 +1,9 @@
 use rustc_feature::AttributeStability;
-use rustc_lint_defs::builtin::AMBIGUOUS_DERIVE_HELPERS;
 
 use super::prelude::*;
 
 const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets<'_> =
-    AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate), Warn(Target::MacroCall)]);
+    AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
 pub(crate) struct ProcMacroParser;
 impl NoArgsAttributeParser for ProcMacroParser {
@@ -120,11 +119,7 @@ fn parse_derive_like(
                 return None;
             }
             if rustc_feature::is_builtin_attr_name(ident.name) {
-                cx.emit_lint(
-                    AMBIGUOUS_DERIVE_HELPERS,
-                    crate::diagnostics::AmbiguousDeriveHelpers,
-                    ident.span,
-                );
+                cx.emit_err(crate::diagnostics::AmbiguousDeriveHelpers { span: ident.span });
             }
             attributes.push(ident.name);
         }

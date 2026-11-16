@@ -52,7 +52,7 @@ impl OpaqueParser {
     fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser) {
         let attr_span = cx.attr_span;
         if let Some(earlier_span) = self.attr_span {
-            cx.warn_unused_duplicate(earlier_span, attr_span);
+            cx.unused_duplicate(earlier_span, attr_span);
         }
         self.attr_span = Some(attr_span);
 

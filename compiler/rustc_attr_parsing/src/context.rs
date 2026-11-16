@@ -70,7 +70,7 @@ use crate::attributes::unroll::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
 use crate::diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
-    ParsedDescription, UnusedDuplicate,
+    ParsedDescription, UnusedDuplicate, UnusedMultiple,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
@@ -278,7 +278,6 @@ attribute_parsers!(
         Single<WithoutArgs<LintNeverReturnsNullPtrParser>>,
         Single<WithoutArgs<LintShouldNotBeCalledOnConstItemsParser>>,
         Single<WithoutArgs<LoopMatchParser>>,
-        Single<WithoutArgs<MacroEscapeParser>>,
         Single<WithoutArgs<MarkerParser>>,
         Single<WithoutArgs<MayDangleParser>>,
         Single<WithoutArgs<NeedsAllocatorParser>>,
@@ -475,6 +474,7 @@ impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
         (self.emit_lint)(LintId::of(lint), span.into(), kind);
     }
 
+    #[expect(unused)]
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
         self.emit_lint(
             UNUSED_ATTRIBUTES,
@@ -658,6 +658,22 @@ impl<'f, 'sess: 'f> AcceptContext<'f, 'sess> {
         Arg: ExpectStringLiteral,
     {
         arg.expect_string_literal(self)
+    }
+
+    pub(crate) fn unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
+        self.cx.emit_err(UnusedMultiple {
+            this: unused_span,
+            other: used_span,
+            name: Symbol::intern(
+                &self
+                    .attr_path
+                    .segments
+                    .iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<_>>()
+                    .join(".."),
+            ),
+        });
     }
 }
 
@@ -1144,18 +1160,14 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         )
     }
 
-    pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
+    pub(crate) fn empty_attribute(&mut self, span: Span) {
         let attr_path = self.attr_path.to_string();
         let valid_without_list = self.template.word;
-        self.emit_lint(
-            UNUSED_ATTRIBUTES,
-            crate::diagnostics::EmptyAttributeList {
-                attr_span: span,
-                attr_path,
-                valid_without_list,
-            },
-            span,
-        );
+        self.emit_err(crate::diagnostics::EmptyAttributeList {
+            attr_span: span,
+            attr_path,
+            valid_without_list,
+        });
     }
 
     pub(crate) fn warn_ill_formed_attribute_input(&mut self, lint: &'static Lint) {
