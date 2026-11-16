@@ -57,7 +57,8 @@ use rustc_attr_ir::diagnostic_items::DiagnosticItems;
 use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
 use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, NotableTraitColor, StrippedCfgItem};
 use rustc_crate_store::{
-    CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+    CrateDepKind, CrateSource, CrateSourceFlags, ExternCrate, ForeignModule, LinkagePreference,
+    NativeLib,
 };
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -2366,9 +2367,9 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query crate_has_rlib_or_rmeta(_: CrateNum) -> bool {
+    query used_crate_source_flags(_: CrateNum) -> CrateSourceFlags {
         eval_always
-        desc { "seeing if an rlib or rmeta entry is present for this crate" }
+        desc { "looking at source presence in a crate" }
         separate_provide_extern
     }
 

@@ -12,6 +12,7 @@ use rustc_ast::expand::allocator::{
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{DebuggerVisualizerType, EiiDecl, EiiImpl, find_attr};
+use rustc_crate_store::CrateSourceFlags;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
@@ -645,7 +646,10 @@ pub fn collect_debugger_visualizers_transitive(
         .chain(
             tcx.crates(())
                 .iter()
-                .filter(|&cnum| tcx.crate_has_rlib_or_rmeta(*cnum))
+                .filter(|&cnum| {
+                    tcx.used_crate_source_flags(*cnum)
+                        .intersects(CrateSourceFlags::RMETA | CrateSourceFlags::RLIB)
+                })
                 .flat_map(|&cnum| tcx.debugger_visualizers(cnum)),
         )
         .filter(|visualizer| visualizer.visualizer_type == visualizer_type)
