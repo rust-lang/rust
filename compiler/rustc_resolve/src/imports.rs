@@ -2099,6 +2099,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .map(|redirect| MetadataEditionRedirect {
                 range: redirect.range,
                 target: redirect.import_decl.res().expect_non_local(),
+                reexport_chain: redirect.import_decl.reexport_chain(),
             })
             .collect()
     }

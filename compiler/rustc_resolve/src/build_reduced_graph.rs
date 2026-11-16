@@ -405,21 +405,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             let edition_redirects = edition_redirects
                 .iter()
-                .map(|redirect| EditionRedirectDecl {
-                    range: redirect.range,
-                    // Model this as a one-step reexport under the original child's name: the
-                    // target supplies the resolution, while the child supplies its visibility,
-                    // span, and parent module.
-                    target: self.arenas.alloc_decl(DeclData {
-                        kind: DeclKind::Def(redirect.target.expect_non_local(), reexport_chain),
-                        ambiguity: CmCell::new(None),
-                        initial_vis: vis,
-                        ambiguity_vis_max: CmCell::new(None),
-                        ambiguity_vis_min: CmCell::new(None),
-                        span,
-                        expansion,
-                        parent_module: Some(parent.to_module()),
-                    }),
+                .map(|redirect| {
+                    EditionRedirectDecl {
+                        range: redirect.range,
+                        // The redirect supplies the resolution and reexport chain, while the
+                        // original child supplies its visibility, span, and parent module.
+                        target: self.arenas.alloc_decl(DeclData {
+                            kind: DeclKind::Def(
+                                redirect.target.expect_non_local(),
+                                self.arenas.dropless.alloc_slice(&redirect.reexport_chain),
+                            ),
+                            ambiguity: CmCell::new(None),
+                            initial_vis: vis,
+                            ambiguity_vis_max: CmCell::new(None),
+                            ambiguity_vis_min: CmCell::new(None),
+                            span,
+                            expansion,
+                            parent_module: Some(parent.to_module()),
+                        }),
+                    }
                 })
                 .collect::<Box<[_]>>();
             let decl = self.arenas.alloc_decl(DeclData {

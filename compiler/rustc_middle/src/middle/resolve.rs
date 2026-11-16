@@ -138,10 +138,11 @@ impl Reexport {
 }
 
 /// A different item that a module child resolves to within an inclusive edition range.
-#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, StableHash)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct EditionRedirect {
     pub range: RangeInclusive<Edition>,
     pub target: Res<!>,
+    pub reexport_chain: SmallVec<[Reexport; 2]>,
 }
 
 /// This structure is supposed to keep enough data to re-create `Decl`s for other crates
