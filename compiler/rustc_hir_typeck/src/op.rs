@@ -455,13 +455,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.note_unmet_impls_on_type(&mut err, &errors, suggest_derive);
 
                 // The other case, where RHS had a shadowed method call earlier in the chain
-                // produces an E0277 instead, so adding a second call to `find_shadowed_method`
-                // would be dead code.
-                self.find_shadowed_method(&mut err, lhs_ty, lhs_expr, |ty| {
-                    self.autoderef(lhs_expr.span, ty)
-                        .silence_errors()
-                        .any(|(ty, _)| is_compatible_after_call(ty, rhs_ty))
-                });
+                // produces an E0277 instead, so adding a second call to
+                // `find_shadowed_method_and_provide_diagnostic_context` would be dead code.
+                self.find_shadowed_method_and_provide_diagnostic_context(
+                    &mut err,
+                    lhs_ty,
+                    lhs_expr,
+                    |ty| {
+                        self.autoderef(lhs_expr.span, ty)
+                            .silence_errors()
+                            .any(|(ty, _)| is_compatible_after_call(ty, rhs_ty))
+                    },
+                );
                 (err, output_def_id)
             }
         };

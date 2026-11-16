@@ -3397,7 +3397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
     ) {
         let hir::ExprKind::Field(expr, ..) = expr.kind else { return };
-        self.find_shadowed_method(err, base_ty, expr, |ty| {
+        self.find_shadowed_method_and_provide_diagnostic_context(err, base_ty, expr, |ty| {
             // Does the alternative method call's resulting type auto-deref to a type that has
             // the field the user is trying to access?
             self.get_field_candidates_considering_privacy_for_diag(expr.span, ty)
@@ -3460,7 +3460,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    pub(crate) fn find_shadowed_method(
+    /// Given `expr`, detect if it is a method call that might have been shadowed by another trait
+    /// being in scope. Only include those traits/impls whose similarly named method have a return
+    /// type that `finder` considers as "valid" (for example, it has the expected field or method).
+    pub(crate) fn find_shadowed_method_and_provide_diagnostic_context(
         &self,
         err: &mut Diag<'_>,
         base_ty: Ty<'tcx>,

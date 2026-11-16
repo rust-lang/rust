@@ -597,7 +597,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_ty: Ty<'tcx>,
     ) {
         let SelfSource::MethodCall(expr) = source else { return };
-        self.find_shadowed_method(err, base_ty, expr, |ty| {
+        self.find_shadowed_method_and_provide_diagnostic_context(err, base_ty, expr, |ty| {
             self.autoderef(method_ident.span, ty)
                 .silence_errors()
                 .any(|(ty, _)| self.all_methods(method_ident, ty).next().is_some())
