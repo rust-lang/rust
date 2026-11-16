@@ -629,7 +629,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(EmulateItemResult::AlreadyJumped);
             }
             "abort" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [] =
                     &ecx.check_shim_sig(shim_sig!(extern "C" fn() -> ()), (link_name, abi, args))?;
                 throw_machine_stop!(TerminationInfo::Abort(
