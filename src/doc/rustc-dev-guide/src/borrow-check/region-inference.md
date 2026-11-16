@@ -22,8 +22,8 @@ The MIR-based region analysis consists of two major functions:
   It has the job of computing values for all
   the inference variables that `replace_regions_in_mir` introduced.
   - To do that, it first runs the [MIR type checker].
-    This is basically a normal type-checker but specialized to MIR, which is
-    much simpler than full Rust, of course.
+    This is basically a normal type-checker, but specialized to MIR,
+    which is much simpler than full Rust, of course.
     Running the MIR type checker will however create various [constraints][cp] between region
     variables, indicating their potential values and relationships to one another.
   - After this, we perform [constraint propagation][cp] by creating a
