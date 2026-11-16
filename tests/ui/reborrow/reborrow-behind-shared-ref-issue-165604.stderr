@@ -1,0 +1,14 @@
+error[E0596]: cannot borrow `*b` as mutable, as it is behind a `&` reference
+  --> $DIR/reborrow-behind-shared-ref-issue-165604.rs:18:14
+   |
+LL |     reborrow(*b);
+   |              ^^ `b` is a `&` reference, so it cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let b = &mut a;
+   |              +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.
