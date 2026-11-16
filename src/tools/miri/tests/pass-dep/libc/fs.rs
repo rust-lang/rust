@@ -40,6 +40,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
     test_create_read_write();
+    test_append_seek_read_write();
     test_read_and_uninit();
     test_open_args(libc::open);
     #[cfg(target_os = "linux")]
@@ -114,6 +115,49 @@ fn main() {
     test_readlink();
     test_linkat();
     test_short_fs_operations();
+}
+
+fn test_append_seek_read_write() {
+    let path = utils::prepare_with_content("miri-pass-libc-append.txt", b"abc");
+    let cpath = utils::into_c_string(path);
+    let fd =
+        errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDWR | libc::O_APPEND) }).unwrap();
+
+    unsafe {
+        // Reading behaves as usual.
+        assert_eq!(errno_result(libc::lseek(fd, 1, libc::SEEK_SET)).unwrap(), 1);
+        assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), *b"b");
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_CUR)).unwrap(), 2);
+
+        let mut byte = 0u8;
+        assert_eq!(errno_result(libc::pread(fd, (&mut byte as *mut u8).cast(), 1, 0)).unwrap(), 1);
+        assert_eq!(byte, b'a');
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_CUR)).unwrap(), 2);
+
+        // But writing always adds at the end.
+        // The current position is 2, which would usually overwrite the `c`.
+        libc_utils::write_all(fd, b"d").unwrap();
+        // The current position also got updated to point at the end.
+        assert_eq!(libc_utils::read_to_end(fd).unwrap(), b"");
+        // Seek to beginning to check contents of the entire file.
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_SET)).unwrap(), 0);
+        assert_eq!(libc_utils::read_to_end(fd).unwrap(), b"abcd");
+
+        errno_check(libc::close(fd));
+
+        // Also test write-only append mode.
+        let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_WRONLY | libc::O_APPEND)).unwrap();
+        assert_eq!(errno_result(libc::lseek(fd, 1, libc::SEEK_SET)).unwrap(), 1);
+        let err = errno_result(libc::read(fd, (&mut byte as *mut u8).cast(), 1)).unwrap_err();
+        assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+        libc_utils::write_all(fd, b"e").unwrap();
+        assert_eq!(errno_result(libc::lseek(fd, 0, libc::SEEK_CUR)).unwrap(), 5);
+        errno_check(libc::close(fd));
+
+        let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_RDONLY)).unwrap();
+        assert_eq!(libc_utils::read_to_end(fd).unwrap(), b"abcde");
+        errno_check(libc::close(fd));
+    }
 }
 
 #[cfg(target_os = "linux")]
