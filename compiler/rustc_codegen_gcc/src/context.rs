@@ -16,11 +16,11 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
     LayoutOfHelpers, codegen_handle_fn_abi_err,
 };
-use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Intrinsic, Ty, TyCtxt};
 #[cfg(feature = "master")]
 use rustc_session::config::DebugInfo;
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, TlsModel, X86Abi};
 
 #[cfg(feature = "master")]
@@ -560,7 +560,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    fn intrinsic_call_expects_place_always(&self, _name: Symbol) -> bool {
+    fn intrinsic_call_expects_place_always(&self, _name: Intrinsic) -> bool {
         true
     }
 }
