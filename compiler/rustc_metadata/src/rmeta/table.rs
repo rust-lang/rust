@@ -1,8 +1,16 @@
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::CtorOf;
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::Idx;
+use rustc_middle::ty::codec::TyEncoder;
+use rustc_span::{LocalExpnId, SyntaxContext};
 
 use crate::rmeta::decoder::MetaBlob;
-use crate::rmeta::remapped_def_id::RemappedRawDefId;
+use crate::rmeta::encoder::MetadataEncoder;
+use crate::rmeta::encoder::public_api_hasher::{
+    GraphHashed, Node, PublicApiHashState, RecordMode, TablePublicApiHasher,
+};
+use crate::rmeta::remapped_def_id::RemappedWideRawDefId;
 use crate::rmeta::*;
 
 const SPARSE_BLOCK_LEN: usize = 64;
@@ -74,6 +82,31 @@ impl FixedSizeEncoding for u64 {
     #[inline]
     fn write_to_bytes(self, b: &mut [u8; 8]) {
         *b = self.to_le_bytes();
+    }
+}
+
+impl FixedSizeEncoding for Option<Fingerprint> {
+    type ByteArray = [u8; 17];
+
+    fn from_bytes(b: &Self::ByteArray) -> Self {
+        if b[0] == 0 {
+            None
+        } else {
+            Some(Fingerprint::from_le_bytes(b[1..17].try_into().unwrap()))
+        }
+    }
+
+    fn write_to_bytes(self, b: &mut Self::ByteArray) {
+        match self {
+            Some(fingerprint) => {
+                b[0] = 1;
+                let buf: &mut [u8; 16] = (&mut b[1..17]).try_into().unwrap();
+                *buf = fingerprint.to_le_bytes();
+            }
+            None => {
+                b[0] = 0;
+            }
+        }
     }
 }
 
@@ -257,23 +290,23 @@ fixed_size_enum! {
 }
 
 // We directly encode RawDefId because using a `LazyValue` would incur a 50% overhead in the worst case.
-impl FixedSizeEncoding for Option<RemappedRawDefId> {
-    type ByteArray = [u8; 8];
+impl FixedSizeEncoding for Option<RemappedWideRawDefId> {
+    type ByteArray = [u8; 12];
 
     #[inline]
-    fn from_bytes(encoded: &[u8; 8]) -> Self {
+    fn from_bytes(encoded: &[u8; 12]) -> Self {
         let (index, krate) = decode_interleaved(encoded);
         let krate = u32::from_le_bytes(krate);
         if krate == 0 {
             return None;
         }
-        let index = u32::from_le_bytes(index);
+        let index = u64::from_le_bytes(index);
 
-        Some(RemappedRawDefId::new_unchecked(krate - 1, index))
+        Some(RemappedWideRawDefId::new_unchecked(krate - 1, index))
     }
 
     #[inline]
-    fn write_to_bytes(self, dest: &mut [u8; 8]) {
+    fn write_to_bytes(self, dest: &mut [u8; 12]) {
         match self {
             None => unreachable!(),
             Some(id) => {
@@ -365,13 +398,24 @@ impl<T> LazyArray<T> {
 // Interleaving the bytes of the two integers exposes trailing bytes in the first integer
 // to the varint scheme that we use for tables.
 #[inline]
-fn decode_interleaved<const N: usize, const M: usize>(encoded: &[u8; N]) -> ([u8; M], [u8; M]) {
-    assert_eq!(M * 2, N);
-    let mut first = [0u8; M];
-    let mut second = [0u8; M];
-    for i in 0..M {
+fn decode_interleaved<const N: usize, const M1: usize, const M2: usize>(
+    encoded: &[u8; N],
+) -> ([u8; M1], [u8; M2]) {
+    assert_eq!(M1 + M2, N);
+    let first_longer: bool = M1 > M2;
+    let (min, max) = if first_longer { (M2, M1) } else { (M1, M2) };
+    let mut first = [0u8; M1];
+    let mut second = [0u8; M2];
+    for i in 0..min {
         first[i] = encoded[2 * i];
         second[i] = encoded[2 * i + 1];
+    }
+    for i in min..max {
+        if first_longer {
+            first[i] = encoded[i + min];
+        } else {
+            second[i] = encoded[i + min];
+        }
     }
     (first, second)
 }
@@ -384,11 +428,20 @@ fn decode_interleaved<const N: usize, const M: usize>(encoded: &[u8; N]) -> ([u8
 //
 // Prefer passing a and b such that `b` is usually smaller.
 #[inline]
-fn encode_interleaved<const N: usize, const M: usize>(a: [u8; M], b: [u8; M], dest: &mut [u8; N]) {
-    assert_eq!(M * 2, N);
-    for i in 0..M {
+fn encode_interleaved<const N: usize, const M1: usize, const M2: usize>(
+    a: [u8; M1],
+    b: [u8; M2],
+    dest: &mut [u8; N],
+) {
+    assert_eq!(M1 + M2, N);
+    let first_longer: bool = M1 > M2;
+    let (min, max) = if first_longer { (M2, M1) } else { (M1, M2) };
+    for i in 0..min {
         dest[2 * i] = a[i];
         dest[2 * i + 1] = b[i];
+    }
+    for i in min..max {
+        dest[i + min] = if first_longer { a[i] } else { b[i] }
     }
 }
 
@@ -431,37 +484,137 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
     }
 }
 
-/// Helper for constructing a table's serialization (also see `Table`).
-pub(super) struct TableBuilder<IdxEncode: Idx, IdxDecode: Idx, T: FixedSizeEncoding> {
-    width: usize,
-    blocks: IndexVec<IdxEncode, T::ByteArray>,
-    _marker: PhantomData<(IdxDecode, T)>,
+pub(crate) trait TableIdx: Copy {
+    type Encoded: Idx;
+    type Decoded: Idx;
+
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded;
 }
 
-impl<Ie: Idx, Id: Idx, T: FixedSizeEncoding> Default for TableBuilder<Ie, Id, T> {
-    fn default() -> Self {
-        TableBuilder { width: 0, blocks: Default::default(), _marker: PhantomData }
+impl TableIdx for LocalDefId {
+    type Encoded = RemappedLocalDefId;
+    type Decoded = DefIndex;
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
+        encoder.local_defs_remapping.map_local_def_id(self)
     }
 }
 
-impl<Ie: Idx, Id: Idx, const N: usize, T> TableBuilder<Ie, Id, Option<T>>
+impl TableIdx for SyntaxContext {
+    type Encoded = RemappedSyntaxContext;
+    type Decoded = DecodedSyntaxContext;
+
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
+        encoder.syntax_context_remapping.map_id(self)
+    }
+}
+
+impl TableIdx for LocalExpnId {
+    type Encoded = RemappedLocalExpnIndex;
+    type Decoded = ExpnIndex;
+
+    fn to_encoded<'tcx, M: MetadataEncoder<'tcx>>(
+        self,
+        encoder: &EncodeContext<'_, 'tcx, M>,
+    ) -> Self::Encoded {
+        encoder.local_expn_id_remapping.map_id(self)
+    }
+}
+
+/// Helper for constructing a table's serialization (also see `Table`).
+pub(super) struct TableBuilder<H: TablePublicApiHasher<I>, I: TableIdx, T: FixedSizeEncoding> {
+    width: usize,
+    blocks: IndexVec<I::Encoded, T::ByteArray>,
+    pub(super) hasher: H,
+    _marker: PhantomData<(I::Decoded, T)>,
+}
+
+impl<H: TablePublicApiHasher<I>, I: TableIdx, T: FixedSizeEncoding> Default
+    for TableBuilder<H, I, T>
+{
+    fn default() -> Self {
+        TableBuilder {
+            width: 0,
+            blocks: Default::default(),
+            hasher: Default::default(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<H: TablePublicApiHasher<I>, I: TableIdx, const N: usize, T> TableBuilder<H, I, Option<T>>
 where
     Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
-    pub(crate) fn set_some(&mut self, i: Ie, value: T) {
+    fn set_some(&mut self, i: I::Encoded, value: T) {
         self.set(i, Some(value))
     }
 }
+impl<
+    H: TablePublicApiHasher<I>,
+    I: TableIdx + for<'tcx> Into<Node<'tcx>>,
+    const N: usize,
+    T: FixedSizeEncoding<ByteArray = [u8; N]>,
+> TableBuilder<H, I, T>
+{
+    #[inline(always)]
+    pub(super) fn set_hashed<'a, 'tcx, V, M>(
+        &mut self,
+        i: I,
+        value: V,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
+        hcx: &mut impl PublicApiHashState<'a>,
+    ) where
+        T: EncodeFrom<'tcx, V, M>,
+        M: MetadataEncoder<'tcx>,
+    {
+        let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
+        self.set(encoded_i, encoded_value);
+    }
+}
+impl<H, I, const N: usize, T> TableBuilder<H, I, Option<T>>
+where
+    H: TablePublicApiHasher<I>,
+    I: TableIdx + for<'tcx> Into<Node<'tcx>>,
+    Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+{
+    #[inline(always)]
+    pub(super) fn set_some_hashed<'a, 'tcx, V, M>(
+        &mut self,
+        i: I,
+        value: V,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
+        hcx: &mut impl PublicApiHashState<'a>,
+    ) where
+        T: EncodeFrom<'tcx, V, M>,
+        M: MetadataEncoder<'tcx>,
+    {
+        let (encoded_i, encoded_value) = self.hasher.digest(i, value, encoder, hcx);
+        self.set_some(encoded_i, encoded_value);
+    }
+}
 
-impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>>
-    TableBuilder<Ie, Id, T>
+impl<
+    H: TablePublicApiHasher<I>,
+    I: TableIdx,
+    const N: usize,
+    T: FixedSizeEncoding<ByteArray = [u8; N]>,
+> TableBuilder<H, I, T>
 {
     /// Sets the table value if it is not default.
     /// ATTENTION: For optimization default values are simply ignored by this function, because
     /// right now metadata tables never need to reset non-default values to default. If such need
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
-    pub(crate) fn set(&mut self, i: Ie, value: T) {
+    fn set(&mut self, i: I::Encoded, value: T) {
         #[cfg(debug_assertions)]
         {
             debug_assert!(
@@ -479,7 +632,10 @@ impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>
         }
     }
 
-    pub(crate) fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTable<Ie, Id, T> {
+    pub(crate) fn encode<'tcx, M: MetadataEncoder<'tcx>>(
+        &self,
+        buf: &mut EncodeContext<'_, 'tcx, M>,
+    ) -> GraphHashed<LazyTable<I, T>> {
         let pos = buf.position();
 
         let width = self.width;
@@ -540,11 +696,12 @@ impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>
         }
 
         debug_assert!(width <= usize::MAX >> 1);
-        LazyTable::from_position_and_encoded_size(
+        let encoded = LazyTable::from_position_and_encoded_size(
             NonZero::new(pos).unwrap(),
             (width << 1) | usize::from(sparse),
             len,
-        )
+        );
+        GraphHashed(encoded)
     }
 }
 
@@ -552,17 +709,17 @@ fn trailing_zeros(x: &[u8]) -> usize {
     x.iter().rev().take_while(|b| **b == 0).count()
 }
 
-impl<
-    Ie: Idx,
-    Id: Idx,
-    const N: usize,
-    T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx,
-> LazyTable<Ie, Id, T>
+impl<I: TableIdx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]> + ParameterizedOverTcx>
+    LazyTable<I, T>
 where
     for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
-    pub(super) fn get<'a, 'tcx, M: MetaBlob<'a>>(&self, metadata: M, i: Id) -> T::Value<'tcx> {
+    pub(super) fn get<'a, 'tcx, M: MetaBlob<'a>>(
+        &self,
+        metadata: M,
+        i: I::Decoded,
+    ) -> T::Value<'tcx> {
         // Access past the end of the table returns a Default
         if i.index() >= self.len {
             return Default::default();
@@ -607,5 +764,24 @@ where
     /// Size of the table in entries, including possible gaps.
     pub(super) fn size(&self) -> usize {
         self.len
+    }
+}
+
+impl<I: TableIdx, const N: usize, T> TableBuilder<RDRHashNone<I>, I, Option<T>>
+where
+    Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
+{
+    pub(crate) fn set_some_unhashed<'tcx, V, M>(
+        &mut self,
+        i: I,
+        value: V,
+        encoder: &mut EncodeContext<'_, 'tcx, M>,
+    ) where
+        T: EncodeFrom<'tcx, V, M>,
+        M: MetadataEncoder<'tcx>,
+    {
+        encoder.with_record_mode(RecordMode::None, |encoder| {
+            self.set(i.to_encoded(encoder), Some(T::encode_from(encoder, value)))
+        })
     }
 }

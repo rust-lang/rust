@@ -1,3 +1,4 @@
+use core::default::Default;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -17,6 +18,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
+use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
 use rustc_hir::definitions::DefPathData;
@@ -24,18 +26,22 @@ use rustc_hir_pretty::id_to_string;
 use rustc_index::IndexVec;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::hir::map::compute_hir_hash;
+use rustc_middle::ich::StableHashState;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols::SymbolExportLevel;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
+use rustc_middle::middle::resolve::ModChild;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
-use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
+use rustc_middle::ty::{AssocContainer, PredicateKind};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{OptLevel, OutputType, TargetModifier};
-use rustc_span::def_id::CRATE_MOD_ID;
+use rustc_span::def_id::{CRATE_MOD_ID, VisibilityDefId};
 use rustc_span::hygiene::{
     HygieneEncodeContext, HygieneRemapper, HygieneRemappingResults, LocalExpnIdRemapper,
     SyntaxContextRemapper,
@@ -48,17 +54,275 @@ use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
 use twox_hash::XxHash3_128;
 
+use self::public_api_hasher::{
+    HashableCrateHeader, HashableCrateRoot, Hashed, NoneIfHashed, PublicApiHasher,
+    PublicApiHashingContext,
+};
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
-use crate::rmeta::remapped_def_id::RemappedRawDefId;
+use crate::rmeta::encoder::public_api_hasher::{
+    Node, PublicApiHashState, ReachabilityGraphBuilder, RecordMode, Unhashed,
+};
+use crate::rmeta::remapped_def_id::{RemappedRawDefId, RemappedWideRawDefId};
 use crate::rmeta::*;
 
-pub(super) struct EncodeContext<'a, 'tcx> {
+pub(super) mod public_api_hasher;
+
+pub(super) trait MetadataEncoder<'tcx>: Sized + Default {
+    type EncodedDefId: for<'a> Encodable<EncodeContext<'a, 'tcx, Self>>;
+    type EncodedLocalDefId: for<'a> Encodable<EncodeContext<'a, 'tcx, Self>>;
+    const HASH_PUBLIC_API: bool;
+    fn encoded_def_id(
+        tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> Self::EncodedDefId;
+    fn encoded_local_def_id(
+        tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: LocalDefId,
+    ) -> Self::EncodedLocalDefId;
+    fn into_remapped_wide_raw_def_id(
+        tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> RemappedWideRawDefId;
+
+    fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h>;
+    fn encode_trait_impls<'h, H: PublicApiHashState<'h>>(
+        ecx: &mut MetadataBuilder<'_, 'tcx, 'h, '_, '_, H, Self>,
+        trait_impls_map: &FxIndexMap<DefId, Vec<(LocalDefId, Option<SimplifiedType>)>>,
+    ) -> GraphHashed<EncodedTraitImpls>
+    where
+        TraitImpls<Self::EncodedDefId>:
+            for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<Self::EncodedDefId>>,
+        EncodedTraitImpls: From<LazyArray<TraitImpls<Self::EncodedDefId>>>,
+    {
+        // we must encode extern traits as root nodes, as their DefId-s can be acquired from other
+        // crates. However, this is not the case for local traits. Those should can only be accessed
+        // if their DefId-s can be reached through the reachability graph we are building for this
+        // crate
+        for (trait_id, _) in trait_impls_map {
+            if !trait_id.is_local() {
+                ecx.encoder.record_encoded_index(*trait_id);
+            }
+        }
+        let trait_impls: Vec<_> = trait_impls_map
+            .iter()
+            .map(|(&trait_id, impls)| {
+                let mut hasher = PublicApiHasher::default();
+                hasher.digest(impls, ecx.hcx);
+                TraitImpls {
+                    trait_id: Self::encoded_def_id(
+                        ecx.tcx(),
+                        &ecx.encoder.local_defs_remapping,
+                        trait_id,
+                    ),
+                    impls: ecx.with_record_mode(RecordMode::From(trait_id.into()), |this| {
+                        let hashed = this.hashed_lazy_array(impls);
+                        this.hcx.add_node_hash(
+                            &trait_id.into(),
+                            hashed.hash.unwrap_or(Fingerprint::ZERO),
+                        );
+                        hashed.value
+                    }),
+                }
+            })
+            .collect();
+        let encoded_trait_impls: LazyArray<TraitImpls<Self::EncodedDefId>> =
+            ecx.lazy_array(trait_impls).into();
+        GraphHashed(encoded_trait_impls.into())
+    }
+
+    fn crate_hashes<'h>(
+        ecx: &mut EncodeContext<'_, 'tcx, Self>,
+        hcx: &mut impl PublicApiHashState<'h>,
+        root: &HashableCrateRoot,
+    ) -> Option<(Svh, ItemPublicHashes)>;
+
+    fn record_encoded_index(&mut self, _node: Node<'tcx>);
+
+    #[inline(always)]
+    fn with_record_mode<'a, 'h, 'b, 'c, F, T, H>(
+        ecx: &mut MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, Self>,
+        mode: RecordMode<'tcx>,
+        f: F,
+    ) -> T
+    where
+        F: FnOnce(&mut MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, Self>) -> T,
+        H: PublicApiHashState<'h>,
+    {
+        ecx.encoder.spec_encoder_data.push_record_mode(mode);
+        let res = f(ecx);
+        ecx.encoder.spec_encoder_data.pop_record_mode();
+        res
+    }
+
+    #[inline(always)]
+    fn encoder_with_record_mode<'a, F, T>(
+        ecx: &mut EncodeContext<'a, 'tcx, Self>,
+        mode: RecordMode<'tcx>,
+        f: F,
+    ) -> T
+    where
+        F: FnOnce(&mut EncodeContext<'a, 'tcx, Self>) -> T,
+    {
+        ecx.spec_encoder_data.push_record_mode(mode);
+        let res = f(ecx);
+        ecx.spec_encoder_data.pop_record_mode();
+        res
+    }
+
+    fn push_record_mode(&mut self, mode: RecordMode<'tcx>);
+    fn pop_record_mode(&mut self);
+}
+
+#[derive(Default)]
+struct DefPathHashDefIdEncoder<'tcx> {
+    reachability_graph_builder: ReachabilityGraphBuilder<'tcx>,
+}
+impl<'tcx> MetadataEncoder<'tcx> for DefPathHashDefIdEncoder<'tcx> {
+    type EncodedDefId = (u32, Hash64);
+    type EncodedLocalDefId = RemappedLocalDefId;
+    const HASH_PUBLIC_API: bool = true;
+    fn encoded_def_id(
+        tcx: TyCtxt<'_>,
+        _remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> Self::EncodedDefId {
+        (def_id.krate.as_u32(), tcx.def_path_hash(def_id).local_hash())
+    }
+    /// We don't have to convert `LocalDefId` into a hash, since the index can only change when
+    /// this crate is recompiled. However, for dependencies, we need the stable hash. The exact index
+    /// can change without the public api changing, which would skip the recompile of this crate,
+    /// leaving it with bad indices.
+    fn encoded_local_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: LocalDefId,
+    ) -> Self::EncodedLocalDefId {
+        remapping.map_local_def_id(def_id)
+    }
+    fn into_remapped_wide_raw_def_id(
+        tcx: TyCtxt<'_>,
+        _remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> RemappedWideRawDefId {
+        RemappedWideRawDefId::hashed(def_id, tcx)
+    }
+    fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
+        PublicApiHashingContext::<true>::new(hcx)
+    }
+
+    fn crate_hashes<'h>(
+        ecx: &mut EncodeContext<'_, 'tcx, Self>,
+        hcx: &mut impl PublicApiHashState<'h>,
+        root: &HashableCrateRoot,
+    ) -> Option<(Svh, ItemPublicHashes)> {
+        public_api_hasher::crate_hashes(ecx, hcx, root)
+    }
+
+    #[inline]
+    fn record_encoded_index(&mut self, node: Node<'tcx>) {
+        self.reachability_graph_builder.record(node);
+    }
+
+    #[inline]
+    fn push_record_mode(&mut self, mode: RecordMode<'tcx>) {
+        self.reachability_graph_builder.record_mode.push(mode);
+    }
+
+    #[inline]
+    fn pop_record_mode(&mut self) {
+        self.reachability_graph_builder.record_mode.pop();
+    }
+}
+
+#[derive(Default)]
+struct DefIndexDefIdEncoder;
+impl<'tcx> MetadataEncoder<'tcx> for DefIndexDefIdEncoder {
+    type EncodedDefId = RemappedRawDefId;
+    type EncodedLocalDefId = RemappedLocalDefId;
+    const HASH_PUBLIC_API: bool = false;
+    #[inline(always)]
+    fn encoded_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> Self::EncodedDefId {
+        RemappedRawDefId::create(def_id, remapping)
+    }
+    /// We don't have to convert `LocalDefId` into a hash, since the index can only change when
+    /// this crate is recompiled. However, for dependencies, we need the stable hash. The exact index
+    /// can change without the public api changing, which would skip the recompile of this crate,
+    /// leaving it with bad indices.
+
+    #[inline(always)]
+    fn encoded_local_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: LocalDefId,
+    ) -> Self::EncodedLocalDefId {
+        remapping.map_local_def_id(def_id)
+    }
+
+    #[inline(always)]
+    fn into_remapped_wide_raw_def_id(
+        _tcx: TyCtxt<'_>,
+        remapping: &LocalDefsRemapping,
+        def_id: DefId,
+    ) -> RemappedWideRawDefId {
+        RemappedWideRawDefId::indexed(def_id, remapping)
+    }
+
+    #[inline(always)]
+    fn public_api_hasher<'h>(hcx: StableHashState<'h>) -> impl PublicApiHashState<'h> {
+        PublicApiHashingContext::<false>::new(hcx)
+    }
+    fn crate_hashes<'h>(
+        _ecx: &mut EncodeContext<'_, 'tcx, Self>,
+        _hcx: &mut impl PublicApiHashState<'h>,
+        _root: &HashableCrateRoot,
+    ) -> Option<(Svh, ItemPublicHashes)> {
+        None
+    }
+    #[inline(always)]
+    fn record_encoded_index(&mut self, _node: Node<'tcx>) {}
+    #[inline(always)]
+    fn push_record_mode(&mut self, _mode: RecordMode<'tcx>) {}
+    #[inline(always)]
+    fn pop_record_mode(&mut self) {}
+}
+pub(super) struct MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder<'tcx>,
+{
+    encoder: &'b mut EncodeContext<'a, 'tcx, M>,
+    pub(super) tables: TableBuilders,
+    hcx: &'c mut H,
+    _marker: PhantomData<&'h ()>,
+}
+
+impl<'a, 'tcx, 'h, 'b, 'c, H, M> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder<'tcx>,
+{
+    fn is_proc_macro(&self) -> bool {
+        self.encoder.is_proc_macro()
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.encoder.tcx
+    }
+}
+
+pub(super) struct EncodeContext<'a, 'tcx, M: MetadataEncoder<'tcx>> {
     opaque: FileEncoder<'a>,
     metadata_hasher: Arc<Mutex<XxHash3_128>>,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
-    pub(super) tables: TableBuilders,
 
     lazy_state: LazyState,
     span_shorthands: FxHashMap<Span, usize>,
@@ -83,8 +347,12 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
     pub(super) local_defs_remapping: LocalDefsRemapping,
-    syntax_context_remapping: HygieneRemappingResults<SyntaxContext, RemappedSyntaxContext>,
-    local_expn_id_remapping: HygieneRemappingResults<LocalExpnId, RemappedLocalExpnIndex>,
+    pub(super) syntax_context_remapping:
+        HygieneRemappingResults<SyntaxContext, RemappedSyntaxContext>,
+    pub(super) local_expn_id_remapping:
+        HygieneRemappingResults<LocalExpnId, RemappedLocalExpnIndex>,
+    _marker: std::marker::PhantomData<M>,
+    spec_encoder_data: M,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -92,8 +360,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
 /// for proc-macro crates.
 macro_rules! empty_proc_macro {
     ($self:ident) => {
-        if $self.is_proc_macro {
-            return LazyArray::default();
+        if $self.is_proc_macro() {
+            return Default::default();
         }
     };
 }
@@ -106,9 +374,8 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encoder for EncodeContext<'a, 'tcx, M> {
     const DETERMINISTIC_HASH_MAP_ENCODE: bool = true;
-
     encoder_methods! {
         emit_usize(usize);
         emit_u128(u128);
@@ -127,14 +394,14 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyValue<T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, T, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> for LazyValue<T> {
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         e.emit_lazy_distance(self.position);
     }
 }
 
-impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, T, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> for LazyArray<T> {
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         e.emit_usize(self.num_elems);
         if self.num_elems > 0 {
             e.emit_lazy_distance(self.position)
@@ -142,27 +409,29 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
     }
 }
 
-impl<'a, 'tcx, Ie, Id, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<Ie, Id, T> {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, I: TableIdx, T, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>>
+    for LazyTable<I, T>
+{
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         e.emit_usize(self.width_and_sparse);
         e.emit_usize(self.len);
         e.emit_lazy_distance(self.position);
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> for ExpnIndex {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx, M>) {
         s.emit_u32(self.as_u32());
     }
 }
 
-impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M: MetadataEncoder<'tcx>> SpanEncoder for EncodeContext<'a, 'tcx, M> {
     fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
-        self.tcx.prelocked_def_path_hasher()
+        self.tcx().prelocked_def_path_hasher()
     }
 
     fn encode_crate_num(&mut self, crate_num: CrateNum) {
-        if crate_num != LOCAL_CRATE && self.is_proc_macro {
+        if crate_num != LOCAL_CRATE && self.is_proc_macro() {
             panic!("Attempted to encode non-local CrateNum {crate_num:?} for proc-macro crate");
         }
         self.emit_u32(crate_num.as_u32());
@@ -177,15 +446,21 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
-        let def_id = self.local_defs_remapping.map_def_id(def_id);
+        M::encoded_def_id(self.tcx, &self.local_defs_remapping, def_id).encode(self);
+        self.record_encoded_index(def_id)
+    }
 
-        def_id.krate.encode(self);
-        self.emit_u32(def_id.index.as_u32());
+    fn encode_visibility_def_id(&mut self, def_id: VisibilityDefId) {
+        // we don't record VisibilityDefId-s with `record_encoded_index` into the publicly reachable
+        // graph, as it cannot be used to query more data. Only to check visibility from other DefId-s
+
+        M::encoded_def_id(self.tcx, &self.local_defs_remapping, def_id.0).encode(self);
     }
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
         self.hygiene_ctxt.borrow_mut().enqueue_syntax_context_for_encoding(syntax_context);
         self.emit_u32(self.syntax_context_remapping.map_id(syntax_context).as_u32());
+        self.record_encoded_index(syntax_context);
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
@@ -204,9 +479,11 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         };
 
         raw_expn_index.encode(self);
+        self.record_encoded_index(expn_id);
     }
 
     fn encode_span(&mut self, span: Span) {
+        self.record_encoded_index(span);
         match self.span_shorthands.entry(span) {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
@@ -235,7 +512,9 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
                 let position = self.opaque.position();
                 v.insert(position);
                 // Data is encoded with a SpanTag prefix (see below).
-                span.data().encode(self);
+                self.with_record_mode(RecordMode::From(span.into()), |this| {
+                    span.data().encode(this)
+                });
             }
         }
     }
@@ -256,7 +535,8 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     /// `LocalDefId` as a wrapper around def index we want to encode
     /// def index only, so we override the encode implementation.
     fn encode_local_def_id(&mut self, def_id: LocalDefId) {
-        self.emit_u32(self.local_defs_remapping.map_local_def_id(def_id).index.as_u32());
+        M::encoded_local_def_id(self.tcx, &self.local_defs_remapping, def_id).encode(self);
+        self.record_encoded_index(def_id);
     }
 
     /// We override encoding logic for `DefKey` during metadata encoding,
@@ -276,8 +556,8 @@ fn bytes_needed(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()).div_ceil(u8::BITS) as usize
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> for SpanData {
+    fn encode(&self, s: &mut EncodeContext<'a, 'tcx, M>) {
         // Don't serialize any `SyntaxContext`s from a proc-macro crate,
         // since we don't load proc-macro dependencies during serialization.
         // This means that any hygiene information from macros used *within*
@@ -309,13 +589,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // IMPORTANT: If this is ever changed, be sure to update
         // `rustc_span::hygiene::raw_encode_expn_id` to handle
         // encoding `ExpnData` for proc-macro crates.
-        let ctxt = if s.is_proc_macro { SyntaxContext::root() } else { self.ctxt };
+        let ctxt = if s.is_proc_macro() { SyntaxContext::root() } else { self.ctxt };
 
         if self.is_dummy() {
             let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
             tag.encode(s);
             if tag.context().is_none() {
                 ctxt.encode(s);
+            } else {
+                s.record_encoded_index(ctxt);
             }
             return;
         }
@@ -339,6 +621,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             tag.encode(s);
             if tag.context().is_none() {
                 ctxt.encode(s);
+            } else {
+                s.record_encoded_index(ctxt);
             }
             return;
         }
@@ -359,7 +643,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (kind, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
+        let (kind, metadata_index) = if source_file.is_imported() && !s.is_proc_macro() {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came
             // from (the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
             // values are relative to the source map information for the 'foreign' crate whose
@@ -391,6 +675,9 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
 
         // Encode the start position relative to the file start, so we profit more from the
         // variable-length integer encoding.
+        // IMPORTANT: if this is ever changed, the public api span hashing must be updated. It
+        // currently uses the `hash_spans_as_parentless` option to make sure spans are hashed not
+        // relative to their parent, but relative to their file.
         let lo = self.lo - source_file.start_pos;
 
         // Encode length which is usually less than span.hi and profits more
@@ -401,6 +688,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         tag.encode(s);
         if tag.context().is_none() {
             ctxt.encode(s);
+        } else {
+            s.record_encoded_index(ctxt);
         }
         lo.encode(s);
         if tag.length().is_none() {
@@ -419,18 +708,27 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for [u8] {
-    fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
+impl<'a, 'tcx, M: MetadataEncoder<'tcx>> Encodable<EncodeContext<'a, 'tcx, M>> for [u8] {
+    fn encode(&self, e: &mut EncodeContext<'a, 'tcx, M>) {
         Encoder::emit_usize(e, self.len());
         e.emit_raw_bytes(self);
     }
 }
 
-impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M: MetadataEncoder<'tcx>> TyEncoder<'tcx> for EncodeContext<'a, 'tcx, M> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     fn position(&self) -> usize {
         self.opaque.position()
+    }
+
+    fn type_encode_begin(&mut self, ty: Ty<'tcx>) {
+        self.spec_encoder_data.record_encoded_index(Node::Ty(ty));
+        self.spec_encoder_data.push_record_mode(RecordMode::From(Node::Ty(ty)));
+    }
+
+    fn type_encode_end(&mut self) {
+        self.spec_encoder_data.pop_record_mode();
     }
 
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
@@ -441,14 +739,53 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
         &mut self.predicate_shorthands
     }
 
+    fn predicate_encode_begin(&mut self, pred: PredicateKind<'tcx>) {
+        self.spec_encoder_data.record_encoded_index(Node::Predicate(pred));
+        self.spec_encoder_data.push_record_mode(RecordMode::From(Node::Predicate(pred)));
+    }
+
+    fn predicate_encode_end(&mut self) {
+        self.spec_encoder_data.pop_record_mode();
+    }
+
     fn encode_alloc_id(&mut self, alloc_id: &rustc_middle::mir::interpret::AllocId) {
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
 
         index.encode(self);
+        self.record_encoded_index(*alloc_id);
     }
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, M> EncodeContext<'a, 'tcx, M>
+where
+    M: MetadataEncoder<'tcx>,
+{
+    #[inline]
+    pub(super) fn write_with<const N: usize>(
+        &mut self,
+        visitor: impl FnOnce(&mut [u8; N]) -> usize,
+    ) {
+        self.opaque.write_with(visitor);
+    }
+
+    #[inline]
+    pub(super) fn write_array<const N: usize>(&mut self, buf: [u8; N]) {
+        self.opaque.write_array(buf);
+    }
+
+    fn is_proc_macro(&self) -> bool {
+        self.is_proc_macro
+    }
+
+    pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    #[inline]
+    fn record_encoded_index(&mut self, index: impl Into<Node<'tcx>>) {
+        self.spec_encoder_data.record_encoded_index(index.into());
+    }
+
     fn emit_lazy_distance(&mut self, position: NonZero<usize>) {
         let pos = position.get();
         let distance = match self.lazy_state {
@@ -476,7 +813,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         value: B,
     ) -> LazyValue<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<Self>,
     {
         let pos = NonZero::new(self.position()).unwrap();
 
@@ -499,7 +836,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         values: I,
     ) -> LazyArray<T>
     where
-        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Encodable<Self>,
     {
         let pos = NonZero::new(self.position()).unwrap();
 
@@ -540,47 +877,122 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_def_path_table(&mut self) {
-        let defs = self.tcx.definitions();
-        if self.is_proc_macro {
-            for def_id in std::iter::once(CRATE_DEF_ID)
-                .chain(self.tcx.resolutions(()).proc_macros.iter().copied())
-            {
-                let def_key = defs.def_key(def_id);
-                let def_path_hash = defs.def_path_hash(def_id);
+    #[inline(always)]
+    pub(super) fn with_record_mode<F, T>(&mut self, mode: RecordMode<'tcx>, f: F) -> T
+    where
+        F: FnOnce(&mut Self) -> T,
+    {
+        M::encoder_with_record_mode(self, mode, f)
+    }
+}
 
-                self.table_writer().def_keys(def_id, def_key);
-                self.table_writer().def_path_hashes(def_id, def_path_hash.local_hash().as_u64());
-            }
-        } else {
-            for def_id in self.local_defs_remapping.iter_sorted_local_ids() {
-                let def_key = defs.def_key(def_id);
-                let hash = defs.def_path_hash(def_id).local_hash().as_u64();
-
-                self.table_writer().def_keys(def_id, def_key);
-                self.table_writer().def_path_hashes(def_id, hash);
-            }
-        }
+impl<'a, 'tcx, 'h, 'b, 'c, H, M> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder<'tcx>,
+{
+    fn with_record_mode<F, T>(&mut self, mode: RecordMode<'tcx>, f: F) -> T
+    where
+        F: FnOnce(&mut Self) -> T,
+    {
+        M::with_record_mode(self, mode, f)
     }
 
-    fn encode_def_path_hash_map(&mut self) -> LazyValue<DefPathHashMapRef<'static>> {
-        self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()))
+    fn position(&self) -> usize {
+        self.encoder.position()
+    }
+
+    pub(super) fn lazy<T: ParameterizedOverTcx, B: Borrow<T::Value<'tcx>>>(
+        &mut self,
+        value: B,
+    ) -> LazyValue<T>
+    where
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx, M>>,
+    {
+        self.encoder.lazy(value)
+    }
+
+    pub(super) fn lazy_array<
+        T: ParameterizedOverTcx,
+        I: IntoIterator<Item = B>,
+        B: Borrow<T::Value<'tcx>>,
+    >(
+        &mut self,
+        values: I,
+    ) -> LazyArray<T>
+    where
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx, M>>,
+    {
+        self.encoder.lazy_array(values)
+    }
+
+    pub(super) fn hashed_lazy_array<
+        T: ParameterizedOverTcx,
+        I: IntoIterator<Item = B>,
+        B: Borrow<T::Value<'tcx>>,
+    >(
+        &mut self,
+        values: I,
+    ) -> Hashed<LazyArray<T>>
+    where
+        T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx, M>> + StableHash,
+    {
+        let mut hasher = PublicApiHasher::default();
+        let array = self.encoder.lazy_array(values.into_iter().map(|v| {
+            hasher.digest(v.borrow(), self.hcx);
+            v
+        }));
+        Hashed { value: array, hash: hasher.finish(self.hcx) }
+    }
+
+    fn encode_def_path_table(&mut self) {
+        let defs = self.tcx().definitions();
+        self.with_record_mode(RecordMode::None, |this| {
+            if this.is_proc_macro() {
+                for def_id in std::iter::once(CRATE_DEF_ID)
+                    .chain(this.tcx().resolutions(()).proc_macros.iter().copied())
+                {
+                    let def_key = defs.def_key(def_id);
+                    let def_path_hash = defs.def_path_hash(def_id);
+
+                    this.table_writer().def_keys(def_id, def_key);
+                    this.table_writer()
+                        .def_path_hashes(def_id, def_path_hash.local_hash().as_u64());
+                }
+            } else {
+                for def_id in this.encoder.local_defs_remapping.iter_sorted_local_ids() {
+                    let def_key = defs.def_key(def_id);
+                    let hash = defs.def_path_hash(def_id).local_hash().as_u64();
+
+                    this.table_writer().def_keys(def_id, def_key);
+                    this.table_writer().def_path_hashes(def_id, hash);
+                }
+            }
+        })
+    }
+
+    fn encode_def_path_hash_map(&mut self) -> Unhashed<LazyValue<DefPathHashMapRef<'static>>> {
+        let value = self
+            .encoder
+            .lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx().def_path_hash_to_def_index_map()));
+        Unhashed(value)
     }
 
     fn encode_source_map(
         &mut self,
-    ) -> LazyTable<u32, u32, Option<LazyValue<rustc_span::SourceFile>>> {
-        let source_map = self.tcx.sess.source_map();
+    ) -> GraphHashed<LazyTable<OnDiskSourceFileIdx, Option<LazyValue<rustc_span::SourceFile>>>>
+    {
+        let source_map = self.tcx().sess.source_map();
         let all_source_files = source_map.files();
 
         // By replacing the `Option` with `None`, we ensure that we can't
         // accidentally serialize any more `Span`s after the source map encoding
         // is done.
-        let required_source_files = self.required_source_files.take().unwrap();
+        let required_source_files = self.encoder.required_source_files.take().unwrap();
 
-        let mut adapted = TableBuilder::default();
+        let mut adapted = TableBuilder::<RDRHashNone<_>, OnDiskSourceFileIdx, _>::default();
 
-        let local_crate_stable_id = self.tcx.stable_crate_id(LOCAL_CRATE);
+        let local_crate_stable_id = self.tcx().stable_crate_id(LOCAL_CRATE);
 
         // Only serialize `SourceFile`s that were used during the encoding of a `Span`.
         //
@@ -589,7 +1001,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         for (on_disk_index, &source_file_index) in required_source_files.iter().enumerate() {
             let source_file = &all_source_files[source_file_index];
             // Don't serialize imported `SourceFile`s, unless we're in a proc-macro crate.
-            assert!(!source_file.is_imported() || self.is_proc_macro);
+            assert!(!source_file.is_imported() || self.is_proc_macro());
 
             // At export time we expand all source file paths to absolute paths because
             // downstream compilation sessions can have a different compiler working
@@ -617,7 +1029,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // `CrateNum` for a proc-macro dependency - since proc macro
             // dependencies aren't loaded when we deserialize a proc-macro,
             // trying to remap the `CrateNum` would fail.
-            if self.is_proc_macro {
+            if self.is_proc_macro() {
                 adapted_source_file.cnum = LOCAL_CRATE;
             }
 
@@ -631,20 +1043,32 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             let on_disk_index: u32 =
                 on_disk_index.try_into().expect("cannot export more than U32_MAX files");
-            adapted.set_some(on_disk_index, self.lazy(adapted_source_file));
+            adapted.set_some_unhashed(
+                OnDiskSourceFileIdx(on_disk_index),
+                &adapted_source_file,
+                self.encoder,
+            );
         }
 
-        adapted.encode(&mut self.opaque)
+        adapted.encode(self.encoder)
     }
 
-    fn encode_crate_root(&mut self) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>) {
-        let tcx = self.tcx;
+    fn encode_crate_root(
+        &mut self,
+    ) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>, Option<Svh>)
+    where
+        TraitImpls<M::EncodedDefId>:
+            for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefId>>,
+        EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefId>>>,
+    {
+        assert_eq!(M::HASH_PUBLIC_API, self.hcx.enabled());
+        let tcx = self.tcx();
 
         // We set it here as we need it only for metadata encoding,
         // while `with_encode_metadata_header` is used in some other places too.
-        self.local_defs_remapping = LocalDefsRemapping::new(tcx);
+        self.encoder.local_defs_remapping = LocalDefsRemapping::new(tcx);
 
-        (self.syntax_context_remapping, self.local_expn_id_remapping) = tcx
+        (self.encoder.syntax_context_remapping, self.encoder.local_expn_id_remapping) = tcx
             .with_stable_hashing_context(|mut ctx| {
                 (
                     SyntaxContextRemapper::with(|r| r.remapping_results(&mut ctx)),
@@ -712,7 +1136,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let mut n = 0;
             trace!("beginning to encode alloc ids");
             loop {
-                let new_n = self.interpret_allocs.len();
+                let new_n = self.encoder.interpret_allocs.len();
                 // if we have found new ids, serialize those, too
                 if n == new_n {
                     // otherwise, abort
@@ -720,22 +1144,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
                 trace!("encoding {} further alloc ids", new_n - n);
                 for idx in n..new_n {
-                    let id = self.interpret_allocs[idx];
+                    let id = self.encoder.interpret_allocs[idx];
                     let pos = self.position() as u64;
                     interpret_alloc_index.push(pos);
-                    interpret::specialized_encode_alloc_id(self, tcx, id);
+                    self.with_record_mode(RecordMode::From(id.into()), |this| {
+                        interpret::specialized_encode_alloc_id(this.encoder, tcx, id);
+                    });
                 }
                 n = new_n;
             }
-            self.lazy_array(interpret_alloc_index)
+            GraphHashed(self.lazy_array(interpret_alloc_index))
         });
 
         // Encode the proc macro data. This affects `tables`, so we need to do this before we
         // encode the tables. This overwrites def_keys, so it must happen after
         // encode_def_path_table.
         let proc_macro_data = stat!("proc-macro-data", || self.encode_proc_macros());
-
-        let tables = stat!("tables", || self.tables.encode(&mut self.opaque));
 
         let debugger_visualizers =
             stat!("debugger-visualizers", || self.encode_debugger_visualizers());
@@ -747,12 +1171,25 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
         let (exported_non_generic_symbols, exported_generic_symbols) =
-            stat!("exported-symbols", || {
-                (
-                    self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE)),
-                    self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
-                )
-            });
+            stat!("exported-symbols", || (
+                self.encode_exported_symbols(tcx.exported_non_generic_symbols(LOCAL_CRATE)),
+                self.encode_exported_symbols(tcx.exported_generic_symbols(LOCAL_CRATE)),
+            ));
+
+        if M::HASH_PUBLIC_API {
+            for (symbol, info) in tcx.exported_non_generic_symbols(LOCAL_CRATE) {
+                let def_id = match symbol {
+                    ExportedSymbol::NonGeneric(id) => id.expect_local(),
+                    _ => continue,
+                };
+                if matches!(info, SymbolExportInfo { level: SymbolExportLevel::C, .. }) {
+                    self.table_writer().is_reachable_non_generic_with_export_level_c(def_id, true);
+                }
+                self.table_writer().is_reachable_non_generic(def_id, true);
+            }
+        }
+
+        let tables = stat!("tables", || self.tables.encode(self.encoder));
 
         // Encode the hygiene data.
         // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The
@@ -771,74 +1208,76 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
 
-        let root = stat!("crate-root", || {
-            let attrs = tcx.hir_krate_attrs();
-            self.lazy(CrateRoot {
-                header: CrateHeader {
-                    name: tcx.crate_name(LOCAL_CRATE),
-                    triple: tcx.sess.opts.target_triple.clone(),
-                    is_proc_macro_crate: proc_macro_data.is_some(),
-                    is_stub: false,
-                },
+        let attrs = tcx.hir_krate_attrs();
+        let crate_root = HashableCrateRoot {
+            header: HashableCrateHeader {
+                name: tcx.crate_name(LOCAL_CRATE),
+                triple: tcx.sess.opts.target_triple.clone(),
+                is_proc_macro_crate: proc_macro_data.is_some(),
+                is_stub: false,
+            },
 
-                stable_crate_id: tcx.stable_crate_id(LOCAL_CRATE),
-                required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
-                panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
-                edition: tcx.sess.edition(),
-                has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
-                has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
-                has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: find_attr!(attrs, DefaultLibAllocator),
-                externally_implementable_items,
-                proc_macro_data,
-                debugger_visualizers,
-                compiler_builtins: find_attr!(attrs, CompilerBuiltins),
-                needs_allocator: find_attr!(attrs, NeedsAllocator),
-                needs_panic_runtime: find_attr!(attrs, NeedsPanicRuntime),
-                no_builtins: find_attr!(attrs, NoBuiltins),
-                panic_runtime: find_attr!(attrs, PanicRuntime),
-                profiler_runtime: find_attr!(attrs, ProfilerRuntime),
-                symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
+            stable_crate_id: tcx.stable_crate_id(LOCAL_CRATE),
+            required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
+            panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
+            edition: tcx.sess.edition(),
+            has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
+            has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
+            has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
+            has_default_lib_allocator: find_attr!(attrs, DefaultLibAllocator),
+            externally_implementable_items,
+            proc_macro_data: NoneIfHashed { value: proc_macro_data },
+            debugger_visualizers,
+            compiler_builtins: find_attr!(attrs, CompilerBuiltins),
+            needs_allocator: find_attr!(attrs, NeedsAllocator),
+            needs_panic_runtime: find_attr!(attrs, NeedsPanicRuntime),
+            no_builtins: find_attr!(attrs, NoBuiltins),
+            panic_runtime: find_attr!(attrs, PanicRuntime),
+            profiler_runtime: find_attr!(attrs, ProfilerRuntime),
+            symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
-                crate_deps,
-                dylib_dependency_formats,
-                lib_features,
-                stability_implications,
-                lang_items,
-                diagnostic_items,
-                canonical_symbols,
-                fake_doc_items,
-                lang_items_missing,
-                stripped_cfg_items,
-                native_libraries,
-                foreign_modules,
-                source_map,
-                target_modifiers,
-                denied_partial_mitigations,
-                traits,
-                impls,
-                incoherent_impls,
-                exportable_items,
-                stable_order_of_exportable_impls,
-                exported_non_generic_symbols,
-                exported_generic_symbols,
-                interpret_alloc_index,
-                tables,
-                syntax_contexts,
-                expn_data,
-                expn_hashes,
-                def_path_hash_map,
-                specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
-            })
-        });
+            crate_deps,
+            dylib_dependency_formats,
+            lib_features,
+            stability_implications,
+            lang_items,
+            diagnostic_items,
+            canonical_symbols,
+            fake_doc_items,
+            lang_items_missing,
+            stripped_cfg_items,
+            native_libraries,
+            foreign_modules,
+            source_map,
+            target_modifiers,
+            denied_partial_mitigations,
+            traits,
+            impls,
+            incoherent_impls,
+            exportable_items,
+            stable_order_of_exportable_impls,
+            exported_non_generic_symbols,
+            exported_generic_symbols,
+            interpret_alloc_index,
+            tables,
+            syntax_contexts,
+            expn_data,
+            expn_hashes,
+            def_path_hash_map,
+            specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+            public_api_hash_opt_enabled: self.hcx.enabled(),
+        };
+        let (crate_root, public_hash) =
+            stat!("public hashes", || crate_root.into_crate_root(self.encoder, self.hcx));
+        let root = stat!("crate-root", || self.lazy(crate_root));
 
         // By default the crate hash (SVH) is derived from the encoded metadata bytes. With
         // `-Z metadata-crate-hash=no` we instead store the legacy HIR-based hash, which the
         // `crate_hash` query computes directly without consulting `local_crate_hash`.
         let hash = if tcx.sess.opts.unstable_opts.metadata_crate_hash {
-            self.opaque.flush();
+            self.encoder.opaque.flush();
             Svh::new(Fingerprint::from_le_bytes(
-                self.metadata_hasher.lock().unwrap().finish_128().to_le_bytes(),
+                self.encoder.metadata_hasher.lock().unwrap().finish_128().to_le_bytes(),
             ))
         } else {
             tcx.crate_hash(LOCAL_CRATE)
@@ -849,7 +1288,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Indexed by dependency `CrateNum`, matching the numbering `encode_crate_deps` uses.
             // Slot 0 (`LOCAL_CRATE`) is filler; this crate's own value is `extra_filename`.
             let mut dep_extra_filenames = IndexVec::from_elem_n(String::new(), 1);
-            if !self.is_proc_macro {
+            if !self.is_proc_macro() {
                 for &cnum in tcx.crates(()).iter() {
                     let idx = dep_extra_filenames.push(tcx.extra_filename(cnum).to_owned());
                     assert_eq!(idx, cnum, "dep_extra_filenames must be indexed by CrateNum");
@@ -870,19 +1309,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if tcx.sess.opts.unstable_opts.meta_stats {
             use std::fmt::Write;
 
-            self.opaque.flush();
+            self.encoder.opaque.flush();
 
             // Rewind and re-read all the metadata to count the zero bytes we wrote.
-            let pos_before_rewind = self.opaque.file().stream_position().unwrap();
+            let pos_before_rewind = self.encoder.opaque.file().stream_position().unwrap();
             let mut zero_bytes = 0;
-            self.opaque.file().rewind().unwrap();
-            let file = std::io::BufReader::new(self.opaque.file());
+            self.encoder.opaque.file().rewind().unwrap();
+            let file = std::io::BufReader::new(self.encoder.opaque.file());
             for e in file.bytes() {
                 if e.unwrap() == 0 {
                     zero_bytes += 1;
                 }
             }
-            assert_eq!(self.opaque.file().stream_position().unwrap(), pos_before_rewind);
+            assert_eq!(self.encoder.opaque.file().stream_position().unwrap(), pos_before_rewind);
 
             stats.sort_by_key(|&(_, usize)| usize);
             stats.reverse(); // bigger items first
@@ -925,7 +1364,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             eprint!("{s}");
         }
 
-        (root, unhashed)
+        (root, unhashed, public_hash)
     }
 }
 
@@ -1452,9 +1891,24 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx, 'h, 'b, 'c, H, M> MetadataBuilder<'a, 'tcx, 'h, 'b, 'c, H, M>
+where
+    H: PublicApiHashState<'h>,
+    M: MetadataEncoder<'tcx>,
+{
+    fn public_module_children_local(
+        &self,
+        def_id: LocalDefId,
+    ) -> impl Iterator<Item = &'tcx ModChild> + use<'tcx, M, H> + Clone {
+        let effective_visibilities = self.tcx().effective_visibilities(());
+        let remove_private_children = M::HASH_PUBLIC_API;
+        self.tcx().module_children_local(def_id).iter().filter(move |child| {
+            is_public_mod_child(remove_private_children, effective_visibilities, child)
+        })
+    }
+
     fn encode_attrs(&mut self, def_id: LocalDefId) {
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let mut state = AnalyzeAttrState {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
             is_doc_hidden: false,
@@ -1479,8 +1933,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     /// Writing to a field of `tables` should be as simple as
     /// `self.table_writer().field(index, tcx.get_field_value(index))`, even for complex structs
     /// that require encoding as `LazyValue`/`LazyArray` first.
-    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, '_> {
-        super::TableWriter { encoder: self }
+    fn table_writer(&mut self) -> super::TableWriter<'a, 'tcx, 'h, '_, '_, '_, H, M> {
+        super::TableWriter {
+            encoder: self.encoder,
+            hcx: self.hcx,
+            tables: &mut self.tables,
+            _marker: Default::default(),
+        }
     }
 
     fn encode_def_ids(&mut self) {
@@ -1488,12 +1947,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
-        if self.is_proc_macro {
+        if self.is_proc_macro() {
             return;
         }
 
-        let tcx = self.tcx;
-        for local_id in self.local_defs_remapping.iter_sorted_local_ids() {
+        let tcx = self.tcx();
+        for local_id in self.encoder.local_defs_remapping.iter_sorted_local_ids() {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
             self.table_writer().def_kind(local_id, def_kind);
@@ -1600,10 +2059,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     local_id,
                     tcx.explicit_implied_clauses_of(def_id).skip_binder(),
                 );
-                let module_children = tcx.module_children_local(local_id);
+                let module_children = self.public_module_children_local(local_id);
                 self.table_writer().module_children_non_reexports(
                     local_id,
-                    module_children.iter().map(|child| child.res.def_id().expect_local()),
+                    module_children.map(|child| child.res.def_id().expect_local()),
                 );
                 if tcx.is_const_trait(def_id) {
                     self.table_writer().explicit_implied_const_bounds(
@@ -1642,15 +2101,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
             {
                 let coroutine_for_closure = tcx.coroutine_for_closure(def_id);
-                let remapped_id =
-                    RemappedRawDefId::create(coroutine_for_closure, &self.local_defs_remapping);
 
-                self.table_writer().coroutine_for_closure(local_id, remapped_id);
+                self.table_writer().coroutine_for_closure(local_id, coroutine_for_closure);
 
                 // If this async closure has a by-move body, record it too.
                 if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
                     let id = tcx.coroutine_by_move_body_def_id(coroutine_for_closure);
-                    let id = RemappedRawDefId::create(id, &self.local_defs_remapping);
 
                     self.table_writer()
                         .coroutine_by_move_body_def_id(coroutine_for_closure.expect_local(), id);
@@ -1762,11 +2218,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_externally_implementable_items(&mut self) -> LazyArray<EiiMapEncodedKeyValue> {
+    fn encode_externally_implementable_items(
+        &mut self,
+    ) -> Hashed<LazyArray<EiiMapEncodedKeyValue>> {
         empty_proc_macro!(self);
-        let externally_implementable_items = self.tcx.externally_implementable_items(LOCAL_CRATE);
+        let externally_implementable_items = self.tcx().externally_implementable_items(LOCAL_CRATE);
 
-        self.lazy_array(externally_implementable_items.iter().map(
+        self.hashed_lazy_array(externally_implementable_items.iter().map(
             |(foreign_item, (decl, impls))| {
                 (
                     *foreign_item,
@@ -1779,7 +2237,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn encode_info_for_adt(&mut self, local_def_id: LocalDefId) {
         let def_id = local_def_id.to_def_id();
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let adt_def = tcx.adt_def(def_id);
         self.table_writer().repr_options(local_def_id, adt_def.repr());
 
@@ -1839,57 +2297,73 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn encode_info_for_mod(&mut self, local_def_id: LocalDefId) {
-        let tcx = self.tcx;
+        let tcx = self.tcx();
 
         // If we are encoding a proc-macro crates, `encode_info_for_mod` will
         // only ever get called for the crate root. We still want to encode
         // the crate root for consistency with other crates (some of the resolver
         // code uses it). However, we skip encoding anything relating to child
         // items - we encode information about proc-macros later on.
-        if self.is_proc_macro {
+        if self.is_proc_macro() {
             // Encode this here because we don't do it in encode_def_ids.
             self.table_writer()
                 .expn_that_defined(local_def_id, tcx.expn_that_defined(local_def_id));
         } else {
-            let module_children = tcx.module_children_local(local_def_id);
+            let module_children = self.public_module_children_local(local_def_id);
 
             self.table_writer().module_children_non_reexports(
                 local_def_id,
                 module_children
-                    .iter()
+                    .clone()
                     .filter(|child| child.reexport_chain.is_empty())
                     .map(|child| child.res.def_id().expect_local()),
             );
 
             self.table_writer().module_children_reexports(
                 local_def_id,
-                module_children.iter().filter(|child| !child.reexport_chain.is_empty()),
+                module_children.filter(|child| !child.reexport_chain.is_empty()),
             );
 
+            let effective_visibilities = self.tcx().effective_visibilities(());
+            let remove_private_children = M::HASH_PUBLIC_API;
             let ambig_module_children = tcx
                 .resolutions(())
                 .ambig_module_children
                 .get(&local_def_id)
-                .map_or_default(|v| &v[..]);
+                .map_or_default(|v| &v[..])
+                .iter()
+                // only ambiguities where both main and second are public can cause actual
+                // ambiguity.
+                .filter(|ambig| {
+                    is_public_mod_child(
+                        remove_private_children,
+                        &effective_visibilities,
+                        &ambig.main,
+                    ) && is_public_mod_child(
+                        remove_private_children,
+                        &effective_visibilities,
+                        &ambig.second,
+                    )
+                });
             self.table_writer().ambig_module_children(local_def_id, ambig_module_children);
         }
     }
 
     fn encode_explicit_item_bounds(&mut self, def_id: LocalDefId) {
         debug!("EncodeContext::encode_explicit_item_bounds({:?})", def_id);
-        let bounds = self.tcx.explicit_item_bounds(def_id).skip_binder();
+        let bounds = self.tcx().explicit_item_bounds(def_id).skip_binder();
         self.table_writer().explicit_item_bounds(def_id, bounds);
     }
 
     fn encode_explicit_item_self_bounds(&mut self, def_id: LocalDefId) {
         debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
-        let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
+        let bounds = self.tcx().explicit_item_self_bounds(def_id).skip_binder();
         self.table_writer().explicit_item_self_bounds(def_id, bounds);
     }
 
     #[instrument(level = "debug", skip(self))]
     fn encode_info_for_assoc_item(&mut self, def_id: LocalDefId) {
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let item = tcx.associated_item(def_id);
 
         if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
@@ -1925,7 +2399,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_precise_capturing_args(&mut self, def_id: LocalDefId) {
-        let Some(precise_capturing_args) = self.tcx.rendered_precise_capturing_args(def_id) else {
+        let Some(precise_capturing_args) = self.tcx().rendered_precise_capturing_args(def_id)
+        else {
             return;
         };
 
@@ -1933,11 +2408,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_mir(&mut self) {
-        if self.is_proc_macro {
+        if self.is_proc_macro() {
             return;
         }
 
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         // skip reachable_set calculation when not doing codegen. It is only used when checking
         // whether something could be monomorphized downstream
         let reachable_set =
@@ -2027,8 +2502,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_stability(&mut self, def_id: LocalDefId) {
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
-        if self.feat.staged_api() || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
-            if let Some(stab) = self.tcx.lookup_stability(def_id) {
+        if self.encoder.feat.staged_api()
+            || self.tcx().sess.opts.unstable_opts.force_unstable_if_unmarked
+        {
+            if let Some(stab) = self.tcx().lookup_stability(def_id) {
                 self.table_writer().lookup_stability(def_id, stab);
             }
         }
@@ -2038,8 +2515,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_const_stability(&mut self, def_id: LocalDefId) {
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
-        if self.feat.staged_api() || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
-            if let Some(stab) = self.tcx.lookup_const_stability(def_id) {
+        if self.encoder.feat.staged_api()
+            || self.tcx().sess.opts.unstable_opts.force_unstable_if_unmarked
+        {
+            if let Some(stab) = self.tcx().lookup_const_stability(def_id) {
                 self.table_writer().lookup_const_stability(def_id, stab);
             }
         }
@@ -2049,8 +2528,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_default_body_stability(&mut self, def_id: LocalDefId) {
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
-        if self.feat.staged_api() || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
-            if let Some(stab) = self.tcx.lookup_default_body_stability(def_id) {
+        if self.encoder.feat.staged_api()
+            || self.tcx().sess.opts.unstable_opts.force_unstable_if_unmarked
+        {
+            if let Some(stab) = self.tcx().lookup_default_body_stability(def_id) {
                 self.table_writer().lookup_default_body_stability(def_id, stab);
             }
         }
@@ -2058,65 +2539,70 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn encode_deprecation(&mut self, def_id: LocalDefId) {
-        if let Some(depr) = self.tcx.lookup_deprecation(def_id.to_def_id()) {
+        if let Some(depr) = self.tcx().lookup_deprecation(def_id.to_def_id()) {
             self.table_writer().lookup_deprecation_entry(def_id, depr);
         }
     }
 
     #[instrument(level = "debug", skip(self))]
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
-        let tcx = self.tcx;
+        let tcx = self.tcx();
 
         let (_, macro_def, _) = tcx.hir_expect_item(def_id).expect_macro();
         self.table_writer().is_macro_rules(def_id, macro_def.macro_rules);
         self.table_writer().macro_definition(def_id, &*macro_def.body);
     }
 
-    fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {
+    fn encode_native_libraries(&mut self) -> Hashed<LazyArray<NativeLib>> {
         empty_proc_macro!(self);
-        let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
-        self.lazy_array(used_libraries.iter())
+        let used_libraries = self.tcx().native_libraries(LOCAL_CRATE);
+        self.hashed_lazy_array(used_libraries)
     }
 
-    fn encode_foreign_modules(&mut self) -> LazyArray<ForeignModule> {
+    fn encode_foreign_modules(&mut self) -> Hashed<LazyArray<ForeignModule>> {
         empty_proc_macro!(self);
-        let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
-        self.lazy_array(foreign_modules.iter().map(|(_, m)| m).cloned())
+        let foreign_modules = self.tcx().foreign_modules(LOCAL_CRATE);
+        self.hashed_lazy_array(foreign_modules.iter().map(|(_, m)| m))
     }
 
-    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
-        let mut syntax_contexts: TableBuilder<_, _, _> = Default::default();
-        let mut expn_data_table: TableBuilder<_, _, _> = Default::default();
-        let mut expn_hash_table: TableBuilder<_, _, _> = Default::default();
+    fn encode_hygiene(
+        &mut self,
+    ) -> (GraphHashed<SyntaxContextTable>, GraphHashed<ExpnDataTable>, GraphHashed<ExpnHashTable>)
+    {
+        let mut syntax_contexts: TableBuilder<RDRHashAll<_>, SyntaxContext, _> = Default::default();
+        let mut expn_data_table: TableBuilder<RDRHashAll<_>, LocalExpnId, _> = Default::default();
+        let mut expn_hash_table: TableBuilder<RDRHashNone<_>, LocalExpnId, _> = Default::default();
 
         HygieneEncodeContext::encode(
-            &Rc::clone(&self.hygiene_ctxt),
+            &Rc::clone(&self.encoder.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), ctxt, ctxt_data| {
-                let ctxt = this.syntax_context_remapping.map_id(ctxt);
-                syntax_contexts.set_some(ctxt, this.lazy(ctxt_data));
+                syntax_contexts.set_some_hashed(ctxt, ctxt_data, this.encoder, this.hcx);
             },
             |(this, _, expn_data_table, expn_hash_table), expn_id, expn_data, hash| {
                 if let Some(expn_id) = expn_id.as_local() {
-                    let expn_index = this.local_expn_id_remapping.map_id(expn_id);
-
-                    expn_data_table.set_some(expn_index, this.lazy(expn_data.expect("local expn")));
-                    expn_hash_table.set_some(expn_index, this.lazy(hash));
+                    expn_data_table.set_some_hashed(
+                        expn_id,
+                        expn_data.expect("local expn"),
+                        this.encoder,
+                        this.hcx,
+                    );
+                    // don't need to hash it since it is already included with `expn_data_table`
+                    expn_hash_table.set_some_unhashed(expn_id, hash, this.encoder);
                 }
             },
         );
 
         (
-            syntax_contexts.encode(&mut self.opaque),
-            expn_data_table.encode(&mut self.opaque),
-            expn_hash_table.encode(&mut self.opaque),
+            syntax_contexts.encode(self.encoder),
+            expn_data_table.encode(self.encoder),
+            expn_hash_table.encode(self.encoder),
         )
     }
 
     fn encode_proc_macros(&mut self) -> Option<ProcMacroData> {
-        let is_proc_macro = self.tcx.crate_types().contains(&CrateType::ProcMacro);
-        if is_proc_macro {
-            let tcx = self.tcx;
+        if self.is_proc_macro() {
+            let tcx = self.tcx();
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap();
             let proc_macro_decls_static = self.lazy(proc_macro_decls_static);
 
@@ -2192,12 +2678,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             let macros = self.lazy_array(macros);
 
-            let mut proc_macro_quoted_spans = TableBuilder::default();
+            let mut proc_macro_quoted_spans = TableBuilder::<RDRHashNone<_>, _, _>::default();
             for (i, span) in tcx.sess.proc_macro_quoted_spans() {
-                proc_macro_quoted_spans.set_some(i, self.lazy(span));
+                proc_macro_quoted_spans.set_some_unhashed(
+                    ProcMacroQuotedSpansIdx(i),
+                    span,
+                    self.encoder,
+                );
             }
 
-            let proc_macro_quoted_spans = proc_macro_quoted_spans.encode(&mut self.opaque);
+            let proc_macro_quoted_spans = proc_macro_quoted_spans.encode(self.encoder).0;
 
             Some(ProcMacroData {
                 proc_macro_decls_static,
@@ -2210,10 +2700,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_debugger_visualizers(&mut self) -> LazyArray<DebuggerVisualizerFile> {
+    fn encode_debugger_visualizers(&mut self) -> Hashed<LazyArray<DebuggerVisualizerFile>> {
         empty_proc_macro!(self);
-        self.lazy_array(
-            self.tcx
+
+        self.hashed_lazy_array(
+            self.tcx()
                 .debugger_visualizers(LOCAL_CRATE)
                 .iter()
                 // Erase the path since it may contain privacy sensitive data
@@ -2224,29 +2715,29 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         )
     }
 
-    fn encode_crate_deps(&mut self) -> LazyArray<CrateDep> {
+    fn encode_crate_deps(&mut self) -> Hashed<LazyArray<CrateDep>> {
         empty_proc_macro!(self);
 
         let deps = self
-            .tcx
+            .tcx()
             .crates(())
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {
-                    name: self.tcx.crate_name(cnum),
-                    hash: self.tcx.crate_hash(cnum),
-                    host_hash: self.tcx.crate_host_hash(cnum),
-                    kind: self.tcx.crate_dep_kind(cnum),
-                    is_private: self.tcx.is_private_dep(cnum),
+                    name: self.tcx().crate_name(cnum),
+                    hash: self.tcx().public_api_hash(cnum),
+                    host_hash: self.tcx().crate_host_hash(cnum),
+                    kind: self.tcx().crate_dep_kind(cnum),
+                    is_private: self.tcx().is_private_dep(cnum),
                 };
-                (cnum, dep)
+                (cnum, dep, self.tcx().public_global_hash(cnum))
             })
             .collect::<Vec<_>>();
 
         {
             // Sanity-check the crate numbers
             let mut expected_cnum = 1;
-            for &(n, _) in &deps {
+            for &(n, _, _) in &deps {
                 assert_eq!(n, CrateNum::new(expected_cnum));
                 expected_cnum += 1;
             }
@@ -2256,93 +2747,146 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // the assumption that they are numbered 1 to n.
         // FIXME (#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
-        self.lazy_array(deps.iter().map(|(_, dep)| dep))
+        let mut hasher = PublicApiHasher::default();
+        let array =
+            self.encoder.lazy_array(deps.into_iter().map(|(cnum, dep, public_global_hash)| {
+                let CrateDep { name, hash, host_hash, kind, is_private } = &dep;
+                hasher.digest(cnum, self.hcx);
+                hasher.digest(name, self.hcx);
+                // We only include the global part of dependency hashes, not the full public hash.
+                // The remaining, item specific, part of public_hash should only be included when those
+                // items are reachable in the public hash graph.
+                let _ = hash;
+                hasher.digest(public_global_hash, self.hcx);
+                hasher.digest(host_hash, self.hcx);
+                hasher.digest(kind, self.hcx);
+                hasher.digest(is_private, self.hcx);
+                dep
+            }));
+        Hashed { value: array, hash: hasher.finish(self.hcx) }
     }
 
-    fn encode_target_modifiers(&mut self) -> LazyArray<TargetModifier> {
+    fn encode_target_modifiers(&mut self) -> Hashed<LazyArray<TargetModifier>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
-        self.lazy_array(tcx.sess.opts.gather_target_modifiers())
+        let tcx = self.tcx();
+        self.hashed_lazy_array(tcx.sess.opts.gather_target_modifiers())
     }
 
-    fn encode_enabled_denied_partial_mitigations(&mut self) -> LazyArray<DeniedPartialMitigation> {
+    fn encode_enabled_denied_partial_mitigations(
+        &mut self,
+    ) -> Hashed<LazyArray<DeniedPartialMitigation>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
-        self.lazy_array(tcx.sess.gather_enabled_denied_partial_mitigations())
+        let tcx = self.tcx();
+        self.hashed_lazy_array(tcx.sess.gather_enabled_denied_partial_mitigations())
     }
 
-    fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {
+    fn encode_lib_features(&mut self) -> Hashed<LazyArray<(Symbol, FeatureStability)>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let lib_features = tcx.lib_features(LOCAL_CRATE);
-        self.lazy_array(lib_features.to_sorted_vec())
+        self.hashed_lazy_array(lib_features.to_sorted_vec())
     }
 
-    fn encode_stability_implications(&mut self) -> LazyArray<(Symbol, Symbol)> {
+    fn encode_stability_implications(&mut self) -> Hashed<LazyArray<(Symbol, Symbol)>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let implications = tcx.stability_implications(LOCAL_CRATE);
         let sorted = implications.to_sorted_stable_ord();
-        self.lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
+        self.hashed_lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
     }
 
-    fn encode_canonical_symbols(&mut self) -> LazyArray<(Symbol, LocalDefId)> {
+    fn encode_canonical_symbols(&mut self) -> Hashed<LazyArray<(Symbol, LocalDefId)>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let canonical_symbols = &tcx.canonical_symbols(LOCAL_CRATE);
-        self.lazy_array(canonical_symbols.iter().map(|cs| (cs.symbol, cs.def_id.expect_local())))
+        self.hashed_lazy_array(
+            canonical_symbols.iter().map(|cs| (cs.symbol, cs.def_id.expect_local())),
+        )
     }
 
-    fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, LocalDefId)> {
+    fn encode_diagnostic_items(&mut self) -> Hashed<LazyArray<(Symbol, LocalDefId)>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let diagnostic_items = &tcx.diagnostic_items(LOCAL_CRATE).name_to_id;
-        self.lazy_array(
+        self.hashed_lazy_array(
             diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.expect_local())),
         )
     }
 
-    fn encode_fake_doc_items(&mut self) -> LazyArray<LocalDefId> {
+    fn encode_fake_doc_items(&mut self) -> Hashed<LazyArray<LocalDefId>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
+        let tcx = self.tcx();
         let fake_doc_items = &tcx.fake_doc_items(LOCAL_CRATE);
-        self.lazy_array(fake_doc_items.iter().map(|cs| cs.expect_local()))
+        self.hashed_lazy_array(fake_doc_items.iter().map(|cs| cs.expect_local()))
     }
 
-    fn encode_lang_items(&mut self) -> LazyArray<(LocalDefId, LangItem)> {
+    fn encode_lang_items(&mut self) -> Hashed<LazyArray<(LocalDefId, LangItem)>> {
         empty_proc_macro!(self);
-        let lang_items = self.tcx.lang_items().iter();
-        self.lazy_array(
+        let lang_items = self.tcx().lang_items().iter();
+        self.hashed_lazy_array(
             lang_items
                 .filter_map(|(lang_item, def_id)| def_id.as_local().map(|id| (id, lang_item))),
         )
     }
 
-    fn encode_lang_items_missing(&mut self) -> LazyArray<LangItem> {
+    fn encode_lang_items_missing(&mut self) -> Hashed<LazyArray<LangItem>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
-        self.lazy_array(&tcx.lang_items().missing)
+        let tcx = self.tcx();
+        self.hashed_lazy_array(&tcx.lang_items().missing)
     }
 
-    fn encode_stripped_cfg_items(&mut self) -> LazyArray<StrippedCfgItem<LocalDefId>> {
-        self.lazy_array(
-            self.tcx
-                .stripped_cfg_items(LOCAL_CRATE)
-                .into_iter()
-                .map(|item| item.clone().map_scope_id(|def_id| def_id.expect_local())),
+    fn encode_stripped_cfg_items(&mut self) -> Unhashed<LazyArray<StrippedCfgItem<LocalDefId>>> {
+        if self.hcx.enabled() {
+            // FIXME: we should encode this while public api hashing is enabled, but it must not be
+            // part of the public hash. Its query should depend on the private hash of the crate
+            // if it is included.
+            // NOTE: When readded, the reachability graph recording must be disabled during the encoding
+            // of this lazy array.
+            return Unhashed(LazyArray::default());
+        }
+        Unhashed(
+            self.lazy_array(
+                self.tcx()
+                    .stripped_cfg_items(LOCAL_CRATE)
+                    .into_iter()
+                    .map(|item| item.clone().map_scope_id(|def_id| def_id.expect_local())),
+            ),
         )
     }
 
-    fn encode_traits(&mut self) -> LazyArray<LocalDefId> {
+    fn encode_traits(&mut self) -> Unhashed<LazyArray<LocalDefId>> {
+        if self.hcx.enabled() {
+            // FIXME: we should encode this while public api hashing is enabled, but it must not be
+            // part of the public hash. Its query should depend on the private hash of the crate
+            // if it is included.
+            // NOTE: When readded, the reachability graph recording must be disabled during the encoding
+            // of this lazy array.
+            return Unhashed(LazyArray::default());
+        }
         empty_proc_macro!(self);
-        self.lazy_array(self.tcx.traits(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()))
+        Unhashed(
+            self.lazy_array(
+                self.tcx().traits(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()),
+            ),
+        )
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
     #[instrument(level = "debug", skip(self))]
-    fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
-        empty_proc_macro!(self);
-        let tcx = self.tcx;
+    fn encode_impls(&mut self) -> GraphHashed<EncodedTraitImpls>
+    where
+        TraitImpls<M::EncodedDefId>:
+            for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefId>>,
+        EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefId>>>,
+    {
+        if self.is_proc_macro() {
+            return if self.hcx.enabled() {
+                GraphHashed(EncodedTraitImpls::DefPathHash(Default::default()))
+            } else {
+                GraphHashed(EncodedTraitImpls::DefIndex(Default::default()))
+            };
+        }
+        let tcx = self.tcx();
         let mut trait_impls: FxIndexMap<DefId, Vec<(LocalDefId, Option<SimplifiedType>)>> =
             FxIndexMap::default();
 
@@ -2380,7 +2924,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if let Ok(mut an) = trait_def.ancestors(tcx, local_id.to_def_id())
                     && let Some(specialization_graph::Node::Impl(parent)) = an.nth(1)
                 {
-                    let parent = RemappedRawDefId::create(parent, &self.local_defs_remapping);
                     self.table_writer().impl_parent(local_id, parent);
                 }
 
@@ -2393,48 +2936,56 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
         }
 
-        let trait_impls: Vec<_> = trait_impls
-            .into_iter()
-            .map(|(trait_def_id, impls)| TraitImpls {
-                trait_id: RemappedRawDefId::create(trait_def_id, &self.local_defs_remapping),
-                impls: self.lazy_array(&impls),
-            })
-            .collect();
-
-        self.lazy_array(&trait_impls)
+        M::encode_trait_impls(self, &trait_impls)
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn encode_incoherent_impls(&mut self) -> LazyArray<IncoherentImpls> {
+    fn encode_incoherent_impls(&mut self) -> Hashed<LazyArray<IncoherentImpls>> {
         empty_proc_macro!(self);
-        let tcx = self.tcx;
+        let tcx = self.tcx();
 
+        let mut hasher = PublicApiHasher::default();
         let all_impls: Vec<_> = tcx
             .crate_inherent_impls(())
             .0
             .incoherent_impls
             .iter()
             .map(|(&simp, impls)| IncoherentImpls {
-                self_ty: self.lazy(simp),
-                impls: self.lazy_array(impls.iter().map(|def_id| *def_id)),
+                self_ty: self.encoder.lazy({
+                    hasher.digest(simp, self.hcx);
+                    simp
+                }),
+                impls: self.encoder.lazy_array({
+                    hasher.digest(impls, self.hcx);
+                    impls.iter().copied()
+                }),
             })
             .collect();
 
-        self.lazy_array(&all_impls)
+        Hashed { value: self.encoder.lazy_array(&all_impls), hash: hasher.finish(self.hcx) }
     }
 
-    fn encode_exportable_items(&mut self) -> LazyArray<LocalDefId> {
+    fn encode_exportable_items(&mut self) -> GraphHashed<LazyArray<LocalDefId>> {
         empty_proc_macro!(self);
-        self.lazy_array(
-            self.tcx.exportable_items(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()),
-        )
+        if self.hcx.enabled() {
+            for def_id in self.tcx().exportable_items(LOCAL_CRATE) {
+                self.table_writer().is_exportable(def_id.expect_local(), true);
+            }
+            GraphHashed(Default::default())
+        } else {
+            GraphHashed(self.lazy_array(
+                self.tcx().exportable_items(LOCAL_CRATE).iter().map(|def_id| def_id.expect_local()),
+            ))
+        }
     }
 
-    fn encode_stable_order_of_exportable_impls(&mut self) -> LazyArray<(LocalDefId, usize)> {
+    fn encode_stable_order_of_exportable_impls(
+        &mut self,
+    ) -> Hashed<LazyArray<(LocalDefId, usize)>> {
         empty_proc_macro!(self);
         let stable_order_of_exportable_impls =
-            self.tcx.stable_order_of_exportable_impls(LOCAL_CRATE);
-        self.lazy_array(
+            self.tcx().stable_order_of_exportable_impls(LOCAL_CRATE);
+        self.hashed_lazy_array(
             stable_order_of_exportable_impls
                 .iter()
                 .map(|(def_id, idx)| (def_id.expect_local(), *idx)),
@@ -2450,26 +3001,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_exported_symbols(
         &mut self,
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
-    ) -> LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)> {
+    ) -> Unhashed<LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>> {
         empty_proc_macro!(self);
 
-        self.lazy_array(exported_symbols.iter().cloned())
+        let array =
+            self.with_record_mode(RecordMode::None, |this| this.lazy_array(exported_symbols));
+        Unhashed(array)
     }
 
-    fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {
+    fn encode_dylib_dependency_formats(&mut self) -> Hashed<LazyArray<Option<LinkagePreference>>> {
         empty_proc_macro!(self);
-        let formats = self.tcx.dependency_formats(());
-        if let Some(arr) = formats.get(&CrateType::Dylib) {
-            return self.lazy_array(arr.iter().skip(1 /* skip LOCAL_CRATE */).map(
-                |slot| match *slot {
-                    Linkage::NotLinked | Linkage::IncludedFromDylib => None,
-
-                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
-                    Linkage::Static => Some(LinkagePreference::RequireStatic),
-                },
-            ));
-        }
-        LazyArray::default()
+        let arr = dylib_dependency_formats(self.tcx()).into_iter().flatten();
+        self.hashed_lazy_array(arr.map(|(_id, slot)| slot))
     }
 }
 
@@ -2609,6 +3152,33 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
     }
 }
 
+fn encode_crate_root<'tcx, 'h, M: MetadataEncoder<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    path: &Path,
+    hcx: StableHashState<'h>,
+    public_hash: &mut Option<Svh>,
+) where
+    TraitImpls<M::EncodedDefId>:
+        for<'l> ParameterizedOverTcx<Value<'l> = TraitImpls<M::EncodedDefId>>,
+    EncodedTraitImpls: From<LazyArray<TraitImpls<M::EncodedDefId>>>,
+{
+    with_encode_metadata_header::<M>(tcx, path, |ecx| {
+        // Encode all the entries and extra information in the crate,
+        // culminating in the `CrateRoot` which points to all of it.
+        let mut hcx = M::public_api_hasher(hcx);
+        let mut builder = MetadataBuilder {
+            encoder: ecx,
+            hcx: &mut hcx,
+            tables: Default::default(),
+            _marker: Default::default(),
+        };
+        let (root, unhashed, public_crate_hash) = builder.encode_crate_root();
+        *public_hash = public_crate_hash;
+
+        (root.position.get(), unhashed.position.get(), *public_hash)
+    });
+}
+
 #[instrument(level = "trace", skip(tcx))]
 pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2641,21 +3211,24 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         let mmap = unsafe { Mmap::map(file) }.unwrap();
         let owned = slice_owned(mmap, Deref::deref);
         let blob = MetadataBlob::new(owned);
-        let hash = blob.expect("file already created").get_crate_hash();
-        tcx.untracked().local_crate_hash.set(hash).expect("local_crate_hash set twice");
+        let hashes = blob.expect("file already created").crate_hashes();
+        tcx.untracked()
+            .local_crate_hash
+            .set(hashes.private_hash)
+            .expect("local_crate_hash set twice");
 
         // Generate the metadata stub manually, as that is a small file compared to full metadata.
         if let Some(ref_path) = ref_path {
             let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
 
-            with_encode_metadata_header(tcx, ref_path, |ecx| {
+            with_encode_metadata_header::<DefIndexDefIdEncoder>(tcx, ref_path, |ecx| {
                 let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                     name: tcx.crate_name(LOCAL_CRATE),
                     triple: tcx.sess.opts.target_triple.clone(),
                     is_proc_macro_crate: false,
                     is_stub: true,
                 });
-                (header.position.get(), 0)
+                (header.position.get(), 0, Some(hashes.public_hash))
             })
         }
 
@@ -2675,27 +3248,26 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
+    let mut public_hash = None;
     // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
     // information changes, and maybe reuse the work product.
     tcx.dep_graph.with_task(
         dep_node,
         tcx,
         || {
-            with_encode_metadata_header(tcx, path, |ecx| {
-                // Encode all the entries and extra information in the crate,
-                // culminating in the `CrateRoot` which points to all of it.
-                let (root, unhashed) = ecx.encode_crate_root();
-
-                // Flush buffer to ensure backing file has the correct size.
-                ecx.opaque.flush();
-                // Record metadata size for self-profiling
-                tcx.prof.artifact_size(
-                    "crate_metadata",
-                    "crate_metadata",
-                    ecx.opaque.file().metadata().unwrap().len(),
-                );
-
-                (root.position.get(), unhashed.position.get())
+            tcx.with_stable_hashing_context(|hcx| {
+                let is_proc_macro = tcx.crate_types().contains(&CrateType::ProcMacro);
+                let hash_public_api = tcx.sess.opts.unstable_opts.public_api_hash && !is_proc_macro;
+                if hash_public_api {
+                    encode_crate_root::<DefPathHashDefIdEncoder<'_>>(
+                        tcx,
+                        path,
+                        hcx,
+                        &mut public_hash,
+                    );
+                } else {
+                    encode_crate_root::<DefIndexDefIdEncoder>(tcx, path, hcx, &mut public_hash);
+                }
             })
         },
         None,
@@ -2705,22 +3277,22 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     if let Some(ref_path) = ref_path {
         let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata_stub");
 
-        with_encode_metadata_header(tcx, ref_path, |ecx| {
+        with_encode_metadata_header::<DefIndexDefIdEncoder>(tcx, ref_path, |ecx| {
             let header: LazyValue<CrateHeader> = ecx.lazy(CrateHeader {
                 name: tcx.crate_name(LOCAL_CRATE),
                 triple: tcx.sess.opts.target_triple.clone(),
                 is_proc_macro_crate: false,
                 is_stub: true,
             });
-            (header.position.get(), 0)
+            (header.position.get(), 0, public_hash)
         })
     }
 }
 
-fn with_encode_metadata_header(
-    tcx: TyCtxt<'_>,
+fn with_encode_metadata_header<'tcx, M: MetadataEncoder<'tcx>>(
+    tcx: TyCtxt<'tcx>,
     path: &Path,
-    f: impl FnOnce(&mut EncodeContext<'_, '_>) -> (usize, usize),
+    f: impl FnOnce(&mut EncodeContext<'_, 'tcx, M>) -> (usize, usize, Option<Svh>),
 ) {
     // By default the crate hash (SVH) is computed from the bytes of the encoded metadata,
     // Under `-Z metadata-crate-hash=no` the SVH comes from the legacy `crate_hash` query instead and
@@ -2766,7 +3338,8 @@ fn with_encode_metadata_header(
     // Same with unhashed_position.
     encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
-    // Same with crate_hash.
+    // Same with private and public crate_hash.
+    encoder.emit_raw_bytes(&Fingerprint::ZERO.to_le_bytes());
     encoder.emit_raw_bytes(&Fingerprint::ZERO.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
@@ -2779,7 +3352,6 @@ fn with_encode_metadata_header(
         metadata_hasher: Arc::clone(&metadata_hasher),
         tcx,
         feat: tcx.features(),
-        tables: Default::default(),
         lazy_state: LazyState::NoNode,
         span_shorthands: Default::default(),
         type_shorthands: Default::default(),
@@ -2793,12 +3365,14 @@ fn with_encode_metadata_header(
         local_defs_remapping: Default::default(),
         syntax_context_remapping: Default::default(),
         local_expn_id_remapping: Default::default(),
+        _marker: Default::default(),
+        spec_encoder_data: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.
     rustc_version(tcx.sess.cfg_version).encode(&mut ecx);
 
-    let (root_position, unhashed_position) = f(&mut ecx);
+    let (root_position, unhashed_position, public_hash) = f(&mut ecx);
 
     // Make sure we report any errors from writing to the file.
     // If we forget this, compilation can succeed with an incomplete rmeta file,
@@ -2825,7 +3399,7 @@ fn with_encode_metadata_header(
         .get()
         .copied()
         .expect("local_crate_hash set during encoding");
-    if let Err(err) = encode_crate_hash(file, hash) {
+    if let Err(err) = encode_crate_hash(file, hash, public_hash) {
         tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
@@ -2846,9 +3420,14 @@ fn encode_unhashed_position(mut file: &File, pos: usize) -> Result<(), std::io::
     Ok(())
 }
 
-fn encode_crate_hash(mut file: &File, hash: Svh) -> Result<(), std::io::Error> {
-    file.seek(SeekFrom::Start(CRATE_HASH_OFFSET as u64))?;
+fn encode_crate_hash(
+    mut file: &File,
+    hash: Svh,
+    public_hash: Option<Svh>,
+) -> Result<(), std::io::Error> {
+    file.seek(SeekFrom::Start(PRIVATE_CRATE_HASH_OFFSET as u64))?;
     file.write_all(&hash.as_fingerprint().to_le_bytes())?;
+    file.write_all(&public_hash.unwrap_or(hash).as_fingerprint().to_le_bytes())?;
     Ok(())
 }
 
@@ -2964,5 +3543,45 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
                 "_".to_owned()
             }
         }
+    }
+}
+
+fn dylib_dependency_formats(
+    tcx: TyCtxt<'_>,
+) -> Option<impl Iterator<Item = (CrateNum, Option<LinkagePreference>)>> {
+    let formats = tcx.dependency_formats(());
+    formats.get(&CrateType::Dylib).map(|arr| {
+        arr.iter().enumerate().skip(1 /* skip LOCAL_CRATE */).map(|(i, slot)| {
+            (
+                CrateNum::new(i),
+                match *slot {
+                    Linkage::NotLinked | Linkage::IncludedFromDylib => None,
+
+                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                    Linkage::Static => Some(LinkagePreference::RequireStatic),
+                },
+            )
+        })
+    })
+}
+
+#[inline(always)]
+fn is_public_mod_child(
+    remove_private_children: bool,
+    effective_visibilities: &EffectiveVisibilities,
+    child: &ModChild,
+) -> bool {
+    if !remove_private_children {
+        return true;
+    }
+    if child.reexport_chain.is_empty() {
+        effective_visibilities.is_reachable(child.res.def_id().expect_local())
+    } else {
+        child.vis.is_public()
+            && child.reexport_chain.iter().all(|reexport| {
+                reexport.id().is_none_or(|id| {
+                    !id.is_local() || effective_visibilities.is_reachable(id.expect_local())
+                })
+            })
     }
 }
