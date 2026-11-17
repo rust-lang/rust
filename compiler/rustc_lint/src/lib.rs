@@ -194,7 +194,6 @@ early_lint_methods!(
             SpecialModuleName: SpecialModuleName,
             UnsafeCode: UnsafeCode,
             UnusedBraces: UnusedBraces,
-            UnusedDocComment: UnusedDocComment,
             UnusedImportBraces: UnusedImportBraces,
             UnusedParens: UnusedParens::default(),
             WhileTrue: WhileTrue,

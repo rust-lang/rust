@@ -5,8 +5,10 @@ pub trait Foo {
 }
 
 // FIXME(#96009): Don't emit `unused_doc_comments` here, we already emit an error anyway.
-//~v WARN
-#[doc(alias = "foo")] //~ ERROR
+#[doc(alias = "foo")]
+//~^ ERROR `#[doc(alias = "...")]` isn't allowed on
+//~| WARN cannot be used on
+//~| WARN previously accepted
 extern "C" {}
 
 #[doc(alias = "bar")] //~ ERROR
