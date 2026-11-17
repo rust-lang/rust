@@ -11,10 +11,10 @@ LL |     f.x::<>;
    |          ^^
 
 error: field expressions cannot have generic arguments
-  --> $DIR/type-parameters-in-field-exprs.rs:15:7
+  --> $DIR/type-parameters-in-field-exprs.rs:15:10
    |
 LL |     f.x::();
-   |       ^^^^^
+   |          ^^
 
 error: aborting due to 3 previous errors
 
