@@ -941,6 +941,13 @@ where
             continue;
         }
 
+        // GATs and RPITITs make a trait dyn-incompatible, but an RPITIT can still get here
+        // if an earlier error removed it from its method's signature, see #151964.
+        if cx.generics_of(associated_type_def_id).count() != trait_ref.args.len() {
+            cx.delay_bug("GATs in trait object shouldn't have been considered");
+            continue;
+        }
+
         requirements.extend(
             cx.item_bounds(associated_type_def_id)
                 .iter_instantiated(cx, trait_ref.args)

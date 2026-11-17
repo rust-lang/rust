@@ -1,0 +1,19 @@
+error[E0220]: associated type `Out` not found for `Foo`
+  --> $DIR/dyn-rpitit-lost-from-sig-ice.rs:10:31
+   |
+LL |     fn foo(&self) -> &dyn Foo<Out = impl Sized>;
+   |                               ^^^ associated type `Out` not found
+
+error[E0038]: the trait `Bar` is not dyn compatible
+  --> $DIR/dyn-rpitit-lost-from-sig-ice.rs:16:7
+   |
+LL |     x.foo();
+   |       ^^^ `Bar` is not dyn compatible
+   |
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0220.
+For more information about an error, try `rustc --explain E0038`.
