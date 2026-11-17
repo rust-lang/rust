@@ -115,7 +115,14 @@ pub struct ModuleConfig {
 }
 
 impl ModuleConfig {
-    pub(crate) fn new(kind: ModuleKind, tcx: TyCtxt<'_>, no_builtins: bool) -> ModuleConfig {
+    /// `opt_level` is the level the modules with this configuration are optimized at: the
+    /// crate's, except for the modules that are raised above it.
+    pub(crate) fn new(
+        kind: ModuleKind,
+        tcx: TyCtxt<'_>,
+        no_builtins: bool,
+        opt_level: config::OptLevel,
+    ) -> ModuleConfig {
         // If it's a regular module, use `$regular`, otherwise use `$other`.
         // `$regular` and `$other` are evaluated lazily.
         macro_rules! if_regular {
@@ -125,7 +132,7 @@ impl ModuleConfig {
         }
 
         let sess = tcx.sess;
-        let opt_level_and_size = if_regular!(Some(sess.opts.optimize), None);
+        let opt_level_and_size = if_regular!(Some(opt_level), None);
 
         let save_temps = sess.opts.cg.save_temps;
 
@@ -231,9 +238,9 @@ impl ModuleConfig {
             // Copy what clang does by turning on loop vectorization at O2 and
             // slp vectorization at O3.
             vectorize_loop: !sess.opts.cg.no_vectorize_loops
-                && sess.optimization_objective() == OptimizationObjective::Speed,
+                && opt_level.objective() == OptimizationObjective::Speed,
             vectorize_slp: !sess.opts.cg.no_vectorize_slp
-                && sess.opts.optimize == config::OptLevel::Aggressive,
+                && opt_level == config::OptLevel::Aggressive,
 
             // Some targets (namely, NVPTX) interact badly with the
             // MergeFunctions pass. This is because MergeFunctions can generate
@@ -247,12 +254,13 @@ impl ModuleConfig {
             merge_functions: match sess.merge_functions() {
                 MergeFunctions::Disabled => false,
                 MergeFunctions::Trampolines | MergeFunctions::Aliases => matches!(
-                    sess.optimization_objective(),
+                    opt_level.objective(),
                     OptimizationObjective::Speed | OptimizationObjective::Size
                 ),
             },
 
-            emit_lifetime_markers: sess.emit_lifetime_markers(),
+            emit_lifetime_markers: sess.emit_lifetime_markers()
+                || opt_level != config::OptLevel::No,
             llvm_plugins: if_regular!(sess.opts.unstable_opts.llvm_plugins.clone(), vec![]),
             autodiff: if_regular!(sess.opts.unstable_opts.autodiff.clone(), vec![]),
             autodiff_post_passes: if_regular!(
@@ -328,6 +336,9 @@ pub struct CodegenContext {
     pub crate_types: Vec<CrateType>,
     pub output_filenames: Arc<OutputFilenames>,
     pub module_config: Arc<ModuleConfig>,
+    /// The configuration of the modules that are optimized above the crate's level, when there
+    /// can be any; see `Session::raise_optimize_speed`.
+    pub raised_module_config: Option<Arc<ModuleConfig>>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
     pub target_can_use_split_dwarf: bool,
@@ -349,6 +360,16 @@ pub struct CodegenContext {
     ///
     /// Depends on [`WriteBackendMethods::supports_parallel()`] and `--jobs-backend`.
     pub parallel: Option<NonZero<usize>>,
+}
+
+impl CodegenContext {
+    /// The configuration that `module`, a regular module, is optimized and emitted with.
+    pub fn config_of<M>(&self, module: &ModuleCodegen<M>) -> &ModuleConfig {
+        match &self.raised_module_config {
+            Some(raised_module_config) if module.raised => raised_module_config,
+            _ => &self.module_config,
+        }
+    }
 }
 
 fn generate_thin_lto_work<B: WriteBackendMethods>(
@@ -417,6 +438,7 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     regular_config: Arc<ModuleConfig>,
+    raised_config: Option<Arc<ModuleConfig>>,
     allocator_config: Arc<ModuleConfig>,
     allocator_module: Option<ModuleCodegen<B::Module>>,
 ) -> OngoingCodegen<B> {
@@ -432,6 +454,7 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
         codegen_worker_send,
         coordinator_receive,
         regular_config,
+        raised_config,
         allocator_config,
         allocator_module,
         coordinator_send.clone(),
@@ -818,7 +841,8 @@ fn execute_optimize_work_item<B: WriteBackendMethods>(
 ) -> WorkItemResult<B> {
     let _timer = prof.generic_activity_with_arg("codegen_module_optimize", &*module.name);
 
-    B::optimize(cgcx, prof, &shared_emitter, &mut module, &cgcx.module_config);
+    let module_config = cgcx.config_of(&module);
+    B::optimize(cgcx, prof, &shared_emitter, &mut module, module_config);
 
     // After we've done the initial round of optimizations we need to
     // decide whether to synchronously codegen this module or ship it
@@ -839,7 +863,7 @@ fn execute_optimize_work_item<B: WriteBackendMethods>(
 
     match lto_type {
         ComputedLtoType::No => {
-            let module = B::codegen(cgcx, &prof, &shared_emitter, module, &cgcx.module_config);
+            let module = B::codegen(cgcx, &prof, &shared_emitter, module, module_config);
             WorkItemResult::Finished(module)
         }
         ComputedLtoType::Thin => {
@@ -1208,6 +1232,7 @@ fn start_executing_work<B: WriteBackendMethods>(
     codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Message<B>>,
     regular_config: Arc<ModuleConfig>,
+    raised_config: Option<Arc<ModuleConfig>>,
     allocator_config: Arc<ModuleConfig>,
     mut allocator_module: Option<ModuleCodegen<B::Module>>,
     coordinator_send: Sender<Message<B>>,
@@ -1269,6 +1294,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         remark_dir,
         output_filenames: Arc::clone(tcx.output_filenames(())),
         module_config: regular_config,
+        raised_module_config: raised_config,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),

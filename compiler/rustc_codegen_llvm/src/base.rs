@@ -92,7 +92,13 @@ pub(crate) fn compile_codegen_unit(
                 recorder.record_arg(cgu.size_estimate().to_string());
             });
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
+        // A unit that is raised above the crate's level for the sake of its
+        // `#[optimize(speed)]` functions gets its target machine at that level.
+        let opt_level = match tcx.sess.raise_optimize_speed() {
+            Some(raise) if cgu.is_raised() => raise.level,
+            _ => tcx.sess.opts.optimize,
+        };
+        let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str(), opt_level);
         llvm_module.with_module_refs(|module_refs| {
             let mut cx = CodegenCx::new(tcx, cgu, module_refs, needs_bitcode);
 
@@ -215,7 +221,11 @@ pub(crate) fn compile_codegen_unit(
             }
         });
 
-        ModuleCodegen::new_regular(cgu_name.to_string(), llvm_module)
+        if cgu.is_raised() {
+            ModuleCodegen::new_raised(cgu_name.to_string(), llvm_module)
+        } else {
+            ModuleCodegen::new_regular(cgu_name.to_string(), llvm_module)
+        }
     }
 
     (module, cost)

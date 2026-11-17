@@ -104,7 +104,13 @@ pub(crate) fn create_informational_target_machine(sess: &Session) -> OwnedTarget
     target_machine_factory(sess, config::OptLevel::No)(sess.dcx(), config)
 }
 
-pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
+/// `opt_level` is the level the module is optimized at: the crate's, except for a module that is
+/// raised above it.
+pub(crate) fn create_target_machine(
+    tcx: TyCtxt<'_>,
+    mod_name: &str,
+    opt_level: config::OptLevel,
+) -> OwnedTargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(()).split_dwarf_path(
             tcx.sess.split_debuginfo(),
@@ -119,7 +125,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         Some(tcx.output_filenames(()).temp_path_for_cgu(OutputType::Object, mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file, output_obj_file };
 
-    target_machine_factory(tcx.sess, tcx.sess.opts.optimize)(tcx.dcx(), config)
+    target_machine_factory(tcx.sess, opt_level)(tcx.dcx(), config)
 }
 
 // `s` and `z` are the same codegen level; what tells LLVM that they are size builds is the

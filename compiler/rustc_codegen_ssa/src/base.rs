@@ -761,14 +761,20 @@ pub fn codegen_crate<
     };
 
     let no_builtins = find_attr!(tcx, crate, NoBuiltins);
-    let regular_module_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins);
+    let opt_level = tcx.sess.opts.optimize;
+    let regular_module_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins, opt_level);
     let bitcode_needed = regular_module_config.bitcode_needed();
-    let allocator_module_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
+    let raised_module_config = tcx.sess.raise_optimize_speed().map(|raise| {
+        Arc::new(ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins, raise.level))
+    });
+    let allocator_module_config =
+        ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins, opt_level);
 
     let ongoing_codegen = start_async_codegen(
         backend.clone(),
         tcx,
         Arc::new(regular_module_config),
+        raised_module_config,
         Arc::new(allocator_module_config),
         allocator_module,
     );

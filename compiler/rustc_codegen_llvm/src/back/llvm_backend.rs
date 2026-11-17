@@ -508,7 +508,7 @@ fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::C
 }
 
 impl ModuleLlvm {
-    pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str, opt_level: OptLevel) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
             let llmod_raw =
@@ -516,7 +516,7 @@ impl ModuleLlvm {
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
-                tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
+                tm: ManuallyDrop::new(create_target_machine(tcx, mod_name, opt_level)),
                 thin_lto_buffer: OnceCell::new(),
             }
         }

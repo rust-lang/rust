@@ -65,15 +65,23 @@ pub struct ModuleCodegen<M> {
     pub name: String,
     pub module_llvm: M,
     pub kind: ModuleKind,
+    /// Whether the module is optimized above the crate's level for the sake of the
+    /// `#[optimize(speed)]` functions it holds; see `CodegenUnit::is_raised`.
+    pub raised: bool,
 }
 
 impl<M> ModuleCodegen<M> {
     pub fn new_regular(name: impl Into<String>, module: M) -> Self {
-        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Regular }
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Regular, raised: false }
+    }
+
+    /// A regular module that is optimized above the crate's level.
+    pub fn new_raised(name: impl Into<String>, module: M) -> Self {
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Regular, raised: true }
     }
 
     pub fn new_allocator(name: impl Into<String>, module: M) -> Self {
-        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Allocator }
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Allocator, raised: false }
     }
 
     pub fn into_compiled_module(

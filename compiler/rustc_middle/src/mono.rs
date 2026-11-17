@@ -360,6 +360,9 @@ pub struct CodegenUnit<'tcx> {
     /// True if this is CGU is used to hold code coverage information for dead code,
     /// false otherwise.
     is_code_coverage_dead_code_cgu: bool,
+    /// True if this CGU is optimized above the crate's level for the sake of the
+    /// `#[optimize(speed)]` functions it holds; see `Session::raise_optimize_speed`.
+    raised: bool,
 }
 
 /// Auxiliary info about a `MonoItem`.
@@ -415,7 +418,17 @@ impl<'tcx> CodegenUnit<'tcx> {
             size_estimate: 0,
             primary: false,
             is_code_coverage_dead_code_cgu: false,
+            raised: false,
         }
+    }
+
+    /// Whether this CGU is optimized above the crate's level; see the field.
+    pub fn is_raised(&self) -> bool {
+        self.raised
+    }
+
+    pub fn mark_raised(&mut self) {
+        self.raised = true;
     }
 
     pub fn name(&self) -> Symbol {
