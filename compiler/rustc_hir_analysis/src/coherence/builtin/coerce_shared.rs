@@ -332,19 +332,17 @@ enum CoerceSharedFieldPairError<'tcx> {
 // operation is not modeled here.
 fn collect_coerce_shared_field_pairs<'tcx>(
     tcx: TyCtxt<'tcx>,
-    source_def: ty::AdtDef<'tcx>,
+    source_variant: &'tcx ty::VariantDef,
     source_args: ty::GenericArgs<'tcx>,
-    target_def: ty::AdtDef<'tcx>,
+    target_variant: &'tcx ty::VariantDef,
     target_args: ty::GenericArgs<'tcx>,
 ) -> Result<CoerceSharedFields<'tcx>, CoerceSharedFieldPairError<'tcx>> {
-    let source_variant = source_def.non_enum_variant();
-    let target_variant = target_def.non_enum_variant();
     if source_variant.ctor_kind() != target_variant.ctor_kind() {
         return Err(CoerceSharedFieldPairError::FieldStyleMismatch);
     }
 
-    let source_fields = collect_reborrow_data_fields(tcx, source_def, source_args);
-    let target_fields = collect_reborrow_data_fields(tcx, target_def, target_args);
+    let source_fields = collect_reborrow_data_fields(tcx, source_variant, source_args);
+    let target_fields = collect_reborrow_data_fields(tcx, target_variant, target_args);
 
     let mut pairs = Vec::with_capacity(target_fields.len());
 
@@ -409,32 +407,72 @@ fn validate_coerce_shared_fields<'tcx>(
     target_args: ty::GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
-    let fields = match collect_coerce_shared_field_pairs(
-        tcx,
-        source_def,
-        source_args,
-        target_def,
-        target_args,
-    ) {
-        Ok(fields) => fields,
-        Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
-            return Err(tcx
-                .dcx()
-                .emit_err(diagnostics::CoerceSharedFieldStyleMismatch { span, trait_name }));
-        }
-        Err(CoerceSharedFieldPairError::MissingSourceField { target }) => {
-            return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMissingField {
-                span: target.span,
-                source_ty_span: diagnostic_context.source_ty_span,
-                trait_name,
-                source_ty_name: tcx.item_name(source_def.did()),
-                field_name: target.name,
-            }));
-        }
-    };
 
-    for field_pair in fields.pairs {
-        validate_coerce_shared_field(
+    let source_variants = source_def.variants();
+    let target_variants = target_def.variants();
+
+    if source_variants.len() != target_variants.len() {
+        return Err(tcx
+            .dcx()
+            .emit_err(diagnostics::CoerceSharedFieldStyleMismatch { span, trait_name }));
+    }
+
+    // FIXME: pair variants for enums by the variant names instead of the order of the variants
+    for (source_variant, target_variant) in source_variants.iter().zip(target_variants.iter()) {
+        let fields = match collect_coerce_shared_field_pairs(
+            tcx,
+            source_variant,
+            source_args,
+            target_variant,
+            target_args,
+        ) {
+            Ok(fields) => fields,
+            Err(CoerceSharedFieldPairError::FieldStyleMismatch) => {
+                return Err(tcx
+                    .dcx()
+                    .emit_err(diagnostics::CoerceSharedFieldStyleMismatch { span, trait_name }));
+            }
+            Err(CoerceSharedFieldPairError::MissingSourceField { target }) => {
+                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMissingField {
+                    span: target.span,
+                    source_ty_span: diagnostic_context.source_ty_span,
+                    trait_name,
+                    source_ty_name: tcx.item_name(source_def.did()),
+                    field_name: target.name,
+                }));
+            }
+        };
+
+        for field_pair in fields.pairs {
+            validate_coerce_shared_field(
+                infcx,
+                impl_did,
+                param_env,
+                coerce_shared_trait,
+                trait_name,
+                span,
+                diagnostic_context,
+                field_pair.source,
+                field_pair.target,
+            )?;
+        }
+
+        let reborrow_trait = tcx.require_lang_item(LangItem::Reborrow, span);
+        for source in fields.unpaired_sources {
+            validate_coerce_shared_unpaired_source_field(
+                infcx,
+                impl_did,
+                param_env,
+                reborrow_trait,
+                trait_name,
+                diagnostic_context,
+                source,
+            )?;
+        }
+        // FIXME(reborrow): remove this temporary WF-side memcpy-ability guard once
+        // the downstream CoerceShared implementation can correctly handle source and
+        // target types that are not trivially memcpy-able. Refer to #157489
+        validate_coerce_shared_fields_are_memcpy_compatible(
             infcx,
             impl_did,
             param_env,
@@ -442,40 +480,12 @@ fn validate_coerce_shared_fields<'tcx>(
             trait_name,
             span,
             diagnostic_context,
-            field_pair.source,
-            field_pair.target,
+            source_variant,
+            source_args,
+            target_variant,
+            target_args,
         )?;
     }
-
-    let reborrow_trait = tcx.require_lang_item(LangItem::Reborrow, span);
-    for source in fields.unpaired_sources {
-        validate_coerce_shared_unpaired_source_field(
-            infcx,
-            impl_did,
-            param_env,
-            reborrow_trait,
-            trait_name,
-            diagnostic_context,
-            source,
-        )?;
-    }
-
-    // FIXME(reborrow): remove this temporary WF-side memcpy-ability guard once
-    // the downstream CoerceShared implementation can correctly handle source and
-    // target types that are not trivially memcpy-able. Refer to #157489
-    validate_coerce_shared_fields_are_memcpy_compatible(
-        infcx,
-        impl_did,
-        param_env,
-        coerce_shared_trait,
-        trait_name,
-        span,
-        diagnostic_context,
-        source_def,
-        source_args,
-        target_def,
-        target_args,
-    )?;
 
     Ok(())
 }
@@ -488,16 +498,16 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
     trait_name: &'static str,
     span: Span,
     diagnostic_context: CoerceSharedDiagnosticContext,
-    source_def: ty::AdtDef<'tcx>,
+    source_variant: &'tcx ty::VariantDef,
     source_args: ty::GenericArgs<'tcx>,
-    target_def: ty::AdtDef<'tcx>,
+    target_variant: &'tcx ty::VariantDef,
     target_args: ty::GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
     let source_non_zst_fields =
-        non_zst_reborrow_data_fields(infcx, param_env, source_def, source_args);
+        non_zst_reborrow_data_fields(infcx, param_env, source_variant, source_args);
     let target_non_zst_fields =
-        non_zst_reborrow_data_fields(infcx, param_env, target_def, target_args);
+        non_zst_reborrow_data_fields(infcx, param_env, target_variant, target_args);
 
     match (&source_non_zst_fields[..], &target_non_zst_fields[..]) {
         ([], []) => Ok(()),
@@ -557,11 +567,11 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
 fn non_zst_reborrow_data_fields<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    def: ty::AdtDef<'tcx>,
+    variant: &'tcx ty::VariantDef,
     args: ty::GenericArgs<'tcx>,
 ) -> Vec<ReborrowDataField<'tcx>> {
     let tcx = infcx.tcx;
-    collect_reborrow_data_fields(tcx, def, args)
+    collect_reborrow_data_fields(tcx, variant, args)
         .into_iter()
         .filter(|field| {
             !matches!(

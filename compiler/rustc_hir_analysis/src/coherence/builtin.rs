@@ -485,7 +485,7 @@ pub(crate) fn reborrow_info<'tcx>(
     assert!(!source.has_escaping_bound_vars());
 
     let (def, args) = match source.kind() {
-        &ty::Adt(def, args) if def.is_struct() => (def, args),
+        &ty::Adt(def, args) if def.is_struct() || def.is_enum() => (def, args),
         _ => {
             // Note: reusing error here as it takes trait_name as argument.
             return Err(tcx
@@ -494,42 +494,44 @@ pub(crate) fn reborrow_info<'tcx>(
         }
     };
 
-    let data_fields = collect_reborrow_data_fields(tcx, def, args);
-
     let lifetimes_count = generic_lifetime_params_count(args.as_slice());
     if lifetimes_count == 0 {
         return Err(tcx.dcx().emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
     }
-    if data_fields.is_empty() {
-        return Ok(());
-    }
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    // We've found some data fields. They must all be either be Copy or Reborrow.
-    for mut field in data_fields {
-        field.ty.error_reported()?;
-        field.ty = ocx
-            .deeply_normalize(
-                &traits::ObligationCause::misc(field.span, impl_did),
-                param_env,
-                Unnormalized::new_wip(field.ty),
-            )
-            .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
-        if field_type_is_reborrow(
-            tcx,
-            &infcx,
-            reborrow_trait,
-            impl_did,
-            param_env,
-            field.ty,
-            field.span,
-        ) {
-            // Field implements Reborrow, check remaining fields.
-            continue;
+    for variant in def.variants().iter() {
+        let data_fields = collect_reborrow_data_fields(tcx, variant, args);
+        if data_fields.is_empty() {
+            return Ok(());
         }
 
-        // Field does not implement Reborrow: it must be Copy.
-        assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field.ty, field.span)?;
+        // We've found some data fields. They must all be either be Copy or Reborrow.
+        for mut field in data_fields {
+            field.ty.error_reported()?;
+            field.ty = ocx
+                .deeply_normalize(
+                    &traits::ObligationCause::misc(field.span, impl_did),
+                    param_env,
+                    Unnormalized::new_wip(field.ty),
+                )
+                .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
+            if field_type_is_reborrow(
+                tcx,
+                &infcx,
+                reborrow_trait,
+                impl_did,
+                param_env,
+                field.ty,
+                field.span,
+            ) {
+                // Field implements Reborrow, check remaining fields.
+                continue;
+            }
+
+            // Field does not implement Reborrow: it must be Copy.
+            assert_field_type_is_copy(tcx, &infcx, impl_did, param_env, field.ty, field.span)?;
+        }
     }
 
     if let Some(did) = def.destructor(tcx).map(|dtor| dtor.did) {
@@ -566,11 +568,10 @@ struct ReborrowDataField<'tcx> {
 
 fn collect_reborrow_data_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::AdtDef<'tcx>,
+    def: &'tcx ty::VariantDef,
     args: ty::GenericArgs<'tcx>,
 ) -> Vec<ReborrowDataField<'tcx>> {
-    def.non_enum_variant()
-        .fields
+    def.fields
         .iter()
         .filter_map(|field| {
             let ty = field.ty(tcx, args).skip_norm_wip();

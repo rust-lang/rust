@@ -1,0 +1,9 @@
+error[E0377]: the trait `Reborrow` may only be implemented for a coercion between structures
+  --> $DIR/enums.rs:5:10
+   |
+LL | #[derive(Reborrow)]
+   |          ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0377`.
