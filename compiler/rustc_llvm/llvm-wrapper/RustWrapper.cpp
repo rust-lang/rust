@@ -681,9 +681,6 @@ template <typename DIT> DIT *unwrapDI(LLVMMetadataRef Ref) {
   return cast_if_present<DIT>(unwrap(Ref));
 }
 
-#define DIDescriptor DIScope
-#define DIArray DINodeArray
-
 // Statically assert that `LLVMDIFlags` (C) and `DIFlags` (C++) have the same
 // layout, at least for the flags we know about. This isn't guaranteed, but is
 // likely to remain true, and as long as it is true it makes conversions easy.
@@ -1085,7 +1082,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMMetadataRef Discriminator, LLVMMetadataRef Elements,
     const char *UniqueId, size_t UniqueIdLen) {
   return wrap(unwrap(Builder)->createVariantPart(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
       fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
       DINodeArray(unwrapDI<MDTuple>(Elements)),
@@ -1102,7 +1099,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
     D = unwrap<llvm::ConstantInt>(Discriminant);
   }
   return wrap(unwrap(Builder)->createVariantMemberType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits, D,
       fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
@@ -1113,7 +1110,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
     uint64_t SizeInBits, uint32_t AlignInBits, LLVMMetadataRef Elements,
     LLVMMetadataRef ClassTy, bool IsScoped) {
   return wrap(unwrap(Builder)->createEnumerationType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
       DINodeArray(unwrapDI<MDTuple>(Elements)), unwrapDI<DIType>(ClassTy),
       /* RunTimeLang */ 0, "", IsScoped));
@@ -1124,8 +1121,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
     size_t NameLen, LLVMMetadataRef Ty) {
   bool IsDefault = false; // FIXME: should we ever set this true?
   return wrap(unwrap(Builder)->createTemplateTypeParameter(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIType>(Ty), IsDefault));
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty),
+      IsDefault));
 }
 
 extern "C" void LLVMRustDICompositeTypeReplaceArrays(
