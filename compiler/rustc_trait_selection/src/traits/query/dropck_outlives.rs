@@ -157,6 +157,10 @@ where
     // Set used to detect infinite recursion.
     let mut ty_set = FxHashSet::default();
 
+    // Dtorck types that this query has already normalized. Expanding the fields of
+    // an ADT yields mostly the same types again, so skip them before normalizing.
+    let mut seen_dtorck_tys = FxHashSet::default();
+
     let cause = ObligationCause::dummy_with_span(span);
     let mut constraints = DropckConstraint::empty();
     while let Some((ty, depth)) = ty_stack.pop() {
@@ -193,6 +197,10 @@ where
         // do not themselves define a destructor", more or less. We have
         // to push them onto the stack to be expanded.
         for ty in constraints.dtorck_types.drain(..) {
+            if !seen_dtorck_tys.insert(ty) {
+                continue;
+            }
+
             let ty = if let Ok(Normalized { value: ty, obligations }) =
                 ocx.infcx.at(&cause, param_env).query_normalize(ty)
             {
