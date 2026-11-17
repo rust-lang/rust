@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::{self, Instance, Ty};
+use rustc_session::config::OptLevel;
 use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::Symbol;
 
@@ -25,6 +26,11 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     ) -> Self::Value;
     fn eh_personality(&self) -> Self::Function;
     fn sess(&self) -> &Session;
+    /// The level that the code being emitted will be optimized at: the crate's, except in a
+    /// codegen unit that is raised above it for the sake of its `#[optimize(speed)]` functions.
+    fn opt_level(&self) -> OptLevel {
+        self.sess().opts.optimize
+    }
     fn set_frame_pointer_type(&self, llfn: Self::Function);
     fn apply_target_cpu_attr(&self, llfn: Self::Function);
     /// Applies the compilation's optimization attributes to a function that no item produced,

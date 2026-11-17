@@ -180,7 +180,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         if is_node_local_to_unit(self, def_id) {
             spflags |= DISPFlags::SPFlagLocalToUnit;
         }
-        if self.sess().opts.optimize != config::OptLevel::No {
+        if self.opt_level() != config::OptLevel::No {
             spflags |= DISPFlags::SPFlagOptimized;
         }
         if let Some((id, _)) = tcx.entry_fn(()) {

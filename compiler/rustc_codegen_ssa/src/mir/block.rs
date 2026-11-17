@@ -490,7 +490,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let true_ll = helper.llbb_with_cleanup(self, true_bb);
             let false_ll = helper.llbb_with_cleanup(self, false_bb);
 
-            let expected_cond_value = if self.cx.sess().opts.optimize == OptLevel::No {
+            let expected_cond_value = if self.cx.opt_level() == OptLevel::No {
                 None
             } else {
                 match (self.cold_blocks.contains(true_bb), self.cold_blocks.contains(false_bb)) {
@@ -510,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.unchecked_utrunc(discr_value, bool_llty)
             };
             bx.cond_br_with_expect(cond, true_ll, false_ll, expected_cond_value);
-        } else if self.cx.sess().opts.optimize == OptLevel::No
+        } else if self.cx.opt_level() == OptLevel::No
             && target_iter.len() == 2
             && self.mir[targets.otherwise()].is_empty_unreachable()
         {

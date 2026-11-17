@@ -433,7 +433,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         // specialized implementations as well, or continue to use a generic implementation here.
         use std::cmp::Ordering;
         let pred = |op| crate::base::bin_op_to_icmp_predicate(op, ty.is_signed());
-        if self.cx().sess().opts.optimize == OptLevel::No {
+        if self.cx().opt_level() == OptLevel::No {
             // This actually generates tighter assembly, and is a classic trick:
             // <https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>.
             // However, as of 2023-11 it optimized worse in LLVM in things like derived
@@ -521,9 +521,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             let ty = self.backend_type(layout);
             let val = self.load_from_place(ty, src);
             self.store_to_place_with_flags(val, dst, flags);
-        } else if self.sess().opts.optimize == OptLevel::No
-            && layout.backend_repr.is_scalar_or_simd()
-        {
+        } else if self.cx().opt_level() == OptLevel::No && layout.backend_repr.is_scalar_or_simd() {
             // If we're not optimizing, the aliasing information from `memcpy`
             // isn't useful, so just load-store the value for smaller code.
             let temp = self.load_operand(src.with_type(layout));

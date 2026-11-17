@@ -21,7 +21,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
-    BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
+    BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, OptLevel, PAuthKey, PacRet,
 };
 use rustc_session::{PointerAuthSchema, Session};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug, sym};
@@ -99,6 +99,8 @@ pub(crate) struct FullCx<'ll, 'tcx> {
     pub tls_model: llvm::ThreadLocalMode,
 
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
+    /// The level that this unit's IR is emitted for; see `MiscCodegenMethods::opt_level`.
+    pub opt_level: OptLevel,
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, Value<'ll>>>,
@@ -674,12 +676,26 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         let coverage_cx =
             tcx.sess.instrument_coverage().then(coverageinfo::CguCoverageContext::new);
 
+        // A unit that holds only functions that are optimized above the crate's level has
+        // its IR emitted as an optimized build would emit it, when that is asked for.
+        let opt_level = match tcx.sess.raise_optimize_speed() {
+            Some(raise)
+                if codegen_unit.is_raised()
+                    && raise.form.separates_modules()
+                    && raise.codegen_level =>
+            {
+                raise.level
+            }
+            _ => tcx.sess.opts.optimize,
+        };
+
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CodegenUnitDebugContext::new(llmod, tcx.sess);
             debuginfo::metadata::build_compile_unit_di_node(
                 tcx,
                 codegen_unit.name().as_str(),
                 &dctx,
+                opt_level != OptLevel::No,
             );
             Some(dctx)
         } else {
@@ -725,6 +741,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 scalar_lltypes: Default::default(),
                 coverage_cx,
                 dbg_cx,
+                opt_level,
                 sanitizer_ignorelist,
                 eh_personality: Cell::new(None),
                 rust_try_fn: Cell::new(None),
@@ -1058,6 +1075,10 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn sess(&self) -> &Session {
         self.tcx.sess
+    }
+
+    fn opt_level(&self) -> OptLevel {
+        self.opt_level
     }
 
     fn set_frame_pointer_type(&self, llfn: Value<'ll>) {

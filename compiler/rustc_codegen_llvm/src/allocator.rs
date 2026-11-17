@@ -6,7 +6,7 @@ use rustc_ast::expand::allocator::{
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::DebugInfo;
+use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::bug;
 use rustc_symbol_mangling::mangle_internal_symbol;
 
@@ -101,7 +101,8 @@ pub(crate) unsafe fn codegen(
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
         let dbg_cx = debuginfo::CodegenUnitDebugContext::new(cx.llmod, tcx.sess);
-        debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
+        let is_optimized = tcx.sess.opts.optimize != OptLevel::No;
+        debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx, is_optimized);
         dbg_cx.finalize();
     }
 }

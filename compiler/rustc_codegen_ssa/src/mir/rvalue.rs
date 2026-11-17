@@ -1160,7 +1160,7 @@ fn assume_scalar_range<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     backend_ty: Bx::Type,
     known: Option<&abi::Scalar>,
 ) {
-    if matches!(bx.cx().sess().opts.optimize, OptLevel::No) {
+    if matches!(bx.cx().opt_level(), OptLevel::No) {
         return;
     }
 

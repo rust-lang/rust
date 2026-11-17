@@ -428,7 +428,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         else_is_cold: bool,
         cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock, bool)>,
     ) {
-        if self.cx.sess().opts.optimize == rustc_session::config::OptLevel::No {
+        if self.cx.opt_level() == rustc_session::config::OptLevel::No {
             self.switch(v, else_llbb, cases.map(|(val, dest, _)| (val, dest)));
             return;
         }
@@ -759,7 +759,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             layout: TyAndLayout<'tcx>,
             offset: Size,
         ) {
-            if bx.cx.sess().opts.optimize == OptLevel::No {
+            if bx.cx.opt_level() == OptLevel::No {
                 // Don't emit metadata we're not going to use
                 return;
             }
@@ -845,7 +845,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         count: u64,
         dest: PlaceRef<'tcx, Value<'ll>>,
     ) {
-        if self.cx.sess().opts.optimize == OptLevel::No {
+        if self.cx.opt_level() == OptLevel::No {
             // To let debuggers single-step over lines like
             //
             //     let foo = ["bar"; 42];
@@ -860,7 +860,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn range_metadata(&mut self, load: Value<'ll>, range: WrappingRange) {
-        if self.cx.sess().opts.optimize == OptLevel::No {
+        if self.cx.opt_level() == OptLevel::No {
             // Don't emit metadata we're not going to use
             return;
         }

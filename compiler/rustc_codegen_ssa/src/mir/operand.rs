@@ -517,7 +517,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     Primitive::Int(_, signed) => !tag_scalar.is_bool() && signed,
                     _ => false,
                 };
-                if bx.cx().sess().opts.optimize != OptLevel::No {
+                if bx.cx().opt_level() != OptLevel::No {
                     let vals: Vec<u128> = variants
                         .iter_enumerated()
                         .filter_map(|(idx, layout)| {
@@ -604,7 +604,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     // might be worth moving this back to being on the switch argument
                     // where it's more obviously applicable.
                     if niche_variants.contains(&untagged_variant)
-                        && bx.cx().sess().opts.optimize != OptLevel::No
+                        && bx.cx().opt_level() != OptLevel::No
                     {
                         let impossible = niche_start
                             .wrapping_add(u128::from(untagged_variant.as_u32()))

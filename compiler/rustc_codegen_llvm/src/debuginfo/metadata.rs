@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{
     self, AdtDef, AdtKind, ExistentialTraitRef, Instance, Ty, TyCtxt, Unnormalized, Visibility,
 };
-use rustc_session::config::{self, DebugInfo, Lto};
+use rustc_session::config::{DebugInfo, Lto};
 use rustc_span::{
     DUMMY_SP, FileName, RemapPathScopeComponents, SourceFile, Span, Symbol, bug, hygiene,
 };
@@ -919,6 +919,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     tcx: TyCtxt<'tcx>,
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
+    is_optimized: bool,
 ) -> &'ll DIDescriptor {
     let mut name_in_debuginfo = tcx
         .sess
@@ -999,7 +1000,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             compile_unit_file,
             producer.as_ptr(),
             producer.len(),
-            tcx.sess.opts.optimize != config::OptLevel::No,
+            is_optimized,
             flags.as_ptr(),
             0,
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead

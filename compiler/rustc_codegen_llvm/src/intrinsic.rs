@@ -959,13 +959,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn assume(&mut self, val: Self::Value) {
-        if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
+        if self.cx.opt_level() != rustc_session::config::OptLevel::No {
             self.call_intrinsic("llvm.assume", &[], &[val]);
         }
     }
 
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {
-        if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
+        if self.cx.opt_level() != rustc_session::config::OptLevel::No {
             self.call_intrinsic(
                 "llvm.expect",
                 &[self.type_i1()],

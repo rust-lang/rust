@@ -85,7 +85,7 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[At
     }
 
     // Only apply remaining attributes when optimizing
-    if cx.sess().opts.optimize != config::OptLevel::No {
+    if cx.opt_level() != config::OptLevel::No {
         let deref = this.pointee_size.bytes();
         // Prior to <https://github.com/llvm/llvm-project/pull/204795> dereferenceable in LLVM
         // implied nofree, so only emit dereferenceable on older versions of LLVM if nofree
@@ -681,7 +681,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         };
 
         let apply_range_attr = |idx: AttributePlace, scalar: rustc_abi::Scalar| {
-            if cx.sess().opts.optimize != config::OptLevel::No
+            if cx.opt_level() != config::OptLevel::No
                 && matches!(scalar.primitive(), Primitive::Int(..))
                 // If the value is a boolean, the range is 0..2 and that ultimately
                 // become 0..0 when the type becomes i1, which would be rejected
@@ -711,7 +711,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 let sret =
                     llvm::CreateStructRetAttr(cx.llcx, cx.type_byte_array(self.ret.layout.size));
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
-                if cx.sess().opts.optimize != config::OptLevel::No {
+                if cx.opt_level() != config::OptLevel::No {
                     attributes::apply_to_llfn(
                         llfn,
                         llvm::AttributePlace::Argument(i),
@@ -753,7 +753,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
                 PassMode::Indirect { attrs, address_space: _, mode: IndirectMode::Pointer } => {
                     let i = apply(attrs);
-                    if cx.sess().opts.optimize != config::OptLevel::No {
+                    if cx.opt_level() != config::OptLevel::No {
                         attributes::apply_to_llfn(
                             llfn,
                             llvm::AttributePlace::Argument(i),

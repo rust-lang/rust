@@ -87,7 +87,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if pointee_layout.is_ssa_standalone()
                 // But if we're not going to optimize, trying to use the fallback
                 // body just makes things worse, so don't bother.
-                || bx.sess().opts.optimize == OptLevel::No
+                || bx.cx().opt_level() == OptLevel::No
                 // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
                 // reinterpretation of values as (chunkable) byte arrays, and the loop in the
                 // block optimization in `ptr::swap_nonoverlapping` is hard to rewrite back
