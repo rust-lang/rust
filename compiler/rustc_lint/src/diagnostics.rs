@@ -313,24 +313,6 @@ pub(crate) struct BuiltinAnonymousParams<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused doc comment")]
-pub(crate) struct BuiltinUnusedDocComment<'a> {
-    pub kind: &'a str,
-    #[label("rustdoc does not generate documentation for {$kind}")]
-    pub label: Span,
-    #[subdiagnostic]
-    pub sub: BuiltinUnusedDocCommentSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum BuiltinUnusedDocCommentSub {
-    #[help("use `//` for a plain comment")]
-    PlainHelp,
-    #[help("use `/* */` for a plain comment")]
-    BlockHelp,
-}
-
-#[derive(Diagnostic)]
 #[diag("const items should never be `#[no_mangle]`")]
 pub(crate) struct BuiltinConstNoMangle {
     #[suggestion("try a static value", code = "pub static ", applicability = "machine-applicable")]

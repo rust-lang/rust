@@ -15,6 +15,7 @@ use rustc_session::Session;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
+use crate::attributes::doc_comment::target_check_doc_comment;
 use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
     FinalizeFn, FinalizeOutput, SharedContext,
@@ -326,6 +327,7 @@ impl<'sess> AttributeParser<'sess> {
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut synthetic_attr_state = SyntheticAttrState::default();
         let mut generated_attr_state = GeneratedAttrState::default();
+        let mut has_target_checked_doc_comment = false;
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -340,6 +342,14 @@ impl<'sess> AttributeParser<'sess> {
             let attr_span = lower_span(attr.span);
             match &attr.kind {
                 ast::AttrKind::DocComment(comment_kind, symbol) => {
+                    target_check_doc_comment(
+                        &self,
+                        attr,
+                        &ast_target,
+                        target_span,
+                        &mut emit_lint,
+                        &mut has_target_checked_doc_comment,
+                    );
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: DocFragmentKind::Sugared(*comment_kind),
@@ -406,6 +416,14 @@ impl<'sess> AttributeParser<'sess> {
                             // emit an error with `AcceptContext`.
                             && let Some(comment) = nv.value_as_str()
                         {
+                            target_check_doc_comment(
+                                &self,
+                                attr,
+                                &ast_target,
+                                target_span,
+                                &mut emit_lint,
+                                &mut false, // always linted
+                            );
                             attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                                 style: attr.style,
                                 kind: DocFragmentKind::Raw(nv.value_span),
