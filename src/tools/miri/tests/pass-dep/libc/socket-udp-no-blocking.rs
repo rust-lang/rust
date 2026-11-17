@@ -316,7 +316,7 @@ fn test_recv_discard_excess() {
 /// - `sendto` where the destination address is a nullptr and without a default destination address:
 ///   Should fail with EDESTADDRREQ.
 /// - `sendto` where the destination address is valid and the default destination address is unavailable:
-///   Should succeed on non-BSD targets since the `sendto` address should "overrule" the default destination address.
+///   Should succeed on non-BSD targets since the `sendto` address should overwrite the default destination address.
 ///   Should fail with EISCONN on BSD targets.
 /// - `sendto` where the destination address is a nullptr and with a default destination address:
 ///   Should succeed.
@@ -398,7 +398,7 @@ fn test_sendto_recvfrom() {
     if !cfg!(any(bsd_host, target_os = "freebsd", target_vendor = "apple")) {
         // We're on a non-BSD host and on a non-BSD target.
 
-        // A `sendto` with the destination address of `rx_addr` should "overrule" the
+        // A `sendto` with the destination address of `rx_addr` should overwrite the
         // bogus default destination address and thus `TEST_BYTES` should be transmitted
         // successfully from the transmitting socket to the receiving socket.
         let bytes_sent = unsafe {

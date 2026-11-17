@@ -464,7 +464,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(Err(LibcError("EISCONN")));
             } else if cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
                 // We're on a BSD host and on a non-BSD target. On such targets `dest_addr` should
-                // "overrule" the default destination address, however, we cannot achieve this nicely
+                // overwrite the default destination address, however, we cannot achieve this nicely
                 // since the host disallows that. We thus throw an unsupported error.
                 throw_unsup_format!(
                     "sendto: overwriting default destination address is not supported for UDP sockets on BSD hosts"
@@ -487,6 +487,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if dest_addr.is_some() {
                 // After the first successful `sendto`, the socket gets implicitly bound to a local address.
                 socket.is_bound.set(true);
+            } else {
+                // Can only succeed if `connect` was called, which binds the socket.
+                assert!(socket.is_bound.get());
             }
         }
 
